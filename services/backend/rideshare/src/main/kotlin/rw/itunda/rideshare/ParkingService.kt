@@ -108,6 +108,12 @@ class ParkingService(
             .sortedBy { GeoUtils.haversineKm(latitude, longitude, it.latitude, it.longitude) }
     }
 
+    // Real bug found live (2026-08-02) -- see Bike.kt's own doc comment for the full
+    // account: the old body only checked for the ABSENCE of an active session, then
+    // inserted a new one, a check-then-act race with no shared, lockable row to catch
+    // two concurrent renters checking into the same spot. Fixed to flip
+    // `spot.available` to false and save that versioned entity as part of this same
+    // transaction, matching RideTripService.acceptTrip's own proven-safe shape.
     @Transactional
     fun startSession(renterUserId: String, spotId: String): ParkingSession {
         rateLimiter.checkLimit("parking:start-session:$renterUserId", limit = 20, window = Duration.ofHours(1))
@@ -124,6 +130,9 @@ class ParkingService(
         // already gives for this exact check.
         walletRepository.findByUserIdAndType(renterUserId, WalletType.MAIN)
             ?: throw ParkingNoWalletException("No wallet found for this account")
+
+        spot.available = false
+        parkingSpotRepository.save(spot)
 
         return parkingSessionRepository.save(
             ParkingSession(id = "parking_session_${UUID.randomUUID()}", spotId = spotId, renterUserId = renterUserId),
@@ -182,6 +191,9 @@ class ParkingService(
         session.platformFee = platformFee
         session.payoutTransactionId = result.transactionId
         session.status = ParkingSessionStatus.COMPLETED
+
+        spot.available = true
+        parkingSpotRepository.save(spot)
 
         return parkingSessionRepository.save(session)
     }

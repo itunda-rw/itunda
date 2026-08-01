@@ -104,6 +104,41 @@ class ParkingServiceTest : BehaviorSpec({
         }
     }
 
+    // Real bug found live (2026-08-02) -- see BikeRentalServiceTest's own identical
+    // test doc comment for the full account. This proves startSession's fix: it now
+    // saves the spot itself with `available = false`, the versioned row a concurrent
+    // second attempt would race against and real-409 on.
+    Given("a real available parking spot with no active session") {
+        val parkingSpotRepository = mockk<ParkingSpotRepository>()
+        val parkingSessionRepository = mockk<ParkingSessionRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val spot = ParkingSpot(
+            id = "parking_spot_1", ownerUserId = "owner_1", walletId = "wallet_owner", address = "A",
+            latitude = -1.9, longitude = 30.0, hourlyRate = BigDecimal("500"), available = true,
+        )
+        val renterWallet = Wallet(
+            id = "wallet_renter", userId = "renter_1", accountNumber = "1000000002", accountName = "Renter",
+            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        )
+        every { parkingSpotRepository.findById("parking_spot_1") } returns Optional.of(spot)
+        every { parkingSessionRepository.findBySpotIdAndStatus("parking_spot_1", ParkingSessionStatus.ACTIVE) } returns null
+        every { walletRepository.findByUserIdAndType("renter_1", WalletType.MAIN) } returns renterWallet
+        val spotSavedSlot = slot<ParkingSpot>()
+        every { parkingSpotRepository.save(capture(spotSavedSlot)) } answers { firstArg() }
+        every { parkingSessionRepository.save(any()) } answers { firstArg() }
+        val service = newService(
+            parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository, walletRepository = walletRepository,
+        )
+
+        When("a renter starts a real session") {
+            service.startSession("renter_1", "parking_spot_1")
+
+            Then("the spot itself is saved as unavailable") {
+                spotSavedSlot.captured.available shouldBe false
+            }
+        }
+    }
+
     Given("a real ACTIVE session the renter ends after 90 minutes") {
         val parkingSpotRepository = mockk<ParkingSpotRepository>()
         val parkingSessionRepository = mockk<ParkingSessionRepository>()
@@ -136,17 +171,20 @@ class ParkingServiceTest : BehaviorSpec({
         every { walletRepository.findById("wallet_owner") } returns Optional.of(ownerWallet)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { parkingSessionRepository.save(any()) } answers { firstArg() }
+        val spotSavedSlot = slot<ParkingSpot>()
+        every { parkingSpotRepository.save(capture(spotSavedSlot)) } answers { firstArg() }
 
         When("the renter ends the session") {
             val result = service.endSession("renter_1", "parking_session_1")
 
-            Then("a real fare rounds 90 minutes up to 2 billed hours and the session is marked COMPLETED") {
+            Then("a real fare rounds 90 minutes up to 2 billed hours, the session is marked COMPLETED, and the spot is made available again") {
                 result.status shouldBe ParkingSessionStatus.COMPLETED
                 result.durationMinutes shouldBe 90
                 // 500/hour, 90 minutes rounds up to 2 hours -- 2 * 500 = 1000.
                 result.totalFare shouldBe BigDecimal("1000.00")
                 result.platformFee shouldBe BigDecimal("150.00")
                 result.payoutTransactionId shouldBe "ledgertxn_1"
+                spotSavedSlot.captured.available shouldBe true
             }
         }
     }

@@ -99,6 +99,42 @@ class BikeRentalServiceTest : BehaviorSpec({
         }
     }
 
+    // Real bug found live (2026-08-02): startRental used to only check for the
+    // ABSENCE of an active session, never writing to a shared, lockable row -- a
+    // check-then-act race two concurrent riders could both pass. This test proves
+    // the fix's real mechanism: starting a rental now saves the bike itself with
+    // `available = false`, which is what makes optimistic locking (the bike's own
+    // @Version) actually catch a concurrent second rental attempt (the loser's save
+    // would real-409 via the existing global ObjectOptimisticLockingFailureException
+    // handler, the same proven-safe shape RideTripService.acceptTrip already uses).
+    Given("a real available bike with no active session") {
+        val bikeRepository = mockk<BikeRepository>()
+        val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", walletId = "wallet_owner", type = BikeType.REGULAR, currentLatitude = -1.9, currentLongitude = 30.0, available = true)
+        val riderWallet = Wallet(
+            id = "wallet_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
+            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        )
+        every { bikeRepository.findById("bike_1") } returns Optional.of(bike)
+        every { bikeRentalSessionRepository.findByBikeIdAndStatus("bike_1", BikeRentalStatus.ACTIVE) } returns null
+        every { walletRepository.findByUserIdAndType("rider_1", WalletType.MAIN) } returns riderWallet
+        val bikeSavedSlot = slot<Bike>()
+        every { bikeRepository.save(capture(bikeSavedSlot)) } answers { firstArg() }
+        every { bikeRentalSessionRepository.save(any()) } answers { firstArg() }
+        val service = newService(
+            bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository, walletRepository = walletRepository,
+        )
+
+        When("a rider starts a real rental") {
+            service.startRental("rider_1", "bike_1", -1.9, 30.0)
+
+            Then("the bike itself is saved as unavailable, the versioned row a concurrent second attempt would race against") {
+                bikeSavedSlot.captured.available shouldBe false
+            }
+        }
+    }
+
     Given("a real ACTIVE rental the rider ends after 5 minutes") {
         val bikeRepository = mockk<BikeRepository>()
         val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
@@ -127,19 +163,21 @@ class BikeRentalServiceTest : BehaviorSpec({
         every { walletRepository.findByUserIdAndType("rider_1", WalletType.MAIN) } returns riderWallet
         every { walletRepository.findById("wallet_owner") } returns Optional.of(ownerWallet)
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        val bikeSavedSlot = slot<Bike>()
         every { bikeRentalSessionRepository.save(any()) } answers { firstArg() }
-        every { bikeRepository.save(any()) } answers { firstArg() }
+        every { bikeRepository.save(capture(bikeSavedSlot)) } answers { firstArg() }
 
         When("the rider ends the rental") {
             val result = service.endRental("rider_1", "bike_rental_1", -1.95, 30.05)
 
-            Then("a real fare is computed for 5 minutes and the rental is marked COMPLETED") {
+            Then("a real fare is computed for 5 minutes, the rental is marked COMPLETED, and the bike is made available again") {
                 result.status shouldBe BikeRentalStatus.COMPLETED
                 result.durationMinutes shouldBe 5
                 // REGULAR rate is 80/minute -- 5 * 80 = 400.
                 result.totalFare shouldBe BigDecimal("400.00")
                 result.platformFee shouldBe BigDecimal("60.00")
                 result.payoutTransactionId shouldBe "ledgertxn_1"
+                bikeSavedSlot.captured.available shouldBe true
             }
         }
     }

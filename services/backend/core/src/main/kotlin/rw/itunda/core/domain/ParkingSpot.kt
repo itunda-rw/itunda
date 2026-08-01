@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -54,6 +55,16 @@ class ParkingSpot(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real bug found live (2026-08-02) -- see Bike.kt's own doc comment for the full
+    // account: startSession only checked for the ABSENCE of an active ParkingSession
+    // row, a check-then-act race with no versioned entity to catch it. Fixed the same
+    // way: startSession/endSession now flip this existing `available` flag as part of
+    // the checked transaction, so optimistic locking on this entity catches a
+    // concurrent double-booking, matching RideTrip/BusTrip's own proven-safe pattern.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", address = "", latitude = 0.0, longitude = 0.0, hourlyRate = BigDecimal.ZERO)
 }

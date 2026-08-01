@@ -112,6 +112,15 @@ class BikeRentalService(
             .sortedBy { GeoUtils.haversineKm(latitude, longitude, it.currentLatitude, it.currentLongitude) }
     }
 
+    // Real bug found live (2026-08-02): the old body only checked for the ABSENCE of
+    // an active session, then inserted a new one -- a check-then-act race with no
+    // shared, lockable row to catch two concurrent riders unlocking the same bike.
+    // Fixed to flip `bike.available` (checked immediately above) to false and save
+    // THAT versioned entity as part of this same transaction -- matching
+    // RideTripService.acceptTrip's own proven-safe "read, check, mutate, save the
+    // checked entity" shape. The loser of a real race gets a clean 409 via the
+    // existing global ObjectOptimisticLockingFailureException handler, not a
+    // double-booked bike.
     @Transactional
     fun startRental(riderUserId: String, bikeId: String, startLatitude: Double, startLongitude: Double): BikeRentalSession {
         if (!GeoUtils.isValidCoordinate(startLatitude, startLongitude)) {
@@ -131,6 +140,9 @@ class BikeRentalService(
         // backend already gives for this exact check.
         walletRepository.findByUserIdAndType(riderUserId, WalletType.MAIN)
             ?: throw BikeNoWalletException("No wallet found for this account")
+
+        bike.available = false
+        bikeRepository.save(bike)
 
         return bikeRentalSessionRepository.save(
             BikeRentalSession(id = "bike_rental_${java.util.UUID.randomUUID()}", bikeId = bikeId, riderUserId = riderUserId, startLatitude = startLatitude, startLongitude = startLongitude),
@@ -196,6 +208,7 @@ class BikeRentalService(
 
         bike.currentLatitude = endLatitude
         bike.currentLongitude = endLongitude
+        bike.available = true
         bikeRepository.save(bike)
 
         return bikeRentalSessionRepository.save(session)

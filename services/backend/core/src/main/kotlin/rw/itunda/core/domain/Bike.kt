@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 // Real Kakao T 바이크 (Kakao T Bike) electric/regular bike-share fleet, sourced from
@@ -53,6 +54,23 @@ class Bike(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real bug found live (2026-08-02): startRental only ever checked for the ABSENCE
+    // of an active BikeRentalSession row, then inserted a new one -- a classic
+    // check-then-act race, since that check never reads-and-writes a single shared,
+    // lockable row the way RideTripService.acceptTrip's own proven-safe pattern does
+    // (RideTrip itself carries @Version, and acceptTrip mutates that exact checked
+    // entity). Two concurrent startRental calls for the same bike could both pass the
+    // check before either committed, double-booking it. Fixed by having startRental
+    // flip this existing `available` flag to false (and endRental flip it back to
+    // true) as part of the same transaction the check happens in -- optimistic
+    // locking on THIS entity now catches the race the same way RideTrip/BusTrip
+    // already do, the loser real-409s via the existing global
+    // ObjectOptimisticLockingFailureException handler (confirmed correct behavior via
+    // this session's own live concurrent-purchase test of TimeDealService).
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", type = BikeType.REGULAR, currentLatitude = 0.0, currentLongitude = 0.0)
 }
