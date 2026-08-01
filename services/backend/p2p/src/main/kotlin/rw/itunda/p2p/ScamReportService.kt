@@ -60,8 +60,18 @@ class ScamReportService(
         )
     }
 
+    // Real bug found live (2026-08-02) in a security-review pass, the same class
+    // AffiliateController.resolveLink's own doc comment already names: this endpoint
+    // is deliberately unauthenticated (a client checks it as part of its own send
+    // flow, before a sender is necessarily logged in as the specific account making
+    // the check meaningful) but had zero rate limiting, unlike every other real
+    // endpoint in this codebase. Rate-limited on the identifier being checked, the
+    // same "no authenticated userId to key on, so key on the resource itself" choice
+    // resolveLink's own fix already established -- no IP-based limiter precedent
+    // exists in this codebase to extend instead.
     fun checkScamStatus(identifier: String): ScamCheckResult {
         val trimmedIdentifier = identifier.trim()
+        rateLimiter.checkLimit("scamreport:check:$trimmedIdentifier", limit = 30, window = Duration.ofHours(1))
         val count = scamReportRepository.countByReportedIdentifier(trimmedIdentifier)
         return ScamCheckResult(identifier = trimmedIdentifier, reportCount = count, warn = count >= SCAM_REPORT_WARNING_THRESHOLD)
     }

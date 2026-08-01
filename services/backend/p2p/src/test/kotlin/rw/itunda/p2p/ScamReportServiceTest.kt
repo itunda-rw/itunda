@@ -5,6 +5,8 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.repository.ScamReportRepository
 
@@ -101,6 +103,27 @@ class ScamReportServiceTest : BehaviorSpec({
 
             Then("no warning, no false positive") {
                 result.warn shouldBe false
+            }
+        }
+    }
+
+    Given("checkScamStatus, a real deliberately-unauthenticated endpoint") {
+        val scamReportRepository = mockk<ScamReportRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        val service = ScamReportService(scamReportRepository, rateLimiter)
+
+        When("the real per-identifier rate limit is hit") {
+            every { rateLimiter.checkLimit("scamreport:check:+250788333000", limit = 30, window = any()) } throws
+                RateLimitExceededException("Too many requests")
+
+            Then("it real-throws before ever querying the report count -- no authenticated userId to key on, so it's keyed on the identifier itself") {
+                try {
+                    service.checkScamStatus("+250788333000")
+                    throw AssertionError("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { scamReportRepository.countByReportedIdentifier(any()) }
             }
         }
     }
