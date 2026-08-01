@@ -13,6 +13,7 @@ import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.ProductFavorite
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.ProductFavoriteRepository
@@ -25,7 +26,8 @@ class ProductFavoriteServiceTest : BehaviorSpec({
         val productFavoriteRepository = mockk<ProductFavoriteRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val service = ProductFavoriteService(productFavoriteRepository, merchantProductRepository, merchantRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ProductFavoriteService(productFavoriteRepository, merchantProductRepository, merchantRepository, pushNotificationService)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Widget", price = BigDecimal("4000"))
@@ -109,6 +111,45 @@ class ProductFavoriteServiceTest : BehaviorSpec({
             Then("it falls back to an honest placeholder rather than crashing") {
                 page.content.single().name shouldBe "Product no longer available"
                 page.content.single().businessName shouldBe "Merchant no longer available"
+            }
+        }
+
+        When("the real price has dropped below what it was last checked at") {
+            val dropped = ProductFavorite(id = "product_favorite_3", userId = "buyer_1", productId = "product_1", priceAtLastCheck = BigDecimal("5000"))
+            every { productFavoriteRepository.findAll() } returns listOf(dropped)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
+
+            val due = service.getFavoritesWithPriceDrops()
+
+            Then("it's included among the real due-for-notification rows") {
+                due shouldBe listOf(dropped)
+            }
+        }
+
+        When("the real price is unchanged or has gone up") {
+            val notDropped = ProductFavorite(id = "product_favorite_4", userId = "buyer_1", productId = "product_1", priceAtLastCheck = BigDecimal("3000"))
+            every { productFavoriteRepository.findAll() } returns listOf(notDropped)
+            every { merchantProductRepository.findAllById(listOf("product_1")) } returns listOf(product)
+
+            val due = service.getFavoritesWithPriceDrops()
+
+            Then("it's correctly excluded") {
+                due shouldBe emptyList()
+            }
+        }
+
+        When("notifying a real due price drop") {
+            val dropped = ProductFavorite(id = "product_favorite_5", userId = "buyer_1", productId = "product_1", priceAtLastCheck = BigDecimal("5000"))
+            every { productFavoriteRepository.findById("product_favorite_5") } returns Optional.of(dropped)
+            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            val savedSlot = slot<ProductFavorite>()
+            every { productFavoriteRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.notifyPriceDrop("product_favorite_5")
+
+            Then("a real push fires and priceAtLastCheck advances to the real current price") {
+                verify { pushNotificationService.sendToUser("buyer_1", any(), any(), any()) }
+                savedSlot.captured.priceAtLastCheck shouldBe BigDecimal("4000")
             }
         }
     }

@@ -15527,6 +15527,11 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
               <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.name}</p>
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.businessName}</p>
               <ProductPriceBlock price={f.price} originalPrice={f.originalPrice} discountPercent={f.discountPercent} />
+              {f.priceDropped && (
+                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-red, #E53935)', marginTop: '2px' }}>
+                  🔻 Price dropped
+                </p>
+              )}
             </div>
           </button>
           <button

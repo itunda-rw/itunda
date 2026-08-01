@@ -219,6 +219,10 @@ export interface FavoriteProduct {
   originalPrice?: number | null;
   discountPercent?: number | null;
   description?: string | null;
+  // Real Naver Shopping 가격 변동 알림 (price-drop alert, item 227) -- true once the
+  // real current price has dropped below what it was the last time the backend's
+  // ProductPriceDropScheduler checked. See ProductFavorite.kt's own doc comment.
+  priceDropped?: boolean;
 }
 
 export const addProductFavorite = (productId: string) =>
