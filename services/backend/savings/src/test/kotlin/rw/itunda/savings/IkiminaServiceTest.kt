@@ -1,0 +1,208 @@
+package rw.itunda.savings
+
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Ikimina
+import rw.itunda.core.domain.IkiminaMember
+import rw.itunda.core.domain.IkiminaStatus
+import rw.itunda.core.domain.User
+import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.WalletType
+import rw.itunda.core.ledger.LedgerPostResult
+import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.IkiminaContributionRepository
+import rw.itunda.core.repository.IkiminaMemberRepository
+import rw.itunda.core.repository.IkiminaRepository
+import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.WalletRepository
+import java.math.BigDecimal
+import java.time.Instant
+import java.util.Optional
+
+/**
+ * First test coverage for real ikimina -- Rwanda's own rotating savings & credit
+ * association (ROSCA). See IkiminaService's own doc comment for the full sourced
+ * account.
+ */
+class IkiminaServiceTest : BehaviorSpec({
+
+    fun wallet(id: String, userId: String, type: WalletType = WalletType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Wallet(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
+        type = type, balance = balance, availableBalance = balance,
+    )
+
+    fun user(id: String) = User(
+        id = id, phoneNumber = "+25078800$id".take(13), firstName = "Test", lastName = "User",
+        passwordHash = "unused", createdAt = Instant.now(),
+    )
+
+    fun newService(
+        ikiminaRepository: IkiminaRepository = mockk(),
+        ikiminaMemberRepository: IkiminaMemberRepository = mockk(),
+        ikiminaContributionRepository: IkiminaContributionRepository = mockk(),
+        walletRepository: WalletRepository = mockk(),
+        userRepository: UserRepository = mockk(),
+        ledgerService: LedgerService = mockk(),
+        rateLimiter: RateLimiter = mockk(relaxed = true),
+    ) = IkiminaService(ikiminaRepository, ikiminaMemberRepository, ikiminaContributionRepository, walletRepository, userRepository, ledgerService, rateLimiter)
+
+    Given("an organizer with a real wallet creating a new ikimina") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val userRepository = mockk<UserRepository>()
+        val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, walletRepository = walletRepository, userRepository = userRepository)
+
+        every { userRepository.findById("org_1") } returns Optional.of(user("org_1"))
+        every { walletRepository.save(any()) } answers { firstArg() }
+        every { ikiminaRepository.save(any()) } answers { firstArg() }
+        every { ikiminaMemberRepository.save(any()) } answers { firstArg() }
+
+        When("the organizer creates a real ikimina") {
+            val result = service.createIkimina("org_1", "Umuryango Savings", BigDecimal("5000"), 7, 10)
+
+            Then("a real ikimina is created with the organizer as payoutOrder 1") {
+                result.organizerId shouldBe "org_1"
+                result.status shouldBe IkiminaStatus.FORMING
+                result.currentRound shouldBe 1
+            }
+        }
+    }
+
+    Given("a FORMING ikimina an organizer wants to invite a new member into") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
+        val userRepository = mockk<UserRepository>()
+        val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, userRepository = userRepository)
+
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10)
+        every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
+        every { userRepository.findByPhoneNumber("+250788111111") } returns user("mem_1")
+        every { ikiminaMemberRepository.findByIkiminaIdAndUserId("ikimina_1", "mem_1") } returns null
+        every { ikiminaMemberRepository.countByIkiminaId("ikimina_1") } returns 1L
+        every { ikiminaMemberRepository.save(any()) } answers { firstArg() }
+
+        When("the organizer invites a real, unregistered-in-this-group phone number") {
+            val result = service.inviteMember("org_1", "ikimina_1", "+250788111111")
+
+            Then("a real member is added at the next real payout order") {
+                result.userId shouldBe "mem_1"
+                result.payoutOrder shouldBe 2
+            }
+        }
+    }
+
+    Given("a member trying to invite someone into an already-ACTIVE ikimina") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val service = newService(ikiminaRepository = ikiminaRepository)
+
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, status = IkiminaStatus.ACTIVE)
+        every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
+
+        When("the organizer tries to invite after the cycle has already started") {
+            Then("the real invite is rejected") {
+                try {
+                    service.inviteMember("org_1", "ikimina_1", "+250788111111")
+                    throw AssertionError("expected IkiminaNotFormingException")
+                } catch (e: IkiminaNotFormingException) {
+                    e.message shouldBe "Members can only be invited before the cycle starts"
+                }
+            }
+        }
+    }
+
+    Given("a real member contributing for a round they already paid") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
+        val ikiminaContributionRepository = mockk<IkiminaContributionRepository>()
+        val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, ikiminaContributionRepository = ikiminaContributionRepository)
+
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, status = IkiminaStatus.ACTIVE)
+        val member = IkiminaMember(id = "ikiminamem_1", ikiminaId = "ikimina_1", userId = "org_1", payoutOrder = 1)
+        every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
+        every { ikiminaMemberRepository.findByIkiminaIdAndUserId("ikimina_1", "org_1") } returns member
+        every { ikiminaContributionRepository.findByIkiminaIdAndMemberIdAndRound("ikimina_1", "ikiminamem_1", 1) } returns mockk()
+
+        When("that same member tries to contribute again for the same round") {
+            Then("the real double-contribution is rejected") {
+                try {
+                    service.contributeThisRound("org_1", "ikimina_1")
+                    throw AssertionError("expected IkiminaAlreadyContributedException")
+                } catch (e: IkiminaAlreadyContributedException) {
+                    e.message shouldBe "You have already contributed for round 1"
+                }
+            }
+        }
+    }
+
+    Given("a real 3-member ikimina where every member has contributed for round 1") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
+        val ikiminaContributionRepository = mockk<IkiminaContributionRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository,
+            ikiminaContributionRepository = ikiminaContributionRepository, walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
+        val members = listOf(
+            IkiminaMember(id = "mem_1", ikiminaId = "ikimina_1", userId = "u1", payoutOrder = 1),
+            IkiminaMember(id = "mem_2", ikiminaId = "ikimina_1", userId = "u2", payoutOrder = 2),
+            IkiminaMember(id = "mem_3", ikiminaId = "ikimina_1", userId = "u3", payoutOrder = 3),
+        )
+        every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
+        every { ikiminaMemberRepository.findByIkiminaIdAndUserId("ikimina_1", "u1") } returns members[0]
+        every { ikiminaMemberRepository.findByIkiminaId("ikimina_1") } returns members
+        every { ikiminaContributionRepository.findByIkiminaIdAndRound("ikimina_1", 1) } returns members.map { mockk { every { memberId } returns it.id } }
+        every { ikiminaMemberRepository.findByIkiminaIdAndPayoutOrder("ikimina_1", 1) } returns members[0]
+        every { walletRepository.findById("wallet_grp") } returns Optional.of(wallet("wallet_grp", "org_1", WalletType.GROUP))
+        every { walletRepository.findByUserIdAndType("u1", WalletType.MAIN) } returns wallet("wallet_u1", "u1")
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        every { ikiminaMemberRepository.save(any()) } answers { firstArg() }
+        every { ikiminaRepository.save(any()) } answers { firstArg() }
+
+        When("any real member triggers the round-1 payout check") {
+            val result = service.checkAndTriggerPayout("u1", "ikimina_1")
+
+            Then("the real round-1 recipient (payoutOrder 1) is paid the full real pot and the round advances") {
+                result.recipientUserId shouldBe "u1"
+                result.amount shouldBe BigDecimal("15000")
+                result.ikimina.currentRound shouldBe 2
+                result.ikimina.status shouldBe IkiminaStatus.ACTIVE
+            }
+        }
+    }
+
+    Given("a real ikimina where round 1's contributions are still incomplete") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
+        val ikiminaContributionRepository = mockk<IkiminaContributionRepository>()
+        val service = newService(ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository, ikiminaContributionRepository = ikiminaContributionRepository)
+
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "org_1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
+        val members = listOf(
+            IkiminaMember(id = "mem_1", ikiminaId = "ikimina_1", userId = "u1", payoutOrder = 1),
+            IkiminaMember(id = "mem_2", ikiminaId = "ikimina_1", userId = "u2", payoutOrder = 2),
+        )
+        every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
+        every { ikiminaMemberRepository.findByIkiminaIdAndUserId("ikimina_1", "u1") } returns members[0]
+        every { ikiminaMemberRepository.findByIkiminaId("ikimina_1") } returns members
+        every { ikiminaContributionRepository.findByIkiminaIdAndRound("ikimina_1", 1) } returns listOf(mockk { every { memberId } returns "mem_1" })
+
+        When("a member checks the payout before everyone has contributed") {
+            Then("the real payout is refused") {
+                try {
+                    service.checkAndTriggerPayout("u1", "ikimina_1")
+                    throw AssertionError("expected IkiminaContributionsIncompleteException")
+                } catch (e: IkiminaContributionsIncompleteException) {
+                    e.message shouldBe "Not every member has contributed for round 1 yet"
+                }
+            }
+        }
+    }
+})

@@ -14,6 +14,10 @@ import {
   type GroupAccount, type GroupAccountDetail, type GroupAccountDuesStatus,
 } from './lib/groupAccounts';
 import {
+  contributeToIkimina, createIkimina, fetchIkimina, fetchMyIkiminas, inviteIkiminaMember, startIkiminaCycle, triggerIkiminaPayout,
+  type Ikimina, type IkiminaDetail,
+} from './lib/ikimina';
+import {
   cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
   WEEKLY_SAVINGS_ESCALATION_RATES, WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS, WEEKLY_SAVINGS_TERM_WEEKS,
   type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
@@ -17127,6 +17131,289 @@ function GroupAccountsSection() {
   );
 }
 
+// Real ikimina -- Rwanda's own rotating savings & credit association (ROSCA). See
+// lib/ikimina.ts's own doc comment for the full sourced account. Genuinely the first
+// feature in this codebase not sourced from Toss/Kakao/Naver/Coupang -- a real,
+// currently-live Rwandan financial practice, sibling to GroupAccountsSection above but
+// structurally distinct (a rotating payout recipient, not one permanent owner).
+function IkiminaSection() {
+  const [ikiminas, setIkiminas] = useState<Ikimina[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyIkiminas().then(setIkiminas).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your ikimina groups.'));
+  };
+  useEffect(load, []);
+
+  if (openId) {
+    return <IkiminaDetailView id={openId} onBack={() => { setOpenId(null); load(); }} />;
+  }
+
+  return (
+    <div>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>Ikimina (rotating savings)</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '0 4px 10px' }}>
+        Everyone contributes the same amount each round; one member takes home the full pot, in turn.
+      </p>
+      <CreateIkiminaForm onCreated={load} />
+      {error && (
+        <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        </div>
+      )}
+      {ikiminas === null ? (
+        <div className="toss-card skeleton" style={{ height: '64px' }} />
+      ) : ikiminas.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No ikimina groups yet -- start one with people you trust.</p></div>
+      ) : (
+        ikiminas.map((k) => (
+          <button
+            key={k.id}
+            onClick={() => setOpenId(k.id)}
+            className="toss-card"
+            style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
+          >
+            <p style={{ fontSize: '14px', fontWeight: 700 }}>{k.name}</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+              {k.status === 'FORMING' ? 'Forming — invite members before starting' : k.status === 'ACTIVE' ? `Round ${k.currentRound}` : 'Completed'}
+            </p>
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
+
+function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [contributionAmount, setContributionAmount] = useState('');
+  const [cycleFrequencyDays, setCycleFrequencyDays] = useState('30');
+  const [memberCap, setMemberCap] = useState('10');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button
+        className="toss-btn toss-btn-secondary"
+        style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+        onClick={() => setOpen(true)}
+      >
+        <Plus size={16} /> New ikimina
+      </button>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await createIkimina(name, Number(contributionAmount), Number(cycleFrequencyDays), Number(memberCap));
+      setName(''); setContributionAmount('');
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this ikimina.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <input
+        type="text" required placeholder="Group name (e.g. Umuryango)" value={name} onChange={(e) => setName(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <input
+        type="number" min="1" required placeholder="Contribution per round (RWF)" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <select
+          value={cycleFrequencyDays} onChange={(e) => setCycleFrequencyDays(e.target.value)}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        >
+          <option value="7">Weekly</option>
+          <option value="30">Monthly</option>
+        </select>
+        <input
+          type="number" min="2" max="15" required placeholder="Max members" value={memberCap} onChange={(e) => setMemberCap(e.target.value)}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+      </div>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const [detail, setDetail] = useState<IkiminaDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [payoutMessage, setPayoutMessage] = useState<string | null>(null);
+  const myUserId = getStoredUser()?.id;
+
+  const load = () => {
+    setError(null);
+    fetchIkimina(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this ikimina.'));
+  };
+  useEffect(load, []);
+
+  if (error && !detail) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
+      </div>
+    );
+  }
+  if (detail === null) return <div className="toss-card skeleton" style={{ height: '260px' }} />;
+
+  const { ikimina, balance, members, currentRoundContributions } = detail;
+  const isOrganizer = ikimina.organizerId === myUserId;
+  const myMember = members.find((m) => m.userId === myUserId);
+  const iContributed = currentRoundContributions.find((c) => c.userId === myUserId)?.contributed ?? false;
+  const allContributed = currentRoundContributions.length > 0 && currentRoundContributions.every((c) => c.contributed);
+  const pot = ikimina.contributionAmount * members.length;
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await inviteIkiminaMember(id, phoneNumber.trim());
+      setPhoneNumber('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not invite this member.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleStart = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await startIkiminaCycle(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not start this cycle.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleContribute = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await contributeToIkimina(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not contribute.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePayout = async () => {
+    setBusy(true);
+    setError(null);
+    setPayoutMessage(null);
+    try {
+      const result = await triggerIkiminaPayout(id);
+      setPayoutMessage(`${result.amount.toLocaleString()} RWF paid out for round ${result.ikimina.currentRound - 1}.`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not trigger the payout yet.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to ikimina</button>
+
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{ikimina.name}</p>
+        <p style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0' }}>{balance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          {ikimina.status === 'FORMING'
+            ? `Forming — ${members.length} of up to ${ikimina.memberCap} members`
+            : ikimina.status === 'ACTIVE'
+              ? `Round ${ikimina.currentRound} of ${members.length} · ${ikimina.contributionAmount.toLocaleString()} RWF each · pot ${pot.toLocaleString()} RWF`
+              : 'Every member has been paid — this ikimina is complete'}
+        </p>
+      </div>
+
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Rotation order</h3>
+        {members.map((m) => {
+          const contributed = currentRoundContributions.find((c) => c.userId === m.userId)?.contributed ?? false;
+          return (
+            <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
+              <span>
+                #{m.payoutOrder} {m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}{m.isOrganizer ? ' · Organizer' : ''}
+              </span>
+              <span style={{ color: m.hasReceivedPayout ? '#1E8E4F' : ikimina.status === 'ACTIVE' && contributed ? '#1E8E4F' : 'var(--toss-grey-500)', fontWeight: 700 }}>
+                {m.hasReceivedPayout ? '✓ Paid' : ikimina.status === 'ACTIVE' ? (contributed ? '✓ Contributed' : 'Pending') : ''}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {ikimina.status === 'FORMING' && isOrganizer && (
+        <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={busy || members.length < 2} onClick={handleStart}>
+            {busy ? '…' : members.length < 2 ? 'Invite at least 1 more member to start' : 'Start the cycle'}
+          </button>
+        </div>
+      )}
+
+      {ikimina.status === 'ACTIVE' && myMember && (
+        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Round {ikimina.currentRound}</h3>
+          <button className="toss-btn toss-btn-primary" disabled={busy || iContributed} onClick={handleContribute}>
+            {busy ? '…' : iContributed ? '✓ You contributed this round' : `Contribute ${ikimina.contributionAmount.toLocaleString()} RWF`}
+          </button>
+          <button className="toss-btn toss-btn-secondary" disabled={busy || !allContributed} onClick={handlePayout}>
+            {busy ? '…' : allContributed ? 'Release this round\'s payout' : 'Waiting for everyone to contribute'}
+          </button>
+          {payoutMessage && <p style={{ fontSize: '12px', color: '#1E8E4F' }}>{payoutMessage}</p>}
+        </div>
+      )}
+
+      {ikimina.status === 'FORMING' && isOrganizer && (
+        <form onSubmit={handleInvite} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Invite a member</h3>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="tel" required value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone number"
+              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            />
+            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
+          </div>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 // Real KakaoBank 26주적금 (26-week savings) -- see lib/weeklySavings.ts's own doc
 // comment. Sibling to GroupAccountDetailView/CreateGroupAccountForm/
 // GroupAccountsSection above, same list -> detail shape, but this product's real
@@ -17566,6 +17853,9 @@ function SavingsView() {
       )}
       <div style={{ marginTop: '24px' }}>
         <GroupAccountsSection />
+      </div>
+      <div style={{ marginTop: '24px' }}>
+        <IkiminaSection />
       </div>
       <div style={{ marginTop: '24px' }}>
         <WeeklySavingsSection />
