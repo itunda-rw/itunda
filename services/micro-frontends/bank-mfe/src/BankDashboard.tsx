@@ -118,6 +118,10 @@ import {
   fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview,
   type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type PriceTier, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
+import {
+  captureReferralCodeFromUrl, createAffiliateLink, fetchMyAffiliateCommissions, fetchMyAffiliateLinks, getStoredReferralCode,
+  type AffiliateCommission, type AffiliateLink,
+} from './lib/affiliate';
 import { cancelBooking, createBooking, fetchAvailableSlots, fetchMyBookings, submitBookingReview, type BookingSlot, type MerchantBooking } from './lib/booking';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
@@ -3446,6 +3450,7 @@ function MyView() {
       <MyVehiclesCard />
       <FamilyLinkCard />
       <MyProductSubscriptionsCard />
+      <AffiliateEarningsCard />
       {miniApps.length > 0 && (
         <div className="toss-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Mini apps</h3>
@@ -4122,6 +4127,47 @@ function MyProductSubscriptionsCard() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Real 쿠팡파트너스 (Coupang Partners)-style affiliate earnings summary (item 229) --
+// see lib/affiliate.ts's own doc comment. Link creation itself happens inline on each
+// product card (ProductCatalogView's own "🔗 Share & earn" button); this card is
+// purely the read-back: how many links exist, how many clicks, and real commissions
+// earned so far.
+function AffiliateEarningsCard() {
+  const [links, setLinks] = useState<AffiliateLink[] | null>(null);
+  const [commissions, setCommissions] = useState<AffiliateCommission[] | null>(null);
+
+  useEffect(() => {
+    fetchMyAffiliateLinks().then(setLinks).catch(() => {});
+    fetchMyAffiliateCommissions().then(setCommissions).catch(() => {});
+  }, []);
+
+  if (!links || links.length === 0) return null;
+
+  const totalEarned = (commissions ?? []).reduce((sum, c) => sum + c.commissionAmount, 0);
+  const totalClicks = links.reduce((sum, l) => sum + l.clickCount, 0);
+
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Partner earnings</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+        Earn 3% on any purchase made through a product link you've shared.
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>Links shared</span>
+        <span style={{ fontSize: '13px', fontWeight: 700 }}>{links.length}</span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>Total clicks</span>
+        <span style={{ fontSize: '13px', fontWeight: 700 }}>{totalClicks}</span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>Total earned</span>
+        <span style={{ fontSize: '13px', fontWeight: 700 }}>{totalEarned.toLocaleString()} RWF</span>
+      </div>
     </div>
   );
 }
@@ -15130,6 +15176,27 @@ function ProductCatalogView({
     }
   };
 
+  // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link generation (item 229) --
+  // see lib/affiliate.ts's own doc comment. Any user can generate a real trackable
+  // link for any product and earns a real 3% commission on a resulting purchase.
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const shareProduct = async (productId: string) => {
+    setSharingId(productId);
+    setShareNotice(null);
+    try {
+      const link = await createAffiliateLink(productId);
+      const url = `${window.location.origin}${window.location.pathname}?ref=${link.code}`;
+      await navigator.clipboard.writeText(url).catch(() => {});
+      setShareNotice('Link copied — earn 3% on any purchase through it.');
+    } catch (err) {
+      setShareNotice(err instanceof ApiError ? err.message : 'Could not create a share link.');
+    } finally {
+      setSharingId(null);
+      setTimeout(() => setShareNotice(null), 4000);
+    }
+  };
+
   const myLines = cart[merchant.merchantId]?.lines ?? {};
   const qtyFor = (productId: string) => myLines[productId]?.quantity ?? 0;
   const totalCartItems = cartTotalItems(cart);
@@ -15164,6 +15231,7 @@ function ProductCatalogView({
           {following ? 'Following' : 'Follow'}
         </button>
       </div>
+      {shareNotice && <p style={{ fontSize: '12px', color: 'var(--toss-blue)', marginBottom: '12px' }} role="status">{shareNotice}</p>}
       {billingPlans.length > 0 && (
         <div className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Subscription plans</h4>
@@ -15188,12 +15256,22 @@ function ProductCatalogView({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
           {catalog.products.map((item) => (
             <div key={item.id} className="toss-card" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1 }}>
+              <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
                 <WishlistButton
                   favorited={favoritedIds.has(item.id)}
                   busy={togglingId === item.id}
                   onToggle={() => toggleFavorite(item.id)}
                 />
+                <button
+                  type="button"
+                  onClick={() => shareProduct(item.id)}
+                  disabled={sharingId === item.id}
+                  aria-label="Share this product and earn a commission"
+                  title="Share & earn 3%"
+                  style={{ background: 'var(--toss-white)', borderRadius: '999px', padding: '6px', boxShadow: '0 1px 4px rgba(0,0,0,0.12)', fontSize: '13px' }}
+                >
+                  🔗
+                </button>
               </div>
               {/* Real tap-through to the new product-detail screen (2026-07-21) -- see
                   ProductDetailView's own doc comment. Wraps only the image/name/price so
@@ -15352,7 +15430,7 @@ function MultiCartView({
     for (const [merchantId, group] of groups) {
       const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
       try {
-        const result = await placeOrder(merchantId, items, address.trim());
+        const result = await placeOrder(merchantId, items, address.trim(), getStoredReferralCode());
         results.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
       } catch (err) {
         if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
@@ -17429,6 +17507,10 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
   const user = getStoredUser();
+
+  // Real 쿠팡파트너스-style affiliate link capture (item 229) -- see
+  // lib/affiliate.ts's own doc comment. Best-effort, runs once per real page load.
+  useEffect(() => { captureReferralCodeFromUrl(); }, []);
 
   const handleLogout = () => {
     logout();

@@ -60,11 +60,14 @@ export interface CommerceOrder {
   updatedAt: string;
 }
 
-export const placeOrder = (merchantId: string, items: { productId: string; quantity: number }[], deliveryAddress: string) =>
+// referralCode added for the real 쿠팡파트너스 (Coupang Partners)-style affiliate
+// program, item 229 -- see lib/affiliate.ts's own doc comment. Omitted/unknown/
+// self-referral all fall through to a normal order with no commission paid.
+export const placeOrder = (merchantId: string, items: { productId: string; quantity: number }[], deliveryAddress: string, referralCode?: string) =>
   apiFetch<{ success: boolean; order: CommerceOrder; items: CommerceOrderItem[] }>('/api/v1/orders', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ merchantId, items, deliveryAddress }),
+    body: JSON.stringify({ merchantId, items, deliveryAddress, referralCode }),
   });
 
 export const fetchOrderDetail = (orderId: string) =>
