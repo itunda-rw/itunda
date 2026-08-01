@@ -4072,7 +4072,14 @@ function MyProductSubscriptionsCard() {
         <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
           <div>
             <p style={{ fontSize: '13px', fontWeight: 700 }}>Qty {s.quantity} · every {s.intervalDays}d</p>
-            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{PRODUCT_SUBSCRIPTION_STATUS_LABEL[s.status]} · {s.deliveryCount} delivered</p>
+            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+              {s.status === 'CANCELLED' && s.cancelledAt
+                ? `Cancelled ${new Date(s.cancelledAt).toLocaleDateString()}`
+                : `${PRODUCT_SUBSCRIPTION_STATUS_LABEL[s.status]} · ${s.deliveryCount} delivered`}
+            </p>
+            {s.lastFailureReason && s.status === 'ACTIVE' && (
+              <p style={{ fontSize: '11px', color: '#E53935' }}>Last delivery failed: {s.lastFailureReason}</p>
+            )}
           </div>
           {s.status !== 'CANCELLED' && (
             <div style={{ display: 'flex', gap: '6px' }}>

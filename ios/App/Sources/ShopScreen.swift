@@ -1325,7 +1325,14 @@ private struct MyProductSubscriptionsView: View {
                 ForEach(subscriptions!) { s in
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Qty \(s.quantity) · every \(s.intervalDays)d").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                        Text("\(s.status) · \(s.deliveryCount) delivered").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        if s.status == "CANCELLED", let cancelledAt = s.cancelledAt {
+                            Text("Cancelled \(String(cancelledAt.prefix(10)))").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        } else {
+                            Text("\(s.status) · \(s.deliveryCount) delivered").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        if let reason = s.lastFailureReason, s.status == "ACTIVE" {
+                            Text("Last delivery failed: \(reason)").font(.caption).foregroundColor(.red)
+                        }
                         if s.status != "CANCELLED" {
                             HStack(spacing: 8) {
                                 Button(action: { Task { await toggle(s) } }) {

@@ -1682,7 +1682,14 @@ private fun MyProductSubscriptionsView() {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Qty ${s.quantity} · every ${s.intervalDays}d", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("${s.status} · ${s.deliveryCount} delivered", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        val cancelledAt = s.cancelledAt
+                        Text(
+                            if (s.status == "CANCELLED" && cancelledAt != null) "Cancelled ${cancelledAt.take(10)}" else "${s.status} · ${s.deliveryCount} delivered",
+                            color = Ids.colors.textSecondary, fontSize = 13.sp,
+                        )
+                        if (s.lastFailureReason != null && s.status == "ACTIVE") {
+                            Text("Last delivery failed: ${s.lastFailureReason}", color = Ids.colors.danger, fontSize = 12.sp)
+                        }
                         if (s.status != "CANCELLED") {
                             Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TextButton(onClick = {
