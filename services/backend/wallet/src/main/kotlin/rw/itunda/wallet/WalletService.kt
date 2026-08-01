@@ -137,6 +137,9 @@ class WalletService(
                 // accompaniment) -- see VehicleInspectionBooking.kt's own doc comment.
                 LedgerAccountType.VEHICLE_INSPECTION_HOLDING -> "Vehicle inspection"
                 LedgerAccountType.RIDE_HOLDING -> "Rides"
+                // Real Kakao T 대리운전 (designated driver) -- see
+                // DesignatedDriverTrip.kt's own doc comment.
+                LedgerAccountType.DESIGNATED_DRIVER_HOLDING -> "Designated driver"
                 LedgerAccountType.EMOTICON_REVENUE -> "Emoticons"
                 LedgerAccountType.GIFT_VOUCHER_HOLDING -> "Gift vouchers"
                 // Unlike the credit-side expense accounts grouped into "Other" below,

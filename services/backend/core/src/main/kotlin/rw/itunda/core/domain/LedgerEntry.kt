@@ -91,6 +91,15 @@ enum class LedgerAccountType {
     // already establish: a buyer's real inspection fee already left their wallet, it
     // just hasn't reached the mechanic (or been refunded) yet.
     VEHICLE_INSPECTION_HOLDING,
+    // Real Kakao T 대리운전 (designated driver) fare holding -- see
+    // DesignatedDriverTrip.kt's own doc comment. Same real escrow-clearing-account shape
+    // RIDE_HOLDING already establishes for ride-hailing fares: the customer's real fare
+    // already left their wallet at request time, held until the trip completes (or
+    // refunded if cancelled before a driver is assigned) -- its own dedicated account
+    // so designated-driver volume can be reconciled independently of ride-hailing
+    // volume, matching how every distinct trip/booking product in this ledger already
+    // gets its own account rather than sharing RIDE_HOLDING.
+    DESIGNATED_DRIVER_HOLDING,
 }
 
 /**
