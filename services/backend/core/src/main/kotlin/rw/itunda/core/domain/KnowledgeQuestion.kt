@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 /**
@@ -45,6 +46,18 @@ class KnowledgeQuestion(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real bug found live (2026-08-02): KnowledgeService.adoptAnswer already read this
+    // exact entity, checked `adoptedAnswerId == null`, then wrote back to it -- the
+    // correct SHAPE for a race-safe check-then-act, same as RideTripService.acceptTrip
+    // -- but with no @Version, two concurrent adopt calls for two different answers on
+    // the same question could both pass the check before either committed, silently
+    // giving a question two "adopted" answers (the second save overwriting the first's
+    // adoptedAnswerId, with both KnowledgeAnswer rows left isAdopted=true). Not a money
+    // bug, but a real data-integrity violation of this feature's own core invariant.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", askerId = "", category = "", title = "", body = "")
 }
