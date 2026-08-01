@@ -23,8 +23,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,6 +66,7 @@ import rw.itunda.core.network.MarkTakenRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PropertyListingDto
 import rw.itunda.core.network.PropertyTypeDto
+import rw.itunda.core.network.PropertyValuationEstimateDto
 import rw.itunda.core.network.SubmitHoodReviewRequest
 import rw.itunda.core.network.SubmitOwnershipVerificationRequest
 import rw.itunda.core.network.TokenStore
@@ -81,7 +84,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
 // recommendation #6, see backend PropertyListingRepository's own doc comment.
-private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, ACQUIRED, SAVED }
+private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, ACQUIRED, SAVED, VALUATION }
 
 @Composable
 fun PropertyContent(
@@ -131,7 +134,7 @@ fun PropertyContent(
 
     fun load() {
         listings = null
-        if (view == PropertyView.SAVED) { listings = emptyList(); error = null; return }
+        if (view == PropertyView.SAVED || view == PropertyView.VALUATION) { listings = emptyList(); error = null; return }
         if (view == PropertyView.NEARBY) {
             requestNearbyLocation()
             return
@@ -196,7 +199,7 @@ fun PropertyContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings", PropertyView.ACQUIRED to "Places I got", PropertyView.SAVED to "Saved").forEach { (v, label) ->
+                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings", PropertyView.ACQUIRED to "Places I got", PropertyView.SAVED to "Saved", PropertyView.VALUATION to "시세 Value").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
                         Text(
@@ -277,7 +280,9 @@ fun PropertyContent(
         if (view == PropertyView.NEIGHBORHOOD && neighborhoodName != null) {
             item { Text("Your neighborhood: $neighborhoodName", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         }
-        if (view == PropertyView.SAVED) {
+        if (view == PropertyView.VALUATION) {
+            item { PropertyValuationCard(propertyTypes = propertyTypes) }
+        } else if (view == PropertyView.SAVED) {
             item { PropertyWishlistView(onRemoved = { coroutineScope.launch { favoriteIds = NetworkClient.apiService.getMyFavoritePropertyListings().favorites.map { it.propertyListingId }.toSet() } }) }
         } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
@@ -293,6 +298,7 @@ fun PropertyContent(
                         PropertyView.MINE -> "You haven't listed any properties yet."
                         PropertyView.ACQUIRED -> "No properties acquired yet."
                         PropertyView.SAVED -> ""
+                        PropertyView.VALUATION -> ""
                     },
                     color = Ids.colors.textSecondary, fontSize = 14.sp,
                 )
@@ -333,6 +339,91 @@ fun PropertyContent(
                     favorited = listing.id in favoriteIds,
                     onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; Toast.makeText(context, "Removed from saved properties", Toast.LENGTH_SHORT).show() } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; Toast.makeText(context, "Saved to your properties list", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                 )
+            }
+        }
+    }
+}
+
+// Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see the backend's
+// PropertyListingService.estimateValue doc comment. Read-only: enter a location + size,
+// get a real comparable-listings-based estimate, nothing persisted. bank-mfe already
+// has this (PropertyValuationCard); this is the first Android client.
+@Composable
+private fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
+    var latitude by remember { mutableStateOf("") }
+    var longitude by remember { mutableStateOf("") }
+    var propertyType by remember { mutableStateOf<String?>(null) }
+    var listingType by remember { mutableStateOf("SALE") }
+    var sizeSqm by remember { mutableStateOf("") }
+    var estimate by remember { mutableStateOf<PropertyValuationEstimateDto?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("우리집 시세 — Estimate my home's value", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("A real estimate based on comparable listings near you, not a fabricated number.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            OutlinedTextField(value = latitude, onValueChange = { latitude = it }, label = { Text("Latitude") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = longitude, onValueChange = { longitude = it }, label = { Text("Longitude") }, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                propertyTypes.forEach { t ->
+                    val active = propertyType == t.id
+                    Text(
+                        t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary,
+                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .clickable { propertyType = t.id }.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("SALE" to "For sale", "RENT" to "For rent").forEach { (v, label) ->
+                    val active = listingType == v
+                    Text(
+                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else Ids.colors.textPrimary,
+                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .clickable { listingType = v }.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
+            OutlinedTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, label = { Text("Size (sqm)") }, modifier = Modifier.fillMaxWidth())
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+            Button(
+                onClick = {
+                    val lat = latitude.toDoubleOrNull()
+                    val lng = longitude.toDoubleOrNull()
+                    val size = sizeSqm.toDoubleOrNull()
+                    if (propertyType == null || lat == null || lng == null || size == null || size <= 0.0) {
+                        error = "Fill in a real location, property type, and size."
+                        return@Button
+                    }
+                    loading = true
+                    error = null
+                    estimate = null
+                    scope.launch {
+                        try {
+                            estimate = NetworkClient.apiService.getPropertyValuation(lat, lng, propertyType!!, listingType, size).estimate
+                        } catch (e: HttpException) {
+                            error = if (e.code() == 422) "Not enough comparable listings nearby to estimate a value." else superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
+                        } finally {
+                            loading = false
+                        }
+                    }
+                },
+                enabled = !loading,
+            ) { Text(if (loading) "Estimating…" else "Estimate value") }
+            estimate?.let { est ->
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(12.dp),
+                ) {
+                    Text("%,.0f RWF".format(est.estimatedValue), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                    Text(
+                        "Based on ${est.comparableCount} comparable listings within ${est.radiusKm.toInt()} km (%,.0f RWF/sqm avg)".format(est.averagePricePerSqm),
+                        color = Ids.colors.textSecondary, fontSize = 12.sp,
+                    )
+                }
             }
         }
     }

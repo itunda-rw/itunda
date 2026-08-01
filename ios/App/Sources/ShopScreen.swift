@@ -1298,6 +1298,11 @@ private struct ProductWishlistView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(f.name).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                             Text("\(f.businessName) · \(Int(f.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            // Real Naver Shopping price-drop alert (item 227) -- see
+                            // FavoriteProductDto's own doc comment.
+                            if f.priceDropped {
+                                Text("🔻 Price dropped").font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                            }
                         }
                         Spacer()
                         Button(action: { Task { await remove(f.productId) } }) {

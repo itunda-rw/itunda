@@ -2351,6 +2351,14 @@ public struct FavoritePropertyListingDto: Decodable, Identifiable { public let p
 public struct FavoritePropertyListingsResponse: Decodable { public let success: Bool; public let favorites: [FavoritePropertyListingDto] }
 public struct PropertyTypesResponse: Decodable { public let success: Bool; public let propertyTypes: [PropertyTypeDto] }
 public struct ContactListerResponse: Decodable { public let success: Bool; public let conversation: ConversationDto }
+
+// Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see the backend's
+// PropertyListingService.estimateValue doc comment. Read-only, computed fresh from
+// real comparable listings on every call, nothing persisted.
+public struct PropertyValuationEstimateDto: Decodable {
+    public let estimatedValue: Double; public let comparableCount: Int; public let averagePricePerSqm: Double; public let radiusKm: Double
+}
+public struct PropertyValuationResponse: Decodable { public let success: Bool; public let estimate: PropertyValuationEstimateDto }
 public struct ContactSellerResponse: Decodable { public let success: Bool; public let conversation: ConversationDto }
 
 // Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService's own
@@ -2809,6 +2817,10 @@ public struct FavoriteProductDto: Decodable, Identifiable {
     public let originalPrice: Double?
     public let discountPercent: Int?
     public let description: String?
+    // Real Naver Shopping 가격 변동 알림 (price-drop alert, item 227) -- true once the
+    // product's real current price has dropped below the price it was at when
+    // favorited. See the backend's ProductFavoriteService.getMyFavorites doc comment.
+    public let priceDropped: Bool
     public var id: String { productId }
 }
 public struct FavoriteProductsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteProductDto] }
@@ -3619,6 +3631,17 @@ extension NetworkClient {
         try await get("api/v1/realestate/listings", query: [
             URLQueryItem(name: "listingType", value: listingType),
             URLQueryItem(name: "propertyType", value: propertyType),
+        ])
+    }
+
+    public func getPropertyValuation(latitude: Double, longitude: Double, propertyType: String, listingType: String, sizeSqm: Double, radiusKm: Double = 5) async throws -> PropertyValuationResponse {
+        try await get("api/v1/realestate/valuation", query: [
+            URLQueryItem(name: "latitude", value: String(latitude)),
+            URLQueryItem(name: "longitude", value: String(longitude)),
+            URLQueryItem(name: "propertyType", value: propertyType),
+            URLQueryItem(name: "listingType", value: listingType),
+            URLQueryItem(name: "sizeSqm", value: String(sizeSqm)),
+            URLQueryItem(name: "radiusKm", value: String(radiusKm)),
         ])
     }
 

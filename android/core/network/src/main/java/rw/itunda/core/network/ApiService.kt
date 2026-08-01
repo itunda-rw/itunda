@@ -841,6 +841,14 @@ data class FavoritePropertyListingsResponse(val success: Boolean, val favorites:
 data class PropertyTypesResponse(val success: Boolean, val propertyTypes: List<PropertyTypeDto>)
 data class ContactListerResponse(val success: Boolean, val conversation: ConversationDto)
 
+// Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see the backend's
+// PropertyListingService.estimateValue doc comment. Read-only, computed fresh from
+// real comparable listings on every call, nothing persisted.
+data class PropertyValuationEstimateDto(
+    val estimatedValue: Double, val comparableCount: Int, val averagePricePerSqm: Double, val radiusKm: Double,
+)
+data class PropertyValuationResponse(val success: Boolean, val estimate: PropertyValuationEstimateDto)
+
 // Real 당근-style price-offer negotiation on a real property listing (2026-07-19) -- see
 // PropertyPriceOfferService's own doc comment. Mirrors PriceOfferDto field-for-field.
 data class PropertyPriceOfferDto(
@@ -1171,6 +1179,10 @@ data class FavoriteProductDto(
     val originalPrice: Double? = null,
     val discountPercent: Int? = null,
     val description: String? = null,
+    // Real Naver Shopping 가격 변동 알림 (price-drop alert, item 227) -- true once the
+    // product's real current price has dropped below the price it was at when
+    // favorited. See the backend's ProductFavoriteService.getMyFavorites doc comment.
+    val priceDropped: Boolean = false,
 )
 data class FavoriteProductsResponse(val success: Boolean, val favorites: List<FavoriteProductDto>)
 
@@ -2378,6 +2390,16 @@ interface ApiService {
         @Query("listingType") listingType: String? = null,
         @Query("propertyType") propertyType: String? = null,
     ): PropertyListingsResponse
+
+    @GET("api/v1/realestate/valuation")
+    suspend fun getPropertyValuation(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("propertyType") propertyType: String,
+        @Query("listingType") listingType: String,
+        @Query("sizeSqm") sizeSqm: Double,
+        @Query("radiusKm") radiusKm: Double = 5.0,
+    ): PropertyValuationResponse
 
     @GET("api/v1/realestate/listings/nearby")
     suspend fun getNearbyPropertyListings(

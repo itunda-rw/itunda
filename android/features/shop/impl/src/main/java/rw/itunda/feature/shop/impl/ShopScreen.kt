@@ -1681,6 +1681,11 @@ private fun ProductWishlistView(onRemoved: () -> Unit) {
                             Column {
                                 Text(f.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 Text("${f.businessName} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                                // Real Naver Shopping price-drop alert (item 227) -- see
+                                // FavoriteProductDto's own doc comment.
+                                if (f.priceDropped) {
+                                    Text("🔻 Price dropped", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
                             }
                         }
                         TextButton(onClick = {
