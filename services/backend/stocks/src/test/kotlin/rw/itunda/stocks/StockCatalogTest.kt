@@ -26,7 +26,8 @@ class StockCatalogTest : BehaviorSpec({
             val stocks = StockCatalog.stocks
 
             Then("every stock has a real, bounded, non-fabricated daily change -- not the old hardcoded-zero placeholder") {
-                stocks.size shouldBe 6
+                // 6 real RSE-domestic + 5 real overseas (해외주식, added 2026-08-01).
+                stocks.size shouldBe 11
                 stocks.forEach { stock ->
                     // Today's and yesterday's prices are each independently drawn from
                     // a +/-3% band, so the real worst-case day-over-day change is
@@ -79,6 +80,25 @@ class StockCatalogTest : BehaviorSpec({
 
             Then("it returns null, not a fabricated series") {
                 history shouldBe null
+            }
+        }
+
+        // Real 해외주식 (overseas stock trading, added 2026-08-01) -- see StockCatalog's
+        // own doc comment for the sourced account.
+        When("looking up a real overseas stock by symbol") {
+            val stock = StockCatalog.find("AAPL")
+
+            Then("it resolves with the real NASDAQ market tag, not silently absent") {
+                stock?.market shouldBe "NASDAQ"
+                stock?.name shouldBe "Apple Inc."
+            }
+        }
+
+        When("checking every real domestic stock's market tag") {
+            val domestic = StockCatalog.stocks.filter { it.id in setOf("s1", "s2", "s3", "s4", "s5", "s6") }
+
+            Then("every domestic symbol is still real-tagged RSE, unchanged by the overseas addition") {
+                domestic.forEach { it.market shouldBe "RSE" }
             }
         }
     }

@@ -4664,6 +4664,11 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
 
 function StocksView() {
   const [subTab, setSubTab] = useState<'MARKET' | 'PORTFOLIO' | 'WATCHLIST'>('MARKET');
+  // Real Toss/Naver 해외주식 (overseas stock trading, item 230) -- a market filter on
+  // the existing Market browse, distinguishing the original 6 real RSE-domestic
+  // symbols from the real US-listed names added 2026-08-01. See lib/stocks.ts's own
+  // doc comment for the full sourced account.
+  const [marketFilter, setMarketFilter] = useState<'ALL' | 'RSE' | 'NASDAQ'>('ALL');
   const [stocks, setStocks] = useState<Stock[] | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioValuePoint[] | null>(null);
@@ -4705,7 +4710,10 @@ function StocksView() {
         style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', cursor: 'pointer' }}
       >
         <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{stock.symbol}</p>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+            {stock.symbol}
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--toss-grey-500)', marginLeft: '6px' }}>{stock.market}</span>
+          </p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{stock.name}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -4759,7 +4767,22 @@ function StocksView() {
       {subTab === 'MARKET' && (
         stocks === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {stocks.map(renderStockRow)}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
+              {([{ id: 'ALL', label: 'All' }, { id: 'RSE', label: 'Rwanda (RSE)' }, { id: 'NASDAQ', label: 'Overseas' }] as const).map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setMarketFilter(id)}
+                  style={{
+                    padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
+                    color: marketFilter === id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                    backgroundColor: marketFilter === id ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {stocks.filter((s) => marketFilter === 'ALL' || s.market === marketFilter).map(renderStockRow)}
           </div>
         )
       )}

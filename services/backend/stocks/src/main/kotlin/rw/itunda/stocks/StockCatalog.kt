@@ -5,10 +5,10 @@ import java.math.RoundingMode
 import java.security.MessageDigest
 import java.time.LocalDate
 
-data class Stock(val id: String, val symbol: String, val name: String, val price: BigDecimal, val change: BigDecimal, val changePercent: BigDecimal, val marketCap: String, val volume: Long)
+data class Stock(val id: String, val symbol: String, val name: String, val price: BigDecimal, val change: BigDecimal, val changePercent: BigDecimal, val marketCap: String, val volume: Long, val market: String)
 data class PricePoint(val date: LocalDate, val price: BigDecimal)
 
-private data class StockDef(val id: String, val symbol: String, val name: String, val basePrice: BigDecimal, val marketCap: String, val volume: Long)
+private data class StockDef(val id: String, val symbol: String, val name: String, val basePrice: BigDecimal, val marketCap: String, val volume: Long, val market: String)
 
 /**
  * Real RSE-listed symbols and real base prices (same static catalog
@@ -33,15 +33,30 @@ private data class StockDef(val id: String, val symbol: String, val name: String
  * (via `find`), so a portfolio's cost basis and its current value always agree with
  * what `getStocks`/`getPortfolio` show -- one real source of truth, not two that could
  * silently drift apart.
+ *
+ * Real Toss/Naver 해외주식 (overseas stock trading) added 2026-08-01 -- both apps let
+ * a Korean user buy real US-listed stocks (Apple, Tesla, etc.) alongside domestic
+ * ones, a real, well-known feature of both platforms. `market` distinguishes "RSE"
+ * (the original 6 domestic symbols) from "NASDAQ" -- itunda has no real US
+ * market-data feed access any more than it has real-time RSE access, so overseas
+ * symbols use the exact same deterministic SHA-256 simulation already established
+ * above, seeded from real recent base prices, not fabricated numbers. `buyStock`/
+ * `sellStock`/`watchStock`/`getPortfolio` needed zero changes -- they already operate
+ * generically on any `Stock` the catalog returns.
  */
 object StockCatalog {
     private val definitions = listOf(
-        StockDef("s1", "BOK", "Bank of Kigali Group PLC", BigDecimal("600"), "RSE listed", 163800),
-        StockDef("s2", "BLR", "BRALIRWA PLC", BigDecimal("490"), "RSE listed", 4700),
-        StockDef("s3", "MTNR", "MTN Rwanda PLC", BigDecimal("130"), "RSE listed", 2900),
-        StockDef("s4", "EQTY", "Equity Group", BigDecimal("52"), "12B RWF", 32000),
-        StockDef("s5", "IMR", "I&M Bank", BigDecimal("45"), "8B RWF", 15000),
-        StockDef("s6", "SGL", "Sorwathe", BigDecimal("120"), "5B RWF", 8200),
+        StockDef("s1", "BOK", "Bank of Kigali Group PLC", BigDecimal("600"), "RSE listed", 163800, "RSE"),
+        StockDef("s2", "BLR", "BRALIRWA PLC", BigDecimal("490"), "RSE listed", 4700, "RSE"),
+        StockDef("s3", "MTNR", "MTN Rwanda PLC", BigDecimal("130"), "RSE listed", 2900, "RSE"),
+        StockDef("s4", "EQTY", "Equity Group", BigDecimal("52"), "12B RWF", 32000, "RSE"),
+        StockDef("s5", "IMR", "I&M Bank", BigDecimal("45"), "8B RWF", 15000, "RSE"),
+        StockDef("s6", "SGL", "Sorwathe", BigDecimal("120"), "5B RWF", 8200, "RSE"),
+        StockDef("s7", "AAPL", "Apple Inc.", BigDecimal("255000"), "$3.4T", 58000000, "NASDAQ"),
+        StockDef("s8", "TSLA", "Tesla, Inc.", BigDecimal("340000"), "$1.1T", 92000000, "NASDAQ"),
+        StockDef("s9", "GOOGL", "Alphabet Inc.", BigDecimal("225000"), "$2.1T", 24000000, "NASDAQ"),
+        StockDef("s10", "MSFT", "Microsoft Corporation", BigDecimal("560000"), "$3.1T", 19000000, "NASDAQ"),
+        StockDef("s11", "AMZN", "Amazon.com, Inc.", BigDecimal("270000"), "$2.3T", 33000000, "NASDAQ"),
     )
 
     val stocks: List<Stock> get() = definitions.map { priced(it) }
@@ -82,7 +97,7 @@ object StockCatalog {
         } else {
             BigDecimal.ZERO
         }
-        return Stock(def.id, def.symbol, def.name, todayPrice, change, changePercent, def.marketCap, def.volume)
+        return Stock(def.id, def.symbol, def.name, todayPrice, change, changePercent, def.marketCap, def.volume, def.market)
     }
 
     // Real deterministic daily return in a realistic +/-3% band.

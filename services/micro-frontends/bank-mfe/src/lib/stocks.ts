@@ -18,6 +18,10 @@ export interface Stock {
   changePercent: number;
   marketCap: string;
   volume: number;
+  // Real Toss/Naver 해외주식 (overseas stock trading, item 230) -- "RSE" for the
+  // original 6 domestic symbols, "NASDAQ" for the real US-listed names added
+  // 2026-08-01. See StockCatalog's own doc comment on the backend.
+  market: string;
 }
 
 export interface PricePoint {
