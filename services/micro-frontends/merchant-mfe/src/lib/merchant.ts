@@ -25,6 +25,20 @@ export interface Merchant {
   // see the backend's Merchant.kt doc comment. Null means the standard platform fee
   // rate applies unchanged; 0 means a real active full waiver.
   feeRateOverride: number | null;
+  // Real restaurant-card photo (2026-07-21) -- see MerchantService.setPhotoUrl's own
+  // doc comment. Found 2026-08-01 with zero client anywhere despite being real since
+  // ship day -- see setPhotoUrl/setMinOrderAmount/setCashbackRate/
+  // setAcceptsScheduledOrders below, all discovered the same way (dead-field sweep).
+  photoUrl: string | null;
+  // Real merchant-set minimum order amount (2026-07-21) -- null means no minimum.
+  minOrderAmount: number | null;
+  // Real Naver Pay-style boosted cashback opt-in (2026-07-26) -- a fraction 0-0.05
+  // (0-5%), see ShoppingCashbackService.MAX_CASHBACK_RATE on the backend. Null means
+  // the merchant hasn't opted into a boosted rate.
+  cashbackRate: number | null;
+  // Real 배달의민족 예약주문 (scheduled ordering) opt-in (2026-07-26) -- a restaurant
+  // explicitly opts into accepting buyer-scheduled future delivery/pickup times.
+  acceptsScheduledOrders: boolean;
 }
 
 export const setMerchantLocation = (latitude: number, longitude: number) =>
@@ -181,6 +195,35 @@ export const setCategory = (category: string) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/category', {
     method: 'POST',
     body: JSON.stringify({ category }),
+  }).then((r) => r.merchant);
+
+// Real restaurant-card photo -- see MerchantService.setPhotoUrl's own doc comment.
+export const setMerchantPhotoUrl = (photoUrl: string) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/photo', {
+    method: 'POST',
+    body: JSON.stringify({ photoUrl }),
+  }).then((r) => r.merchant);
+
+// Real merchant-set minimum order amount -- null clears it (no minimum).
+export const setMinOrderAmount = (minOrderAmount: number | null) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/min-order', {
+    method: 'POST',
+    body: JSON.stringify({ minOrderAmount }),
+  }).then((r) => r.merchant);
+
+// Real Naver Pay-style boosted cashback opt-in -- rate is a fraction 0-0.05 (0-5%);
+// null clears it back to the standard (unboosted) rate.
+export const setCashbackRate = (rate: number | null) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/cashback-rate', {
+    method: 'POST',
+    body: JSON.stringify({ rate }),
+  }).then((r) => r.merchant);
+
+// Real 배달의민족 예약주문 (scheduled ordering) opt-in.
+export const setAcceptsScheduledOrders = (accepts: boolean) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/scheduled-orders-participation', {
+    method: 'POST',
+    body: JSON.stringify({ accepts }),
   }).then((r) => r.merchant);
 
 // Real Baemin Club-style participating-restaurant opt-in (2026-07-26) -- first client

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, getMyIdentitySubmissions, setCategory, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
+import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, getMyIdentitySubmissions, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
 
 export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
   const [webhookUrl, setWebhookUrlInput] = useState(merchant.webhookUrl ?? '');
@@ -65,6 +65,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
       </div>
 
       <CategoryCard merchant={merchant} onUpdated={onUpdated} />
+      <StoreSettingsCard merchant={merchant} onUpdated={onUpdated} />
       <EatsMembershipParticipationCard merchant={merchant} onUpdated={onUpdated} />
       <FeeWaiverCard merchant={merchant} onUpdated={onUpdated} />
       <FollowersCard />
@@ -283,6 +284,117 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
       )}
       {saved && !error && (
         <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: '8px 0 0' }}>Saved.</p>
+      )}
+    </div>
+  );
+}
+
+// Real photo/min-order/cashback-rate/scheduled-orders settings -- see
+// MerchantService.setPhotoUrl/setMinOrderAmount/setCashbackRate/
+// setAcceptsScheduledOrders's own doc comments on the backend. Found 2026-08-01 with
+// zero client anywhere (not even here) despite each being real since ship day --
+// a dead-endpoint sweep, not a dead-field-on-one-platform gap like this row's other
+// entries.
+function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const [photoUrl, setPhotoUrlInput] = useState(merchant.photoUrl ?? '');
+  const [minOrderAmount, setMinOrderAmountInput] = useState(merchant.minOrderAmount != null ? String(merchant.minOrderAmount) : '');
+  const [cashbackPercent, setCashbackPercentInput] = useState(merchant.cashbackRate != null ? String(merchant.cashbackRate * 100) : '');
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [scheduledBusy, setScheduledBusy] = useState(false);
+  const [scheduledError, setScheduledError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSaved(false);
+    setSubmitting(true);
+    try {
+      let updated = await setMerchantPhotoUrl(photoUrl.trim());
+      updated = await setMinOrderAmount(minOrderAmount.trim() === '' ? null : Number(minOrderAmount));
+      const rate = cashbackPercent.trim() === '' ? null : Number(cashbackPercent) / 100;
+      updated = await setCashbackRate(rate);
+      onUpdated(updated);
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleScheduledOrders = async () => {
+    setScheduledBusy(true);
+    setScheduledError(null);
+    try {
+      onUpdated(await setAcceptsScheduledOrders(!merchant.acceptsScheduledOrders));
+    } catch (err) {
+      setScheduledError(err instanceof ApiError ? err.message : 'Could not save.');
+    } finally {
+      setScheduledBusy(false);
+    }
+  };
+
+  return (
+    <div className="toss-card">
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>Store settings</h2>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Store photo URL</span>
+          <input
+            type="url"
+            value={photoUrl}
+            onChange={(e) => setPhotoUrlInput(e.target.value)}
+            placeholder="https://example.com/photo.jpg"
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Minimum order amount (RWF, blank = none)</span>
+          <input
+            type="number"
+            min="0"
+            value={minOrderAmount}
+            onChange={(e) => setMinOrderAmountInput(e.target.value)}
+            placeholder="0"
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Boosted cashback rate (0-5%, blank = standard rate)</span>
+          <input
+            type="number"
+            min="0"
+            max="5"
+            step="0.1"
+            value={cashbackPercent}
+            onChange={(e) => setCashbackPercentInput(e.target.value)}
+            placeholder="0"
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        {error && (
+          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        )}
+        {saved && !error && (
+          <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: 0 }}>Saved.</p>
+        )}
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          {submitting ? 'Saving…' : 'Save'}
+        </button>
+      </form>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--toss-grey-200)' }}>
+        <div>
+          <p style={{ fontSize: '14px', fontWeight: 600 }}>Accept scheduled orders</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Let buyers pick a future delivery/pickup time.</p>
+        </div>
+        <button className="toss-btn toss-btn-secondary" disabled={scheduledBusy} onClick={handleToggleScheduledOrders}>
+          {scheduledBusy ? '…' : merchant.acceptsScheduledOrders ? 'On' : 'Off'}
+        </button>
+      </div>
+      {scheduledError && (
+        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">{scheduledError}</p>
       )}
     </div>
   );

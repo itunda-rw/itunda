@@ -93,6 +93,7 @@ fun BusinessAccountTab() {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             merchant?.let { m -> FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) }
             merchant?.let { m -> WebhookUrlCard(merchant = m, onUpdated = { merchant = it }) }
+            merchant?.let { m -> StoreSettingsCard(merchant = m, onUpdated = { merchant = it }) }
             Text("Business account", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
                 "Keep your business money separate from your personal wallet. Your real card/QR " +
@@ -124,6 +125,7 @@ fun BusinessAccountTab() {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         merchant?.let { m -> item { FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) } }
         merchant?.let { m -> item { WebhookUrlCard(merchant = m, onUpdated = { merchant = it }) } }
+        merchant?.let { m -> item { StoreSettingsCard(merchant = m, onUpdated = { merchant = it }) } }
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -329,6 +331,95 @@ private fun WebhookUrlCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Un
                 },
                 enabled = !busy,
             ) { Text(if (busy) "Saving…" else "Save") }
+        }
+    }
+}
+
+/**
+ * Real store-settings bundle -- category, photo URL, minimum order amount, boosted
+ * cashback rate, and scheduled-orders opt-in. See MerchantController.kt's own doc
+ * comments for each endpoint. Found 2026-08-01 via a dead-field sweep: category was a
+ * real MerchantDto field with zero UI anywhere on this app; photo/min-order/cashback-
+ * rate/scheduled-orders were real backend endpoints with zero client anywhere at all
+ * (not even merchant-mfe) until this same pass.
+ */
+@Composable
+private fun StoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Unit) {
+    var category by remember(merchant.id) { mutableStateOf(merchant.category ?: "") }
+    var photoUrl by remember(merchant.id) { mutableStateOf(merchant.photoUrl ?: "") }
+    var minOrderAmount by remember(merchant.id) { mutableStateOf(merchant.minOrderAmount?.let { "%.0f".format(it) } ?: "") }
+    var cashbackPercent by remember(merchant.id) { mutableStateOf(merchant.cashbackRate?.let { "%.1f".format(it * 100) } ?: "") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var saved by remember { mutableStateOf(false) }
+    var scheduledBusy by remember { mutableStateOf(false) }
+    var scheduledError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Store settings", fontWeight = FontWeight.Bold)
+            OutlinedTextField(value = category, onValueChange = { category = it; saved = false }, label = { Text("Category (e.g. Rwandan, Bakery, Cafe)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = photoUrl, onValueChange = { photoUrl = it; saved = false }, label = { Text("Store photo URL") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = minOrderAmount, onValueChange = { minOrderAmount = it; saved = false }, label = { Text("Minimum order (RWF, blank = none)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = cashbackPercent, onValueChange = { cashbackPercent = it; saved = false }, label = { Text("Boosted cashback (0-5%, blank = standard)") }, modifier = Modifier.fillMaxWidth())
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            if (saved) Text("Saved.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+            Button(
+                onClick = {
+                    val trimmedCategory = category.trim()
+                    if (trimmedCategory.isEmpty()) { error = "Enter a real category."; return@Button }
+                    val minOrder = minOrderAmount.trim().let { if (it.isEmpty()) null else it.toDoubleOrNull() }
+                    if (minOrderAmount.trim().isNotEmpty() && minOrder == null) { error = "Enter a real minimum order amount."; return@Button }
+                    val cashbackRate = cashbackPercent.trim().let { if (it.isEmpty()) null else it.toDoubleOrNull()?.div(100.0) }
+                    if (cashbackPercent.trim().isNotEmpty() && cashbackRate == null) { error = "Enter a real cashback percent."; return@Button }
+                    busy = true
+                    error = null
+                    saved = false
+                    scope.launch {
+                        try {
+                            var updated = NetworkClient.apiService.setCategory(rw.itunda.merchant.network.SetCategoryRequest(trimmedCategory)).merchant
+                            updated = NetworkClient.apiService.setMerchantPhotoUrl(rw.itunda.merchant.network.SetMerchantPhotoUrlRequest(photoUrl.trim())).merchant
+                            updated = NetworkClient.apiService.setMinOrderAmount(rw.itunda.merchant.network.SetMinOrderAmountRequest(minOrder)).merchant
+                            updated = NetworkClient.apiService.setCashbackRate(rw.itunda.merchant.network.SetCashbackRateRequest(cashbackRate)).merchant
+                            onUpdated(updated)
+                            saved = true
+                        } catch (e: Exception) {
+                            error = "Could not save."
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+            ) { Text(if (busy) "Saving…" else "Save") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Accept scheduled orders", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    Text("Let buyers pick a future delivery/pickup time.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Button(
+                    onClick = {
+                        scheduledBusy = true
+                        scheduledError = null
+                        scope.launch {
+                            try {
+                                onUpdated(NetworkClient.apiService.setAcceptsScheduledOrders(rw.itunda.merchant.network.SetAcceptsScheduledOrdersRequest(!merchant.acceptsScheduledOrders)).merchant)
+                            } catch (e: Exception) {
+                                scheduledError = "Could not save."
+                            } finally {
+                                scheduledBusy = false
+                            }
+                        }
+                    },
+                    enabled = !scheduledBusy,
+                ) { Text(if (scheduledBusy) "…" else if (merchant.acceptsScheduledOrders) "On" else "Off") }
+            }
+            scheduledError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
     }
 }

@@ -67,9 +67,28 @@ data class MerchantDto(
     // has this; needed here for MerchantAdService's own radius-targeted ads (item 147).
     val latitude: Double? = null,
     val longitude: Double? = null,
+    // Real Baemin Club-style participating-restaurant opt-in -- see EatsMembership.kt's
+    // own doc comment. Found 2026-08-01 (dead-field sweep): real on merchant-mfe since
+    // 2026-07-26, zero native UI on either merchant app until now.
+    val participatesInEatsMembership: Boolean = false,
+    // Real restaurant-card photo, min-order, boosted-cashback, and scheduled-orders
+    // opt-in -- see MerchantService.setPhotoUrl/setMinOrderAmount/setCashbackRate/
+    // setAcceptsScheduledOrders's own doc comments. Found 2026-08-01 (dead-field sweep):
+    // real on the backend since 2026-07-21/07-26, zero client anywhere (not even
+    // merchant-mfe) until now.
+    val photoUrl: String? = null,
+    val minOrderAmount: Double? = null,
+    val cashbackRate: Double? = null,
+    val acceptsScheduledOrders: Boolean = false,
 )
 data class MerchantResponse(val success: Boolean, val merchant: MerchantDto)
 data class SetMerchantLocationRequest(val latitude: Double, val longitude: Double)
+data class SetCategoryRequest(val category: String)
+data class SetMerchantPhotoUrlRequest(val photoUrl: String)
+data class SetMinOrderAmountRequest(val minOrderAmount: Double?)
+data class SetCashbackRateRequest(val rate: Double?)
+data class SetAcceptsScheduledOrdersRequest(val accepts: Boolean)
+data class SetParticipatesInEatsMembershipRequest(val participates: Boolean)
 
 // Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads (item 147) -- see
 // MerchantAd.kt's own doc comment for the sourced radius range and flat-fee tiers.
@@ -450,6 +469,28 @@ interface ApiService {
     // already has this; this is the first Android client.
     @POST("api/v1/merchant/webhook-url")
     suspend fun setWebhookUrl(@Body request: SetWebhookUrlRequest): MerchantResponse
+
+    // Real store-settings endpoints -- see MerchantController.kt's own doc comments.
+    // Found 2026-08-01 via a dead-field sweep: category/photo/min-order/cashback-rate/
+    // scheduled-orders/eats-membership were all real DTO fields with zero (or partial)
+    // client anywhere.
+    @POST("api/v1/merchant/category")
+    suspend fun setCategory(@Body request: SetCategoryRequest): MerchantResponse
+
+    @POST("api/v1/merchant/photo")
+    suspend fun setMerchantPhotoUrl(@Body request: SetMerchantPhotoUrlRequest): MerchantResponse
+
+    @POST("api/v1/merchant/min-order")
+    suspend fun setMinOrderAmount(@Body request: SetMinOrderAmountRequest): MerchantResponse
+
+    @POST("api/v1/merchant/cashback-rate")
+    suspend fun setCashbackRate(@Body request: SetCashbackRateRequest): MerchantResponse
+
+    @POST("api/v1/merchant/scheduled-orders-participation")
+    suspend fun setAcceptsScheduledOrders(@Body request: SetAcceptsScheduledOrdersRequest): MerchantResponse
+
+    @POST("api/v1/merchant/eats-membership-participation")
+    suspend fun setParticipatesInEatsMembership(@Body request: SetParticipatesInEatsMembershipRequest): MerchantResponse
 
     @GET("api/v1/merchant/coupons")
     suspend fun getMyCoupons(): MerchantCouponsResponse

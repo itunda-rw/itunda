@@ -34,6 +34,7 @@ struct BusinessAccountTab: View {
             if let merchant {
                 FeeWaiverCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                 WebhookUrlCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
             }
             Text("Business account").font(.title3).bold()
             Text("Keep your business money separate from your personal wallet. Your real card/QR collections still settle to your personal wallet as before — move money into your business account whenever you're ready to set it aside.")
@@ -58,6 +59,7 @@ struct BusinessAccountTab: View {
             VStack(alignment: .leading, spacing: 12) {
                 if let merchant {
                     FeeWaiverCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                    StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Business balance").font(.caption).foregroundColor(.secondary)
@@ -296,6 +298,140 @@ private struct WebhookUrlCard: View {
             saved = true
         } catch {
             self.error = "Could not save."
+        }
+    }
+}
+
+/// Real store-settings bundle -- category, photo URL, minimum order amount, boosted
+/// cashback rate, and scheduled-orders opt-in. See MerchantController.kt's own doc
+/// comments for each endpoint. Found 2026-08-01 via a dead-field sweep: category was
+/// a real MerchantDto field with zero UI anywhere on this app; photo/min-order/
+/// cashback-rate/scheduled-orders were real backend endpoints with zero client
+/// anywhere at all (not even merchant-mfe) until this same pass.
+private struct StoreSettingsCard: View {
+    let merchant: MerchantDto
+    let onUpdated: (MerchantDto) -> Void
+
+    @State private var category = ""
+    @State private var photoUrl = ""
+    @State private var minOrderAmount = ""
+    @State private var cashbackPercent = ""
+    @State private var busy = false
+    @State private var error: String?
+    @State private var saved = false
+    @State private var scheduledBusy = false
+    @State private var scheduledError: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Store settings").bold()
+            TextField("Category (e.g. Rwandan, Bakery, Cafe)", text: $category)
+                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                .onChange(of: category) { _ in saved = false }
+            TextField("Store photo URL", text: $photoUrl)
+                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                .onChange(of: photoUrl) { _ in saved = false }
+            TextField("Minimum order (RWF, blank = none)", text: $minOrderAmount)
+                .keyboardType(.numberPad)
+                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                .onChange(of: minOrderAmount) { _ in saved = false }
+            TextField("Boosted cashback (0-5%, blank = standard)", text: $cashbackPercent)
+                .keyboardType(.decimalPad)
+                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                .onChange(of: cashbackPercent) { _ in saved = false }
+            if let error {
+                Text(error).font(.footnote).foregroundColor(.red)
+            }
+            if saved {
+                Text("Saved.").font(.footnote).foregroundColor(IDS.Colors.brand)
+            }
+            Button(action: { Task { await save() } }) {
+                Text(busy ? "Saving…" : "Save")
+                    .bold().foregroundColor(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(IDS.Colors.brand).cornerRadius(8)
+            }
+            .disabled(busy)
+            Divider()
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Accept scheduled orders").bold().font(.subheadline)
+                    Text("Let buyers pick a future delivery/pickup time.").font(.caption).foregroundColor(.secondary)
+                }
+                Spacer()
+                Button(action: { Task { await toggleScheduledOrders() } }) {
+                    Text(scheduledBusy ? "…" : (merchant.acceptsScheduledOrders ? "On" : "Off"))
+                        .bold().font(.caption)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+                .disabled(scheduledBusy)
+            }
+            if let scheduledError {
+                Text(scheduledError).font(.footnote).foregroundColor(.red)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+        .onAppear {
+            category = merchant.category ?? ""
+            photoUrl = merchant.photoUrl ?? ""
+            minOrderAmount = merchant.minOrderAmount.map { String(Int($0)) } ?? ""
+            cashbackPercent = merchant.cashbackRate.map { String(format: "%.1f", $0 * 100) } ?? ""
+        }
+    }
+
+    private func save() async {
+        let trimmedCategory = category.trimmingCharacters(in: .whitespaces)
+        guard !trimmedCategory.isEmpty else {
+            error = "Enter a real category."
+            return
+        }
+        let trimmedMinOrder = minOrderAmount.trimmingCharacters(in: .whitespaces)
+        let minOrder: Double?
+        if trimmedMinOrder.isEmpty {
+            minOrder = nil
+        } else if let value = Double(trimmedMinOrder) {
+            minOrder = value
+        } else {
+            error = "Enter a real minimum order amount."
+            return
+        }
+        let trimmedCashback = cashbackPercent.trimmingCharacters(in: .whitespaces)
+        let cashbackRate: Double?
+        if trimmedCashback.isEmpty {
+            cashbackRate = nil
+        } else if let value = Double(trimmedCashback) {
+            cashbackRate = value / 100
+        } else {
+            error = "Enter a real cashback percent."
+            return
+        }
+        busy = true
+        error = nil
+        saved = false
+        defer { busy = false }
+        do {
+            var updated = try await MerchantNetworkClient.shared.setCategory(trimmedCategory).merchant
+            updated = try await MerchantNetworkClient.shared.setMerchantPhotoUrl(photoUrl.trimmingCharacters(in: .whitespaces)).merchant
+            updated = try await MerchantNetworkClient.shared.setMinOrderAmount(minOrder).merchant
+            updated = try await MerchantNetworkClient.shared.setCashbackRate(cashbackRate).merchant
+            onUpdated(updated)
+            saved = true
+        } catch {
+            self.error = "Could not save."
+        }
+    }
+
+    private func toggleScheduledOrders() async {
+        scheduledBusy = true
+        scheduledError = nil
+        defer { scheduledBusy = false }
+        do {
+            onUpdated(try await MerchantNetworkClient.shared.setAcceptsScheduledOrders(!merchant.acceptsScheduledOrders).merchant)
+        } catch {
+            scheduledError = "Could not save."
         }
     }
 }

@@ -28,9 +28,28 @@ struct MerchantDto: Decodable {
     // has this; needed here for MerchantAdService's own radius-targeted ads (item 147).
     let latitude: Double?
     let longitude: Double?
+    // Real Baemin Club-style participating-restaurant opt-in -- see EatsMembership.kt's
+    // own doc comment. Found 2026-08-01 (dead-field sweep): real on merchant-mfe since
+    // 2026-07-26, zero native UI on either merchant app until now.
+    let participatesInEatsMembership: Bool
+    // Real restaurant-card photo, min-order, boosted-cashback, and scheduled-orders
+    // opt-in -- see MerchantService.setPhotoUrl/setMinOrderAmount/setCashbackRate/
+    // setAcceptsScheduledOrders's own doc comments. Found 2026-08-01 (dead-field
+    // sweep): real on the backend since 2026-07-21/07-26, zero client anywhere (not
+    // even merchant-mfe) until now.
+    let photoUrl: String?
+    let minOrderAmount: Double?
+    let cashbackRate: Double?
+    let acceptsScheduledOrders: Bool
 }
 struct MerchantResponse: Decodable { let success: Bool; let merchant: MerchantDto }
 struct SetMerchantLocationRequest: Encodable { let latitude: Double; let longitude: Double }
+struct SetCategoryRequest: Encodable { let category: String }
+struct SetMerchantPhotoUrlRequest: Encodable { let photoUrl: String }
+struct SetMinOrderAmountRequest: Encodable { let minOrderAmount: Double? }
+struct SetCashbackRateRequest: Encodable { let rate: Double? }
+struct SetAcceptsScheduledOrdersRequest: Encodable { let accepts: Bool }
+struct SetParticipatesInEatsMembershipRequest: Encodable { let participates: Bool }
 
 // Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads (item 147) -- see
 // MerchantAdController.kt's own doc comment. merchant-mfe already has this
@@ -586,6 +605,30 @@ final class MerchantNetworkClient {
     // Android already have this; this is the first iOS client.
     func setWebhookUrl(_ webhookUrl: String) async throws -> MerchantResponse {
         try await post("api/v1/merchant/webhook-url", body: SetWebhookUrlRequest(webhookUrl: webhookUrl))
+    }
+
+    // Real store-settings endpoints -- see MerchantController.kt's own doc comments.
+    // Found 2026-08-01 via a dead-field sweep: category was a real MerchantDto field
+    // with zero UI anywhere on this app; photo/min-order/cashback-rate/scheduled-
+    // orders/eats-membership were real backend endpoints with zero client anywhere at
+    // all (not even merchant-mfe, for the first four) until this same pass.
+    func setCategory(_ category: String) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/category", body: SetCategoryRequest(category: category))
+    }
+    func setMerchantPhotoUrl(_ photoUrl: String) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/photo", body: SetMerchantPhotoUrlRequest(photoUrl: photoUrl))
+    }
+    func setMinOrderAmount(_ minOrderAmount: Double?) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/min-order", body: SetMinOrderAmountRequest(minOrderAmount: minOrderAmount))
+    }
+    func setCashbackRate(_ rate: Double?) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/cashback-rate", body: SetCashbackRateRequest(rate: rate))
+    }
+    func setAcceptsScheduledOrders(_ accepts: Bool) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/scheduled-orders-participation", body: SetAcceptsScheduledOrdersRequest(accepts: accepts))
+    }
+    func setParticipatesInEatsMembership(_ participates: Bool) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/eats-membership-participation", body: SetParticipatesInEatsMembershipRequest(participates: participates))
     }
 
     func getFollowerCount() async throws -> FollowerCountResponse { try await get("api/v1/merchant/followers/count") }
