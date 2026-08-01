@@ -1985,7 +1985,6 @@ function HarvestAdvanceView() {
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [advancePurpose, setAdvancePurpose] = useState('INPUT_FINANCING');
   const [harvestDate, setHarvestDate] = useState('');
-  const [repayAmounts, setRepayAmounts] = useState<Record<string, string>>({});
 
   const refresh = () => {
     setError(null);
@@ -2057,14 +2056,11 @@ function HarvestAdvanceView() {
     }
   };
 
-  const handleRepay = async (advanceId: string) => {
-    const amount = Number(repayAmounts[advanceId] ?? '');
-    if (!amount || amount <= 0) { setError('Enter a valid repayment amount.'); return; }
+  const handleRepay = async (advanceId: string, principalAmount: number) => {
     setBusy(true);
     setError(null);
     try {
-      await repayHarvestAdvance(advanceId, amount);
-      setRepayAmounts((prev) => { const next = { ...prev }; delete next[advanceId]; return next; });
+      await repayHarvestAdvance(advanceId, principalAmount);
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not repay this advance.');
@@ -2145,16 +2141,14 @@ function HarvestAdvanceView() {
                   </button>
                 )}
                 {a.status === 'DISBURSED' && (
-                  <>
-                    <input
-                      type="number" value={repayAmounts[a.id] ?? ''} onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [a.id]: e.target.value }))}
-                      placeholder="Repay amount (RWF)"
-                      style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '12px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
-                    />
-                    <button className="toss-btn toss-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRepay(a.id)}>
-                      {busy ? 'Repaying…' : 'Repay'}
-                    </button>
-                  </>
+                  // Real bug caught during this feature's own build-time review: partial
+                  // repayment isn't tracked anywhere on this entity, so accepting a
+                  // free-form amount let a token repayment silently close out the full
+                  // debt. Repayment is full-settlement-only -- no amount to type, just
+                  // the real outstanding principal shown up front.
+                  <button className="toss-btn toss-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRepay(a.id, a.principalAmount)}>
+                    {busy ? 'Repaying…' : `Repay in full (${a.principalAmount.toLocaleString()} RWF)`}
+                  </button>
                 )}
               </div>
             ))}

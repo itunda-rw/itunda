@@ -217,5 +217,42 @@ class CooperativeServiceTest : BehaviorSpec({
                 }
             }
         }
+
+    }
+
+    // Real bug caught during this feature's own build-time review, before it ever
+    // shipped: the first draft accepted any positive amount and unconditionally marked
+    // the advance REPAID -- a token repayment would have silently forgiven the rest of
+    // a real debt with zero write-off decision. A separate Given block (not a sibling
+    // When under the block above) -- Kotest's BehaviorSpec shares the same mutable
+    // `advance` instance across sibling Whens under one Given, and the prior block's
+    // own successful repayment already mutates it to REPAID in place.
+    Given("a second real DISBURSED harvest advance, and a farmer trying to repay only part of it") {
+        val membershipRepository = mockk<CooperativeMembershipRepository>()
+        val advanceRepository = mockk<HarvestAdvanceRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            membershipRepository = membershipRepository, advanceRepository = advanceRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val membership = CooperativeMembership(id = "coopmem_1", cooperativeId = "coop_1", userId = "user_1", walletId = "wallet_1")
+        val advance = HarvestAdvance(
+            id = "harvestadv_2", membershipId = "coopmem_1", walletId = "wallet_1", principalAmount = BigDecimal("50000"),
+            purpose = "INPUT_FINANCING", expectedHarvestDate = Instant.now(), repaymentDueDate = Instant.now(),
+            status = HarvestAdvanceStatus.DISBURSED,
+        )
+        every { advanceRepository.findById("harvestadv_2") } returns Optional.of(advance)
+        every { membershipRepository.findById("coopmem_1") } returns Optional.of(membership)
+
+        When("repaying just 1 RWF of the real 50,000 principal") {
+            Then("the partial-repayment guard fires before touching the ledger") {
+                shouldThrow<HarvestAdvanceInvalidAmountException> {
+                    service.repayAdvance("user_1", "harvestadv_2", BigDecimal("1"))
+                }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
     }
 })

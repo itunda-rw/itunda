@@ -142,6 +142,20 @@ class CooperativeService(
         return advanceRepository.save(advance)
     }
 
+    /**
+     * Real repayment -- full settlement only, an honest v1 scope-down. Real bug caught
+     * during this feature's own build-time review, before it ever shipped: the first
+     * draft accepted ANY positive `amount` and unconditionally marked the advance
+     * `REPAID` regardless of whether it actually covered `principalAmount` -- since the
+     * bank-mfe client already passes a completely free-form user-entered amount with no
+     * coupling to the real outstanding principal, a farmer could "repay" 1 RWF of a
+     * 500,000 RWF advance and the system would silently treat the remaining 499,999 as
+     * settled, forgiving real debt with zero write-off decision or audit trail. This
+     * entity has no running-balance/partial-payment tracking field, so rather than
+     * half-build that (a real, separately-scoped feature), this requires the real
+     * outstanding principal in full -- the same honest "don't half-support a feature
+     * this entity shape can't back" discipline this session has used throughout.
+     */
     @Transactional
     fun repayAdvance(userId: String, advanceId: String, amount: BigDecimal): HarvestAdvance {
         if (amount <= BigDecimal.ZERO) throw HarvestAdvanceInvalidAmountException("Repayment amount must be greater than zero")
@@ -150,6 +164,9 @@ class CooperativeService(
         if (membership.userId != userId) throw HarvestAdvanceNotFoundException("Advance not found")
         if (advance.status != HarvestAdvanceStatus.DISBURSED && advance.status != HarvestAdvanceStatus.OVERDUE) {
             throw HarvestAdvanceInvalidStatusException("Only a DISBURSED advance can be repaid -- this one is ${advance.status}")
+        }
+        if (amount.compareTo(advance.principalAmount) != 0) {
+            throw HarvestAdvanceInvalidAmountException("Repayment must be the full outstanding principal (${advance.principalAmount}) -- partial repayment is not yet supported")
         }
         val wallet = walletRepository.findById(advance.walletId).orElseThrow { HarvestAdvanceNoWalletException("Wallet not found") }
 
