@@ -152,6 +152,7 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         every { agentRepository.findById("agent_1") } returns Optional.of(listingAgent)
         every { agentRepository.findById("agent_2") } returns Optional.of(requestingAgent)
         every { requestRepository.findById("floattransferreq_1") } returns Optional.of(request)
+        every { requestRepository.findByIdForUpdate("floattransferreq_1") } returns Optional.of(request)
         every { listingRepository.findById("floatlisting_1") } returns Optional.of(listing)
         every { listingRepository.findByIdForUpdate("floatlisting_1") } returns Optional.of(listing)
         // Real cash on hand: 30,000 (stored as -30000, negated per this codebase's own
@@ -192,6 +193,41 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a request that was already ACCEPTED (simulating a second, racing accept call arriving after the first committed)") {
+        val agentRepository = mockk<AgentRepository>()
+        val operatorRepository = mockk<AgentOperatorRepository>()
+        val listingRepository = mockk<FloatListingRepository>()
+        val requestRepository = mockk<FloatTransferRequestRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val svc = service(
+            agentRepository = agentRepository, operatorRepository = operatorRepository, listingRepository = listingRepository,
+            requestRepository = requestRepository, ledgerService = ledgerService,
+        )
+        val owningOperator = AgentOperator("operator_1", "agent_1", "owner_1")
+        val listing = FloatListing("floatlisting_1", "agent_1", BigDecimal("20000"))
+        // A plain, unlocked findById would still show REQUESTED if it were read before
+        // the first accept committed -- the real guard is that findByIdForUpdate
+        // (taken after this stale read, mirroring the real ordering in acceptRequest)
+        // reflects the real, current, already-ACCEPTED state.
+        val staleRequest = FloatTransferRequest("floattransferreq_1", "floatlisting_1", "agent_2", BigDecimal("10000"))
+        val currentRequest = FloatTransferRequest("floattransferreq_1", "floatlisting_1", "agent_2", BigDecimal("10000"))
+        currentRequest.status = FloatTransferRequestStatus.ACCEPTED
+        currentRequest.transactionId = "ledgertxn_first_accept"
+
+        every { operatorRepository.findByUserId("owner_1") } returns owningOperator
+        every { agentRepository.findById("agent_1") } returns Optional.of(Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000")))
+        every { requestRepository.findById("floattransferreq_1") } returns Optional.of(staleRequest)
+        every { requestRepository.findByIdForUpdate("floattransferreq_1") } returns Optional.of(currentRequest)
+        every { listingRepository.findById("floatlisting_1") } returns Optional.of(listing)
+
+        When("a second accept call for the same request arrives") {
+            Then("it real-409s on the locked, current state -- never posting a second real ledger transfer") {
+                shouldThrow<FloatTransferRequestNotPendingException> { svc.acceptRequest("owner_1", "floattransferreq_1") }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
     Given("a real request for the FULL listing amount") {
         val agentRepository = mockk<AgentRepository>()
         val operatorRepository = mockk<AgentOperatorRepository>()
@@ -213,6 +249,7 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         every { agentRepository.findById("agent_1") } returns Optional.of(listingAgent)
         every { agentRepository.findById("agent_2") } returns Optional.of(requestingAgent)
         every { requestRepository.findById("floattransferreq_1") } returns Optional.of(request)
+        every { requestRepository.findByIdForUpdate("floattransferreq_1") } returns Optional.of(request)
         every { listingRepository.findById("floatlisting_1") } returns Optional.of(listing)
         every { listingRepository.findByIdForUpdate("floatlisting_1") } returns Optional.of(listing)
         every { ledgerAccountRepository.findByIdForUpdate("agent_cash_1") } returns Optional.of(LedgerAccount("agent_cash_1", "Agent cash", BigDecimal("-30000")))
@@ -243,6 +280,7 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         every { operatorRepository.findByUserId("stranger_1") } returns notTheOwnerOperator
         every { agentRepository.findById("agent_3") } returns Optional.of(Agent("agent_3", "Kimironko", "agent_cash_3", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000")))
         every { requestRepository.findById("floattransferreq_1") } returns Optional.of(request)
+        every { requestRepository.findByIdForUpdate("floattransferreq_1") } returns Optional.of(request)
         every { listingRepository.findById("floatlisting_1") } returns Optional.of(listing)
 
         When("a non-owner tries to accept a request against someone else's listing") {
@@ -272,6 +310,7 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         every { agentRepository.findById("agent_1") } returns Optional.of(listingAgent)
         every { agentRepository.findById("agent_2") } returns Optional.of(requestingAgent)
         every { requestRepository.findById("floattransferreq_1") } returns Optional.of(request)
+        every { requestRepository.findByIdForUpdate("floattransferreq_1") } returns Optional.of(request)
         every { listingRepository.findById("floatlisting_1") } returns Optional.of(listing)
         every { listingRepository.findByIdForUpdate("floatlisting_1") } returns Optional.of(listing)
         // Listing promised 20,000 but the till (spent down by unrelated cash-outs since

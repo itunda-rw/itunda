@@ -35,4 +35,13 @@ interface FloatTransferRequestRepository : JpaRepository<FloatTransferRequest, S
     // owner's own accept/decline surface, distinct from findByRequestingAgentId
     // (the requester's own "requests I sent" view).
     fun findByListingIdInOrderByCreatedAtDesc(listingIds: List<String>): List<FloatTransferRequest>
+
+    // Real row lock -- a double-accept (or accept-and-decline) race on the SAME
+    // request is a check-then-act mutation just like FloatListing's own claimedAmount
+    // race, but on a different row. Each acceptRequest/declineRequest call only ever
+    // locks its own single request id, so there's no cross-row lock-ordering concern
+    // the way LedgerService's own multi-account locking has.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from FloatTransferRequest r where r.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<FloatTransferRequest>
 }

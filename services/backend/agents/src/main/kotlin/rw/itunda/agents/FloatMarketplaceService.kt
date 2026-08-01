@@ -127,23 +127,30 @@ class FloatMarketplaceService(
     fun acceptRequest(userId: String, requestId: String): FloatTransferRequest {
         val operator = activeOperator(userId)
         val request = floatTransferRequestRepository.findById(requestId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
-        // Real 404-not-403 IDOR discipline: findByIdForUpdate below re-derives the
-        // listing anyway, so look it up once first purely to check ownership before
-        // taking any lock, and treat "not this operator's listing" identically to
-        // "no such request" rather than leaking whether it exists to a non-owner.
+        // Real 404-not-403 IDOR discipline: look the listing up once first purely to
+        // check ownership before taking any lock, and treat "not this operator's
+        // listing" identically to "no such request" rather than leaking whether it
+        // exists to a non-owner.
         val listingCheck = floatListingRepository.findById(request.listingId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
         if (listingCheck.agentId != operator.agentId) throw FloatTransferRequestNotFoundException("Float transfer request not found")
-        if (request.status != FloatTransferRequestStatus.REQUESTED) throw FloatTransferRequestNotPendingException("This request has already been resolved")
+
+        // Real row lock on the request itself, re-checked under the lock -- without
+        // this, two concurrent accept calls on the SAME request (a double-click, or an
+        // accept racing a decline) could both pass a status check taken from a stale,
+        // unlocked read before either one reaches the listing lock below, and both go
+        // on to post a real, separate ledger transfer for the same request.
+        val lockedRequest = floatTransferRequestRepository.findByIdForUpdate(requestId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
+        if (lockedRequest.status != FloatTransferRequestStatus.REQUESTED) throw FloatTransferRequestNotPendingException("This request has already been resolved")
 
         // Real row lock -- see FloatListingRepository.findByIdForUpdate's own doc
         // comment. Serializes concurrent accepts against the same listing so
         // claimedAmount is always checked against the real, current value.
-        val listing = floatListingRepository.findByIdForUpdate(request.listingId).orElseThrow { FloatListingNotFoundException("Float listing not found") }
+        val listing = floatListingRepository.findByIdForUpdate(lockedRequest.listingId).orElseThrow { FloatListingNotFoundException("Float listing not found") }
         if (listing.status != FloatListingStatus.OPEN) throw FloatListingNotOpenException("This float listing is no longer open")
-        if (request.amount > listing.remainingAmount()) throw FloatListingInsufficientRemainingException("This request can no longer be fulfilled -- the listing's remaining amount has already been claimed")
+        if (lockedRequest.amount > listing.remainingAmount()) throw FloatListingInsufficientRemainingException("This request can no longer be fulfilled -- the listing's remaining amount has already been claimed")
 
         val listingAgent = agentRepository.findById(listing.agentId).orElseThrow { AgentNotFoundException("Agent not found") }
-        val requestingAgent = agentRepository.findById(request.requestingAgentId).orElseThrow { AgentNotFoundException("Agent not found") }
+        val requestingAgent = agentRepository.findById(lockedRequest.requestingAgentId).orElseThrow { AgentNotFoundException("Agent not found") }
 
         // Lock both real agent cash accounts, in a stable id order, exactly matching
         // LedgerService.postLedgerTransaction's own "lock every account touched, in a
@@ -156,27 +163,27 @@ class FloatMarketplaceService(
         // its own loop) -- AGENT_CASH gets no automatic protection, so this mirrors
         // AgentService.cashOut's own explicit availableCash check before posting.
         val listingAvailableCash = lockedAccounts.getValue(listingAgent.cashAccountId).balance.negate()
-        if (listingAvailableCash < request.amount) {
+        if (listingAvailableCash < lockedRequest.amount) {
             throw FloatListingInsufficientCashException("This agent's real till no longer has enough cash on hand to fulfill this request")
         }
 
         val ledger = ledgerService.postLedgerTransaction(
             "RWF",
             listOf(
-                LedgerLeg(requestingAgent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.DEBIT, request.amount, "Float received from ${listingAgent.displayName} (float marketplace)"),
-                LedgerLeg(listingAgent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.CREDIT, request.amount, "Float sent to ${requestingAgent.displayName} (float marketplace)"),
+                LedgerLeg(requestingAgent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.DEBIT, lockedRequest.amount, "Float received from ${listingAgent.displayName} (float marketplace)"),
+                LedgerLeg(listingAgent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.CREDIT, lockedRequest.amount, "Float sent to ${requestingAgent.displayName} (float marketplace)"),
             ),
         )
 
-        request.status = FloatTransferRequestStatus.ACCEPTED
-        request.transactionId = ledger.transactionId
-        floatTransferRequestRepository.save(request)
+        lockedRequest.status = FloatTransferRequestStatus.ACCEPTED
+        lockedRequest.transactionId = ledger.transactionId
+        floatTransferRequestRepository.save(lockedRequest)
 
-        listing.claimedAmount = listing.claimedAmount.add(request.amount)
+        listing.claimedAmount = listing.claimedAmount.add(lockedRequest.amount)
         if (listing.claimedAmount >= listing.amount) listing.status = FloatListingStatus.FULFILLED
         floatListingRepository.save(listing)
 
-        return request
+        return lockedRequest
     }
 
     @Transactional
@@ -185,9 +192,13 @@ class FloatMarketplaceService(
         val request = floatTransferRequestRepository.findById(requestId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
         val listing = floatListingRepository.findById(request.listingId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
         if (listing.agentId != operator.agentId) throw FloatTransferRequestNotFoundException("Float transfer request not found")
-        if (request.status != FloatTransferRequestStatus.REQUESTED) throw FloatTransferRequestNotPendingException("This request has already been resolved")
-        request.status = FloatTransferRequestStatus.DECLINED
-        return floatTransferRequestRepository.save(request)
+
+        // Same real row lock as acceptRequest -- see its own doc comment. Guards a
+        // decline racing a concurrent accept on the same request.
+        val lockedRequest = floatTransferRequestRepository.findByIdForUpdate(requestId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
+        if (lockedRequest.status != FloatTransferRequestStatus.REQUESTED) throw FloatTransferRequestNotPendingException("This request has already been resolved")
+        lockedRequest.status = FloatTransferRequestStatus.DECLINED
+        return floatTransferRequestRepository.save(lockedRequest)
     }
 
     @Transactional
