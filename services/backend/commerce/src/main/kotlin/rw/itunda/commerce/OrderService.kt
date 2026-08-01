@@ -33,6 +33,7 @@ import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
 import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.repository.RiderRepository
+import rw.itunda.core.repository.TimeDealRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -100,6 +101,7 @@ class OrderService(
     private val priceTierRepository: ProductPriceTierRepository,
     private val riderRepository: RiderRepository,
     private val pushNotificationService: PushNotificationService,
+    private val timeDealRepository: TimeDealRepository,
 ) {
     private val logger = LoggerFactory.getLogger(OrderService::class.java)
 
@@ -155,6 +157,7 @@ class OrderService(
         }
 
         data class Resolved(val product: MerchantProduct, val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int)
+        val now = Instant.now()
         val resolved = items.map { req ->
             if (req.quantity <= 0) {
                 throw InvalidQuantityException("Quantity must be at least 1")
@@ -167,7 +170,23 @@ class OrderService(
                 // "not orderable here" from this order's point of view.
                 throw OrderProductNotFoundException("Product not found")
             }
-            val unitPrice = effectiveUnitPrice(product.price, req.quantity, tiersByProduct[product.id].orEmpty())
+            // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDeal.kt's own doc
+            // comment. A real active deal with enough remaining quantity for this whole
+            // line wins over the normal price-tier resolution; anything else (no deal,
+            // expired, sold out, or not enough left for the full requested quantity)
+            // falls through to the exact same effectiveUnitPrice this checkout already
+            // used before this feature existed -- zero regression to that already-tested
+            // path. Deliberately all-or-nothing per line (no partial-deal-plus-normal-
+            // price split), the same "keep it simple, not a fabricated split-pricing UX"
+            // discipline this session applies elsewhere.
+            val activeDeal = timeDealRepository.findActiveDealForProduct(product.id, now)
+            val unitPrice = if (activeDeal != null && activeDeal.remainingQuantity >= req.quantity) {
+                activeDeal.remainingQuantity -= req.quantity
+                timeDealRepository.save(activeDeal)
+                activeDeal.dealPrice
+            } else {
+                effectiveUnitPrice(product.price, req.quantity, tiersByProduct[product.id].orEmpty())
+            }
             Resolved(product, product.id, product.name, unitPrice, req.quantity)
         }
         // A null stockQuantity means the merchant deliberately sells an unlimited

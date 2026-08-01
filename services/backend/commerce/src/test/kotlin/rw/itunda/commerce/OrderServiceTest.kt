@@ -18,6 +18,7 @@ import rw.itunda.core.domain.Order
 import rw.itunda.core.domain.OrderItem
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.domain.Rider
+import rw.itunda.core.domain.TimeDeal
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
@@ -33,6 +34,7 @@ import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
 import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.repository.RiderRepository
+import rw.itunda.core.repository.TimeDealRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -68,10 +70,16 @@ class OrderServiceTest : BehaviorSpec({
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val riderRepository = mockk<RiderRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        // Real Coupang 타임특가 (Time Deal, item 226) -- no active deal in this test
+        // group, same explicit-stub discipline this file already uses rather than
+        // trusting a relaxed mock's default for a nullable return type.
+        val timeDealRepository = mockk<TimeDealRepository>()
+        every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
+            timeDealRepository,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
@@ -209,6 +217,52 @@ class OrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real active time deal exists for the product with enough remaining quantity") {
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_deal", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+            val deal = TimeDeal(
+                id = "time_deal_1", merchantId = "merchant_1", productId = "product_1", dealPrice = BigDecimal("1500"),
+                originalPrice = BigDecimal("2000"), totalQuantity = 10, remainingQuantity = 4,
+                startsAt = java.time.Instant.now().minusSeconds(60), endsAt = java.time.Instant.now().plusSeconds(3600),
+            )
+            every { timeDealRepository.findActiveDealForProduct("product_1", any()) } returns deal
+            every { timeDealRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "addr")
+
+            Then("the real deal price is charged instead of the normal price, and remaining quantity is decremented") {
+                detail.items.single().unitPrice shouldBe BigDecimal("1500")
+                detail.order.totalAmount shouldBe BigDecimal("4500")
+                deal.remainingQuantity shouldBe 1
+            }
+        }
+
+        When("a real time deal exists but doesn't have enough remaining quantity for the whole line") {
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_falloff", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+            val scarceDeal = TimeDeal(
+                id = "time_deal_2", merchantId = "merchant_1", productId = "product_1", dealPrice = BigDecimal("1500"),
+                originalPrice = BigDecimal("2000"), totalQuantity = 10, remainingQuantity = 2,
+                startsAt = java.time.Instant.now().minusSeconds(60), endsAt = java.time.Instant.now().plusSeconds(3600),
+            )
+            every { timeDealRepository.findActiveDealForProduct("product_1", any()) } returns scarceDeal
+
+            val detail = service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "addr")
+
+            Then("it honestly falls through to the normal price rather than a fabricated partial-deal split") {
+                detail.items.single().unitPrice shouldBe BigDecimal("2000")
+                scarceDeal.remainingQuantity shouldBe 2
+            }
+        }
+
         When("ordering from your own store") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 
@@ -295,10 +349,13 @@ class OrderServiceTest : BehaviorSpec({
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val riderRepository = mockk<RiderRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val timeDealRepository = mockk<TimeDealRepository>()
+        every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
+            timeDealRepository,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(
@@ -484,10 +541,13 @@ class OrderServiceTest : BehaviorSpec({
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val riderRepository = mockk<RiderRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val timeDealRepository = mockk<TimeDealRepository>()
+        every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
+            timeDealRepository,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
