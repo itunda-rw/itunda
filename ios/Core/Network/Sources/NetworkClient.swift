@@ -456,6 +456,58 @@ public struct RideTripReviewDto: Decodable {
 public struct RideTripReviewResponse: Decodable { public let success: Bool; public let review: RideTripReviewDto }
 public struct RideDriverRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
 
+// Real Kakao T 대리운전 (designated driver, item 221) -- a professional driver comes to
+// the customer's location and drives the CUSTOMER'S OWN CAR home for them, distinct
+// from ride-hailing above (driver uses their own vehicle). Mirrors
+// DesignatedDriver.kt/DesignatedDriverTrip.kt exactly. bank-mfe/Android already have
+// this; this is the first iOS client.
+public struct DesignatedDriverDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let walletId: String
+    public let licenseNumber: String
+    public let available: Bool
+    public let currentLatitude: Double?
+    public let currentLongitude: Double?
+    public let createdAt: String
+}
+public struct DesignatedDriverResponse: Decodable { public let success: Bool; public let driver: DesignatedDriverDto? }
+public struct RegisterDesignatedDriverRequest: Encodable { public let licenseNumber: String }
+public struct SetDesignatedDriverAvailabilityRequest: Encodable { public let available: Bool }
+public struct UpdateDesignatedDriverLocationRequest: Encodable { public let latitude: Double; public let longitude: Double }
+public struct DesignatedDriverTripDto: Decodable, Identifiable {
+    public let id: String
+    public let customerId: String
+    public let driverId: String?
+    public let pickupAddress: String
+    public let pickupLatitude: Double
+    public let pickupLongitude: Double
+    public let dropoffAddress: String
+    public let dropoffLatitude: Double
+    public let dropoffLongitude: Double
+    public let vehicleMake: String
+    public let vehicleModel: String
+    public let vehiclePlate: String
+    public let distanceKm: Double
+    public let fare: Double
+    public let platformFee: Double
+    public let status: String
+    public let createdAt: String
+}
+public struct DesignatedDriverTripResponse: Decodable { public let success: Bool; public let trip: DesignatedDriverTripDto }
+public struct DesignatedDriverTripsResponse: Decodable { public let success: Bool; public let trips: [DesignatedDriverTripDto] }
+public struct RequestDesignatedDriverTripRequest: Encodable {
+    public let pickupAddress: String
+    public let pickupLatitude: Double
+    public let pickupLongitude: Double
+    public let dropoffAddress: String
+    public let dropoffLatitude: Double
+    public let dropoffLongitude: Double
+    public let vehicleMake: String
+    public let vehicleModel: String
+    public let vehiclePlate: String
+}
+
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
 // bank-mfe's lib/vehicleInspection.ts exactly. bank-mfe and Android already have this;
 // this is the first iOS client.
@@ -752,6 +804,54 @@ extension NetworkClient {
     }
 
     public func getRideDriverRating(driverId: String) async throws -> RideDriverRatingResponse { try await get("api/v1/rides/drivers/\(driverId)/rating") }
+
+    // Real Kakao T 대리운전 (designated driver, item 221) -- first iOS client for this
+    // feature. bank-mfe/Android already have this; mirrors ApiService.kt exactly.
+    public func registerAsDesignatedDriver(licenseNumber: String) async throws -> DesignatedDriverResponse {
+        try await authenticatedPost("api/v1/designated-driver/drivers/register", body: RegisterDesignatedDriverRequest(licenseNumber: licenseNumber))
+    }
+
+    public func getMyDesignatedDriverProfile() async throws -> DesignatedDriverResponse { try await get("api/v1/designated-driver/drivers/me") }
+
+    public func setDesignatedDriverAvailability(available: Bool) async throws -> DesignatedDriverResponse {
+        try await authenticatedPost("api/v1/designated-driver/drivers/availability", body: SetDesignatedDriverAvailabilityRequest(available: available))
+    }
+
+    public func updateDesignatedDriverLocation(latitude: Double, longitude: Double) async throws -> DesignatedDriverResponse {
+        try await authenticatedPost("api/v1/designated-driver/drivers/location", body: UpdateDesignatedDriverLocationRequest(latitude: latitude, longitude: longitude))
+    }
+
+    public func requestDesignatedDriverTrip(
+        pickupAddress: String, pickupLatitude: Double, pickupLongitude: Double,
+        dropoffAddress: String, dropoffLatitude: Double, dropoffLongitude: Double,
+        vehicleMake: String, vehicleModel: String, vehiclePlate: String
+    ) async throws -> DesignatedDriverTripResponse {
+        try await authenticatedPost(
+            "api/v1/designated-driver/trips",
+            body: RequestDesignatedDriverTripRequest(
+                pickupAddress: pickupAddress, pickupLatitude: pickupLatitude, pickupLongitude: pickupLongitude,
+                dropoffAddress: dropoffAddress, dropoffLatitude: dropoffLatitude, dropoffLongitude: dropoffLongitude,
+                vehicleMake: vehicleMake, vehicleModel: vehicleModel, vehiclePlate: vehiclePlate
+            )
+        )
+    }
+
+    public func getAvailableDesignatedDriverTrips() async throws -> DesignatedDriverTripsResponse { try await get("api/v1/designated-driver/trips/available") }
+    public func getMyDesignatedDriverTrips() async throws -> DesignatedDriverTripsResponse { try await get("api/v1/designated-driver/trips/my-trips") }
+    public func getMyDesignatedDriverDriverTrips() async throws -> DesignatedDriverTripsResponse { try await get("api/v1/designated-driver/trips/my-driver-trips") }
+
+    public func acceptDesignatedDriverTrip(id: String) async throws -> DesignatedDriverTripResponse {
+        try await authenticatedPost("api/v1/designated-driver/trips/\(id)/accept", body: EmptyBody())
+    }
+    public func startDesignatedDriverTrip(id: String) async throws -> DesignatedDriverTripResponse {
+        try await authenticatedPost("api/v1/designated-driver/trips/\(id)/start-driving", body: EmptyBody())
+    }
+    public func completeDesignatedDriverTrip(id: String) async throws -> DesignatedDriverTripResponse {
+        try await authenticatedPost("api/v1/designated-driver/trips/\(id)/complete", body: EmptyBody())
+    }
+    public func cancelDesignatedDriverTrip(id: String) async throws -> DesignatedDriverTripResponse {
+        try await authenticatedPost("api/v1/designated-driver/trips/\(id)/cancel", body: EmptyBody())
+    }
 
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. bank-mfe and

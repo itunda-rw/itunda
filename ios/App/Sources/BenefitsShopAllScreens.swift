@@ -226,6 +226,9 @@ struct EntireMenuScreen: View {
     // Real Kakao T-style ride-hailing screen (2026-07-28, item 110) -- last remaining
     // client platform for this feature (bank-mfe always had it, Android item 109).
     @State private var showRides = false
+    // Real Kakao T 대리운전 (designated driver, item 221) -- bank-mfe/Android shipped
+    // first; same pattern.
+    @State private var showDesignatedDriver = false
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment)
     // screen (2026-07-31) -- bank-mfe and Android shipped first; same pattern.
     @State private var showVehicleInspection = false
@@ -340,6 +343,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentBlue, action: { showAgentOperator = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
+                        FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
                         FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
                         FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", symbol: "car.fill", tint: .accentTeal, action: { showVehicleValuation = true }),
                         FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
@@ -496,6 +500,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showRides) {
             RideScreenView(onBack: { showRides = false })
+        }
+        .sheet(isPresented: $showDesignatedDriver) {
+            DesignatedDriverScreenView(onBack: { showDesignatedDriver = false })
         }
         .sheet(isPresented: $showRoundUp) {
             RoundUpSettingsView(onBack: { showRoundUp = false })

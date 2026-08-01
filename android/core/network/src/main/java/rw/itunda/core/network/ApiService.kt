@@ -3108,6 +3108,44 @@ interface ApiService {
     @GET("api/v1/rides/drivers/{driverId}/rating")
     suspend fun getRideDriverRating(@Path("driverId") driverId: String): RideDriverRatingResponse
 
+    // Real Kakao T 대리운전 (designated driver, item 221) -- first Android client for
+    // this feature. bank-mfe already has this; mirrors lib/designatedDriver.ts exactly.
+    @POST("api/v1/designated-driver/drivers/register")
+    suspend fun registerAsDesignatedDriver(@Body request: RegisterDesignatedDriverRequest): DesignatedDriverResponse
+
+    @GET("api/v1/designated-driver/drivers/me")
+    suspend fun getMyDesignatedDriverProfile(): DesignatedDriverResponse
+
+    @POST("api/v1/designated-driver/drivers/availability")
+    suspend fun setDesignatedDriverAvailability(@Body request: SetDesignatedDriverAvailabilityRequest): DesignatedDriverResponse
+
+    @POST("api/v1/designated-driver/drivers/location")
+    suspend fun updateDesignatedDriverLocation(@Body request: UpdateDesignatedDriverLocationRequest): DesignatedDriverResponse
+
+    @POST("api/v1/designated-driver/trips")
+    suspend fun requestDesignatedDriverTrip(@Body request: RequestDesignatedDriverTripRequest): DesignatedDriverTripResponse
+
+    @GET("api/v1/designated-driver/trips/available")
+    suspend fun getAvailableDesignatedDriverTrips(): DesignatedDriverTripsResponse
+
+    @GET("api/v1/designated-driver/trips/my-trips")
+    suspend fun getMyDesignatedDriverTrips(): DesignatedDriverTripsResponse
+
+    @GET("api/v1/designated-driver/trips/my-driver-trips")
+    suspend fun getMyDesignatedDriverDriverTrips(): DesignatedDriverTripsResponse
+
+    @POST("api/v1/designated-driver/trips/{tripId}/accept")
+    suspend fun acceptDesignatedDriverTrip(@Path("tripId") tripId: String): DesignatedDriverTripResponse
+
+    @POST("api/v1/designated-driver/trips/{tripId}/start-driving")
+    suspend fun startDesignatedDriverTrip(@Path("tripId") tripId: String): DesignatedDriverTripResponse
+
+    @POST("api/v1/designated-driver/trips/{tripId}/complete")
+    suspend fun completeDesignatedDriverTrip(@Path("tripId") tripId: String): DesignatedDriverTripResponse
+
+    @POST("api/v1/designated-driver/trips/{tripId}/cancel")
+    suspend fun cancelDesignatedDriverTrip(@Path("tripId") tripId: String): DesignatedDriverTripResponse
+
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. A buyer books
     // and 100%-prepays a real mechanic to inspect a real Marketplace used-car listing
@@ -3271,6 +3309,33 @@ data class RideTripStopDto(
 )
 data class RideTripStopResponse(val success: Boolean, val stop: RideTripStopDto)
 data class RideTripStopsResponse(val success: Boolean, val stops: List<RideTripStopDto>)
+
+// Real Kakao T 대리운전 (designated driver, item 221) -- a professional driver comes
+// to the customer's location and drives the CUSTOMER'S OWN CAR home for them, distinct
+// from ride-hailing above (driver uses their own vehicle). Mirrors
+// DesignatedDriver.kt/DesignatedDriverTrip.kt exactly.
+data class DesignatedDriverDto(
+    val id: String, val userId: String, val walletId: String, val licenseNumber: String, val available: Boolean,
+    val currentLatitude: Double?, val currentLongitude: Double?, val createdAt: String,
+)
+data class DesignatedDriverResponse(val success: Boolean, val driver: DesignatedDriverDto?)
+data class RegisterDesignatedDriverRequest(val licenseNumber: String)
+data class SetDesignatedDriverAvailabilityRequest(val available: Boolean)
+data class UpdateDesignatedDriverLocationRequest(val latitude: Double, val longitude: Double)
+data class DesignatedDriverTripDto(
+    val id: String, val customerId: String, val driverId: String?, val pickupAddress: String,
+    val pickupLatitude: Double, val pickupLongitude: Double, val dropoffAddress: String,
+    val dropoffLatitude: Double, val dropoffLongitude: Double, val vehicleMake: String, val vehicleModel: String,
+    val vehiclePlate: String, val distanceKm: Double, val fare: java.math.BigDecimal,
+    val platformFee: java.math.BigDecimal, val status: String, val createdAt: String,
+)
+data class DesignatedDriverTripResponse(val success: Boolean, val trip: DesignatedDriverTripDto)
+data class DesignatedDriverTripsResponse(val success: Boolean, val trips: List<DesignatedDriverTripDto>)
+data class RequestDesignatedDriverTripRequest(
+    val pickupAddress: String, val pickupLatitude: Double, val pickupLongitude: Double,
+    val dropoffAddress: String, val dropoffLatitude: Double, val dropoffLongitude: Double,
+    val vehicleMake: String, val vehicleModel: String, val vehiclePlate: String,
+)
 
 // Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
 // RideTripReview.kt doc comment.
