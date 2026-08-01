@@ -155,12 +155,16 @@ import {
   startBikeAssetRental, type BikeAsset, type BikeAssetRentalSession, type BikeAssetType,
 } from './lib/bikeshare';
 import {
+  endParkingSession, fetchMyParkingHistory, fetchMyParkingSpots, fetchNearbyParkingSpots, registerParkingSpot, setParkingSpotAvailability,
+  startParkingSession, type ParkingSession, type ParkingSpot,
+} from './lib/parking';
+import {
   acceptInspection, cancelInspection, completeInspection, fetchAvailableMechanics, fetchMyInspectionBookings,
   fetchMyMechanicBookings, fetchMyMechanicProfile, registerAsMechanic, requestInspection, setMechanicAvailability,
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -12721,6 +12725,244 @@ function BikeShareView() {
   );
 }
 
+// Real Kakao T 주차 (Kakao T Parking, item 223) -- see lib/parking.ts's own doc
+// comment for the full sourced account. Same "no live-polling, fare only known at
+// checkout" shape BikeShareView above establishes -- a session is a simple check-in/
+// check-out action, billed hourly (not per-minute like Bike, since parking sessions
+// genuinely run longer).
+function ParkingView() {
+  const [subTab, setSubTab] = useState<'RENT' | 'OWN'>('RENT');
+
+  // Renter side
+  const [nearbySpots, setNearbySpots] = useState<ParkingSpot[] | null>(null);
+  const [activeSession, setActiveSession] = useState<ParkingSession | null>(null);
+  const [rentalHistory, setRentalHistory] = useState<ParkingSession[] | null>(null);
+  const [renterError, setRenterError] = useState<string | null>(null);
+  const [busySpotId, setBusySpotId] = useState<string | null>(null);
+  const [endingSession, setEndingSession] = useState(false);
+  const [justCompletedSession, setJustCompletedSession] = useState<ParkingSession | null>(null);
+
+  const loadRenterData = () => {
+    if (!navigator.geolocation) {
+      setRenterError('Location access is required to find nearby parking.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        fetchNearbyParkingSpots(pos.coords.latitude, pos.coords.longitude)
+          .then(setNearbySpots)
+          .catch((err) => setRenterError(err instanceof ApiError ? err.message : 'Could not load nearby parking.'));
+      },
+      () => setRenterError('Could not access your location.'),
+    );
+    fetchMyParkingHistory().then(setRentalHistory).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (subTab !== 'RENT') return;
+    loadRenterData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab]);
+
+  useEffect(() => {
+    const active = (rentalHistory ?? []).find((r) => r.status === 'ACTIVE');
+    setActiveSession(active ?? null);
+  }, [rentalHistory]);
+
+  const handleStartSession = (spotId: string) => {
+    setBusySpotId(spotId);
+    setRenterError(null);
+    startParkingSession(spotId)
+      .then((session) => { setActiveSession(session); setBusySpotId(null); })
+      .catch((err) => { setRenterError(err instanceof ApiError ? err.message : 'Could not check in to this spot.'); setBusySpotId(null); });
+  };
+
+  const handleEndSession = () => {
+    if (!activeSession) return;
+    setEndingSession(true);
+    setRenterError(null);
+    endParkingSession(activeSession.id)
+      .then((session) => {
+        setActiveSession(null);
+        setJustCompletedSession(session);
+        setEndingSession(false);
+        loadRenterData();
+      })
+      .catch((err) => { setRenterError(err instanceof ApiError ? err.message : 'Could not check out of this spot.'); setEndingSession(false); });
+  };
+
+  // Owner side
+  const [mySpots, setMySpots] = useState<ParkingSpot[] | null>(null);
+  const [spotAddress, setSpotAddress] = useState('');
+  const [spotHourlyRate, setSpotHourlyRate] = useState('');
+  const [registering, setRegistering] = useState(false);
+  const [ownerError, setOwnerError] = useState<string | null>(null);
+
+  const loadMySpots = () => {
+    fetchMyParkingSpots().then(setMySpots).catch((err) => setOwnerError(err instanceof ApiError ? err.message : 'Could not load your parking spots.'));
+  };
+
+  useEffect(() => {
+    if (subTab === 'OWN') loadMySpots();
+  }, [subTab]);
+
+  const handleRegisterSpot = () => {
+    if (!navigator.geolocation || !spotAddress.trim() || !spotHourlyRate) return;
+    const rate = Number(spotHourlyRate);
+    if (!Number.isFinite(rate) || rate <= 0) return;
+    setRegistering(true);
+    setOwnerError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        registerParkingSpot(spotAddress.trim(), pos.coords.latitude, pos.coords.longitude, rate)
+          .then(() => { setSpotAddress(''); setSpotHourlyRate(''); loadMySpots(); setRegistering(false); })
+          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not register this spot.'); setRegistering(false); });
+      },
+      () => { setOwnerError('Could not access your location.'); setRegistering(false); },
+    );
+  };
+
+  const handleToggleSpotAvailable = (spot: ParkingSpot) => {
+    setBusySpotId(spot.id);
+    setOwnerError(null);
+    setParkingSpotAvailability(spot.id, !spot.available)
+      .then(() => { loadMySpots(); setBusySpotId(null); })
+      .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not update this spot.'); setBusySpotId(null); });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          className={subTab === 'RENT' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('RENT')} style={{ flex: 1 }}
+        >
+          Find parking
+        </button>
+        <button
+          className={subTab === 'OWN' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('OWN')} style={{ flex: 1 }}
+        >
+          My spots
+        </button>
+      </div>
+
+      {subTab === 'RENT' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {renterError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{renterError}</p>}
+          {justCompletedSession && (
+            <div className="toss-card" style={{ textAlign: 'center', padding: '24px' }}>
+              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Parking complete</p>
+              <p style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0' }}>{(justCompletedSession.totalFare ?? 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{justCompletedSession.durationMinutes} minutes</p>
+              <button className="toss-btn toss-btn-secondary" onClick={() => setJustCompletedSession(null)} style={{ marginTop: '12px' }}>
+                Done
+              </button>
+            </div>
+          )}
+          {!justCompletedSession && activeSession && (
+            <div className="toss-card">
+              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>🅿️ Parked now</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+                Fare is calculated by elapsed time (rounded up to the next hour) once you check out.
+              </p>
+              <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={endingSession} onClick={handleEndSession}>
+                {endingSession ? 'Checking out…' : 'Check out'}
+              </button>
+            </div>
+          )}
+          {!justCompletedSession && !activeSession && (
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+                Nearby parking, within 5 km of your real location.
+              </p>
+              {nearbySpots === null ? (
+                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+              ) : nearbySpots.length === 0 ? (
+                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No parking nearby right now.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {nearbySpots.map((spot) => (
+                    <div key={spot.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <p style={{ fontSize: '13px', fontWeight: 700 }}>{spot.address}</p>
+                        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
+                      </div>
+                      <button
+                        className="toss-btn toss-btn-primary" disabled={busySpotId === spot.id}
+                        onClick={() => handleStartSession(spot.id)}
+                      >
+                        {busySpotId === spot.id ? '…' : 'Check in'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {rentalHistory && rentalHistory.filter((r) => r.status === 'COMPLETED').length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past sessions</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
+                  <div key={r.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.durationMinutes} min</p>
+                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {subTab === 'OWN' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {ownerError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{ownerError}</p>}
+          <div className="toss-card">
+            <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>List your spot</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              Uses your real current location as the spot's location.
+            </p>
+            <input
+              type="text" value={spotAddress} placeholder="Address (e.g. Kigali Heights driveway)" onChange={(e) => setSpotAddress(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+            />
+            <input
+              type="number" value={spotHourlyRate} placeholder="Hourly rate (RWF)" onChange={(e) => setSpotHourlyRate(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+            />
+            <button
+              className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={registering || !spotAddress.trim() || !spotHourlyRate}
+              onClick={handleRegisterSpot}
+            >
+              {registering ? 'Registering…' : 'Register spot'}
+            </button>
+          </div>
+          {mySpots && mySpots.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your spots</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {mySpots.map((spot) => (
+                  <div key={spot.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: 700 }}>{spot.address}</p>
+                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
+                    </div>
+                    <button className="toss-btn toss-btn-secondary" disabled={busySpotId === spot.id} onClick={() => handleToggleSpotAvailable(spot)}>
+                      {busySpotId === spot.id ? '…' : spot.available ? 'Available' : 'Unavailable'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Real 배민오더-style table/QR in-store ordering (item 155) -- see lib/dineIn.ts's own
 // doc comment. Deliberately its own smaller, self-contained flow rather than bolted onto
 // MenuView/OrderFoodView's already-tested delivery checkout: no address, no favorites/
@@ -16533,6 +16775,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'RIDES', label: 'Rides' },
     { id: 'DESIGNATED_DRIVER', label: 'Designated driver' },
     { id: 'BIKESHARE', label: 'Bike' },
+    { id: 'PARKING', label: 'Parking' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
@@ -16605,6 +16848,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'RIDES' && <RidesView />}
       {tab === 'DESIGNATED_DRIVER' && <DesignatedDriverView />}
       {tab === 'BIKESHARE' && <BikeShareView />}
+      {tab === 'PARKING' && <ParkingView />}
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
