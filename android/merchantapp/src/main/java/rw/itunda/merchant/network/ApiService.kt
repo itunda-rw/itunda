@@ -124,6 +124,19 @@ data class PayrollRunDto(
 data class PayrollHistoryResponse(val success: Boolean, val runs: List<PayrollRunDto>)
 data class PayslipsResponse(val success: Boolean, val payslips: List<PayslipDto>)
 
+// Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing (item 144)
+// -- see MerchantBillingController.kt's own doc comment. merchant-mfe already has this
+// (BillingScreen.tsx); this is the first native client (Android/iOS). Owner-facing
+// plan-management half only -- customer subscribe/cancel is already real on all 3
+// consumer clients via SubscriptionsScreen.kt/SubscriptionsScreenView.swift.
+data class CreateBillingPlanRequest(val name: String, val description: String?, val amount: java.math.BigDecimal, val intervalDays: Int)
+data class MerchantBillingPlanDto(
+    val id: String, val merchantId: String, val name: String, val description: String?,
+    val amount: java.math.BigDecimal, val intervalDays: Int, val active: Boolean, val createdAt: String,
+)
+data class MerchantBillingPlanResponse(val success: Boolean, val plan: MerchantBillingPlanDto)
+data class MerchantBillingPlansResponse(val success: Boolean, val plans: List<MerchantBillingPlanDto>)
+
 data class SetWebhookUrlRequest(val webhookUrl: String)
 
 data class RegisterMerchantRequest(val businessName: String)
@@ -463,6 +476,20 @@ interface ApiService {
 
     @GET("api/v1/merchant/payroll/runs/{runId}/payslips")
     suspend fun getPayslips(@Path("runId") runId: String): PayslipsResponse
+
+    // Real recurring merchant billing (item 144) -- see MerchantBillingController.kt's
+    // own doc comment. merchant-mfe already has this; this is the first native client.
+    @POST("api/v1/merchant/billing-plans")
+    suspend fun createBillingPlan(
+        @Body request: CreateBillingPlanRequest,
+        @Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString(),
+    ): MerchantBillingPlanResponse
+
+    @GET("api/v1/merchant/billing-plans")
+    suspend fun getMyBillingPlans(): MerchantBillingPlansResponse
+
+    @POST("api/v1/merchant/billing-plans/{planId}/deactivate")
+    suspend fun deactivateBillingPlan(@Path("planId") planId: String): MerchantBillingPlanResponse
 
     // Real bulk/wholesale pricing (2026-07-25) -- see
     // rw.itunda.merchant.MerchantProductController.setPriceTiers.

@@ -146,6 +146,24 @@ struct PayrollRunDto: Decodable, Identifiable {
 struct PayrollHistoryResponse: Decodable { let success: Bool; let runs: [PayrollRunDto] }
 struct PayslipsResponse: Decodable { let success: Bool; let payslips: [PayslipDto] }
 
+// Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing (item 144)
+// -- see MerchantBillingController.kt's own doc comment. merchant-mfe already has this;
+// this is the first native client. Owner-facing plan-management half only -- customer
+// subscribe/cancel is already real on all 3 consumer clients.
+struct CreateBillingPlanRequest: Encodable { let name: String; let description: String?; let amount: Double; let intervalDays: Int }
+struct MerchantBillingPlanDto: Decodable, Identifiable {
+    let id: String
+    let merchantId: String
+    let name: String
+    let description: String?
+    let amount: Double
+    let intervalDays: Int
+    let active: Bool
+    let createdAt: String
+}
+struct MerchantBillingPlanResponse: Decodable { let success: Bool; let plan: MerchantBillingPlanDto }
+struct MerchantBillingPlansResponse: Decodable { let success: Bool; let plans: [MerchantBillingPlanDto] }
+
 struct SetWebhookUrlRequest: Encodable {
     let webhookUrl: String
     init(webhookUrl: String) { self.webhookUrl = webhookUrl }
@@ -552,6 +570,16 @@ final class MerchantNetworkClient {
     }
     func getPayrollHistory() async throws -> PayrollHistoryResponse { try await get("api/v1/merchant/payroll/runs") }
     func getPayslips(_ runId: String) async throws -> PayslipsResponse { try await get("api/v1/merchant/payroll/runs/\(runId)/payslips") }
+
+    // Real recurring merchant billing (item 144) -- see MerchantBillingController.kt's
+    // own doc comment. merchant-mfe already has this; this is the first iOS client.
+    func createBillingPlan(_ request: CreateBillingPlanRequest) async throws -> MerchantBillingPlanResponse {
+        try await postWithHeader("api/v1/merchant/billing-plans", body: request, header: ("Idempotency-Key", UUID().uuidString))
+    }
+    func getMyBillingPlans() async throws -> MerchantBillingPlansResponse { try await get("api/v1/merchant/billing-plans") }
+    func deactivateBillingPlan(_ planId: String) async throws -> MerchantBillingPlanResponse {
+        try await post("api/v1/merchant/billing-plans/\(planId)/deactivate", body: EmptyBody())
+    }
 
     // Real payment-event webhook URL settings -- see
     // rw.itunda.merchant.MerchantService.setWebhookUrl's own doc comment. merchant-mfe/
