@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Kakao T 대리운전 (designated driver, rw.itunda.rideshare, item 221) -- see the
 // backend's DesignatedDriverService doc comment for the full sourced account. A
@@ -68,6 +69,7 @@ export const requestDesignatedDriverTrip = (
 ) =>
   apiFetch<{ success: boolean; trip: DesignatedDriverTrip }>('/api/v1/designated-driver/trips', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({
       pickupAddress, pickupLatitude, pickupLongitude, dropoffAddress, dropoffLatitude, dropoffLongitude,
       vehicleMake, vehicleModel, vehiclePlate,

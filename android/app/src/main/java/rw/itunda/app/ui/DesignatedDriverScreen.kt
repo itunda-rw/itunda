@@ -142,6 +142,7 @@ private fun DesignatedDriverRequestContent() {
         coroutineScope.launch {
             try {
                 NetworkClient.apiService.requestDesignatedDriverTrip(
+                    java.util.UUID.randomUUID().toString(),
                     RequestDesignatedDriverTripRequest(
                         pickupAddress, lat, lng, dropoffAddress, dLat, dLng,
                         vehicleMake.trim(), vehicleModel.trim(), vehiclePlate.trim(),

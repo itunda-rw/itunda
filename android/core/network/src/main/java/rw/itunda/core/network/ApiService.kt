@@ -3192,8 +3192,10 @@ interface ApiService {
     @POST("api/v1/designated-driver/drivers/location")
     suspend fun updateDesignatedDriverLocation(@Body request: UpdateDesignatedDriverLocationRequest): DesignatedDriverResponse
 
+    // Real bug found live (2026-08-02): missing Idempotency-Key -- see the backend's
+    // DesignatedDriverController.requestTrip doc comment for the full account.
     @POST("api/v1/designated-driver/trips")
-    suspend fun requestDesignatedDriverTrip(@Body request: RequestDesignatedDriverTripRequest): DesignatedDriverTripResponse
+    suspend fun requestDesignatedDriverTrip(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RequestDesignatedDriverTripRequest): DesignatedDriverTripResponse
 
     @GET("api/v1/designated-driver/trips/available")
     suspend fun getAvailableDesignatedDriverTrips(): DesignatedDriverTripsResponse
@@ -3296,8 +3298,10 @@ interface ApiService {
         @Query("destination") destination: String? = null,
     ): BusTripsResponse
 
+    // Real bug found live (2026-08-02): missing Idempotency-Key -- see the backend's
+    // BusController.bookSeats doc comment for the full account.
     @POST("api/v1/bus/bookings")
-    suspend fun bookBusSeats(@Body request: BookBusSeatsRequest): BusBookingResponse
+    suspend fun bookBusSeats(@Header("Idempotency-Key") idempotencyKey: String, @Body request: BookBusSeatsRequest): BusBookingResponse
 
     @POST("api/v1/bus/bookings/{bookingId}/cancel")
     suspend fun cancelBusBooking(@Path("bookingId") bookingId: String): BusBookingResponse

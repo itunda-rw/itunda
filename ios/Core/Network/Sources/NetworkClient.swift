@@ -967,6 +967,8 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/designated-driver/drivers/location", body: UpdateDesignatedDriverLocationRequest(latitude: latitude, longitude: longitude))
     }
 
+    // Real bug found live (2026-08-02): missing Idempotency-Key -- see the backend's
+    // DesignatedDriverController.requestTrip doc comment for the full account.
     public func requestDesignatedDriverTrip(
         pickupAddress: String, pickupLatitude: Double, pickupLongitude: Double,
         dropoffAddress: String, dropoffLatitude: Double, dropoffLongitude: Double,
@@ -978,7 +980,8 @@ extension NetworkClient {
                 pickupAddress: pickupAddress, pickupLatitude: pickupLatitude, pickupLongitude: pickupLongitude,
                 dropoffAddress: dropoffAddress, dropoffLatitude: dropoffLatitude, dropoffLongitude: dropoffLongitude,
                 vehicleMake: vehicleMake, vehicleModel: vehicleModel, vehiclePlate: vehiclePlate
-            )
+            ),
+            idempotencyKey: UUID().uuidString
         )
     }
 
@@ -1080,8 +1083,10 @@ extension NetworkClient {
         return try await get("api/v1/bus/trips/search", query: query)
     }
 
+    // Real bug found live (2026-08-02): missing Idempotency-Key -- see the backend's
+    // BusController.bookSeats doc comment for the full account.
     public func bookBusSeats(tripId: String, seatCount: Int) async throws -> BusBookingResponse {
-        try await authenticatedPost("api/v1/bus/bookings", body: BookBusSeatsRequest(tripId: tripId, seatCount: seatCount))
+        try await authenticatedPost("api/v1/bus/bookings", body: BookBusSeatsRequest(tripId: tripId, seatCount: seatCount), idempotencyKey: UUID().uuidString)
     }
 
     public func cancelBusBooking(bookingId: String) async throws -> BusBookingResponse {

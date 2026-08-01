@@ -128,7 +128,7 @@ private fun BusRideContent() {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.bookBusSeats(BookBusSeatsRequest(tripId, seats))
+                NetworkClient.apiService.bookBusSeats(java.util.UUID.randomUUID().toString(), BookBusSeatsRequest(tripId, seats))
                 search(); loadBookings()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)

@@ -5,15 +5,20 @@ import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.idempotency.IdempotencyConflictException
+import rw.itunda.core.idempotency.IdempotencyInProgressException
+import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
@@ -39,7 +44,10 @@ data class BookBusSeatsRequest(val tripId: String, val seatCount: Int)
 // for the full sourced account. Normal itunda-user JWT gate.
 @RestController
 @RequestMapping("/api/v1/bus")
-class BusController(private val busService: BusService) {
+class BusController(
+    private val busService: BusService,
+    private val idempotencyService: IdempotencyService,
+) {
 
     @PostMapping("/trips")
     fun postTrip(@RequestBody request: PostBusTripRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
@@ -65,10 +73,26 @@ class BusController(private val busService: BusService) {
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "trips" to busService.searchTrips(origin, destination)))
 
+    // Real bug found live (2026-08-02): unlike RideController's own requestTrip (the
+    // established template every trip/booking-creation endpoint this session added was
+    // supposed to match), this had no Idempotency-Key requirement -- bookSeats() creates
+    // a brand-new BusBooking row and decrements the real @Version-guarded
+    // BusTrip.availableSeats on every call, but nothing stops the SAME rider from
+    // booking the same trip twice on a naive client retry (no "already booked this
+    // trip" guard exists). @Version on BusTrip only protects against two DIFFERENT
+    // concurrent requests racing for the same seats -- it does nothing for one rider's
+    // sequential retry, which would just successfully book twice as long as seats remain.
     @PostMapping("/bookings")
-    fun bookSeats(@RequestBody request: BookBusSeatsRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val booking = busService.bookSeats(currentUser.userId, request.tripId, request.seatCount)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "booking" to booking))
+    fun bookSeats(
+        @RequestBody request: BookBusSeatsRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/bus/bookings", idempotencyKey, request) {
+            val booking = busService.bookSeats(currentUser.userId, request.tripId, request.seatCount)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "booking" to booking)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/bookings/{bookingId}/cancel")
@@ -110,4 +134,16 @@ class BusController(private val busService: BusService) {
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(IdempotencyConflictException::class)
+    fun handleConflict(ex: IdempotencyConflictException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(IdempotencyInProgressException::class)
+    fun handleInProgress(ex: IdempotencyInProgressException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingHeader(ex: MissingRequestHeaderException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
 }

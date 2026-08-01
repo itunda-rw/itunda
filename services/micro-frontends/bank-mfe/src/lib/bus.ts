@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Kakao T 시외버스 (intercity bus booking, rw.itunda.rideshare, item 224) -- see
 // the backend's BusService doc comment for the full sourced account. Real PEER-TO-PEER
@@ -58,6 +59,7 @@ export const searchBusTrips = (origin?: string, destination?: string) => {
 export const bookBusSeats = (tripId: string, seatCount: number) =>
   apiFetch<{ success: boolean; booking: BusBooking }>('/api/v1/bus/bookings', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ tripId, seatCount }),
   }).then((r) => r.booking);
 
