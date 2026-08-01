@@ -577,6 +577,65 @@ class CommunityServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real meetup session a stranger and a real member both try to view attendance for") {
+        val postRepository = mockk<CommunityPostRepository>()
+        val commentRepository = mockk<CommunityCommentRepository>()
+        val likeRepository = mockk<CommunityLikeRepository>()
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
+        val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>()
+        val meetupSessionRepository = mockk<MeetupSessionRepository>()
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>()
+        val service = CommunityService(
+            postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
+        )
+
+        val meetupPost = CommunityPost(
+            id = "post_1", authorId = "author_1", category = "meetup", title = "Weekly run", body = "Join us",
+            groupConversationId = "group_1",
+        )
+        val session = rw.itunda.core.domain.MeetupSession(id = "session_1", postId = "post_1", sequence = 0, scheduledFor = java.time.Instant.now().plusSeconds(3600))
+        every { meetupSessionRepository.findById("session_1") } returns Optional.of(session)
+        every { postRepository.findById("post_1") } returns Optional.of(meetupPost)
+
+        // Real bug found live 2026-08-02 in a security sweep: getSessionAttendance had
+        // zero auth or membership check at all, leaking every real attendee's userId to
+        // any unauthenticated caller who knew/guessed a real sessionId.
+        When("someone who never joined the meetup tries to view attendance") {
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "stranger") } returns null
+
+            Then("it throws MeetupAttendanceNotAMemberException, never touching the attendance repository") {
+                try {
+                    service.getSessionAttendance("stranger", "session_1")
+                    error("expected MeetupAttendanceNotAMemberException")
+                } catch (e: MeetupAttendanceNotAMemberException) {
+                    verify(exactly = 0) { meetupAttendanceRepository.findBySessionId(any()) }
+                }
+            }
+        }
+
+        When("a real joined member views attendance") {
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "member_1") } returns
+                rw.itunda.core.domain.GroupConversationMember(id = "gm_1", groupConversationId = "group_1", userId = "member_1")
+            every { meetupAttendanceRepository.findBySessionId("session_1") } returns
+                listOf(rw.itunda.core.domain.MeetupAttendance(id = "attendance_1", sessionId = "session_1", userId = "member_1"))
+
+            val attendance = service.getSessionAttendance("member_1", "session_1")
+
+            Then("it returns the real attendance list") {
+                attendance.size shouldBe 1
+                attendance[0].userId shouldBe "member_1"
+            }
+        }
+    }
+
     Given("a real user creating a real 당근마켓 같이사요 (group-buy) post") {
         val postRepository = mockk<CommunityPostRepository>()
         val commentRepository = mockk<CommunityCommentRepository>()

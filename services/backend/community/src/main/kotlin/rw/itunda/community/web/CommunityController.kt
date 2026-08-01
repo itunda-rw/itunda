@@ -218,8 +218,11 @@ class CommunityController(private val communityService: CommunityService) {
     }
 
     @GetMapping("/sessions/{sessionId}/attendance")
-    fun getSessionAttendance(@PathVariable sessionId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "attendance" to communityService.getSessionAttendance(sessionId)))
+    fun getSessionAttendance(
+        @PathVariable sessionId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "attendance" to communityService.getSessionAttendance(currentUser.userId, sessionId)))
 
     // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
     // CommunityService.finalizeGroupBuy's own doc comment.

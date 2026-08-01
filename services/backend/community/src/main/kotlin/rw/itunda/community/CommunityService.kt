@@ -451,7 +451,22 @@ class CommunityService(
         return meetupAttendanceRepository.save(MeetupAttendance(id = "meetup_attendance_${UUID.randomUUID()}", sessionId = sessionId, userId = userId))
     }
 
-    fun getSessionAttendance(sessionId: String): List<MeetupAttendance> = meetupAttendanceRepository.findBySessionId(sessionId)
+    /**
+     * Real bug found live 2026-08-02 in a security sweep: this had zero auth or
+     * membership check at all -- any unauthenticated caller who knew/guessed a real
+     * sessionId got back every real attendee's raw userId. Same real membership gate
+     * `checkIntoSession` already establishes: only a real joined member of the
+     * meetup's own group chat can see who else checked in.
+     */
+    fun getSessionAttendance(userId: String, sessionId: String): List<MeetupAttendance> {
+        val session = meetupSessionRepository.findById(sessionId).orElseThrow { MeetupSessionNotFoundException("Session not found") }
+        val post = postRepository.findById(session.postId).orElseThrow { CommunityPostNotFoundException("Post not found") }
+        val groupId = post.groupConversationId
+        if (groupId == null || groupConversationMemberRepository.findByGroupConversationIdAndUserId(groupId, userId) == null) {
+            throw MeetupAttendanceNotAMemberException("Join this meetup before viewing session attendance")
+        }
+        return meetupAttendanceRepository.findBySessionId(sessionId)
+    }
 
     /**
      * Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see this class's own doc
