@@ -145,12 +145,18 @@ import {
   type RideDriver, type RideDriverRating, type RideTrip, type RideTripStop,
 } from './lib/rideshare';
 import {
+  acceptDesignatedDriverTrip, cancelDesignatedDriverTrip, completeDesignatedDriverTrip, fetchAvailableDesignatedDriverTrips,
+  fetchMyDesignatedDriverDriverTrips, fetchMyDesignatedDriverProfile, fetchMyDesignatedDriverTrips, registerAsDesignatedDriver,
+  requestDesignatedDriverTrip, setDesignatedDriverAvailability, startDesignatedDriverTrip, updateDesignatedDriverLocation,
+  type DesignatedDriver, type DesignatedDriverTrip,
+} from './lib/designatedDriver';
+import {
   acceptInspection, cancelInspection, completeInspection, fetchAvailableMechanics, fetchMyInspectionBookings,
   fetchMyMechanicBookings, fetchMyMechanicProfile, registerAsMechanic, requestInspection, setMechanicAvailability,
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -12112,6 +12118,360 @@ function RidesView() {
   );
 }
 
+const DESIGNATED_DRIVER_STATUS_LABEL: Record<DesignatedDriverTrip['status'], string> = {
+  REQUESTED: 'Finding a driver…',
+  ACCEPTED: 'Driver on the way',
+  DRIVING: 'Driver is driving you home',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+
+function DesignatedDriverTripCard({ trip, action }: { trip: DesignatedDriverTrip; action?: React.ReactNode }) {
+  return (
+    <div className="toss-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.pickupAddress}</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
+          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+            {trip.vehicleMake} {trip.vehicleModel} · {trip.vehiclePlate}
+          </p>
+          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
+        </div>
+        <span style={{
+          fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
+          color: trip.status === 'CANCELLED' ? '#E53935' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
+          backgroundColor: trip.status === 'CANCELLED' ? '#FDECEA' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
+        }}>
+          {DESIGNATED_DRIVER_STATUS_LABEL[trip.status]}
+        </span>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+// Real Kakao T 대리운전 (designated driver, item 221) -- see lib/designatedDriver.ts's
+// own doc comment for the full sourced account. Mirrors RidesView's own Ride/Drive
+// toggle structure, but the "driver" here drives the CUSTOMER'S OWN CAR, not their own
+// vehicle -- vehicleMake/vehicleModel/vehiclePlate describe that car, purely
+// informational text the driver sees before arriving.
+function DesignatedDriverView() {
+  const [subTab, setSubTab] = useState<'REQUEST' | 'DRIVE'>('REQUEST');
+
+  // Customer side
+  const [pickup, setPickup] = useState<PlaceSearchResult | null>(null);
+  const [dropoff, setDropoff] = useState<PlaceSearchResult | null>(null);
+  const [vehicleMake, setVehicleMake] = useState('');
+  const [vehicleModel, setVehicleModel] = useState('');
+  const [vehiclePlate, setVehiclePlate] = useState('');
+  const [myTrips, setMyTrips] = useState<DesignatedDriverTrip[] | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const [tripError, setTripError] = useState<string | null>(null);
+  const [busyTripId, setBusyTripId] = useState<string | null>(null);
+
+  const loadMyTrips = () => {
+    fetchMyDesignatedDriverTrips().then(setMyTrips).catch((err) => setTripError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
+  };
+
+  useEffect(() => {
+    if (subTab !== 'REQUEST') return;
+    loadMyTrips();
+    const interval = setInterval(loadMyTrips, 4000);
+    return () => clearInterval(interval);
+  }, [subTab]);
+
+  const activeTrip = (myTrips ?? []).find((t) => t.status === 'REQUESTED' || t.status === 'ACCEPTED' || t.status === 'DRIVING');
+  const pastTrips = (myTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
+
+  const handleRequestTrip = async () => {
+    if (!pickup || !dropoff || !vehicleMake.trim() || !vehicleModel.trim() || !vehiclePlate.trim()) return;
+    setRequesting(true);
+    setTripError(null);
+    try {
+      await requestDesignatedDriverTrip(
+        pickup.displayName, pickup.latitude, pickup.longitude, dropoff.displayName, dropoff.latitude, dropoff.longitude,
+        vehicleMake.trim(), vehicleModel.trim(), vehiclePlate.trim(),
+      );
+      setPickup(null);
+      setDropoff(null);
+      setVehicleMake('');
+      setVehicleModel('');
+      setVehiclePlate('');
+      loadMyTrips();
+    } catch (err) {
+      setTripError(err instanceof ApiError ? err.message : 'Could not request a designated driver.');
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleCancelTrip = async (tripId: string) => {
+    setBusyTripId(tripId);
+    try {
+      await cancelDesignatedDriverTrip(tripId);
+      loadMyTrips();
+    } catch (err) {
+      setTripError(err instanceof ApiError ? err.message : 'Could not cancel this trip.');
+    } finally {
+      setBusyTripId(null);
+    }
+  };
+
+  // Driver side
+  const [driver, setDriver] = useState<DesignatedDriver | null | undefined>(undefined);
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [registeringDriver, setRegisteringDriver] = useState(false);
+  const [availableTrips, setAvailableTrips] = useState<DesignatedDriverTrip[] | null>(null);
+  const [myDriverTrips, setMyDriverTrips] = useState<DesignatedDriverTrip[] | null>(null);
+  const [driverError, setDriverError] = useState<string | null>(null);
+  const [busyDriverTripId, setBusyDriverTripId] = useState<string | null>(null);
+
+  const loadDriver = () => {
+    fetchMyDesignatedDriverProfile()
+      .then(setDriver)
+      .catch((err) => {
+        if (err instanceof ApiError && err.code === 'DESIGNATED_DRIVER_NOT_REGISTERED') setDriver(null);
+        else setDriverError(err instanceof ApiError ? err.message : 'Could not load your driver profile.');
+      });
+  };
+
+  useEffect(() => {
+    if (subTab === 'DRIVE') loadDriver();
+  }, [subTab]);
+
+  const loadDriverTrips = () => {
+    Promise.all([fetchAvailableDesignatedDriverTrips(), fetchMyDesignatedDriverDriverTrips()])
+      .then(([a, m]) => { setAvailableTrips(a); setMyDriverTrips(m); })
+      .catch((err) => setDriverError(err instanceof ApiError ? err.message : 'Could not load trips.'));
+  };
+
+  useEffect(() => {
+    if (subTab !== 'DRIVE' || !driver) return;
+    loadDriverTrips();
+    const interval = setInterval(loadDriverTrips, 4000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab, driver?.id]);
+
+  const handleRegisterDriver = async () => {
+    if (!licenseNumber.trim()) return;
+    setRegisteringDriver(true);
+    setDriverError(null);
+    try {
+      setDriver(await registerAsDesignatedDriver(licenseNumber.trim()));
+      setLicenseNumber('');
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not register as a designated driver.');
+    } finally {
+      setRegisteringDriver(false);
+    }
+  };
+
+  const handleToggleAvailable = async () => {
+    if (!driver) return;
+    try {
+      const updated = await setDesignatedDriverAvailability(!driver.available);
+      setDriver(updated);
+      if (updated.available && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          updateDesignatedDriverLocation(pos.coords.latitude, pos.coords.longitude).then(setDriver).catch(() => {});
+        });
+      }
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not update your availability.');
+    }
+  };
+
+  const handleDriverTripAction = async (tripId: string, action: (id: string) => Promise<DesignatedDriverTrip>) => {
+    setBusyDriverTripId(tripId);
+    setDriverError(null);
+    try {
+      await action(tripId);
+      loadDriverTrips();
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not update this trip.');
+    } finally {
+      setBusyDriverTripId(null);
+    }
+  };
+
+  const activeDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'ACCEPTED' || t.status === 'DRIVING');
+  const pastDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          className={subTab === 'REQUEST' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('REQUEST')} style={{ flex: 1 }}
+        >
+          Get a driver
+        </button>
+        <button
+          className={subTab === 'DRIVE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('DRIVE')} style={{ flex: 1 }}
+        >
+          Drive
+        </button>
+      </div>
+
+      {subTab === 'REQUEST' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {tripError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{tripError}</p>}
+          {activeTrip ? (
+            <DesignatedDriverTripCard
+              trip={activeTrip}
+              action={
+                activeTrip.status === 'REQUESTED' && (
+                  <button
+                    className="toss-btn toss-btn-secondary" disabled={busyTripId === activeTrip.id}
+                    onClick={() => handleCancelTrip(activeTrip.id)} style={{ marginTop: '8px', width: '100%' }}
+                  >
+                    {busyTripId === activeTrip.id ? '…' : 'Cancel'}
+                  </button>
+                )
+              }
+            />
+          ) : (
+            <div className="toss-card">
+              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Get a designated driver</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+                A real professional driver comes to you and drives YOUR OWN CAR home.
+              </p>
+              <PlaceSearchInput label="Pickup" placeholder="Where are you now?" value={pickup} onSelect={setPickup} />
+              <PlaceSearchInput label="Drop-off" placeholder="Where's home?" value={dropoff} onSelect={setDropoff} />
+              <input
+                type="text" value={vehicleMake} placeholder="Car make (e.g. Toyota)" onChange={(e) => setVehicleMake(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              />
+              <input
+                type="text" value={vehicleModel} placeholder="Car model (e.g. RAV4)" onChange={(e) => setVehicleModel(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              />
+              <input
+                type="text" value={vehiclePlate} placeholder="License plate" onChange={(e) => setVehiclePlate(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+              />
+              <button
+                className="toss-btn toss-btn-primary" style={{ width: '100%' }}
+                disabled={requesting || !pickup || !dropoff || !vehicleMake.trim() || !vehicleModel.trim() || !vehiclePlate.trim()}
+                onClick={handleRequestTrip}
+              >
+                {requesting ? 'Requesting…' : 'Request a driver'}
+              </button>
+            </div>
+          )}
+          {pastTrips.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past trips</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {pastTrips.map((t) => <DesignatedDriverTripCard key={t.id} trip={t} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {subTab === 'DRIVE' && (
+        <div>
+          {driver === undefined && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>}
+          {driver === null && (
+            <div className="toss-card">
+              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Become a designated driver</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+                Any itunda user can register. License number is self-declared, not verified against a real registry.
+              </p>
+              {driverError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{driverError}</p>}
+              <input
+                type="text" value={licenseNumber} placeholder="License number" onChange={(e) => setLicenseNumber(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+              />
+              <button
+                className="toss-btn toss-btn-primary" style={{ width: '100%' }}
+                disabled={registeringDriver || !licenseNumber.trim()} onClick={handleRegisterDriver}
+              >
+                {registeringDriver ? 'Registering…' : 'Register'}
+              </button>
+            </div>
+          )}
+          {driver && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ fontSize: '13px', fontWeight: 700 }}>{driver.available ? 'Online' : 'Offline'}</p>
+                <button className="toss-btn toss-btn-secondary" onClick={handleToggleAvailable}>
+                  {driver.available ? 'Go offline' : 'Go online'}
+                </button>
+              </div>
+              {driverError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{driverError}</p>}
+              {activeDriverTrips.length > 0 && (
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Active</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {activeDriverTrips.map((t) => (
+                      <DesignatedDriverTripCard
+                        key={t.id} trip={t}
+                        action={
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            {t.status === 'ACCEPTED' && (
+                              <button
+                                className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id} style={{ flex: 1 }}
+                                onClick={() => handleDriverTripAction(t.id, startDesignatedDriverTrip)}
+                              >
+                                {busyDriverTripId === t.id ? '…' : 'Start driving'}
+                              </button>
+                            )}
+                            {t.status === 'DRIVING' && (
+                              <button
+                                className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id} style={{ flex: 1 }}
+                                onClick={() => handleDriverTripAction(t.id, completeDesignatedDriverTrip)}
+                              >
+                                {busyDriverTripId === t.id ? '…' : 'Complete'}
+                              </button>
+                            )}
+                          </div>
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {availableTrips && availableTrips.length > 0 && (
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Nearby requests</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {availableTrips.map((t) => (
+                      <DesignatedDriverTripCard
+                        key={t.id} trip={t}
+                        action={
+                          <button
+                            className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id} style={{ width: '100%', marginTop: '8px' }}
+                            onClick={() => handleDriverTripAction(t.id, acceptDesignatedDriverTrip)}
+                          >
+                            {busyDriverTripId === t.id ? '…' : 'Accept'}
+                          </button>
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {pastDriverTrips.length > 0 && (
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Completed</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {pastDriverTrips.map((t) => <DesignatedDriverTripCard key={t.id} trip={t} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Real 배민오더-style table/QR in-store ordering (item 155) -- see lib/dineIn.ts's own
 // doc comment. Deliberately its own smaller, self-contained flow rather than bolted onto
 // MenuView/OrderFoodView's already-tested delivery checkout: no address, no favorites/
@@ -15922,6 +16282,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'JOBS', label: 'Jobs' },
     { id: 'PROPERTY', label: 'Property' },
     { id: 'RIDES', label: 'Rides' },
+    { id: 'DESIGNATED_DRIVER', label: 'Designated driver' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
@@ -15992,6 +16353,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
       {tab === 'PROPERTY' && <PropertyView onMessageLister={handleMessageSeller} />}
       {tab === 'RIDES' && <RidesView />}
+      {tab === 'DESIGNATED_DRIVER' && <DesignatedDriverView />}
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
