@@ -75,11 +75,13 @@ class OrderServiceTest : BehaviorSpec({
         // trusting a relaxed mock's default for a nullable return type.
         val timeDealRepository = mockk<TimeDealRepository>()
         every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
+        val affiliateService = mockk<AffiliateService>()
+        every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository,
+            timeDealRepository, affiliateService,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
@@ -351,11 +353,13 @@ class OrderServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val timeDealRepository = mockk<TimeDealRepository>()
         every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
+        val affiliateService = mockk<AffiliateService>()
+        every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository,
+            timeDealRepository, affiliateService,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(
@@ -543,11 +547,13 @@ class OrderServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val timeDealRepository = mockk<TimeDealRepository>()
         every { timeDealRepository.findActiveDealForProduct(any(), any()) } returns null
+        val affiliateService = mockk<AffiliateService>()
+        every { affiliateService.payCommissionIfReferred(any(), any(), any(), any()) } returns Unit
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
             notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
-            timeDealRepository,
+            timeDealRepository, affiliateService,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)

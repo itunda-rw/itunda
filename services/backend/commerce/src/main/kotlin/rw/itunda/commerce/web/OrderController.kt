@@ -66,7 +66,13 @@ import rw.itunda.commerce.RiderNotAvailableException
 import rw.itunda.commerce.RiderNotRegisteredException
 import rw.itunda.commerce.SelfOrderException
 
-data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String)
+data class PlaceOrderRequest(
+    val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String,
+    // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link code (item 229) -- see
+    // AffiliateService's own doc comment. Optional; omitted/unknown/self-referral all
+    // fall through to a normal order with no commission paid.
+    val referralCode: String? = null,
+)
 data class UpdateOrderStatusRequest(val status: OrderStatus)
 data class SubmitProductReviewRequest(val rating: Int, val comment: String? = null)
 data class ReplyToProductReviewRequest(val reply: String)
@@ -96,7 +102,7 @@ class OrderController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/orders", idempotencyKey, request) {
-            val detail = orderService.placeOrder(currentUser.userId, request.merchantId, request.items, request.deliveryAddress)
+            val detail = orderService.placeOrder(currentUser.userId, request.merchantId, request.items, request.deliveryAddress, request.referralCode)
             201 to mapOf("success" to true, "order" to detail.order, "items" to detail.items)
         }
         return ResponseEntity.status(status).body(body)

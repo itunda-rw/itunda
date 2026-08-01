@@ -102,6 +102,7 @@ class OrderService(
     private val riderRepository: RiderRepository,
     private val pushNotificationService: PushNotificationService,
     private val timeDealRepository: TimeDealRepository,
+    private val affiliateService: AffiliateService,
 ) {
     private val logger = LoggerFactory.getLogger(OrderService::class.java)
 
@@ -114,7 +115,7 @@ class OrderService(
     private val statusOrder = listOf(OrderStatus.PLACED, OrderStatus.PACKED, OrderStatus.SHIPPED, OrderStatus.DELIVERED)
 
     @Transactional
-    fun placeOrder(buyerId: String, merchantId: String, items: List<OrderItemRequest>, deliveryAddress: String): OrderDetail {
+    fun placeOrder(buyerId: String, merchantId: String, items: List<OrderItemRequest>, deliveryAddress: String, referralCode: String? = null): OrderDetail {
         if (items.isEmpty()) {
             throw EmptyOrderException("An order needs at least one item")
         }
@@ -289,6 +290,17 @@ class OrderService(
             sendNewOrderPushAfterCommit(merchant.ownerUserId, title, body, order.id)
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
+        }
+
+        // Real 쿠팡파트너스 (Coupang Partners)-style affiliate commission (item 229) --
+        // see AffiliateService's own doc comment. Best-effort, same "auxiliary side-
+        // effect can't block the real operation" discipline as the new-order push above:
+        // an unknown/self-referral code, or any other issue here, must never fail an
+        // already-completed real order.
+        try {
+            affiliateService.payCommissionIfReferred(referralCode, order.id, buyerId, totalAmount)
+        } catch (e: Exception) {
+            logger.warn("Could not pay affiliate commission for order {}", order.id, e)
         }
 
         return OrderDetail(order, orderItems)
