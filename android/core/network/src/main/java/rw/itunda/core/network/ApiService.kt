@@ -3207,6 +3207,34 @@ interface ApiService {
     @GET("api/v1/parking/sessions/my-history")
     suspend fun getMyParkingHistory(): ParkingSessionsResponse
 
+    // Real Kakao T 시외버스 (intercity bus booking, item 224) -- real peer-to-peer
+    // coach-operator trip pool, fare known and charged in full at booking time (unlike
+    // Parking/Bike's settle-at-checkout shape). First Android client. bank-mfe already
+    // has this; mirrors lib/bus.ts exactly.
+    @POST("api/v1/bus/trips")
+    suspend fun postBusTrip(@Body request: PostBusTripRequest): BusTripResponse
+
+    @GET("api/v1/bus/trips/mine")
+    suspend fun getMyBusTrips(): BusTripsResponse
+
+    @GET("api/v1/bus/trips/{tripId}/bookings")
+    suspend fun getBusTripBookings(@Path("tripId") tripId: String): BusBookingsResponse
+
+    @GET("api/v1/bus/trips/search")
+    suspend fun searchBusTrips(
+        @Query("origin") origin: String? = null,
+        @Query("destination") destination: String? = null,
+    ): BusTripsResponse
+
+    @POST("api/v1/bus/bookings")
+    suspend fun bookBusSeats(@Body request: BookBusSeatsRequest): BusBookingResponse
+
+    @POST("api/v1/bus/bookings/{bookingId}/cancel")
+    suspend fun cancelBusBooking(@Path("bookingId") bookingId: String): BusBookingResponse
+
+    @GET("api/v1/bus/bookings/my-history")
+    suspend fun getMyBusBookings(): BusBookingsResponse
+
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. A buyer books
     // and 100%-prepays a real mechanic to inspect a real Marketplace used-car listing
@@ -3444,6 +3472,30 @@ data class ParkingSessionDto(
 )
 data class ParkingSessionResponse(val success: Boolean, val session: ParkingSessionDto)
 data class ParkingSessionsResponse(val success: Boolean, val sessions: List<ParkingSessionDto>)
+
+// Real Kakao T 시외버스 (intercity bus booking, item 224) -- real peer-to-peer
+// coach-operator trip pool, fare charged in FULL at booking time (not settled at end
+// like Parking/Bike, since a bus ticket's fare is known up front). Mirrors BusTrip.kt/
+// BusBooking.kt exactly.
+data class PostBusTripRequest(
+    val origin: String, val destination: String, val departureTime: String,
+    val totalSeats: Int, val farePerSeat: java.math.BigDecimal,
+)
+data class BusTripDto(
+    val id: String, val operatorUserId: String, val walletId: String, val origin: String, val destination: String,
+    val departureTime: String, val totalSeats: Int, val availableSeats: Int, val farePerSeat: java.math.BigDecimal,
+    val createdAt: String,
+)
+data class BusTripResponse(val success: Boolean, val trip: BusTripDto)
+data class BusTripsResponse(val success: Boolean, val trips: List<BusTripDto>)
+data class BookBusSeatsRequest(val tripId: String, val seatCount: Int)
+data class BusBookingDto(
+    val id: String, val tripId: String, val riderUserId: String, val seatCount: Int,
+    val totalFare: java.math.BigDecimal, val platformFee: java.math.BigDecimal, val paymentTransactionId: String,
+    val status: String, val refundTransactionId: String?, val createdAt: String,
+)
+data class BusBookingResponse(val success: Boolean, val booking: BusBookingDto)
+data class BusBookingsResponse(val success: Boolean, val bookings: List<BusBookingDto>)
 
 // Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
 // RideTripReview.kt doc comment.

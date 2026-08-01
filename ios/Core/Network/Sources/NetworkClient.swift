@@ -584,6 +584,44 @@ public struct ParkingSessionDto: Decodable, Identifiable {
 public struct ParkingSessionResponse: Decodable { public let success: Bool; public let session: ParkingSessionDto }
 public struct ParkingSessionsResponse: Decodable { public let success: Bool; public let sessions: [ParkingSessionDto] }
 
+// Real Kakao T 시외버스 (intercity bus booking, item 224) -- real PEER-TO-PEER
+// coach-operator trip pool, fare charged in FULL at booking time (not settled at end
+// like Parking/Bike). Mirrors BusTrip.kt/BusBooking.kt exactly. bank-mfe/Android
+// already have this; this is the first iOS client.
+public struct PostBusTripRequest: Encodable {
+    public let origin: String; public let destination: String; public let departureTime: String
+    public let totalSeats: Int; public let farePerSeat: Double
+}
+public struct BusTripDto: Decodable, Identifiable {
+    public let id: String
+    public let operatorUserId: String
+    public let walletId: String
+    public let origin: String
+    public let destination: String
+    public let departureTime: String
+    public let totalSeats: Int
+    public let availableSeats: Int
+    public let farePerSeat: Double
+    public let createdAt: String
+}
+public struct BusTripResponse: Decodable { public let success: Bool; public let trip: BusTripDto }
+public struct BusTripsResponse: Decodable { public let success: Bool; public let trips: [BusTripDto] }
+public struct BookBusSeatsRequest: Encodable { public let tripId: String; public let seatCount: Int }
+public struct BusBookingDto: Decodable, Identifiable {
+    public let id: String
+    public let tripId: String
+    public let riderUserId: String
+    public let seatCount: Int
+    public let totalFare: Double
+    public let platformFee: Double
+    public let paymentTransactionId: String
+    public let status: String
+    public let refundTransactionId: String?
+    public let createdAt: String
+}
+public struct BusBookingResponse: Decodable { public let success: Bool; public let booking: BusBookingDto }
+public struct BusBookingsResponse: Decodable { public let success: Bool; public let bookings: [BusBookingDto] }
+
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
 // bank-mfe's lib/vehicleInspection.ts exactly. bank-mfe and Android already have this;
 // this is the first iOS client.
@@ -992,6 +1030,33 @@ extension NetworkClient {
     }
 
     public func getMyParkingHistory() async throws -> ParkingSessionsResponse { try await get("api/v1/parking/sessions/my-history") }
+
+    // Real Kakao T 시외버스 (intercity bus booking, item 224) -- first iOS client for
+    // this feature. bank-mfe/Android already have this; mirrors ApiService.kt exactly.
+    public func postBusTrip(origin: String, destination: String, departureTime: String, totalSeats: Int, farePerSeat: Double) async throws -> BusTripResponse {
+        try await authenticatedPost("api/v1/bus/trips", body: PostBusTripRequest(origin: origin, destination: destination, departureTime: departureTime, totalSeats: totalSeats, farePerSeat: farePerSeat))
+    }
+
+    public func getMyBusTrips() async throws -> BusTripsResponse { try await get("api/v1/bus/trips/mine") }
+
+    public func getBusTripBookings(tripId: String) async throws -> BusBookingsResponse { try await get("api/v1/bus/trips/\(tripId)/bookings") }
+
+    public func searchBusTrips(origin: String?, destination: String?) async throws -> BusTripsResponse {
+        var query: [URLQueryItem] = []
+        if let origin, !origin.isEmpty { query.append(URLQueryItem(name: "origin", value: origin)) }
+        if let destination, !destination.isEmpty { query.append(URLQueryItem(name: "destination", value: destination)) }
+        return try await get("api/v1/bus/trips/search", query: query)
+    }
+
+    public func bookBusSeats(tripId: String, seatCount: Int) async throws -> BusBookingResponse {
+        try await authenticatedPost("api/v1/bus/bookings", body: BookBusSeatsRequest(tripId: tripId, seatCount: seatCount))
+    }
+
+    public func cancelBusBooking(bookingId: String) async throws -> BusBookingResponse {
+        try await authenticatedPost("api/v1/bus/bookings/\(bookingId)/cancel", body: EmptyBody())
+    }
+
+    public func getMyBusBookings() async throws -> BusBookingsResponse { try await get("api/v1/bus/bookings/my-history") }
 
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. bank-mfe and

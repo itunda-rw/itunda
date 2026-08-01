@@ -235,6 +235,7 @@ struct EntireMenuScreen: View {
     // Real Kakao T 주차 (Kakao T Parking, item 223) -- bank-mfe/Android shipped first;
     // same pattern.
     @State private var showParking = false
+    @State private var showBus = false
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment)
     // screen (2026-07-31) -- bank-mfe and Android shipped first; same pattern.
     @State private var showVehicleInspection = false
@@ -352,6 +353,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
                         FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", symbol: "bicycle", tint: .accentBlue, action: { showBikeRental = true }),
                         FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", symbol: "parkingsign.circle.fill", tint: .accentPurple, action: { showParking = true }),
+                        FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", symbol: "bus.fill", tint: .accentTeal, action: { showBus = true }),
                         FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
                         FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", symbol: "car.fill", tint: .accentTeal, action: { showVehicleValuation = true }),
                         FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
