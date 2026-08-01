@@ -126,9 +126,25 @@ class SupportServiceTest : BehaviorSpec({
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
                 LedgerPostResult("ledgertxn_refund", emptyList())
+            val ticketSavedSlot = slot<SupportTicket>()
+            every { supportTicketRepository.save(capture(ticketSavedSlot)) } answers { firstArg() }
 
             val resolved = service.resolve("ticket_1", "admin_1", SupportTicketResolution.REFUNDED, "Confirmed unauthorized")
 
+            // Real bug found live (2026-08-02): resolve() already read this exact
+            // ticket, checked its status, then wrote back to it -- the correct SHAPE
+            // for a race-safe check-then-act, same as RideTripService.acceptTrip -- but
+            // with no @Version, two reviewers concurrently resolving the same ticket as
+            // REFUNDED could both pass the status check before either committed and
+            // both post a real double refund. This asserts the mechanism the fix now
+            // relies on: the SAME versioned entity that was read and status-checked is
+            // the one actually passed to save(), so a concurrent second resolve() on a
+            // stale version real-409s via the existing global
+            // ObjectOptimisticLockingFailureException handler.
+            Then("the same versioned ticket instance that was read is the one saved") {
+                ticketSavedSlot.captured shouldBe ticket
+                ticketSavedSlot.captured.version shouldBe ticket.version
+            }
             Then("it posts a real reversing ledger transaction with every leg flipped") {
                 val legs = legsSlot.captured
                 legs.size shouldBe 2

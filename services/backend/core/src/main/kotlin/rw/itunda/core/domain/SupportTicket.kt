@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class SupportTicketCategory { GENERAL, PAYMENT_DISPUTE, ACCOUNT_TAKEOVER }
@@ -76,6 +77,20 @@ class SupportTicket(
 
     @Column(name = "resolved_at")
     var resolvedAt: Instant? = null,
+
+    // Real bug found live (2026-08-02): SupportService.resolve reads this exact entity,
+    // checks `status == RESOLVED`, then -- for a REFUNDED resolution -- reverses the
+    // original transaction (real money movement) and writes status back to RESOLVED,
+    // the same check-then-act shape RideTripService.acceptTrip/KnowledgeService.
+    // adoptAnswer already establish as needing @Version. With none here, two reviewers
+    // concurrently resolving the same still-OPEN ticket as REFUNDED could both pass the
+    // status check before either committed, both call reverseTransaction, and post a
+    // real DOUBLE refund -- money created from nothing, a more severe instance of the
+    // same bug class than Bike/ParkingSpot/KnowledgeQuestion's own data-integrity-only
+    // versions of it.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", userId = "", transactionId = "", category = SupportTicketCategory.GENERAL,
