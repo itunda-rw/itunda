@@ -179,6 +179,13 @@ private struct BusOperateContent: View {
     @State private var myTrips: [BusTripDto] = []
     @State private var loaded = false
     @State private var error: String?
+    // Real trip manifest -- see getBusTripBookings's own doc comment. Previously a
+    // real, tested backend endpoint with zero client anywhere on any platform: an
+    // operator could post a route and see the seat countdown, but never who actually
+    // booked. Lazily loaded per trip, matching bank-mfe's own established behavior.
+    @State private var expandedTripId: String?
+    @State private var tripBookings: [BusBookingDto]?
+    @State private var manifestError: String?
 
     var body: some View {
         ScrollView {
@@ -225,6 +232,37 @@ private struct BusOperateContent: View {
                                 .font(.caption).bold().foregroundColor(IDS.Colors.brand)
                             Text("\(trip.availableSeats)/\(trip.totalSeats) seats left · \(formatMoneyBus(trip.farePerSeat)) RWF/seat")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Button(action: { Task { await toggleManifest(trip.id) } }) {
+                                Text(expandedTripId == trip.id ? "Hide bookings" : "View bookings")
+                                    .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(IDS.Colors.chipBackground).cornerRadius(8)
+                            }
+                            if expandedTripId == trip.id {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    if let manifestError {
+                                        Text(manifestError).font(.caption).foregroundColor(.red)
+                                    } else if let bookings = tripBookings {
+                                        if bookings.isEmpty {
+                                            Text("No bookings yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        } else {
+                                            ForEach(bookings) { b in
+                                                HStack {
+                                                    Text("Rider #\(b.riderUserId.suffix(6)) · \(b.seatCount) seat\(b.seatCount > 1 ? "s" : "")")
+                                                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                                    Spacer()
+                                                    Text(b.status == "CANCELLED" ? "Cancelled" : "\(formatMoneyBus(b.totalFare)) RWF")
+                                                        .font(.caption).bold()
+                                                        .foregroundColor(b.status == "CANCELLED" ? IDS.Colors.textSecondary : IDS.Colors.textPrimary)
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Text("Loading…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                }
+                                .padding(.top, 4)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
@@ -239,6 +277,21 @@ private struct BusOperateContent: View {
     private func load() async {
         myTrips = (try? await NetworkClient.shared.getMyBusTrips().trips) ?? myTrips
         loaded = true
+    }
+
+    private func toggleManifest(_ tripId: String) async {
+        if expandedTripId == tripId {
+            expandedTripId = nil
+            return
+        }
+        expandedTripId = tripId
+        tripBookings = nil
+        manifestError = nil
+        do {
+            tripBookings = try await NetworkClient.shared.getBusTripBookings(tripId: tripId).bookings
+        } catch {
+            manifestError = "Could not load bookings for this route."
+        }
     }
 
     private func postTrip() async {

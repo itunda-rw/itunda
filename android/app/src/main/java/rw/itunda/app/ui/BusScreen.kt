@@ -243,6 +243,32 @@ private fun BusOperateContent() {
     var loaded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    // Real trip manifest -- see getBusTripBookings's own doc comment. Previously a
+    // real, tested backend endpoint with zero client anywhere on any platform: an
+    // operator could post a route and see the seat countdown, but never who actually
+    // booked. Lazily loaded per trip, matching bank-mfe's own established behavior.
+    var expandedTripId by remember { mutableStateOf<String?>(null) }
+    var tripBookings by remember { mutableStateOf<List<BusBookingDto>?>(null) }
+    var manifestError by remember { mutableStateOf<String?>(null) }
+
+    fun toggleManifest(tripId: String) {
+        if (expandedTripId == tripId) {
+            expandedTripId = null
+            return
+        }
+        expandedTripId = tripId
+        tripBookings = null
+        manifestError = null
+        coroutineScope.launch {
+            try {
+                tripBookings = NetworkClient.apiService.getBusTripBookings(tripId).bookings
+            } catch (e: HttpException) {
+                manifestError = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                manifestError = "Could not load bookings for this route."
+            }
+        }
+    }
 
     fun load() {
         coroutineScope.launch {
@@ -324,6 +350,41 @@ private fun BusOperateContent() {
                             "${trip.availableSeats}/${trip.totalSeats} seats left · ${formatMoneyBus(trip.farePerSeat)} RWF/seat",
                             color = TossSecondary, fontSize = 12.sp,
                         )
+                        Box(
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.chip)
+                                .clickable { toggleManifest(trip.id) }.padding(horizontal = 10.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                if (expandedTripId == trip.id) "Hide bookings" else "View bookings",
+                                color = TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        if (expandedTripId == trip.id) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                val bookings = tripBookings
+                                when {
+                                    manifestError != null -> Text(manifestError!!, color = Ids.colors.danger, fontSize = 12.sp)
+                                    bookings == null -> Text("Loading…", color = TossSecondary, fontSize = 12.sp)
+                                    bookings.isEmpty() -> Text("No bookings yet.", color = TossSecondary, fontSize = 12.sp)
+                                    else -> bookings.forEach { b ->
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(
+                                                "Rider #${b.riderUserId.takeLast(6)} · ${b.seatCount} seat${if (b.seatCount > 1) "s" else ""}",
+                                                color = TossSecondary, fontSize = 12.sp,
+                                            )
+                                            Text(
+                                                if (b.status == "CANCELLED") "Cancelled" else "${formatMoneyBus(b.totalFare)} RWF",
+                                                color = if (b.status == "CANCELLED") TossSecondary else TossText,
+                                                fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
