@@ -93,7 +93,12 @@ struct VehicleValuationScreenView: View {
                                 HStack(alignment: .top) {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text("\(v.modelYear) \(v.make) \(v.model)").bold().font(.subheadline)
-                                        Text("\(Int(v.mileageKm)) km").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        if let valuation = valuations[v.id] {
+                                            Text("\(Int(v.mileageKm)) km · \(valuation.ageYears) \(valuation.ageYears == 1 ? "year" : "years") old · expected \(valuation.expectedMileageKm) km")
+                                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        } else {
+                                            Text("\(Int(v.mileageKm)) km").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        }
                                     }
                                     Spacer()
                                     Button(action: { editingMileageVehicle = v; editMileageText = String(v.mileageKm) }) {

@@ -210,7 +210,13 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                                 Column {
                                     Text("${v.modelYear} ${v.make} ${v.model}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text("${"%,d".format(v.mileageKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                    Text(
+                                        buildString {
+                                            append("${"%,d".format(v.mileageKm)} km")
+                                            valuation?.let { append(" · ${it.ageYears} ${if (it.ageYears == 1) "year" else "years"} old · expected ${"%,d".format(it.expectedMileageKm)} km") }
+                                        },
+                                        color = Ids.colors.textSecondary, fontSize = 12.sp,
+                                    )
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Box(

@@ -3788,7 +3788,12 @@ function MyVehiclesCard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{v.modelYear} {v.make} {v.model}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{v.mileageKm.toLocaleString()} km</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                  {v.mileageKm.toLocaleString()} km
+                  {valuation && (
+                    <> · {valuation.ageYears} {valuation.ageYears === 1 ? 'year' : 'years'} old · expected {valuation.expectedMileageKm.toLocaleString()} km</>
+                  )}
+                </p>
               </div>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <button className="toss-btn toss-btn-secondary" disabled={busyId === v.id} onClick={() => handleUpdateMileage(v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
