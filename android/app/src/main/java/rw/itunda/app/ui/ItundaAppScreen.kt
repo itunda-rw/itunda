@@ -1844,6 +1844,11 @@ private fun MyTab(
     var myListingsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
     var myJobPostsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
     var myPropertyListingsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+    // Real 쿠팡파트너스 (Coupang Partners)-style affiliate earnings read-back (item 229)
+    // -- link creation itself happens inline on the Shop product card's Share icon;
+    // this is purely the read-back, mirroring bank-mfe's own AffiliateEarningsCard.
+    var affiliateLinks by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.AffiliateLinkDto>>(emptyList()) }
+    var affiliateCommissions by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.AffiliateCommissionDto>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         // Each fetch independent and best-effort -- one product's API hiccup must
@@ -1857,6 +1862,8 @@ private fun MyTab(
         try { myListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyListings().listings.size } catch (_: Exception) { }
         try { myJobPostsCount = rw.itunda.core.network.NetworkClient.apiService.getMyJobPosts().posts.size } catch (_: Exception) { }
         try { myPropertyListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyPropertyListings().listings.size } catch (_: Exception) { }
+        try { affiliateLinks = rw.itunda.core.network.NetworkClient.apiService.getMyAffiliateLinks().links } catch (_: Exception) { }
+        try { affiliateCommissions = rw.itunda.core.network.NetworkClient.apiService.getMyAffiliateCommissions().commissions } catch (_: Exception) { }
     }
 
     LazyColumn(
@@ -1866,6 +1873,30 @@ private fun MyTab(
         item { BackTopBar("My", onBack) }
         item { ProfilePhotoCard() }
         item { VerificationCard() }
+        if (affiliateLinks.isNotEmpty()) {
+            item {
+                val totalClicks = affiliateLinks.sumOf { it.clickCount }
+                val totalEarned = affiliateCommissions.sumOf { it.commissionAmount }
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Partner earnings", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Earn 3% on any purchase made through a product link you've shared.", color = TossSecondary, fontSize = 12.sp)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Links shared", color = TossSecondary, fontSize = 13.sp)
+                            Text("${affiliateLinks.size}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Total clicks", color = TossSecondary, fontSize = 13.sp)
+                            Text("$totalClicks", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Total earned", color = TossSecondary, fontSize = 13.sp)
+                            Text("${"%,.0f".format(totalEarned)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
         // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with recent
         // orders across every product, not a settings list. Shows the real 3 most
         // recent orders per product; tapping switches to that product's own tab where

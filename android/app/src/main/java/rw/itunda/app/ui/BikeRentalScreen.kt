@@ -219,6 +219,7 @@ private fun BikeRentContent() {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(if (bike.type == "ELECTRIC") "⚡ Electric bike" else "🚲 Regular bike", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(if (bike.type == "ELECTRIC") "150 RWF/minute" else "80 RWF/minute", color = TossSecondary, fontSize = 12.sp)
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
                                 .clickable(enabled = busyBikeId != bike.id) { startRental(bike.id) }.padding(vertical = 12.dp),

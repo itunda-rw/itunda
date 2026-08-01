@@ -186,6 +186,7 @@ private fun BusRideContent() {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("${trip.origin} → ${trip.destination}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("🕒 Departs ${trip.departureTime.take(16).replace("T", " ")}", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(
                             "${formatMoneyBus(trip.farePerSeat)} RWF/seat · ${trip.availableSeats} seat(s) left",
                             color = TossSecondary, fontSize = 12.sp,
@@ -318,6 +319,7 @@ private fun BusOperateContent() {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("${trip.origin} → ${trip.destination}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("🕒 Departs ${trip.departureTime.take(16).replace("T", " ")}", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(
                             "${trip.availableSeats}/${trip.totalSeats} seats left · ${formatMoneyBus(trip.farePerSeat)} RWF/seat",
                             color = TossSecondary, fontSize = 12.sp,

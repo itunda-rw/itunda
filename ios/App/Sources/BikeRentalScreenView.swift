@@ -124,6 +124,7 @@ private struct BikeRentContent: View {
                     ForEach(nearbyBikes) { bike in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(bike.type == "ELECTRIC" ? "⚡ Electric bike" : "🚲 Regular bike").bold().foregroundColor(IDS.Colors.textPrimary)
+                            Text(bike.type == "ELECTRIC" ? "150 RWF/minute" : "80 RWF/minute").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Button(action: { Task { await startRental(bike.id) } }) {
                                 Text(busyBikeId == bike.id ? "…" : "Unlock").bold().foregroundColor(.white)
                                     .frame(maxWidth: .infinity).padding(.vertical, 12)

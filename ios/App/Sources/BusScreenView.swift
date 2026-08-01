@@ -80,6 +80,8 @@ private struct BusRideContent: View {
                         ForEach(trips) { trip in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("\(trip.origin) → \(trip.destination)").bold().foregroundColor(IDS.Colors.textPrimary)
+                                Text("🕒 Departs \(String(trip.departureTime.prefix(16)).replacingOccurrences(of: "T", with: " "))")
+                                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
                                 Text("\(formatMoneyBus(trip.farePerSeat)) RWF/seat · \(trip.availableSeats) seat(s) left")
                                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 HStack {
@@ -219,6 +221,8 @@ private struct BusOperateContent: View {
                     ForEach(myTrips) { trip in
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(trip.origin) → \(trip.destination)").bold().foregroundColor(IDS.Colors.textPrimary)
+                            Text("🕒 Departs \(String(trip.departureTime.prefix(16)).replacingOccurrences(of: "T", with: " "))")
+                                .font(.caption).bold().foregroundColor(IDS.Colors.brand)
                             Text("\(trip.availableSeats)/\(trip.totalSeats) seats left · \(formatMoneyBus(trip.farePerSeat)) RWF/seat")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
