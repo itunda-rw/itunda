@@ -1470,7 +1470,10 @@ data class RemoveFavoriteResponse(val success: Boolean)
 
 // Real Toss Securities-style stock investing (2026-07-20) -- see ApiService's own
 // getStocks doc comment for the full account.
-data class StockDto(val id: String, val symbol: String, val name: String, val price: Double, val change: Double, val changePercent: Double, val marketCap: String, val volume: Long)
+// Real Toss/Naver 해외주식 (overseas stock trading, item 230) -- "RSE" (the original 6
+// domestic symbols) vs "NASDAQ" (5 real US-listed symbols, same deterministic
+// simulation StockCatalog.kt already establishes for RSE). bank-mfe already has this.
+data class StockDto(val id: String, val symbol: String, val name: String, val price: Double, val change: Double, val changePercent: Double, val marketCap: String, val volume: Long, val market: String = "RSE")
 data class StocksResponse(val success: Boolean, val stocks: List<StockDto>, val watchlist: List<StockDto>? = null)
 data class StockPricePointDto(val date: String, val price: Double)
 data class StockHistoryResponse(val success: Boolean, val history: List<StockPricePointDto>)

@@ -3146,6 +3146,10 @@ public let platformMembershipTiers: [EatsMembershipTier] = [EatsMembershipTier(d
 // feature has ever had, ported from bank-mfe/Android the same session. Day-over-day
 // movement/history are real deterministic simulations, not live RSE data -- see the
 // backend's StockCatalog.kt for the full account.
+// Real Toss/Naver 해외주식 (overseas stock trading, item 230) -- "RSE" (the original 6
+// domestic symbols) vs "NASDAQ" (5 real US-listed symbols, same deterministic
+// simulation StockCatalog.kt already establishes for RSE). bank-mfe/Android already
+// have this.
 public struct StockDto: Decodable, Identifiable {
     public let id: String
     public let symbol: String
@@ -3155,6 +3159,7 @@ public struct StockDto: Decodable, Identifiable {
     public let changePercent: Double
     public let marketCap: String
     public let volume: Int
+    public let market: String
 }
 public struct StocksResponse: Decodable { public let success: Bool; public let stocks: [StockDto]? ; public let watchlist: [StockDto]? }
 public struct StockPricePointDto: Decodable, Identifiable { public let date: String; public let price: Double; public var id: String { date } }

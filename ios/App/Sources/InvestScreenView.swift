@@ -75,13 +75,27 @@ private struct MarketContent: View {
     let onOpen: (StockDto) -> Void
     @State private var stocks: [StockDto]?
     @State private var error: String?
+    // Real Toss/Naver 해외주식 (overseas stock trading, item 230) -- mirrors bank-mfe's
+    // own All/Rwanda(RSE)/Overseas(NASDAQ) filter exactly.
+    @State private var marketFilter = "ALL"
 
     var body: some View {
         VStack(spacing: 10) {
             if let error {
                 InvestErrorCard(message: error, onRetry: load)
             } else if let stocks {
-                ForEach(stocks) { stock in
+                HStack(spacing: 8) {
+                    ForEach([("ALL", "All"), ("RSE", "Rwanda (RSE)"), ("NASDAQ", "Overseas")], id: \.0) { id, label in
+                        Text(label).font(.caption).bold(marketFilter == id)
+                            .foregroundColor(marketFilter == id ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(marketFilter == id ? IDS.Colors.brand.opacity(0.12) : Color.clear)
+                            .clipShape(Capsule())
+                            .onTapGesture { marketFilter = id }
+                    }
+                    Spacer()
+                }
+                ForEach(stocks.filter { marketFilter == "ALL" || $0.market == marketFilter }) { stock in
                     StockRow(stock: stock, isWatched: watchlist.contains(where: { $0.id == stock.id })) { onOpen(stock) }
                 }
             } else {
@@ -134,7 +148,14 @@ private struct StockRow: View {
         Button(action: onTap) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(stock.symbol).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    HStack(spacing: 6) {
+                        Text(stock.symbol).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        if stock.market != "RSE" {
+                            Text(stock.market).font(.system(size: 9, weight: .bold)).foregroundColor(IDS.Colors.textSecondary)
+                                .padding(.horizontal, 5).padding(.vertical, 2)
+                                .background(IDS.Colors.chipBackground).cornerRadius(4)
+                        }
+                    }
                     Text(stock.name).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
                 Spacer()

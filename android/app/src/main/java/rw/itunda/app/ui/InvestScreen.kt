@@ -136,6 +136,9 @@ fun InvestScreen(onBack: () -> Unit) {
 private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit) {
     var stocks by remember { mutableStateOf<List<StockDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real Toss/Naver 해외주식 (overseas stock trading, item 230) -- mirrors bank-mfe's
+    // own All/Rwanda(RSE)/Overseas(NASDAQ) filter exactly.
+    var marketFilter by remember { mutableStateOf("ALL") }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -157,7 +160,22 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
         error != null -> ErrorCardInvest(error!!, onRetry = ::load)
         stocks == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            stocks!!.forEach { StockRow(it, isWatched = watchlist?.any { w -> w.id == it.id } == true, onClick = { onOpen(it) }) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("ALL" to "All", "RSE" to "Rwanda (RSE)", "NASDAQ" to "Overseas").forEach { (id, label) ->
+                    val selected = marketFilter == id
+                    Text(
+                        label, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selected) Ids.colors.brand else TossSecondary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (selected) Ids.colors.brand.copy(alpha = 0.12f) else Color.Transparent)
+                            .clickable { marketFilter = id }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
+            stocks!!.filter { marketFilter == "ALL" || it.market == marketFilter }
+                .forEach { StockRow(it, isWatched = watchlist?.any { w -> w.id == it.id } == true, onClick = { onOpen(it) }) }
         }
     }
 }
@@ -182,7 +200,19 @@ private fun StockRow(stock: StockDto, isWatched: Boolean, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(stock.symbol, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stock.symbol, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (stock.market != "RSE") {
+                    Text(
+                        stock.market, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TossSecondary,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Ids.colors.chip)
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                    )
+                }
+            }
             Text(stock.name, color = TossSecondary, fontSize = 12.sp)
         }
         if (isWatched) {
