@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class PartnerStatus { ACTIVE, SUSPENDED }
@@ -113,6 +114,15 @@ class PartnerMiniApp(
 
     @Column(name = "decision_reason")
     var decisionReason: String? = null,
+
+    // Real bug found live (2026-08-02): PartnerService.decide reads this exact entity,
+    // checks `status != PENDING`, then writes APPROVED/REJECTED -- the same check-then-
+    // act shape SupportTicket/Incident/HoodReport's own @Version fixes already address.
+    // Two admins concurrently reviewing the same submission could both pass the status
+    // check and race to a conflicting final decision.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", partnerId = "", name = "", description = "", bundleUrl = "", permissions = "")
 }

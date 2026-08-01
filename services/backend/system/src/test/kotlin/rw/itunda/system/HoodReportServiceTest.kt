@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.core.domain.HoodReport
 import rw.itunda.core.domain.HoodReportStatus
@@ -51,13 +52,24 @@ class HoodReportServiceTest : BehaviorSpec({
 
         When("an administrator resolves it") {
             every { repository.findById("report_2") } returns Optional.of(report)
-            every { repository.save(any()) } answers { firstArg() }
+            val savedSlot = slot<HoodReport>()
+            every { repository.save(capture(savedSlot)) } answers { firstArg() }
             val resolved = service.resolve("report_2", "admin_1")
 
             Then("it records an auditable resolution") {
                 resolved.status shouldBe HoodReportStatus.RESOLVED
                 resolved.reviewedBy shouldBe "admin_1"
                 resolved.reviewedAt shouldNotBe null
+            }
+
+            // Real bug found live (2026-08-02): resolve() already read this exact
+            // report, then wrote back to it -- the correct check-then-act shape -- but
+            // with no @Version, two moderators concurrently resolving the same report
+            // could silently overwrite each other's reviewedBy. Asserts the mechanism
+            // the fix now relies on: the same versioned entity read is the one saved.
+            Then("the same versioned report instance that was read is the one saved") {
+                savedSlot.captured shouldBe report
+                savedSlot.captured.version shouldBe report.version
             }
         }
     }

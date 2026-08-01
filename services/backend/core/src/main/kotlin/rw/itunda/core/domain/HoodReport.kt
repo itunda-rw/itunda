@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class HoodReportTargetType { MARKETPLACE_LISTING, COMMUNITY_POST, JOB_POST, PROPERTY_LISTING, DIRECT_MESSAGE, GROUP_MESSAGE }
@@ -23,4 +24,9 @@ class HoodReport(
     @Column(name = "reviewed_by", length = 64) var reviewedBy: String? = null,
     @Column(name = "reviewed_at") var reviewedAt: Instant? = null,
     @Column(name = "created_at", nullable = false) val createdAt: Instant = Instant.now(),
+    // Real bug found live (2026-08-02): HoodReportService.resolve/removeTarget both
+    // read-then-write this exact entity with no @Version -- two moderators concurrently
+    // resolving the same report could silently overwrite each other's reviewedBy, the
+    // same audit-trail-corruption class SupportTicket/Incident's own fixes address.
+    @Version @Column(nullable = false) var version: Long = 0,
 ) { protected constructor() : this("", "", HoodReportTargetType.JOB_POST, "", "") }

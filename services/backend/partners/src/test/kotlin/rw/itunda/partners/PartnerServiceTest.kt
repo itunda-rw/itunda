@@ -157,7 +157,8 @@ class PartnerServiceTest : BehaviorSpec({
             bundleUrl = "https://acme.rw/bundle.js", permissions = "wallet:read", status = PartnerMiniAppStatus.PENDING,
         )
         every { partnerMiniAppRepository.findById("partner_app_1") } returns Optional.of(miniApp)
-        every { partnerMiniAppRepository.save(any()) } answers { firstArg() }
+        val savedSlot = slot<PartnerMiniApp>()
+        every { partnerMiniAppRepository.save(capture(savedSlot)) } answers { firstArg() }
 
         When("approving") {
             val decided = service.decide("partner_app_1", "admin_1", approve = true, reason = null)
@@ -165,6 +166,17 @@ class PartnerServiceTest : BehaviorSpec({
             Then("it's marked APPROVED and now appears in the real published catalog") {
                 decided.status shouldBe PartnerMiniAppStatus.APPROVED
                 decided.reviewedBy shouldBe "admin_1"
+            }
+
+            // Real bug found live (2026-08-02): decide() already read this exact
+            // submission, checked its status, then wrote back to it -- the correct
+            // check-then-act shape -- but with no @Version, two admins concurrently
+            // reviewing the same submission could race to a conflicting final decision.
+            // Asserts the mechanism the fix now relies on: the same versioned entity
+            // read is the one saved.
+            Then("the same versioned mini-app instance that was read is the one saved") {
+                savedSlot.captured shouldBe miniApp
+                savedSlot.captured.version shouldBe miniApp.version
             }
         }
 

@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class IncidentStatus { OPEN, RESOLVED }
@@ -48,6 +49,15 @@ class Incident(
 
     @Column(name = "resolved_by", length = 64)
     var resolvedBy: String? = null,
+
+    // Real bug found live (2026-08-02): IncidentDetector.resolve reads this exact
+    // entity, checks `status == RESOLVED`, then writes RESOLVED/resolvedBy/resolvedAt --
+    // the same check-then-act shape SupportTicket's own @Version fix already addresses.
+    // No money movement here, but two admins concurrently resolving the same incident
+    // could silently overwrite each other's resolvedBy, corrupting the audit trail.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", railId = "", railDisplayName = "", description = "", failureCount = 0)
 }
