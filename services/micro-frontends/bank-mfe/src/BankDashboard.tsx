@@ -151,12 +151,16 @@ import {
   type DesignatedDriver, type DesignatedDriverTrip,
 } from './lib/designatedDriver';
 import {
+  endBikeAssetRental, fetchMyBikeAssetRentalHistory, fetchMyBikeAssets, fetchNearbyBikeAssets, registerBikeAsset, setBikeAssetAvailability,
+  startBikeAssetRental, type BikeAsset, type BikeAssetRentalSession, type BikeAssetType,
+} from './lib/bikeshare';
+import {
   acceptInspection, cancelInspection, completeInspection, fetchAvailableMechanics, fetchMyInspectionBookings,
   fetchMyMechanicBookings, fetchMyMechanicProfile, registerAsMechanic, requestInspection, setMechanicAvailability,
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -12472,6 +12476,251 @@ function DesignatedDriverView() {
   );
 }
 
+// Real Kakao T 바이크 (Kakao T Bike, item 222) -- see lib/bikeshare.ts's own doc
+// comment for the full sourced account. Unlike Rides/Designated driver above, there's
+// no live-polling trip status here -- a rental is a simple start-now/end-now action,
+// the fare only becomes known once the rider ends it.
+function BikeShareView() {
+  const [subTab, setSubTab] = useState<'RENT' | 'OWN'>('RENT');
+
+  // Rider side
+  const [nearbyBikes, setNearbyBikes] = useState<BikeAsset[] | null>(null);
+  const [activeRental, setActiveRental] = useState<BikeAssetRentalSession | null>(null);
+  const [rentalHistory, setRentalHistory] = useState<BikeAssetRentalSession[] | null>(null);
+  const [riderError, setRiderError] = useState<string | null>(null);
+  const [busyBikeId, setBusyBikeId] = useState<string | null>(null);
+  const [endingRental, setEndingRental] = useState(false);
+  const [justCompletedRental, setJustCompletedRental] = useState<BikeAssetRentalSession | null>(null);
+
+  const loadRiderData = () => {
+    if (!navigator.geolocation) {
+      setRiderError('Location access is required to find nearby bikes.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        fetchNearbyBikeAssets(pos.coords.latitude, pos.coords.longitude)
+          .then(setNearbyBikes)
+          .catch((err) => setRiderError(err instanceof ApiError ? err.message : 'Could not load nearby bikes.'));
+      },
+      () => setRiderError('Could not access your location.'),
+    );
+    fetchMyBikeAssetRentalHistory().then(setRentalHistory).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (subTab !== 'RENT') return;
+    loadRiderData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab]);
+
+  useEffect(() => {
+    const active = (rentalHistory ?? []).find((r) => r.status === 'ACTIVE');
+    setActiveRental(active ?? null);
+  }, [rentalHistory]);
+
+  const handleStartRental = (bikeId: string) => {
+    if (!navigator.geolocation) return;
+    setBusyBikeId(bikeId);
+    setRiderError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        startBikeAssetRental(bikeId, pos.coords.latitude, pos.coords.longitude)
+          .then((rental) => { setActiveRental(rental); setBusyBikeId(null); })
+          .catch((err) => { setRiderError(err instanceof ApiError ? err.message : 'Could not start this rental.'); setBusyBikeId(null); });
+      },
+      () => { setRiderError('Could not access your location.'); setBusyBikeId(null); },
+    );
+  };
+
+  const handleEndRental = () => {
+    if (!activeRental || !navigator.geolocation) return;
+    setEndingRental(true);
+    setRiderError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        endBikeAssetRental(activeRental.id, pos.coords.latitude, pos.coords.longitude)
+          .then((rental) => {
+            setActiveRental(null);
+            setJustCompletedRental(rental);
+            setEndingRental(false);
+            loadRiderData();
+          })
+          .catch((err) => { setRiderError(err instanceof ApiError ? err.message : 'Could not end this rental.'); setEndingRental(false); });
+      },
+      () => { setRiderError('Could not access your location.'); setEndingRental(false); },
+    );
+  };
+
+  // Owner side
+  const [myBikes, setMyBikes] = useState<BikeAsset[] | null>(null);
+  const [bikeType, setBikeType] = useState<BikeAssetType>('REGULAR');
+  const [registering, setRegistering] = useState(false);
+  const [ownerError, setOwnerError] = useState<string | null>(null);
+
+  const loadMyBikes = () => {
+    fetchMyBikeAssets().then(setMyBikes).catch((err) => setOwnerError(err instanceof ApiError ? err.message : 'Could not load your bikes.'));
+  };
+
+  useEffect(() => {
+    if (subTab === 'OWN') loadMyBikes();
+  }, [subTab]);
+
+  const handleRegisterBike = () => {
+    if (!navigator.geolocation) return;
+    setRegistering(true);
+    setOwnerError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        registerBikeAsset(bikeType, pos.coords.latitude, pos.coords.longitude)
+          .then(() => { loadMyBikes(); setRegistering(false); })
+          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not register this bike.'); setRegistering(false); });
+      },
+      () => { setOwnerError('Could not access your location.'); setRegistering(false); },
+    );
+  };
+
+  const handleToggleBikeAvailable = (bike: BikeAsset) => {
+    setBusyBikeId(bike.id);
+    setOwnerError(null);
+    setBikeAssetAvailability(bike.id, !bike.available)
+      .then(() => { loadMyBikes(); setBusyBikeId(null); })
+      .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not update this bike.'); setBusyBikeId(null); });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          className={subTab === 'RENT' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('RENT')} style={{ flex: 1 }}
+        >
+          Rent a bike
+        </button>
+        <button
+          className={subTab === 'OWN' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('OWN')} style={{ flex: 1 }}
+        >
+          My bikes
+        </button>
+      </div>
+
+      {subTab === 'RENT' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {riderError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{riderError}</p>}
+          {justCompletedRental && (
+            <div className="toss-card" style={{ textAlign: 'center', padding: '24px' }}>
+              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Rental complete</p>
+              <p style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0' }}>{(justCompletedRental.totalFare ?? 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{justCompletedRental.durationMinutes} minutes</p>
+              <button className="toss-btn toss-btn-secondary" onClick={() => setJustCompletedRental(null)} style={{ marginTop: '12px' }}>
+                Done
+              </button>
+            </div>
+          )}
+          {!justCompletedRental && activeRental && (
+            <div className="toss-card">
+              <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>🚲 Riding now</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+                Fare is calculated by elapsed time once you end the rental.
+              </p>
+              <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={endingRental} onClick={handleEndRental}>
+                {endingRental ? 'Ending…' : 'End rental (park the bike here)'}
+              </button>
+            </div>
+          )}
+          {!justCompletedRental && !activeRental && (
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+                Nearby bikes, within 5 km of your real location.
+              </p>
+              {nearbyBikes === null ? (
+                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+              ) : nearbyBikes.length === 0 ? (
+                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No bikes nearby right now.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {nearbyBikes.map((bike) => (
+                    <div key={bike.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <p style={{ fontSize: '13px', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'}</p>
+                        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{bike.type === 'ELECTRIC' ? '150' : '80'} RWF/minute</p>
+                      </div>
+                      <button
+                        className="toss-btn toss-btn-primary" disabled={busyBikeId === bike.id}
+                        onClick={() => handleStartRental(bike.id)}
+                      >
+                        {busyBikeId === bike.id ? '…' : 'Unlock'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {rentalHistory && rentalHistory.filter((r) => r.status === 'COMPLETED').length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past rentals</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
+                  <div key={r.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.durationMinutes} min</p>
+                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {subTab === 'OWN' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {ownerError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{ownerError}</p>}
+          <div className="toss-card">
+            <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Add your bike to the pool</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              Uses your real current location as the bike's starting spot.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <button
+                className={bikeType === 'REGULAR' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                onClick={() => setBikeType('REGULAR')} style={{ flex: 1 }}
+              >
+                Regular
+              </button>
+              <button
+                className={bikeType === 'ELECTRIC' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                onClick={() => setBikeType('ELECTRIC')} style={{ flex: 1 }}
+              >
+                Electric
+              </button>
+            </div>
+            <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={registering} onClick={handleRegisterBike}>
+              {registering ? 'Registering…' : 'Register bike'}
+            </button>
+          </div>
+          {myBikes && myBikes.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bikes</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {myBikes.map((bike) => (
+                  <div key={bike.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'} bike</p>
+                    <button className="toss-btn toss-btn-secondary" disabled={busyBikeId === bike.id} onClick={() => handleToggleBikeAvailable(bike)}>
+                      {busyBikeId === bike.id ? '…' : bike.available ? 'Available' : 'Unavailable'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Real 배민오더-style table/QR in-store ordering (item 155) -- see lib/dineIn.ts's own
 // doc comment. Deliberately its own smaller, self-contained flow rather than bolted onto
 // MenuView/OrderFoodView's already-tested delivery checkout: no address, no favorites/
@@ -16283,6 +16532,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'PROPERTY', label: 'Property' },
     { id: 'RIDES', label: 'Rides' },
     { id: 'DESIGNATED_DRIVER', label: 'Designated driver' },
+    { id: 'BIKESHARE', label: 'Bike' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
@@ -16354,6 +16604,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'PROPERTY' && <PropertyView onMessageLister={handleMessageSeller} />}
       {tab === 'RIDES' && <RidesView />}
       {tab === 'DESIGNATED_DRIVER' && <DesignatedDriverView />}
+      {tab === 'BIKESHARE' && <BikeShareView />}
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
