@@ -35,6 +35,10 @@ import {
   type StudentLoan, type StudentLoanLevel, type StudentLoanSuggestedPayment,
 } from './lib/studentLoan';
 import {
+  cancelMotoOwnershipPlan, contributeToMotoOwnershipPlan, convertMotoOwnershipPlanToLoan, createMotoOwnershipPlan, fetchMyMotoOwnershipPlans, repayMotoOwnershipPlan,
+  type MotoOwnershipPlan,
+} from './lib/motoOwnership';
+import {
   cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
   WEEKLY_SAVINGS_ESCALATION_RATES, WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS, WEEKLY_SAVINGS_TERM_WEEKS,
   type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
@@ -1568,7 +1572,7 @@ function OverviewView() {
 // (rw.itunda.loans, BNR-licensed partner banks alongside itunda's own book, see
 // LoanOffer.kt's own doc comment) with zero client UI anywhere.
 function LoansView() {
-  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT' | 'HARVEST_ADVANCE' | 'VUP' | 'STUDENT'>('OFFERS');
+  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT' | 'HARVEST_ADVANCE' | 'VUP' | 'STUDENT' | 'MOTO_OWNERSHIP'>('OFFERS');
   const [offers, setOffers] = useState<LoanOffer[] | null>(null);
   const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
   const [lenders, setLenders] = useState<Lender[] | null>(null);
@@ -1656,14 +1660,16 @@ function LoansView() {
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('HARVEST_ADVANCE')}>Harvest advance</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('VUP')}>VUP Financial Services</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('STUDENT')}>BRD Student Loan</button>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('MOTO_OWNERSHIP')}>Moto-Taxi Ownership</button>
       </div>
       {mode === 'OVERDRAFT' && <OverdraftView />}
       {mode === 'POSTPAID_CREDIT' && <PostpaidCreditView />}
       {mode === 'HARVEST_ADVANCE' && <HarvestAdvanceView />}
       {mode === 'VUP' && <VupLoanView />}
       {mode === 'STUDENT' && <StudentLoanView />}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && refinanceResult && (
+      {mode === 'MOTO_OWNERSHIP' && <MotoOwnershipView />}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && refinanceResult && (
         <div className="toss-card" style={{ padding: '16px', border: '1px solid var(--toss-blue)' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
@@ -2519,6 +2525,219 @@ function StudentLoanView() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Real Rwanda moto-taxi ownership savings-to-loan plan -- see lib/motoOwnership.ts's
+// own doc comment for the full sourced account. The first two-PHASE product in this
+// codebase: save toward a real 30% down payment (itunda's own policy pick), then
+// convert the plan into an unsecured loan for the remaining balance. Distinct from
+// VupLoanView/StudentLoanView above: this is asset-purchase financing tied to a
+// specific real Rwanda sector (moto-taxi ownership), not a cash microloan.
+function MotoOwnershipView() {
+  const [plans, setPlans] = useState<MotoOwnershipPlan[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [bikePrice, setBikePrice] = useState('');
+  const [dailyContribution, setDailyContribution] = useState('');
+  const [contributeAmounts, setContributeAmounts] = useState<Record<string, string>>({});
+  const [repayAmounts, setRepayAmounts] = useState<Record<string, string>>({});
+
+  const refresh = () => {
+    setError(null);
+    fetchMyMotoOwnershipPlans()
+      .then(setPlans)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your moto-taxi ownership plans.'));
+  };
+
+  useEffect(refresh, []);
+
+  const hasActivePlan = (plans ?? []).some((plan) => plan.status === 'SAVING' || plan.status === 'LOAN_ACTIVE');
+  const previewDownPayment = Number(bikePrice) > 0 ? Number(bikePrice) * 0.3 : 0;
+
+  const handleCreate = async () => {
+    const priceValue = Number(bikePrice);
+    const contributionValue = Number(dailyContribution);
+    if (!priceValue || priceValue <= 0) { setError('Enter a valid bike price.'); return; }
+    if (!contributionValue || contributionValue <= 0) { setError('Enter a valid daily contribution.'); return; }
+    setBusyId('create');
+    setError(null);
+    try {
+      await createMotoOwnershipPlan(priceValue, contributionValue);
+      setBikePrice(''); setDailyContribution('');
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this moto-taxi ownership plan.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleContribute = async (planId: string) => {
+    const value = Number(contributeAmounts[planId] ?? '');
+    if (!value || value <= 0) { setError('Enter a valid contribution amount.'); return; }
+    setBusyId(planId);
+    setError(null);
+    try {
+      await contributeToMotoOwnershipPlan(planId, value);
+      setContributeAmounts((prev) => { const next = { ...prev }; delete next[planId]; return next; });
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not contribute to this plan.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCancel = async (planId: string) => {
+    setBusyId(planId);
+    setError(null);
+    try {
+      await cancelMotoOwnershipPlan(planId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this plan.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleConvert = async (planId: string) => {
+    setBusyId(planId);
+    setError(null);
+    try {
+      await convertMotoOwnershipPlanToLoan(planId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not convert this plan to a loan.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRepay = async (planId: string) => {
+    const value = Number(repayAmounts[planId] ?? '');
+    if (!value || value <= 0) { setError('Enter a valid repayment amount.'); return; }
+    setBusyId(planId);
+    setError(null);
+    try {
+      await repayMotoOwnershipPlan(planId, value);
+      setRepayAmounts((prev) => { const next = { ...prev }; delete next[planId]; return next; });
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not repay this loan.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (plans === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Moto-Taxi Ownership Plan</h4>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          Save toward a 30% down payment on your own moto-taxi bike (itunda's own down-payment policy), then convert the rest into an unsecured loan.
+          {' '}A real entry-level bike costs around 600,000 RWF -- this fills the gap left since Rwanda's taxi-moto cooperatives, which used to help
+          {' '}drivers become owner-operators, were dissolved.
+        </p>
+        {hasActivePlan ? (
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '8px' }}>You already have an active moto-taxi ownership plan -- complete or cancel it before starting another.</p>
+        ) : (
+          <>
+            <input
+              type="number" value={bikePrice} onChange={(e) => setBikePrice(e.target.value)} placeholder="Bike price (RWF, 300,000-2,500,000)"
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+            />
+            <input
+              type="number" value={dailyContribution} onChange={(e) => setDailyContribution(e.target.value)} placeholder="Daily contribution (RWF)"
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+            />
+            {previewDownPayment > 0 && (
+              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+                Down payment target (30%): {previewDownPayment.toLocaleString()} RWF
+              </p>
+            )}
+            <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'create'} onClick={handleCreate}>
+              {busyId === 'create' ? 'Creating…' : 'Start plan'}
+            </button>
+          </>
+        )}
+      </div>
+
+      {plans.length > 0 && (
+        <div>
+          <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My moto-taxi ownership plans</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {plans.map((plan) => {
+              const progressPct = plan.downPaymentTarget > 0 ? Math.min(100, Math.round((plan.savedAmount / plan.downPaymentTarget) * 100)) : 0;
+              return (
+                <div key={plan.id} className="toss-card" style={{ padding: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{plan.bikePrice.toLocaleString()} RWF bike</p>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{plan.status}</span>
+                  </div>
+                  {plan.status === 'SAVING' && (
+                    <>
+                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+                        Saved {plan.savedAmount.toLocaleString()} / {plan.downPaymentTarget.toLocaleString()} RWF down payment
+                      </p>
+                      <div style={{ height: '6px', borderRadius: '3px', background: 'var(--toss-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${progressPct}%`, background: 'var(--toss-blue)' }} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                        <input
+                          type="number" value={contributeAmounts[plan.id] ?? ''} onChange={(e) => setContributeAmounts((prev) => ({ ...prev, [plan.id]: e.target.value }))}
+                          placeholder="Contribution amount (RWF)"
+                          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                        />
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busyId === plan.id} onClick={() => handleContribute(plan.id)}>
+                            {busyId === plan.id ? 'Saving…' : 'Contribute'}
+                          </button>
+                          <button className="toss-btn toss-btn-secondary" style={{ flex: 1, color: '#E53935' }} disabled={busyId === plan.id} onClick={() => handleCancel(plan.id)}>
+                            Cancel
+                          </button>
+                        </div>
+                        {plan.savedAmount >= plan.downPaymentTarget && (
+                          <>
+                            <p style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                              This disburses the remaining balance as an unsecured loan -- itunda cannot repossess the bike if you stop repaying.
+                            </p>
+                            <button className="toss-btn toss-btn-primary" disabled={busyId === plan.id} onClick={() => handleConvert(plan.id)}>
+                              {busyId === plan.id ? 'Converting…' : 'Convert to loan'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {plan.status === 'LOAN_ACTIVE' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Loan outstanding: {plan.loanOutstanding.toLocaleString()} RWF</p>
+                      <input
+                        type="number" value={repayAmounts[plan.id] ?? ''} onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [plan.id]: e.target.value }))}
+                        placeholder="Repayment amount (RWF)"
+                        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                      />
+                      <button className="toss-btn toss-btn-secondary" disabled={busyId === plan.id} onClick={() => handleRepay(plan.id)}>
+                        {busyId === plan.id ? 'Repaying…' : 'Repay'}
+                      </button>
+                    </div>
+                  )}
+                  {plan.status === 'COMPLETED' && (
+                    <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>Paid off -- this bike is now fully yours.</p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
