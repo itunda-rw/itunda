@@ -6,14 +6,19 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.idempotency.IdempotencyConflictException
+import rw.itunda.core.idempotency.IdempotencyInProgressException
+import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
@@ -28,13 +33,22 @@ data class CreateBookingRequest(val merchantId: String, val serviceId: String, v
 data class RespondToBookingRequest(val confirm: Boolean)
 
 // Real local-business appointment booking -- see MerchantBookingService's own doc
-// comment. Normal itunda-user JWT gate; not money-moving (no payment at booking time),
-// so no Idempotency-Key requirement, same discipline MerchantProductController already
-// established for its own non-money-moving catalog writes.
+// comment. Normal itunda-user JWT gate.
+//
+// Idempotency-Key IS required on POST /bookings -- found live in a 2026-08-02 audit
+// pass: this controller's own doc comment used to claim booking creation was "not
+// money-moving," which stopped being true the moment `MerchantProductService
+// .requiresPrepay` (Kakao Hair Shop-style prepay-to-book) shipped -- `book()` now
+// conditionally calls `holdDeposit()`, a real ledger post debiting the customer's
+// wallet, for any service the merchant marked `requiresPrepay`. Every other endpoint
+// here stays genuinely non-money-moving (respond/complete/cancel only ever resolve an
+// already-held deposit exactly once, guarded by BookingDeposit's own status check plus
+// its real @Version), so only booking creation needed this fix.
 @RestController
 @RequestMapping("/api/v1/merchant")
 class MerchantBookingController(
     private val merchantBookingService: MerchantBookingService,
+    private val idempotencyService: IdempotencyService,
 ) {
     @PostMapping("/booking/availability")
     fun setAvailability(
@@ -67,10 +81,14 @@ class MerchantBookingController(
     @PostMapping("/bookings")
     fun createBooking(
         @RequestBody request: CreateBookingRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val booking = merchantBookingService.book(currentUser.userId, request.merchantId, request.serviceId, request.date, request.startTime, request.notes)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "booking" to booking))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/bookings", idempotencyKey, request) {
+            val booking = merchantBookingService.book(currentUser.userId, request.merchantId, request.serviceId, request.date, request.startTime, request.notes)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "booking" to booking)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/bookings/my-bookings")
@@ -182,4 +200,16 @@ class MerchantBookingController(
     @ExceptionHandler(MerchantNoWalletException::class)
     fun handleNoWallet(ex: MerchantNoWalletException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(IdempotencyConflictException::class)
+    fun handleConflict(ex: IdempotencyConflictException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(IdempotencyInProgressException::class)
+    fun handleInProgress(ex: IdempotencyInProgressException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingHeader(ex: MissingRequestHeaderException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
 }
