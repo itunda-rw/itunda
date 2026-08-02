@@ -6,6 +6,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.EnumType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -112,6 +113,16 @@ class Listing(
     // a "Sponsored" badge on one that hasn't actually been paid for.
     @Column(name = "boosted_until", nullable = true)
     var boostedUntil: Instant? = null,
+
+    // Real optimistic lock (2026-08-02) -- payEscrow/markSold/boostListing/markTaken
+    // all read-then-mutate status with no concurrency guard; two concurrent payEscrow
+    // calls on the same ACTIVE listing could both read ACTIVE and both win, each
+    // debiting a buyer's wallet and creating its own MarketplaceEscrow row. See
+    // SavingsGoal.version's own doc comment for the same real "manual and scheduled
+    // paths share one balance" shape this codebase has fixed this way repeatedly.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

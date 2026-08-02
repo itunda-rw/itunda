@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -67,6 +68,13 @@ class PriceOffer(
 
     @Column(name = "responded_at")
     var respondedAt: Instant? = null,
+
+    // Real optimistic lock (2026-08-02) -- respondToOffer reads-then-mutates status
+    // with no concurrency guard; two concurrent responses to the same PENDING offer
+    // (e.g. accept racing a counter) could both read PENDING and both win.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", listingId = "", messageId = "", conversationId = "", buyerId = "", sellerId = "", proposedByUserId = "", amount = BigDecimal.ZERO,

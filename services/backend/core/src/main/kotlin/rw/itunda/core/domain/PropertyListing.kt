@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -94,6 +95,12 @@ class PropertyListing(
     // registry check.
     @Column(name = "ownership_verification_status", nullable = false, length = 16)
     var ownershipVerificationStatus: String = "NONE",
+
+    // Real optimistic lock (2026-08-02) -- mirrors Listing.version's own doc comment;
+    // mark-taken/remove flows read-then-mutate status with no concurrency guard.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", listerId = "", listingType = PropertyListingType.RENT, propertyType = "",
