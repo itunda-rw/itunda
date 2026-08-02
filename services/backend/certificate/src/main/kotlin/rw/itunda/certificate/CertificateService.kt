@@ -77,6 +77,22 @@ class CertificateService(
             throw CertificateUserNotVerifiedException("Real KYC verification is required before a certificate can be issued")
         }
 
+        // Real bug found live (2026-08-02): the revoke-then-create sequence just below
+        // reads the caller's own current ACTIVE certificate (if any), revokes it, and
+        // then unconditionally creates a brand-new ACTIVE one -- a real check-then-act
+        // race. Two concurrent issue() calls for the same user could both real-read the
+        // same starting ACTIVE certificate (or both real-read "none"), both revoke/skip
+        // independently, and both create a new certificate, leaving the user with two
+        // simultaneously ACTIVE certificates -- breaking the "one valid certificate per
+        // identity" invariant `verify()`/`getStatus()` and every downstream caller
+        // depend on. Fixed the same way this codebase's own "reject if already exists"
+        // race precedent works (WalletRepository/UserRepository.findByIdForUpdate): lock
+        // the caller's own real User row to serialize concurrent issue() calls, then
+        // re-check the ACTIVE certificate under that lock -- the second caller's re-read
+        // now real-sees the first caller's already-committed revoke/create and correctly
+        // revokes that new one instead of racing it.
+        userRepository.findByIdForUpdate(userId)
+
         // Reissuing revokes any prior active certificate -- a real certificate-renewal
         // convention (one valid certificate per identity at a time), not an arbitrary rule.
         certificateRepository.findByUserIdAndStatus(userId, CertificateStatus.ACTIVE)?.let { existing ->

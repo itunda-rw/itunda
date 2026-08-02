@@ -32,6 +32,7 @@ class CertificateServiceTest : BehaviorSpec({
         val service = CertificateService(certificateRepository, userRepository, rateLimiter)
 
         every { userRepository.findById("user_1") } returns Optional.of(kycVerifiedUser("user_1"))
+        every { userRepository.findByIdForUpdate("user_1") } returns Optional.of(kycVerifiedUser("user_1"))
         every { certificateRepository.findByUserIdAndStatus("user_1", CertificateStatus.ACTIVE) } returns null
         val savedSlot = slot<Certificate>()
         every { certificateRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -85,6 +86,7 @@ class CertificateServiceTest : BehaviorSpec({
         val service = CertificateService(certificateRepository, userRepository, rateLimiter)
 
         every { userRepository.findById("user_3") } returns Optional.of(kycVerifiedUser("user_3"))
+        every { userRepository.findByIdForUpdate("user_3") } returns Optional.of(kycVerifiedUser("user_3"))
         val existing = Certificate(id = "cert_old", userId = "user_3", serialNumber = "OLD", publicKeyBase64 = "x", expiresAt = Instant.now().plusSeconds(1000))
         every { certificateRepository.findByUserIdAndStatus("user_3", CertificateStatus.ACTIVE) } returns existing
         every { certificateRepository.save(any()) } answers { firstArg() }
@@ -95,6 +97,47 @@ class CertificateServiceTest : BehaviorSpec({
             Then("the prior active certificate is real-revoked, not left dangling") {
                 existing.status shouldBe CertificateStatus.REVOKED
                 existing.revokedAt shouldNotBe null
+            }
+            // Real bug found live (2026-08-02): see CertificateService.issue's own doc
+            // comment. This asserts the actual fix mechanism -- the same "lock a
+            // different already-existing row" precedent WalletRepository/
+            // UserRepository.findByIdForUpdate's own identical-shaped fixes establish
+            // for a check-then-act race on a "one active row per user" invariant.
+            Then("it real-locks the user's own row before touching the certificate") {
+                io.mockk.verify(exactly = 1) { userRepository.findByIdForUpdate("user_3") }
+            }
+        }
+    }
+
+    Given("two concurrent issue() calls racing for the same user") {
+        val certificateRepository = mockk<CertificateRepository>()
+        val userRepository = mockk<UserRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val service = CertificateService(certificateRepository, userRepository, rateLimiter)
+
+        every { userRepository.findById("user_race") } returns Optional.of(kycVerifiedUser("user_race"))
+        every { userRepository.findByIdForUpdate("user_race") } returns Optional.of(kycVerifiedUser("user_race"))
+
+        // Simulates the real serialization the `findByIdForUpdate` row lock provides:
+        // the second call's `findByUserIdAndStatus` re-read only ever real-sees the
+        // first call's already-committed state, never a stale concurrent snapshot.
+        var activeCert: Certificate? = null
+        every { certificateRepository.findByUserIdAndStatus("user_race", CertificateStatus.ACTIVE) } answers { activeCert }
+        every { certificateRepository.save(any()) } answers {
+            val cert = firstArg<Certificate>()
+            if (cert.status == CertificateStatus.ACTIVE) activeCert = cert
+            cert
+        }
+
+        When("issuing twice back-to-back, simulating the lock's serialization of an interleaved race") {
+            val (first, _) = service.issue("user_race")
+            val (second, _) = service.issue("user_race")
+
+            Then("only the second, most-recent certificate ends up ACTIVE -- never both at once") {
+                first.status shouldBe CertificateStatus.REVOKED
+                second.status shouldBe CertificateStatus.ACTIVE
+                first.id shouldNotBe second.id
             }
         }
     }
