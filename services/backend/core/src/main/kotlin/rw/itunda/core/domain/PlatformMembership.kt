@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 /**
@@ -54,6 +55,15 @@ class PlatformMembership(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+
+    // Real optimistic lock (found live 2026-08-02) -- same race
+    // EatsMembership.kt's own doc comment names: PlatformMembershipService.subscribe
+    // is a real check-then-act shape once a membership row already exists (read the
+    // current `activeUntil`, extend it, save), and the unique constraint on
+    // `userId` only protects the very first subscribe's INSERT, not two concurrent
+    // EXTENSIONS of an already-existing membership.
+    @Version
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", userId = "", activeUntil = Instant.EPOCH)
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 /**
@@ -64,6 +65,19 @@ class DailyStepReward(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+
+    // Real optimistic lock (found live 2026-08-02): reportSteps is a real
+    // check-then-act shape (read the day's row, credit any newly-crossed tier,
+    // save) with no DB row to lock via a check-then-CREATE guard the way
+    // RewardClaim's own unique constraint does -- two concurrent step reports that
+    // both cross the same tier threshold in the same request window (e.g. a client
+    // retry) would otherwise both see `claimedTierN == false`, both credit the real
+    // wallet, and only then race to save the same row, silently double-paying a
+    // single tier crossing. This makes the second save fail with a real optimistic
+    // lock conflict instead, rolling back its own ledger credit with it (same
+    // transaction).
+    @Version
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", userId = "", rewardDate = "")
 }

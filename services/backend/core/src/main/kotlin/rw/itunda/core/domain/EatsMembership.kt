@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 /**
@@ -45,6 +46,18 @@ class EatsMembership(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+
+    // Real optimistic lock (found live 2026-08-02): EatsMembershipService.subscribe
+    // is a real check-then-act shape once a membership row already exists (read the
+    // current `activeUntil`, extend it, save) -- the unique constraint on `userId`
+    // only protects the very first subscribe's INSERT race, not two concurrent
+    // EXTENSIONS of an already-existing membership, which would both debit the
+    // wallet for a real charge but only actually extend `activeUntil` once (both
+    // reads see the same starting point). This makes the loser's save fail with a
+    // real optimistic lock conflict, rolling back its own duplicate charge with it
+    // (same transaction).
+    @Version
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", userId = "", activeUntil = Instant.EPOCH)
 }

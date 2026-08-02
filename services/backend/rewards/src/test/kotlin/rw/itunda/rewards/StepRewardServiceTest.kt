@@ -134,6 +134,42 @@ class StepRewardServiceTest : BehaviorSpec({
         }
     }
 
+    // Real optimistic-lock regression test (found live in a 2026-08-02 audit pass):
+    // reportSteps is a real check-then-act shape (read the day's row, credit any
+    // newly-crossed tier, save) with no DB-level guard beyond the unique constraint on
+    // (user_id, reward_date) -- which only protects the very first report of the day's
+    // INSERT, not two concurrent reports racing to credit the SAME already-existing
+    // row's tier. This proves the fix's real mechanism: crediting a tier saves the
+    // SAME pre-existing `DailyStepReward` row (not a detached copy), which is what
+    // makes DailyStepReward's own @Version field actually guard a concurrent second
+    // credit attempt on that exact row (the loser's save would real-409 via the
+    // existing global ObjectOptimisticLockingFailureException handler, same proven-safe
+    // shape BikeRentalServiceTest's own doc comment already establishes for a different
+    // check-then-act race).
+    Given("a real user's existing today row, about to newly cross a tier") {
+        val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService)
+        val today = LocalDate.of(2026, 7, 27)
+
+        val existing = DailyStepReward(id = "stepreward_9", userId = "user_9", rewardDate = "2026-07-27", steps = 500)
+        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_9", "2026-07-27") } returns existing
+        every { walletRepository.findByUserIdAndType("user_9", WalletType.MAIN) } returns wallet("user_9")
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_9", emptyList())
+        val savedSlot = mutableListOf<DailyStepReward>()
+        every { dailyStepRewardRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+        When("reporting enough steps to cross the 1,000-step tier") {
+            service.reportSteps("user_9", 1000, today)
+
+            Then("the exact same row object -- the one carrying the real @Version -- is what gets saved") {
+                (savedSlot.first() === existing) shouldBe true
+                savedSlot.first().claimedTier1000 shouldBe true
+            }
+        }
+    }
+
     Given("a real user with no real MAIN wallet, somehow crossing a tier") {
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val walletRepository = mockk<WalletRepository>()

@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 /**
@@ -66,6 +67,16 @@ class MerchantAd(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+
+    // Real optimistic lock (found live 2026-08-02) -- same real check-then-act
+    // create-or-extend race EatsMembership.kt's own doc comment names:
+    // MerchantAdService.createOrExtendAd reads the current `activeUntil` and
+    // extends it, and the unique constraint on `merchantId` only protects the very
+    // first ad's INSERT, not two concurrent EXTENSIONS of an already-existing ad,
+    // which would both debit the merchant's wallet for a real charge but only
+    // actually extend `activeUntil` once.
+    @Version
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", merchantId = "", title = "", radiusMeters = 300, activeUntil = Instant.EPOCH)
 }
