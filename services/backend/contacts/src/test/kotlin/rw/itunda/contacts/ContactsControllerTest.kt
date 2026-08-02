@@ -8,6 +8,8 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.http.HttpStatus
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Contact
 import rw.itunda.core.repository.ContactRepository
 import rw.itunda.core.security.CurrentUser
@@ -27,7 +29,8 @@ class ContactsControllerTest : BehaviorSpec({
 
     Given("an authenticated user") {
         val contactRepository = mockk<ContactRepository>()
-        val controller = ContactsController(contactRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val controller = ContactsController(contactRepository, rateLimiter)
         val currentUser = CurrentUser(userId = "user_1")
 
         When("listing contacts") {
@@ -79,6 +82,32 @@ class ContactsControllerTest : BehaviorSpec({
             Then("it defaults to MTN MoMo, matching the field's fallback in the controller") {
                 controller.addContact(AddContactRequest(name = "Jean", bank = null, phoneNumber = "+250788555666"), currentUser)
                 saved.captured.bank shouldBe "MTN MoMo"
+            }
+        }
+
+        // Real bug found live (2026-08-02): addContact had shipped with zero rate
+        // limiting, unlike every other real content-creation endpoint in this codebase.
+        When("adding a contact within the normal rate") {
+            val saved = slot<Contact>()
+            every { contactRepository.save(capture(saved)) } answers { saved.captured }
+
+            Then("it checks the real per-user rate limit before writing") {
+                controller.addContact(AddContactRequest(name = "Eric", phoneNumber = "+250788111222"), currentUser)
+                verify(exactly = 1) { rateLimiter.checkLimit("contacts:add:user_1", limit = 60, window = any()) }
+            }
+        }
+
+        When("the caller has exceeded the real rate limit") {
+            every { rateLimiter.checkLimit("contacts:add:user_1", limit = 60, window = any()) } throws RateLimitExceededException("Too many attempts, please try again later")
+
+            Then("the add is rejected before ever touching the repository") {
+                try {
+                    controller.addContact(AddContactRequest(name = "Eric", phoneNumber = "+250788111222"), currentUser)
+                    throw AssertionError("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { contactRepository.save(any()) }
             }
         }
     }
