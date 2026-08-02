@@ -311,6 +311,9 @@ fun ItundaAppScreen(
         // Real Itunda cash-agent operator console (staff-facing till: cash-in/cash-out/
         // reconciliation) -- bank-mfe shipped first; same pattern.
         var showAgentOperator by rememberSaveable { mutableStateOf(false) }
+        // Real peer-to-peer agent float rebalancing marketplace -- see
+        // FloatMarketplaceScreen.kt's own doc comment for the full sourced account.
+        var showFloatMarketplace by rememberSaveable { mutableStateOf(false) }
         // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
         // user's direct request; see MenuScreen's own doc comment.
         var showMyTab by rememberSaveable { mutableStateOf(false) }
@@ -806,6 +809,11 @@ fun ItundaAppScreen(
             AgentOperatorScreen(onBack = { showAgentOperator = false })
             return@IdsTheme
         }
+        if (showFloatMarketplace) {
+            BackHandler { showFloatMarketplace = false }
+            FloatMarketplaceScreen(onBack = { showFloatMarketplace = false })
+            return@IdsTheme
+        }
         if (showCertificate) {
             BackHandler { showCertificate = false }
             CertificateScreen(onBack = { showCertificate = false })
@@ -1056,6 +1064,7 @@ fun ItundaAppScreen(
                             onOpenAutoTopUp = { showAutoTopUp = true },
                             onOpenTrustScore = { showTrustScore = true },
                             onOpenAgentOperator = { showAgentOperator = true },
+                            onOpenFloatMarketplace = { showFloatMarketplace = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                             onSwitchToTalk = { selectedTab = TossTab.Talk },
@@ -1595,6 +1604,7 @@ private fun MenuScreen(
     onOpenAutoTopUp: () -> Unit = {},
     onOpenTrustScore: () -> Unit = {},
     onOpenAgentOperator: () -> Unit = {},
+    onOpenFloatMarketplace: () -> Unit = {},
     onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
@@ -1723,6 +1733,7 @@ private fun MenuScreen(
                 FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
                 FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenTrustScore),
                 FlatRow("Agent till", subtitle = "For assigned cash-agent operators: cash-in, cash-out, till count", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onOpenAgentOperator),
+                FlatRow("Float marketplace", subtitle = "For assigned cash-agents: offer or request float from nearby agents", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenFloatMarketplace),
                 FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),
                 FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
                 FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),

@@ -4738,6 +4738,31 @@ public struct SubmitAgentTillCountRequest: Encodable { public let countedCash: D
 }
 public struct AgentTillReconciliationResponse: Decodable { public let success: Bool; public let reconciliation: AgentTillReconciliationDto }
 
+// Real peer-to-peer agent float rebalancing marketplace -- see the backend's
+// FloatMarketplaceService.kt doc comment for the full sourced account (a real
+// documented top-2 operational challenge for mobile money agents, distinct from
+// AgentOperatorController's admin-to-agent till funding). bank-mfe/Android already
+// have this; this is the first iOS client.
+public struct FloatListingDto: Decodable, Identifiable {
+    public let id: String; public let agentId: String; public let amount: Double
+    public let claimedAmount: Double; public let status: String; public let createdAt: String
+}
+public struct NearbyFloatListingDto: Decodable, Identifiable {
+    public let listing: FloatListingDto; public let agentDisplayName: String; public let distanceKm: Double; public let remainingAmount: Double
+    public var id: String { listing.id }
+}
+public struct FloatTransferRequestDto: Decodable, Identifiable {
+    public let id: String; public let listingId: String; public let requestingAgentId: String; public let amount: Double
+    public let status: String; public let transactionId: String?; public let createdAt: String
+}
+public struct PostFloatListingRequest: Encodable { public let amount: Double; public init(amount: Double) { self.amount = amount } }
+public struct RequestFloatRequest: Encodable { public let amount: Double; public init(amount: Double) { self.amount = amount } }
+public struct FloatListingResponse: Decodable { public let success: Bool; public let listing: FloatListingDto }
+public struct FloatListingsResponse: Decodable { public let success: Bool; public let listings: [FloatListingDto] }
+public struct NearbyFloatListingsResponse: Decodable { public let success: Bool; public let listings: [NearbyFloatListingDto] }
+public struct FloatTransferRequestResponse: Decodable { public let success: Bool; public let request: FloatTransferRequestDto }
+public struct FloatTransferRequestsResponse: Decodable { public let success: Bool; public let requests: [FloatTransferRequestDto] }
+
 public struct CertificateDto: Decodable {
     public let id: String; public let userId: String; public let serialNumber: String; public let publicKeyBase64: String
     public let algorithm: String; public let status: String; public let issuedAt: String; public let expiresAt: String; public let revokedAt: String?
@@ -4944,6 +4969,41 @@ extension NetworkClient {
     }
     public func submitAgentTillCount(_ countedCash: Double) async throws -> AgentTillReconciliationResponse {
         try await authenticatedPost("api/v1/agent/till-reconciliations", body: SubmitAgentTillCountRequest(countedCash: countedCash))
+    }
+
+    // Real peer-to-peer agent float rebalancing marketplace -- see FloatMarketplaceController.kt.
+    public func postFloatListing(amount: Double) async throws -> FloatListingResponse {
+        try await authenticatedPost("api/v1/float-marketplace/listings", body: PostFloatListingRequest(amount: amount))
+    }
+
+    public func getNearbyFloatListings(latitude: Double, longitude: Double, radiusKm: Double = 20) async throws -> NearbyFloatListingsResponse {
+        try await get("api/v1/float-marketplace/listings/nearby", query: [
+            URLQueryItem(name: "latitude", value: String(latitude)),
+            URLQueryItem(name: "longitude", value: String(longitude)),
+            URLQueryItem(name: "radiusKm", value: String(radiusKm)),
+        ])
+    }
+
+    public func getMyFloatListings() async throws -> FloatListingsResponse { try await get("api/v1/float-marketplace/listings/mine") }
+
+    public func cancelFloatListing(listingId: String) async throws -> FloatListingResponse {
+        try await authenticatedPost("api/v1/float-marketplace/listings/\(listingId)/cancel", body: EmptyBody())
+    }
+
+    public func requestFloat(listingId: String, amount: Double) async throws -> FloatTransferRequestResponse {
+        try await authenticatedPost("api/v1/float-marketplace/listings/\(listingId)/requests", body: RequestFloatRequest(amount: amount))
+    }
+
+    public func getMyFloatRequests() async throws -> FloatTransferRequestsResponse { try await get("api/v1/float-marketplace/requests/mine") }
+
+    public func getIncomingFloatRequests() async throws -> FloatTransferRequestsResponse { try await get("api/v1/float-marketplace/requests/incoming") }
+
+    public func acceptFloatRequest(requestId: String) async throws -> FloatTransferRequestResponse {
+        try await authenticatedPost("api/v1/float-marketplace/requests/\(requestId)/accept", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func declineFloatRequest(requestId: String) async throws -> FloatTransferRequestResponse {
+        try await authenticatedPost("api/v1/float-marketplace/requests/\(requestId)/decline", body: EmptyBody())
     }
 
     public func issueCertificate() async throws -> IssueCertificateResponse {

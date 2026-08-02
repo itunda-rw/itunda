@@ -282,6 +282,9 @@ struct EntireMenuScreen: View {
     // Real Itunda cash-agent operator console (staff-facing till: cash-in/cash-out/
     // reconciliation) -- bank-mfe/Android shipped first; same pattern.
     @State private var showAgentOperator = false
+    // Real peer-to-peer agent float rebalancing marketplace -- see
+    // FloatMarketplaceScreenView.swift's own doc comment for the full sourced account.
+    @State private var showFloatMarketplace = false
 
     var body: some View {
         ScrollView {
@@ -363,6 +366,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                         FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
                         FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentBlue, action: { showAgentOperator = true }),
+                        FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
                         FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
@@ -487,6 +491,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showAgentOperator) {
             AgentOperatorScreenView(onBack: { showAgentOperator = false })
+        }
+        .sheet(isPresented: $showFloatMarketplace) {
+            FloatMarketplaceScreenView(onBack: { showFloatMarketplace = false })
         }
         .sheet(isPresented: $showCertificate) {
             CertificateScreenView(onBack: { showCertificate = false })

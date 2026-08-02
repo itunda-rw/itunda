@@ -1710,6 +1710,30 @@ data class AgentCashResultResponse(val success: Boolean, val newBalance: java.ma
 data class SubmitTillCountRequest(val countedCash: java.math.BigDecimal)
 data class AgentTillReconciliationResponse(val success: Boolean, val reconciliation: AgentTillReconciliationDto)
 
+// Real peer-to-peer agent float rebalancing marketplace -- see the backend's
+// FloatMarketplaceService.kt doc comment for the full sourced account (a real
+// documented top-2 operational challenge for mobile money agents, distinct from
+// AgentOperatorController's admin-to-agent till funding). bank-mfe already has
+// this; this is the first native client (Android/iOS).
+data class FloatListingDto(
+    val id: String, val agentId: String, val amount: java.math.BigDecimal,
+    val claimedAmount: java.math.BigDecimal, val status: String, val createdAt: String,
+)
+data class NearbyFloatListingDto(
+    val listing: FloatListingDto, val agentDisplayName: String, val distanceKm: Double, val remainingAmount: java.math.BigDecimal,
+)
+data class FloatTransferRequestDto(
+    val id: String, val listingId: String, val requestingAgentId: String, val amount: java.math.BigDecimal,
+    val status: String, val transactionId: String?, val createdAt: String,
+)
+data class PostFloatListingRequest(val amount: java.math.BigDecimal)
+data class RequestFloatRequest(val amount: java.math.BigDecimal)
+data class FloatListingResponse(val success: Boolean, val listing: FloatListingDto)
+data class FloatListingsResponse(val success: Boolean, val listings: List<FloatListingDto>)
+data class NearbyFloatListingsResponse(val success: Boolean, val listings: List<NearbyFloatListingDto>)
+data class FloatTransferRequestResponse(val success: Boolean, val request: FloatTransferRequestDto)
+data class FloatTransferRequestsResponse(val success: Boolean, val requests: List<FloatTransferRequestDto>)
+
 // Real digital identity/signing certificate (rw.itunda.certificate) -- already real
 // and wired into bank-mfe (web) since 2026-07-17, but found 2026-07-22 completely
 // absent from the Android app, a platform-parity gap rather than a never-built
@@ -3037,6 +3061,38 @@ interface ApiService {
 
     @POST("api/v1/agent/till-reconciliations")
     suspend fun submitAgentTillCount(@Body request: SubmitTillCountRequest): AgentTillReconciliationResponse
+
+    // Real peer-to-peer agent float rebalancing marketplace -- see FloatMarketplaceController.kt.
+    @POST("api/v1/float-marketplace/listings")
+    suspend fun postFloatListing(@Body request: PostFloatListingRequest): FloatListingResponse
+
+    @GET("api/v1/float-marketplace/listings/nearby")
+    suspend fun getNearbyFloatListings(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radiusKm") radiusKm: Double = 20.0,
+    ): NearbyFloatListingsResponse
+
+    @GET("api/v1/float-marketplace/listings/mine")
+    suspend fun getMyFloatListings(): FloatListingsResponse
+
+    @POST("api/v1/float-marketplace/listings/{listingId}/cancel")
+    suspend fun cancelFloatListing(@Path("listingId") listingId: String): FloatListingResponse
+
+    @POST("api/v1/float-marketplace/listings/{listingId}/requests")
+    suspend fun requestFloat(@Path("listingId") listingId: String, @Body request: RequestFloatRequest): FloatTransferRequestResponse
+
+    @GET("api/v1/float-marketplace/requests/mine")
+    suspend fun getMyFloatRequests(): FloatTransferRequestsResponse
+
+    @GET("api/v1/float-marketplace/requests/incoming")
+    suspend fun getIncomingFloatRequests(): FloatTransferRequestsResponse
+
+    @POST("api/v1/float-marketplace/requests/{requestId}/accept")
+    suspend fun acceptFloatRequest(@Path("requestId") requestId: String, @Header("Idempotency-Key") idempotencyKey: String): FloatTransferRequestResponse
+
+    @POST("api/v1/float-marketplace/requests/{requestId}/decline")
+    suspend fun declineFloatRequest(@Path("requestId") requestId: String): FloatTransferRequestResponse
 
     @POST("api/v1/certificate/issue")
     suspend fun issueCertificate(): IssueCertificateResponse
