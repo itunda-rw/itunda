@@ -68,6 +68,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _transactions = MutableStateFlow<List<rw.itunda.core.network.TransactionDto>>(emptyList())
     val transactions: StateFlow<List<rw.itunda.core.network.TransactionDto>> = _transactions
 
+    // Real Toss-style home-screen spending insight (2026-08-03) -- GET
+    // /api/v1/wallet/spending, backed by WalletService.getSpendingInsight, has been
+    // real since 2026-07-13 and already had its own dedicated SpendingScreen.kt, but
+    // was never fetched here for the Home tab, which instead showed a hardcoded
+    // "RWF 463,022 / Spent in July" placeholder explicitly commented as illustrative.
+    private val _spendingInsight = MutableStateFlow<rw.itunda.core.network.SpendingInsightResponse?>(null)
+    val spendingInsight: StateFlow<rw.itunda.core.network.SpendingInsightResponse?> = _spendingInsight
+
     private val _profile = MutableStateFlow<rw.itunda.core.network.PublicUser?>(null)
     val profile: StateFlow<rw.itunda.core.network.PublicUser?> = _profile
 
@@ -161,6 +169,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val transactionsRes = NetworkClient.apiService.getTransactionHistory()
                 if (transactionsRes.success) {
                     _transactions.value = transactionsRes.transactions
+                }
+
+                val spendingRes = NetworkClient.apiService.getSpendingInsight()
+                if (spendingRes.success) {
+                    _spendingInsight.value = spendingRes
                 }
 
                 // Real Partner SDK catalog fetch (2026-07-17). Scoped in its own try/catch,

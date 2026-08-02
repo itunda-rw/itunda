@@ -24,6 +24,8 @@ import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Build
@@ -1021,6 +1023,7 @@ fun ItundaAppScreen(
                         onDepositToGoal = { goalId, goalName -> savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
                         onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                         onOpenTransactionHistory = { showTransactionHistory = true },
+                        onOpenSpendingInsight = { showSpending = true },
                         onCashOutAtAgent = { showAgentCash = true },
                         onOpenPay = { showPay = true },
                         onOpenNotifications = { showSettings = true },
@@ -1153,6 +1156,7 @@ private fun HomeTab(
     onDepositToGoal: (goalId: String, goalName: String) -> Unit,
     onClaimInterest: () -> Unit,
     onOpenTransactionHistory: () -> Unit,
+    onOpenSpendingInsight: () -> Unit = {},
     onCashOutAtAgent: () -> Unit,
     onOpenPay: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
@@ -1163,6 +1167,8 @@ private fun HomeTab(
     val interestJar by viewModel.interestJar.collectAsState()
     val discoverItems by viewModel.discoverItems.collectAsState()
     val roundUpSettings by viewModel.roundUpSettings.collectAsState()
+    val recentTransactions by viewModel.transactions.collectAsState()
+    val spendingInsight by viewModel.spendingInsight.collectAsState()
     var showRoundUpDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -1177,20 +1183,53 @@ private fun HomeTab(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications) }
-        item { WalletHeroCard(balanceText, onSend, onCashOutAtAgent, onSeeAll = onOpenTransactionHistory) }
         item {
-            ShellSection(
-                title = "",
-                rows = listOf(
-                    // Wired to real transaction history (2026-07-12) -- the headline
-                    // figure/label ("RWF 463,022" / "Spent in July") stay illustrative
-                    // (no real spend-by-month aggregation endpoint exists yet), but
-                    // tapping through now opens the real list rather than nothing.
-                    ShellRow("RWF 463,022", "Spent in July", "3 new", Icons.Outlined.PieChart, AccentPurple, onClick = onOpenTransactionHistory),
-                    ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments, AccentBlue),
-                    ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem, AccentOrange)
-                )
+            WalletHeroCard(
+                balanceText = balanceText,
+                onSend = onSend,
+                onCashOutAtAgent = onCashOutAtAgent,
+                recentTransactions = recentTransactions.take(2),
+                currentUserId = primaryWallet?.userId,
+                onSeeAll = onOpenTransactionHistory,
             )
+        }
+        // Real Toss-style spending insight (2026-08-03) -- replaces a hardcoded
+        // "RWF 463,022 / Spent in July" row that this file's own prior comment
+        // admitted was illustrative. GET /api/v1/wallet/spending
+        // (WalletService.getSpendingInsight) has been real since 2026-07-13 and
+        // already had its own dedicated SpendingScreen -- this just surfaces the
+        // same real total/top-category on Home instead of nowhere. Shown only once
+        // there's real spend to report, same "don't flash an empty/zero section"
+        // discipline the Savings section below already establishes.
+        val topCategory = spendingInsight?.categories?.maxByOrNull { it.amount.toDouble() }
+        if (spendingInsight != null && (spendingInsight?.totalSpent?.toDouble() ?: 0.0) > 0.0) {
+            item {
+                ShellSection(
+                    title = "",
+                    rows = listOf(
+                        ShellRow(
+                            "RWF %,.0f".format(spendingInsight?.totalSpent?.toDouble() ?: 0.0),
+                            if (topCategory != null) "Spent this period -- mostly on ${topCategory.name}" else "Spent this period",
+                            ">",
+                            Icons.Outlined.PieChart,
+                            AccentPurple,
+                            onClick = onOpenSpendingInsight,
+                        ),
+                        ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments, AccentBlue),
+                        ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem, AccentOrange)
+                    )
+                )
+            }
+        } else {
+            item {
+                ShellSection(
+                    title = "",
+                    rows = listOf(
+                        ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments, AccentBlue),
+                        ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem, AccentOrange)
+                    )
+                )
+            }
         }
         item {
             ShellSection(
@@ -1418,7 +1457,14 @@ private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Un
 }
 
 @Composable
-private fun WalletHeroCard(balanceText: String, onSend: () -> Unit, onCashOutAtAgent: () -> Unit, onSeeAll: () -> Unit) {
+private fun WalletHeroCard(
+    balanceText: String,
+    onSend: () -> Unit,
+    onCashOutAtAgent: () -> Unit,
+    recentTransactions: List<rw.itunda.core.network.TransactionDto>,
+    currentUserId: String?,
+    onSeeAll: () -> Unit,
+) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
@@ -1442,9 +1488,24 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit, onCashOutAtA
                 IdsButton("Cash out", onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium)
                 IdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium)
             }
-            Divider(color = TossLine)
-            WalletMiniRow("RWF 613", "Bravo Korea parking", "Send")
-            WalletMiniRow("RWF 7,489", "Savings deposit", "Send")
+            // Real fix, 2026-08-03: these two rows used to be hardcoded literal
+            // strings ("Bravo Korea parking" / "Savings deposit") baked into every
+            // account regardless of whose it was -- viewModel.transactions
+            // (GET /api/v1/wallet/transactions) was already fetched and already
+            // powered the real TransactionHistoryScreen reachable from "See all"
+            // below, just never shown here. Only rendered once real transactions
+            // exist, matching the Savings section's own "don't show an empty
+            // section" discipline.
+            if (recentTransactions.isNotEmpty()) {
+                Divider(color = TossLine)
+                recentTransactions.forEach { tx ->
+                    WalletMiniRow(
+                        transaction = tx,
+                        isOutgoing = tx.senderId == currentUserId,
+                        onClick = onSeeAll,
+                    )
+                }
+            }
             // Real fix, 2026-08-03: "See all" rendered as plain, non-clickable Text --
             // it visually reads as a link (secondary color, medium weight, full-width)
             // but tapping it did nothing; onOpenTransactionHistory already existed and
@@ -1462,9 +1523,16 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit, onCashOutAtA
 }
 
 @Composable
-private fun WalletMiniRow(amount: String, subtitle: String, action: String) {
+private fun WalletMiniRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, onClick: () -> Unit) {
+    // Real Toss-style signed amount (2026-08-03) -- outgoing money is prefixed "-"
+    // in the normal text color, incoming is prefixed "+" and tinted with the real
+    // success token (Ids.colors.success), the same signed-and-tinted convention
+    // real Toss transaction rows use, instead of every row showing an unsigned,
+    // uncolored amount regardless of direction.
+    val amountText = "${if (isOutgoing) "-" else "+"}${transaction.currency} %,.0f".format(transaction.amount)
+    val amountColor = if (isOutgoing) TossText else Ids.colors.success
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
@@ -1474,17 +1542,18 @@ private fun WalletMiniRow(amount: String, subtitle: String, action: String) {
                 .background(TossChip),
             contentAlignment = Alignment.Center
         ) {
-            // Was amount.take(1) -- literally the first character of the RWF
-            // string as an "icon" (e.g. "R"), a real leftover bug, not a
-            // deliberate placeholder. Real icon now.
-            Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossText)
+            Icon(
+                if (isOutgoing) Icons.Outlined.ArrowUpward else Icons.Outlined.ArrowDownward,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = TossText,
+            )
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(amount, color = TossText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Text(subtitle, color = TossSecondary, fontSize = 14.sp)
+            Text(transaction.description, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
         }
-        IdsButton(action, onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
+        Text(amountText, color = amountColor, fontWeight = FontWeight.Bold, fontSize = 15.sp)
     }
 }
 
