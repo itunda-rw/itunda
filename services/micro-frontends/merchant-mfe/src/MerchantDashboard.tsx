@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, CircleDollarSign, CreditCard, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, UtensilsCrossed, Users } from 'lucide-react';
+import { Briefcase, CircleDollarSign, CreditCard, HandCoins, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, UtensilsCrossed, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import RegisterScreen from './RegisterScreen';
@@ -14,9 +14,10 @@ import PosScreen from './screens/PosScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import ReviewsScreen from './screens/ReviewsScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import VendorCashAdvanceScreen from './screens/VendorCashAdvanceScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'pos' | 'eats' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'ads' | 'business' | 'payroll' | 'settings';
+type Tab = 'collect' | 'pos' | 'eats' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
   { id: 'collect', label: 'Collect', icon: QrCode },
@@ -32,6 +33,10 @@ const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
   { id: 'coupons', label: 'Coupons', icon: Tag },
   { id: 'ads', label: 'Ads', icon: Megaphone },
   { id: 'business', label: 'Business', icon: Briefcase },
+  // Real Isoko Vendor Cash Advance (item 210) -- see lib/vendorCashAdvance.ts's own
+  // doc comment. A merchant with no real 14-day settlement history yet sees an honest
+  // "not eligible" state, not a hidden tab.
+  { id: 'advance', label: 'Cash advance', icon: HandCoins },
   { id: 'payroll', label: 'Payroll', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
@@ -148,6 +153,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         {tab === 'coupons' && <CouponsScreen />}
         {tab === 'ads' && <AdsScreen />}
         {tab === 'business' && <BusinessAccountScreen />}
+        {tab === 'advance' && <VendorCashAdvanceScreen merchant={merchant} />}
         {tab === 'payroll' && <PayrollScreen />}
         {tab === 'settings' && <SettingsScreen merchant={merchant} onUpdated={setMerchant} />}
       </main>

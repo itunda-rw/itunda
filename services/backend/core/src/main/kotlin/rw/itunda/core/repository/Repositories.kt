@@ -197,6 +197,15 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
     fun findByTransactionId(transactionId: String): List<LedgerEntry>
     fun findByAccountIdOrderByCreatedAtDesc(accountId: String): List<LedgerEntry>
 
+    // Real Isoko Vendor Cash Advance underwriting/collection window (2026-08-02) --
+    // see VendorCashAdvanceService's own doc comment. Both getOffer's trailing-30-day
+    // inflow scan and runDailyCollection's since-lastCollectionAt scan need every
+    // ledger entry posted to a given wallet account after a cutoff instant; direction
+    // (CREDIT) and the "collection -" narration-text filter are applied in-memory by
+    // the caller, the same honest "no structured settlement-category field exists yet"
+    // shortcut VendorCashAdvanceService names explicitly.
+    fun findByAccountIdAndCreatedAtAfter(accountId: String, createdAt: Instant): List<LedgerEntry>
+
     // Batch form of findByTransactionId -- WalletService.getSpendingInsight uses this to
     // fetch every debit's sibling legs in one round trip instead of one findByTransactionId
     // call per debit (a real N+1 found in a 2026-07-19 performance sweep, same shape as
