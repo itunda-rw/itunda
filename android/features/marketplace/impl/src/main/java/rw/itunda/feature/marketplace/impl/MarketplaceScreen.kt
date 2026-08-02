@@ -123,6 +123,15 @@ private fun HoodView.label() = when (this) {
 @Composable
 fun MarketplaceContent(
     onMessageSeller: (String) -> Unit,
+    // Real Karrot 글쓰기 FAB hand-off (2026-08-03) -- HoodTab's own floating orange
+    // write button lives one level up (SuperAppTabs.kt), outside this Composable's
+    // private `view`/`showNewListing` state, so it can't reach in and open the new-
+    // listing form directly. This pair of params is that hand-off: the FAB bumps a
+    // counter (any change, not just true/false, so tapping it twice in a row without
+    // this screen ever resetting it still re-triggers), this screen reacts by forcing
+    // Mine + the new-listing form open, matching real Karrot's own 글쓰기 -> always
+    // lands you in a fresh post draft regardless of which category chip was selected.
+    requestNewListingSignal: Int = 0,
 ) {
     var view by remember { mutableStateOf(HoodView.BROWSE) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
@@ -136,6 +145,12 @@ fun MarketplaceContent(
     var showNewListing by remember { mutableStateOf(false) }
     if (showNewListing) {
         BackHandler { showNewListing = false }
+    }
+    LaunchedEffect(requestNewListingSignal) {
+        if (requestNewListingSignal > 0) {
+            view = HoodView.MINE
+            showNewListing = true
+        }
     }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -271,34 +286,36 @@ fun MarketplaceContent(
         // sits right above this screen, so a third "Hood" label was pure repeat
         // noise, not information.
         item {
-            // Flat, horizontally-scrolling category strip (2026-07-24), replacing
-            // a filled-pill segmented row -- same Karrot/Toss-Shopping-style flat
-            // tab treatment as HoodTab's own Market/Life/Jobs/Home row in
-            // SuperAppTabs.kt, so the two stacked nav rows read as one language
-            // instead of two different chrome styles.
+            // Real Karrot pill-chip category row (2026-08-03, user-provided real
+            // 당근마켓 screenshots, light + dark) -- replaces the earlier Toss-style
+            // underline-tab strip. Real Karrot chips: selected = a solid pill in the
+            // near-black/near-white extreme of the theme (pixel-sampled from the real
+            // screenshots: #2B3034 in light mode, #F3F4F8 in dark -- i.e. exactly
+            // Ids.colors.textPrimary in both themes, not a separately invented color),
+            // unselected = a soft neutral pill (#F3F3F3 light / #333438 dark -- a close
+            // match for the existing Ids.colors.surfaceSoft token). No new tokens
+            // needed -- this reuses the same common theme colors, only the shape
+            // (pill, not underline) changes, matching "themes/interaction/graphics
+            // stay common, only Hood's own chrome adopts Karrot" from the same request.
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 HoodView.entries.forEach { v ->
                     val selected = v == view
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
-                        Text(
-                            v.label(),
-                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .height(2.dp)
-                                .width(18.dp)
-                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
-                        )
-                    }
+                    Text(
+                        v.label(),
+                        color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
+                            .clickable { view = v }
+                            .padding(horizontal = 16.dp, vertical = 9.dp),
+                    )
                 }
             }
         }

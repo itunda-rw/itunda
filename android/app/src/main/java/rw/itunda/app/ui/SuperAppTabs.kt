@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.automirrored.outlined.Comment
@@ -49,9 +50,13 @@ import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.RestaurantMenu
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -87,6 +92,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -232,15 +238,32 @@ import java.util.UUID
 
 private enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
 
-// Real 당근-style neighborhood-services hub (2026-07-19) -- Marketplace, Community
-// (동네생활), Jobs (당근알바), and Property (당근부동산) all fold into this one tab
-// via a segmented toggle, matching the exact "no free bottom-nav slot, fold into an
-// existing tab" pattern ShopTab's own Shop/Eats toggle already established.
+// Real Karrot brand orange (2026-08-03), pixel-sampled directly from real 당근마켓
+// screenshots the user provided (both light and dark mode -- #FF6F0F / #FF6E1D,
+// close enough to be the same real value through JPEG compression, and it doesn't
+// get remapped between themes, unlike itunda's own theme-reactive brand blue). Scoped
+// to this file, not core/designsystem's IdsSemanticColors -- this is deliberately
+// Hood's own brand identity, not a shared token, per "themes/interaction/graphics
+// stay common, but let Eats be Eats, Shop be Shop, Hood be Hood" (2026-08-03): each
+// super-app section gets its own visual identity the way KakaoBank/KakaoPay/Karrot
+// each look distinct while feeling like the same underlying interaction language.
+private val HoodOrange = Color(0xFFFF6F0F)
+
+// Real 당근-style neighborhood-services hub (2026-07-19), given a real 당근 top bar
+// and pill-chip category row 2026-08-03 (user-provided real 당근마켓 screenshots,
+// light + dark) -- previously a generic Toss-style underline-tab strip, which was
+// itunda's own house style bleeding into a section explicitly meant to feel like a
+// different real product. Marketplace/Community (동네생활)/Jobs (당근알바)/Property
+// (당근부동산) still fold into this one tab via the same chip row (no free bottom-nav
+// slot for each), now styled the way Karrot's own 전체/부동산/중고거래/... row is.
 @Composable
 internal fun HoodTab(onMessageSeller: (String) -> Unit) {
     var mode by remember { mutableStateOf(HoodMode.MARKETPLACE) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodVerificationCount by remember { mutableStateOf(0) }
+    // Bumped by the FAB below; MarketplaceContent reacts to any change by forcing its
+    // own new-listing form open -- see that Composable's own doc comment on this param.
+    var requestNewListingSignal by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         try {
             val user = NetworkClient.authApi.getProfile().user
@@ -251,69 +274,115 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
             // prompt; this shared context label is deliberately best-effort.
         }
     }
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Flat category strip (2026-07-24), replacing a filled-pill segmented
-        // control -- matches Karrot/Toss Shopping's own top-level category tabs
-        // (plain text + underline, no card background) rather than Bank/Pay's
-        // dense compound chrome, which this screen doesn't need: the bottom nav
-        // already highlights "Hood", so this row's only job is picking a
-        // sub-product, not re-establishing where the user is.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Ids.layout.screenHorizontal, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
-        ) {
-            listOf(
-                HoodMode.MARKETPLACE to "Market", HoodMode.COMMUNITY to "Life",
-                HoodMode.JOBS to "Jobs", HoodMode.PROPERTY to "Home",
-            ).forEach { (m, label) ->
-                val selected = m == mode
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clickable { mode = m },
-                ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Real 당근마켓 top bar (2026-08-03): a location pin + the user's real
+            // neighborhood name in bold (their actual, most-specific 동네, matching
+            // Karrot's own primary/secondary neighborhood pair when a second one is
+            // set), then search/notifications/menu icons on the right. Neither
+            // itunda's other tabs nor Karrot itself repeat a section title here (the
+            // bottom nav already says "Hood") -- this bar's whole job is "where am I,
+            // geographically," which no other itunda tab needs.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Ids.layout.screenHorizontal, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.LocationOn, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    neighborhoodName ?: "Set your neighborhood",
+                    color = Ids.colors.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (neighborhoodVerificationCount > 0) {
+                    Text(
+                        "confirmed ${neighborhoodVerificationCount}×",
+                        color = Ids.colors.textTertiary,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                }
+                Icon(Icons.Outlined.Search, contentDescription = "Search", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
+                Spacer(modifier = Modifier.width(16.dp))
+                Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
+                Spacer(modifier = Modifier.width(16.dp))
+                Icon(Icons.Outlined.Menu, contentDescription = "Menu", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
+            }
+            // Real Karrot pill-chip row (2026-08-03): selected = a solid pill in
+            // Ids.colors.textPrimary (near-black in light mode, near-white in dark --
+            // pixel-matches the real screenshots' #2B3034/#F3F4F8 selected-chip fills
+            // exactly), unselected = Ids.colors.surfaceSoft, both real, already-shared
+            // tokens -- no new colors invented for this row, only the shape (pill,
+            // not underline) changes.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = Ids.layout.screenHorizontal, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    HoodMode.MARKETPLACE to "Market", HoodMode.COMMUNITY to "Life",
+                    HoodMode.JOBS to "Jobs", HoodMode.PROPERTY to "Home",
+                ).forEach { (m, label) ->
+                    val selected = m == mode
                     Text(
                         label,
-                        color = if (selected) Ids.colors.textPrimary else TossSecondary,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 15.sp,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
-                    )
-                    Box(
+                        color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 14.sp,
                         modifier = Modifier
-                            .height(2.dp)
-                            .width(18.dp)
-                            .background(
-                                if (selected) TossBlue else Color.Transparent,
-                                RoundedCornerShape(1.dp),
-                            ),
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
+                            .clickable { mode = m }
+                            .padding(horizontal = 16.dp, vertical = 9.dp),
                     )
                 }
             }
+            when (mode) {
+                // Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace now
+                // lives in :features:marketplace:impl, the first Hood-mode section pulled out
+                // of this file to match Toss's real Microfeatures architecture.
+                HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller = onMessageSeller, requestNewListingSignal = requestNewListingSignal)
+                // Fourth Feature extraction (2026-07-23), same pattern. onOpenGroupChat
+                // reuses the same onMessageSeller callback (2026-07-24) -- see
+                // TalkScreen.kt's own doc comment on why a real GroupConversation id works
+                // through the exact same hand-off Marketplace/Jobs/Property already share.
+                HoodMode.COMMUNITY -> CommunityContent(onOpenGroupChat = onMessageSeller)
+                // Second Feature extraction (2026-07-23), same pattern as Marketplace above.
+                HoodMode.JOBS -> JobsContent(onMessagePoster = onMessageSeller)
+                // Third Feature extraction (2026-07-23), same pattern as Marketplace/Jobs above.
+                HoodMode.PROPERTY -> PropertyContent(onMessageLister = onMessageSeller)
+            }
         }
-        neighborhoodName?.let { neighborhood ->
-            Text(
-                "📍 Near $neighborhood" + if (neighborhoodVerificationCount > 0) " · confirmed ${neighborhoodVerificationCount}×" else "",
-                color = TossSecondary,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = 2.dp),
-            )
-        }
-        when (mode) {
-            // Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace now
-            // lives in :features:marketplace:impl, the first Hood-mode section pulled out
-            // of this file to match Toss's real Microfeatures architecture.
-            HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller = onMessageSeller)
-            // Fourth Feature extraction (2026-07-23), same pattern. onOpenGroupChat
-            // reuses the same onMessageSeller callback (2026-07-24) -- see
-            // TalkScreen.kt's own doc comment on why a real GroupConversation id works
-            // through the exact same hand-off Marketplace/Jobs/Property already share.
-            HoodMode.COMMUNITY -> CommunityContent(onOpenGroupChat = onMessageSeller)
-            // Second Feature extraction (2026-07-23), same pattern as Marketplace above.
-            HoodMode.JOBS -> JobsContent(onMessagePoster = onMessageSeller)
-            // Third Feature extraction (2026-07-23), same pattern as Marketplace/Jobs above.
-            HoodMode.PROPERTY -> PropertyContent(onMessageLister = onMessageSeller)
+        // Real Karrot 글쓰기 FAB (2026-08-03): a floating orange pill, always present
+        // regardless of which chip is selected, matching the real reference screenshots
+        // exactly (bottom-end, brand orange, "+" + label). Currently wired to
+        // Marketplace's own new-listing form (the mode these reference screenshots are
+        // literally of); Life/Jobs/Home's own "new post" entry points stay as their
+        // existing in-content buttons rather than this FAB silently doing nothing when
+        // tapped from a mode it can't act on yet.
+        if (mode == HoodMode.MARKETPLACE) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(20.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(HoodOrange)
+                    .clickable { requestNewListingSignal++ }
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Write", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
         }
     }
 }
