@@ -84,7 +84,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
         every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("wallet_1", any()) } returns entries
 
         When("requesting an offer") {
-            val offer = service.getOffer("merchant_1")
+            val offer = service.getOffer("user_1", "merchant_1")
 
             Then("it real-ineligibles with an honest reason, not a fabricated offer") {
                 offer["eligible"] shouldBe false
@@ -109,7 +109,7 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
         every { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter("wallet_2", any()) } returns entries
 
         When("requesting an offer") {
-            val offer = service.getOffer("merchant_2")
+            val offer = service.getOffer("user_1", "merchant_2")
 
             Then("the offer is computed honestly from the real summed inflow: 2,000/day average x 90 = 180,000 principal, 8% flat fee = 14,400") {
                 offer["eligible"] shouldBe true
@@ -117,6 +117,26 @@ class VendorCashAdvanceServiceTest : BehaviorSpec({
                 offer["offerAmount"] shouldBe BigDecimal("180000.00")
                 offer["feeAmount"] shouldBe BigDecimal("14400.00")
                 offer["collectionRatePercent"] shouldBe 15.0
+            }
+        }
+    }
+
+    // Real bug found in this feature's own build-time review (2026-08-02): getOffer
+    // originally took only merchantId, with no ownership check at all -- GET /offer
+    // requires a valid JWT (not permitAll in SecurityConfig), but any OTHER
+    // authenticated itunda user could still probe another merchant's real average
+    // daily settlement/trading-day count/advance eligibility just by knowing their
+    // merchantId, a genuine business-financial-data leak between unrelated users.
+    Given("someone who doesn't own a merchant trying to view its real offer") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = newService(merchantRepository = merchantRepository)
+
+        val m = merchant("merchant_3", "owner_1", "wallet_3")
+        every { merchantRepository.findById("merchant_3") } returns Optional.of(m)
+
+        When("the attacker requests an offer for a merchant they don't own") {
+            Then("it real-404s, never revealing that merchant_3's real settlement data exists") {
+                shouldThrow<VendorCashAdvanceNotFoundException> { service.getOffer("attacker", "merchant_3") }
             }
         }
     }

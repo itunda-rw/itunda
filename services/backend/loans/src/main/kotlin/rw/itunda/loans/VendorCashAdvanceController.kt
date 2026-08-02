@@ -37,8 +37,8 @@ class VendorCashAdvanceController(
     private val idempotencyService: IdempotencyService,
 ) {
     @GetMapping("/offer")
-    fun getOffer(@RequestParam merchantId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true) + vendorCashAdvanceService.getOffer(merchantId))
+    fun getOffer(@RequestParam merchantId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true) + vendorCashAdvanceService.getOffer(currentUser.userId, merchantId))
 
     @PostMapping("/apply")
     fun apply(@RequestBody request: ApplyForVendorCashAdvanceRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {

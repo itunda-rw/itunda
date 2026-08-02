@@ -144,11 +144,19 @@ class VendorCashAdvanceService(
      * entries whose memo matches `MerchantService.collect`'s "collection -" narration
      * -- see this class's own doc comment, limitation #2) over the trailing 30 days,
      * and counts distinct calendar trading days. Read-only -- never mutates anything.
+     *
+     * Real bug found in this feature's own build-time review (2026-08-02): this
+     * method originally took only `merchantId`, with no ownership check at all --
+     * `GET /offer` requires a valid JWT (not `permitAll` in SecurityConfig), but any
+     * OTHER authenticated itunda user could still probe another merchant's real
+     * average daily settlement, trading-day count, and advance eligibility just by
+     * knowing their merchantId, a genuine business-financial-data leak between
+     * unrelated users. Fixed the same way every other merchant-scoped lookup in this
+     * class already works: require the caller and re-verify ownership via
+     * `getOwnedMerchant` before computing anything.
      */
-    fun getOffer(merchantId: String): Map<String, Any?> {
-        val merchant = merchantRepository.findById(merchantId).orElseThrow {
-            VendorCashAdvanceNotFoundException("Merchant not found")
-        }
+    fun getOffer(userId: String, merchantId: String): Map<String, Any?> {
+        val merchant = getOwnedMerchant(userId, merchantId)
         val wallet = requireWallet(merchant)
 
         val since = Instant.now().minus(Duration.ofDays(LOOKBACK_DAYS))
@@ -196,7 +204,7 @@ class VendorCashAdvanceService(
         }
 
         // Re-derive the offer server-side -- never trust a client-supplied amount.
-        val offer = getOffer(merchantId)
+        val offer = getOffer(userId, merchantId)
         if (offer["eligible"] != true) {
             throw VendorCashAdvanceNotEligibleException(offer["reason"] as? String ?: "Not eligible for a vendor cash advance")
         }
