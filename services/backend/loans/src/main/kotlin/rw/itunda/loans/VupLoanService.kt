@@ -59,6 +59,16 @@ class VupLoanService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
 ) {
+    // Real bug found in this feature's own build-time review (2026-08-02): the
+    // "reject a second active loan" check below reads-then-creates a brand-new row, a
+    // shape @Version can never protect (there's no existing row to version until the
+    // first request's insert commits). Two concurrent applyForLoan calls for the same
+    // user with no existing loan yet could both read zero active loans and both create
+    // one, each independently disbursable -- silently doubling a user's real
+    // borrowing limit. Locking the caller's own MAIN wallet row first (same
+    // findByIdForUpdate convention FloatMarketplaceService/LedgerAccountRepository
+    // already use to close an identical class of race) serializes concurrent
+    // applications for the same user without needing a new lock table.
     @Transactional
     fun applyForLoan(userId: String, declaredUbudeheCategory: Int, purpose: VupLoanPurpose, amount: BigDecimal): VupLoan {
         if (declaredUbudeheCategory < MIN_ELIGIBLE_UBUDEHE_CATEGORY || declaredUbudeheCategory > MAX_ELIGIBLE_UBUDEHE_CATEGORY) {
@@ -69,6 +79,10 @@ class VupLoanService(
         if (amount <= BigDecimal.ZERO || amount > MAX_VUP_LOAN_AMOUNT) {
             throw InvalidVupLoanAmountException("Amount must be between 1 and $MAX_VUP_LOAN_AMOUNT RWF")
         }
+
+        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
+            ?: throw VupLoanNoWalletException("No wallet found for this account")
+        walletRepository.findByIdForUpdate(wallet.id)
 
         val activeLoans = vupLoanRepository.findByUserIdAndStatusIn(userId, ACTIVE_STATUSES)
         if (activeLoans.isNotEmpty()) {

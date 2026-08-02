@@ -50,10 +50,14 @@ class VupLoanServiceTest : BehaviorSpec({
 
     Given("a user applying for a VUP loan") {
         val vupLoanRepository = mockk<VupLoanRepository>()
-        val service = newService(vupLoanRepository = vupLoanRepository)
+        val walletRepository = mockk<WalletRepository>()
+        val service = newService(vupLoanRepository = vupLoanRepository, walletRepository = walletRepository)
         val savedSlot = slot<VupLoan>()
         every { vupLoanRepository.save(capture(savedSlot)) } answers { firstArg() }
         every { vupLoanRepository.findByUserIdAndStatusIn("user_1", any()) } returns emptyList()
+        val applicantWallet = wallet("wallet_1", "user_1")
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns applicantWallet
+        every { walletRepository.findByIdForUpdate("wallet_1") } returns Optional.of(applicantWallet)
 
         When("declaring a real eligible Ubudehe category (2) and a valid amount") {
             val result = service.applyForLoan("user_1", 2, VupLoanPurpose.FARMING, BigDecimal("100000"))
@@ -85,18 +89,23 @@ class VupLoanServiceTest : BehaviorSpec({
 
     Given("a user who already has an active VUP loan") {
         val vupLoanRepository = mockk<VupLoanRepository>()
-        val service = newService(vupLoanRepository = vupLoanRepository)
+        val walletRepository = mockk<WalletRepository>()
+        val service = newService(vupLoanRepository = vupLoanRepository, walletRepository = walletRepository)
         val existing = VupLoan(
             id = "vuploan_existing", userId = "user_1", declaredUbudeheCategory = 2, purpose = VupLoanPurpose.FARMING,
             principalAmount = BigDecimal("50000"), outstandingPrincipal = BigDecimal("50000"), status = VupLoanStatus.DISBURSED,
         )
         every { vupLoanRepository.findByUserIdAndStatusIn("user_1", any()) } returns listOf(existing)
+        val applicantWallet = wallet("wallet_1", "user_1")
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns applicantWallet
+        every { walletRepository.findByIdForUpdate("wallet_1") } returns Optional.of(applicantWallet)
 
         When("applying for a second loan") {
-            Then("the one-active-loan guard fires") {
+            Then("the one-active-loan guard fires, after locking the caller's own wallet row first (closing the double-apply race)") {
                 shouldThrow<VupLoanAlreadyActiveException> {
                     service.applyForLoan("user_1", 2, VupLoanPurpose.BUSINESS, BigDecimal("50000"))
                 }
+                verify(exactly = 1) { walletRepository.findByIdForUpdate("wallet_1") }
             }
         }
     }
