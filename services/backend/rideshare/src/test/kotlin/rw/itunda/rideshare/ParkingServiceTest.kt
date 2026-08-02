@@ -5,6 +5,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.ParkingSession
 import rw.itunda.core.domain.ParkingSessionStatus
@@ -17,6 +19,7 @@ import rw.itunda.core.repository.ParkingSessionRepository
 import rw.itunda.core.repository.ParkingSpotRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -55,6 +58,32 @@ class ParkingServiceTest : BehaviorSpec({
                 result.walletId shouldBe "wallet_owner"
                 result.hourlyRate shouldBe BigDecimal("500")
                 savedSlot.captured.ownerUserId shouldBe "owner_1"
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-02): registerSpot used to have no rate limit at
+    // all, unlike every other real "post a listing" creation method in this codebase.
+    Given("an owner who has already registered too many real parking spots this hour") {
+        val parkingSpotRepository = mockk<ParkingSpotRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns Wallet(
+            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        )
+        every { rateLimiter.checkLimit("parking:register:owner_1", limit = 10, window = Duration.ofHours(1)) } throws
+            RateLimitExceededException("Too many requests")
+        val service = newService(parkingSpotRepository = parkingSpotRepository, walletRepository = walletRepository, rateLimiter = rateLimiter)
+
+        When("registering yet another real parking spot") {
+            Then("it real-propagates RateLimitExceededException before ever touching the wallet") {
+                try {
+                    service.registerSpot("owner_1", "Kigali Heights driveway", -1.9536, 30.0605, BigDecimal("500"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                }
             }
         }
     }

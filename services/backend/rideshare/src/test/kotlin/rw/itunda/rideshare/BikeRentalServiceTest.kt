@@ -5,6 +5,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Bike
 import rw.itunda.core.domain.BikeRentalSession
@@ -18,6 +20,7 @@ import rw.itunda.core.repository.BikeRentalSessionRepository
 import rw.itunda.core.repository.BikeRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -56,6 +59,54 @@ class BikeRentalServiceTest : BehaviorSpec({
                 result.walletId shouldBe "wallet_owner"
                 result.type shouldBe BikeType.ELECTRIC
                 savedSlot.captured.ownerUserId shouldBe "owner_1"
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-02): registerBike used to have no rate limit at
+    // all, unlike every other real "post a listing" creation method in this codebase.
+    Given("an owner who has already registered too many real bikes this hour") {
+        val bikeRepository = mockk<BikeRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns Wallet(
+            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        )
+        every { rateLimiter.checkLimit("bike:register:owner_1", limit = 10, window = Duration.ofHours(1)) } throws
+            RateLimitExceededException("Too many requests")
+        val service = newService(bikeRepository = bikeRepository, walletRepository = walletRepository, rateLimiter = rateLimiter)
+
+        When("registering yet another real bike") {
+            Then("it real-propagates RateLimitExceededException before ever touching the wallet") {
+                try {
+                    service.registerBike("owner_1", BikeType.ELECTRIC, -1.9536, 30.0605)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                }
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-02): updateLocation used to have no rate limit at
+    // all, unlike its direct siblings RideDriverService.updateLocation/
+    // DesignatedDriverService.updateLocation (both real 20/minute).
+    Given("a real bike owner pushing too many real location updates in one minute") {
+        val bikeRepository = mockk<BikeRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        every { rateLimiter.checkLimit("bike:location:owner_1", limit = 20, window = Duration.ofMinutes(1)) } throws
+            RateLimitExceededException("Too many requests")
+        val service = newService(bikeRepository = bikeRepository, rateLimiter = rateLimiter)
+
+        When("pushing one more real location update") {
+            Then("it real-propagates RateLimitExceededException before ever looking up the bike") {
+                try {
+                    service.updateLocation("owner_1", "bike_1", -1.9, 30.0)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { bikeRepository.findById(any()) }
+                }
             }
         }
     }

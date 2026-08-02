@@ -5,6 +5,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.BusBooking
 import rw.itunda.core.domain.BusBookingStatus
@@ -17,6 +19,7 @@ import rw.itunda.core.repository.BusBookingRepository
 import rw.itunda.core.repository.BusTripRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -59,6 +62,32 @@ class BusServiceTest : BehaviorSpec({
                 result.totalSeats shouldBe 30
                 result.availableSeats shouldBe 30
                 savedSlot.captured.origin shouldBe "Kigali"
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-02): postTrip used to have no rate limit at all,
+    // unlike every other real "post a listing" creation method in this codebase.
+    Given("an operator who has already posted too many real trips this hour") {
+        val busTripRepository = mockk<BusTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        every { walletRepository.findByUserIdAndType("operator_1", WalletType.MAIN) } returns Wallet(
+            id = "wallet_operator", userId = "operator_1", accountNumber = "1000000001", accountName = "Operator",
+            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        )
+        every { rateLimiter.checkLimit("bus:post-trip:operator_1", limit = 10, window = Duration.ofHours(1)) } throws
+            RateLimitExceededException("Too many requests")
+        val service = newService(busTripRepository = busTripRepository, walletRepository = walletRepository, rateLimiter = rateLimiter)
+
+        When("posting yet another real trip") {
+            Then("it real-propagates RateLimitExceededException before ever touching the wallet") {
+                try {
+                    service.postTrip("operator_1", "Kigali", "Musanze", Instant.now().plusSeconds(86400), 30, BigDecimal("3000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                }
             }
         }
     }

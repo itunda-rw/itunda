@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Listing
@@ -27,6 +28,7 @@ import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
+import java.time.Duration
 import java.util.Optional
 
 class MarketplaceServiceTest : BehaviorSpec({
@@ -179,6 +181,28 @@ class MarketplaceServiceTest : BehaviorSpec({
                     error("expected OwnListingException")
                 } catch (e: OwnListingException) {
                     // expected
+                }
+            }
+        }
+
+        // Real bug found live (2026-08-02) -- see payEscrow's own doc comment: this
+        // endpoint had no rate limit at all, unlike every other real "request a paid
+        // service" creation method in this codebase.
+        When("a real buyer exceeds the real pay-escrow rate limit") {
+            val freshListing = Listing(
+                id = "listing_5", sellerId = "seller_1", title = "Bicycle", description = "desc",
+                price = BigDecimal("15000"), category = "sports",
+            )
+            every { listingRepository.findById("listing_5") } returns Optional.of(freshListing)
+            every { rateLimiter.checkLimit("marketplace:pay-escrow:buyer_1", limit = 20, window = Duration.ofHours(1)) } throws
+                RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException before ever touching the ledger") {
+                try {
+                    service.payEscrow("buyer_1", "listing_5")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    io.mockk.verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
         }

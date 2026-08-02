@@ -2,6 +2,7 @@ package rw.itunda.marketplace
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
@@ -20,6 +21,7 @@ import rw.itunda.core.repository.VehicleInspectionMechanicRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -44,6 +46,7 @@ class VehicleInspectionService(
     private val walletRepository: WalletRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
+    private val rateLimiter: RateLimiter,
 ) {
     companion object {
         // Same real 1.5% fee-schedule reasoning MarketplaceService.ESCROW_FEE_RATE/
@@ -80,12 +83,22 @@ class VehicleInspectionService(
     }
 
     /** Real 100%-prepay-to-book -- the buyer's real inspection fee leaves their wallet
-     * right now, held until the mechanic actually delivers the inspection. */
+     * right now, held until the mechanic actually delivers the inspection.
+     *
+     * Real bug found live (2026-08-02): unlike every other real "request a paid
+     * service" creation method in this codebase (RideTripService.requestTrip,
+     * DesignatedDriverService.requestTrip, BusService.bookSeats,
+     * BikeRentalService.startRental, ParkingService.startSession -- all real 20/hour),
+     * this had no rate limit at all, and this service didn't even have a `RateLimiter`
+     * dependency to call one with. A buyer could spam-create bookings against any
+     * mechanic with no real anti-abuse bound, each one holding real money in
+     * `vehicle_inspection_holding` and paging a real mechanic. */
     @Transactional
     fun requestInspection(buyerId: String, listingId: String, mechanicId: String, fee: BigDecimal, scheduledFor: Instant): VehicleInspectionBooking {
         if (fee <= BigDecimal.ZERO) {
             throw InvalidInspectionFeeException("Fee must be greater than zero")
         }
+        rateLimiter.checkLimit("marketplace:inspection-request:$buyerId", limit = 20, window = Duration.ofHours(1))
         val listing = listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
         val mechanic = vehicleInspectionMechanicRepository.findById(mechanicId).orElseThrow { MechanicNotRegisteredException("Mechanic not found") }
         if (mechanic.userId == buyerId) {

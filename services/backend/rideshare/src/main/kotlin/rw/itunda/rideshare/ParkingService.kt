@@ -61,8 +61,15 @@ class ParkingService(
         private val platformFeeRate = BigDecimal("0.15")
     }
 
+    // Real bug found live (2026-08-02): unlike every other real "post a listing"
+    // creation method in this codebase (MarketplaceService.createListing,
+    // PropertyListingService.createListing -- both real 10/hour), this had no rate
+    // limit at all, even though `rateLimiter` is already a dependency of this exact
+    // class (`startSession` below uses it). Unbounded, this is a real spam-listing
+    // flood vector on `getNearbySpots`.
     @Transactional
     fun registerSpot(ownerUserId: String, address: String, latitude: Double, longitude: Double, hourlyRate: BigDecimal): ParkingSpot {
+        rateLimiter.checkLimit("parking:register:$ownerUserId", limit = 10, window = Duration.ofHours(1))
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidParkingLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }

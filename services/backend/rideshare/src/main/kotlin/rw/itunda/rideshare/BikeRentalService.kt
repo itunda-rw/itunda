@@ -60,8 +60,15 @@ class BikeRentalService(
 
     private fun rateFor(type: BikeType) = if (type == BikeType.ELECTRIC) electricPerMinuteRate else regularPerMinuteRate
 
+    // Real bug found live (2026-08-02): unlike every other real "post a listing"
+    // creation method in this codebase (MarketplaceService.createListing,
+    // PropertyListingService.createListing -- both real 10/hour), this had no rate
+    // limit at all, even though `rateLimiter` is already a dependency of this exact
+    // class (`startRental` below uses it). Unbounded, this is a real spam-listing
+    // flood vector on `getNearbyBikes`.
     @Transactional
     fun registerBike(ownerUserId: String, type: BikeType, latitude: Double, longitude: Double): Bike {
+        rateLimiter.checkLimit("bike:register:$ownerUserId", limit = 10, window = Duration.ofHours(1))
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidBikeLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
@@ -87,8 +94,13 @@ class BikeRentalService(
         return bikeRepository.save(bike)
     }
 
+    // Real bug found live (2026-08-02): unlike its direct siblings
+    // (RideDriverService.updateLocation, DesignatedDriverService.updateLocation --
+    // both real 20/minute for "a real client pushes a coordinate periodically"), this
+    // had no rate limit at all.
     @Transactional
     fun updateLocation(ownerUserId: String, bikeId: String, latitude: Double, longitude: Double): Bike {
+        rateLimiter.checkLimit("bike:location:$ownerUserId", limit = 20, window = Duration.ofMinutes(1))
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidBikeLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }

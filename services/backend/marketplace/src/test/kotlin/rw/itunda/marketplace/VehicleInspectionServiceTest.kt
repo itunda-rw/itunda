@@ -7,6 +7,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Listing
@@ -25,6 +27,7 @@ import rw.itunda.core.repository.VehicleInspectionBookingRepository
 import rw.itunda.core.repository.VehicleInspectionMechanicRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -47,7 +50,10 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         walletRepository: WalletRepository = mockk(),
         transactionRepository: TransactionRepository = mockk<TransactionRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } },
         ledgerService: LedgerService = mockk(),
-    ) = VehicleInspectionService(vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository, listingRepository, walletRepository, transactionRepository, ledgerService)
+        rateLimiter: RateLimiter = mockk(relaxed = true),
+    ) = VehicleInspectionService(
+        vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository, listingRepository, walletRepository, transactionRepository, ledgerService, rateLimiter,
+    )
 
     Given("a real user registering as a mechanic") {
         val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
@@ -88,9 +94,10 @@ class VehicleInspectionServiceTest : BehaviorSpec({
         val listingRepository = mockk<ListingRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = newService(
             vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository = vehicleInspectionBookingRepository,
-            listingRepository = listingRepository, walletRepository = walletRepository, ledgerService = ledgerService,
+            listingRepository = listingRepository, walletRepository = walletRepository, ledgerService = ledgerService, rateLimiter = rateLimiter,
         )
 
         val listing = Listing(
@@ -139,6 +146,23 @@ class VehicleInspectionServiceTest : BehaviorSpec({
                     error("expected InvalidInspectionFeeException")
                 } catch (e: InvalidInspectionFeeException) {
                     verify(exactly = 0) { listingRepository.findById(any()) }
+                }
+            }
+        }
+
+        // Real bug found live (2026-08-02) -- see requestInspection's own doc comment:
+        // this endpoint had no rate limit at all, unlike every other real "request a
+        // paid service" creation method in this codebase.
+        When("a real buyer exceeds the real inspection-request rate limit") {
+            every { rateLimiter.checkLimit("marketplace:inspection-request:buyer_1", limit = 20, window = Duration.ofHours(1)) } throws
+                RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException before ever touching the ledger") {
+                try {
+                    service.requestInspection("buyer_1", "listing_1", "mechanic_1", BigDecimal("15000"), Instant.now().plusSeconds(86400))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
         }

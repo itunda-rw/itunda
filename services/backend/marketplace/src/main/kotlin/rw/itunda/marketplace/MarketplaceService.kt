@@ -309,9 +309,19 @@ class MarketplaceService(
      * meeting up with cash. Marks the listing SOLD immediately (the buyer has real
      * committed money on it), same as `markSold`, but the money sits in
      * `marketplace_escrow_holding` until `confirmReceipt` releases it.
+     *
+     * Real bug found live (2026-08-02): unlike every other real "request a paid
+     * service" creation method in this codebase (`VehicleInspectionService.
+     * requestInspection`, `RideTripService.requestTrip`, `DesignatedDriverService.
+     * requestTrip`, `BusService.bookSeats` -- all real 20/hour), this had no rate
+     * limit at all, even though `rateLimiter` is already a dependency of this exact
+     * class (`createListing` below uses it). A buyer could spam-pay-escrow across many
+     * listings with no real anti-abuse bound, each call holding real money in
+     * `marketplace_escrow_holding`.
      */
     @Transactional
     fun payEscrow(buyerId: String, listingId: String): MarketplaceEscrow {
+        rateLimiter.checkLimit("marketplace:pay-escrow:$buyerId", limit = 20, window = Duration.ofHours(1))
         val listing = listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
         if (listing.status != ListingStatus.ACTIVE) {
             throw ListingNotActiveException("Only an active listing can be paid for")

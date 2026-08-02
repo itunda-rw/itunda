@@ -62,11 +62,18 @@ class BusService(
         const val MAX_SEATS_PER_BOOKING = 10
     }
 
+    // Real bug found live (2026-08-02): unlike every other real "post a listing"
+    // creation method in this codebase (MarketplaceService.createListing,
+    // PropertyListingService.createListing -- both real 10/hour), this had no rate
+    // limit at all, even though `rateLimiter` is already a dependency of this exact
+    // class (`bookSeats` below uses it). Unbounded, this is a real spam-listing flood
+    // vector on `searchTrips`.
     @Transactional
     fun postTrip(
         operatorUserId: String, origin: String, destination: String, departureTime: Instant,
         totalSeats: Int, farePerSeat: BigDecimal,
     ): BusTrip {
+        rateLimiter.checkLimit("bus:post-trip:$operatorUserId", limit = 10, window = Duration.ofHours(1))
         val trimmedOrigin = origin.trim().ifEmpty { throw InvalidBusTripException("Origin is required") }.take(200)
         val trimmedDestination = destination.trim().ifEmpty { throw InvalidBusTripException("Destination is required") }.take(200)
         if (!departureTime.isAfter(Instant.now())) {
