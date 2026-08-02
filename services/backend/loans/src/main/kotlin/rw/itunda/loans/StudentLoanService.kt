@@ -1,0 +1,217 @@
+package rw.itunda.loans
+
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.StudentLoan
+import rw.itunda.core.domain.StudentLoanLevel
+import rw.itunda.core.domain.StudentLoanStatus
+import rw.itunda.core.domain.WalletType
+import rw.itunda.core.ledger.LedgerLeg
+import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.StudentLoanRepository
+import rw.itunda.core.repository.WalletRepository
+import java.math.BigDecimal
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
+import java.util.UUID
+
+class InvalidGraduationDateException(message: String) : RuntimeException(message)
+class InvalidStudentLoanAmountException(message: String) : RuntimeException(message)
+class StudentLoanAlreadyActiveException(message: String) : RuntimeException(message)
+class StudentLoanNotFoundException(message: String) : RuntimeException(message)
+class StudentLoanNotRequestedException(message: String) : RuntimeException(message)
+class StudentLoanNotDisbursedException(message: String) : RuntimeException(message)
+class StudentLoanNotRepayableException(message: String) : RuntimeException(message)
+class StudentLoanNoWalletException(message: String) : RuntimeException(message)
+
+// itunda's own honest ceiling on a single BRD student loan: 2,000,000 RWF -- a
+// reasonable itunda-chosen bound, not a claimed reproduction of any real published
+// per-student cap (the sourcing didn't give an exact figure).
+private val MAX_STUDENT_LOAN_AMOUNT = BigDecimal("2000000")
+
+// Real, documented BRD fixed rates (brd.rw): 11% undergraduate, 12% postgraduate.
+private const val UNDERGRADUATE_RATE = 0.11
+private const val POSTGRADUATE_RATE = 0.12
+
+// A loan is "active" (blocks a second application) at every status except REPAID.
+private val ACTIVE_STATUSES = listOf(
+    StudentLoanStatus.REQUESTED, StudentLoanStatus.DISBURSED, StudentLoanStatus.IN_GRACE_PERIOD,
+    StudentLoanStatus.REPAYING, StudentLoanStatus.OVERDUE,
+)
+
+/**
+ * Real Rwanda BRD (Development Bank of Rwanda) higher-education student loan -- see
+ * `StudentLoan.kt`'s own doc comment for the full sourced account, including the
+ * honest v1 limitation on the real 8%-of-income payroll deduction this backend has
+ * no path to enforce.
+ *
+ * Genuinely distinct from every other lending feature in this codebase: eligibility
+ * on self-declared household income (not Ubudehe, unlike `VupLoanService`), a
+ * mandatory grace period between disbursement and first-repayment obligation, and
+ * income-percentage-SUGGESTED (not fixed-installment) repayment.
+ */
+@Service
+class StudentLoanService(
+    private val studentLoanRepository: StudentLoanRepository,
+    private val walletRepository: WalletRepository,
+    private val ledgerService: LedgerService,
+    private val rateLimiter: RateLimiter,
+) {
+    // Real bug class this session has hit repeatedly: the "reject if already active"
+    // check-then-CREATE race -- @Version can't protect a row that doesn't exist yet.
+    // Locking the caller's own MAIN wallet row first (same fix VupLoanService.applyForLoan
+    // and MiniWalletService.openMiniWallet already needed for this exact shape)
+    // serializes concurrent applications for the same user without needing a new lock
+    // table.
+    @Transactional
+    fun applyForLoan(
+        userId: String,
+        level: StudentLoanLevel,
+        declaredAnnualHouseholdIncome: BigDecimal,
+        amount: BigDecimal,
+        expectedGraduationDate: LocalDate,
+    ): StudentLoan {
+        if (!expectedGraduationDate.isAfter(LocalDate.now())) {
+            throw InvalidGraduationDateException("Expected graduation date must be in the future")
+        }
+        if (amount <= BigDecimal.ZERO || amount > MAX_STUDENT_LOAN_AMOUNT) {
+            throw InvalidStudentLoanAmountException("Amount must be between 1 and $MAX_STUDENT_LOAN_AMOUNT RWF")
+        }
+
+        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
+            ?: throw StudentLoanNoWalletException("No wallet found for this account")
+        walletRepository.findByIdForUpdate(wallet.id)
+
+        val activeLoans = studentLoanRepository.findByUserIdAndStatusIn(userId, ACTIVE_STATUSES)
+        if (activeLoans.isNotEmpty()) {
+            throw StudentLoanAlreadyActiveException("You already have an active student loan -- repay it before applying for another")
+        }
+
+        rateLimiter.checkLimit("student-loan:apply:$userId", limit = 5, window = Duration.ofDays(1))
+
+        val interestRate = if (level == StudentLoanLevel.POSTGRADUATE) POSTGRADUATE_RATE else UNDERGRADUATE_RATE
+
+        return studentLoanRepository.save(
+            StudentLoan(
+                id = "studentloan_${UUID.randomUUID()}", userId = userId, level = level,
+                declaredAnnualHouseholdIncome = declaredAnnualHouseholdIncome,
+                principalAmount = amount, outstandingBalance = amount, interestRate = interestRate,
+                expectedGraduationDate = expectedGraduationDate,
+            ),
+        )
+    }
+
+    @Transactional
+    fun disburse(userId: String, loanId: String): StudentLoan {
+        val loan = studentLoanRepository.findById(loanId).orElseThrow { StudentLoanNotFoundException("Student loan not found") }
+        if (loan.userId != userId) throw StudentLoanNotFoundException("Student loan not found")
+        if (loan.status != StudentLoanStatus.REQUESTED) throw StudentLoanNotRequestedException("Only a REQUESTED loan can be disbursed")
+
+        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
+            ?: throw StudentLoanNoWalletException("No wallet found for this account")
+
+        ledgerService.postLedgerTransaction(
+            wallet.currency,
+            listOf(
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, loan.principalAmount, "BRD student loan disbursement"),
+                LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, loan.principalAmount, "BRD student loan principal owed"),
+            ),
+        )
+
+        loan.status = StudentLoanStatus.DISBURSED
+        loan.disbursedAt = Instant.now()
+        return studentLoanRepository.save(loan)
+    }
+
+    @Transactional
+    fun declareGraduated(userId: String, loanId: String): StudentLoan {
+        val loan = studentLoanRepository.findById(loanId).orElseThrow { StudentLoanNotFoundException("Student loan not found") }
+        if (loan.userId != userId) throw StudentLoanNotFoundException("Student loan not found")
+        if (loan.status != StudentLoanStatus.DISBURSED) throw StudentLoanNotDisbursedException("Only a DISBURSED loan can be marked graduated")
+
+        // Real sourced range is 6-12 months (brd.rw); itunda's own honest pick within
+        // that range is 6 months -- the shortest real grace period sourced, not a
+        // claimed reproduction of BRD's own exact per-student term.
+        loan.graceEndsAt = LocalDate.now().plusMonths(6)
+        loan.status = StudentLoanStatus.IN_GRACE_PERIOD
+        return studentLoanRepository.save(loan)
+    }
+
+    @Transactional
+    fun repay(userId: String, loanId: String, amount: BigDecimal): StudentLoan {
+        val loan = studentLoanRepository.findById(loanId).orElseThrow { StudentLoanNotFoundException("Student loan not found") }
+        if (loan.userId != userId) throw StudentLoanNotFoundException("Student loan not found")
+        // IN_GRACE_PERIOD/REQUESTED/DISBURSED are explicitly NOT repayable -- repayment
+        // can't start before the grace period ends, that's the whole point of this
+        // feature.
+        if (loan.status != StudentLoanStatus.REPAYING && loan.status != StudentLoanStatus.OVERDUE) {
+            throw StudentLoanNotRepayableException("Only a REPAYING or OVERDUE loan can be repaid -- repayment can't start before the grace period ends")
+        }
+        if (amount <= BigDecimal.ZERO) throw InvalidStudentLoanAmountException("Repayment amount must be positive")
+
+        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
+            ?: throw StudentLoanNoWalletException("No wallet found for this account")
+
+        // Clamp BEFORE ever touching the ledger -- the exact overshoot-clamp lesson
+        // this session learned fixing InsuranceService.contributeToFund/VupLoanService.repay.
+        // Never post the raw amount to the ledger and cap the field separately.
+        val actualAmount = amount.min(loan.outstandingBalance)
+
+        ledgerService.postLedgerTransaction(
+            wallet.currency,
+            listOf(
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "BRD student loan repayment"),
+                LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, actualAmount, "BRD student loan repayment"),
+            ),
+        )
+
+        loan.outstandingBalance = loan.outstandingBalance.subtract(actualAmount)
+        loan.status = if (loan.outstandingBalance <= BigDecimal.ZERO) StudentLoanStatus.REPAID else StudentLoanStatus.REPAYING
+        return studentLoanRepository.save(loan)
+    }
+
+    fun getMyLoans(userId: String): List<StudentLoan> = studentLoanRepository.findByUserId(userId)
+
+    fun getLoan(userId: String, loanId: String): StudentLoan {
+        val loan = studentLoanRepository.findById(loanId).orElseThrow { StudentLoanNotFoundException("Student loan not found") }
+        if (loan.userId != userId) throw StudentLoanNotFoundException("Student loan not found")
+        return loan
+    }
+
+    // Real BRD 8%-of-monthly-income deduction (brd.rw) is fundamentally an
+    // employer-payroll/RRA-integration mechanic itunda has no path to -- see
+    // StudentLoan.kt's own doc comment. This is surfaced only as a SUGGESTED amount,
+    // labeled honestly in the response itself, never automatically enforced or
+    // deducted.
+    fun getSuggestedMonthlyPayment(userId: String, loanId: String): Map<String, Any?> {
+        val loan = getLoan(userId, loanId)
+        val suggestedMonthlyPayment = loan.declaredAnnualHouseholdIncome
+            .divide(BigDecimal(12), 2, java.math.RoundingMode.HALF_UP)
+            .multiply(BigDecimal("0.08"))
+        return mapOf(
+            "loanId" to loan.id,
+            "outstandingBalance" to loan.outstandingBalance,
+            "suggestedMonthlyPayment" to suggestedMonthlyPayment,
+            "note" to "This is a suggested amount based on your declared income -- itunda does not automatically deduct from your paycheck or wallet.",
+        )
+    }
+
+    // For the grace-period scheduler: IN_GRACE_PERIOD loans whose grace period has
+    // already elapsed.
+    fun getLoansDueForGracePeriodEnd(): List<StudentLoan> {
+        val today = LocalDate.now()
+        return studentLoanRepository.findAll().filter {
+            it.status == StudentLoanStatus.IN_GRACE_PERIOD && it.graceEndsAt != null && !it.graceEndsAt!!.isAfter(today)
+        }
+    }
+
+    @Transactional
+    fun markRepaying(loan: StudentLoan) {
+        loan.status = StudentLoanStatus.REPAYING
+        studentLoanRepository.save(loan)
+    }
+}
