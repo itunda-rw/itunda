@@ -285,6 +285,10 @@ struct EntireMenuScreen: View {
     // Real peer-to-peer agent float rebalancing marketplace -- see
     // FloatMarketplaceScreenView.swift's own doc comment for the full sourced account.
     @State private var showFloatMarketplace = false
+    // Real means-tested VUP (Vision 2020 Umurenge Programme) Financial Services
+    // microloan -- see VupLoanScreenView.swift's own doc comment for the full sourced
+    // account. bank-mfe shipped first; this is the first native client.
+    @State private var showVupLoan = false
 
     var body: some View {
         ScrollView {
@@ -317,6 +321,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
                         FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "chart.pie.fill", tint: .accentPurple, action: { showSacco = true }),
                         FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", symbol: "leaf.fill", tint: .accentTeal, action: { showHarvestAdvance = true }),
+                        FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "banknote.fill", tint: .accentBlue, action: { showVupLoan = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
                     IdsSearchBar(placeholder: "Search")
@@ -494,6 +499,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showFloatMarketplace) {
             FloatMarketplaceScreenView(onBack: { showFloatMarketplace = false })
+        }
+        .sheet(isPresented: $showVupLoan) {
+            VupLoanScreenView(onBack: { showVupLoan = false })
         }
         .sheet(isPresented: $showCertificate) {
             CertificateScreenView(onBack: { showCertificate = false })

@@ -247,6 +247,43 @@ public struct CooperativeMembershipsResponse: Decodable { public let success: Bo
 public struct HarvestAdvanceResponse: Decodable { public let success: Bool; public let advance: HarvestAdvanceDto }
 public struct HarvestAdvancesResponse: Decodable { public let success: Bool; public let advances: [HarvestAdvanceDto] }
 
+// Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services means-tested
+// microloan -- sourced beyond this session's usual Toss/Kakao/Naver/Coupang reference
+// ecosystems. VUP, run by LODA since 2008, subsidizes microloans for income-generating
+// activities (farming, livestock, small business) targeted at households in poorer
+// Ubudehe categories (NISR EICV7 2023/24: ~100,000 RWF average loan). Since a real
+// 2014-07-29 Cabinet decision, administration moved to Umurenge SACCOs, which set the
+// rate at 11% (Rwanda Inspirer: uptake fell after that rate hike). Honest v1
+// limitation: declaredUbudeheCategory is self-declared by the user, not verified
+// against Rwanda's real government Ubudehe household-classification registry. Mirrors
+// bank-mfe's lib/vupLoan.ts exactly.
+public struct VupLoanDto: Decodable, Identifiable {
+    public let id: String
+    public let userId: String
+    public let declaredUbudeheCategory: Int
+    public let purpose: String
+    public let principalAmount: Double
+    public let outstandingPrincipal: Double
+    public let interestRate: Double
+    public let status: String
+    public let appliedAt: String
+    public let disbursedAt: String?
+    public let dueDate: String?
+}
+public struct ApplyForVupLoanRequest: Encodable { public let declaredUbudeheCategory: Int; public let purpose: String; public let amount: Double }
+public struct RepayVupLoanRequest: Encodable { public let amount: Double }
+public struct VupLoanResponse: Decodable { public let success: Bool; public let loan: VupLoanDto }
+public struct VupLoansResponse: Decodable { public let success: Bool; public let loans: [VupLoanDto] }
+public struct VupLoanEligibilityResponse: Decodable {
+    public let success: Bool
+    public let hasActiveLoan: Bool
+    public let canApply: Bool
+    public let minUbudeheCategory: Int
+    public let maxUbudeheCategory: Int
+    public let interestRate: Double
+    public let maxAmount: Double
+}
+
 public struct AuthResponse: Decodable {
     public let message: String
     public let user: PublicUser
@@ -1516,6 +1553,28 @@ extension NetworkClient {
     }
 
     public func getMyHarvestAdvances() async throws -> HarvestAdvancesResponse { try await get("api/v1/cooperatives/advances/my-advances") }
+
+    // Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services means-tested
+    // microloan -- see VupLoanDto's own doc comment. No Idempotency-Key on apply (not
+    // money movement itself, matching the backend's own contract); disburse/repay both
+    // require one, same convention as every other money-moving call in this file.
+    public func applyForVupLoan(declaredUbudeheCategory: Int, purpose: String, amount: Double) async throws -> VupLoanResponse {
+        try await authenticatedPost("api/v1/loans/vup/apply", body: ApplyForVupLoanRequest(declaredUbudeheCategory: declaredUbudeheCategory, purpose: purpose, amount: amount))
+    }
+
+    public func disburseVupLoan(loanId: String) async throws -> VupLoanResponse {
+        try await authenticatedPost("api/v1/loans/vup/\(loanId)/disburse", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func repayVupLoan(loanId: String, amount: Double) async throws -> VupLoanResponse {
+        try await authenticatedPost("api/v1/loans/vup/\(loanId)/repay", body: RepayVupLoanRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getMyVupLoans() async throws -> VupLoansResponse { try await get("api/v1/loans/vup/my") }
+
+    public func getVupLoanEligibility() async throws -> VupLoanEligibilityResponse { try await get("api/v1/loans/vup/eligibility") }
+
+    public func getVupLoan(loanId: String) async throws -> VupLoanResponse { try await get("api/v1/loans/vup/\(loanId)") }
 
     private func authenticatedPut<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))

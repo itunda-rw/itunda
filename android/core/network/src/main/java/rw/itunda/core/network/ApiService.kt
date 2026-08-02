@@ -3583,6 +3583,28 @@ interface ApiService {
 
     @GET("api/v1/cooperatives/advances/my-advances")
     suspend fun getMyHarvestAdvances(): HarvestAdvancesResponse
+
+    // Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services means-tested
+    // microloan -- see VupLoanDto's own doc comment. No Idempotency-Key on apply (not
+    // money movement itself, matching the backend's own contract); disburse/repay both
+    // require one, same convention as every other money-moving call in this file.
+    @POST("api/v1/loans/vup/apply")
+    suspend fun applyForVupLoan(@Body request: ApplyForVupLoanRequest): VupLoanResponse
+
+    @POST("api/v1/loans/vup/{loanId}/disburse")
+    suspend fun disburseVupLoan(@Path("loanId") loanId: String, @Header("Idempotency-Key") idempotencyKey: String): VupLoanResponse
+
+    @POST("api/v1/loans/vup/{loanId}/repay")
+    suspend fun repayVupLoan(@Path("loanId") loanId: String, @Body request: RepayVupLoanRequest, @Header("Idempotency-Key") idempotencyKey: String): VupLoanResponse
+
+    @GET("api/v1/loans/vup/my")
+    suspend fun getMyVupLoans(): VupLoansResponse
+
+    @GET("api/v1/loans/vup/eligibility")
+    suspend fun getVupLoanEligibility(): VupLoanEligibilityResponse
+
+    @GET("api/v1/loans/vup/{loanId}")
+    suspend fun getVupLoan(@Path("loanId") loanId: String): VupLoanResponse
 }
 
 data class UpfrontDepositDto(
@@ -3949,6 +3971,30 @@ data class CooperativeMembershipResponse(val success: Boolean, val membership: C
 data class CooperativeMembershipsResponse(val success: Boolean, val memberships: List<CooperativeMembershipDto>)
 data class HarvestAdvanceResponse(val success: Boolean, val advance: HarvestAdvanceDto)
 data class HarvestAdvancesResponse(val success: Boolean, val advances: List<HarvestAdvanceDto>)
+
+// Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services means-tested
+// microloan -- sourced beyond this session's usual Toss/Kakao/Naver/Coupang reference
+// ecosystems. VUP, run by LODA since 2008, subsidizes microloans for income-generating
+// activities (farming, livestock, small business) targeted at households in poorer
+// Ubudehe categories (NISR EICV7 2023/24: ~100,000 RWF average loan). Since a real
+// 2014-07-29 Cabinet decision, administration moved to Umurenge SACCOs, which set the
+// rate at 11% (Rwanda Inspirer: uptake fell after that rate hike). Honest v1
+// limitation: declaredUbudeheCategory is self-declared by the user, not verified
+// against Rwanda's real government Ubudehe household-classification registry. Mirrors
+// bank-mfe's lib/vupLoan.ts exactly.
+data class VupLoanDto(
+    val id: String, val userId: String, val declaredUbudeheCategory: Int, val purpose: String,
+    val principalAmount: java.math.BigDecimal, val outstandingPrincipal: java.math.BigDecimal,
+    val interestRate: Double, val status: String, val appliedAt: String, val disbursedAt: String?, val dueDate: String?,
+)
+data class ApplyForVupLoanRequest(val declaredUbudeheCategory: Int, val purpose: String, val amount: java.math.BigDecimal)
+data class RepayVupLoanRequest(val amount: java.math.BigDecimal)
+data class VupLoanResponse(val success: Boolean, val loan: VupLoanDto)
+data class VupLoansResponse(val success: Boolean, val loans: List<VupLoanDto>)
+data class VupLoanEligibilityResponse(
+    val success: Boolean, val hasActiveLoan: Boolean, val canApply: Boolean,
+    val minUbudeheCategory: Int, val maxUbudeheCategory: Int, val interestRate: Double, val maxAmount: java.math.BigDecimal,
+)
 
 // Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
