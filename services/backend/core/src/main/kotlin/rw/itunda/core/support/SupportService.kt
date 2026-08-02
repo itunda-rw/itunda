@@ -19,7 +19,6 @@ import java.time.Instant
 import java.util.UUID
 
 class SupportTransactionNotFoundException(message: String) : RuntimeException(message)
-class SupportTransactionNotOwnedException(message: String) : RuntimeException(message)
 class SupportTicketNotFoundException(message: String) : RuntimeException(message)
 class SupportTicketAlreadyResolvedException(message: String) : RuntimeException(message)
 
@@ -54,8 +53,15 @@ class SupportService(
     fun createTicket(userId: String, transactionId: String, category: SupportTicketCategory, description: String): SupportTicket {
         val transaction = transactionRepository.findById(transactionId)
             .orElseThrow { SupportTransactionNotFoundException("Transaction not found") }
+        // Real IDOR fix (2026-08-02): a transactionId the caller isn't a party to used
+        // to throw SupportTransactionNotOwnedException (403), confirming to anyone who
+        // guesses or enumerates a transactionId that it's real -- the same
+        // real-existence-confirming probe WalletService.getWalletById's own doc
+        // comment already documents fixing for wallet lookups. Now the same
+        // SupportTransactionNotFoundException (404) as a genuinely bogus id, never
+        // revealing that a transaction the caller wasn't part of actually exists.
         if (transaction.senderId != userId && transaction.recipientId != userId) {
-            throw SupportTransactionNotOwnedException("That transaction does not belong to you")
+            throw SupportTransactionNotFoundException("Transaction not found")
         }
 
         var frozeWalletId: String? = null

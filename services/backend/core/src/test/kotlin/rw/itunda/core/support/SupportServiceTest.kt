@@ -69,12 +69,15 @@ class SupportServiceTest : BehaviorSpec({
             }
         }
 
+        // Real IDOR fix (2026-08-02): this used to throw SupportTransactionNotOwnedException
+        // (403), confirming to a stranger that a guessed/leaked transactionId is real.
+        // Now the same SupportTransactionNotFoundException (404) as a bogus id.
         When("someone with no connection to the transaction tries to file a ticket") {
-            Then("it throws SupportTransactionNotOwnedException") {
+            Then("it throws SupportTransactionNotFoundException, never revealing the transaction exists") {
                 try {
                     service.createTicket("user_stranger", "ledgertxn_1", SupportTicketCategory.GENERAL, "Not mine")
-                    error("expected SupportTransactionNotOwnedException")
-                } catch (e: SupportTransactionNotOwnedException) {
+                    error("expected SupportTransactionNotFoundException")
+                } catch (e: SupportTransactionNotFoundException) {
                     // expected
                 }
             }
