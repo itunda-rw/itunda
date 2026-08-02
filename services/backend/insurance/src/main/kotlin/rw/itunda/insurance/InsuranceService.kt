@@ -6,6 +6,8 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InsuranceClaim
 import rw.itunda.core.domain.InsuranceClaimStatus
 import rw.itunda.core.domain.InsurancePolicy
+import rw.itunda.core.domain.InsurancePremiumFund
+import rw.itunda.core.domain.InsurancePremiumFundStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.WalletType
@@ -13,12 +15,16 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.InsuranceClaimRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
+import rw.itunda.core.repository.InsurancePremiumFundRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.util.UUID
+
+private const val PREMIUM_FUND_AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
 
 class PlanNotFoundException(message: String) : RuntimeException(message)
 class NoWalletException(message: String) : RuntimeException(message)
@@ -27,6 +33,10 @@ class PolicyNotActiveException(message: String) : RuntimeException(message)
 class ClaimNotFoundException(message: String) : RuntimeException(message)
 class ClaimNotPendingException(message: String) : RuntimeException(message)
 class InvalidClaimException(message: String) : RuntimeException(message)
+class PremiumFundNotFoundException(message: String) : RuntimeException(message)
+class PremiumFundAlreadyExistsException(message: String) : RuntimeException(message)
+class PremiumFundNotActiveException(message: String) : RuntimeException(message)
+class InvalidPremiumFundAmountException(message: String) : RuntimeException(message)
 
 @Service
 class InsuranceService(
@@ -35,6 +45,7 @@ class InsuranceService(
     private val ledgerService: LedgerService,
     private val insuranceClaimRepository: InsuranceClaimRepository,
     private val rateLimiter: RateLimiter,
+    private val insurancePremiumFundRepository: InsurancePremiumFundRepository,
 ) {
 
     val insurancePlans = listOf(
@@ -80,6 +91,67 @@ class InsuranceService(
         )
 
         return insurancePolicyRepository.save(policy)
+    }
+
+    // Real recurring-premium-collection bug fix (2026-08-02) -- enrollInPlan charges the
+    // FIRST premium at enrollment and sets nextPaymentDate = now + 30 days, but a repo-wide
+    // grep confirmed nextPaymentDate was written once and never read anywhere else: no
+    // scheduler, no job, nothing ever collected a second premium. Every policy silently
+    // stopped being paid for after month one, forever, with zero consequence. findAll() +
+    // in-memory filter is the same honest choice as SavingsService.getGoalsDueForAutoContribution
+    // at this system's real data scale, not a premature indexed query.
+    fun getPoliciesDueForPremiumCollection(): List<InsurancePolicy> {
+        val today = LocalDate.now()
+        return insurancePolicyRepository.findAll().filter { policy ->
+            policy.status == "active" && !policy.nextPaymentDate.isAfter(today)
+        }
+    }
+
+    // Tries the user's MAIN wallet first, exactly the same DEBIT wallet / CREDIT
+    // insurance_premium_revenue leg shape enrollInPlan already uses for the first premium.
+    // If the wallet alone is short, falls back to draining an active InsurancePremiumFund
+    // linked to this policy (see InsurancePremiumFund.kt) before giving up. Returns false
+    // (not an exception) when NEITHER source can cover it -- this runs from a background
+    // scheduler, same "skip this cycle, don't fail loudly" convention as
+    // SavingsService.autoContribute -- but unlike a savings goal simply missing a
+    // contribution, an unpaid premium has a real consequence: the policy lapses.
+    @Transactional
+    fun collectPremium(policy: InsurancePolicy): Boolean {
+        val wallet = walletRepository.findByUserIdAndType(policy.userId, WalletType.MAIN)
+        if (wallet != null && wallet.availableBalance >= policy.monthlyPremium) {
+            ledgerService.postLedgerTransaction(
+                wallet.currency,
+                listOf(
+                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, policy.monthlyPremium, "Premium - ${policy.planName}"),
+                    LedgerLeg("insurance_premium_revenue", LedgerAccountType.INSURANCE_PREMIUM_REVENUE, LedgerDirection.CREDIT, policy.monthlyPremium, "Premium - ${policy.planName}"),
+                ),
+            )
+            policy.nextPaymentDate = policy.nextPaymentDate.plusDays(30)
+            insurancePolicyRepository.save(policy)
+            return true
+        }
+
+        val fund = insurancePremiumFundRepository.findByPolicyIdAndStatus(policy.id, InsurancePremiumFundStatus.active)
+        if (fund != null && fund.currentAmount >= policy.monthlyPremium) {
+            ledgerService.postLedgerTransaction(
+                "RWF",
+                listOf(
+                    LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.DEBIT, policy.monthlyPremium, "Premium - ${policy.planName}"),
+                    LedgerLeg("insurance_premium_revenue", LedgerAccountType.INSURANCE_PREMIUM_REVENUE, LedgerDirection.CREDIT, policy.monthlyPremium, "Premium - ${policy.planName}"),
+                ),
+            )
+            fund.currentAmount = fund.currentAmount.subtract(policy.monthlyPremium)
+            insurancePremiumFundRepository.save(fund)
+            policy.nextPaymentDate = policy.nextPaymentDate.plusDays(30)
+            insurancePolicyRepository.save(policy)
+            return true
+        }
+
+        // Real-world consequence of a genuinely unpaid premium: coverage lapses, the same
+        // way a real insurer would stop covering a policyholder who stops paying.
+        policy.status = "lapsed"
+        insurancePolicyRepository.save(policy)
+        return false
     }
 
     fun submitClaim(userId: String, policyId: String, description: String, amount: BigDecimal): InsuranceClaim {
@@ -130,5 +202,121 @@ class InsuranceService(
         claim.reviewedAt = Instant.now()
         claim.decisionReason = reason
         return insuranceClaimRepository.save(claim)
+    }
+
+    // Real Ejo Heza ya Moto-style premium savings fund (2026-08-02) -- see
+    // InsurancePremiumFund.kt's own doc comment. Sourced from Africa-Press (2026)
+    // reporting Rwanda's ~46,000 registered taxi-moto riders facing insurance premiums
+    // up to RWF 250,000/year for older bikes, worsened since the taxi-moto cooperatives
+    // that used to pool this cost were dissolved. Generic and policy-linked (not
+    // moto-only) so any user can save toward a specific policy's premium ahead of time,
+    // letting collectPremium above draw on it instead of lapsing the policy when the
+    // wallet alone is short.
+    @Transactional
+    fun createPremiumFund(userId: String, policyId: String, dailyContribution: BigDecimal): InsurancePremiumFund {
+        val policy = insurancePolicyRepository.findById(policyId)
+            .filter { it.userId == userId }
+            .orElseThrow { PolicyNotFoundException("Policy not found") }
+        if (insurancePremiumFundRepository.findByPolicyIdAndStatus(policyId, InsurancePremiumFundStatus.active) != null) {
+            throw PremiumFundAlreadyExistsException("An active premium fund already exists for this policy")
+        }
+        // Real anti-spam limit, same convention as SavingsService.createGoal -- row
+        // creation is free and otherwise has zero protection of any kind.
+        rateLimiter.checkLimit("insurance:premium-fund:$userId", limit = 10, window = Duration.ofHours(1))
+        return insurancePremiumFundRepository.save(
+            InsurancePremiumFund(
+                id = "ipf_${UUID.randomUUID()}", userId = userId, policyId = policyId,
+                targetAmount = policy.monthlyPremium, currentAmount = BigDecimal.ZERO,
+                dailyContribution = dailyContribution,
+            ),
+        )
+    }
+
+    @Transactional
+    fun contributeToFund(userId: String, fundId: String, amount: BigDecimal): InsurancePremiumFund {
+        val fund = insurancePremiumFundRepository.findById(fundId)
+            .filter { it.userId == userId }
+            .orElseThrow { PremiumFundNotFoundException("Premium fund not found") }
+        if (fund.status != InsurancePremiumFundStatus.active) {
+            throw PremiumFundNotActiveException("Cannot contribute to a ${fund.status} premium fund")
+        }
+        if (amount <= BigDecimal.ZERO) {
+            throw InvalidPremiumFundAmountException("Contribution amount must be greater than zero")
+        }
+        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+        ledgerService.postLedgerTransaction(
+            wallet.currency,
+            listOf(
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Premium fund contribution"),
+                LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.CREDIT, amount, "Premium fund contribution"),
+            ),
+        )
+        // Same .min(targetAmount) cap SavingsGoal's own depositToGoal/autoContribute
+        // already establish -- a contribution never overshoots what's actually owed.
+        fund.currentAmount = fund.currentAmount.add(amount).min(fund.targetAmount)
+        return insurancePremiumFundRepository.save(fund)
+    }
+
+    @Transactional
+    fun cancelFund(userId: String, fundId: String): InsurancePremiumFund {
+        val fund = insurancePremiumFundRepository.findById(fundId)
+            .filter { it.userId == userId }
+            .orElseThrow { PremiumFundNotFoundException("Premium fund not found") }
+        if (fund.status != InsurancePremiumFundStatus.active) {
+            throw PremiumFundNotActiveException("Cannot cancel a ${fund.status} premium fund")
+        }
+        if (fund.currentAmount > BigDecimal.ZERO) {
+            val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+            ledgerService.postLedgerTransaction(
+                wallet.currency,
+                listOf(
+                    LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.DEBIT, fund.currentAmount, "Premium fund refund"),
+                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, fund.currentAmount, "Premium fund refund"),
+                ),
+            )
+        }
+        fund.currentAmount = BigDecimal.ZERO
+        fund.status = InsurancePremiumFundStatus.cancelled
+        return insurancePremiumFundRepository.save(fund)
+    }
+
+    fun getMyPremiumFunds(userId: String) = insurancePremiumFundRepository.findByUserId(userId)
+
+    // Same 30-day-cadence-via-lastAutoContributionAt-null-or-stale pattern as
+    // SavingsService.getGoalsDueForAutoContribution/autoContribute -- see that function's
+    // own doc comment for why findAll() + in-memory filter is the honest choice at this
+    // system's real data scale. dailyContribution == ZERO funds are manual-only and never
+    // selected here; funds already at target are excluded since there's nothing left to
+    // save toward (InsurancePremiumFund has no separate "completed" status).
+    fun getFundsDueForAutoContribution(): List<InsurancePremiumFund> {
+        val cutoff = Instant.now().minus(PREMIUM_FUND_AUTO_CONTRIBUTION_INTERVAL_DAYS, ChronoUnit.DAYS)
+        return insurancePremiumFundRepository.findAll().filter { fund ->
+            fund.status == InsurancePremiumFundStatus.active &&
+                fund.dailyContribution > BigDecimal.ZERO &&
+                fund.currentAmount < fund.targetAmount &&
+                (fund.lastAutoContributionAt == null || fund.lastAutoContributionAt!!.isBefore(cutoff))
+        }
+    }
+
+    // Returns false (not an exception) on insufficient MAIN wallet balance -- same "skip
+    // this cycle" convention as SavingsService.autoContribute; a real recurring
+    // contribution just retries next cycle rather than failing loudly mid-batch.
+    @Transactional
+    fun autoContributeToFund(fund: InsurancePremiumFund): Boolean {
+        val wallet = walletRepository.findByUserIdAndType(fund.userId, WalletType.MAIN)
+        if (wallet == null || wallet.availableBalance < fund.dailyContribution) {
+            return false
+        }
+        ledgerService.postLedgerTransaction(
+            wallet.currency,
+            listOf(
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fund.dailyContribution, "Premium fund auto-contribution"),
+                LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.CREDIT, fund.dailyContribution, "Premium fund auto-contribution"),
+            ),
+        )
+        fund.currentAmount = fund.currentAmount.add(fund.dailyContribution).min(fund.targetAmount)
+        fund.lastAutoContributionAt = Instant.now()
+        insurancePremiumFundRepository.save(fund)
+        return true
     }
 }

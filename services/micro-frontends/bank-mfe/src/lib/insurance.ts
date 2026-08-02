@@ -50,6 +50,22 @@ export interface InsuranceClaim {
   decisionReason: string | null;
 }
 
+// Real Ejo Heza ya Moto-style premium savings fund -- see the backend's
+// InsuranceService.createPremiumFund doc comment for the full sourced account
+// (Africa-Press 2026: Rwanda's ~46,000 registered taxi-moto riders facing insurance
+// premiums up to RWF 250,000/year for older bikes). Lets any user (not just moto
+// riders) save toward a specific policy's next premium ahead of time, so the backend's
+// recurring collection scheduler can draw on it instead of lapsing the policy.
+export interface InsurancePremiumFund {
+  id: string;
+  policyId: string;
+  targetAmount: number;
+  currentAmount: number;
+  dailyContribution: number;
+  status: 'active' | 'cancelled';
+  createdAt: string;
+}
+
 export const fetchInsurancePlans = () =>
   apiFetch<{ success: boolean; plans: InsurancePlan[] }>('/api/v1/insurance/plans').then((r) => r.plans);
 
@@ -71,3 +87,25 @@ export const submitClaim = (policyId: string, description: string, amount: numbe
 
 export const fetchMyClaims = () =>
   apiFetch<{ success: boolean; claims: InsuranceClaim[] }>('/api/v1/insurance/claims').then((r) => r.claims);
+
+export const createPremiumFund = (policyId: string, dailyContribution: number) =>
+  apiFetch<{ success: boolean; fund: InsurancePremiumFund }>(`/api/v1/insurance/policies/${policyId}/premium-fund`, {
+    method: 'POST',
+    body: JSON.stringify({ dailyContribution }),
+  }).then((r) => r.fund);
+
+export const contributeToFund = (fundId: string, amount: number) =>
+  apiFetch<{ success: boolean; fund: InsurancePremiumFund }>(`/api/v1/insurance/premium-funds/${fundId}/contribute`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  }).then((r) => r.fund);
+
+export const cancelFund = (fundId: string) =>
+  apiFetch<{ success: boolean; fund: InsurancePremiumFund }>(`/api/v1/insurance/premium-funds/${fundId}/cancel`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.fund);
+
+export const fetchMyPremiumFunds = () =>
+  apiFetch<{ success: boolean; funds: InsurancePremiumFund[] }>('/api/v1/insurance/premium-funds').then((r) => r.funds);

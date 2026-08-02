@@ -125,6 +125,14 @@ class WalletService(
                 LedgerAccountType.SECURITIES_SUSPENSE -> "Investing"
                 LedgerAccountType.SAVINGS_GOAL_PAYABLE -> "Savings"
                 LedgerAccountType.INSURANCE_PREMIUM_REVENUE -> "Insurance"
+                // Real Ejo Heza ya Moto-style premium savings fund (2026-08-02) -- a
+                // manual/auto contribution debits the wallet and credits this account in
+                // the very same transaction (InsuranceService.contributeToFund/
+                // autoContributeToFund), the same shape SAVINGS_GOAL_PAYABLE already
+                // establishes for savings deposits. Grouped under "Insurance" rather than
+                // its own category since it's still real premium money, just paid ahead
+                // of time instead of at collection time.
+                LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE -> "Insurance"
                 LedgerAccountType.FEE_REVENUE -> "Fees"
                 LedgerAccountType.EATS_DELIVERY_HOLDING -> "Food delivery"
                 LedgerAccountType.GIFT_HOLDING -> "Gifts"

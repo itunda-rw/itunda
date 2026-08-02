@@ -100,6 +100,13 @@ enum class LedgerAccountType {
     // volume, matching how every distinct trip/booking product in this ledger already
     // gets its own account rather than sharing RIDE_HOLDING.
     DESIGNATED_DRIVER_HOLDING,
+    // Real Ejo Heza ya Moto-style premium savings fund (2026-08-02) -- see
+    // InsurancePremiumFund.kt's own doc comment. A real "owed back to the user until it
+    // either pays the premium or gets refunded" liability, the same shape
+    // SAVINGS_GOAL_PAYABLE already establishes for savings-goal deposits -- its own
+    // dedicated account so premium-fund float can be reconciled independently of
+    // ordinary savings-goal float.
+    INSURANCE_PREMIUM_FUND_PAYABLE,
 }
 
 /**

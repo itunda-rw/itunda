@@ -43,7 +43,7 @@ import {
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
 import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, type RewardTasksResult, type ReferralInfo } from './lib/rewards';
-import { fetchInsurancePlans, fetchMyPolicies, enrollInPlan, submitClaim, fetchMyClaims, type InsurancePlan, type InsurancePolicy, type InsuranceClaim } from './lib/insurance';
+import { fetchInsurancePlans, fetchMyPolicies, enrollInPlan, submitClaim, fetchMyClaims, createPremiumFund, contributeToFund, cancelFund, fetchMyPremiumFunds, type InsurancePlan, type InsurancePolicy, type InsuranceClaim, type InsurancePremiumFund } from './lib/insurance';
 import { fetchBillProviders, fetchPendingBills, payBill, buyAirtime, type BillProvider, type PendingBill } from './lib/bills';
 import {
   fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount,
@@ -2394,11 +2394,16 @@ function InsuranceView() {
   const [plans, setPlans] = useState<InsurancePlan[] | null>(null);
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
   const [claims, setClaims] = useState<InsuranceClaim[]>([]);
+  const [funds, setFunds] = useState<InsurancePremiumFund[]>([]);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [claimPolicyId, setClaimPolicyId] = useState<string | null>(null);
   const [claimDescription, setClaimDescription] = useState('');
   const [claimAmount, setClaimAmount] = useState('');
   const [submittingClaim, setSubmittingClaim] = useState(false);
+  const [creatingFundPolicyId, setCreatingFundPolicyId] = useState<string | null>(null);
+  const [newFundDaily, setNewFundDaily] = useState('0');
+  const [fundBusyId, setFundBusyId] = useState<string | null>(null);
+  const [contributeAmount, setContributeAmount] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -2406,8 +2411,69 @@ function InsuranceView() {
     fetchInsurancePlans().then(setPlans).catch(() => setPlans([]));
     fetchMyPolicies().then(setPolicies).catch(() => setPolicies([]));
     fetchMyClaims().then(setClaims).catch(() => setClaims([]));
+    fetchMyPremiumFunds().then(setFunds).catch(() => setFunds([]));
   };
   useEffect(load, []);
+
+  // Real Ejo Heza ya Moto-style premium savings fund -- see lib/insurance.ts's own doc
+  // comment. Lets a user save toward a specific policy's next premium ahead of time.
+  const handleCreateFund = async (policyId: string) => {
+    const daily = Number(newFundDaily || '0');
+    if (!Number.isFinite(daily) || daily < 0) {
+      setError('Daily contribution must be zero or a positive number.');
+      return;
+    }
+    setFundBusyId(policyId);
+    setError(null);
+    setMessage(null);
+    try {
+      await createPremiumFund(policyId, daily);
+      setMessage('Started saving toward your next premium.');
+      setCreatingFundPolicyId(null);
+      setNewFundDaily('0');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not start a premium fund.');
+    } finally {
+      setFundBusyId(null);
+    }
+  };
+
+  const handleContribute = async (fundId: string) => {
+    const amount = Number(contributeAmount[fundId] || '0');
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Contribution amount must be greater than zero.');
+      return;
+    }
+    setFundBusyId(fundId);
+    setError(null);
+    setMessage(null);
+    try {
+      await contributeToFund(fundId, amount);
+      setMessage('Contribution added toward your next premium.');
+      setContributeAmount((prev) => ({ ...prev, [fundId]: '' }));
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not add this contribution.');
+    } finally {
+      setFundBusyId(null);
+    }
+  };
+
+  const handleCancelFund = async (fundId: string) => {
+    setFundBusyId(fundId);
+    setError(null);
+    setMessage(null);
+    try {
+      await cancelFund(fundId);
+      setMessage('Premium fund cancelled and refunded to your wallet.');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this premium fund.');
+    } finally {
+      setFundBusyId(null);
+    }
+  };
 
   const handleEnroll = async (planId: string) => {
     setEnrollingId(planId);
@@ -2499,6 +2565,62 @@ function InsuranceView() {
                   </div>
                 </div>
               )}
+              {p.status === 'active' && (() => {
+                const fund = funds.find((f) => f.policyId === p.id && f.status === 'active');
+                if (!fund) {
+                  return (
+                    <div style={{ marginTop: '8px' }}>
+                      {creatingFundPolicyId === p.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <input
+                            type="number"
+                            placeholder="Daily contribution (0 = manual only)"
+                            value={newFundDaily}
+                            onChange={(e) => setNewFundDaily(e.target.value)}
+                            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+                          />
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button className="toss-btn toss-btn-secondary" disabled={fundBusyId === p.id} onClick={() => handleCreateFund(p.id)}>
+                              {fundBusyId === p.id ? '...' : 'Start saving'}
+                            </button>
+                            <button className="toss-btn toss-btn-secondary" onClick={() => setCreatingFundPolicyId(null)}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button className="toss-btn toss-btn-secondary" onClick={() => setCreatingFundPolicyId(p.id)}>
+                          Save for next premium
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+                const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
+                return (
+                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                      Saved toward next premium: {fund.currentAmount.toLocaleString()} / {fund.targetAmount.toLocaleString()} RWF
+                    </p>
+                    <div style={{ height: '6px', borderRadius: '3px', background: 'var(--toss-grey-100)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--toss-blue)' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="number"
+                        placeholder="Add amount (RWF)"
+                        value={contributeAmount[fund.id] ?? ''}
+                        onChange={(e) => setContributeAmount((prev) => ({ ...prev, [fund.id]: e.target.value }))}
+                        style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+                      />
+                      <button className="toss-btn toss-btn-secondary" disabled={fundBusyId === fund.id} onClick={() => handleContribute(fund.id)}>
+                        {fundBusyId === fund.id ? '...' : 'Add'}
+                      </button>
+                      <button className="toss-btn toss-btn-secondary" disabled={fundBusyId === fund.id} onClick={() => handleCancelFund(fund.id)}>
+                        Cancel fund
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

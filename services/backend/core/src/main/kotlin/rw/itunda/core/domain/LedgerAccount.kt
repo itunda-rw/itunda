@@ -122,6 +122,13 @@ class LedgerAccount(
             // codebase's own unit tests, so a missing seed row is invisible to them) --
             // this is now six real instances of the identical bug class in one file.
             "designated_driver_holding" to "Designated Driver Fare Holding",
+            // Real Ejo Heza ya Moto-style insurance premium savings fund (2026-08-02) --
+            // see InsurancePremiumFund.kt's own doc comment. Learned from the
+            // interest_income/agent_commission_expense/card_spend_expense/
+            // postpaid_credit_payable/vehicle_inspection_holding/designated_driver_holding
+            // precedent above: seed this before the first real contribution, not after
+            // one 500s discovering it's missing.
+            "insurance_premium_fund_payable" to "Insurance Premium Fund Payable",
         )
     }
 }

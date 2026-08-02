@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
+import rw.itunda.core.domain.InsurancePremiumFund
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.WalletFrozenException
@@ -15,14 +16,20 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.insurance.InsuranceService
 import rw.itunda.insurance.InvalidClaimException
+import rw.itunda.insurance.InvalidPremiumFundAmountException
 import rw.itunda.insurance.NoWalletException
 import rw.itunda.insurance.PlanNotFoundException
 import rw.itunda.insurance.PolicyNotActiveException
 import rw.itunda.insurance.PolicyNotFoundException
+import rw.itunda.insurance.PremiumFundAlreadyExistsException
+import rw.itunda.insurance.PremiumFundNotActiveException
+import rw.itunda.insurance.PremiumFundNotFoundException
 import java.math.BigDecimal
 
 data class EnrollRequest(val planId: String)
 data class SubmitClaimRequest(val policyId: String, val description: String, val amount: BigDecimal)
+data class CreatePremiumFundRequest(val dailyContribution: BigDecimal)
+data class ContributeToFundRequest(val amount: BigDecimal)
 
 @RestController
 @RequestMapping("/api/v1/insurance")
@@ -102,6 +109,72 @@ class InsuranceController(
     @GetMapping("/claims")
     fun getMyClaims(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "claims" to insuranceService.getMyClaims(currentUser.userId)))
+
+    private fun fundMap(fund: InsurancePremiumFund) = mapOf(
+        "id" to fund.id,
+        "policyId" to fund.policyId,
+        "targetAmount" to fund.targetAmount,
+        "currentAmount" to fund.currentAmount,
+        "dailyContribution" to fund.dailyContribution,
+        "status" to fund.status.name,
+        "createdAt" to fund.createdAt.toString(),
+    )
+
+    // Real Ejo Heza ya Moto-style premium savings fund (2026-08-02) -- see
+    // InsuranceService.createPremiumFund's own doc comment. Row creation only, no
+    // Idempotency-Key needed, same precedent as POST /api/v1/savings/goals.
+    @PostMapping("/policies/{policyId}/premium-fund")
+    fun createPremiumFund(
+        @PathVariable policyId: String,
+        @RequestBody request: CreatePremiumFundRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> {
+        val fund = insuranceService.createPremiumFund(currentUser.userId, policyId, request.dailyContribution)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "fund" to fundMap(fund)))
+    }
+
+    @PostMapping("/premium-funds/{fundId}/contribute")
+    fun contributeToFund(
+        @PathVariable fundId: String,
+        @RequestBody request: ContributeToFundRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/insurance/premium-funds/{fundId}/contribute", idempotencyKey, request) {
+            val fund = insuranceService.contributeToFund(currentUser.userId, fundId, request.amount)
+            200 to mapOf("success" to true, "fund" to fundMap(fund))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @PostMapping("/premium-funds/{fundId}/cancel")
+    fun cancelFund(
+        @PathVariable fundId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/insurance/premium-funds/{fundId}/cancel", idempotencyKey, fundId) {
+            val fund = insuranceService.cancelFund(currentUser.userId, fundId)
+            200 to mapOf("success" to true, "fund" to fundMap(fund))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @GetMapping("/premium-funds")
+    fun getMyPremiumFunds(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "funds" to insuranceService.getMyPremiumFunds(currentUser.userId).map(::fundMap)))
+
+    @ExceptionHandler(PremiumFundNotFoundException::class)
+    fun handlePremiumFundNotFound(ex: PremiumFundNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PREMIUM_FUND_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(PremiumFundAlreadyExistsException::class)
+    fun handlePremiumFundAlreadyExists(ex: PremiumFundAlreadyExistsException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PREMIUM_FUND_ALREADY_EXISTS", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(PremiumFundNotActiveException::class)
+    fun handlePremiumFundNotActive(ex: PremiumFundNotActiveException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PREMIUM_FUND_NOT_ACTIVE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidPremiumFundAmountException::class)
+    fun handleInvalidPremiumFundAmount(ex: InvalidPremiumFundAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PREMIUM_FUND_AMOUNT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(PolicyNotFoundException::class)
     fun handlePolicyNotFound(ex: PolicyNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("POLICY_NOT_FOUND", ex.message ?: "Not found"))

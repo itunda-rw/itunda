@@ -27,7 +27,7 @@ class InsurancePolicy(
     val category: String,
 
     @Column(nullable = false, length = 32)
-    val status: String,
+    var status: String,
 
     @Column(name = "start_date", nullable = false)
     val startDate: LocalDate,
@@ -39,7 +39,7 @@ class InsurancePolicy(
     val monthlyPremium: BigDecimal,
 
     @Column(name = "next_payment_date", nullable = false)
-    val nextPaymentDate: LocalDate,
+    var nextPaymentDate: LocalDate,
 
     @Column(name = "policy_number", nullable = false, length = 64)
     val policyNumber: String

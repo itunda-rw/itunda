@@ -12,6 +12,8 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InsuranceClaim
 import rw.itunda.core.domain.InsuranceClaimStatus
 import rw.itunda.core.domain.InsurancePolicy
+import rw.itunda.core.domain.InsurancePremiumFund
+import rw.itunda.core.domain.InsurancePremiumFundStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Wallet
@@ -21,6 +23,7 @@ import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.InsuranceClaimRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
+import rw.itunda.core.repository.InsurancePremiumFundRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -38,9 +41,13 @@ import java.util.Optional
  */
 class InsuranceServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, type: WalletType) = Wallet(
+    fun wallet(id: String, userId: String, type: WalletType, balance: BigDecimal = BigDecimal("100000")) = Wallet(
         id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = type, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+        type = type, balance = balance, availableBalance = balance,
+    )
+
+    fun premiumFund(id: String, userId: String, policyId: String, targetAmount: BigDecimal, currentAmount: BigDecimal, dailyContribution: BigDecimal = BigDecimal.ZERO) = InsurancePremiumFund(
+        id = id, userId = userId, policyId = policyId, targetAmount = targetAmount, currentAmount = currentAmount, dailyContribution = dailyContribution,
     )
 
     Given("a user with a MAIN wallet enrolling in a real plan") {
@@ -49,7 +56,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
 
         every { walletRepository.findByUserId("user_1") } returns listOf(
             wallet("wallet_main", "user_1", WalletType.MAIN),
@@ -101,7 +109,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
 
         every { walletRepository.findByUserId("user_2") } returns emptyList()
 
@@ -129,7 +138,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
 
         every { insurancePolicyRepository.findById("pol_1") } returns Optional.of(policy("pol_1", "user_1"))
         every { insuranceClaimRepository.save(any()) } answers { firstArg() }
@@ -151,7 +161,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
 
         every { insurancePolicyRepository.findById("pol_2") } returns Optional.of(policy("pol_2", "owner_1"))
 
@@ -173,7 +184,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
 
         every { insurancePolicyRepository.findById("pol_3") } returns Optional.of(policy("pol_3", "user_1", status = "lapsed"))
 
@@ -195,7 +207,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
 
         val claim = InsuranceClaim(id = "claim_1", policyId = "pol_1", userId = "user_1", description = "Hospital stay", amount = BigDecimal("50000"))
         every { insuranceClaimRepository.findById("claim_1") } returns Optional.of(claim)
@@ -229,7 +242,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
 
         val claim = InsuranceClaim(id = "claim_2", policyId = "pol_1", userId = "user_1", description = "test", amount = BigDecimal("10000"))
         every { insuranceClaimRepository.findById("claim_2") } returns Optional.of(claim)
@@ -253,7 +267,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
         every { rateLimiter.checkLimit("insurance:claim:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to file another real claim") {
@@ -263,6 +278,214 @@ class InsuranceServiceTest : BehaviorSpec({
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
                     verify(exactly = 0) { insuranceClaimRepository.save(any()) }
+                }
+            }
+        }
+    }
+    // Real recurring-premium-collection bug fix regression coverage (2026-08-02) -- see
+    // InsuranceService.collectPremium's own doc comment. Each scenario gets its own Given
+    // block, not a sibling When, per this session's own hard-won Kotest lesson: sibling
+    // When blocks under the same Given share one mutable entity, and a mutation (e.g.
+    // policy.status = "lapsed") in one would otherwise leak into its siblings.
+    Given("a policy due for premium collection with enough MAIN wallet balance") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+
+        val duePolicy = policy("pol_due_1", "user_1")
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN)
+        val legsSlot = slot<List<LedgerLeg>>()
+        every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_premium", emptyList())
+        every { insurancePolicyRepository.save(any()) } answers { firstArg() }
+
+        When("collecting the premium") {
+            val result = service.collectPremium(duePolicy)
+
+            Then("it succeeds straight from the wallet, never touching the premium fund repository") {
+                result shouldBe true
+                val walletLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
+                walletLeg.accountId shouldBe "wallet_main"
+                walletLeg.direction shouldBe LedgerDirection.DEBIT
+                walletLeg.amount shouldBe BigDecimal("15000")
+                val revenueLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.INSURANCE_PREMIUM_REVENUE }
+                revenueLeg.direction shouldBe LedgerDirection.CREDIT
+                revenueLeg.amount shouldBe BigDecimal("15000")
+                verify(exactly = 0) { insurancePremiumFundRepository.findByPolicyIdAndStatus(any(), any()) }
+            }
+            Then("it advances nextPaymentDate by exactly 30 real days") {
+                duePolicy.nextPaymentDate shouldBe LocalDate.now().plusDays(30)
+                duePolicy.status shouldBe "active"
+            }
+        }
+    }
+
+    Given("a policy due for premium collection whose MAIN wallet is short, but with a well-funded premium fund") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+
+        val duePolicy = policy("pol_due_2", "user_1")
+        val fund = premiumFund("ipf_1", "user_1", "pol_due_2", targetAmount = BigDecimal("15000"), currentAmount = BigDecimal("15000"))
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN, balance = BigDecimal("1000"))
+        every { insurancePremiumFundRepository.findByPolicyIdAndStatus("pol_due_2", InsurancePremiumFundStatus.active) } returns fund
+        val legsSlot = slot<List<LedgerLeg>>()
+        every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_premium_fund", emptyList())
+        every { insurancePremiumFundRepository.save(any()) } answers { firstArg() }
+        every { insurancePolicyRepository.save(any()) } answers { firstArg() }
+
+        When("collecting the premium") {
+            val result = service.collectPremium(duePolicy)
+
+            Then("it falls back to draining the premium fund, not the short wallet") {
+                result shouldBe true
+                val fundLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE }
+                fundLeg.accountId shouldBe "insurance_premium_fund_payable"
+                fundLeg.direction shouldBe LedgerDirection.DEBIT
+                fundLeg.amount shouldBe BigDecimal("15000")
+                val revenueLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.INSURANCE_PREMIUM_REVENUE }
+                revenueLeg.direction shouldBe LedgerDirection.CREDIT
+                revenueLeg.amount shouldBe BigDecimal("15000")
+                fund.currentAmount shouldBe BigDecimal.ZERO
+                duePolicy.nextPaymentDate shouldBe LocalDate.now().plusDays(30)
+                duePolicy.status shouldBe "active"
+            }
+        }
+    }
+
+    Given("a policy due for premium collection where both the wallet and the fund are short") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+
+        val duePolicy = policy("pol_due_3", "user_1")
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN, balance = BigDecimal("1000"))
+        every { insurancePremiumFundRepository.findByPolicyIdAndStatus("pol_due_3", InsurancePremiumFundStatus.active) } returns null
+        every { insurancePolicyRepository.save(any()) } answers { firstArg() }
+
+        When("collecting the premium") {
+            val result = service.collectPremium(duePolicy)
+
+            Then("it never touches the ledger and real-lapses the policy instead of failing loudly") {
+                result shouldBe false
+                duePolicy.status shouldBe "lapsed"
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 1) { insurancePolicyRepository.save(duePolicy) }
+            }
+        }
+    }
+
+    Given("a user contributing to their own active premium fund that's almost at target") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+
+        val fund = premiumFund("ipf_2", "user_1", "pol_1", targetAmount = BigDecimal("15000"), currentAmount = BigDecimal("14000"))
+        every { insurancePremiumFundRepository.findById("ipf_2") } returns Optional.of(fund)
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN)
+        every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_contrib", emptyList())
+        every { insurancePremiumFundRepository.save(any()) } answers { firstArg() }
+
+        When("contributing 5,000 RWF, more than what's left to reach the target") {
+            val result = service.contributeToFund("user_1", "ipf_2", BigDecimal("5000"))
+
+            Then("it caps at targetAmount instead of overshooting to 19,000, same .min() convention as SavingsGoal") {
+                result.currentAmount shouldBe BigDecimal("15000")
+            }
+        }
+    }
+
+    Given("a user cancelling their own active, funded premium fund") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+
+        val fund = premiumFund("ipf_3", "user_1", "pol_1", targetAmount = BigDecimal("15000"), currentAmount = BigDecimal("10000"))
+        every { insurancePremiumFundRepository.findById("ipf_3") } returns Optional.of(fund)
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN)
+        val legsSlot = slot<List<LedgerLeg>>()
+        every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_cancel", emptyList())
+        every { insurancePremiumFundRepository.save(any()) } answers { firstArg() }
+
+        When("cancelling it") {
+            val result = service.cancelFund("user_1", "ipf_3")
+
+            Then("it refunds the real 10,000 RWF back to the MAIN wallet and zeroes the fund") {
+                result.currentAmount shouldBe BigDecimal.ZERO
+                result.status shouldBe InsurancePremiumFundStatus.cancelled
+                val fundLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE }
+                fundLeg.direction shouldBe LedgerDirection.DEBIT
+                fundLeg.amount shouldBe BigDecimal("10000")
+                val walletLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
+                walletLeg.accountId shouldBe "wallet_main"
+                walletLeg.direction shouldBe LedgerDirection.CREDIT
+                walletLeg.amount shouldBe BigDecimal("10000")
+            }
+        }
+    }
+
+    Given("an attacker trying to create a premium fund against someone else's policy") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+
+        every { insurancePolicyRepository.findById("pol_owned") } returns Optional.of(policy("pol_owned", "owner_1"))
+
+        When("the attacker calls createPremiumFund") {
+            Then("it real-404s -- same 404-not-403 IDOR pattern used everywhere else") {
+                try {
+                    service.createPremiumFund("attacker", "pol_owned", BigDecimal("500"))
+                    error("expected PolicyNotFoundException")
+                } catch (e: PolicyNotFoundException) {
+                    verify(exactly = 0) { insurancePremiumFundRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    Given("an attacker trying to contribute to someone else's premium fund") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+
+        every { insurancePremiumFundRepository.findById("ipf_owned") } returns Optional.of(
+            premiumFund("ipf_owned", "owner_1", "pol_1", targetAmount = BigDecimal("15000"), currentAmount = BigDecimal("1000")),
+        )
+
+        When("the attacker calls contributeToFund") {
+            Then("it real-404s instead of leaking whether the fund exists") {
+                try {
+                    service.contributeToFund("attacker", "ipf_owned", BigDecimal("500"))
+                    error("expected PremiumFundNotFoundException")
+                } catch (e: PremiumFundNotFoundException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
         }
