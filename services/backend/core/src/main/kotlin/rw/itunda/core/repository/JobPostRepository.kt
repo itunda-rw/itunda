@@ -1,10 +1,15 @@
 package rw.itunda.core.repository
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.JobPost
 import rw.itunda.core.domain.JobPostStatus
+import java.util.Optional
 
 interface JobPostRepository : JpaRepository<JobPost, String> {
     fun findByStatusOrderByCreatedAtDesc(status: JobPostStatus, pageable: Pageable): Page<JobPost>
@@ -34,4 +39,18 @@ interface JobPostRepository : JpaRepository<JobPost, String> {
     // findByBuyerIdOrderByCreatedAtDesc's own doc comment for the full account; same
     // "activity split" gap this closes, now that workerId is captured.
     fun findByWorkerIdOrderByCreatedAtDesc(workerId: String, pageable: Pageable): Page<JobPost>
+
+    // Real bug found live (2026-08-02): JobApplicationService.apply's own
+    // "existsByJobPostIdAndApplicantIdAndStatus(..., PENDING)" reject-if-already-exists
+    // check reads-then-CREATEs a brand-new JobApplication row -- there's no existing
+    // PENDING application for this (jobPostId, applicantId) pair to put an @Version
+    // guard on yet, and job_applications has no unique constraint on
+    // (job_post_id, applicant_id, status) either, so two concurrent apply() calls by the
+    // same applicant to the same job post could both pass that check before either
+    // committed and both create a real duplicate PENDING application. Fixed the same way
+    // WalletRepository.findByIdForUpdate's own precedent works: lock the job post row
+    // itself to serialize concurrent applies against it, then re-check under that lock.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from JobPost p where p.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<JobPost>
 }

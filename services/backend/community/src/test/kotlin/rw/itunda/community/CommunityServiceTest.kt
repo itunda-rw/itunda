@@ -783,6 +783,108 @@ class CommunityServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a capped group-buy with one open spot left") {
+        val postRepository = mockk<CommunityPostRepository>()
+        val commentRepository = mockk<CommunityCommentRepository>()
+        val likeRepository = mockk<CommunityLikeRepository>()
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>()
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
+        val service = CommunityService(
+            postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
+        )
+
+        val post = CommunityPost(
+            id = "post_cap", authorId = "organizer_1", category = "group_buy", title = "Bulk rice order", body = "Splitting a 25kg bag",
+            capacity = 3, groupConversationId = "group_cap",
+        )
+        every { postRepository.findById("post_cap") } returns Optional.of(post)
+        // Real bug found live (2026-08-02) -- see CommunityPostRepository.
+        // findByIdForUpdate's own doc comment: joinMeetup now locks the post row before
+        // re-checking capacity.
+        every { postRepository.findByIdForUpdate("post_cap") } returns Optional.of(post)
+        every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_cap", "joiner_1") } returns null
+        every { groupConversationMemberRepository.findByGroupConversationId("group_cap") } returns listOf(
+            rw.itunda.core.domain.GroupConversationMember(id = "gm_0", groupConversationId = "group_cap", userId = "organizer_1"),
+            rw.itunda.core.domain.GroupConversationMember(id = "gm_1", groupConversationId = "group_cap", userId = "member_1"),
+        )
+        every { groupConversationMemberRepository.save(any()) } answers { firstArg() }
+        every { groupConversationRepository.findById("group_cap") } returns Optional.of(
+            rw.itunda.core.domain.GroupConversation(id = "group_cap", name = "Bulk rice order", createdBy = "organizer_1"),
+        )
+
+        When("a third real user joins the one remaining open spot") {
+            service.joinMeetup("joiner_1", "post_cap")
+
+            Then("it real-locks the post row before admitting the new member -- the actual fix closing the capacity-overrun race") {
+                verify(exactly = 1) { postRepository.findByIdForUpdate("post_cap") }
+                verify(exactly = 1) { groupConversationMemberRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("a capped group-buy that's already full") {
+        val postRepository = mockk<CommunityPostRepository>()
+        val commentRepository = mockk<CommunityCommentRepository>()
+        val likeRepository = mockk<CommunityLikeRepository>()
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>()
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
+        val service = CommunityService(
+            postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
+        )
+
+        val post = CommunityPost(
+            id = "post_full", authorId = "organizer_2", category = "group_buy", title = "Bulk rice order", body = "Splitting a 25kg bag",
+            capacity = 2, groupConversationId = "group_full",
+        )
+        every { postRepository.findById("post_full") } returns Optional.of(post)
+        // Real bug found live (2026-08-02): this models the exact race window the fix
+        // closes -- by the time this caller's lock-acquire actually wins the lock, a
+        // concurrent racer already committed the member that fills the last spot, so
+        // the LOCKED re-check must see 2 members (at capacity), even though an earlier
+        // unlocked read might have seen only 1.
+        every { postRepository.findByIdForUpdate("post_full") } returns Optional.of(post)
+        every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_full", "late_joiner") } returns null
+        every { groupConversationMemberRepository.findByGroupConversationId("group_full") } returns listOf(
+            rw.itunda.core.domain.GroupConversationMember(id = "gm_0", groupConversationId = "group_full", userId = "organizer_2"),
+            rw.itunda.core.domain.GroupConversationMember(id = "gm_1", groupConversationId = "group_full", userId = "member_1"),
+        )
+        every { groupConversationRepository.findById("group_full") } returns Optional.of(
+            rw.itunda.core.domain.GroupConversation(id = "group_full", name = "Bulk rice order", createdBy = "organizer_2"),
+        )
+
+        When("one more real user tries to squeeze into the already-full group") {
+            Then("it real-rejects with MeetupFullException instead of overrunning the real advertised capacity") {
+                try {
+                    service.joinMeetup("late_joiner", "post_full")
+                    error("expected MeetupFullException")
+                } catch (e: MeetupFullException) {
+                    verify(exactly = 1) { postRepository.findByIdForUpdate("post_full") }
+                    verify(exactly = 0) { groupConversationMemberRepository.save(any()) }
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

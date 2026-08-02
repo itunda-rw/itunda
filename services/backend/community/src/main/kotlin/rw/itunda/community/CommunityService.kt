@@ -303,6 +303,14 @@ class CommunityService(
             // first-come-first-served cap, same as every other real "N spots" mechanic
             // in this codebase (e.g. AgentWithdrawalAuthorizationService's own real
             // per-day limit check happens at the moment of the action, not earlier).
+            //
+            // Real bug found live (2026-08-02): this count-then-insert shape is a
+            // classic TOCTOU -- two different users concurrently joining the last open
+            // spot could both read a count one below capacity before either commit and
+            // both get admitted, overrunning capacity. Locking the post row itself
+            // (findByIdForUpdate) serializes concurrent joins to it, so the count this
+            // re-check sees always reflects every already-committed join.
+            postRepository.findByIdForUpdate(postId)
             val capacity = post.capacity
             if (capacity != null && groupConversationMemberRepository.findByGroupConversationId(groupId).size >= capacity) {
                 throw MeetupFullException("This meetup is full")

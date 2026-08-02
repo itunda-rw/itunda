@@ -1,13 +1,16 @@
 package rw.itunda.core.repository
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.CommunityPost
 import rw.itunda.core.domain.CommunityPostStatus
 import java.time.Instant
+import java.util.Optional
 
 interface CommunityPostRepository : JpaRepository<CommunityPost, String> {
     fun findByStatusOrderByCreatedAtDesc(status: CommunityPostStatus, pageable: Pageable): Page<CommunityPost>
@@ -37,4 +40,20 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, String> {
             "AND p.eventDate IS NOT NULL AND p.eventDate > :now ORDER BY p.eventDate ASC",
     )
     fun findUpcomingMeetups(@Param("status") status: CommunityPostStatus, @Param("now") now: Instant, pageable: Pageable): Page<CommunityPost>
+
+    // Real bug found live (2026-08-02): CommunityService.joinMeetup's own capacity
+    // check ("member count >= post.capacity") reads the current member count, then
+    // separately creates a new GroupConversationMember row -- classic TOCTOU. Two
+    // different users concurrently joining the last open spot on a capped meetup/
+    // group-buy could both read a count one below capacity before either of their
+    // inserts committed, and both get admitted, overrunning the real, advertised
+    // capacity cap (MAX_GROUP_BUY_CAPACITY for group-buy). The (group_conversation_id,
+    // user_id) unique constraint only stops the SAME user joining twice, not two
+    // different users both squeezing into the last spot. Fixed the same way this
+    // codebase's own "reject if already exists"/capacity-race precedent works: lock
+    // this post row to serialize concurrent joins against it, then re-check capacity
+    // under that lock.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from CommunityPost p where p.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<CommunityPost>
 }

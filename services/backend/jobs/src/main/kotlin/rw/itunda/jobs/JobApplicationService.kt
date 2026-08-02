@@ -48,12 +48,24 @@ class JobApplicationService(
         if (trimmedMessage.isEmpty() || trimmedMessage.length > 1000) {
             throw InvalidJobApplicationException("A self-introduction is required and must be 1000 characters or fewer")
         }
-        if (jobApplicationRepository.existsByJobPostIdAndApplicantIdAndStatus(jobPostId, applicantId, JobApplicationStatus.PENDING)) {
-            throw JobApplicationAlreadyPendingException("You already have a pending application for this job post")
-        }
         // Real anti-spam limit, same 10/hour convention every other Hood creation
         // endpoint already established.
         rateLimiter.checkLimit("jobs:application:$applicantId", limit = 10, window = Duration.ofHours(1))
+        // Real bug found live (2026-08-02): the plain "existsByJobPostIdAndApplicantId
+        // AndStatus(..., PENDING)" check just below reads-then-CREATEs a brand-new row --
+        // there's no existing PENDING application for this (jobPostId, applicantId) pair
+        // to put an @Version guard on yet, and job_applications has no unique constraint
+        // on (job_post_id, applicant_id, status) either, so two concurrent apply() calls
+        // by the same applicant to the same job post could both pass that check before
+        // either committed and both create a real duplicate PENDING application. Fixed
+        // the same way this codebase's own "reject if already exists" race precedent
+        // works: lock a DIFFERENT already-existing row (the job post itself) via
+        // JobPostRepository.findByIdForUpdate to serialize concurrent applies against
+        // it, then re-check existence under that lock.
+        jobPostRepository.findByIdForUpdate(jobPostId)
+        if (jobApplicationRepository.existsByJobPostIdAndApplicantIdAndStatus(jobPostId, applicantId, JobApplicationStatus.PENDING)) {
+            throw JobApplicationAlreadyPendingException("You already have a pending application for this job post")
+        }
 
         return jobApplicationRepository.save(
             JobApplication(id = "job_application_${UUID.randomUUID()}", jobPostId = jobPostId, applicantId = applicantId, message = trimmedMessage),
