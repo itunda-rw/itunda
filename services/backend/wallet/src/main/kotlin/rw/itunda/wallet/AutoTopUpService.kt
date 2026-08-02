@@ -75,9 +75,16 @@ class AutoTopUpService(
     private val transactionRepository: TransactionRepository,
     private val providerConnector: ProviderConnector,
 ) {
+    // Real IDOR fix (2026-08-02): a walletId belonging to a DIFFERENT user used to
+    // 403 ("that wallet does not belong to you") rather than 404 -- and unlike
+    // WalletService.quoteTransfer's POST-body walletId, every AutoTopUpController
+    // endpoint takes walletId as a real URL PATH VARIABLE
+    // (/api/v1/wallet/{walletId}/auto-topup), the exact same directly-probeable shape
+    // WalletService.getWalletById's own doc comment already documents fixing this
+    // pattern for. Same fix, same reasoning, finally applied here too.
     private fun requireOwnedWallet(userId: String, walletId: String) =
         walletRepository.findById(walletId).orElseThrow { WalletNotFoundException("Wallet not found") }
-            .also { if (it.userId != userId) throw WalletNotOwnedException("That wallet does not belong to you") }
+            .also { if (it.userId != userId) throw WalletNotFoundException("Wallet not found") }
 
     @Transactional
     fun configure(

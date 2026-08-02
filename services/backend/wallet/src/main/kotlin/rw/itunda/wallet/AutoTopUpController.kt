@@ -62,10 +62,6 @@ class AutoTopUpController(private val autoTopUpService: AutoTopUpService) {
     fun handleWalletNotFound(ex: WalletNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(WalletNotOwnedException::class)
-    fun handleWalletNotOwned(ex: WalletNotOwnedException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_NOT_OWNED", ex.message ?: "Forbidden"))
-
     @ExceptionHandler(AutoTopUpLinkedAccountNotFoundException::class)
     fun handleLinkedAccountNotFound(ex: AutoTopUpLinkedAccountNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LINKED_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))

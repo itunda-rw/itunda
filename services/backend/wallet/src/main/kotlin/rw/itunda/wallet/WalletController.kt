@@ -151,9 +151,6 @@ class WalletController(
     @ExceptionHandler(WalletNotFoundException::class)
     fun handleNotFound(ex: WalletNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(WalletNotOwnedException::class)
-    fun handleNotOwned(ex: WalletNotOwnedException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_NOT_OWNED", ex.message ?: "Forbidden"))
-
     @ExceptionHandler(QuoteNotFoundException::class)
     fun handleQuoteNotFound(ex: QuoteNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("QUOTE_NOT_FOUND", ex.message ?: "Not found"))
 

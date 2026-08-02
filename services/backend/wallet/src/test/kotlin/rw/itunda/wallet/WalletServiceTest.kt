@@ -90,15 +90,19 @@ class WalletServiceTest : BehaviorSpec({
             }
         }
 
+        // Real IDOR fix (2026-08-02): this used to throw WalletNotOwnedException (403),
+        // confirming to the caller that wallet_2 is a real wallet id they just don't
+        // own -- the same probe getWalletById's own doc comment already documents
+        // fixing for the direct wallet-lookup endpoint. Same fix here: 404, not 403.
         When("quoting a transfer from a wallet that belongs to someone else") {
             val otherWallet = wallet("wallet_2", "user_2", "10000")
             every { walletRepository.findById("wallet_2") } returns Optional.of(otherWallet)
 
-            Then("it throws WalletNotOwnedException rather than quoting against it") {
+            Then("it throws WalletNotFoundException, never revealing the wallet exists") {
                 try {
                     service.quoteTransfer("user_1", "wallet_2", "+250788111111", BigDecimal("100"))
-                    error("expected WalletNotOwnedException")
-                } catch (e: WalletNotOwnedException) {
+                    error("expected WalletNotFoundException")
+                } catch (e: WalletNotFoundException) {
                     // expected
                 }
             }
@@ -139,16 +143,45 @@ class WalletServiceTest : BehaviorSpec({
             }
         }
 
+        // Real IDOR fix (2026-08-02): this used to throw WalletNotOwnedException (403),
+        // confirming to an attacker that a guessed/leaked quoteId is real. Now 404,
+        // matching the same real-existence-confirming probe fixed for wallet lookups.
         When("a different user tries to confirm someone else's quote") {
             every { walletRepository.findById("wallet_1") } returns Optional.of(senderWallet)
             val quote = service.quoteTransfer("user_1", "wallet_1", "+250788111111", BigDecimal("1000"))
 
-            Then("it throws WalletNotOwnedException and never touches the ledger") {
+            Then("it throws QuoteNotFoundException, never revealing the quote exists, and never touches the ledger") {
                 try {
                     service.confirmTransfer(quote.id, "attacker")
-                    error("expected WalletNotOwnedException")
-                } catch (e: WalletNotOwnedException) {
+                    error("expected QuoteNotFoundException")
+                } catch (e: QuoteNotFoundException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        // Real double-spend fix (2026-08-02) -- see QuoteStore.claim's own doc
+        // comment: two concurrent confirmTransfer calls for the SAME quoteId (e.g. a
+        // client retry with a fresh Idempotency-Key) used to both be able to observe
+        // `status == PENDING` before either wrote CONFIRMED, and both post the real
+        // ledger legs. This simulates that race directly against the real QuoteStore
+        // (not mocked, per this file's own doc comment) by calling confirmTransfer
+        // twice back to back for the same quote with no intervening state change other
+        // than what confirmTransfer itself performs.
+        When("confirmTransfer is called twice for the same quote back to back") {
+            every { walletRepository.findById("wallet_1") } returns Optional.of(senderWallet)
+            val quote = service.quoteTransfer("user_1", "wallet_1", "+250788111111", BigDecimal("1000"))
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_race", emptyList())
+            every { transactionRepository.save(any()) } answers { firstArg() }
+
+            service.confirmTransfer(quote.id, "user_1")
+
+            Then("the ledger is posted exactly once, never twice, for the one quote") {
+                try {
+                    service.confirmTransfer(quote.id, "user_1")
+                    error("expected QuoteAlreadyUsedException")
+                } catch (e: QuoteAlreadyUsedException) {
+                    verify(exactly = 1) { ledgerService.postLedgerTransaction("RWF", any()) }
                 }
             }
         }

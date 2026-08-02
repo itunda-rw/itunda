@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -63,6 +64,20 @@ class WalletAutoTopUpSetting(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+
+    // Real bug found live (2026-08-02): AutoTopUpService.evaluateAndTopUp/topUpShortfall
+    // both read this exact entity, check-then-act (enabled, dailyTriggerCap vs
+    // triggersToday, wallet balance vs threshold), pull real money over an external
+    // rail, THEN write triggersToday/lastTriggeredAt back -- the same check-then-act
+    // shape every other real money-moving entity in this codebase already needed
+    // `@Version` for. With none here, two concurrent triggers for the same wallet
+    // (a user double-tapping POST .../auto-topup/trigger, or a trigger racing the
+    // background AutoTopUpScheduler sweep) could both read `triggersToday` below
+    // `dailyTriggerCap` before either committed, both pull and credit the wallet, and
+    // silently bypass the real daily cap this field exists to enforce.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", userId = "", walletId = "", linkedAccountId = "",

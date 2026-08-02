@@ -331,7 +331,12 @@ class WalletService(
         val walletId = fromWalletId ?: walletRepository.findByUserIdAndType(userId, WalletType.MAIN)?.id
             ?: throw WalletNotFoundException("No wallet found for this account")
         val wallet = walletRepository.findById(walletId).orElseThrow { WalletNotFoundException("Wallet not found") }
-        if (wallet.userId != userId) throw WalletNotOwnedException("That wallet does not belong to you")
+        // Real IDOR fix (2026-08-02): a caller-supplied fromWalletId that belongs to a
+        // DIFFERENT user used to 403 ("that wallet does not belong to you") rather than
+        // 404 -- confirming the id is real to anyone who guesses or enumerates it, the
+        // same probe [getWalletById]'s own doc comment already documents fixing for the
+        // direct wallet-lookup endpoint. Same fix, same reasoning, applied here too.
+        if (wallet.userId != userId) throw WalletNotFoundException("Wallet not found")
 
         val fee = amount.multiply(BigDecimal("0.01")).setScale(0, RoundingMode.HALF_UP)
         if (wallet.availableBalance < amount.add(fee)) {
@@ -344,12 +349,24 @@ class WalletService(
     @Transactional
     fun confirmTransfer(quoteId: String, userId: String): Pair<Transaction, BigDecimal> {
         val quote = quoteStore.get(quoteId) ?: throw QuoteNotFoundException("Transfer quote not found")
-        if (quote.userId != userId) throw WalletNotOwnedException("That quote does not belong to you")
-        if (quote.status == QuoteStatus.CONFIRMED) throw QuoteAlreadyUsedException("Transfer quote was already confirmed")
-        if (quote.status != QuoteStatus.PENDING) throw QuoteExpiredException("Transfer quote is ${quote.status.name.lowercase()}")
-        if (Instant.now().isAfter(quote.expiresAt)) {
-            quote.status = QuoteStatus.EXPIRED
-            throw QuoteExpiredException("Transfer quote has expired, request a new quote")
+        // Real IDOR fix (2026-08-02): a quoteId belonging to a DIFFERENT user used to
+        // 403 ("that quote does not belong to you") rather than 404, the same
+        // real-existence-confirming probe [getWalletById]'s own doc comment already
+        // documents fixing for the direct wallet-lookup endpoint -- same fix here.
+        if (quote.userId != userId) throw QuoteNotFoundException("Transfer quote not found")
+
+        // Real double-spend fix (2026-08-02): claim() atomically transitions PENDING ->
+        // CLAIMED (see QuoteStore.claim's own doc comment) so at most one concurrent
+        // confirmTransfer call for this exact quoteId can ever pass this point -- the
+        // previous shape (a plain `quote.status == PENDING` read here, followed by a
+        // plain `quote.status = CONFIRMED` write only after the provider call and
+        // ledger post below) had no such atomicity: two concurrent calls could both
+        // observe PENDING before either wrote CONFIRMED, and both go on to post the
+        // real ledger legs below, a genuine double-spend of one quote.
+        val claimed = quoteStore.claim(quoteId, Instant.now()) ?: when (quote.status) {
+            QuoteStatus.CONFIRMED -> throw QuoteAlreadyUsedException("Transfer quote was already confirmed")
+            QuoteStatus.CLAIMED -> throw QuoteAlreadyUsedException("Transfer quote is already being confirmed")
+            else -> throw QuoteExpiredException("Transfer quote is ${quote.status.name.lowercase()}, request a new quote")
         }
 
         // Real per-rail routing (2026-07-13) -- resolve() (used by bills/airtime,
@@ -357,10 +374,14 @@ class WalletService(
         // quote.recipient is a phone number, not a provider name. See
         // RailCatalog.resolveByPhoneNumber's own doc comment for the real, sourced
         // (RURA numbering plan) prefix routing this now does instead.
-        val rail = RailCatalog.resolveByPhoneNumber(quote.recipient)
+        val rail = RailCatalog.resolveByPhoneNumber(claimed.recipient)
         try {
-            providerConnector.attempt(rail, "Transfer to ${quote.recipient}")
+            providerConnector.attempt(rail, "Transfer to ${claimed.recipient}")
         } catch (e: ProviderDeclinedException) {
+            // Releases the claim back to PENDING so the same quote can still be
+            // retried, matching the pre-existing behavior (a decline never used to
+            // touch quote.status at all, leaving it PENDING for a retry).
+            quoteStore.releaseClaim(quoteId)
             // Published via publishImmediately, not publishAfterCommit -- this
             // @Transactional method is about to roll back once the exception below
             // propagates (nothing has been written yet), so an afterCommit hook would
@@ -371,9 +392,9 @@ class WalletService(
                 PaymentProviderFailedEvent(
                     railId = rail.id,
                     railDisplayName = rail.displayName,
-                    description = "Transfer to ${quote.recipient}",
-                    amount = quote.amount,
-                    currency = quote.currency,
+                    description = "Transfer to ${claimed.recipient}",
+                    amount = claimed.amount,
+                    currency = claimed.currency,
                     reason = e.message ?: "declined",
                     failedAt = Instant.now(),
                 ),
@@ -382,16 +403,16 @@ class WalletService(
         }
 
         val result = ledgerService.postLedgerTransaction(
-            quote.currency,
+            claimed.currency,
             listOf(
-                LedgerLeg(quote.fromWalletId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, quote.totalDebit, "Transfer to ${quote.recipient}"),
-                LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, quote.amount, "Rail settlement for ${quote.recipient}"),
-                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, quote.fee, "Transfer fee"),
+                LedgerLeg(claimed.fromWalletId, LedgerAccountType.WALLET, LedgerDirection.DEBIT, claimed.totalDebit, "Transfer to ${claimed.recipient}"),
+                LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, claimed.amount, "Rail settlement for ${claimed.recipient}"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, claimed.fee, "Transfer fee"),
             ),
         )
-        quote.status = QuoteStatus.CONFIRMED
+        claimed.status = QuoteStatus.CONFIRMED
 
-        val wallet = walletRepository.findById(quote.fromWalletId).orElseThrow { WalletNotFoundException("Wallet not found") }
+        val wallet = walletRepository.findById(claimed.fromWalletId).orElseThrow { WalletNotFoundException("Wallet not found") }
         val transaction = Transaction(
             id = result.transactionId,
             referenceNumber = "TXN${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",

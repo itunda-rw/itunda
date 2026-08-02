@@ -64,14 +64,18 @@ class AutoTopUpServiceTest : BehaviorSpec({
             }
         }
 
+        // Real IDOR fix (2026-08-02): this used to throw WalletNotOwnedException (403)
+        // -- and unlike a POST-body walletId, /api/v1/wallet/{walletId}/auto-topup
+        // takes walletId as a real URL path variable, directly probeable/enumerable.
+        // Now 404, never revealing that wallet_2 is a real wallet id.
         When("configuring against a wallet that isn't the caller's own") {
             every { walletRepository.findById("wallet_2") } returns Optional.of(wallet("wallet_2", "owner_1", "5000"))
 
-            Then("it throws WalletNotOwnedException before touching the linked account") {
+            Then("it throws WalletNotFoundException before touching the linked account") {
                 try {
                     service.configure("attacker", "wallet_2", "linked_1", BigDecimal("2000"), BigDecimal("10000"), 3, true)
-                    error("expected WalletNotOwnedException")
-                } catch (e: WalletNotOwnedException) {
+                    error("expected WalletNotFoundException")
+                } catch (e: WalletNotFoundException) {
                     verify(exactly = 0) { linkedAccountRepository.findById(any()) }
                 }
             }
@@ -144,6 +148,22 @@ class AutoTopUpServiceTest : BehaviorSpec({
             }
             Then("it real-increments triggersToday") {
                 setting.triggersToday shouldBe 1
+            }
+            // Real bug found live (2026-08-02): evaluateAndTopUp reads this exact
+            // entity, check-then-acts on triggersToday/enabled/threshold, pulls real
+            // money over an external rail, THEN writes triggersToday back -- the same
+            // check-then-act shape SupportTicket/Ikimina/Holding's own @Version fixes
+            // already address. This asserts the mechanism the fix now relies on: the
+            // SAME versioned setting instance that was read is the one actually passed
+            // to save(), so a concurrent second evaluateAndTopUp call on a stale
+            // version real-409s via the existing global
+            // ObjectOptimisticLockingFailureException handler instead of silently
+            // bypassing the real daily trigger cap.
+            Then("the same versioned setting instance that was read is the one saved") {
+                val savedSlot = slot<WalletAutoTopUpSetting>()
+                verify(exactly = 1) { walletAutoTopUpSettingRepository.save(capture(savedSlot)) }
+                savedSlot.captured shouldBe setting
+                savedSlot.captured.version shouldBe setting.version
             }
         }
 
