@@ -27,6 +27,10 @@ import {
   type CooperativeMembership, type HarvestAdvance,
 } from './lib/harvestAdvance';
 import {
+  applyForVupLoan, disburseVupLoan, fetchMyVupLoans, fetchVupLoanEligibility, repayVupLoan,
+  type VupLoan, type VupLoanEligibility, type VupLoanPurpose,
+} from './lib/vupLoan';
+import {
   cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
   WEEKLY_SAVINGS_ESCALATION_RATES, WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS, WEEKLY_SAVINGS_TERM_WEEKS,
   type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
@@ -1560,7 +1564,7 @@ function OverviewView() {
 // (rw.itunda.loans, BNR-licensed partner banks alongside itunda's own book, see
 // LoanOffer.kt's own doc comment) with zero client UI anywhere.
 function LoansView() {
-  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT' | 'HARVEST_ADVANCE'>('OFFERS');
+  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT' | 'HARVEST_ADVANCE' | 'VUP'>('OFFERS');
   const [offers, setOffers] = useState<LoanOffer[] | null>(null);
   const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
   const [lenders, setLenders] = useState<Lender[] | null>(null);
@@ -1646,12 +1650,14 @@ function LoansView() {
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OVERDRAFT')}>Overdraft</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('POSTPAID_CREDIT')}>Postpaid credit</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('HARVEST_ADVANCE')}>Harvest advance</button>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('VUP')}>VUP Financial Services</button>
       </div>
       {mode === 'OVERDRAFT' && <OverdraftView />}
       {mode === 'POSTPAID_CREDIT' && <PostpaidCreditView />}
       {mode === 'HARVEST_ADVANCE' && <HarvestAdvanceView />}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && refinanceResult && (
+      {mode === 'VUP' && <VupLoanView />}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && refinanceResult && (
         <div className="toss-card" style={{ padding: '16px', border: '1px solid var(--toss-blue)' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
@@ -2155,6 +2161,162 @@ function HarvestAdvanceView() {
                   <button className="toss-btn toss-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRepay(a.id, a.principalAmount)}>
                     {busy ? 'Repaying…' : `Repay in full (${a.principalAmount.toLocaleString()} RWF)`}
                   </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services micro-loan --
+// see lib/vupLoan.ts's own doc comment for the full sourced account. The first
+// MEANS-TESTED lending product in itunda, gated on a self-declared (not
+// government-verified) Ubudehe category rather than credit score or collateral.
+// Disbursement here is a real user-triggered step standing in for the real SACCO
+// officer approval step the actual VUP/FS program uses -- named honestly below.
+function VupLoanView() {
+  const [loans, setLoans] = useState<VupLoan[] | null>(null);
+  const [eligibility, setEligibility] = useState<VupLoanEligibility | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [category, setCategory] = useState<number>(1);
+  const [purpose, setPurpose] = useState<VupLoanPurpose>('FARMING');
+  const [amount, setAmount] = useState('');
+  const [repayAmounts, setRepayAmounts] = useState<Record<string, string>>({});
+
+  const refresh = () => {
+    setError(null);
+    Promise.all([fetchMyVupLoans(), fetchVupLoanEligibility()])
+      .then(([l, e]) => { setLoans(l); setEligibility(e); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your VUP loans.'));
+  };
+
+  useEffect(refresh, []);
+
+  const handleApply = async () => {
+    const value = Number(amount);
+    if (!value || value <= 0) { setError('Enter a valid loan amount.'); return; }
+    setBusyId('apply');
+    setError(null);
+    try {
+      await applyForVupLoan(category, purpose, value);
+      setAmount('');
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not apply for this VUP loan.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDisburse = async (loanId: string) => {
+    setBusyId(loanId);
+    setError(null);
+    try {
+      await disburseVupLoan(loanId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not disburse this loan.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRepay = async (loanId: string) => {
+    const value = Number(repayAmounts[loanId] ?? '');
+    if (!value || value <= 0) { setError('Enter a valid repayment amount.'); return; }
+    setBusyId(loanId);
+    setError(null);
+    try {
+      await repayVupLoan(loanId, value);
+      setRepayAmounts((prev) => { const next = { ...prev }; delete next[loanId]; return next; });
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not repay this loan.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loans === null || eligibility === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 700 }}>VUP Financial Services</h4>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          Rwanda's Vision 2020 Umurenge Programme subsidized microloan for farming, livestock, or small business -- {eligibility.interestRate * 100}% interest, for
+          {' '}Ubudehe categories {eligibility.minUbudeheCategory}-{eligibility.maxUbudeheCategory} only. Ubudehe category is self-declared -- not verified against a real government registry.
+        </p>
+        {!eligibility.canApply ? (
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '8px' }}>You already have an active VUP loan -- repay it before applying for another.</p>
+        ) : (
+          <>
+            <select
+              value={category} onChange={(e) => setCategory(Number(e.target.value))}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+            >
+              <option value={1}>Ubudehe category 1</option>
+              <option value={2}>Ubudehe category 2</option>
+              <option value={3}>Ubudehe category 3</option>
+            </select>
+            <select
+              value={purpose} onChange={(e) => setPurpose(e.target.value as VupLoanPurpose)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+            >
+              <option value="FARMING">Farming</option>
+              <option value="LIVESTOCK">Livestock</option>
+              <option value="BUSINESS">Small business</option>
+            </select>
+            <input
+              type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Loan amount (RWF, up to 500,000)"
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+            />
+            <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'apply'} onClick={handleApply}>
+              {busyId === 'apply' ? 'Applying…' : 'Apply'}
+            </button>
+          </>
+        )}
+      </div>
+
+      {loans.length > 0 && (
+        <div>
+          <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My VUP loans</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {loans.map((loan) => (
+              <div key={loan.id} className="toss-card" style={{ padding: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.purpose}</p>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? '#E53935' : 'var(--toss-blue)' }}>{loan.status}</span>
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                  Outstanding: {loan.outstandingPrincipal.toLocaleString()} RWF
+                  {loan.dueDate && ` · Due ${new Date(loan.dueDate).toLocaleDateString()}`}
+                </p>
+                {loan.status === 'REQUESTED' && (
+                  <>
+                    <p style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>Demo: instantly approved -- stands in for the real SACCO officer approval step.</p>
+                    <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === loan.id} onClick={() => handleDisburse(loan.id)}>
+                      {busyId === loan.id ? 'Disbursing…' : 'Disburse'}
+                    </button>
+                  </>
+                )}
+                {(loan.status === 'DISBURSED' || loan.status === 'OVERDUE') && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                    <input
+                      type="number" value={repayAmounts[loan.id] ?? ''} onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [loan.id]: e.target.value }))}
+                      placeholder="Repayment amount (RWF)"
+                      style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                    />
+                    <button className="toss-btn toss-btn-secondary" disabled={busyId === loan.id} onClick={() => handleRepay(loan.id)}>
+                      {busyId === loan.id ? 'Repaying…' : 'Repay'}
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
