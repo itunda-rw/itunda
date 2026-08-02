@@ -43,20 +43,11 @@ button:active {
   transform: scale(0.96);
 }
 
-/* Real fix, 2026-08-03 -- matches android/core/designsystem's IdsCard (added same
-   day): --toss-shadow is a black rgba shadow, which is real-Toss-correct in light
-   mode but effectively invisible in dark mode once the page background is already
-   near-black, so cards had zero visible edge in dark mode -- the exact class of
-   "why does the web home look different from what itunda's card theme decided" gap.
-   var(--toss-grey-200) is dark-mode-mapped to the same #3c3c47 hairline Android's
-   own Ids.colors.divider uses, so this keeps both platforms' card definition in
-   sync rather than fixing web with an independently-chosen value. */
 .toss-card {
   background: var(--toss-white);
   border-radius: var(--toss-radius-md);
   padding: 24px;
   box-shadow: var(--toss-shadow);
-  border: 1px solid var(--toss-grey-200);
   margin-bottom: 16px;
   transition: var(--toss-transition);
 }
