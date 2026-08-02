@@ -274,6 +274,36 @@ public struct ApplyForVupLoanRequest: Encodable { public let declaredUbudeheCate
 public struct RepayVupLoanRequest: Encodable { public let amount: Double }
 public struct VupLoanResponse: Decodable { public let success: Bool; public let loan: VupLoanDto }
 public struct VupLoansResponse: Decodable { public let success: Bool; public let loans: [VupLoanDto] }
+// Real Rwanda moto-taxi ownership savings-to-loan plan -- sourced beyond this
+// session's usual Toss/Kakao/Naver/Coupang reference ecosystems. A real ~600,000 RWF
+// entry-level moto-taxi bike is a documented purchase price (Anadolu Agency, 14 May
+// 2021 -- profiles a rider who saved for years to buy her own bike after paying daily
+// rent to a bike owner). Rent-to-own is a proven-relevant mechanic in this exact
+// sector (Frontier Tech Hub's Kigali e-moto pilot: Ampersand's rent-to-own model
+// increased driver revenue 78%/month; WeeTracker/WEF coverage of the same). This
+// fills the gap left by Rwanda's dissolved taxi-moto cooperatives (Africa-Press,
+// 2026). Honest v1 limitation: once converted to a loan, this is an UNSECURED
+// facility -- itunda has no path to a real chattel lien or RURA vehicle-registry
+// hold, so it cannot repossess the bike or verify it was actually purchased. Mirrors
+// bank-mfe's lib/motoOwnership.ts exactly.
+public struct MotoOwnershipPlanDto: Decodable, Identifiable {
+    public let id: String
+    public let userId: String
+    public let bikePrice: Double
+    public let downPaymentTarget: Double
+    public let savedAmount: Double
+    public let dailyContribution: Double
+    public let loanOutstanding: Double
+    public let status: String
+    public let lastAutoContributionAt: String?
+    public let createdAt: String
+}
+public struct CreateMotoOwnershipPlanRequest: Encodable { public let bikePrice: Double; public let dailyContribution: Double }
+public struct ContributeToMotoOwnershipPlanRequest: Encodable { public let amount: Double }
+public struct RepayMotoOwnershipPlanRequest: Encodable { public let amount: Double }
+public struct MotoOwnershipPlanResponse: Decodable { public let success: Bool; public let plan: MotoOwnershipPlanDto }
+public struct MotoOwnershipPlansResponse: Decodable { public let success: Bool; public let plans: [MotoOwnershipPlanDto] }
+
 public struct VupLoanEligibilityResponse: Decodable {
     public let success: Bool
     public let hasActiveLoan: Bool
@@ -1575,6 +1605,35 @@ extension NetworkClient {
     public func getVupLoanEligibility() async throws -> VupLoanEligibilityResponse { try await get("api/v1/loans/vup/eligibility") }
 
     public func getVupLoan(loanId: String) async throws -> VupLoanResponse { try await get("api/v1/loans/vup/\(loanId)") }
+
+    // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
+    // MotoOwnershipPlanDto's own doc comment. No Idempotency-Key on create (not
+    // money movement itself, matching the backend's own contract); contribute/
+    // cancel/convert-to-loan/repay all require one, same convention as every other
+    // money-moving call in this file.
+    public func createMotoOwnershipPlan(bikePrice: Double, dailyContribution: Double) async throws -> MotoOwnershipPlanResponse {
+        try await authenticatedPost("api/v1/moto-ownership/plans", body: CreateMotoOwnershipPlanRequest(bikePrice: bikePrice, dailyContribution: dailyContribution))
+    }
+
+    public func contributeToMotoOwnershipPlan(planId: String, amount: Double) async throws -> MotoOwnershipPlanResponse {
+        try await authenticatedPost("api/v1/moto-ownership/plans/\(planId)/contribute", body: ContributeToMotoOwnershipPlanRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func cancelMotoOwnershipPlan(planId: String) async throws -> MotoOwnershipPlanResponse {
+        try await authenticatedPost("api/v1/moto-ownership/plans/\(planId)/cancel", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func convertMotoOwnershipPlanToLoan(planId: String) async throws -> MotoOwnershipPlanResponse {
+        try await authenticatedPost("api/v1/moto-ownership/plans/\(planId)/convert-to-loan", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func repayMotoOwnershipPlan(planId: String, amount: Double) async throws -> MotoOwnershipPlanResponse {
+        try await authenticatedPost("api/v1/moto-ownership/plans/\(planId)/repay", body: RepayMotoOwnershipPlanRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getMyMotoOwnershipPlans() async throws -> MotoOwnershipPlansResponse { try await get("api/v1/moto-ownership/plans/me") }
+
+    public func getMotoOwnershipPlan(planId: String) async throws -> MotoOwnershipPlanResponse { try await get("api/v1/moto-ownership/plans/\(planId)") }
 
     private func authenticatedPut<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))

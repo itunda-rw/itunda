@@ -3605,6 +3605,32 @@ interface ApiService {
 
     @GET("api/v1/loans/vup/{loanId}")
     suspend fun getVupLoan(@Path("loanId") loanId: String): VupLoanResponse
+
+    // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
+    // MotoOwnershipPlanDto's own doc comment for the full sourced account. No
+    // Idempotency-Key on create (not money movement itself, matching the backend's
+    // own contract); contribute/cancel/convert-to-loan/repay all require one, same
+    // convention as every other money-moving call in this file.
+    @POST("api/v1/moto-ownership/plans")
+    suspend fun createMotoOwnershipPlan(@Body request: CreateMotoOwnershipPlanRequest): MotoOwnershipPlanResponse
+
+    @POST("api/v1/moto-ownership/plans/{planId}/contribute")
+    suspend fun contributeToMotoOwnershipPlan(@Path("planId") planId: String, @Body request: ContributeToMotoOwnershipPlanRequest, @Header("Idempotency-Key") idempotencyKey: String): MotoOwnershipPlanResponse
+
+    @POST("api/v1/moto-ownership/plans/{planId}/cancel")
+    suspend fun cancelMotoOwnershipPlan(@Path("planId") planId: String, @Header("Idempotency-Key") idempotencyKey: String): MotoOwnershipPlanResponse
+
+    @POST("api/v1/moto-ownership/plans/{planId}/convert-to-loan")
+    suspend fun convertMotoOwnershipPlanToLoan(@Path("planId") planId: String, @Header("Idempotency-Key") idempotencyKey: String): MotoOwnershipPlanResponse
+
+    @POST("api/v1/moto-ownership/plans/{planId}/repay")
+    suspend fun repayMotoOwnershipPlan(@Path("planId") planId: String, @Body request: RepayMotoOwnershipPlanRequest, @Header("Idempotency-Key") idempotencyKey: String): MotoOwnershipPlanResponse
+
+    @GET("api/v1/moto-ownership/plans/me")
+    suspend fun getMyMotoOwnershipPlans(): MotoOwnershipPlansResponse
+
+    @GET("api/v1/moto-ownership/plans/{planId}")
+    suspend fun getMotoOwnershipPlan(@Path("planId") planId: String): MotoOwnershipPlanResponse
 }
 
 data class UpfrontDepositDto(
@@ -3995,6 +4021,29 @@ data class VupLoanEligibilityResponse(
     val success: Boolean, val hasActiveLoan: Boolean, val canApply: Boolean,
     val minUbudeheCategory: Int, val maxUbudeheCategory: Int, val interestRate: Double, val maxAmount: java.math.BigDecimal,
 )
+
+// Real Rwanda moto-taxi ownership savings-to-loan plan -- sourced beyond this
+// session's usual Toss/Kakao/Naver/Coupang reference ecosystems. A real ~600,000 RWF
+// entry-level moto-taxi bike is a documented purchase price (Anadolu Agency, 14 May
+// 2021 -- profiles a rider who saved for years to buy her own bike after paying daily
+// rent to a bike owner). Rent-to-own is a proven-relevant mechanic in this exact
+// sector (Frontier Tech Hub's Kigali e-moto pilot: Ampersand's rent-to-own model
+// increased driver revenue 78%/month; WeeTracker/WEF coverage of the same). This
+// fills the gap left by Rwanda's dissolved taxi-moto cooperatives (Africa-Press,
+// 2026). Honest v1 limitation: once converted to a loan, this is an UNSECURED
+// facility -- itunda has no path to a real chattel lien or RURA vehicle-registry
+// hold, so it cannot repossess the bike or verify it was actually purchased. Mirrors
+// bank-mfe's lib/motoOwnership.ts exactly.
+data class MotoOwnershipPlanDto(
+    val id: String, val userId: String, val bikePrice: java.math.BigDecimal, val downPaymentTarget: java.math.BigDecimal,
+    val savedAmount: java.math.BigDecimal, val dailyContribution: java.math.BigDecimal, val loanOutstanding: java.math.BigDecimal,
+    val status: String, val lastAutoContributionAt: String?, val createdAt: String,
+)
+data class CreateMotoOwnershipPlanRequest(val bikePrice: java.math.BigDecimal, val dailyContribution: java.math.BigDecimal)
+data class ContributeToMotoOwnershipPlanRequest(val amount: java.math.BigDecimal)
+data class RepayMotoOwnershipPlanRequest(val amount: java.math.BigDecimal)
+data class MotoOwnershipPlanResponse(val success: Boolean, val plan: MotoOwnershipPlanDto)
+data class MotoOwnershipPlansResponse(val success: Boolean, val plans: List<MotoOwnershipPlanDto>)
 
 // Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).

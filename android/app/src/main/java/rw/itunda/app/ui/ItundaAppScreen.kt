@@ -318,6 +318,11 @@ fun ItundaAppScreen(
         // microloan -- see VupLoanScreen.kt's own doc comment for the full sourced
         // account. bank-mfe shipped first; this is the first native client.
         var showVupLoan by rememberSaveable { mutableStateOf(false) }
+        // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
+        // MotoOwnershipScreen.kt's own doc comment for the full sourced account.
+        // bank-mfe shipped first (commits cf9d72fe/808a7ce4); this is the first
+        // native client.
+        var showMotoOwnership by rememberSaveable { mutableStateOf(false) }
         // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
         // user's direct request; see MenuScreen's own doc comment.
         var showMyTab by rememberSaveable { mutableStateOf(false) }
@@ -823,6 +828,11 @@ fun ItundaAppScreen(
             VupLoanScreen(onBack = { showVupLoan = false })
             return@IdsTheme
         }
+        if (showMotoOwnership) {
+            BackHandler { showMotoOwnership = false }
+            MotoOwnershipScreen(onBack = { showMotoOwnership = false })
+            return@IdsTheme
+        }
         if (showCertificate) {
             BackHandler { showCertificate = false }
             CertificateScreen(onBack = { showCertificate = false })
@@ -1075,6 +1085,7 @@ fun ItundaAppScreen(
                             onOpenAgentOperator = { showAgentOperator = true },
                             onOpenFloatMarketplace = { showFloatMarketplace = true },
                             onOpenVupLoan = { showVupLoan = true },
+                            onOpenMotoOwnership = { showMotoOwnership = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                             onSwitchToTalk = { selectedTab = TossTab.Talk },
@@ -1616,6 +1627,7 @@ private fun MenuScreen(
     onOpenAgentOperator: () -> Unit = {},
     onOpenFloatMarketplace: () -> Unit = {},
     onOpenVupLoan: () -> Unit = {},
+    onOpenMotoOwnership: () -> Unit = {},
     onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
@@ -1756,6 +1768,7 @@ private fun MenuScreen(
                 FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
                 FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
                 FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenVupLoan),
+                FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
                 FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
                 FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
                 FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentBlue, onClick = onOpenBikeRental),

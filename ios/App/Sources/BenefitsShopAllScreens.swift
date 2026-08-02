@@ -289,6 +289,11 @@ struct EntireMenuScreen: View {
     // microloan -- see VupLoanScreenView.swift's own doc comment for the full sourced
     // account. bank-mfe shipped first; this is the first native client.
     @State private var showVupLoan = false
+    // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
+    // MotoOwnershipScreenView.swift's own doc comment for the full sourced account.
+    // bank-mfe shipped first (commits cf9d72fe/808a7ce4); this is the first native
+    // client.
+    @State private var showMotoOwnership = false
 
     var body: some View {
         ScrollView {
@@ -372,6 +377,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
                         FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentBlue, action: { showAgentOperator = true }),
                         FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
+                        FlatRow(title: "Moto-Taxi Ownership", subtitle: "Save a 30% down payment, then convert to a loan for your own bike", symbol: "bicycle", tint: .accentTeal, action: { showMotoOwnership = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
                         FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
@@ -502,6 +508,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showVupLoan) {
             VupLoanScreenView(onBack: { showVupLoan = false })
+        }
+        .sheet(isPresented: $showMotoOwnership) {
+            MotoOwnershipScreenView(onBack: { showMotoOwnership = false })
         }
         .sheet(isPresented: $showCertificate) {
             CertificateScreenView(onBack: { showCertificate = false })
