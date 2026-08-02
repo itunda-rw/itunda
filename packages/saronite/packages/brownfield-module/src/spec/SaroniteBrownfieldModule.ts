@@ -129,6 +129,45 @@ export interface EnrollInsuranceResult {
   policy: InsurancePolicy;
 }
 
+/** Real Ejo Heza ya Moto-style premium savings fund -- mirrors a single fund from
+ * `GET /insurance/premium-funds` (services/backend/insurance's
+ * InsuranceController.fundMap). Lets a user save toward a specific policy's next
+ * premium ahead of time, so the backend's recurring collection scheduler can draw on
+ * it instead of lapsing the policy. */
+export interface InsurancePremiumFund {
+  id: string;
+  policyId: string;
+  targetAmount: number;
+  currentAmount: number;
+  dailyContribution: number;
+  status: 'active' | 'cancelled';
+  createdAt: string;
+}
+
+/** Mirrors the response of `POST /insurance/policies/{policyId}/premium-fund`. */
+export interface CreatePremiumFundResult {
+  success: boolean;
+  fund: InsurancePremiumFund;
+}
+
+/** Mirrors the response of `POST /insurance/premium-funds/{fundId}/contribute`. */
+export interface ContributeToFundResult {
+  success: boolean;
+  fund: InsurancePremiumFund;
+}
+
+/** Mirrors the response of `POST /insurance/premium-funds/{fundId}/cancel`. */
+export interface CancelFundResult {
+  success: boolean;
+  fund: InsurancePremiumFund;
+}
+
+/** Mirrors the response of `GET /insurance/premium-funds`. */
+export interface MyPremiumFundsResult {
+  success: boolean;
+  funds: InsurancePremiumFund[];
+}
+
 /** Mirrors the response of `GET /rewards/referral`
  * (services/backend/rewards's RewardsController.referral). */
 export interface ReferralInfo {
@@ -191,6 +230,10 @@ export interface SaroniteBrownfieldModuleSpec {
   getInsurancePlans(): Promise<InsurancePlansResult>;
   getMyPolicies(): Promise<MyPoliciesResult>;
   enrollInsurance(planId: string): Promise<EnrollInsuranceResult>;
+  createPremiumFund(policyId: string, dailyContribution: number): Promise<CreatePremiumFundResult>;
+  contributeToFund(fundId: string, amount: number): Promise<ContributeToFundResult>;
+  cancelFund(fundId: string): Promise<CancelFundResult>;
+  getMyPremiumFunds(): Promise<MyPremiumFundsResult>;
   getReferralInfo(): Promise<ReferralInfo>;
   reportSteps(steps: number): Promise<StepReportResult>;
   getTodaySteps(): Promise<TodayStepsResult>;

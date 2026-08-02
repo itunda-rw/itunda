@@ -20,6 +20,16 @@ RCT_EXTERN_METHOD(claimRewardTask:(NSString *)taskId resolver:(RCTPromiseResolve
 RCT_EXTERN_METHOD(getInsurancePlans:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getMyPolicies:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(enrollInsurance:(NSString *)planId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(createPremiumFund:(NSString *)policyId
+                  dailyContribution:(nonnull NSNumber *)dailyContribution
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(contributeToFund:(NSString *)fundId
+                  amount:(nonnull NSNumber *)amount
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(cancelFund:(NSString *)fundId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getMyPremiumFunds:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getReferralInfo:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(reportSteps:(nonnull NSNumber *)steps resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getTodaySteps:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)

@@ -200,6 +200,45 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real Ejo Heza ya Moto-style premium savings fund -- see Android's own SaroniteBridge.kt
+    // createPremiumFund for the same doc comment. Row creation only, no Idempotency-Key
+    // required by the backend, though authorizedCall attaches one anyway (harmless: the
+    // backend's InsuranceController.createPremiumFund never reads that header).
+    @objc func createPremiumFund(
+        _ policyId: String,
+        dailyContribution: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        authorizedCall(path: "api/v1/insurance/policies/\(policyId)/premium-fund", method: "POST", body: ["dailyContribution": dailyContribution], resolve: resolve, reject: reject, parse: Self.mapPremiumFundResult)
+    }
+
+    // Money movement -- backend requires a real Idempotency-Key header
+    // (InsuranceController.contributeToFund's @RequestHeader), which authorizedCall
+    // already attaches on every call with a body (same as enrollInsurance above).
+    @objc func contributeToFund(
+        _ fundId: String,
+        amount: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        authorizedCall(path: "api/v1/insurance/premium-funds/\(fundId)/contribute", method: "POST", body: ["amount": amount], resolve: resolve, reject: reject, parse: Self.mapPremiumFundResult)
+    }
+
+    // Also money movement (refunds currentAmount back to the MAIN wallet) -- same real
+    // Idempotency-Key requirement as contributeToFund. body: [:] (not nil), same reasoning
+    // as requestEmailVerification above -- this is a real POST even with nothing to send.
+    @objc func cancelFund(_ fundId: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/premium-funds/\(fundId)/cancel", method: "POST", body: [:], resolve: resolve, reject: reject, parse: Self.mapPremiumFundResult)
+    }
+
+    @objc func getMyPremiumFunds(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/premium-funds", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let funds = ((root["funds"] as? [[String: Any]]) ?? []).map(Self.mapPremiumFund)
+            return ["success": root["success"] as? Bool ?? true, "funds": funds]
+        }
+    }
+
     @objc func getReferralInfo(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/rewards/referral", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             [
@@ -253,6 +292,27 @@ final class SaroniteBrownfieldModule: NSObject {
             "nextPaymentDate": p["nextPaymentDate"] as? String ?? "",
             "policyNumber": p["policyNumber"] as? String ?? "",
         ]
+    }
+
+    // Real backend shape: services/backend/insurance's InsuranceController.fundMap
+    // (POST .../premium-fund, POST .../contribute, POST .../cancel, GET premium-funds)
+    // -- read directly from InsuranceController.kt, not guessed.
+    private static func mapPremiumFund(_ f: [String: Any]) -> [String: Any] {
+        [
+            "id": f["id"] as? String ?? "",
+            "policyId": f["policyId"] as? String ?? "",
+            "targetAmount": (f["targetAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "currentAmount": (f["currentAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "dailyContribution": (f["dailyContribution"] as? NSNumber)?.doubleValue ?? 0,
+            "status": f["status"] as? String ?? "",
+            "createdAt": f["createdAt"] as? String ?? "",
+        ]
+    }
+
+    private static func mapPremiumFundResult(_ root: [String: Any]) -> [String: Any] {
+        var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+        if let fund = root["fund"] as? [String: Any] { result["fund"] = mapPremiumFund(fund) }
+        return result
     }
 
     private func authorizedCall(

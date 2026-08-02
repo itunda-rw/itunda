@@ -167,6 +167,41 @@ class SaroniteBrownfieldModule(
         authorizedCall(post("api/v1/insurance/enroll", body), promise, ::parseEnrollInsuranceResult)
     }
 
+    // Real Ejo Heza ya Moto-style premium savings fund -- see the backend's
+    // InsuranceService.createPremiumFund doc comment. Row creation only, no
+    // Idempotency-Key required by the backend (post() below adds one anyway, which is
+    // harmless since InsuranceController.createPremiumFund never reads that header).
+    @ReactMethod
+    fun createPremiumFund(policyId: String, dailyContribution: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply { addProperty("dailyContribution", dailyContribution) }
+        authorizedCall(post("api/v1/insurance/policies/$policyId/premium-fund", body), promise, ::parsePremiumFundResult)
+    }
+
+    // Money movement -- backend requires a real Idempotency-Key header
+    // (InsuranceController.contributeToFund's @RequestHeader), which post() already
+    // attaches on every call (same as enrollInsurance above).
+    @ReactMethod
+    fun contributeToFund(fundId: String, amount: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply { addProperty("amount", amount) }
+        authorizedCall(post("api/v1/insurance/premium-funds/$fundId/contribute", body), promise, ::parsePremiumFundResult)
+    }
+
+    // Also money movement (refunds currentAmount back to the MAIN wallet) -- same real
+    // Idempotency-Key requirement as contributeToFund.
+    @ReactMethod
+    fun cancelFund(fundId: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(post("api/v1/insurance/premium-funds/$fundId/cancel", JsonObject()), promise, ::parsePremiumFundResult)
+    }
+
+    @ReactMethod
+    fun getMyPremiumFunds(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/insurance/premium-funds"), promise, ::parseMyPremiumFundsResult)
+    }
+
     @ReactMethod
     fun getReferralInfo(promise: Promise) {
         if (!requireScope(null, promise)) return
@@ -471,6 +506,39 @@ class SaroniteBrownfieldModule(
         val result = Arguments.createMap()
         result.putString("message", root.get("message")?.asString ?: "Enrolled")
         root.getAsJsonObject("policy")?.let { result.putMap("policy", parsePolicy(it)) }
+        return result
+    }
+
+    // Real backend shape: services/backend/insurance's InsuranceController.fundMap
+    // (POST .../premium-fund, POST .../contribute, POST .../cancel, GET premium-funds)
+    // -- read directly from InsuranceController.kt, not guessed.
+    private fun parsePremiumFund(f: JsonObject): WritableMap {
+        val fundMap = Arguments.createMap()
+        fundMap.putString("id", f.get("id").asString)
+        fundMap.putString("policyId", f.get("policyId")?.asString ?: "")
+        fundMap.putDouble("targetAmount", f.get("targetAmount")?.asDouble ?: 0.0)
+        fundMap.putDouble("currentAmount", f.get("currentAmount")?.asDouble ?: 0.0)
+        fundMap.putDouble("dailyContribution", f.get("dailyContribution")?.asDouble ?: 0.0)
+        fundMap.putString("status", f.get("status")?.asString ?: "")
+        fundMap.putString("createdAt", f.get("createdAt")?.asString ?: "")
+        return fundMap
+    }
+
+    private fun parsePremiumFundResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        root.getAsJsonObject("fund")?.let { result.putMap("fund", parsePremiumFund(it)) }
+        return result
+    }
+
+    private fun parseMyPremiumFundsResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val funds = Arguments.createArray()
+        root.getAsJsonArray("funds")?.forEach { element -> funds.pushMap(parsePremiumFund(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        result.putArray("funds", funds)
         return result
     }
 
