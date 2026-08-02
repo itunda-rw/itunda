@@ -2709,7 +2709,7 @@ function MotoOwnershipView() {
                         {plan.savedAmount >= plan.downPaymentTarget && (
                           <>
                             <p style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
-                              This disburses the remaining balance as an unsecured loan -- itunda cannot repossess the bike if you stop repaying.
+                              This releases your full {plan.bikePrice.toLocaleString()} RWF bike price to your wallet (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.
                             </p>
                             <button className="toss-btn toss-btn-primary" disabled={busyId === plan.id} onClick={() => handleConvert(plan.id)}>
                               {busyId === plan.id ? 'Converting…' : 'Convert to loan'}

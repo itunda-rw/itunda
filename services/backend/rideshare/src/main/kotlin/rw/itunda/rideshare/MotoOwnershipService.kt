@@ -167,29 +167,38 @@ class MotoOwnershipService(
         return motoOwnershipPlanRepository.save(plan)
     }
 
-    // The trickiest ledger logic in this feature. Two SEPARATE real ledger
-    // transactions, each independently balanced:
+    // Real accounting bug found live in this feature's own build-time review
+    // (2026-08-02): the original version of this method posted the disbursement as
+    // TWO separate transactions -- a CREDIT wallet/DEBIT loan_payable leg for only
+    // `remainingBalance`, plus a second transaction crediting `savedAmount` BACK to
+    // loan_payable, reasoning that the first leg had "under-recognized" the full
+    // bikePrice. That reasoning was wrong: the first leg already DEBITs loan_payable
+    // for exactly `remainingBalance`, which by itself already correctly matches
+    // `loanOutstanding` -- crediting loan_payable a second time for savedAmount
+    // silently UNDERSTATES its real balance by savedAmount, and once the loan is
+    // later repaid in full (crediting loan_payable again for the total repaid), the
+    // shared loan_payable account -- also used by VupLoanService/StudentLoanService/
+    // CooperativeService/LoansService -- ends up permanently short by savedAmount for
+    // every converted plan. Verified by hand against this feature's own test fixture
+    // (bikePrice=600,000, savedAmount=180,000, remainingBalance=420,000): the buggy
+    // version left loan_payable's net position at 420,000-180,000=240,000 against a
+    // claimed loanOutstanding of 420,000, a real, silent 180,000 mismatch.
     //
-    // 1) Disbursement: the remaining balance (bikePrice - savedAmount) is paid out to
-    //    the borrower's wallet -- CREDIT MAIN wallet / DEBIT loan_payable, the exact
-    //    shape VupLoanService.disburse/StudentLoanService.disburse already establish.
-    //
-    // 2) Down-payment transfer: the money already sitting in savings_goal_payable is
-    //    no longer a refundable savings balance (see `cancel` above, which is the ONLY
-    //    other place that account gets debited back to the user) -- it has now been
-    //    applied toward the purchase. DEBIT savings_goal_payable / CREDIT loan_payable
-    //    for savedAmount. savings_goal_payable decreases because itunda no longer owes
-    //    that money back to the user; loan_payable is credited here (increasing the
-    //    liability leg on the SAME account leg 1 just debited/decreased) to reflect
-    //    that the user's total bike debt is bikePrice MINUS the down payment they
-    //    already contributed, not bikePrice minus zero -- i.e. this leg exactly
-    //    reverses the amount by which leg 1 under-recognized the full bikePrice as
-    //    principal owed.
-    //
-    // Net effect across both transactions: loan_payable carries exactly
-    // bikePrice.subtract(savedAmount) = loanOutstanding, savings_goal_payable no
-    // longer carries this plan's savedAmount, and the wallet only ever received the
-    // true remaining balance -- never the down payment twice.
+    // Corrected design: the whole point of converting is that the user goes and
+    // actually buys the bike, so they need the FULL purchase price in spendable
+    // wallet cash, not just the loan portion -- the down payment they already saved
+    // (locked in savings_goal_payable, previously only reachable via `cancel`'s
+    // refund) gets RELEASED into their wallet alongside the newly-disbursed loan
+    // principal, in ONE real, atomically-balanced ledger transaction:
+    //   - wallet: CREDIT bikePrice (the full purchase amount, now spendable)
+    //   - savings_goal_payable: DEBIT savedAmount (release the locked-down-payment
+    //     liability -- itunda no longer owes it back as a future refund, because it's
+    //     just been delivered to the user as real cash instead)
+    //   - loan_payable: DEBIT remainingBalance (the genuinely NEW principal borrowed)
+    // Debits (savedAmount + remainingBalance = bikePrice) always exactly equal the
+    // wallet credit (bikePrice), for any savedAmount/bikePrice combination -- no
+    // revenue account or second transaction needed, and loan_payable ends up carrying
+    // exactly `loanOutstanding`, nothing more.
     @Transactional
     fun convertToLoan(userId: String, planId: String): MotoOwnershipPlan {
         val plan = getOwnedPlan(userId, planId)
@@ -203,23 +212,16 @@ class MotoOwnershipService(
 
         val remainingBalance = plan.bikePrice.subtract(plan.savedAmount)
 
-        if (remainingBalance > BigDecimal.ZERO) {
-            ledgerService.postLedgerTransaction(
-                wallet.currency,
-                listOf(
-                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, remainingBalance, "Moto-taxi ownership loan disbursement"),
-                    LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, remainingBalance, "Moto-taxi ownership loan principal owed"),
-                ),
-            )
-        }
-
-        ledgerService.postLedgerTransaction(
-            wallet.currency,
-            listOf(
-                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, plan.savedAmount, "Moto-taxi ownership down payment applied to loan"),
-                LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, plan.savedAmount, "Moto-taxi ownership down payment applied to loan"),
-            ),
+        val legs = mutableListOf(
+            LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, plan.bikePrice, "Moto-taxi ownership purchase -- loan disbursement + released down payment"),
         )
+        if (plan.savedAmount > BigDecimal.ZERO) {
+            legs.add(LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.DEBIT, plan.savedAmount, "Moto-taxi ownership down payment released to wallet"))
+        }
+        if (remainingBalance > BigDecimal.ZERO) {
+            legs.add(LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, remainingBalance, "Moto-taxi ownership loan principal owed"))
+        }
+        ledgerService.postLedgerTransaction(wallet.currency, legs)
 
         plan.loanOutstanding = remainingBalance
         plan.status = MotoOwnershipPlanStatus.LOAN_ACTIVE

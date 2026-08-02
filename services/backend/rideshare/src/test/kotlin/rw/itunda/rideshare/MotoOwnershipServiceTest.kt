@@ -29,9 +29,13 @@ import java.util.Optional
  * check. The contribute/repay-clamp tests guard against the same overshoot-clamp
  * regression class found in InsuranceService.contributeToFund/VupLoanService.repay:
  * they assert the actual ledger leg amount, not just the resulting field. The
- * convertToLoan test is this feature's own trickiest ledger logic -- it verifies BOTH
- * the disbursement legs AND the separate savings-to-loan-payable transfer legs, with
- * their direction checked carefully.
+ * convertToLoan test is this feature's own trickiest ledger logic -- it verifies the
+ * single, atomically-balanced transaction (wallet CREDIT for the full bikePrice,
+ * savings_goal_payable DEBIT releasing the down payment, loan_payable DEBIT for only
+ * the genuinely new remaining principal) that replaced an earlier, real accounting
+ * bug found in this feature's own build-time review: a two-transaction version that
+ * credited loan_payable a second time for the down payment, silently understating
+ * loan_payable's true balance by that amount for the life of the loan.
  *
  * Kotest lesson from this session: sibling `When` blocks under the same `Given` share
  * ONE mutable entity created in the `Given` block -- a mutation in one `When` leaks
@@ -247,24 +251,35 @@ class MotoOwnershipServiceTest : BehaviorSpec({
                 result.loanOutstanding shouldBe BigDecimal("420000")
             }
 
-            Then("the disbursement transaction CREDITs the wallet and DEBITs loan_payable for the real remaining 420,000 balance") {
-                verify {
+            // Real accounting bug found in this feature's own build-time review
+            // (2026-08-02): an earlier version posted TWO transactions, the second of
+            // which credited loan_payable a second time for the down payment already
+            // saved -- silently leaving loan_payable's real net position at
+            // 420,000-180,000=240,000 against a claimed loanOutstanding of 420,000.
+            // The fix posts ONE atomically-balanced transaction: the wallet receives
+            // the FULL bikePrice (the down payment is released to spendable cash
+            // alongside the new loan, not silently absorbed), savings_goal_payable is
+            // debited for exactly the released down payment, and loan_payable is
+            // debited for ONLY the genuinely new remaining principal -- so
+            // loan_payable's real balance always exactly matches loanOutstanding.
+            Then("a single balanced transaction CREDITs the wallet for the full 600,000 bike price, DEBITs savings_goal_payable for the released 180,000 down payment, and DEBITs loan_payable for only the real new 420,000 principal") {
+                verify(exactly = 1) {
                     ledgerService.postLedgerTransaction(any(), match { legs ->
-                        legs.size == 2 &&
-                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("420000") } &&
+                        legs.size == 3 &&
+                            legs.any { it.accountId == "wallet_1" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("600000") } &&
+                            legs.any { it.accountId == "savings_goal_payable" && it.accountType == LedgerAccountType.SAVINGS_GOAL_PAYABLE && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("180000") } &&
                             legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("420000") }
                     })
                 }
             }
 
-            Then("a SEPARATE transaction DEBITs savings_goal_payable and CREDITs loan_payable for the real 180,000 down payment already saved -- the trickiest ledger direction in this feature") {
-                verify {
-                    ledgerService.postLedgerTransaction(any(), match { legs ->
-                        legs.size == 2 &&
-                            legs.any { it.accountId == "savings_goal_payable" && it.accountType == LedgerAccountType.SAVINGS_GOAL_PAYABLE && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("180000") } &&
-                            legs.any { it.accountId == "loan_payable" && it.accountType == LedgerAccountType.LOAN_PAYABLE && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("180000") }
-                    })
-                }
+            Then("the transaction's own legs are internally balanced (debits equal credits), the real invariant the earlier bug silently violated") {
+                val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
+                verify { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) }
+                val debits = legsSlot.captured.filter { it.direction == LedgerDirection.DEBIT }.sumOf { it.amount }
+                val credits = legsSlot.captured.filter { it.direction == LedgerDirection.CREDIT }.sumOf { it.amount }
+                debits shouldBe credits
+                debits shouldBe BigDecimal("600000")
             }
         }
 
