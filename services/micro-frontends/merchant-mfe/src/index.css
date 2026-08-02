@@ -36,11 +36,17 @@ input, textarea {
   font-family: inherit;
 }
 
+/* Real fix, 2026-08-03 -- see bank-mfe/src/index.css's own fuller comment: matches
+   android/core/designsystem's IdsCard (added same day) -- --toss-shadow is a black
+   rgba shadow, invisible in dark mode once the page background is near-black, so
+   var(--toss-grey-200) (dark-mode-mapped to the same #3c3c47 hairline
+   Ids.colors.divider uses on Android) gives cards a real, always-visible edge. */
 .toss-card {
   background: var(--toss-white);
   border-radius: var(--toss-radius-md);
   padding: 24px;
   box-shadow: var(--toss-shadow);
+  border: 1px solid var(--toss-grey-200);
   margin-bottom: 16px;
   transition: var(--toss-transition);
 }
