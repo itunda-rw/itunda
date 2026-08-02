@@ -163,6 +163,14 @@ class CardService(
         val card = getCardOrThrow(userId)
         if (card.frozen) throw CardFrozenException("This card is frozen. Unfreeze it to make a purchase.")
 
+        // Real bug found live (2026-08-02): the daily/monthly limit check below reads a
+        // live SUM over DebitCardTransaction rows, not a mutation of `card` itself, so
+        // `@Version` on DebitCard never guards it -- two concurrent charges for this
+        // same card could both read the same pre-charge sum and both pass the limit
+        // check before either commits. Locking the card row here serializes concurrent
+        // charges on THIS card so the sum-check-then-insert below is actually atomic.
+        debitCardRepository.findByIdForUpdate(card.id)
+
         val now = Instant.now()
         val startOfToday = LocalDate.now(RWANDA_ZONE).atStartOfDay(RWANDA_ZONE).toInstant()
         val startOfMonth = LocalDate.now(RWANDA_ZONE).with(TemporalAdjusters.firstDayOfMonth()).atStartOfDay(RWANDA_ZONE).toInstant()

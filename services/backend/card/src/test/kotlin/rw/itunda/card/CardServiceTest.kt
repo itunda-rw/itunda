@@ -21,6 +21,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
+import java.util.Optional
 
 /** First test coverage for the real Toss Bank 체크카드 (check/debit card) -- see
  * DebitCard.kt's own doc comment for the full sourced account. */
@@ -119,6 +120,7 @@ class CardServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val card = freshCard("user_1")
         every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.findByIdForUpdate("card_1") } returns Optional.of(card)
         every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal.ZERO
         every { debitCardTransactionRepository.save(any()) } answers { firstArg() }
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
@@ -141,6 +143,16 @@ class CardServiceTest : BehaviorSpec({
                 result.transaction.merchantName shouldBe "Kigali Cafe"
                 result.card.remainingToday shouldBe BigDecimal("495000")
             }
+
+            // Real bug found live (2026-08-02): the daily/monthly limit check sums real
+            // DebitCardTransaction rows, not a mutation of `card` itself, so two
+            // concurrent charges for the same card could both read the same pre-charge
+            // sum before either committed and both post real money, together exceeding
+            // the card's own documented limit. Locking the card row before computing
+            // the sums serializes concurrent charges on the SAME card.
+            Then("the card row is locked before the spend sums are ever computed") {
+                verify(exactly = 1) { debitCardRepository.findByIdForUpdate("card_1") }
+            }
         }
     }
 
@@ -149,6 +161,7 @@ class CardServiceTest : BehaviorSpec({
         val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
         val card = freshCard("user_1")
         every { debitCardRepository.findByUserId("user_1") } returns card
+        every { debitCardRepository.findByIdForUpdate("card_1") } returns Optional.of(card)
         every { debitCardTransactionRepository.sumAmountByCardIdAndCreatedAtSince(any(), any()) } returns BigDecimal("499000")
         val service = newService(debitCardRepository = debitCardRepository, debitCardTransactionRepository = debitCardTransactionRepository)
 
