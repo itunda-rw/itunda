@@ -7,33 +7,34 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.unit.Dp
 import rw.itunda.core.designsystem.theme.Ids
 
 /**
- * Real fix, 2026-08-03, corrected same day: an earlier pass here added a 1dp
- * Ids.colors.divider hairline border, theorizing Material3's default shadow-only
- * elevation was invisible in dark mode. The user directly corrected this after
- * comparing on-device: the plain, border-less `Card(containerColor =
- * Ids.colors.surface)` pattern already used on other tabs (Shop, etc.) looks right
- * as-is -- the border made Home look inconsistent with the rest of the app, not
- * more correct. Dropped. This component now exists purely to avoid re-hand-rolling
- * `Card(shape = ..., colors = CardDefaults.cardColors(containerColor =
- * Ids.colors.surface), elevation = ...)` at every call site, not to change how a
- * card actually looks.
+ * Real fix, 2026-08-03, second correction same day: the actual bug behind "Home
+ * still has theme problems" (after the border was already dropped) was neither the
+ * border nor the shadow -- it was this component's own `elevation =
+ * Ids.layout.cardElevation` default. Passing any nonzero elevation to a Material3
+ * `Card` whose containerColor equals `MaterialTheme.colorScheme.surface` (which
+ * `Ids.colors.surface` does, numerically) triggers M3's automatic dark-mode
+ * tonal-elevation overlay -- it blends `colorScheme.surfaceTint` (itunda's brand
+ * blue) into the card background, proportional to elevation. Pixel-sampled on a
+ * real device screenshot: Home's cards read #212737 (visibly blue-navy) while
+ * Talk's "New chat" card -- built with a plain `Card(colors = ...)` and no
+ * elevation param at all -- reads #202126, a clean, untinted match for
+ * Ids.colors.surface's real defined value. Shop's cards (reverted to the same
+ * elevation-less plain `Card(...)` pattern earlier today) show the same clean
+ * result. Dropped elevation entirely here to match.
  */
 @Composable
 fun IdsCard(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-    elevation: Dp = Ids.layout.cardElevation,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
         modifier = modifier,
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
         content = content,
     )
 }
