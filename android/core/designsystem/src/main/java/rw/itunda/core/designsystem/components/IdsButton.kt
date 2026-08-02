@@ -50,6 +50,12 @@ fun IdsButton(
     enabled: Boolean = true,
     variant: IdsButtonVariant = IdsButtonVariant.Filled,
     size: IdsButtonSize = IdsButtonSize.Large,
+    // Real Toss reference (user-provided, 2026-08-03): the actual Toss Home wallet
+    // card's own two buttons are "+ 채우기" / "↗ 보내기", a leading glyph before the
+    // label on both -- not a decoration specific to those two, real TDS buttons take
+    // an optional leading icon generally. Default null preserves every existing call
+    // site (this app's own icon-less "Send"/"Log in"/etc. buttons) unchanged.
+    icon: ImageVector? = null,
 ) {
     val heightDp = when (size) {
         IdsButtonSize.Large -> 56.dp
@@ -81,6 +87,10 @@ fun IdsButton(
             disabledContentColor = Ids.colors.textTertiary
         )
     ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(if (size == IdsButtonSize.Small) 14.dp else 18.dp))
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(6.dp))
+        }
         Text(
             text = text,
             style = if (size == IdsButtonSize.Small) IdsTypography.Body2 else IdsTypography.Button

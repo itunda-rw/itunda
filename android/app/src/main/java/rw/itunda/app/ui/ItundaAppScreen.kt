@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
@@ -1192,6 +1193,7 @@ private fun HomeTab(
                 recentTransactions = recentTransactions.take(2),
                 currentUserId = primaryWallet?.userId,
                 onSeeAll = onOpenTransactionHistory,
+                earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
             )
         }
         // Real Toss-style spending insight (2026-08-03) -- replaces a hardcoded
@@ -1463,6 +1465,7 @@ private fun WalletHeroCard(
     recentTransactions: List<rw.itunda.core.network.TransactionDto>,
     currentUserId: String?,
     onSeeAll: () -> Unit,
+    earnedThisMonth: Double,
 ) {
     IdsCard(
         shape = RoundedCornerShape(28.dp),
@@ -1472,7 +1475,26 @@ private fun WalletHeroCard(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text("Wallet", fontSize = 14.sp, color = TossSecondary)
+            // Real Toss reference (user-provided, 2026-08-03): the real Home wallet
+            // card header is the account name plus how much interest it's earned so
+            // far this period ("에릭 +이자 7원"), not just a plain static "Wallet"
+            // label -- InterestJar.earnedThisMonth was already fetched
+            // (MainViewModel.interestJar, real GET /api/v1/wallet/interest-jar) and
+            // already shown further down this tab's savings section, just never in
+            // this header. Only shown once it's actually > 0 -- a brand-new wallet
+            // with nothing earned yet keeps the plain label rather than a "+RWF 0"
+            // that reads as broken.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Wallet", fontSize = 14.sp, color = TossSecondary)
+                if (earnedThisMonth > 0.0) {
+                    Text(
+                        "  +RWF %,.0f".format(earnedThisMonth),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Ids.colors.success,
+                    )
+                }
+            }
             // Real fix, 2026-08-03: was a hardcoded 34.sp literal -- IdsTypography
             // .LargeAmount exists specifically for "the single most important number
             // on the screen" (see its own doc comment, written for
@@ -1481,9 +1503,13 @@ private fun WalletHeroCard(
             // most important number on the Home tab -- use the real token instead of
             // a number that happens to currently match it.
             Text(balanceText, style = IdsTypography.LargeAmount, color = TossText)
+            // Real Toss reference (user-provided, 2026-08-03): the real Home wallet
+            // card's own two buttons ("+ 채우기" / "↗ 보내기") both carry a leading
+            // glyph -- IdsButton's icon param is new this pass (see its own doc
+            // comment) specifically for this.
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IdsButton("Cash out", onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium)
-                IdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium)
+                IdsButton("Cash out", onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = Icons.Outlined.Add)
+                IdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
             }
             // Real fix, 2026-08-03: these two rows used to be hardcoded literal
             // strings ("Bravo Korea parking" / "Savings deposit") baked into every
