@@ -128,6 +128,7 @@ import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.core.designsystem.theme.IdsTypography
 import rw.itunda.core.designsystem.theme.Ids
 
 // Aliased to the real theme-reactive design-system tokens (see
@@ -1176,7 +1177,7 @@ private fun HomeTab(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications) }
-        item { WalletHeroCard(balanceText, onSend, onCashOutAtAgent) }
+        item { WalletHeroCard(balanceText, onSend, onCashOutAtAgent, onSeeAll = onOpenTransactionHistory) }
         item {
             ShellSection(
                 title = "",
@@ -1417,7 +1418,7 @@ private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Un
 }
 
 @Composable
-private fun WalletHeroCard(balanceText: String, onSend: () -> Unit, onCashOutAtAgent: () -> Unit) {
+private fun WalletHeroCard(balanceText: String, onSend: () -> Unit, onCashOutAtAgent: () -> Unit, onSeeAll: () -> Unit) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
@@ -1429,7 +1430,14 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit, onCashOutAtA
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text("Wallet", fontSize = 14.sp, color = TossSecondary)
-            Text(balanceText, fontSize = 34.sp, color = TossText, fontWeight = FontWeight.Bold)
+            // Real fix, 2026-08-03: was a hardcoded 34.sp literal -- IdsTypography
+            // .LargeAmount exists specifically for "the single most important number
+            // on the screen" (see its own doc comment, written for
+            // AgentHomeScreen.kt's till total) and is itself 34sp, so the visual size
+            // is unchanged; this just makes the hero wallet balance -- itunda's own
+            // most important number on the Home tab -- use the real token instead of
+            // a number that happens to currently match it.
+            Text(balanceText, style = IdsTypography.LargeAmount, color = TossText)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IdsButton("Cash out", onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium)
                 IdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium)
@@ -1437,9 +1445,14 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit, onCashOutAtA
             Divider(color = TossLine)
             WalletMiniRow("RWF 613", "Bravo Korea parking", "Send")
             WalletMiniRow("RWF 7,489", "Savings deposit", "Send")
+            // Real fix, 2026-08-03: "See all" rendered as plain, non-clickable Text --
+            // it visually reads as a link (secondary color, medium weight, full-width)
+            // but tapping it did nothing; onOpenTransactionHistory already existed and
+            // was already wired to a sibling ShellRow in the same tab, just never to
+            // this row.
             Text(
                 "See all",
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onSeeAll),
                 color = TossSecondary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
