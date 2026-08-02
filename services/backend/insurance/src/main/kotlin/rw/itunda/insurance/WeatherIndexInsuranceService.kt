@@ -19,7 +19,6 @@ import rw.itunda.core.repository.WeatherIndexPolicyRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
-import java.time.Instant
 import java.util.UUID
 
 private val MAX_INSURED_AMOUNT = BigDecimal("500000")
@@ -74,6 +73,7 @@ class WeatherIndexInsuranceService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val payoutExecutor: WeatherIndexPayoutExecutor,
 ) {
     private val log = LoggerFactory.getLogger(WeatherIndexInsuranceService::class.java)
 
@@ -183,19 +183,35 @@ class WeatherIndexInsuranceService(
      * attempts racing each other is season_rainfall_indices' own
      * (district, season) unique constraint (see V222__weather_index_insurance.sql):
      * if both requests somehow pass this pre-check, only one INSERT can ever succeed, and
-     * the loser's transaction (including any payout legs it may have started posting)
-     * rolls back whole -- so no district+season is ever double-paid.
+     * the loser's own transaction rolls back cleanly -- so no district+season is ever
+     * double-paid.
+     *
+     * Real bug found in this feature's own build-time review (2026-08-02): a first draft
+     * wrapped this whole per-policy payout loop in ONE `@Transactional` method with a
+     * try/catch per policy, intending "one bad farmer doesn't fail the whole batch" -- but
+     * that isolation was fake. A `RuntimeException` from any nested `@Transactional`-
+     * participating call (e.g. a genuine optimistic-lock conflict if a farmer's own
+     * `cancel()` races this exact update) marks the WHOLE ambient Spring transaction
+     * rollback-only the instant it's thrown, regardless of whether outer code catches and
+     * logs it -- silently reverting every OTHER farmer's already-"successful" payout in the
+     * same batch, plus the newly-published index row itself, once the method returns and
+     * Spring fails to commit. Deliberately NOT `@Transactional` here for that reason; each
+     * step below (saving the index row, and each policy's own settlement via
+     * `WeatherIndexPayoutExecutor`, a genuinely separate `@Service` bean called through its
+     * own real transactional proxy) gets its own independent, isolated transaction --
+     * mirroring the exact fix `P2pService.sendDirect`/`RoundUpService.processRoundUp`
+     * already established for this same self-invocation-inside-one-transaction gotcha, and
+     * the real per-action isolation `ActionsBatchController`'s own separate-bean-per-call
+     * shape already achieves for the offline batch endpoint.
      *
      * Every ENROLLED policy matching this exact district+season is evaluated once,
      * independent of any other district/season's policies. Below the drought threshold,
      * every one is paid its full insured amount from insurance_claims_expense straight into
      * the farmer's MAIN wallet (same approve-path ledger shape as
      * InsuranceService.decideClaim). At or above the threshold, the season simply ends with
-     * no payout. A single farmer with no MAIN wallet somehow does not fail the whole batch --
-     * logged and skipped, same "one bad row doesn't fail the batch" convention
-     * ActionsBatchController's own doc comment establishes for batched actions.
+     * no payout. A single farmer with no MAIN wallet, or any other single-policy failure,
+     * genuinely cannot take down another farmer's already-paid settlement or the index row.
      */
-    @Transactional
     fun publishSeasonIndex(adminId: String, district: String, season: String, rainfallIndexPercent: Double, droughtThresholdPercent: Double): SeasonRainfallIndex {
         val trimmedDistrict = district.trim()
         val trimmedSeason = season.trim()
@@ -218,26 +234,7 @@ class WeatherIndexInsuranceService(
         val matchingPolicies = weatherIndexPolicyRepository.findByDistrictAndSeasonAndStatus(trimmedDistrict, trimmedSeason, WeatherIndexPolicyStatus.ENROLLED)
         for (policy in matchingPolicies) {
             try {
-                if (droughtTriggered) {
-                    val wallet = walletRepository.findByUserIdAndType(policy.userId, WalletType.MAIN)
-                    if (wallet == null) {
-                        log.warn("Skipping weather-index payout for policy ${policy.id}: user ${policy.userId} has no MAIN wallet")
-                        continue
-                    }
-                    val memo = "Crop weather-index payout - ${policy.cropType}, ${policy.district} ${policy.season}"
-                    ledgerService.postLedgerTransaction(
-                        wallet.currency,
-                        listOf(
-                            LedgerLeg("insurance_claims_expense", LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerDirection.DEBIT, policy.insuredAmount, memo),
-                            LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, policy.insuredAmount, memo),
-                        ),
-                    )
-                    policy.status = WeatherIndexPolicyStatus.PAYOUT_TRIGGERED
-                    policy.payoutAt = Instant.now()
-                } else {
-                    policy.status = WeatherIndexPolicyStatus.SEASON_ENDED_NO_PAYOUT
-                }
-                weatherIndexPolicyRepository.save(policy)
+                payoutExecutor.settleOnePolicy(policy, droughtTriggered)
             } catch (e: Exception) {
                 log.warn("Skipping weather-index policy ${policy.id} during publishSeasonIndex batch: ${e.message}", e)
             }

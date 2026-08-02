@@ -57,13 +57,21 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
         insuredAmount = insuredAmount, premiumAmount = premiumAmount, status = status,
     )
 
+    // payoutExecutor is a REAL WeatherIndexPayoutExecutor (not mocked) wired against the
+    // SAME mocked repositories/ledgerService passed in -- see this session's own
+    // build-time bug fix in WeatherIndexInsuranceService.publishSeasonIndex's doc comment
+    // for why the per-policy payout logic now lives in a genuinely separate bean. Every
+    // existing every{} stub against weatherIndexPolicyRepository/walletRepository/
+    // ledgerService below still applies transparently, since the executor calls those
+    // exact same mock instances.
     fun newService(
         weatherIndexPolicyRepository: WeatherIndexPolicyRepository = mockk(),
         seasonRainfallIndexRepository: SeasonRainfallIndexRepository = mockk(),
         walletRepository: WalletRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = WeatherIndexInsuranceService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService, rateLimiter)
+        payoutExecutor: WeatherIndexPayoutExecutor = WeatherIndexPayoutExecutor(weatherIndexPolicyRepository, walletRepository, ledgerService),
+    ) = WeatherIndexInsuranceService(weatherIndexPolicyRepository, seasonRainfallIndexRepository, walletRepository, ledgerService, rateLimiter, payoutExecutor)
 
     Given("a farmer with a MAIN wallet enrolling in Maize cover (6% flat rate)") {
         val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
@@ -336,6 +344,49 @@ class WeatherIndexInsuranceServiceTest : BehaviorSpec({
             Then("the funded farmer's policy is still paid out correctly") {
                 fundedPolicy.status shouldBe WeatherIndexPolicyStatus.PAYOUT_TRIGGERED
                 verify(exactly = 1) { ledgerService.postLedgerTransaction("RWF", any()) }
+            }
+        }
+    }
+
+    // Real bug found in this feature's own build-time review (2026-08-02): the first
+    // draft wrapped the whole per-policy payout loop in ONE @Transactional method with a
+    // try/catch per policy -- but a RuntimeException escaping any nested
+    // @Transactional-participating call (e.g. a genuine optimistic-lock conflict) marks
+    // the WHOLE ambient Spring transaction rollback-only regardless of the try/catch,
+    // silently reverting every OTHER farmer's already-"successful" payout plus the
+    // newly-published index row. Fixed by moving per-policy settlement to
+    // WeatherIndexPayoutExecutor, a genuinely separate @Service bean called through its
+    // own real transactional proxy. This test proves the architectural fix at the unit
+    // level: one policy's settlement throwing doesn't stop the loop from processing the
+    // next policy, and the index row (saved before the loop even starts) is unaffected.
+    Given("one policy's settlement throws mid-batch while a sibling policy in the same publish is healthy") {
+        val weatherIndexPolicyRepository = mockk<WeatherIndexPolicyRepository>()
+        val seasonRainfallIndexRepository = mockk<SeasonRainfallIndexRepository>()
+        val payoutExecutor = mockk<WeatherIndexPayoutExecutor>()
+        val service = newService(
+            weatherIndexPolicyRepository = weatherIndexPolicyRepository,
+            seasonRainfallIndexRepository = seasonRainfallIndexRepository,
+            payoutExecutor = payoutExecutor,
+        )
+
+        val brokenPolicy = policy("wip_broken", "farmer_broken", insuredAmount = BigDecimal("50000"))
+        val healthyPolicy = policy("wip_healthy", "farmer_healthy", insuredAmount = BigDecimal("50000"))
+        every { seasonRainfallIndexRepository.findByDistrictAndSeason("Nyagatare", "2026B") } returns null
+        every { seasonRainfallIndexRepository.save(any()) } answers { firstArg() }
+        every { weatherIndexPolicyRepository.findByDistrictAndSeasonAndStatus("Nyagatare", "2026B", WeatherIndexPolicyStatus.ENROLLED) } returns listOf(brokenPolicy, healthyPolicy)
+        every { payoutExecutor.settleOnePolicy(brokenPolicy, true) } throws org.springframework.orm.ObjectOptimisticLockingFailureException(WeatherIndexPolicy::class.java, "wip_broken")
+        every { payoutExecutor.settleOnePolicy(healthyPolicy, true) } returns true
+
+        When("publishing a drought-triggered index") {
+            val index = service.publishSeasonIndex("admin_1", "Nyagatare", "2026B", 20.0, 60.0)
+
+            Then("publishSeasonIndex itself doesn't throw -- the broken policy's failure is genuinely contained") {
+                index.district shouldBe "Nyagatare"
+                index.season shouldBe "2026B"
+            }
+            Then("the healthy sibling policy's settlement was still attempted, proving the loop survives past the broken one") {
+                verify(exactly = 1) { payoutExecutor.settleOnePolicy(healthyPolicy, true) }
+                verify(exactly = 1) { payoutExecutor.settleOnePolicy(brokenPolicy, true) }
             }
         }
     }
