@@ -9,6 +9,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.KycSubmission
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
@@ -16,6 +17,7 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.repository.KycSubmissionRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.UserRepository
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -25,14 +27,19 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_1") } returns emptyList()
         val savedSlot = slot<KycSubmission>()
         every { kycSubmissionRepository.save(capture(savedSlot)) } answers { firstArg() }
+        // Real bug found live (2026-08-02): submit() now locks the caller's own User
+        // row (findByIdForUpdate) to close a double-pending-submission race -- see
+        // IdentityService.submit's own doc comment for the full account.
+        every { userRepository.findByIdForUpdate("user_1") } returns Optional.of(User(id = "user_1", phoneNumber = "+250788000001", firstName = "Test", lastName = "User", passwordHash = "hash"))
 
         When("submitting a national ID") {
             val submission = service.submit("user_1", "NATIONAL_ID", "1198080012345678", "doc-ref-1")
@@ -47,6 +54,10 @@ class IdentityServiceTest : BehaviorSpec({
                 setOf(NidaVerificationStatus.MATCHED.name, NidaVerificationStatus.NOT_FOUND.name) shouldContain submission.autoVerificationStatus
                 submission.autoVerificationDetail shouldNotBe null
             }
+            Then("it real-locks the user's own row and real-checks the rate limiter -- the two fixes closing the abuse/race gaps found live") {
+                verify(exactly = 1) { userRepository.findByIdForUpdate("user_1") }
+                verify(exactly = 1) { rateLimiter.checkLimit("identity:submit:user_1", limit = 5, window = Duration.ofHours(1)) }
+            }
         }
     }
 
@@ -54,11 +65,13 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_6") } returns emptyList()
         val savedSlot = slot<KycSubmission>()
         every { kycSubmissionRepository.save(capture(savedSlot)) } answers { firstArg() }
+        every { userRepository.findByIdForUpdate("user_6") } returns Optional.of(User(id = "user_6", phoneNumber = "+250788000006", firstName = "Test", lastName = "User", passwordHash = "hash"))
 
         When("submitting a 10-digit number, not a real 16-digit National ID") {
             service.submit("user_6", "NATIONAL_ID", "1234567890", "doc-ref-2")
@@ -73,11 +86,13 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_7") } returns emptyList()
         val savedSlot = slot<KycSubmission>()
         every { kycSubmissionRepository.save(capture(savedSlot)) } answers { firstArg() }
+        every { userRepository.findByIdForUpdate("user_7") } returns Optional.of(User(id = "user_7", phoneNumber = "+250788000007", firstName = "Test", lastName = "User", passwordHash = "hash"))
 
         When("submitting a structurally valid PASSPORT") {
             service.submit("user_7", "PASSPORT", "P1234567", "doc-ref-3")
@@ -100,11 +115,13 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("owner_1") } returns emptyList()
         val savedSlot = slot<KycSubmission>()
         every { kycSubmissionRepository.save(capture(savedSlot)) } answers { firstArg() }
+        every { userRepository.findByIdForUpdate("owner_1") } returns Optional.of(User(id = "owner_1", phoneNumber = "+250788000010", firstName = "Test", lastName = "Owner", passwordHash = "hash"))
 
         When("submitting a structurally valid 9-digit TIN") {
             service.submit("owner_1", "BUSINESS_TIN", "123456789", "doc-ref-4")
@@ -127,21 +144,58 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_2") } returns listOf(
             KycSubmission(id = "kyc_1", userId = "user_2", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "PENDING", submittedAt = Instant.now()),
         )
+        every { userRepository.findByIdForUpdate("user_2") } returns Optional.of(User(id = "user_2", phoneNumber = "+250788000002", firstName = "Test", lastName = "User", passwordHash = "hash"))
 
         When("submitting again") {
             Then("it throws SubmissionAlreadyPendingException rather than creating a second row") {
                 try {
-                    service.submit("user_2", "NATIONAL_ID", "x", "y")
+                    service.submit("user_2", "NATIONAL_ID", "x", "doc-ref-again")
                     error("expected SubmissionAlreadyPendingException")
                 } catch (e: SubmissionAlreadyPendingException) {
+                    verify(exactly = 0) { kycSubmissionRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-02): the plain "any PENDING submission" check used to
+    // read-then-CREATE with nothing serializing two concurrent callers -- this simulates
+    // the second caller's view of the world AFTER the first caller has already locked
+    // and committed a PENDING submission, the exact real-world moment the fix's locked
+    // re-check exists to catch.
+    Given("two concurrent submissions racing for the same user") {
+        val kycSubmissionRepository = mockk<KycSubmissionRepository>()
+        val userRepository = mockk<UserRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+
+        val user = User(id = "user_race", phoneNumber = "+250788000099", firstName = "Race", lastName = "User", passwordHash = "hash")
+        every { userRepository.findByIdForUpdate("user_race") } returns Optional.of(user)
+
+        When("this caller's lock-acquire happens to observe the other caller's already-committed PENDING row") {
+            // The unlocked, top-of-method world this caller started with had no PENDING
+            // row -- but by the time it actually acquires the lock, the racing caller
+            // already committed one.
+            every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_race") } returns listOf(
+                KycSubmission(id = "kyc_race_winner", userId = "user_race", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "PENDING", submittedAt = Instant.now()),
+            )
+
+            Then("it real-rejects with SubmissionAlreadyPendingException instead of creating a real duplicate PENDING row") {
+                try {
+                    service.submit("user_race", "NATIONAL_ID", "1198080012345678", "doc-ref-race")
+                    error("expected SubmissionAlreadyPendingException")
+                } catch (e: SubmissionAlreadyPendingException) {
+                    verify(exactly = 1) { userRepository.findByIdForUpdate("user_race") }
                     verify(exactly = 0) { kycSubmissionRepository.save(any()) }
                 }
             }
@@ -152,10 +206,11 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         val submission = KycSubmission(id = "kyc_2", userId = "user_3", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
         val user = User(id = "user_3", phoneNumber = "0788000000", firstName = "Test", lastName = "User", passwordHash = "hash")
@@ -186,7 +241,8 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         val submission = KycSubmission(id = "kyc_5", userId = "owner_2", documentType = "BUSINESS_TIN", documentNumber = "123456789", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_2", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -213,7 +269,8 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         val submission = KycSubmission(id = "kyc_6", userId = "owner_3", documentType = "BUSINESS_TIN", documentNumber = "123456789", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
         every { kycSubmissionRepository.findById("kyc_6") } returns Optional.of(submission)
@@ -236,10 +293,11 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         val submission = KycSubmission(id = "kyc_3", userId = "user_4", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
 
@@ -262,10 +320,11 @@ class IdentityServiceTest : BehaviorSpec({
         val kycSubmissionRepository = mockk<KycSubmissionRepository>()
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
 
         val submission = KycSubmission(id = "kyc_4", userId = "user_5", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "VERIFIED", submittedAt = Instant.now())
         every { kycSubmissionRepository.findById("kyc_4") } returns Optional.of(submission)

@@ -121,6 +121,18 @@ interface UserRepository : JpaRepository<User, String> {
     // findByPhoneNumber call per invitee (a real N+1 found in a 2026-07-19 sweep, same
     // shape as PayrollService.runPayroll's own findByUserIdInAndType fix above).
     fun findAllByPhoneNumberIn(phoneNumbers: List<String>): List<User>
+
+    // Real bug found live (2026-08-02): IdentityService.submit's own "reject if a
+    // PENDING submission already exists" check reads-then-CREATEs a brand-new
+    // KycSubmission row -- two concurrent submit() calls from the same user could both
+    // pass that check before either committed and both create a real duplicate PENDING
+    // KYC submission. Fixed the same way this codebase's own "reject if already exists"
+    // race precedent works (e.g. WalletRepository.findByIdForUpdate): lock a DIFFERENT
+    // already-existing row -- the caller's own real User row -- to serialize concurrent
+    // submissions, then re-check under that lock.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<User>
 }
 
 interface EmailVerificationTokenRepository : JpaRepository<EmailVerificationToken, String> {

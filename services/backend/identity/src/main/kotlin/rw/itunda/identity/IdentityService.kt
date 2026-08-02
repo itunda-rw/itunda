@@ -4,10 +4,12 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.KycSubmission
 import rw.itunda.core.repository.KycSubmissionRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.UserRepository
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -25,6 +27,7 @@ class IdentityService(
     private val demoNidaVerificationService: DemoNidaVerificationService,
     private val demoKybVerificationService: DemoKybVerificationService,
     private val merchantRepository: MerchantRepository,
+    private val rateLimiter: RateLimiter,
 ) {
 
     @Transactional
@@ -32,13 +35,30 @@ class IdentityService(
         val normalizedType = documentType.trim().uppercase()
         val normalizedNumber = documentNumber.trim().uppercase()
         val normalizedReference = documentReference.trim()
+        require(normalizedType in setOf("NATIONAL_ID", "PASSPORT", BUSINESS_TIN_DOCUMENT_TYPE)) { "Unsupported identity document type" }
+        require(normalizedNumber.length in 1..32 && normalizedNumber.all { it.isLetterOrDigit() || it == '-' }) { "Document number must be 1 to 32 letters, digits, or hyphens" }
+        require(normalizedReference.length in 3..500) { "Document reference must be between 3 and 500 characters" }
+        // Real bug found live (2026-08-02): identity document submission -- a classic
+        // abuse target (this session's own checklist names it directly) -- had shipped
+        // with zero rate limiting, unlike every comparable user-initiated creation
+        // endpoint elsewhere in this codebase (Community/Jobs/Marketplace post creation,
+        // Auth's own email/phone verification resends).
+        rateLimiter.checkLimit("identity:submit:$userId", limit = 5, window = Duration.ofHours(1))
+        // Real bug found live (2026-08-02): the plain "any PENDING submission" check
+        // just below reads-then-CREATEs a brand-new row -- there's no existing PENDING
+        // submission to put an @Version guard on yet, and kyc_submissions has no unique
+        // constraint enforcing "at most one PENDING row per user" either, so two
+        // concurrent submit() calls from the same user could both pass that check before
+        // either committed and both create a real duplicate PENDING submission. Fixed
+        // the same way this codebase's own "reject if already exists" race precedent
+        // works: lock a DIFFERENT already-existing row (the caller's own real User row)
+        // via UserRepository.findByIdForUpdate to serialize the two concurrent
+        // submissions, then re-check under that lock.
+        userRepository.findByIdForUpdate(userId).orElseThrow { IdentityUserNotFoundException("User not found") }
         val existing = kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc(userId)
         if (existing.any { it.status == "PENDING" }) {
             throw SubmissionAlreadyPendingException("A KYC submission is already pending review")
         }
-        require(normalizedType in setOf("NATIONAL_ID", "PASSPORT", BUSINESS_TIN_DOCUMENT_TYPE)) { "Unsupported identity document type" }
-        require(normalizedNumber.length in 1..32 && normalizedNumber.all { it.isLetterOrDigit() || it == '-' }) { "Document number must be 1 to 32 letters, digits, or hyphens" }
-        require(normalizedReference.length in 3..500) { "Document reference must be between 3 and 500 characters" }
         // Real automated pre-check, not a real NIDA/RDB lookup -- see
         // DemoNidaVerificationService's and DemoKybVerificationService's own doc
         // comments. Shown to the human reviewer, never auto-decides the submission on
