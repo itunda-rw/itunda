@@ -66,10 +66,6 @@ class AutoTopUpController(private val autoTopUpService: AutoTopUpService) {
     fun handleLinkedAccountNotFound(ex: AutoTopUpLinkedAccountNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LINKED_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
-    @ExceptionHandler(AutoTopUpLinkedAccountNotOwnedException::class)
-    fun handleLinkedAccountNotOwned(ex: AutoTopUpLinkedAccountNotOwnedException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("LINKED_ACCOUNT_NOT_OWNED", ex.message ?: "Forbidden"))
-
     @ExceptionHandler(AutoTopUpLinkedAccountNotLinkedException::class)
     fun handleLinkedAccountNotLinked(ex: AutoTopUpLinkedAccountNotLinkedException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("LINKED_ACCOUNT_NOT_LINKED", ex.message ?: "Not linked"))

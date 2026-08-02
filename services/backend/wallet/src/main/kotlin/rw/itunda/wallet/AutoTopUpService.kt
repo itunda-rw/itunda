@@ -25,7 +25,6 @@ import java.time.LocalDate
 import java.util.UUID
 
 class AutoTopUpLinkedAccountNotFoundException(message: String) : RuntimeException(message)
-class AutoTopUpLinkedAccountNotOwnedException(message: String) : RuntimeException(message)
 class AutoTopUpLinkedAccountNotLinkedException(message: String) : RuntimeException(message)
 class AutoTopUpInvalidAmountException(message: String) : RuntimeException(message)
 class AutoTopUpSettingNotFoundException(message: String) : RuntimeException(message)
@@ -103,8 +102,14 @@ class AutoTopUpService(
 
         val linkedAccount = linkedAccountRepository.findById(linkedAccountId)
             .orElseThrow { AutoTopUpLinkedAccountNotFoundException("Linked account not found") }
+        // Real IDOR fix (2026-08-02): linkedAccountId belonging to a DIFFERENT user
+        // used to throw AutoTopUpLinkedAccountNotOwnedException, mapped to a real 403
+        // that confirmed the id was real -- the same probe this exact module's own
+        // requireOwnedWallet (WalletNotFoundException, fixed earlier this session) and
+        // overview/LinkedAccountService.unlink (fixed the same pass as this one)
+        // already correctly avoid. Same fix: 404, not 403.
         if (linkedAccount.userId != userId) {
-            throw AutoTopUpLinkedAccountNotOwnedException("That linked account does not belong to you")
+            throw AutoTopUpLinkedAccountNotFoundException("Linked account not found")
         }
         if (linkedAccount.status != LinkedAccountStatus.LINKED) {
             throw AutoTopUpLinkedAccountNotLinkedException("This linked account is not currently LINKED")

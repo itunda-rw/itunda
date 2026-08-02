@@ -84,6 +84,35 @@ class LinkedAccountServiceTest : BehaviorSpec({
         }
     }
 
+    // Real IDOR fix (2026-08-02): unlink() used to throw LinkedAccountNotOwnedException
+    // (403) for a real-but-not-owned accountId, confirming the id was real to anyone
+    // who guesses or enumerates it -- accountId is a real URL path variable
+    // (POST /api/v1/accounts/link/{accountId}/unlink), directly probeable. Now the
+    // same LinkedAccountNotFoundException (404) as a genuinely bogus id.
+    Given("an attacker attempting to unlink someone else's linked account") {
+        val linkedAccountRepository = mockk<LinkedAccountRepository>()
+        val providerConnector = mockk<ProviderConnector>()
+        val demoExternalBalanceService = DemoExternalBalanceService()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = LinkedAccountService(linkedAccountRepository, providerConnector, demoExternalBalanceService, rateLimiter)
+        val othersAccount = rw.itunda.core.domain.LinkedAccount(
+            id = "linked_1", userId = "owner_1", provider = "MTN MoMo",
+            externalAccountNumberMasked = "•••• 1234", status = LinkedAccountStatus.LINKED,
+        )
+        every { linkedAccountRepository.findById("linked_1") } returns java.util.Optional.of(othersAccount)
+
+        When("the attacker tries to unlink it") {
+            Then("it real-404s, never revealing that linked_1 is a real account someone else owns") {
+                try {
+                    service.unlink("attacker", "linked_1")
+                    error("expected LinkedAccountNotFoundException")
+                } catch (e: LinkedAccountNotFoundException) {
+                    verify(exactly = 0) { linkedAccountRepository.save(any()) }
+                }
+            }
+        }
+    }
+
     Given("a real user exceeds the real account-linking rate limit") {
         val linkedAccountRepository = mockk<LinkedAccountRepository>()
         val providerConnector = mockk<ProviderConnector>()

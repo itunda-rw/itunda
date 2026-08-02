@@ -81,6 +81,25 @@ class AutoTopUpServiceTest : BehaviorSpec({
             }
         }
 
+        // Real IDOR fix (2026-08-02): this used to throw
+        // AutoTopUpLinkedAccountNotOwnedException (403), confirming to the caller that
+        // "linked_owned_by_other" is a real linked-account id they just don't own. Now
+        // the same AutoTopUpLinkedAccountNotFoundException (404) as a genuinely bogus
+        // id, matching the fix already applied to requireOwnedWallet above.
+        When("configuring against a linked account owned by someone else") {
+            every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1", "5000"))
+            every { linkedAccountRepository.findById("linked_owned_by_other") } returns Optional.of(linkedAccount("linked_owned_by_other", "someone_else"))
+
+            Then("it throws AutoTopUpLinkedAccountNotFoundException, never revealing the linked account exists") {
+                try {
+                    service.configure("user_1", "wallet_1", "linked_owned_by_other", BigDecimal("2000"), BigDecimal("10000"), 3, true)
+                    error("expected AutoTopUpLinkedAccountNotFoundException")
+                } catch (e: AutoTopUpLinkedAccountNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
         When("configuring against a linked account that's no longer LINKED") {
             every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1", "5000"))
             every { linkedAccountRepository.findById("linked_unlinked") } returns Optional.of(linkedAccount("linked_unlinked", "user_1", LinkedAccountStatus.UNLINKED))

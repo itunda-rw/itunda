@@ -15,7 +15,6 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.overview.LinkedAccountAlreadyUnlinkedException
 import rw.itunda.overview.LinkedAccountNotFoundException
-import rw.itunda.overview.LinkedAccountNotOwnedException
 import rw.itunda.overview.LinkedAccountService
 
 data class LinkAccountRequest(val provider: String, val externalAccountNumber: String)
@@ -53,10 +52,6 @@ class LinkedAccountController(private val linkedAccountService: LinkedAccountSer
     @ExceptionHandler(LinkedAccountNotFoundException::class)
     fun handleNotFound(ex: LinkedAccountNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LINKED_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
-
-    @ExceptionHandler(LinkedAccountNotOwnedException::class)
-    fun handleNotOwned(ex: LinkedAccountNotOwnedException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("LINKED_ACCOUNT_NOT_OWNED", ex.message ?: "Forbidden"))
 
     @ExceptionHandler(LinkedAccountAlreadyUnlinkedException::class)
     fun handleAlreadyUnlinked(ex: LinkedAccountAlreadyUnlinkedException) =
