@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.HoodReport
 import rw.itunda.core.domain.HoodReportStatus
 import rw.itunda.core.domain.HoodReportTargetType
@@ -18,6 +19,7 @@ import rw.itunda.core.repository.JobPostRepository
 import rw.itunda.core.repository.PropertyListingRepository
 import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.GroupMessageRepository
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -38,11 +40,18 @@ class HoodReportService(
     // GroupMessagingRepositories.kt), so this needs no new module dependency.
     private val messageRepository: MessageRepository,
     private val groupMessageRepository: GroupMessageRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     @Transactional
     fun report(reporterId: String, targetType: HoodReportTargetType, targetId: String, reason: String): HoodReport {
         require(targetId.isNotBlank()) { "A report target is required" }
         require(reason.trim().length in 3..180) { "Give a short reason between 3 and 180 characters" }
+        // Real bug found live (2026-08-02): this real content-creation (report-filing)
+        // endpoint had shipped with zero rate limiting -- every other real
+        // content/report-creation endpoint in this codebase already has one. An
+        // authenticated caller could otherwise spam unlimited real HoodReport rows
+        // against any listing/post/message they can see.
+        rateLimiter.checkLimit("hood-report:$reporterId", limit = 20, window = Duration.ofHours(1))
         val exists = when (targetType) {
             HoodReportTargetType.MARKETPLACE_LISTING -> listingRepository.existsById(targetId)
             HoodReportTargetType.COMMUNITY_POST -> communityPostRepository.existsById(targetId)

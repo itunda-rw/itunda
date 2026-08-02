@@ -2,11 +2,13 @@ package rw.itunda.system
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.ChatReport
 import rw.itunda.core.domain.HoodReportStatus
 import rw.itunda.core.repository.ChatReportRepository
 import rw.itunda.core.repository.ConversationRepository
 import rw.itunda.core.repository.MessageRepository
+import java.time.Duration
 import java.util.UUID
 
 class ChatReportMessageNotFoundException(message: String) : RuntimeException(message)
@@ -18,9 +20,17 @@ class ChatReportService(
     private val chatReportRepository: ChatReportRepository,
     private val messageRepository: MessageRepository,
     private val conversationRepository: ConversationRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     @Transactional
     fun report(reporterUserId: String, messageId: String, reason: String): ChatReport {
+        // Real bug found live (2026-08-02): this real content-creation (report-filing)
+        // endpoint had shipped with zero rate limiting -- every other real
+        // content/report-creation endpoint in this codebase (ScamReportService,
+        // ContactsController, MessagingService, IdentityService.submit, etc.) already
+        // has one. An authenticated caller could otherwise spam unlimited real
+        // ChatReport rows against any message they can see.
+        rateLimiter.checkLimit("chat-report:$reporterUserId", limit = 20, window = Duration.ofHours(1))
         val message = messageRepository.findById(messageId).orElseThrow { ChatReportMessageNotFoundException("Message not found") }
         val conversation = conversationRepository.findById(message.conversationId).orElseThrow { ChatReportMessageNotFoundException("Message not found") }
         if (reporterUserId != conversation.participantAId && reporterUserId != conversation.participantBId) {
