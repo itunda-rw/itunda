@@ -1868,22 +1868,37 @@ private fun MenuScreen(
         // mapping (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel Money, RSE tickers,
         // RSSB pension) rather than left as Korean-market content.
         item {
+            // Real 대환대출 (loan refinancing) fix, 2026-08-03 -- found fully built on
+            // the backend (LoansService.refinanceLoan, POST /api/v1/loans/refinance)
+            // and already surfaced as a real "Refinance to a lower rate" button inside
+            // LoansScreen.kt -- these 3 rows are real Toss 갈아타기 entry points into
+            // that exact same flow, not a separate feature, so they route to
+            // onOpenLoans like every other loan row on this screen rather than sitting
+            // dead.
             FlatSection("Switch & save", listOf(
-                FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue),
-                FlatRow("Switch your rent deposit loan", trailing = "9% ~ 15%", trailingIsLink = true, icon = Icons.Outlined.HomeWork, iconColor = AccentTeal),
-                FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, icon = Icons.Outlined.Storefront, iconColor = AccentTeal)
+                FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
+                FlatRow("Switch your rent deposit loan", trailing = "9% ~ 15%", trailingIsLink = true, icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onOpenLoans),
+                FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, icon = Icons.Outlined.Storefront, iconColor = AccentTeal, onClick = onOpenLoans)
             ))
         }
         item {
+            // Real fix, 2026-08-03: both rows point at the same real Card screen
+            // (CardScreen.kt) Financial services' own "Card" row already opens --
+            // these are a second, dead entry point into it, not a separate feature.
             FlatSection("Cards", listOf(
-                FlatRow("Itunda Card", trailing = "5% back on bills", trailingIsLink = true, icon = Icons.Outlined.CreditCard, iconColor = AccentRed),
-                FlatRow("Virtual card", trailing = "Instant issue", icon = Icons.Outlined.CreditCard, iconColor = AccentGray)
+                FlatRow("Itunda Card", trailing = "5% back on bills", trailingIsLink = true, icon = Icons.Outlined.CreditCard, iconColor = AccentRed, onClick = onOpenCard),
+                FlatRow("Virtual card", trailing = "Instant issue", icon = Icons.Outlined.CreditCard, iconColor = AccentGray, onClick = onOpenCard)
             ))
         }
         item {
             FlatSection("Services", listOf(
                 FlatRow("Rent deposit protection", icon = Icons.Outlined.HomeWork, iconColor = AccentBlue),
-                FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentBlue),
+                // Real fix, 2026-08-03: this is the real detected-recurring-payments +
+                // billing-subscriptions feature (SubscriptionsScreen.kt,
+                // GET /api/v1/subscriptions/*), already reachable via Financial
+                // services' "Subscriptions" row -- was a second, dead entry point into
+                // the exact same screen.
+                FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentBlue, onClick = onOpenSubscriptions),
                 FlatRow("Import recurring payments", icon = Icons.Outlined.LocalShipping, iconColor = AccentGray),
                 FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue, onClick = {
                     context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
@@ -1900,17 +1915,23 @@ private fun MenuScreen(
             ))
         }
         item {
+            // Real fix, 2026-08-03: both rows are the same real foreign-currency
+            // wallet Financial services' own "Foreign currency" row already opens.
             FlatSection("Foreign currency", listOf(
-                FlatRow("Foreign currency wallet", trailing = "100% rate preference", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentPurple),
-                FlatRow("International transfer", icon = Icons.Outlined.AttachMoney, iconColor = AccentBlue)
+                FlatRow("Foreign currency wallet", trailing = "100% rate preference", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentPurple, onClick = onOpenForeignCurrency),
+                FlatRow("International transfer", icon = Icons.Outlined.AttachMoney, iconColor = AccentBlue, onClick = onOpenForeignCurrency)
             ))
         }
         item {
+            // Real fix, 2026-08-03: all 4 rows are the same real RSE investing screen
+            // (InvestScreen.kt, real deterministic-simulation stock data) Quick links'
+            // own "Invest" row already opens -- routed there instead of sitting dead,
+            // same reasoning as Switch & save/Cards/Foreign currency above.
             FlatSection("Grow your money", listOf(
-                FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", icon = Icons.Outlined.ShowChart, iconColor = AccentTeal),
-                FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue),
-                FlatRow("IPO schedule", icon = Icons.Outlined.TrendingUp, iconColor = AccentRed),
-                FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentTeal)
+                FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", icon = Icons.Outlined.ShowChart, iconColor = AccentTeal, onClick = onOpenInvest),
+                FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue, onClick = onOpenInvest),
+                FlatRow("IPO schedule", icon = Icons.Outlined.TrendingUp, iconColor = AccentRed, onClick = onOpenInvest),
+                FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentTeal, onClick = onOpenInvest)
             ))
         }
         item {
