@@ -277,11 +277,14 @@ class OrderReturnServiceTest : BehaviorSpec({
             val otherMerchant = Merchant(id = "merchant_2", ownerUserId = "other_seller", walletId = "wallet_other", businessName = "Other Store", status = MerchantStatus.ACTIVE)
             every { merchantRepository.findByOwnerUserId("other_seller") } returns otherMerchant
 
-            Then("it throws ReturnRequestNotSellerException") {
+            // Real 404 (not 403) -- found live in a 2026-08-02 audit pass: a non-owning
+            // merchant must get the same "not found" a genuinely unknown returnRequestId
+            // would, never a distinguishable 403 that confirms the id exists.
+            Then("it throws ReturnRequestNotFoundException, not a distinguishable 403") {
                 try {
                     service.decide("other_seller", "return_1", approve = true)
-                    error("expected ReturnRequestNotSellerException")
-                } catch (e: ReturnRequestNotSellerException) {
+                    error("expected ReturnRequestNotFoundException")
+                } catch (e: ReturnRequestNotFoundException) {
                     verify(exactly = 0) { orderReturnRequestRepository.save(any()) }
                 }
             }

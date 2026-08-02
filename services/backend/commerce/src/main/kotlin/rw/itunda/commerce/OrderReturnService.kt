@@ -31,7 +31,6 @@ class ReturnWindowExpiredException(message: String) : RuntimeException(message)
 class ReturnAlreadyRequestedException(message: String) : RuntimeException(message)
 class InvalidReturnReasonException(message: String) : RuntimeException(message)
 class ReturnRequestNotFoundException(message: String) : RuntimeException(message)
-class ReturnRequestNotSellerException(message: String) : RuntimeException(message)
 class ReturnRequestAlreadyDecidedException(message: String) : RuntimeException(message)
 
 /**
@@ -143,7 +142,15 @@ class OrderReturnService(
         val merchant = merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw ReturnOrderNotFoundException("This account is not registered as a merchant")
         if (request.merchantId != merchant.id) {
-            throw ReturnRequestNotSellerException("This return request does not belong to your store")
+            // Real 404 (not 403) -- found live in a 2026-08-02 audit pass: this used to
+            // throw a distinct ReturnRequestNotSellerException mapped to 403 FORBIDDEN,
+            // the one IDOR check in this class that broke from the "don't reveal a
+            // resource exists to someone who shouldn't see it" discipline every other
+            // ownership check here (and across this whole codebase) already follows --
+            // a 403 here would let another merchant distinguish "this returnRequestId
+            // exists but isn't mine" (403) from "this returnRequestId doesn't exist at
+            // all" (404) just by probing ids.
+            throw ReturnRequestNotFoundException("Return request not found")
         }
         if (request.status != OrderReturnStatus.REQUESTED) {
             throw ReturnRequestAlreadyDecidedException("This return request has already been ${request.status}")

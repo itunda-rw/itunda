@@ -59,7 +59,6 @@ import rw.itunda.commerce.ReturnOrderNotDeliveredException
 import rw.itunda.commerce.ReturnOrderNotFoundException
 import rw.itunda.commerce.ReturnRequestAlreadyDecidedException
 import rw.itunda.commerce.ReturnRequestNotFoundException
-import rw.itunda.commerce.ReturnRequestNotSellerException
 import rw.itunda.commerce.ReturnWindowExpiredException
 import rw.itunda.commerce.RiderAlreadyOnDeliveryException
 import rw.itunda.commerce.RiderNotAvailableException
@@ -487,10 +486,6 @@ class OrderController(
     @ExceptionHandler(ReturnRequestNotFoundException::class)
     fun handleReturnRequestNotFound(ex: ReturnRequestNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RETURN_REQUEST_NOT_FOUND", ex.message ?: "Not found"))
-
-    @ExceptionHandler(ReturnRequestNotSellerException::class)
-    fun handleReturnRequestNotSeller(ex: ReturnRequestNotSellerException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("RETURN_REQUEST_NOT_YOURS", ex.message ?: "Forbidden"))
 
     @ExceptionHandler(ReturnRequestAlreadyDecidedException::class)
     fun handleReturnRequestAlreadyDecided(ex: ReturnRequestAlreadyDecidedException) =
