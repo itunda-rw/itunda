@@ -75,6 +75,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.components.SearchAndCategoryChips
@@ -585,7 +586,7 @@ fun CommerceShopContent(
                     item { EmptyState("No products matched \"$productSearchInput\".", icon = Icons.Outlined.ShoppingCart) }
                 } else {
                     items(searchResults, key = { it.id }) { r ->
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                        IdsCard(modifier = Modifier.fillMaxWidth()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(16.dp)
                                     .clickable { openMerchant(ShoppingMerchantDto(merchantId = r.merchantId, businessName = r.merchantName, category = null, cashbackRate = "1%")) },
@@ -753,9 +754,7 @@ private fun CartFab(totalItems: Int, onClick: () -> Unit) {
 // share the same DTO), so no backend change was needed here.
 @Composable
 private fun StoreCard(m: ShoppingMerchantDto, onOpen: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+    IdsCard(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
     ) {
         Column {
@@ -1093,7 +1092,7 @@ private fun MyBookingsView() {
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 list!!.forEach { b ->
-                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) {
+                    IdsCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(b.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -1660,7 +1659,7 @@ private val COMMERCE_STATUS_LABEL = mapOf(
 
 @Composable
 private fun CommerceOrderRow(order: OrderDto, action: (@Composable () -> Unit)? = null) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+    IdsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -1705,7 +1704,7 @@ private fun ProductWishlistView(onRemoved: () -> Unit) {
         favorites!!.isEmpty() -> EmptyState("No saved products yet -- tap ♡ on any product to save it here.", icon = Icons.Outlined.FavoriteBorder)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             favorites!!.forEach { f ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                IdsCard(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.padding(16.dp).fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1780,7 +1779,7 @@ private fun MyProductSubscriptionsView() {
         subscriptions!!.isEmpty() -> EmptyState("No recurring deliveries yet -- subscribe from any product's detail page.", icon = Icons.Outlined.Autorenew)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             subscriptions!!.forEach { s ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                IdsCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Qty ${s.quantity} · every ${s.intervalDays}d", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         val cancelledAt = s.cancelledAt
@@ -2037,7 +2036,7 @@ private fun MyReturnRequestsView() {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("My return/exchange requests", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             list.forEach { r ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                IdsCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                             Text(if (r.type == "RETURN") "Return" else "Exchange", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -2405,7 +2404,7 @@ private fun PayAMerchantSection(
 
     val result = paymentResult
     if (result != null) {
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+        IdsCard(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Payment complete", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(result.merchantName, color = Ids.colors.textPrimary, fontSize = 14.sp)
@@ -2442,7 +2441,7 @@ private fun FacePaySettingsCard(enrolled: Boolean?, onChanged: () -> Unit) {
         Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(64.dp)) {}
         return
     }
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+    IdsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2568,7 +2567,7 @@ private fun PayByCodeCard(
         error = null
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+    IdsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pay by code", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(
@@ -2622,7 +2621,7 @@ private fun PayByStaticQrCard(onPaid: (CollectPaymentResultDto) -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+    IdsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pay a merchant's static QR", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(
