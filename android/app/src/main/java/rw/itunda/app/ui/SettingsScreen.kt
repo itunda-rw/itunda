@@ -12,7 +12,9 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -33,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.NotificationDto
+import rw.itunda.core.network.ThemeMode
+import rw.itunda.core.network.ThemePreference
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.identity.NIDABiometricAuth
 
@@ -146,6 +150,60 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                     androidx.compose.material3.Divider(color = Ids.colors.divider)
                     Spacer(modifier = Modifier.height(16.dp))
                 }
+            }
+
+            // Real in-app theme override (2026-08-03) -- see ThemePreference.kt's own
+            // doc comment. Fixes a real, reproduced complaint: a phone left in system
+            // dark mode makes the whole app render with the dark palette, which reads
+            // as "nothing like Toss" against the light reference screenshots this app
+            // is built from -- there was no way back to the light look short of
+            // changing the phone's own OS-wide setting. Default SYSTEM.
+            item {
+                val themeMode by ThemePreference.mode.collectAsState()
+                Text("Display", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = Ids.colors.textPrimary)
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Theme", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Match device, or force light/dark", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark").forEach { (mode, label) ->
+                        val selected = themeMode == mode
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (selected) Ids.colors.brand else Ids.colors.chip)
+                                .clickable { ThemePreference.set(mode) }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                label,
+                                color = if (selected) rw.itunda.core.designsystem.theme.IdsColors.White else Ids.colors.textSecondary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                }
+                androidx.compose.material3.Divider(color = Ids.colors.divider, modifier = Modifier.padding(top = 12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Real device management (2026-07-21 port) -- see this screen's own header

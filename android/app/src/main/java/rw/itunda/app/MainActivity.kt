@@ -3,6 +3,7 @@ package rw.itunda.app
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,6 +18,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SessionManager
 import rw.itunda.core.network.SessionState
+import rw.itunda.core.network.ThemeMode
+import rw.itunda.core.network.ThemePreference
 import rw.itunda.app.ui.AppLockScreen
 import rw.itunda.app.ui.ItundaAppScreen
 import rw.itunda.app.ui.LoginScreen
@@ -74,7 +77,13 @@ class MainActivity : FragmentActivity() {
         // still forgets to paint its own background now shows the correct
         // themed color underneath instead of a stale/wrong one.
         setContent {
-            IdsTheme {
+            val themeMode by ThemePreference.mode.collectAsStateWithLifecycle()
+            val darkTheme = when (themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            IdsTheme(darkTheme = darkTheme) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     val sessionState by SessionManager.sessionState.collectAsStateWithLifecycle()
                     when (sessionState) {

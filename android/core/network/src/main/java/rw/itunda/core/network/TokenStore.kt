@@ -56,10 +56,28 @@ class TokenStore(context: Context) {
         prefs.edit().putBoolean(KEY_APP_LOCK_ENABLED, enabled).apply()
     }
 
+    // Real in-app theme override (2026-08-03) -- IdsTheme always followed the OS's
+    // isSystemInDarkTheme() with no in-app way to override it, so a phone left in
+    // system dark mode renders the whole app in the dark palette with no way back to
+    // the light Toss reference look from inside the app. Real Toss's own app ships a
+    // 화면 모드 setting for exactly this. Default SYSTEM keeps existing behavior for
+    // everyone who never touches the new Settings row.
+    fun getThemeMode(): ThemeMode = when (prefs.getString(KEY_THEME_MODE, null)) {
+        "light" -> ThemeMode.LIGHT
+        "dark" -> ThemeMode.DARK
+        else -> ThemeMode.SYSTEM
+    }
+    fun setThemeMode(mode: ThemeMode) {
+        prefs.edit().putString(KEY_THEME_MODE, mode.name.lowercase()).apply()
+    }
+
     private companion object {
         const val KEY_USER_ID = "user_id"
         const val KEY_ACCESS_TOKEN = "access_token"
         const val KEY_REFRESH_TOKEN = "refresh_token"
         const val KEY_APP_LOCK_ENABLED = "app_lock_enabled"
+        const val KEY_THEME_MODE = "theme_mode"
     }
 }
+
+enum class ThemeMode { SYSTEM, LIGHT, DARK }

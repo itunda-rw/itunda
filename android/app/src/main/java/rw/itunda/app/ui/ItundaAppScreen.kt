@@ -124,6 +124,7 @@ import androidx.compose.ui.unit.sp
 
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.core.designsystem.components.IdsButtonSize
@@ -1396,10 +1397,8 @@ private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
             } catch (_: IllegalArgumentException) {
                 AccentBlue
             }
-            Card(
+            IdsCard(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = TossCard),
-                elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
                 modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
             ) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1465,10 +1464,8 @@ private fun WalletHeroCard(
     currentUserId: String?,
     onSeeAll: () -> Unit,
 ) {
-    Card(
+    IdsCard(
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -1571,10 +1568,8 @@ private data class ShellRow(
 
 @Composable
 private fun ShellSection(title: String, rows: List<ShellRow>) {
-    Card(
+    IdsCard(
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -2028,7 +2023,7 @@ private fun MyTab(
             item {
                 val totalClicks = affiliateLinks.sumOf { it.clickCount }
                 val totalEarned = affiliateCommissions.sumOf { it.commissionAmount }
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                IdsCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Partner earnings", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text("Earn 3% on any purchase made through a product link you've shared.", color = TossSecondary, fontSize = 12.sp)
@@ -2138,7 +2133,7 @@ private fun ProfilePhotoCard() {
         }
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    IdsCard(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             val photoUrl = profilePhotoUrl
             if (photoUrl != null) {
@@ -2213,7 +2208,7 @@ private fun VerificationCard() {
 
     if (!loaded || (emailVerified && phoneVerified)) return
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    IdsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Verify your account", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             if (!phoneVerified) VerificationRow(kind = "phone", hasEmail = true, onVerified = ::load)
@@ -2451,11 +2446,7 @@ private fun PointPill(label: String) {
 
 @Composable
 private fun BenefitsVisitCard() {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
-    ) {
+    IdsCard {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text("Visit 3 of 4 services and earn points", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             listOf(
@@ -2479,11 +2470,7 @@ private fun BenefitsVisitCard() {
 
 @Composable
 private fun CashbackChanceCard() {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
-    ) {
+    IdsCard {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
                 "🍀 3 chances to get money back",
@@ -2543,11 +2530,7 @@ private fun MapPlaceholder() {
 
 @Composable
 private fun PayFeatureCard() {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
-    ) {
+    IdsCard {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {

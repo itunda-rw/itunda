@@ -11,6 +11,7 @@ import rw.itunda.app.BuildConfig
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SessionManager
+import rw.itunda.core.network.ThemePreference
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -92,6 +93,7 @@ class ItundaApplication : Application(), ReactApplication {
         // Real BuildConfig-avoidance (2026-07-23) -- see MapConfig.kt's own doc comment.
         MapConfig.init(rw.itunda.app.BuildConfig.TILES_BASE_URL, rw.itunda.app.BuildConfig.GLYPHS_BASE_URL)
         SessionManager.restoreSession()
+        ThemePreference.restore()
     }
 }
 
