@@ -79,6 +79,17 @@ class ForeignCurrencyWalletService(
         if (code !in SUPPORTED_CURRENCIES) {
             throw UnsupportedCurrencyException("$code isn't a supported currency -- itunda currently supports ${SUPPORTED_CURRENCIES.sorted().joinToString()}")
         }
+
+        // Real bug found live (2026-08-02): the plain `findByUserIdAndTypeAndCurrency`
+        // check just below reads-then-CREATES a brand-new row -- there's no existing
+        // FOREIGN_CURRENCY row to put an `@Version` guard on yet, and `wallets` has no
+        // unique constraint on (user_id, type, currency) either, so two concurrent
+        // openWallet("USD") calls for the same user could both pass that check before
+        // either committed and both create a real USD account. Fixed the same way
+        // MiniWalletService.openMiniWallet's own identical-shaped fix works: lock a
+        // DIFFERENT already-existing row (the user's own real MAIN wallet) via
+        // `findByIdForUpdate` to serialize the two concurrent creates.
+        walletRepository.findByIdForUpdate(getMainWallet(userId).id)
         if (walletRepository.findByUserIdAndTypeAndCurrency(userId, WalletType.FOREIGN_CURRENCY, code) != null) {
             throw ForeignCurrencyWalletAlreadyExistsException("You already have a $code account")
         }

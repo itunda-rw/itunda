@@ -95,6 +95,23 @@ class MiniWalletService(
         }
         val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
             ?: throw WalletNotFoundException("No wallet found for this account")
+
+        // Real bug found live (2026-08-02): the plain `findByUserIdAndType(..., MINI)`
+        // check at the top of this method reads-then-CREATES a brand-new row -- there's
+        // no existing MINI row to put an `@Version` guard on yet, and `wallets` has no
+        // unique constraint on (user_id, type) either, so two concurrent openMiniWallet
+        // calls for the same user could both pass that check before either committed
+        // and both create a real MINI wallet, silently doubling this user's effective
+        // real 500,000 RWF balance cap across two rows. Fixed the same way this
+        // codebase's own precedent for this exact shape works: lock a DIFFERENT
+        // already-existing row (the user's own real MAIN wallet, which always exists
+        // for a real registered user) via `findByIdForUpdate` to serialize the two
+        // concurrent creates, then re-check MINI existence under that lock -- the
+        // second caller's re-check now real-sees the first caller's already-committed
+        // MINI row and idempotently returns it instead of creating a duplicate.
+        walletRepository.findByIdForUpdate(mainWallet.id)
+        walletRepository.findByUserIdAndType(userId, WalletType.MINI)?.let { return it }
+
         return walletRepository.save(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}", userId = userId, accountNumber = generateAccountNumber(),

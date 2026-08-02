@@ -46,6 +46,7 @@ class MiniWalletServiceTest : BehaviorSpec({
             every { walletRepository.findByUserIdAndType("user_1", WalletType.MINI) } returns null
             every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN, "10000")
             every { userRepository.findById("user_1") } returns Optional.of(user("user_1", LocalDate.now().minusYears(15)))
+            every { walletRepository.findByIdForUpdate("wallet_main") } returns Optional.of(wallet("wallet_main", "user_1", WalletType.MAIN, "10000"))
             every { walletRepository.save(any()) } answers { firstArg() }
 
             val result = service.openMiniWallet("user_1")
@@ -53,6 +54,37 @@ class MiniWalletServiceTest : BehaviorSpec({
             Then("it real-creates a new zero-balance Mini wallet") {
                 result.type shouldBe WalletType.MINI
                 result.balance shouldBe BigDecimal.ZERO
+            }
+            // Real bug found live (2026-08-02) -- see openMiniWallet's own doc comment:
+            // this asserts the actual fix mechanism, the same
+            // "lock a different already-existing row" precedent this codebase already
+            // establishes for a reject-if-already-exists check-then-CREATE race.
+            Then("it real-locks the user's own MAIN wallet row before creating the MINI one") {
+                verify(exactly = 1) { walletRepository.findByIdForUpdate("wallet_main") }
+            }
+        }
+
+        // Real bug found live (2026-08-02) -- see openMiniWallet's own doc comment: two
+        // concurrent openMiniWallet calls could both pass the unlocked MINI-existence
+        // check at the top before either committed. This simulates the second caller's
+        // view of the world AFTER the first caller has already locked and committed --
+        // the exact real-world moment the fix's locked re-check exists to catch.
+        When("a concurrent caller already created the MINI wallet while this call was blocked on the lock") {
+            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN, "10000")
+            every { userRepository.findById("user_1") } returns Optional.of(user("user_1", LocalDate.now().minusYears(15)))
+            val raceWinnerMiniWallet = wallet("wallet_mini_race_winner", "user_1", WalletType.MINI, "0")
+            // First (unlocked, top-of-method) MINI check sees nothing yet; the SECOND
+            // (locked, post-findByIdForUpdate) re-check is what real-observes the other
+            // transaction's now-committed MINI row -- mockk's `returnsMany` models that
+            // exact before/after ordering across the two real calls.
+            every { walletRepository.findByUserIdAndType("user_1", WalletType.MINI) } returnsMany listOf(null, raceWinnerMiniWallet)
+            every { walletRepository.findByIdForUpdate("wallet_main") } returns Optional.of(wallet("wallet_main", "user_1", WalletType.MAIN, "10000"))
+
+            val result = service.openMiniWallet("user_1")
+
+            Then("it real-returns the other caller's real MINI wallet instead of creating a real duplicate") {
+                result.id shouldBe "wallet_mini_race_winner"
+                verify(exactly = 0) { walletRepository.save(any()) }
             }
         }
 
@@ -141,6 +173,7 @@ class MiniWalletServiceTest : BehaviorSpec({
                 every { walletRepository.findByUserIdAndType("user_minimum_age", WalletType.MINI) } returns null
                 every { userRepository.findById("user_minimum_age") } returns Optional.of(user("user_minimum_age", LocalDate.now(rwandaZone).minusYears(7)))
                 every { walletRepository.findByUserIdAndType("user_minimum_age", WalletType.MAIN) } returns wallet("wallet_main", "user_minimum_age", WalletType.MAIN, "10000")
+                every { walletRepository.findByIdForUpdate("wallet_main") } returns Optional.of(wallet("wallet_main", "user_minimum_age", WalletType.MAIN, "10000"))
                 every { walletRepository.save(any()) } answers { firstArg() }
 
                 val result = service.openMiniWallet("user_minimum_age")
