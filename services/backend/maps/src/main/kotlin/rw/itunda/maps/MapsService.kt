@@ -200,6 +200,14 @@ class MapsService(
         if (!HEX_COLOR_REGEX.matches(color)) {
             throw InvalidBookmarkColorException("color must be a hex value like #F5A623")
         }
+        // Real bug found live (2026-08-02): every other real user-facing action in this
+        // service (search/reverse/directions/nearby) already carries a real anti-spam
+        // `rateLimiter.checkLimit` call, but this real content-creation endpoint didn't
+        // -- a real client could hammer distinct (lat, lng) pairs to create unbounded
+        // real bookmark rows (the DB unique constraint only blocks an exact-duplicate
+        // re-add, not distinct new ones). Closed with the same real 60/min bucket this
+        // module's own other write-shaped calls (directions/nearby) already use.
+        rateLimiter.checkLimit("maps:bookmark:$userId", limit = 60, window = Duration.ofMinutes(1))
         mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude(userId, latitude, longitude)?.let { return it }
         return mapBookmarkRepository.save(
             MapBookmark(

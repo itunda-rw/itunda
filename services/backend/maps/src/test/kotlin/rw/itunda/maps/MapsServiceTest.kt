@@ -280,6 +280,12 @@ class MapsServiceTest : BehaviorSpec({
                 bookmark.latitude shouldBe lat
                 bookmark.longitude shouldBe lng
             }
+            // Real bug found live (2026-08-02): see addBookmark's own doc comment. This
+            // is the actual fix -- every other real write-shaped call in this module
+            // already carries this same real anti-spam check.
+            Then("it real-checks the per-user anti-spam rate limit before creating") {
+                verify(exactly = 1) { rateLimiter.checkLimit("maps:bookmark:user_1", limit = 60, window = Duration.ofMinutes(1)) }
+            }
         }
 
         When("a place already bookmarked by the same user is bookmarked again") {
@@ -360,6 +366,20 @@ class MapsServiceTest : BehaviorSpec({
                     error("expected InvalidBookmarkColorException")
                 } catch (e: InvalidBookmarkColorException) {
                     // expected
+                }
+            }
+        }
+
+        When("the real per-user bookmark rate limit is exceeded") {
+            every { rateLimiter.checkLimit("maps:bookmark:user_1", limit = 60, window = Duration.ofMinutes(1)) } throws
+                RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException before ever creating a real duplicate-spam row") {
+                try {
+                    service.addBookmark("user_1", "Kigali International Airport", lat, lng)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    io.mockk.verify(exactly = 0) { mapBookmarkRepository.save(any()) }
                 }
             }
         }
