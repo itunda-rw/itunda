@@ -407,6 +407,15 @@ class InsuranceServiceTest : BehaviorSpec({
             Then("it caps at targetAmount instead of overshooting to 19,000, same .min() convention as SavingsGoal") {
                 result.currentAmount shouldBe BigDecimal("15000")
             }
+
+            Then("only the real 1,000 RWF gap is ever moved through the ledger, not the full 5,000 requested") {
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(
+                        "RWF",
+                        match { legs -> legs.all { it.amount.compareTo(BigDecimal("1000")) == 0 } },
+                    )
+                }
+            }
         }
     }
 

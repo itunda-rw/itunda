@@ -244,16 +244,24 @@ class InsuranceService(
             throw InvalidPremiumFundAmountException("Contribution amount must be greater than zero")
         }
         val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+        // Real bug caught in this feature's own build-time review: SavingsGoal's
+        // depositToGoal/autoContribute post the FULL requested amount to the ledger and
+        // only cap the *field* at targetAmount afterwards -- so an overshooting
+        // contribution moves real money into the wallet/liability legs that the capped
+        // field then never accounts for, and cancelFund only ever refunds
+        // fund.currentAmount, permanently stranding the excess in the shared
+        // insurance_premium_fund_payable clearing account with no path back to the user.
+        // Clamping the amount actually moved to the real remaining gap BEFORE touching
+        // the ledger keeps every RWF that leaves the wallet accounted for and refundable.
+        val actualAmount = amount.min(fund.targetAmount.subtract(fund.currentAmount))
         ledgerService.postLedgerTransaction(
             wallet.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Premium fund contribution"),
-                LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.CREDIT, amount, "Premium fund contribution"),
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Premium fund contribution"),
+                LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Premium fund contribution"),
             ),
         )
-        // Same .min(targetAmount) cap SavingsGoal's own depositToGoal/autoContribute
-        // already establish -- a contribution never overshoots what's actually owed.
-        fund.currentAmount = fund.currentAmount.add(amount).min(fund.targetAmount)
+        fund.currentAmount = fund.currentAmount.add(actualAmount)
         return insurancePremiumFundRepository.save(fund)
     }
 
@@ -304,17 +312,20 @@ class InsuranceService(
     @Transactional
     fun autoContributeToFund(fund: InsurancePremiumFund): Boolean {
         val wallet = walletRepository.findByUserIdAndType(fund.userId, WalletType.MAIN)
-        if (wallet == null || wallet.availableBalance < fund.dailyContribution) {
+        // Same overshoot clamp as contributeToFund above -- never move more than the
+        // real remaining gap, so the ledger and fund.currentAmount always agree.
+        val actualAmount = fund.dailyContribution.min(fund.targetAmount.subtract(fund.currentAmount))
+        if (wallet == null || wallet.availableBalance < actualAmount) {
             return false
         }
         ledgerService.postLedgerTransaction(
             wallet.currency,
             listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, fund.dailyContribution, "Premium fund auto-contribution"),
-                LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.CREDIT, fund.dailyContribution, "Premium fund auto-contribution"),
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, actualAmount, "Premium fund auto-contribution"),
+                LedgerLeg("insurance_premium_fund_payable", LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE, LedgerDirection.CREDIT, actualAmount, "Premium fund auto-contribution"),
             ),
         )
-        fund.currentAmount = fund.currentAmount.add(fund.dailyContribution).min(fund.targetAmount)
+        fund.currentAmount = fund.currentAmount.add(actualAmount)
         fund.lastAutoContributionAt = Instant.now()
         insurancePremiumFundRepository.save(fund)
         return true
