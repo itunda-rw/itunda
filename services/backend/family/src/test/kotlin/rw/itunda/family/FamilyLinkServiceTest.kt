@@ -145,6 +145,31 @@ class FamilyLinkServiceTest : BehaviorSpec({
             }
         }
 
+        // Real bug found live (2026-08-02): respondToInvite read-then-mutated this
+        // row's status with no @Version guard -- two concurrent respond calls (e.g. an
+        // accept and a decline racing from a flaky client retry) could both read
+        // PENDING and both commit, whichever wrote last silently winning instead of the
+        // loser getting a real 409. This asserts the mechanism the fix now relies on:
+        // the SAME versioned entity that was read and status-checked is the one
+        // actually passed to save(), so a concurrent second respond() on a stale
+        // version real-409s via the existing global ObjectOptimisticLockingFailureException
+        // handler -- same pattern SupportServiceTest.kt's own resolve() fix already
+        // established.
+        When("the child accepts, with @Version now present on the entity") {
+            val versionedPending = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", version = 3)
+            every { familyLinkRepository.findByIdAndChildUserId("familylink_1", "child_1") } returns versionedPending
+            every { userRepository.findById("child_1") } returns Optional.of(user("child_1", "+250788000002", "Alice", "M"))
+            val savedSlot = mutableListOf<FamilyLink>()
+            every { familyLinkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.respondToInvite("child_1", "familylink_1", true)
+
+            Then("the same versioned link instance that was read is the one saved") {
+                savedSlot.first() shouldBe versionedPending
+                savedSlot.first().version shouldBe versionedPending.version
+            }
+        }
+
         When("responding to an already-responded invitation") {
             val alreadyActive = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE)
             every { familyLinkRepository.findByIdAndChildUserId("familylink_1", "child_1") } returns alreadyActive

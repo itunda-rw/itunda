@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -66,6 +67,15 @@ class FamilyLink(
 
     @Column(name = "daily_spend_limit", precision = 18, scale = 2)
     var dailySpendLimit: BigDecimal? = null,
+
+    // Real bug found live (2026-08-02): respondToInvite/revokeLink both read-then-mutate
+    // this row's status with no concurrency guard -- two concurrent respondToInvite
+    // calls (accept and decline racing from a flaky client retry) could both read
+    // PENDING and both commit, whichever writes last silently winning. Only one real
+    // state transition may resolve a given invitation/link.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", guardianUserId = "", childUserId = "")
 }
