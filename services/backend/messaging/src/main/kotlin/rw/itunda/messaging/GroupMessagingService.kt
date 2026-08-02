@@ -103,6 +103,12 @@ class GroupMessagingService(
         if (distinctOtherMembers.isEmpty()) {
             throw GroupNeedsMoreMembersException("A group needs at least one other real member")
         }
+        // Real bug found live (2026-08-02): group creation had shipped with zero rate
+        // limiting -- every other real content-creation endpoint in this codebase
+        // (MessagingService.sendMessage/toggleReaction, FamilyLinkService.inviteChild,
+        // GiftService.sendGift, etc) already has one; an authenticated caller could
+        // otherwise spam unlimited GroupConversation + member rows.
+        rateLimiter.checkLimit("messaging:group-create:$creatorUserId", limit = 20, window = Duration.ofHours(1))
         // Real N+1 fix (2026-07-19 sweep): one batch findAllById instead of one
         // findById call per invited member, same convention as
         // WalletRepository.findByUserIdInAndType/UserRepository.findAllByPhoneNumberIn.
@@ -142,6 +148,9 @@ class GroupMessagingService(
         if (distinctOtherMembers.isEmpty()) {
             throw GroupNeedsMoreMembersException("A group needs at least one other real member")
         }
+        // Real bug found live (2026-08-02) -- see createGroup's own identical fix just
+        // above; this is the other real entry point into the same unguarded creation path.
+        rateLimiter.checkLimit("messaging:group-create:$creatorUserId", limit = 20, window = Duration.ofHours(1))
         return createGroupInternal(creatorUserId, trimmedName, distinctOtherMembers)
     }
 

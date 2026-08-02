@@ -133,6 +133,54 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        // Real bug found live (2026-08-02): group creation had shipped with zero rate
+        // limiting -- every other real content-creation endpoint in this codebase
+        // already carries one; an authenticated caller could otherwise spam unlimited
+        // GroupConversation + member rows.
+        When("creating a group by member id, checking the real per-user rate limit") {
+            every { userRepository.findAllById(listOf("user_b")) } returns listOf(user("user_b", "Beata"))
+            every { groupConversationRepository.save(any()) } answers { firstArg() }
+
+            service.createGroup("user_a", "Rate Limit Check", listOf("user_b"))
+
+            Then("it checks the real limit before ever touching the repository") {
+                verify(exactly = 1) { rateLimiter.checkLimit("messaging:group-create:user_a", limit = 20, window = Duration.ofHours(1)) }
+            }
+        }
+
+        When("a real user exceeds the real group-creation rate limit, by member id") {
+            every {
+                rateLimiter.checkLimit("messaging:group-create:user_a", limit = 20, window = Duration.ofHours(1))
+            } throws RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException, never silently creating the group") {
+                try {
+                    service.createGroup("user_a", "Group", listOf("user_b"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { groupConversationRepository.save(any()) }
+            }
+        }
+
+        When("a real user exceeds the real group-creation rate limit, by phone number") {
+            every { userRepository.findAllByPhoneNumberIn(listOf("+250780000002")) } returns listOf(user("user_b", "Beata", "+250780000002"))
+            every {
+                rateLimiter.checkLimit("messaging:group-create:user_a", limit = 20, window = Duration.ofHours(1))
+            } throws RateLimitExceededException("Too many requests")
+
+            Then("the phone-number entry point real-propagates the same rate limit") {
+                try {
+                    service.createGroupByPhoneNumbers("user_a", "Group", listOf("+250780000002"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { groupConversationRepository.save(any()) }
+            }
+        }
     }
 
     Given("a real group with three real members") {
