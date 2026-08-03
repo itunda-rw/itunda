@@ -32,7 +32,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +52,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
 import rw.itunda.core.designsystem.components.HoodReviewResultView
@@ -364,8 +364,8 @@ private fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("우리집 시세 — Estimate my home's value", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text("A real estimate based on comparable listings near you, not a fabricated number.", color = Ids.colors.textSecondary, fontSize = 12.sp)
-            OutlinedTextField(value = latitude, onValueChange = { latitude = it }, label = { Text("Latitude") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = longitude, onValueChange = { longitude = it }, label = { Text("Longitude") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = latitude, onValueChange = { latitude = it }, label = "Latitude", keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = longitude, onValueChange = { longitude = it }, label = "Longitude", keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal, modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 propertyTypes.forEach { t ->
                     val active = propertyType == t.id
@@ -386,7 +386,7 @@ private fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
                     )
                 }
             }
-            OutlinedTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, label = { Text("Size (sqm)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, label = "Size (sqm)", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
             Button(
                 onClick = {
@@ -488,16 +488,17 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                     ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
             }
-            OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("e.g. 2-bedroom apartment in Kacyiru") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = description, onValueChange = { description = it }, placeholder = { Text("Describe the property") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = "e.g. 2-bedroom apartment in Kacyiru", singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = "Describe the property", modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
+                IdsTextField(
                     value = price, onValueChange = { price = it },
-                    placeholder = { Text(if (listingType == "RENT") "Rent/mo (RWF)" else "Price (RWF)") }, singleLine = true,
+                    label = if (listingType == "RENT") "Rent/mo (RWF)" else "Price (RWF)", singleLine = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
                     modifier = Modifier.weight(1f),
                 )
-                OutlinedTextField(value = bedrooms, onValueChange = { bedrooms = it }, placeholder = { Text("Bedrooms") }, singleLine = true, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, placeholder = { Text("Size (m²)") }, singleLine = true, modifier = Modifier.weight(1f))
+                IdsTextField(value = bedrooms, onValueChange = { bedrooms = it }, label = "Bedrooms", singleLine = true, keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.weight(1f))
+                IdsTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, label = "Size (m²)", singleLine = true, keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.weight(1f))
             }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft)
@@ -692,11 +693,12 @@ private fun PropertyListingCard(
             // offering UI exactly.
             if (offering) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = offerAmount,
                         onValueChange = { offerAmount = it },
-                        placeholder = { Text("Your offer (RWF)") },
+                        label = "Your offer (RWF)",
                         singleLine = true,
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
                         modifier = Modifier.weight(1f),
                     )
                     ListingActionButton("Send", busy || offerAmount.toDoubleOrNull() == null, filled = true) {
@@ -711,11 +713,12 @@ private fun PropertyListingCard(
             // Real optional "who's the buyer/tenant?" prompt (2026-07-24) -- see
             // backend PropertyListingService.markTaken's own doc comment.
             if (markingTaken) {
-                OutlinedTextField(
+                IdsTextField(
                     value = counterpartyPhone,
                     onValueChange = { counterpartyPhone = it },
-                    placeholder = { Text("Their phone (optional)") },
+                    label = "Their phone (optional)",
                     singleLine = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

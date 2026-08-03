@@ -27,7 +27,6 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -51,6 +50,7 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
 import rw.itunda.core.designsystem.components.HoodReviewResultView
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
@@ -444,8 +444,8 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                     ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
             }
-            OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("What do you need done?") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = description, onValueChange = { description = it }, placeholder = { Text("Describe the work") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = "What do you need done?", singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = "Describe the work", modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf("HOURLY" to "Per hour", "FIXED" to "Fixed price").forEach { (v, label) ->
                     val selected = payType == v
@@ -458,8 +458,9 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
                 }
-                OutlinedTextField(
-                    value = payAmount, onValueChange = { payAmount = it }, placeholder = { Text("Pay (RWF)") }, singleLine = true,
+                IdsTextField(
+                    value = payAmount, onValueChange = { payAmount = it }, label = "Pay (RWF)", singleLine = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -618,11 +619,12 @@ private fun JobPostCard(
             // Real optional "who did you hire?" prompt (2026-07-24) -- see backend
             // JobPostService.markFilled's own doc comment.
             if (markingFilled) {
-                OutlinedTextField(
+                IdsTextField(
                     value = workerPhone,
                     onValueChange = { workerPhone = it },
-                    placeholder = { Text("Worker's phone (optional)") },
+                    label = "Worker's phone (optional)",
                     singleLine = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -712,10 +714,10 @@ private fun JobPostCard(
             // real self-introduction, not a bare DM. See backend JobApplicationService's
             // own doc comment.
             if (!isMine && applying) {
-                OutlinedTextField(
+                IdsTextField(
                     value = applicationMessage,
                     onValueChange = { applicationMessage = it },
-                    placeholder = { Text("Why should the poster pick you? (required)") },
+                    label = "Why should the poster pick you? (required)",
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

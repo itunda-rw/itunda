@@ -42,6 +42,12 @@ fun IdsTextField(
     placeholder: String? = null,
     isError: Boolean = false,
     errorText: String? = null,
+    // Real addition, 2026-08-03 -- Hood's own NewListingForm (Marketplace) had a real
+    // neutral hint ("Use a public landmark, not a home address") that Material3's
+    // OutlinedTextField supports via supportingText, which this component didn't
+    // expose yet -- the gap that kept that one field on the raw, unstyled
+    // OutlinedTextField this component exists to replace.
+    supportingText: String? = null,
     singleLine: Boolean = true,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardType: KeyboardType = KeyboardType.Text,
@@ -83,6 +89,13 @@ fun IdsTextField(
                 text = errorText,
                 style = IdsTypography.Typography7,
                 color = Ids.colors.danger,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+            )
+        } else if (!isError && supportingText != null) {
+            Text(
+                text = supportingText,
+                style = IdsTypography.Typography7,
+                color = Ids.colors.textTertiary,
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp),
             )
         }

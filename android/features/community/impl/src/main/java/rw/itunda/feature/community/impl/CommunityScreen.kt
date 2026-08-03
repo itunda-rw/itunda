@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,6 +45,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
@@ -380,22 +380,23 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                     ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
                 }
             }
-            OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = body, onValueChange = { body = it }, placeholder = { Text("What's going on in the neighborhood?") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = "Title", singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = body, onValueChange = { body = it }, label = "What's going on in the neighborhood?", modifier = Modifier.fillMaxWidth())
             if (category == "meetup") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = eventDateText, onValueChange = { eventDateText = it },
-                        placeholder = { Text("Date (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.weight(1f),
+                        label = "Date (YYYY-MM-DD)", singleLine = true, modifier = Modifier.weight(1f),
                     )
-                    OutlinedTextField(
+                    IdsTextField(
                         value = eventTimeText, onValueChange = { eventTimeText = it },
-                        placeholder = { Text("Time (HH:mm)") }, singleLine = true, modifier = Modifier.weight(1f),
+                        label = "Time (HH:mm)", singleLine = true, modifier = Modifier.weight(1f),
                     )
                 }
-                OutlinedTextField(
+                IdsTextField(
                     value = capacityText, onValueChange = { capacityText = it },
-                    placeholder = { Text("Max people (optional -- blank means unlimited)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    label = "Max people (optional -- blank means unlimited)", singleLine = true,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.fillMaxWidth(),
                 )
             }
             Box(
@@ -607,8 +608,8 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
             }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = commentBody, onValueChange = { commentBody = it }, placeholder = { Text("Add a comment") },
+            IdsTextField(
+                value = commentBody, onValueChange = { commentBody = it }, label = "Add a comment",
                 singleLine = true, modifier = Modifier.weight(1f),
             )
             Box(
@@ -708,9 +709,10 @@ private fun MeetupSessionsSection(post: CommunityPostDto, currentUserId: String?
             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Schedule sessions (up to 6)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 dates.forEachIndexed { i, d ->
-                    OutlinedTextField(
+                    IdsTextField(
                         value = d, onValueChange = { dates[i] = it },
-                        placeholder = { Text("Hours from now") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        label = "Hours from now", singleLine = true,
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -780,8 +782,8 @@ private fun GroupBuyFinalizeSection(post: CommunityPostDto, currentUserId: Strin
                 "Enter what you paid up front -- every real member who joined will be asked for their even share.",
                 color = Ids.colors.textSecondary, fontSize = 12.sp,
             )
-            OutlinedTextField(value = totalAmount, onValueChange = { totalAmount = it }, placeholder = { Text("Total amount (RWF)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = description, onValueChange = { description = it }, placeholder = { Text("What was this for?") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = totalAmount, onValueChange = { totalAmount = it }, label = "Total amount (RWF)", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = "What was this for?", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             ListingActionButton(if (submitting) "Splitting…" else "Request even split", submitting, filled = true) {
                 val amount = totalAmount.toBigDecimalOrNull()

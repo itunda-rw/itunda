@@ -32,7 +32,6 @@ import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -62,6 +61,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
 import rw.itunda.core.designsystem.components.HoodReviewResultView
@@ -576,8 +576,8 @@ private fun KeywordAlertsView() {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
             Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = keyword, onValueChange = { keyword = it }, placeholder = { Text("Alert me for (e.g. iPhone 15)") },
+                IdsTextField(
+                    value = keyword, onValueChange = { keyword = it }, label = "Alert me for (e.g. iPhone 15)",
                     singleLine = true, modifier = Modifier.weight(1f),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -609,8 +609,8 @@ private fun KeywordAlertsView() {
                     Text("Quiet hours", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Text("Don't send alert notifications during these hours.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(value = quietStart, onValueChange = { quietStart = it }, label = { Text("Start (HH:mm)") }, modifier = Modifier.weight(1f))
-                        OutlinedTextField(value = quietEnd, onValueChange = { quietEnd = it }, label = { Text("End (HH:mm)") }, modifier = Modifier.weight(1f))
+                        IdsTextField(value = quietStart, onValueChange = { quietStart = it }, label = "Start (HH:mm)", modifier = Modifier.weight(1f))
+                        IdsTextField(value = quietEnd, onValueChange = { quietEnd = it }, label = "End (HH:mm)", modifier = Modifier.weight(1f))
                     }
                     ListingActionButton(
                         if (savingQuietHours) "…" else if (quietHours?.enabled == true) "Turn off quiet hours" else "Turn on quiet hours",
@@ -687,8 +687,8 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("List an item", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("What are you selling?") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = description, onValueChange = { description = it }, placeholder = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = "What are you selling?", singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = "Description", modifier = Modifier.fillMaxWidth())
             // Real photo picker (2026-07-24) -- a real photo is what a Karrot-style
             // listing card actually needs most, see ListingCard's own header comment.
             Box(
@@ -717,14 +717,14 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value = price, onValueChange = { price = it }, placeholder = { Text("Price (RWF)") }, singleLine = true, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = category, onValueChange = { category = it }, placeholder = { Text("Category") }, singleLine = true, modifier = Modifier.weight(1f))
+                IdsTextField(value = price, onValueChange = { price = it }, label = "Price (RWF)", singleLine = true, keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.weight(1f))
+                IdsTextField(value = category, onValueChange = { category = it }, label = "Category", singleLine = true, modifier = Modifier.weight(1f))
             }
-            OutlinedTextField(
+            IdsTextField(
                 value = meetingPlace,
                 onValueChange = { meetingPlace = it },
-                placeholder = { Text("Suggested meeting place (optional)") },
-                supportingText = { Text("Use a public landmark, not a home address.") },
+                label = "Suggested meeting place (optional)",
+                supportingText = "Use a public landmark, not a home address.",
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -996,11 +996,12 @@ private fun ListingCard(
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             if (offering) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = offerAmount,
                         onValueChange = { offerAmount = it },
-                        placeholder = { Text("Your offer (RWF)") },
+                        label = "Your offer (RWF)",
                         singleLine = true,
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
                         modifier = Modifier.weight(1f),
                     )
                     ListingActionButton("Send", busy || offerAmount.toDoubleOrNull() == null, filled = true) {
@@ -1017,11 +1018,12 @@ private fun ListingCard(
             // or Skip; either way the sale completes.
             if (markingSold) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = buyerPhone,
                         onValueChange = { buyerPhone = it },
-                        placeholder = { Text("Buyer's phone (optional)") },
+                        label = "Buyer's phone (optional)",
                         singleLine = true,
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -1195,9 +1197,9 @@ private fun ListingCard(
                         Text("🔒 Payment held by itunda until you confirm receipt", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         if (showDispute) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
+                                IdsTextField(
                                     value = disputeReason, onValueChange = { disputeReason = it },
-                                    placeholder = { Text("What went wrong?") }, modifier = Modifier.fillMaxWidth(),
+                                    label = "What went wrong?", modifier = Modifier.fillMaxWidth(),
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     ListingActionButton("Cancel", resolvingEscrow) { showDispute = false }
