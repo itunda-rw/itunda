@@ -123,6 +123,15 @@ class Listing(
     @Version
     @Column(nullable = false)
     var version: Long = 0,
+
+    // Real like count (2026-08-03) -- closes a real Karrot-parity gap: every real
+    // 당근마켓 listing row shows a heart count (하트/좋아요), separate from itunda's
+    // own pre-existing wishlist/favorite (a personal save-for-later list, ListingFavorite
+    // below, not a public engagement count). A real cached counter, same "cache,
+    // don't recompute at read time" discipline CommunityPost.likeCount already
+    // established -- see ListingLike.kt for the (listing, user) row this counts.
+    @Column(name = "like_count", nullable = false)
+    var likeCount: Long = 0,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

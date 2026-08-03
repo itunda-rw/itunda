@@ -22,6 +22,8 @@ import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.domain.ListingLike
+import rw.itunda.core.repository.ListingLikeRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.MarketplaceEscrowRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -74,6 +76,7 @@ class MarketplaceService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val marketplaceEscrowRepository: MarketplaceEscrowRepository,
+    private val listingLikeRepository: ListingLikeRepository,
 ) {
     companion object {
         // Bounds a single OSRM /table request's URL length and the private cloud's
@@ -263,6 +266,38 @@ class MarketplaceService(
             listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, now, pageable)
         } else {
             listingRepository.findByStatusAndCategoryOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, category, now, pageable)
+        }
+    }
+
+    // Real batch "which of these listings has this viewer already liked" (2026-08-03)
+    // -- see ListingLikeRepository.findLikedListingIds' own doc comment. Attached
+    // alongside every browse/nearby/neighborhood/my-listings response the same way
+    // trustScores() already is, so the heart's filled/unfilled state is correct on
+    // first render, not just after a tap.
+    fun likedListingIds(listings: Collection<Listing>, userId: String?): Set<String> {
+        if (userId == null || listings.isEmpty()) return emptySet()
+        return listingLikeRepository.findLikedListingIds(listings.map { it.id }, userId).toSet()
+    }
+
+    // Real idempotent like/unlike toggle -- same shape CommunityService.toggleLike
+    // already established (real cached counter, DB-unique constraint as the real
+    // concurrency guard, real rate limit from day one).
+    @Transactional
+    fun toggleLike(userId: String, listingId: String): Boolean {
+        val listing = listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
+        rateLimiter.checkLimit("marketplace:like:$userId", limit = 60, window = Duration.ofMinutes(1))
+
+        val existing = listingLikeRepository.findByListingIdAndUserId(listingId, userId)
+        return if (existing != null) {
+            listingLikeRepository.delete(existing)
+            listing.likeCount = (listing.likeCount - 1).coerceAtLeast(0)
+            listingRepository.save(listing)
+            false
+        } else {
+            listingLikeRepository.save(ListingLike(id = "listing_like_${UUID.randomUUID()}", listingId = listingId, userId = userId))
+            listing.likeCount += 1
+            listingRepository.save(listing)
+            true
         }
     }
 

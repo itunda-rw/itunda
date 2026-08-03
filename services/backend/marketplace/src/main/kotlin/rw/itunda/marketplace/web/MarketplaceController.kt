@@ -145,7 +145,8 @@ class MarketplaceController(
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.myNeighborhood(currentUser.userId, category, pageable)
         val scores = trustScores(userRepository, page.content.map { it.sellerId })
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+        val liked = marketplaceService.likedListingIds(page.content, currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores, "likedByMe" to liked) + pageMeta(page))
     }
 
     @GetMapping("/listings/{listingId}")
@@ -162,7 +163,8 @@ class MarketplaceController(
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.getMyListings(currentUser.userId, pageable)
         val scores = trustScores(userRepository, page.content.map { it.sellerId })
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+        val liked = marketplaceService.likedListingIds(page.content, currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores, "likedByMe" to liked) + pageMeta(page))
     }
 
     // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
@@ -175,7 +177,23 @@ class MarketplaceController(
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.getMyPurchases(currentUser.userId, pageable)
         val scores = trustScores(userRepository, page.content.map { it.sellerId })
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+        val liked = marketplaceService.likedListingIds(page.content, currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores, "likedByMe" to liked) + pageMeta(page))
+    }
+
+    // Real like/unlike toggle (2026-08-03) -- see MarketplaceService.toggleLike's own
+    // doc comment. browse/nearby stay unauthenticated (see their own methods above,
+    // no currentUser param -- a deliberate guest-browse allowance this endpoint
+    // doesn't change), so those two responses don't carry likedByMe; the heart still
+    // shows the real count either way, just starts unfilled until a real tap
+    // authenticates it, an honest tradeoff rather than requiring login to browse.
+    @PostMapping("/listings/{listingId}/like")
+    fun toggleLike(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val liked = marketplaceService.toggleLike(currentUser.userId, listingId)
+        return ResponseEntity.ok(mapOf("success" to true, "liked" to liked))
     }
 
     // Real seller-paid sponsored placement -- see MarketplaceService.boostListing's own

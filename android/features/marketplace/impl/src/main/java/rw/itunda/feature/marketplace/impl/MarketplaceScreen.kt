@@ -1,5 +1,7 @@
 package rw.itunda.feature.marketplace.impl
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
@@ -142,6 +145,11 @@ fun MarketplaceContent(
     // the backend has spread this sellerId->score map alongside every browse response
     // since 2026-07-21, this just finally reads and renders it.
     var trustScores by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    // Real like/unlike toggle (2026-08-03) -- declared here (not next to toggleLike
+    // itself, further down) so requestNearbyLocation's onSuccess closure below can
+    // reference it; Kotlin locals must be declared before any use, even inside a
+    // lambda that only runs later.
+    var likedListingIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewListing by remember { mutableStateOf(false) }
     if (showNewListing) {
@@ -163,7 +171,7 @@ fun MarketplaceContent(
             coroutineScope.launch {
                 try {
                     val res = NetworkClient.apiService.getNearbyListings(lat, lng)
-                    if (res.success) { listings = res.listings; trustScores = res.trustScores }
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe }
                     error = null
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
@@ -176,6 +184,26 @@ fun MarketplaceContent(
         },
         onError = { message -> error = "$message You can still use Browse or Neighborhood."; listings = emptyList() },
     )
+
+    // Real distance display (2026-08-03), matching a real 당근마켓 screenshot: every
+    // row shows neighborhood/distance/time, not neighborhood/category/time -- itunda
+    // was substituting category because it had no live distance to show. Deliberately
+    // silent/opt-in: this only ever fetches location if ACCESS_FINE_LOCATION is
+    // *already* granted (e.g. from a prior real use of Near me) -- it never triggers
+    // its own permission prompt on a screen the user didn't ask location-based content
+    // from, matching this file's own existing "opt-in, never assumed" discipline for
+    // seller location-sharing.
+    val context = LocalContext.current
+    var browseLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    val requestBrowseLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng -> browseLocation = lat to lng },
+        onError = {},
+    )
+    LaunchedEffect(Unit) {
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission) requestBrowseLocation()
+    }
 
     // Real Marketplace listing wishlist (2026-07-21) -- porting bank-mfe's wishlist
     // (backend + web UI shipped earlier the same day) to Android. Favorite state is
@@ -222,6 +250,30 @@ fun MarketplaceContent(
         }
     }
 
+    // Real like/unlike toggle (2026-08-03) -- see backend MarketplaceController.kt's
+    // own doc comment. likedListingIds itself is declared up near trustScores (a
+    // Kotlin-locals-must-be-declared-before-use requirement, see that declaration's
+    // own comment); the displayed *count* is tracked locally inside each ListingCard
+    // instead (see its own doc comment) -- ListingDto is an immutable data class
+    // inside an immutable list here, so optimistically bumping one row's count
+    // without a full list rebuild is simpler done right where it's rendered.
+    fun toggleLike(listingId: String) {
+        val wasLiked = listingId in likedListingIds
+        // Optimistic update -- matches this file's own toggleFavorite discipline just
+        // above, real functionality first, no fake spinner-and-wait for a like tap.
+        likedListingIds = if (wasLiked) likedListingIds - listingId else likedListingIds + listingId
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.toggleListingLike(listingId)
+                likedListingIds = if (res.liked) likedListingIds + listingId else likedListingIds - listingId
+            } catch (e: Exception) {
+                // Real revert on failure -- an optimistic like that silently failed
+                // would drift from the real server state forever.
+                likedListingIds = if (wasLiked) likedListingIds + listingId else likedListingIds - listingId
+            }
+        }
+    }
+
     fun load() {
         listings = null
         if (view == HoodView.NEARBY) {
@@ -240,7 +292,7 @@ fun MarketplaceContent(
                     val profileRes = NetworkClient.authApi.getProfile()
                     val res = NetworkClient.apiService.getListingsMyNeighborhood()
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) { listings = res.listings; trustScores = res.trustScores }
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -265,7 +317,7 @@ fun MarketplaceContent(
                     HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases()
                     else -> NetworkClient.apiService.getMyListings()
                 }
-                if (res.success) { listings = res.listings; trustScores = res.trustScores }
+                if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -388,10 +440,13 @@ fun MarketplaceContent(
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
                     currentUserId = currentUserId,
                     sellerTrustScore = trustScores[listing.sellerId],
+                    viewerLocation = browseLocation,
                     onChanged = ::load,
                     favorited = listing.id in favoriteIds,
                     favoriteBusy = favoritingId == listing.id,
                     onToggleFavorite = { toggleFavorite(listing.id) },
+                    liked = listing.id in likedListingIds,
+                    onToggleLike = { toggleLike(listing.id) },
                     onMessageSeller = { id ->
                         coroutineScope.launch {
                             try {
@@ -804,6 +859,23 @@ private fun ListingPhotoPlaceholder() {
     }
 }
 
+// Real distance display (2026-08-03) -- see ListingCard's own doc comment on
+// viewerLocation. Standard great-circle distance, not a fabricated straight-line
+// guess.
+private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val earthRadiusKm = 6371.0
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = kotlin.math.sin(dLat / 2).let { it * it } +
+        kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
+        kotlin.math.sin(dLon / 2).let { it * it }
+    val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+    return earthRadiusKm * c
+}
+
+private fun formatDistanceKm(km: Double): String =
+    if (km < 1.0) "${(km * 1000).toInt()}m" else "%.1fkm".format(km)
+
 @Composable
 // Real seller-paid sponsored placement (2026-07-25) -- see backend
 // MarketplaceService.boostListing's own doc comment. A real, still-future boostedUntil
@@ -830,10 +902,25 @@ private fun ListingCard(
     // the viewer is the buyer of an already-SOLD listing, so the Confirm-receipt/
     // dispute actions only ever show to the one real party who can act on them.
     currentUserId: String? = null,
+    // Real distance display (2026-08-03) -- see MarketplaceContent's own doc comment
+    // on browseLocation for the silent/opt-in sourcing. Null whenever location isn't
+    // already granted, in which case the meta line falls back to category (below).
+    viewerLocation: Pair<Double, Double>? = null,
+    // Real like count (2026-08-03) -- see MarketplaceContent's own doc comment on
+    // toggleLike. `liked` (whether the viewer has liked it) is lifted the same way
+    // `favorited` above is; the *displayed count* is tracked locally just below since
+    // ListingDto is immutable inside an immutable list up in MarketplaceContent.
+    liked: Boolean = false, onToggleLike: () -> Unit = {},
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var offering by remember { mutableStateOf(false) }
+    // Real like count (2026-08-03) -- local optimistic display, reset whenever this
+    // exact listing's own server-sourced count changes (a real refetch, e.g. after
+    // pull-to-refresh), keyed on (listing.id, listing.likeCount) so a stale local
+    // bump from a previous render of a *different* listing recycled into this slot
+    // never leaks through.
+    var displayedLikeCount by remember(listing.id, listing.likeCount) { mutableStateOf(listing.likeCount) }
     var offerAmount by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
@@ -986,13 +1073,58 @@ private fun ListingCard(
                             )
                         }
                     }
+                    // Real distance display (2026-08-03) -- matches a real 당근마켓
+                    // screenshot showing neighborhood/distance/time, not neighborhood/
+                    // category/time. Falls back to category (the previous behavior)
+                    // whenever distance isn't available -- see viewerLocation's own doc
+                    // comment for why that's the common case, not a bug.
+                    val viewerLat = viewerLocation?.first
+                    val viewerLng = viewerLocation?.second
+                    val listingLat = listing.latitude
+                    val listingLng = listing.longitude
+                    val distanceLabel = if (viewerLat != null && viewerLng != null && listingLat != null && listingLng != null) {
+                        formatDistanceKm(haversineKm(viewerLat, viewerLng, listingLat, listingLng))
+                    } else null
                     Text(
-                        listOfNotNull(listing.neighborhood, listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
+                        listOfNotNull(listing.neighborhood, distanceLabel ?: listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
                         color = Ids.colors.textSecondary,
                         fontSize = 12.sp,
                     )
-                    Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    // Real 나눔 (free giveaway) treatment (2026-08-03) -- real Karrot
+                    // shows "나눔 🧡" instead of "0원" for a free item; itunda already
+                    // lets a seller set price to 0 (no separate listing-type flag
+                    // needed on the backend), just never gave it special client
+                    // treatment before. 🧡 is literal emoji text, not a themed color --
+                    // same pattern this file's own CommunityPostCard-equivalent ❤️/💬
+                    // counts already use, not a deviation from "themes stay common."
+                    if (listing.price <= 0.0) {
+                        Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    } else {
+                        Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    }
                 }
+            }
+            // Real like count (2026-08-03) -- matches a real 당근마켓 screenshot's
+            // bottom-right heart count on every row. Comment count is deliberately
+            // NOT shown alongside it (unlike the real reference) -- there is no real
+            // comment-thread feature on listings yet, and this app doesn't fabricate
+            // a count for a feature that doesn't exist.
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (liked) "Unlike" else "Like",
+                    tint = if (liked) Ids.colors.danger else Ids.colors.textTertiary,
+                    modifier = Modifier.size(16.dp).clickable {
+                        displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
+                        onToggleLike()
+                    },
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("$displayedLikeCount", color = Ids.colors.textTertiary, fontSize = 12.sp)
             }
             Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // Real Karrot-Score trust badge (2026-07-24) -- social proof, the fourth

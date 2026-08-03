@@ -19,6 +19,7 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.ListingLikeRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.MarketplaceEscrowRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -45,9 +46,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         When("creating a listing with valid fields") {
@@ -110,9 +112,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
         val listing = Listing(
             id = "listing_1", sellerId = "seller_1", title = "Bicycle", description = "desc",
@@ -220,9 +223,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         When("no category filter is given") {
@@ -249,9 +253,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         When("only one of latitude/longitude is given") {
@@ -301,9 +306,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         // Searcher at (-1.9441, 30.0619). Same longitude as both listings, only latitude
@@ -372,9 +378,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         // Both within Rwanda's bounding envelope, both within a real 5km straight-line
@@ -456,9 +463,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         When("the real coordinates reverse-geocode to a real neighborhood") {
@@ -498,9 +506,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         When("the caller has a real neighborhood set, no category filter") {
@@ -561,9 +570,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val listingLikeRepository = mockk<ListingLikeRepository>()
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         val overdue = MarketplaceEscrow(
@@ -599,9 +609,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val listingLikeRepository = mockk<ListingLikeRepository>()
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         val escrow = MarketplaceEscrow(
@@ -638,9 +649,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val listingLikeRepository = mockk<ListingLikeRepository>()
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
-            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
 
         val alreadyReleased = MarketplaceEscrow(

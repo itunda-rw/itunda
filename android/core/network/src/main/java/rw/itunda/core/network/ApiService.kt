@@ -590,6 +590,10 @@ data class ListingDto(
     // doc comment. Null/expired means "not boosted" -- clients should only show a
     // "Sponsored" badge when this is a real, still-future ISO instant.
     val boostedUntil: String? = null,
+    // Real like count (2026-08-03) -- see backend Listing.kt's own doc comment. A
+    // separate concept from favoriteIds' personal wishlist -- this is a public
+    // engagement count, matching real 당근마켓's heart count on every listing row.
+    val likeCount: Long = 0,
 )
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class BoostListingRequest(val days: Int)
@@ -636,7 +640,13 @@ data class ListingResponse(val success: Boolean, val listing: ListingDto)
 // A sellerId/posterId/listerId -> User.trustScore map (Karrot-Score-style, 0-1000,
 // starting at 30 -- see backend User.kt's own doc comment for why not a literal
 // manner-temperature metaphor).
-data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>, val trustScores: Map<String, Int> = emptyMap())
+// likedByMe added 2026-08-03 -- see MarketplaceController.kt's own doc comment: real
+// on myNeighborhood/getMyListings/getMyPurchases (all authenticated), absent on
+// browse/nearby (deliberately unauthenticated, guest-browsable) -- an honest gap, not
+// a client bug; the heart's count is always real either way, just starts unfilled on
+// those two endpoints until a real tap.
+data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>, val trustScores: Map<String, Int> = emptyMap(), val likedByMe: Set<String> = emptySet())
+data class ToggleLikeResponse(val success: Boolean, val liked: Boolean)
 
 // Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe, ported here) --
 // mirrors FavoriteRestaurantDto's exact shape; see ListingFavoriteService.kt's own doc
@@ -2220,6 +2230,12 @@ interface ApiService {
 
     @GET("api/v1/marketplace/listings/favorites")
     suspend fun getMyFavoriteListings(): FavoriteListingsResponse
+
+    // Real like/unlike toggle (2026-08-03) -- see backend MarketplaceController.kt's
+    // own doc comment. Idempotent, matching addListingFavorite/removeListingFavorite's
+    // own real toggle discipline above.
+    @POST("api/v1/marketplace/listings/{id}/like")
+    suspend fun toggleListingLike(@Path("id") listingId: String): ToggleLikeResponse
 
     // Real 당근마켓-style Keyword Alert (rw.itunda.marketplace.KeywordAlertService, real
     // since before this session) -- first Android client for this feature (item 115,
