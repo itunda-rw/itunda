@@ -253,6 +253,16 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
     // Bumped by the FAB below; MarketplaceContent reacts to any change by forcing its
     // own new-listing form open -- see that Composable's own doc comment on this param.
     var requestNewListingSignal by remember { mutableStateOf(0) }
+    // Real fix, 2026-08-03: user correction, verified against the real daangn.com --
+    // itunda had TWO stacked chip rows where real Karrot has one. My-listings/
+    // Purchases/Wishlist/Alerts are personal-management views with no real chip-row
+    // equivalent in any real app's main browse screen -- moved behind the hamburger
+    // menu instead (the profile-icon consolidation the user chose), matching where
+    // every real app puts this class of view. Signal pattern mirrors
+    // requestNewListingSignal above -- MarketplaceContent reacts to the counter
+    // changing, keyed with which view was requested.
+    var showMenuSheet by remember { mutableStateOf(false) }
+    var requestedMarketplaceView by remember { mutableStateOf(0 to "") }
     LaunchedEffect(Unit) {
         try {
             val user = NetworkClient.authApi.getProfile().user
@@ -303,11 +313,12 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 // screen's duplicate rows). Search stays undocumented/unwired
                 // honestly: there's no real keyword-search endpoint for listings on
                 // the backend yet (grepped services/backend/marketplace -- confirmed
-                // absent), and this app doesn't fake search results. Bell and Menu
-                // both route to the real, already-built SettingsScreen -- itunda has
-                // one consolidated notifications+settings screen, not real Karrot's
-                // separate destinations, so routing both there is the honest option
-                // rather than inventing a second screen that doesn't exist yet.
+                // absent), and this app doesn't fake search results. Bell routes to
+                // the real, already-built SettingsScreen (itunda has one consolidated
+                // notifications+settings screen). Menu opens a real dropdown --
+                // consolidated Settings + (in Market mode) My listings/Purchases/
+                // Wishlist/Alerts, the personal-management views this same-day fix
+                // moved off the second chip row.
                 Icon(Icons.Outlined.Search, contentDescription = "Search", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
                 Spacer(modifier = Modifier.width(16.dp))
                 Icon(
@@ -317,7 +328,7 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 Spacer(modifier = Modifier.width(16.dp))
                 Icon(
                     Icons.Outlined.Menu, contentDescription = "Menu",
-                    modifier = Modifier.size(24.dp).clickable(onClick = onOpenSettings), tint = Ids.colors.textPrimary,
+                    modifier = Modifier.size(24.dp).clickable { showMenuSheet = true }, tint = Ids.colors.textPrimary,
                 )
             }
             // Real Karrot pill-chip row (2026-08-03): selected = a solid pill in
@@ -355,7 +366,7 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 // Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace now
                 // lives in :features:marketplace:impl, the first Hood-mode section pulled out
                 // of this file to match Toss's real Microfeatures architecture.
-                HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller = onMessageSeller, requestNewListingSignal = requestNewListingSignal)
+                HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller = onMessageSeller, requestNewListingSignal = requestNewListingSignal, requestedView = requestedMarketplaceView)
                 // Fourth Feature extraction (2026-07-23), same pattern. onOpenGroupChat
                 // reuses the same onMessageSeller callback (2026-07-24) -- see
                 // TalkScreen.kt's own doc comment on why a real GroupConversation id works
@@ -391,6 +402,53 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Write", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+        // Real hamburger dropdown (2026-08-03) -- see this Composable's own
+        // showMenuSheet doc comment. A plain dropdown anchored under the Menu icon,
+        // not a full bottom sheet -- this is a short, non-draggable action list
+        // (matching Android's own standard overflow-menu convention), not the
+        // Maps-style peek/half/full sheet IdsBottomSheetOverlay is built for.
+        if (showMenuSheet) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)).clickable { showMenuSheet = false },
+            ) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 64.dp, end = Ids.layout.screenHorizontal)
+                        .width(220.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Ids.colors.surface)
+                        .padding(vertical = 8.dp),
+                ) {
+                    if (mode == HoodMode.MARKETPLACE) {
+                        listOf("My listings" to "MINE", "Purchases" to "PURCHASES", "Wishlist" to "WISHLIST", "Alerts" to "ALERTS").forEach { (label, key) ->
+                            Text(
+                                label,
+                                color = Ids.colors.textPrimary,
+                                fontSize = 15.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        requestedMarketplaceView = (requestedMarketplaceView.first + 1) to key
+                                        showMenuSheet = false
+                                    }
+                                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                            )
+                        }
+                        Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    Text(
+                        "Settings",
+                        color = Ids.colors.textPrimary,
+                        fontSize = 15.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showMenuSheet = false; onOpenSettings() }
+                            .padding(horizontal = 18.dp, vertical = 12.dp),
+                    )
+                }
             }
         }
     }

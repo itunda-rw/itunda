@@ -139,6 +139,13 @@ fun MarketplaceContent(
     // Mine + the new-listing form open, matching real Karrot's own 글쓰기 -> always
     // lands you in a fresh post draft regardless of which category chip was selected.
     requestNewListingSignal: Int = 0,
+    // Real hamburger-menu hand-off (2026-08-03) -- see SuperAppTabs.kt's own
+    // requestedMarketplaceView doc comment: My listings/Purchases/Wishlist/Alerts
+    // moved off this screen's own visible chip row into HoodTab's real menu (user
+    // correction, verified against daangn.com: real Karrot uses one chip row,
+    // itunda had two stacked). Same (counter, key) re-trigger shape as
+    // requestNewListingSignal above, generalized to carry which view was requested.
+    requestedView: Pair<Int, String> = 0 to "",
 ) {
     var view by remember { mutableStateOf(HoodView.BROWSE) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
@@ -162,6 +169,18 @@ fun MarketplaceContent(
         if (requestNewListingSignal > 0) {
             view = HoodView.MINE
             showNewListing = true
+        }
+    }
+    LaunchedEffect(requestedView) {
+        val (signal, key) = requestedView
+        if (signal > 0) {
+            view = when (key) {
+                "MINE" -> HoodView.MINE
+                "PURCHASES" -> HoodView.PURCHASES
+                "WISHLIST" -> HoodView.WISHLIST
+                "ALERTS" -> HoodView.ALERTS
+                else -> view
+            }
         }
     }
     val coroutineScope = rememberCoroutineScope()
@@ -408,19 +427,26 @@ fun MarketplaceContent(
             // (pill, not underline) changes, matching "themes/interaction/graphics
             // stay common, only Hood's own chrome adopts Karrot" from the same request.
             //
-            // Deliberately smaller/lighter than HoodTab's own Market/Life/Jobs/Home
-            // row (2026-08-03, comparing against a real screenshot that only ever
-            // shows ONE chip row under the top bar): real Karrot has no second-tier
-            // chip strip like this one -- it's itunda's own real need (switching
-            // Browse/Near me/Neighborhood/My listings/Purchases/Wishlist/Alerts,
-            // real navigation with no other entry point yet), so rather than fake a
-            // second identical-weight Karrot row, this reads as a visually secondary,
-            // compact filter bar under the real primary chip row above it.
+            // Real fix, 2026-08-03, second correction same day: user directly
+            // rejected the "smaller/lighter second row" compromise above ("what do
+            // you mean we have two stack of chips which looks noisy while 당근 uses
+            // one, facts please") -- verified against the real daangn.com that real
+            // Karrot genuinely has one chip row, no second tier at all. My
+            // listings/Purchases/Wishlist/Alerts (real personal-management views,
+            // no chip-row equivalent in any real app's main browse screen) moved to
+            // HoodTab's own hamburger menu -- see requestedView's own doc comment.
+            // Browse/Near me/Neighborhood remain here: real content-scope filters
+            // (not personal-management views), closer in kind to Karrot's own
+            // "가까운 동네" chip. This is still visually a second row, not literally
+            // one -- an honest, disclosed gap given itunda's own Market/Life/Jobs/
+            // Home mode-switcher (a real architectural difference from Karrot's
+            // single already-unified feed, kept intentionally per explicit user
+            // direction) has no clean single-row precedent to fold these into yet.
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                HoodView.entries.forEach { v ->
+                listOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD).forEach { v ->
                     val selected = v == view
                     Text(
                         v.label(),
