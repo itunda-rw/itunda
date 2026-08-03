@@ -1,5 +1,7 @@
 package rw.itunda.feature.community.impl
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,9 +39,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
@@ -75,7 +79,18 @@ import java.io.IOException
 private enum class CommunityView { BROWSE, NEARBY, NEIGHBORHOOD, MINE }
 
 @Composable
-fun CommunityContent(onOpenGroupChat: (String) -> Unit = {}) {
+fun CommunityContent(
+    onOpenGroupChat: (String) -> Unit = {},
+    // Real hamburger-menu hand-off (2026-08-03), mirroring MarketplaceContent's own
+    // requestedView -- see that Composable's doc comment. HoodTab's menu now carries a
+    // "My posts" entry for Community mode using this exact same signal shape.
+    requestedView: Pair<Int, String> = 0 to "",
+    // Real default-feed auto-detect (2026-08-03), mirroring MarketplaceContent's own
+    // neighborhoodRefreshSignal -- see that Composable's doc comment for the real,
+    // WebSearch-verified sourcing (no Feed/Near-me/Neighborhood chip trio in real
+    // Karrot; the feed auto-scopes and you tap the neighborhood name to change it).
+    neighborhoodRefreshSignal: Int = 0,
+) {
     var view by remember { mutableStateOf(CommunityView.BROWSE) }
     var categories by remember { mutableStateOf<List<CommunityCategoryDto>>(emptyList()) }
     var activeCategory by remember { mutableStateOf<String?>(null) }
@@ -115,6 +130,26 @@ fun CommunityContent(onOpenGroupChat: (String) -> Unit = {}) {
 
     LaunchedEffect(Unit) {
         try { categories = NetworkClient.apiService.getCommunityCategories().categories } catch (e: Exception) { /* chips just won't render */ }
+    }
+
+    LaunchedEffect(requestedView) {
+        val (signal, key) = requestedView
+        if (signal > 0 && key == "MINE") view = CommunityView.MINE
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(neighborhoodRefreshSignal) {
+        try {
+            val profileRes = NetworkClient.authApi.getProfile()
+            if (profileRes.user.neighborhood != null) {
+                view = CommunityView.NEIGHBORHOOD
+                return@LaunchedEffect
+            }
+        } catch (_: Exception) {
+            // Best-effort -- falls through to the next real signal below.
+        }
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        view = if (hasPermission) CommunityView.NEARBY else CommunityView.BROWSE
     }
 
     fun load() {
@@ -200,36 +235,13 @@ fun CommunityContent(onOpenGroupChat: (String) -> Unit = {}) {
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item {
-            // Real Karrot pill-chip row (2026-08-03), matching MarketplaceContent's
-            // own same-day fix for visual consistency across all 4 Hood modes -- see
-            // that file's doc comment for the real-screenshot sourcing. Sized as a
-            // visually secondary filter bar under HoodTab's own Market/Life/Jobs/Home
-            // row, same reasoning as that file's own second-tier chip fix -- real
-            // Karrot has no second chip row here, this one is itunda's own real
-            // Feed/Near me/Neighborhood/My posts navigation.
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                listOf(CommunityView.BROWSE to "Feed", CommunityView.NEARBY to "Near me", CommunityView.NEIGHBORHOOD to "Neighborhood", CommunityView.MINE to "My posts").forEach { (v, label) ->
-                    val selected = v == view
-                    Text(
-                        label,
-                        color = if (selected) Ids.colors.background else Ids.colors.textSecondary,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-                            .clickable { view = v }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-            }
-        }
+        // Real fix, 2026-08-03: the Feed/Near me/Neighborhood/My posts chip row that
+        // used to render here is gone -- see MarketplaceContent's own doc comment for
+        // the sourcing (verified via a real daangn.com fetch of the actual 동네생활
+        // web page: its only filter row is the category chip row below, with the set
+        // neighborhood shown separately, not as a chip). Feed source is now
+        // auto-detected (see neighborhoodRefreshSignal's own doc comment above) and
+        // "My posts" moved to HoodTab's hamburger menu (requestedView above).
         if ((view == CommunityView.BROWSE || view == CommunityView.NEIGHBORHOOD) && categories.isNotEmpty()) {
             item {
                 Row(

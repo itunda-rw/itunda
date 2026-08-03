@@ -263,6 +263,15 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
     // changing, keyed with which view was requested.
     var showMenuSheet by remember { mutableStateOf(false) }
     var requestedMarketplaceView by remember { mutableStateOf(0 to "") }
+    // Real fix, 2026-08-03: same "two stacked chip rows" fix as Marketplace's own,
+    // generalized to Community/Jobs/Property once Community/Jobs/Property.kt were
+    // found to share the exact same Browse/Near-me/Neighborhood(+personal-views) chip
+    // row pattern -- see each Content composable's own doc comment. "My posts" is
+    // Community's only personal-management view (no Purchases/Wishlist/Alerts
+    // equivalent there).
+    var requestedCommunityView by remember { mutableStateOf(0 to "") }
+    var requestedJobsView by remember { mutableStateOf(0 to "") }
+    var requestedPropertyView by remember { mutableStateOf(0 to "") }
     // Real fix, 2026-08-03, third correction same day: verified via search (a real
     // 당근 FAQ result) that real Karrot has no "Browse/Near me/Neighborhood" chip
     // trio at all -- "홈 화면 왼쪽 상단 동네 이름을 클릭해주세요" (tap the neighborhood
@@ -392,11 +401,23 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 // reuses the same onMessageSeller callback (2026-07-24) -- see
                 // TalkScreen.kt's own doc comment on why a real GroupConversation id works
                 // through the exact same hand-off Marketplace/Jobs/Property already share.
-                HoodMode.COMMUNITY -> CommunityContent(onOpenGroupChat = onMessageSeller)
+                HoodMode.COMMUNITY -> CommunityContent(
+                    onOpenGroupChat = onMessageSeller,
+                    requestedView = requestedCommunityView,
+                    neighborhoodRefreshSignal = neighborhoodRefreshSignal,
+                )
                 // Second Feature extraction (2026-07-23), same pattern as Marketplace above.
-                HoodMode.JOBS -> JobsContent(onMessagePoster = onMessageSeller)
+                HoodMode.JOBS -> JobsContent(
+                    onMessagePoster = onMessageSeller,
+                    requestedView = requestedJobsView,
+                    neighborhoodRefreshSignal = neighborhoodRefreshSignal,
+                )
                 // Third Feature extraction (2026-07-23), same pattern as Marketplace/Jobs above.
-                HoodMode.PROPERTY -> PropertyContent(onMessageLister = onMessageSeller)
+                HoodMode.PROPERTY -> PropertyContent(
+                    onMessageLister = onMessageSeller,
+                    requestedView = requestedPropertyView,
+                    neighborhoodRefreshSignal = neighborhoodRefreshSignal,
+                )
             }
         }
         // Real 당근 글쓰기 FAB layout (2026-08-03): a floating pill, always present
@@ -454,6 +475,55 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                                     .fillMaxWidth()
                                     .clickable {
                                         requestedMarketplaceView = (requestedMarketplaceView.first + 1) to key
+                                        showMenuSheet = false
+                                    }
+                                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                            )
+                        }
+                        Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    if (mode == HoodMode.COMMUNITY) {
+                        Text(
+                            "My posts",
+                            color = Ids.colors.textPrimary,
+                            fontSize = 15.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    requestedCommunityView = (requestedCommunityView.first + 1) to "MINE"
+                                    showMenuSheet = false
+                                }
+                                .padding(horizontal = 18.dp, vertical = 12.dp),
+                        )
+                        Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    if (mode == HoodMode.JOBS) {
+                        listOf("My posts" to "MINE", "Jobs I did" to "WORKED", "My applications" to "APPLICATIONS", "Saved" to "SAVED").forEach { (label, key) ->
+                            Text(
+                                label,
+                                color = Ids.colors.textPrimary,
+                                fontSize = 15.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        requestedJobsView = (requestedJobsView.first + 1) to key
+                                        showMenuSheet = false
+                                    }
+                                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                            )
+                        }
+                        Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    if (mode == HoodMode.PROPERTY) {
+                        listOf("My listings" to "MINE", "Places I got" to "ACQUIRED", "Saved" to "SAVED", "시세 Value" to "VALUATION").forEach { (label, key) ->
+                            Text(
+                                label,
+                                color = Ids.colors.textPrimary,
+                                fontSize = 15.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        requestedPropertyView = (requestedPropertyView.first + 1) to key
                                         showMenuSheet = false
                                     }
                                     .padding(horizontal = 18.dp, vertical = 12.dp),

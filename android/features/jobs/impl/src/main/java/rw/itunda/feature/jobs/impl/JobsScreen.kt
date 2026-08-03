@@ -1,5 +1,7 @@
 package rw.itunda.feature.jobs.impl
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -44,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.ErrorCard
@@ -86,6 +89,17 @@ private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WORKED, SAVED,
 @Composable
 fun JobsContent(
     onMessagePoster: (String) -> Unit,
+    // Real hamburger-menu hand-off (2026-08-03), mirroring MarketplaceContent's own
+    // requestedView -- see that Composable's doc comment. HoodTab's menu now carries
+    // My posts/Jobs I did/My applications/Saved entries for Jobs mode using this same
+    // signal shape.
+    requestedView: Pair<Int, String> = 0 to "",
+    // Real default-feed auto-detect (2026-08-03), mirroring MarketplaceContent's own
+    // neighborhoodRefreshSignal -- see that Composable's doc comment for the real,
+    // WebSearch/WebFetch-verified sourcing (no Browse/Near-me/Neighborhood chip trio
+    // in real Karrot; the feed auto-scopes and you tap the neighborhood name to
+    // change it).
+    neighborhoodRefreshSignal: Int = 0,
 ) {
     var view by remember { mutableStateOf(JobsView.BROWSE) }
     var categories by remember { mutableStateOf<List<JobCategoryDto>>(emptyList()) }
@@ -127,6 +141,33 @@ fun JobsContent(
     LaunchedEffect(Unit) {
         try { categories = NetworkClient.apiService.getJobCategories().categories } catch (e: Exception) { /* chips just won't render */ }
         try { favoriteIds = NetworkClient.apiService.getMyFavoriteJobPosts().favorites.map { it.jobPostId }.toSet() } catch (e: Exception) { /* non-critical */ }
+    }
+
+    LaunchedEffect(requestedView) {
+        val (signal, key) = requestedView
+        if (signal > 0) {
+            view = when (key) {
+                "MINE" -> JobsView.MINE
+                "WORKED" -> JobsView.WORKED
+                "APPLICATIONS" -> JobsView.APPLICATIONS
+                "SAVED" -> JobsView.SAVED
+                else -> view
+            }
+        }
+    }
+
+    LaunchedEffect(neighborhoodRefreshSignal) {
+        try {
+            val profileRes = NetworkClient.authApi.getProfile()
+            if (profileRes.user.neighborhood != null) {
+                view = JobsView.NEIGHBORHOOD
+                return@LaunchedEffect
+            }
+        } catch (_: Exception) {
+            // Best-effort -- falls through to the next real signal below.
+        }
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        view = if (hasPermission) JobsView.NEARBY else JobsView.BROWSE
     }
 
     fun load() {
@@ -188,34 +229,12 @@ fun JobsContent(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item {
-            // Real Karrot pill-chip row (2026-08-03), matching MarketplaceContent's
-            // own same-day fix for visual consistency across all 4 Hood modes -- see
-            // that file's doc comment for the real-screenshot sourcing. Sized as a
-            // visually secondary filter bar under HoodTab's own Market/Life/Jobs/Home
-            // row, same reasoning as that file's own second-tier chip fix.
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts", JobsView.WORKED to "Jobs I did", JobsView.APPLICATIONS to "My applications", JobsView.SAVED to "Saved").forEach { (v, label) ->
-                    val selected = v == view
-                    Text(
-                        label,
-                        color = if (selected) Ids.colors.background else Ids.colors.textSecondary,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-                            .clickable { view = v }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-            }
-        }
+        // Real fix, 2026-08-03: the Find work/Near me/Neighborhood/My posts/Jobs I
+        // did/My applications/Saved chip row that used to render here is gone -- see
+        // MarketplaceContent's own doc comment for the sourcing. Feed source is now
+        // auto-detected (see neighborhoodRefreshSignal's own doc comment above) and
+        // the personal-management views moved to HoodTab's hamburger menu
+        // (requestedView above).
         if (view == JobsView.NEARBY) item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
                 val active = nearbyRadiusKm == radius

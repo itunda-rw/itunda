@@ -1,5 +1,7 @@
 package rw.itunda.feature.property.impl
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -49,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.ErrorCard
@@ -94,6 +97,17 @@ private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, ACQUIRED, 
 @Composable
 fun PropertyContent(
     onMessageLister: (String) -> Unit,
+    // Real hamburger-menu hand-off (2026-08-03), mirroring MarketplaceContent's own
+    // requestedView -- see that Composable's doc comment. HoodTab's menu now carries
+    // My listings/Places I got/Saved/시세 Value entries for Property mode using this
+    // same signal shape.
+    requestedView: Pair<Int, String> = 0 to "",
+    // Real default-feed auto-detect (2026-08-03), mirroring MarketplaceContent's own
+    // neighborhoodRefreshSignal -- see that Composable's doc comment for the real,
+    // WebSearch/WebFetch-verified sourcing (no Browse/Near-me/Neighborhood chip trio
+    // in real Karrot; the feed auto-scopes and you tap the neighborhood name to
+    // change it).
+    neighborhoodRefreshSignal: Int = 0,
 ) {
     var view by remember { mutableStateOf(PropertyView.BROWSE) }
     var propertyTypes by remember { mutableStateOf<List<PropertyTypeDto>>(emptyList()) }
@@ -135,6 +149,33 @@ fun PropertyContent(
     LaunchedEffect(Unit) {
         try { propertyTypes = NetworkClient.apiService.getPropertyTypes().propertyTypes } catch (e: Exception) { /* chips just won't render */ }
         try { favoriteIds = NetworkClient.apiService.getMyFavoritePropertyListings().favorites.map { it.propertyListingId }.toSet() } catch (e: Exception) { }
+    }
+
+    LaunchedEffect(requestedView) {
+        val (signal, key) = requestedView
+        if (signal > 0) {
+            view = when (key) {
+                "MINE" -> PropertyView.MINE
+                "ACQUIRED" -> PropertyView.ACQUIRED
+                "SAVED" -> PropertyView.SAVED
+                "VALUATION" -> PropertyView.VALUATION
+                else -> view
+            }
+        }
+    }
+
+    LaunchedEffect(neighborhoodRefreshSignal) {
+        try {
+            val profileRes = NetworkClient.authApi.getProfile()
+            if (profileRes.user.neighborhood != null) {
+                view = PropertyView.NEIGHBORHOOD
+                return@LaunchedEffect
+            }
+        } catch (_: Exception) {
+            // Best-effort -- falls through to the next real signal below.
+        }
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        view = if (hasPermission) PropertyView.NEARBY else PropertyView.BROWSE
     }
 
     fun load() {
@@ -195,34 +236,12 @@ fun PropertyContent(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item {
-            // Real Karrot pill-chip row (2026-08-03), matching MarketplaceContent's
-            // own same-day fix for visual consistency across all 4 Hood modes -- see
-            // that file's doc comment for the real-screenshot sourcing. Sized as a
-            // visually secondary filter bar under HoodTab's own Market/Life/Jobs/Home
-            // row, same reasoning as that file's own second-tier chip fix.
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings", PropertyView.ACQUIRED to "Places I got", PropertyView.SAVED to "Saved", PropertyView.VALUATION to "시세 Value").forEach { (v, label) ->
-                    val selected = v == view
-                    Text(
-                        label,
-                        color = if (selected) Ids.colors.background else Ids.colors.textSecondary,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-                            .clickable { view = v }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-            }
-        }
+        // Real fix, 2026-08-03: the Browse/Near me/Neighborhood/My listings/Places I
+        // got/Saved/시세 Value chip row that used to render here is gone -- see
+        // MarketplaceContent's own doc comment for the sourcing. Feed source is now
+        // auto-detected (see neighborhoodRefreshSignal's own doc comment above) and
+        // the personal-management views moved to HoodTab's hamburger menu
+        // (requestedView above).
         if (view == PropertyView.NEARBY) item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
                 val active = nearbyRadiusKm == radius
