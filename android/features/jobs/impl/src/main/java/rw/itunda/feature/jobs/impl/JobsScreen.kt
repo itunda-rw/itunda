@@ -191,25 +191,27 @@ fun JobsContent(
         item {
             // Real Karrot pill-chip row (2026-08-03), matching MarketplaceContent's
             // own same-day fix for visual consistency across all 4 Hood modes -- see
-            // that file's doc comment for the real-screenshot sourcing.
+            // that file's doc comment for the real-screenshot sourcing. Sized as a
+            // visually secondary filter bar under HoodTab's own Market/Life/Jobs/Home
+            // row, same reasoning as that file's own second-tier chip fix.
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts", JobsView.WORKED to "Jobs I did", JobsView.APPLICATIONS to "My applications", JobsView.SAVED to "Saved").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
-                        color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
+                        color = if (selected) Ids.colors.background else Ids.colors.textSecondary,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 14.sp,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .clickable { view = v }
-                            .padding(horizontal = 16.dp, vertical = 9.dp),
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
             }

@@ -306,24 +306,33 @@ fun MarketplaceContent(
             // needed -- this reuses the same common theme colors, only the shape
             // (pill, not underline) changes, matching "themes/interaction/graphics
             // stay common, only Hood's own chrome adopts Karrot" from the same request.
+            //
+            // Deliberately smaller/lighter than HoodTab's own Market/Life/Jobs/Home
+            // row (2026-08-03, comparing against a real screenshot that only ever
+            // shows ONE chip row under the top bar): real Karrot has no second-tier
+            // chip strip like this one -- it's itunda's own real need (switching
+            // Browse/Near me/Neighborhood/My listings/Purchases/Wishlist/Alerts,
+            // real navigation with no other entry point yet), so rather than fake a
+            // second identical-weight Karrot row, this reads as a visually secondary,
+            // compact filter bar under the real primary chip row above it.
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 HoodView.entries.forEach { v ->
                     val selected = v == view
                     Text(
                         v.label(),
-                        color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
+                        color = if (selected) Ids.colors.background else Ids.colors.textSecondary,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 14.sp,
+                        fontSize = 12.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(14.dp))
                             .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
                             .clickable { view = v }
-                            .padding(horizontal = 16.dp, vertical = 9.dp),
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
             }
