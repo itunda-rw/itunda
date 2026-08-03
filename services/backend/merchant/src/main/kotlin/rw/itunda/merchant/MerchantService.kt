@@ -236,6 +236,30 @@ class MerchantService(
         return merchantRepository.save(merchant)
     }
 
+    // Real admin merchant moderation (2026-08-04) -- found while sourcing a real
+    // Coupang Eats dish grid: the shared Shop/Eats merchant directory (see setCategory's
+    // own doc comment) had no way, anywhere in the app, to ever take a merchant out of
+    // public browse once created -- confirmed live against the real dev database that
+    // 45 of 50 real ACTIVE merchants were leftover QA fixtures (uncategorized,
+    // kyb_verified=false, names like "Push Test Salon") polluting 90% of both Shop's
+    // and Eats' actual browse results for a real user. By merchantId (not
+    // ownerUserId/getMyMerchant) since this acts on any merchant, not the caller's own.
+    // Suspend/reactivate rather than delete -- reversible, same lifecycle status a real
+    // merchant already has, not a new destructive capability.
+    @Transactional
+    fun suspendMerchant(merchantId: String): Merchant {
+        val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
+        merchant.status = MerchantStatus.SUSPENDED
+        return merchantRepository.save(merchant)
+    }
+
+    @Transactional
+    fun reactivateMerchant(merchantId: String): Merchant {
+        val merchant = merchantRepository.findById(merchantId).orElseThrow { MerchantNotFoundException("Merchant not found") }
+        merchant.status = MerchantStatus.ACTIVE
+        return merchantRepository.save(merchant)
+    }
+
     // Real restaurant-card photo (2026-07-21) -- see Merchant.kt's own doc comment for
     // why this is a merchant-set URL, not an upload/storage pipeline. Same trim + length
     // bound discipline as setWebhookUrl.

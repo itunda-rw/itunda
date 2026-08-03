@@ -25,6 +25,14 @@ interface MerchantRepository : JpaRepository<Merchant, String> {
     // grows as more merchants register and had no bound at all before this.
     fun findByStatus(status: MerchantStatus, pageable: Pageable): Page<Merchant>
 
+    // Real admin moderation queue (2026-08-04) -- see MerchantService.suspendMerchant's
+    // own doc comment. An ACTIVE merchant with no category is either an incomplete
+    // registration or, as found live, a leftover QA fixture -- either way it doesn't
+    // belong in public browse (setCategory's own doc comment: category powers both
+    // Shop's and Eats' real filter chips, so a merchant that can never appear under any
+    // real chip already can't be found the intended way).
+    fun findByStatusAndCategoryIsNull(status: MerchantStatus, pageable: Pageable): Page<Merchant>
+
     // Real category/search filter (2026-07-19) for restaurant/merchant browse -- both
     // params optional and independently combinable, matching how a real Coupang
     // Eats-style filter bar works (category chip + free-text search, either or both).
@@ -82,4 +90,18 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
             "ORDER BY p.discountPercent DESC",
     )
     fun findDeals(@Param("status") status: MerchantStatus, pageable: Pageable): Page<MerchantProduct>
+
+    // Real Coupang Eats-style dish grid (2026-08-03) -- see EatsController.dishes' own
+    // doc comment for the full 100%-UI/UX-parity account. category filters by the
+    // same Merchant.category chip Eats' own restaurant-list already filters on
+    // (search's own doc comment) -- a real photo requirement, not a fabricated
+    // placeholder image, is what makes this genuinely a dish *grid* rather than the
+    // pre-existing restaurant list with a different name.
+    @Query(
+        "SELECT p FROM MerchantProduct p JOIN Merchant m ON m.id = p.merchantId " +
+            "WHERE p.active = true AND m.status = :status AND p.imageUrl IS NOT NULL " +
+            "AND (:category IS NULL OR m.category = :category) " +
+            "ORDER BY p.createdAt DESC",
+    )
+    fun findDishes(@Param("status") status: MerchantStatus, @Param("category") category: String?, pageable: Pageable): Page<MerchantProduct>
 }

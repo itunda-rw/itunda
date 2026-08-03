@@ -120,7 +120,36 @@ class EatsController(
     private val eatsMembershipService: EatsMembershipService,
     private val platformMembershipService: PlatformMembershipService,
     private val idempotencyService: IdempotencyService,
+    private val merchantProductRepository: rw.itunda.core.repository.MerchantProductRepository,
+    private val merchantRepository: rw.itunda.core.repository.MerchantRepository,
 ) {
+    // Real Coupang Eats-style dish grid (2026-08-03) -- user-directed 100% UI/UX
+    // parity pass, sourced from a real Coupang Eats UX teardown (brunch.co.kr
+    // @e6b24f6f7c6949f/20): the actual home browse surface isn't a restaurant-card
+    // list (itunda's own pre-existing RestaurantCard, still used for search/favorites)
+    // -- it's a 3-column grid of individual DISH photos, with rating/delivery-time/fee
+    // deferred entirely to the restaurant detail page. Real photos only
+    // (imageUrl IS NOT NULL, see MerchantProductRepository.findDishes) -- a dish
+    // without a merchant-set photo isn't shown here rather than falling back to a
+    // fabricated placeholder tile, since a placeholder-photo grid would defeat the
+    // entire point of this being a *visual* browse surface. category is the exact
+    // same Merchant.category chip Eats' own restaurant list already filters by.
+    @GetMapping("/dishes")
+    fun getDishes(
+        @RequestParam(required = false) category: String?,
+        @PageableDefault(size = 30) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = merchantProductRepository.findDishes(rw.itunda.core.domain.MerchantStatus.ACTIVE, category, pageable)
+        val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
+        val dishes = page.content.map { p ->
+            mapOf(
+                "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
+                "name" to p.name, "price" to p.price, "imageUrl" to p.imageUrl,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "dishes" to dishes) + pageMeta(page))
+    }
+
     // Real Coupang 와우 (Wow)-style unconditional delivery-fee waiver -- see
     // PlatformMembership.kt's own doc comment for the full sourced account and its
     // honest distinction from Eats Club (above).
