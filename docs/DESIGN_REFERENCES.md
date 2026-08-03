@@ -51,15 +51,16 @@ they close in itunda's current implementation.
 
 ### Recommendations (ranked)
 
-1. **[sourced]** Replace the static floating `Card` with a real draggable peek/half/full bottom
-   sheet. `MapScreen.kt` lines 581–689 is a plain `Column`/`Card` pinned to `BottomCenter` with no
-   drag gesture — content just appears/disappears at whatever height its content dictates. Both
-   Apple's own `UISheetPresentationController` and Google Maps' documented need for a custom
+1. **[sourced] Implemented.** Replace the static floating `Card` with a real draggable peek/half/full
+   bottom sheet. Was a plain `Column`/`Card` pinned to `BottomCenter` with no drag gesture — content
+   just appeared/disappeared at whatever height its content dictated. Both Apple's own
+   `UISheetPresentationController` and Google Maps' documented need for a custom
    `BottomSheetBehavior` extension confirm a true 3-state (peek/anchor/full) sheet is real,
    nontrivial engineering — Compose's stock `BottomSheetScaffold` only gives 2 states out of the
-   box, so this needs a custom `AnchoredDraggable`/`SwipeableState`, same gap Android's stock API
-   has.
-   *Target: `android/app/src/main/java/rw/itunda/app/ui/MapScreen.kt:581-689`*
+   box. **Verified 2026-08-04 (re-audit while sourcing the Eats dish grid): this file moved to
+   `features/maps/impl/.../MapsScreen.kt` during the later Feature-module extraction (stale path in
+   this doc), and a real `AnchoredDraggableState`-based 3-state sheet exists there.**
+   *Target: `android/features/maps/impl/src/main/java/rw/itunda/feature/maps/impl/MapsScreen.kt`*
 
 2. **[sourced]** Give the sheet a default "around me" state instead of only rendering when a place
    is selected or bookmarks exist. Naver's Smart Around keeps a non-modal sheet permanently docked
@@ -73,11 +74,13 @@ they close in itunda's current implementation.
    bookmark/call/directions) plus a hero image up front so actions don't require a sub-page.
    *Target: `MapScreen.kt:583-656`*
 
-4. **[sourced]** Group bookmarks into named, colored lists instead of one flat list. Both Kakao
-   Map (그룹 + per-group color, shareable) and Naver Map (named list + color + public/private,
-   shareable URL) let the list color become the marker pin color on the map — letting a user
-   visually distinguish saved-place categories on the map itself, not just in text.
-   *Target: `MapScreen.kt:658-688` plus backend `MapBookmarkDto`/`AddMapBookmarkRequest`, which would need a list/group + color field*
+4. **[sourced] Implemented.** Group bookmarks into named, colored lists instead of one flat list.
+   Both Kakao Map (그룹 + per-group color, shareable) and Naver Map (named list + color +
+   public/private, shareable URL) let the list color become the marker pin color on the map —
+   letting a user visually distinguish saved-place categories on the map itself, not just in text.
+   **Verified 2026-08-04: `BOOKMARK_COLOR_PALETTE`, per-folder `color`, and a real move-between-
+   folders flow all exist in `MapsScreen.kt`.**
+   *Target: `MapsScreen.kt` plus backend `MapBookmarkDto`/`AddMapBookmarkRequest`, which needed a list/group + color field*
 
 5. **[partially-sourced]** Give turn-by-turn its own presentation instead of an inline
    expand/collapse text block (`showSteps` toggle, lines 605–629). Kakao treats routing as its own
@@ -86,12 +89,14 @@ they close in itunda's current implementation.
    road-following line, so this gap is purely presentational, not a routing-data quality issue.
    *Target: `MapScreen.kt:605-629`*
 
-6. **[inferred]** Move search from submit-then-list toward autocomplete with a recent-searches
-   zero state. itunda's search is tap-"Search"-then-flat-list with no live suggestions and no
-   recent-searches state. This is general autocomplete UX practice, **not** independently
-   confirmed as Naver/Kakao Map's specific implementation — flagged as the weakest-sourced item
-   in this section.
-   *Target: `MapScreen.kt:476-509` (search field) and `550-573` (results list)*
+6. **[inferred] Implemented.** Move search from submit-then-list toward autocomplete with a
+   recent-searches zero state. itunda's search was tap-"Search"-then-flat-list with no live
+   suggestions and no recent-searches state. This is general autocomplete UX practice, **not**
+   independently confirmed as Naver/Kakao Map's specific implementation — flagged as the
+   weakest-sourced item in this section. **Verified 2026-08-04: real search-as-you-type
+   autocomplete (shipped 2026-07-22, ported from bank-mfe) plus `RecentMapSearchesStore` backing a
+   real recent-searches zero state.**
+   *Target: `MapsScreen.kt` search field and results list*
 
 7. **[partially-sourced]** Category chips (lines 513–537) already structurally match Kakao's
    pattern reasonably well — this is a genuine partial match, not an urgent gap. The one
