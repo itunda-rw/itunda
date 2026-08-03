@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -278,7 +279,15 @@ fun MarketplaceContent(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal),
+        // Real fix, 2026-08-03: a real device screenshot showed the last-visible
+        // listing's own action row (Message seller/Make an offer) sitting directly
+        // under HoodTab's floating Write FAB, genuinely overlapping and unreadable.
+        // contentPadding (not a Modifier padding, which would just shrink the visible
+        // viewport permanently) so the list can still scroll its last item clear of
+        // the FAB. 96dp covers the real FAB's height (~48dp) plus its own 20dp margin
+        // plus slack.
+        contentPadding = PaddingValues(top = Ids.layout.screenVertical, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         // No TabHeader here (2026-07-24, was `TabHeader("Hood")`): the bottom nav
@@ -889,85 +898,90 @@ private fun ListingCard(
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column {
-            // Real Karrot-style photo-forward card (2026-07-24) -- a real listing
-            // photo (see Listing.photoUrl's own doc comment for the honest
-            // "seller-provided URL, no upload pipeline" scope) leads the card, since
-            // that's the actual #1 element in Karrot's real info hierarchy (confirmed:
-            // price -> title -> location/time -> social proof, always led by a large
-            // thumbnail) -- previously this card was pure text, closer to a bank
-            // transaction row than a marketplace listing. An unset photo falls back to
-            // a plain placeholder box, never a fabricated image.
-            Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {
-                if (listing.photoUrl != null) {
-                    // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
-                    // renders nothing at all while loading or on a failed fetch -- a
-                    // real gap that showed up live as a blank black box on a listing
-                    // whose photoUrl was valid but hadn't finished loading yet. Now
-                    // both the loading and error states fall back to the same
-                    // placeholder icon the "no photo" branch below already used, so a
-                    // slow or failed load never reads as broken UI.
-                    SubcomposeAsyncImage(
-                        model = listing.photoUrl,
-                        contentDescription = listing.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        when (painter.state) {
-                            is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
-                            else -> ListingPhotoPlaceholder()
+            // Real Karrot list-row layout (2026-08-03, user-provided real 당근마켓
+            // screenshots, light + dark) -- corrects the 2026-07-24 comment this
+            // replaced, which claimed a large full-width hero photo led Karrot's real
+            // card and price came before title; neither holds up against the actual
+            // screenshots: every real row is a small square thumbnail beside the text,
+            // and the real order is title (bold) -> location/time (muted) -> price
+            // (bold, largest). The full-width hero-image version wasn't sourced from a
+            // real screenshot at the time it was written.
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(modifier = Modifier.size(96.dp).clip(RoundedCornerShape(12.dp))) {
+                    if (listing.photoUrl != null) {
+                        // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
+                        // renders nothing at all while loading or on a failed fetch -- a
+                        // real gap that showed up live as a blank black box on a listing
+                        // whose photoUrl was valid but hadn't finished loading yet. Now
+                        // both the loading and error states fall back to the same
+                        // placeholder icon the "no photo" branch below already used, so a
+                        // slow or failed load never reads as broken UI.
+                        SubcomposeAsyncImage(
+                            model = listing.photoUrl,
+                            contentDescription = listing.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            when (painter.state) {
+                                is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                                else -> ListingPhotoPlaceholder()
+                            }
+                        }
+                    } else {
+                        ListingPhotoPlaceholder()
+                    }
+                    if (listing.status == "SOLD") {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("SOLD", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                } else {
-                    ListingPhotoPlaceholder()
-                }
-                if (listing.status == "SOLD") {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surface).padding(horizontal = 12.dp, vertical = 6.dp)) {
-                            Text("SOLD", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
+                    // Real "Sponsored" badge (2026-07-25) -- only ever shown for a listing
+                    // with a real, still-future boostedUntil, matching Coupang/Baemin's own
+                    // real sponsored-placement labeling convention. Never fabricated on an
+                    // unpaid listing.
+                    if (isListingBoosted(listing.boostedUntil)) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(4.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Ids.colors.brand)
+                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                        ) { Text("AD", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
-                if (!isMine) {
-                    Icon(
-                        if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
-                        tint = if (favorited) Ids.colors.danger else Color.White,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(10.dp)
-                            .size(22.dp)
-                            .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            listing.title,
+                            color = Ids.colors.textPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (!isMine) {
+                            Icon(
+                                if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
+                                tint = if (favorited) Ids.colors.danger else Ids.colors.textTertiary,
+                                modifier = Modifier.size(20.dp).clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                            )
+                        }
+                    }
+                    Text(
+                        listOfNotNull(listing.neighborhood, listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
+                        color = Ids.colors.textSecondary,
+                        fontSize = 12.sp,
                     )
-                }
-                // Real "Sponsored" badge (2026-07-25) -- only ever shown for a listing
-                // with a real, still-future boostedUntil, matching Coupang/Baemin's own
-                // real sponsored-placement labeling convention. Never fabricated on an
-                // unpaid listing.
-                if (isListingBoosted(listing.boostedUntil)) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(10.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Ids.colors.brand)
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                    ) { Text("Sponsored", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                    Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
             }
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            // Real Karrot info order -- price first (most prominent), then title,
-            // then location + time, matching this session's own live research into
-            // 당근마켓's real listing-card hierarchy.
-            Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-            Text(listing.title, color = Ids.colors.textPrimary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                listOfNotNull(listing.neighborhood, listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
-                color = Ids.colors.textSecondary,
-                fontSize = 12.sp,
-            )
+            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // Real Karrot-Score trust badge (2026-07-24) -- social proof, the fourth
             // element in Karrot's own real card hierarchy (price -> title ->
             // location/time -> social proof). Only shown for someone else's listing --

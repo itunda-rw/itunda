@@ -238,17 +238,6 @@ import java.util.UUID
 
 private enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
 
-// Real Karrot brand orange (2026-08-03), pixel-sampled directly from real 당근마켓
-// screenshots the user provided (both light and dark mode -- #FF6F0F / #FF6E1D,
-// close enough to be the same real value through JPEG compression, and it doesn't
-// get remapped between themes, unlike itunda's own theme-reactive brand blue). Scoped
-// to this file, not core/designsystem's IdsSemanticColors -- this is deliberately
-// Hood's own brand identity, not a shared token, per "themes/interaction/graphics
-// stay common, but let Eats be Eats, Shop be Shop, Hood be Hood" (2026-08-03): each
-// super-app section gets its own visual identity the way KakaoBank/KakaoPay/Karrot
-// each look distinct while feeling like the same underlying interaction language.
-private val HoodOrange = Color(0xFFFF6F0F)
-
 // Real 당근-style neighborhood-services hub (2026-07-19), given a real 당근 top bar
 // and pill-chip category row 2026-08-03 (user-provided real 당근마켓 screenshots,
 // light + dark) -- previously a generic Toss-style underline-tab strip, which was
@@ -361,20 +350,23 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
                 HoodMode.PROPERTY -> PropertyContent(onMessageLister = onMessageSeller)
             }
         }
-        // Real Karrot 글쓰기 FAB (2026-08-03): a floating orange pill, always present
-        // regardless of which chip is selected, matching the real reference screenshots
-        // exactly (bottom-end, brand orange, "+" + label). Currently wired to
-        // Marketplace's own new-listing form (the mode these reference screenshots are
-        // literally of); Life/Jobs/Home's own "new post" entry points stay as their
-        // existing in-content buttons rather than this FAB silently doing nothing when
-        // tapped from a mode it can't act on yet.
+        // Real 당근 글쓰기 FAB layout (2026-08-03): a floating pill, always present
+        // regardless of which chip is selected, matching the real reference
+        // screenshots' position/shape exactly (bottom-end, "+" + label). Color is
+        // itunda's own Ids.colors.brand, not Karrot's real orange -- user correction,
+        // same day: "themes/interactions... we use what itunda already [has]," i.e.
+        // adopt the UI/UX (layout, shape) from a reference, not its color identity.
+        // Currently wired to Marketplace's own new-listing form (the mode these
+        // reference screenshots are literally of); Life/Jobs/Home's own "new post"
+        // entry points stay as their existing in-content buttons rather than this FAB
+        // silently doing nothing when tapped from a mode it can't act on yet.
         if (mode == HoodMode.MARKETPLACE) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(20.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .background(HoodOrange)
+                    .background(Ids.colors.brand)
                     .clickable { requestNewListingSignal++ }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,

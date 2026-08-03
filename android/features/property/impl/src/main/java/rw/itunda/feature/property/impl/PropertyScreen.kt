@@ -18,14 +18,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -191,33 +196,28 @@ fun PropertyContent(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
-            // Flat, horizontally-scrolling category strip (2026-07-24), same
-            // Karrot/Toss-Shopping-style treatment as Marketplace's own Browse/
-            // Near me/etc row -- replacing a filled-pill segmented control that
-            // read as dense fintech chrome, not a neighborhood-listings screen.
+            // Real Karrot pill-chip row (2026-08-03), matching MarketplaceContent's
+            // own same-day fix for visual consistency across all 4 Hood modes -- see
+            // that file's doc comment for the real-screenshot sourcing.
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings", PropertyView.ACQUIRED to "Places I got", PropertyView.SAVED to "Saved", PropertyView.VALUATION to "시세 Value").forEach { (v, label) ->
                     val selected = v == view
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
-                        Text(
-                            label,
-                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .height(2.dp)
-                                .width(18.dp)
-                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
-                        )
-                    }
+                    Text(
+                        label,
+                        color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
+                            .clickable { view = v }
+                            .padding(horizontal = 16.dp, vertical = 9.dp),
+                    )
                 }
             }
         }
@@ -653,7 +653,17 @@ private fun PropertyListingCard(
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (!isMine) Text(if (favorited) "♥" else "♡", color = if (favorited) Ids.colors.danger else Ids.colors.textSecondary, fontSize = 22.sp, modifier = Modifier.clickable { onToggleFavorite() }.padding(end = 8.dp))
+                    // Real icon consistency fix (2026-08-03) -- was a plain "♥"/"♡"
+                    // text glyph, matching JobPostCard's own same-day fix -- see that
+                    // file's doc comment.
+                    if (!isMine) {
+                        Icon(
+                            if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
+                            tint = if (favorited) Ids.colors.danger else Ids.colors.textSecondary,
+                            modifier = Modifier.size(20.dp).clickable { onToggleFavorite() }.padding(end = 8.dp),
+                        )
+                    }
                     Text(priceLabel, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             }
