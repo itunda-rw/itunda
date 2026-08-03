@@ -71,6 +71,46 @@ class EatsReviewServiceTest : BehaviorSpec({
             }
         }
 
+        When("the real buyer submits a review with a real photo URL") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder)
+            every { eatsReviewRepository.findByOrderId("eats_order_1") } returns null
+            val savedSlot = slot<EatsReview>()
+            every { eatsReviewRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val review = service.submitReview("buyer_1", "eats_order_1", 5, "Great food!", 4, "Fast delivery", "  https://example.com/food.jpg  ")
+
+            Then("it trims and persists the photo URL") {
+                review.photoUrl shouldBe "https://example.com/food.jpg"
+            }
+        }
+
+        When("submitting a photo URL longer than the real 500-char DB column bound") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder)
+            every { eatsReviewRepository.findByOrderId("eats_order_1") } returns null
+            val savedSlot = slot<EatsReview>()
+            every { eatsReviewRepository.save(capture(savedSlot)) } answers { firstArg() }
+            val longUrl = "https://example.com/" + "x".repeat(600)
+
+            val review = service.submitReview("buyer_1", "eats_order_1", 5, null, 4, null, longUrl)
+
+            Then("it truncates the photo URL to 500 chars rather than risking a raw DB insert failure") {
+                review.photoUrl?.length shouldBe 500
+            }
+        }
+
+        When("submitting no photo URL at all") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder)
+            every { eatsReviewRepository.findByOrderId("eats_order_1") } returns null
+            val savedSlot = slot<EatsReview>()
+            every { eatsReviewRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val review = service.submitReview("buyer_1", "eats_order_1", 5, null, 4, null)
+
+            Then("it stays null -- a review with no photo is still a complete, honest review") {
+                review.photoUrl shouldBe null
+            }
+        }
+
         When("submitting a rating outside 1-5") {
             Then("it throws InvalidEatsRatingException before even looking up the order") {
                 try {

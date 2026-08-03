@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.SubcomposeAsyncImage
@@ -57,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -81,6 +85,7 @@ import rw.itunda.core.network.EATS_MEMBERSHIP_TIERS
 import rw.itunda.core.network.PLATFORM_MEMBERSHIP_TIERS
 import rw.itunda.core.network.PlatformMembershipDto
 import rw.itunda.core.network.SubscribePlatformMembershipRequest
+import rw.itunda.core.network.EatsDishDto
 import rw.itunda.core.network.EatsMembershipDto
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsOrderItemRequest
@@ -256,6 +261,55 @@ private fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favorite
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+// Real Coupang Eats-style dish grid (2026-08-03) -- see EatsDishDto's own doc comment
+// for the sourcing (a real Coupang Eats UX teardown, re-verified directly against the
+// primary article text: "actual food photographs arranged in a three-column grid...
+// much more intuitive"; the same article separately confirms rating/delivery-time/fee
+// are NOT shown here, only surfacing once you open the restaurant -- matching this
+// grid's deliberately bare tile). Tapping a dish opens its restaurant (itunda's own
+// domain model requires the restaurant context to price/order any item, not a claim
+// about Coupang Eats specifically) -- there's no standalone dish-detail concept.
+// Additive, not a replacement for the restaurant list below: that list's search-by-name
+// and full alphabetical browse are real, working, and this dish endpoint has no
+// text-search of its own, so removing the list would be a real functionality loss, not
+// just a visual one. Hidden once a real search is active for the same reason.
+@Composable
+private fun EatsDishGrid(dishes: List<EatsDishDto>, onOpen: (EatsDishDto) -> Unit) {
+    if (dishes.isEmpty()) return
+    val rows = (dishes.size + 2) / 3
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = Modifier.fillMaxWidth().height(148.dp * rows),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        userScrollEnabled = false,
+    ) {
+        gridItems(dishes, key = { it.id }) { dish ->
+            Column(modifier = Modifier.clickable { onOpen(dish) }) {
+                Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(Ids.layout.cardCornerRadius))) {
+                    if (dish.imageUrl != null) {
+                        SubcomposeAsyncImage(
+                            model = dish.imageUrl,
+                            contentDescription = dish.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            when (painter.state) {
+                                is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                                else -> RestaurantPhotoPlaceholder()
+                            }
+                        }
+                    } else {
+                        RestaurantPhotoPlaceholder()
+                    }
+                }
+                Text(dish.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                Text(dish.merchantName, color = Ids.colors.textSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -480,7 +534,19 @@ private fun OrderFoodContent(
     // a fast star-toggle lookup on each browse card.
     var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var favoritingId by remember { mutableStateOf<String?>(null) }
+    // Real dish grid (2026-08-03) -- see EatsDishGrid's own doc comment.
+    var dishes by remember { mutableStateOf<List<EatsDishDto>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
+
+    fun loadDishes() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getEatsDishes(selectedCategory)
+                if (res.success) dishes = res.dishes
+            } catch (e: Exception) { /* non-critical -- the restaurant list below still works */ }
+        }
+    }
+    LaunchedEffect(selectedCategory) { loadDishes() }
 
     fun loadFavorites() {
         coroutineScope.launch {
@@ -555,6 +621,17 @@ private fun OrderFoodContent(
                 error = "Couldn't reach itunda. Check your connection and try again."
             }
         }
+    }
+
+    // Real dish-grid tap-through (2026-08-03) -- see EatsDishGrid's own doc comment on
+    // why this opens the restaurant rather than a standalone dish page. Resolves against
+    // the already-loaded allRestaurants for the real category/cashbackRate, falling back
+    // to a minimal stub built from the dish's own merchantId/merchantName -- same
+    // fallback shape FavoriteRestaurantsView's onOpen already uses below.
+    fun openDish(dish: EatsDishDto) {
+        val restaurant = allRestaurants?.find { it.merchantId == dish.merchantId }
+            ?: ShoppingMerchantDto(merchantId = dish.merchantId, businessName = dish.merchantName, category = null, cashbackRate = "1%")
+        openRestaurant(restaurant)
     }
 
     // Real "Reorder" button (2026-07-19): re-populate the cart from a past order's real
@@ -721,6 +798,9 @@ private fun OrderFoodContent(
                     onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
                 )
             }
+            if (searchInput.isBlank() && dishes.isNotEmpty()) {
+                item { EatsDishGrid(dishes, onOpen = ::openDish) }
+            }
             if (error != null) {
                 item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
             } else if (restaurants == null) {
@@ -874,6 +954,21 @@ private fun RestaurantRatingBadge(restaurantId: String) {
                                 color = Ids.colors.textSecondary,
                                 fontSize = 12.sp,
                             )
+                            // Real review photo (2026-08-04) -- see EatsReviewDto.photoUrl's
+                            // own doc comment.
+                            if (!rv.photoUrl.isNullOrBlank()) {
+                                SubcomposeAsyncImage(
+                                    model = rv.photoUrl,
+                                    contentDescription = "Review photo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp).size(72.dp).clip(RoundedCornerShape(8.dp)),
+                                ) {
+                                    when (painter.state) {
+                                        is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                                        else -> RestaurantPhotoPlaceholder()
+                                    }
+                                }
+                            }
                             if (!rv.ownerReply.isNullOrBlank()) {
                                 Text(
                                     "↳ Restaurant: ${rv.ownerReply}",
@@ -896,6 +991,10 @@ private fun ReviewOrderCard(order: EatsOrderDto) {
     var done by remember { mutableStateOf(false) }
     var restaurantRating by remember { mutableStateOf(0) }
     var restaurantComment by remember { mutableStateOf("") }
+    // Real optional review photo (2026-08-04) -- see EatsReviewDto.photoUrl's own doc
+    // comment. Same real-external-URL-only convention as Merchant.photoUrl's own input
+    // elsewhere in this app -- a real URL the buyer pastes, never an upload pipeline.
+    var photoUrl by remember { mutableStateOf("") }
     var riderRating by remember { mutableStateOf(0) }
     var riderComment by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
@@ -923,6 +1022,12 @@ private fun ReviewOrderCard(order: EatsOrderDto) {
                 onValueChange = { restaurantComment = it },
                 placeholder = { Text("How was the food? (optional)") },
                 modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = photoUrl,
+                onValueChange = { photoUrl = it },
+                placeholder = { Text("Photo URL of your food (optional)") },
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             )
         }
         Column {
@@ -957,7 +1062,7 @@ private fun ReviewOrderCard(order: EatsOrderDto) {
                             try {
                                 NetworkClient.apiService.submitEatsReview(
                                     order.id,
-                                    SubmitEatsReviewRequest(restaurantRating, restaurantComment.trim().ifBlank { null }, riderRating, riderComment.trim().ifBlank { null }),
+                                    SubmitEatsReviewRequest(restaurantRating, restaurantComment.trim().ifBlank { null }, riderRating, riderComment.trim().ifBlank { null }, photoUrl.trim().ifBlank { null }),
                                 )
                                 done = true
                             } catch (e: HttpException) {

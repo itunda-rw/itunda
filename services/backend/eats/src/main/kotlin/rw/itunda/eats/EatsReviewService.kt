@@ -61,6 +61,7 @@ class EatsReviewService(
         restaurantComment: String?,
         riderRating: Int?,
         riderComment: String?,
+        photoUrl: String? = null,
     ): EatsReview {
         if (restaurantRating !in 1..5) {
             throw InvalidEatsRatingException("Restaurant rating must be between 1 and 5")
@@ -105,6 +106,10 @@ class EatsReviewService(
                 // over-length insert rather than silently truncating.
                 restaurantRating = restaurantRating, restaurantComment = restaurantComment?.trim()?.take(1000)?.ifBlank { null },
                 riderRating = resolvedRiderRating, riderComment = resolvedRiderComment?.trim()?.take(1000)?.ifBlank { null },
+                // Real bound (500, matching Merchant.photoUrl/webhookUrl's own identical
+                // fix) -- same STRICT_TRANS_TABLES over-length-insert gotcha as the
+                // comment fields above.
+                photoUrl = photoUrl?.trim()?.take(500)?.ifBlank { null },
             ),
         )
     }

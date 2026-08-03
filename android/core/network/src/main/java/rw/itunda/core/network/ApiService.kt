@@ -937,6 +937,13 @@ data class DealProductDto(
     val stockQuantity: Int? = null,
 )
 data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
+
+// Real Coupang Eats-style dish grid (2026-08-03) -- see backend EatsController.kt's
+// own doc comment for the full 100%-UI/UX-parity sourcing. Same shape as
+// DealProductDto above (this app's established "product-in-a-list" DTO shape) minus
+// the discount fields, which don't apply here.
+data class EatsDishDto(val id: String, val merchantId: String, val merchantName: String, val name: String, val price: Double, val imageUrl: String? = null)
+data class EatsDishesResponse(val success: Boolean, val dishes: List<EatsDishDto>)
 data class MembershipDayStatusResponse(val success: Boolean, val isMembershipDay: Boolean, val multiplier: Double)
 
 // Real Coupang 타임특가 (Time Deal, item 226) -- see the backend TimeDeal.kt's own doc
@@ -1356,6 +1363,9 @@ data class SubmitEatsReviewRequest(
     val restaurantComment: String? = null,
     val riderRating: Int,
     val riderComment: String? = null,
+    // Real optional review photo (2026-08-04) -- see EatsReviewDto.photoUrl's own doc
+    // comment.
+    val photoUrl: String? = null,
 )
 data class EatsReviewDto(
     val id: String,
@@ -1371,6 +1381,11 @@ data class EatsReviewDto(
     // own doc comment. bank-mfe already has this (item 184); this is the first Android client.
     val ownerReply: String? = null,
     val ownerRepliedAt: String? = null,
+    // Real optional review photo (2026-08-04) -- see docs/DESIGN_REFERENCES.md's Eats
+    // recommendation #5 (food-delivery trust leans on real plated-food photos). Same
+    // real-external-URL-only convention as Merchant.photoUrl -- a real URL the buyer
+    // supplies, never an upload/storage pipeline.
+    val photoUrl: String? = null,
     val createdAt: String,
 )
 data class EatsReviewResponse(val success: Boolean, val review: EatsReviewDto)
@@ -2608,6 +2623,11 @@ interface ApiService {
     // own doc comment.
     @GET("api/v1/shopping/products/deals")
     suspend fun getShopDeals(): DealsResponse
+
+    // Real Coupang Eats-style dish grid (2026-08-03) -- see EatsDishDto's own doc
+    // comment for the sourcing.
+    @GET("api/v1/eats/dishes")
+    suspend fun getEatsDishes(@Query("category") category: String? = null): EatsDishesResponse
 
     // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment.
     @GET("api/v1/time-deals")

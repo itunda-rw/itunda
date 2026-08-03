@@ -40,6 +40,14 @@ import java.time.Instant
  * PICKUP order permanently unreviewable. A PICKUP order's review simply has no rider to
  * rate; `riderRating`/`riderComment` stay null for that case, same honest "nothing to
  * report" discipline this codebase already uses elsewhere rather than a fabricated 0/N-A.
+ *
+ * `photoUrl` (migration V224, 2026-08-04) -- see docs/DESIGN_REFERENCES.md's Eats
+ * recommendation #5: food-delivery trust leans disproportionately on photos of the
+ * actual plated food (Baemin's 2022 push ranks photo-bearing reviews first via 추천순
+ * 정렬). Same real-external-URL-only convention as Merchant.photoUrl/Listing photos
+ * everywhere else in this codebase -- a real URL the buyer supplies, never an
+ * upload/storage pipeline. Nullable: a review with no photo is still a complete, honest
+ * review, same as before this field existed.
  */
 @Entity
 @Table(name = "eats_reviews")
@@ -77,6 +85,9 @@ class EatsReview(
 
     @Column(name = "owner_replied_at")
     var ownerRepliedAt: Instant? = null,
+
+    @Column(name = "photo_url", length = 500)
+    val photoUrl: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

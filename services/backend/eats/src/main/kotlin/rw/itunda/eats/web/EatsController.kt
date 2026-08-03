@@ -100,6 +100,9 @@ data class SubmitEatsReviewRequest(
     // see EatsReview.kt's own doc comment for the full account.
     val riderRating: Int? = null,
     val riderComment: String? = null,
+    // Real optional review photo (2026-08-04) -- see EatsReview.photoUrl's own doc
+    // comment.
+    val photoUrl: String? = null,
 )
 data class ReplyToEatsReviewRequest(val reply: String)
 
@@ -379,7 +382,7 @@ class EatsController(
     ): ResponseEntity<Map<String, Any?>> {
         val review = eatsReviewService.submitReview(
             currentUser.userId, orderId, request.restaurantRating, request.restaurantComment,
-            request.riderRating, request.riderComment,
+            request.riderRating, request.riderComment, request.photoUrl,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review))
     }
