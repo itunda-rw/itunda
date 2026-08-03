@@ -130,46 +130,63 @@ they close in itunda's current implementation.
 
 ### Recommendations (ranked)
 
-1. **[sourced]** The restaurant card is missing the data model to show delivery metadata at all.
-   `ShoppingMerchantDto` (`ApiService.kt:488-492`) has only `merchantId, businessName, category,
-   cashbackRate` plus optional lat/lng — no `photoUrl`, `rating`, `reviewCount`, `deliveryFee`,
-   `deliveryTimeMinutes`, `minOrderAmount`, `distanceKm`. Both Baemin and Coupang Eats put all of
-   these directly on the list card so restaurants are comparable before opening any of them. This
-   needs a backend model change (table + DTO + endpoint), not just a UI tweak.
+1. **[sourced] Implemented.** The restaurant card is missing the data model to show delivery
+   metadata at all. `ShoppingMerchantDto` (`ApiService.kt:488-492`) has only `merchantId,
+   businessName, category, cashbackRate` plus optional lat/lng — no `photoUrl`, `rating`,
+   `reviewCount`, `deliveryFee`, `deliveryTimeMinutes`, `minOrderAmount`, `distanceKm`. Both Baemin
+   and Coupang Eats put all of these directly on the list card so restaurants are comparable before
+   opening any of them. This needs a backend model change (table + DTO + endpoint), not just a UI
+   tweak. **Verified 2026-08-04 (re-audit while sourcing the dish grid below): `ShoppingMerchantDto`
+   now carries every one of these fields and `RestaurantCard` renders them inline — this doc entry
+   was simply stale, not an open gap.**
    *Target: `ApiService.kt:488` + `/api/v1/shopping/merchants` + `OrderFoodContent`'s browse `LazyColumn`*
 
-2. **[sourced]** Rating exists but sits behind an extra tap. `RestaurantRatingBadge` is only
-   called inside `RestaurantMenuView` (`SuperAppTabs.kt:4102`) — after a restaurant is already
+2. **[sourced] Implemented.** Rating exists but sits behind an extra tap. `RestaurantRatingBadge` is
+   only called inside `RestaurantMenuView` (`SuperAppTabs.kt:4102`) — after a restaurant is already
    open. Real apps put rating on the browse-list card. Fix: fold rating/reviewCount into the
-   existing list payload (a join, not a new round trip).
+   existing list payload (a join, not a new round trip). **Verified 2026-08-04: `RestaurantCard`'s
+   own secondary line already shows rating/reviewCount/distance/ETA/minOrder together — closed
+   alongside item 1, same stale-doc-entry finding.**
    *Target: `SuperAppTabs.kt:4102`, browse list*
 
-3. **[sourced]** No menu options/customization model — the single biggest structural gap. Coupang
-   Eats' own seller guide makes required-option groups a first-class, **enforced** concept
-   (explicitly requiring a +0원 choice so list and cart price never diverge); Baemin's item detail
-   is built the same way. itunda's `MerchantProductDto` (`ApiService.kt:531`) is flat
+3. **[sourced] Implemented.** No menu options/customization model — the single biggest structural
+   gap. Coupang Eats' own seller guide makes required-option groups a first-class, **enforced**
+   concept (explicitly requiring a +0원 choice so list and cart price never diverge); Baemin's item
+   detail is built the same way. itunda's `MerchantProductDto` (`ApiService.kt:531`) is flat
    `id, merchantId, name, price, active, createdAt` — no way to represent spice level, size, or
-   add-ons. Without this, itunda cannot represent most real restaurant menus.
+   add-ons. Without this, itunda cannot represent most real restaurant menus. **Verified 2026-08-04:
+   `MerchantProductDto.optionGroups`/`EatsMenuOptionGroupDto`/`EatsMenuOptionChoiceDto` exist,
+   `MenuOptionService` enforces the real "a required group needs at least one real choice"
+   constraint from Coupang's own seller guide, and per-configuration cart lines (item 6 below) are
+   built on top of it.**
    *Target: `ApiService.kt:531`, item row in `RestaurantMenuView:4109-4125`*
 
-4. **[sourced]** No live rider-location map — status is a text label swap
+4. **[sourced] Implemented.** No live rider-location map — status is a text label swap
    (`EATS_STATUS_LABELS`/`RIDER_STATUS_CHAIN`, `SuperAppTabs.kt:3519-3527`). itunda already has a
    self-hosted OSRM/Nominatim stack and a `RouteMiniMap` component used elsewhere
    (`~1674`) — the pieces exist, just not wired into Eats tracking the way Baemin/Coupang Eats do
-   (live rider dot + phone + vehicle type during delivery).
+   (live rider dot + phone + vehicle type during delivery). **Verified 2026-08-04: real live
+   rider-location tracking (item 182) wires `RouteMiniMap` into the delivery-in-progress order view
+   with the real restaurant/delivery coordinates.**
    *Target: `SuperAppTabs.kt:3519-3527`, `4330` (`EatsOrderRow`), pair with `RouteMiniMap`*
 
-5. **[sourced]** Review model has no photo field and no owner reply. `SubmitEatsReviewRequest`
-   (`~4063`) is numeric stars + optional text only. Baemin's 2022 push ranks photo-bearing reviews
-   first via 추천순 정렬, and 사장님 댓글 (owner replies) is a named, sourced feature. Food-delivery
-   trust leans disproportionately on photos of the actual plated food, making this higher-leverage
-   here than on other surfaces.
+5. **[sourced] Owner reply implemented; photo implemented 2026-08-04.** Review model has no photo
+   field and no owner reply. `SubmitEatsReviewRequest` (`~4063`) is numeric stars + optional text
+   only. Baemin's 2022 push ranks photo-bearing reviews first via 추천순 정렬, and 사장님 댓글 (owner
+   replies) is a named, sourced feature. Food-delivery trust leans disproportionately on photos of
+   the actual plated food, making this higher-leverage here than on other surfaces. Owner reply
+   (`EatsReview.ownerReply`) shipped 2026-07-26. Photo (`EatsReview.photoUrl`, migration V224)
+   shipped 2026-08-04, closing this item fully — same real-external-URL-only convention as
+   `Merchant.photoUrl`, verified via 3 new `EatsReviewServiceTest` cases (trim, 500-char truncation,
+   null-passthrough).
    *Target: `SubmitEatsReviewRequest`/`ReviewOrderCard`, `SuperAppTabs.kt:3997-4063`*
 
-6. **[inferred]** Cart cannot hold two configurations of the same item, and has no per-line notes.
-   `cart = remember { mutableStateMapOf<String, Int>() }` (`3580`) is keyed by raw product id only.
-   This follows structurally from the missing options model above (item 3) rather than being an
-   independently sourced claim, and should be fixed alongside it.
+6. **[inferred] Implemented.** Cart cannot hold two configurations of the same item, and has no
+   per-line notes. `cart = remember { mutableStateMapOf<String, Int>() }` (`3580`) is keyed by raw
+   product id only. This follows structurally from the missing options model above (item 3) rather
+   than being an independently sourced claim, and should be fixed alongside it. **Verified
+   2026-08-04: `EatsCartLine`/`eatsCartKey` (keyed by `productId` + sorted `choiceIds`) closes this
+   — two configurations of the same item are genuinely distinct cart lines.**
    *Target: `SuperAppTabs.kt:3580`, consumers in `EatsCheckoutView:4214+`*
 
 7. **[sourced] Implemented 2026-07-26.** No delivery-speed badge / no single-order vs. batched-order distinction. Coupang
@@ -213,6 +230,24 @@ they close in itunda's current implementation.
    `POST /api/v1/merchant/products/{id}/price-tiers`, merchant app's "Bulk pricing" editor, Shop's
    "Buy N+ for X each" hint*
 
+10. **[sourced] Implemented 2026-08-04.** Home browse wasn't a photo-forward dish grid at all — a
+    real Coupang Eats-specific UX teardown (brunch.co.kr/@e6b24f6f7c6949f/20, re-fetched directly
+    and re-confirmed, not just search-snippet-summarized) states the real home surface is a
+    3-column grid of individual food photos, with rating/delivery-time/fee deliberately deferred to
+    the restaurant page. `GET /api/v1/eats/dishes` + `EatsDishGrid` ships this as an *additive*
+    rail above the existing restaurant list (which stays — its real search-by-name has no
+    equivalent in the dishes endpoint). **A real, live bug was found while verifying this against
+    real seeded data**: the shared Shop/Eats merchant directory (`getShoppingMerchants`) was 90%
+    (45/50) leftover QA test-fixture merchants with no real category set, polluting both Shop's and
+    Eats' actual browse results for a real user (a hair salon, a clothing shop, and a fake
+    streaming service showing up in what should be a restaurant list). There was previously no way,
+    anywhere in the app, to take a merchant out of public browse once created — fixed with a real
+    ADMIN-gated moderation endpoint (`GET/POST /api/v1/system/merchants/**`), not a one-off DB
+    cleanup, since the same class of pollution can recur from future test runs.
+    *Shipped: `MerchantProductRepository.findDishes`, `EatsController.getDishes`, `EatsDishGrid`,
+    `MerchantRepository.findByStatusAndCategoryIsNull`, `MerchantService.suspendMerchant`/
+    `reactivateMerchant`, `MerchantModerationAdminController`*
+
 ### Unresolved / worth a follow-up
 
 - Baemin's/Coupang Eats' own official design-system docs (story.baemin.com, bcut.baemin.com)
@@ -221,8 +256,14 @@ they close in itunda's current implementation.
 - No pixel-level card layout verified against a live, dated screenshot.
 - Baemin's B마트 and either app's algorithmic "today's picks" ranking weren't researched — itunda
   has no comparable surface yet.
-- Coupang Eats' 좋아요/싫어요 per-item rating and pickup/delivery cart toggle came from secondary
-  writeups, not Coupang's own product pages.
+- **Re-checked 2026-08-04**: the delivery/pickup cart toggle this bullet used to also flag as
+  unverified is real and already shipped (`EatsCheckoutMode.DELIVERY/PICKUP/DINE_IN`, checkout
+  toggle). Coupang Eats' 좋아요/싫어요 **per-menu-item** rating (distinct from the already-real
+  restaurant/rider review system) is not confirmed real — a fresh, more targeted search plus a
+  direct namu.wiki fetch found no mention of a per-item like/dislike feature at all; the earlier
+  search snippet backing this claim more likely described rider ratings, which itunda already has.
+  Not built. Don't re-add this to the implemented list without a primary source (an actual screen
+  showing per-dish 좋아요/싫어요 buttons), not another secondary summary.
 
 ---
 
