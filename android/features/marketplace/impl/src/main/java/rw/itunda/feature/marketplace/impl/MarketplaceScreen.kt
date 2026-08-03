@@ -8,7 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -146,6 +145,13 @@ fun MarketplaceContent(
     // itunda had two stacked). Same (counter, key) re-trigger shape as
     // requestNewListingSignal above, generalized to carry which view was requested.
     requestedView: Pair<Int, String> = 0 to "",
+    // Real fix, 2026-08-03, third correction same day -- see HoodTab's own
+    // showNeighborhoodPrompt doc comment for the real, verified sourcing: real
+    // Karrot has no Browse/Near me/Neighborhood chip trio, the default feed is
+    // already neighborhood-scoped (extending outward automatically), and you
+    // change neighborhoods by tapping the neighborhood name itself. Bumped after a
+    // real neighborhood save so this screen's own auto-detect (below) re-runs.
+    neighborhoodRefreshSignal: Int = 0,
 ) {
     var view by remember { mutableStateOf(HoodView.BROWSE) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
@@ -225,6 +231,26 @@ fun MarketplaceContent(
     LaunchedEffect(Unit) {
         val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (hasPermission) requestBrowseLocation()
+    }
+
+    // Real default-feed auto-detect (2026-08-03) -- see this Composable's own
+    // neighborhoodRefreshSignal doc comment for the real-Karrot-verified sourcing:
+    // the feed itself picks the real source (neighborhood-scoped if set, else
+    // silently-nearby if permission already granted, else honest general browse) --
+    // there's no user-facing Browse/Near-me/Neighborhood choice to make anymore.
+    // Re-runs whenever a real neighborhood save bumps the signal.
+    LaunchedEffect(neighborhoodRefreshSignal) {
+        try {
+            val profileRes = NetworkClient.authApi.getProfile()
+            if (profileRes.user.neighborhood != null) {
+                view = HoodView.NEIGHBORHOOD
+                return@LaunchedEffect
+            }
+        } catch (_: Exception) {
+            // Best-effort -- falls through to the next real signal below.
+        }
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        view = if (hasPermission) HoodView.NEARBY else HoodView.BROWSE
     }
 
     // Real Marketplace listing wishlist (2026-07-21) -- porting bank-mfe's wishlist
@@ -414,56 +440,16 @@ fun MarketplaceContent(
         // already highlights "Hood" and HoodTab's own Market/Life/Jobs/Home strip
         // sits right above this screen, so a third "Hood" label was pure repeat
         // noise, not information.
-        item {
-            // Real Karrot pill-chip category row (2026-08-03, user-provided real
-            // 당근마켓 screenshots, light + dark) -- replaces the earlier Toss-style
-            // underline-tab strip. Real Karrot chips: selected = a solid pill in the
-            // near-black/near-white extreme of the theme (pixel-sampled from the real
-            // screenshots: #2B3034 in light mode, #F3F4F8 in dark -- i.e. exactly
-            // Ids.colors.textPrimary in both themes, not a separately invented color),
-            // unselected = a soft neutral pill (#F3F3F3 light / #333438 dark -- a close
-            // match for the existing Ids.colors.surfaceSoft token). No new tokens
-            // needed -- this reuses the same common theme colors, only the shape
-            // (pill, not underline) changes, matching "themes/interaction/graphics
-            // stay common, only Hood's own chrome adopts Karrot" from the same request.
-            //
-            // Real fix, 2026-08-03, second correction same day: user directly
-            // rejected the "smaller/lighter second row" compromise above ("what do
-            // you mean we have two stack of chips which looks noisy while 당근 uses
-            // one, facts please") -- verified against the real daangn.com that real
-            // Karrot genuinely has one chip row, no second tier at all. My
-            // listings/Purchases/Wishlist/Alerts (real personal-management views,
-            // no chip-row equivalent in any real app's main browse screen) moved to
-            // HoodTab's own hamburger menu -- see requestedView's own doc comment.
-            // Browse/Near me/Neighborhood remain here: real content-scope filters
-            // (not personal-management views), closer in kind to Karrot's own
-            // "가까운 동네" chip. This is still visually a second row, not literally
-            // one -- an honest, disclosed gap given itunda's own Market/Life/Jobs/
-            // Home mode-switcher (a real architectural difference from Karrot's
-            // single already-unified feed, kept intentionally per explicit user
-            // direction) has no clean single-row precedent to fold these into yet.
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                listOf(HoodView.BROWSE, HoodView.NEARBY, HoodView.NEIGHBORHOOD).forEach { v ->
-                    val selected = v == view
-                    Text(
-                        v.label(),
-                        color = if (selected) Ids.colors.background else Ids.colors.textSecondary,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-                            .clickable { view = v }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
-            }
-        }
+        //
+        // Real fix, 2026-08-03, third correction same day: the Browse/Near me/
+        // Neighborhood chip row that used to render here is gone -- verified via
+        // search (a real 당근 FAQ result) that real Karrot has no such chip trio at
+        // all. The feed source is now auto-detected (see neighborhoodRefreshSignal's
+        // own doc comment) and neighborhoods are changed by tapping the neighborhood
+        // name in HoodTab's own top bar, not a chip here. This closes the "two
+        // stacked chip rows" gap for real, not just visually -- Hood's Market mode
+        // now has exactly one chip row (HoodTab's Market/Life/Jobs/Home), matching
+        // real Karrot.
         favoriteNotice?.let { notice ->
             item { Text(notice, color = Ids.colors.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
         }

@@ -263,6 +263,16 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
     // changing, keyed with which view was requested.
     var showMenuSheet by remember { mutableStateOf(false) }
     var requestedMarketplaceView by remember { mutableStateOf(0 to "") }
+    // Real fix, 2026-08-03, third correction same day: verified via search (a real
+    // 당근 FAQ result) that real Karrot has no "Browse/Near me/Neighborhood" chip
+    // trio at all -- "홈 화면 왼쪽 상단 동네 이름을 클릭해주세요" (tap the neighborhood
+    // name at the top-left of the home screen) is the real way to change it, and the
+    // default feed is already neighborhood-scoped, extending outward automatically
+    // ("설정한 동네와 가까운 근처까지 게시글을 추천해줍니다"). Bumped after a real
+    // neighborhood save so MarketplaceContent's own auto-detect re-runs and the feed
+    // reflects the change immediately.
+    var showNeighborhoodPrompt by remember { mutableStateOf(false) }
+    var neighborhoodRefreshSignal by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         try {
             val user = NetworkClient.authApi.getProfile().user
@@ -288,7 +298,13 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                     .padding(horizontal = Ids.layout.screenHorizontal, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.LocationOn, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary)
+                // Real fix, 2026-08-03 -- see showNeighborhoodPrompt's own doc comment:
+                // this is now the real, verified way to open the neighborhood
+                // switcher, not a chip buried in a filter row.
+                Icon(
+                    Icons.Outlined.LocationOn, contentDescription = null,
+                    modifier = Modifier.size(20.dp).clickable { showNeighborhoodPrompt = true }, tint = Ids.colors.textPrimary,
+                )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     neighborhoodName ?: "Set your neighborhood",
@@ -297,7 +313,7 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                     fontSize = 20.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).clickable { showNeighborhoodPrompt = true },
                 )
                 if (neighborhoodVerificationCount > 0) {
                     Text(
@@ -366,7 +382,12 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 // Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace now
                 // lives in :features:marketplace:impl, the first Hood-mode section pulled out
                 // of this file to match Toss's real Microfeatures architecture.
-                HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller = onMessageSeller, requestNewListingSignal = requestNewListingSignal, requestedView = requestedMarketplaceView)
+                HoodMode.MARKETPLACE -> MarketplaceContent(
+                    onMessageSeller = onMessageSeller,
+                    requestNewListingSignal = requestNewListingSignal,
+                    requestedView = requestedMarketplaceView,
+                    neighborhoodRefreshSignal = neighborhoodRefreshSignal,
+                )
                 // Fourth Feature extraction (2026-07-23), same pattern. onOpenGroupChat
                 // reuses the same onMessageSeller callback (2026-07-24) -- see
                 // TalkScreen.kt's own doc comment on why a real GroupConversation id works
@@ -410,6 +431,7 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
         // (matching Android's own standard overflow-menu convention), not the
         // Maps-style peek/half/full sheet IdsBottomSheetOverlay is built for.
         if (showMenuSheet) {
+            BackHandler { showMenuSheet = false }
             Box(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)).clickable { showMenuSheet = false },
             ) {
@@ -448,6 +470,24 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                             .clickable { showMenuSheet = false; onOpenSettings() }
                             .padding(horizontal = 18.dp, vertical = 12.dp),
                     )
+                }
+            }
+        }
+        // Real neighborhood switcher (2026-08-03) -- see showNeighborhoodPrompt's
+        // own doc comment. Reuses the real, already-built NeighborhoodSetupPrompt
+        // (live GPS + reverse-geocode) rather than inventing a new flow.
+        if (showNeighborhoodPrompt) {
+            BackHandler { showNeighborhoodPrompt = false }
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)).clickable { showNeighborhoodPrompt = false },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal).clickable(enabled = false) {}) {
+                    NeighborhoodSetupPrompt(onDone = { name ->
+                        neighborhoodName = name
+                        showNeighborhoodPrompt = false
+                        neighborhoodRefreshSignal++
+                    })
                 }
             }
         }
