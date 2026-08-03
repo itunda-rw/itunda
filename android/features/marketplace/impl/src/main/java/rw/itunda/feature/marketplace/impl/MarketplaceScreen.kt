@@ -907,7 +907,11 @@ private fun ListingCard(
             // (bold, largest). The full-width hero-image version wasn't sourced from a
             // real screenshot at the time it was written.
             Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(modifier = Modifier.size(96.dp).clip(RoundedCornerShape(12.dp))) {
+                // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot
+                // (user-provided) measured the actual thumbnail at ~124dp square on an
+                // equivalent screen (326px of a 1080px-wide capture), notably more
+                // prominent than itunda's first pass.
+                Box(modifier = Modifier.size(124.dp).clip(RoundedCornerShape(12.dp))) {
                     if (listing.photoUrl != null) {
                         // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
                         // renders nothing at all while loading or on a failed fetch -- a
