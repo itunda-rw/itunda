@@ -171,7 +171,7 @@ fun MarketplaceContent(
             coroutineScope.launch {
                 try {
                     val res = NetworkClient.apiService.getNearbyListings(lat, lng)
-                    if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe }
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe ?: emptySet() }
                     error = null
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
@@ -292,7 +292,7 @@ fun MarketplaceContent(
                     val profileRes = NetworkClient.authApi.getProfile()
                     val res = NetworkClient.apiService.getListingsMyNeighborhood()
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe }
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe ?: emptySet() }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -317,7 +317,7 @@ fun MarketplaceContent(
                     HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases()
                     else -> NetworkClient.apiService.getMyListings()
                 }
-                if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe }
+                if (res.success) { listings = res.listings; trustScores = res.trustScores; likedListingIds = res.likedByMe ?: emptySet() }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
