@@ -546,55 +546,66 @@ they close in itunda's current implementation.
 
 ### Recommendations (ranked)
 
-1. **[sourced]** Wire itunda's own existing cross-merchant product-search endpoint into Android
-   and iOS. This is an itunda-internal inconsistency, not a gap against Coupang/Naver:
+1. **[sourced] Implemented.** Wire itunda's own existing cross-merchant product-search endpoint
+   into Android and iOS. This is an itunda-internal inconsistency, not a gap against Coupang/Naver:
    `GET /api/v1/shopping/products/search` already exists on the backend, and bank-mfe already has a
    working "search across every merchant" bar wired to it (`BankDashboard.tsx:~5340`) — matching
    what every real marketplace treats as table stakes. Android's `ShopTab` and iOS `ShopScreen`
-   never call it at all.
+   never call it at all. **Verified 2026-08-04 (re-audit while sourcing the Eats dish grid):
+   `ShopScreen.kt`'s `searchProducts()`/`NetworkClient.apiService.searchProducts(q)` and
+   `ShopScreen.swift`'s equivalent `searchProducts()` both call it — this doc entry was stale, not
+   an open gap.**
    *Target: `SuperAppTabs.kt` `CommerceShopContent`; `ios/App/Sources/ShopScreen.swift` `CommerceShopContent`*
 
-2. **[sourced]** Surface the already-shipped category/search filter params in Shop's own merchant
-   browse UI. `GET /api/v1/shopping/merchants` already accepts `category`/`q`, and Eats already uses
-   both in the *same file* (`~3620`) — Shop's own `CommerceShopContent` calls the endpoint with no
-   params and shows no search box or chips at all. The backend capability and UI pattern both
-   already exist in itunda's own codebase.
+2. **[sourced] Implemented.** Surface the already-shipped category/search filter params in Shop's
+   own merchant browse UI. `GET /api/v1/shopping/merchants` already accepts `category`/`q`, and Eats
+   already uses both in the *same file* (`~3620`) — Shop's own `CommerceShopContent` calls the
+   endpoint with no params and shows no search box or chips at all. **Verified 2026-08-04: both
+   clients call `getMerchantCategories()` and render real chips.**
    *Target: `SuperAppTabs.kt` `CommerceShopContent` (~2903-3048), mirror Eats' pattern a few hundred lines below; `ShopScreen.swift`*
 
-3. **[sourced]** Extend product wishlist ("찜") from bank-mfe-only to Android and iOS. bank-mfe
-   already has `WishlistButton`/`WishlistView` backed by real endpoints; Android only has favorites
-   for Eats restaurants, iOS Shop has none. This is extending itunda's own precedent, not adopting
-   a new external pattern.
+3. **[sourced] Implemented.** Extend product wishlist ("찜") from bank-mfe-only to Android and iOS.
+   bank-mfe already has `WishlistButton`/`WishlistView` backed by real endpoints; Android only has
+   favorites for Eats restaurants, iOS Shop has none. **Verified 2026-08-04: `ProductWishlistView`
+   exists in both `ShopScreen.kt` and `ShopScreen.swift`, wired to a real "♡ Wishlist" tab.**
    *Target: `CommerceShopContent`/`MerchantDetailView` — reuse the `FavoriteRestaurantDto` pattern; `ShopScreen.swift` `MerchantDetailView`*
 
-4. **[partially-sourced]** Give `MerchantProduct` real images and a discount-price pair. Coupang's
-   documented data model and Baymard's research both confirm image + current/original price is the
-   baseline for a real product card; itunda's `MerchantProduct` entity has neither — a schema-level
-   blocker, not just a UI gap.
+4. **[partially-sourced] Implemented.** Give `MerchantProduct` real images and a discount-price
+   pair. Coupang's documented data model and Baymard's research both confirm image +
+   current/original price is the baseline for a real product card; itunda's `MerchantProduct`
+   entity has neither — a schema-level blocker, not just a UI gap. **Verified 2026-08-04:
+   `imageUrl`/`originalPrice`/`discountPercent` all exist on the real entity and DTOs, rendered via
+   `ProductImageThumb` and a real struck-through-original-price badge (matching Baymard's specific
+   placement research) in both clients.**
    *Target: `services/backend/core/.../MerchantProduct.kt` (add `imageUrl`, `originalPrice`/`discountPercent`, `description`); propagate through `MerchantProductController.kt`, `ShoppingController.kt`, and all three client DTOs*
 
-5. **[partially-sourced]** Switch merchant/product browse from single-column list to a 2-column
-   image-led grid. Chloe Youn's case study confirms Coupang's real cards carry quick add-to-cart
-   and wishlist directly on a grid card; itunda's three clients render text-only full-width rows
-   with a generic storefront icon.
+5. **[partially-sourced] Implemented.** Switch merchant/product browse from single-column list to a
+   2-column image-led grid. Chloe Youn's case study confirms Coupang's real cards carry quick
+   add-to-cart and wishlist directly on a grid card; itunda's three clients render text-only
+   full-width rows with a generic storefront icon. **Verified 2026-08-04:
+   `LazyVerticalGrid(columns = GridCells.Fixed(2))` / SwiftUI's matching two-column `LazyVGrid` both
+   real, plus a real 3-column variant elsewhere in the same files.**
    *Target: `CommerceShopContent` merchant list (~3016) and `MerchantDetailView` product list (~3078) in `SuperAppTabs.kt`; `browseBody`/`MerchantDetailView` in `ShopScreen.swift`; `ProductCatalogView` in `BankDashboard.tsx` (~4850)*
 
-6. **[partially-sourced]** Add a dedicated product detail screen with inline variant/qty
-   selection. itunda has none anywhere — tapping a product only reveals an inline qty stepper in
-   the flat catalog list. Coupang's redesign implies a real detail page exists to have replaced a
-   multi-step flow with an inline selector on. Naver Smart Store's tab structure was sourced only
-   from secondary description sites — weaker sourcing, flagged.
+6. **[partially-sourced] Implemented.** Add a dedicated product detail screen with inline
+   variant/qty selection. itunda has none anywhere — tapping a product only reveals an inline qty
+   stepper in the flat catalog list. Coupang's redesign implies a real detail page exists to have
+   replaced a multi-step flow with an inline selector on. Naver Smart Store's tab structure was
+   sourced only from secondary description sites — weaker sourcing, flagged. **Verified 2026-08-04:
+   `ProductDetailScreen`/`ProductDetailView` are real, dedicated screens in both clients.**
    *Target: new `ProductDetailView` alongside `MerchantDetailView` in all three clients*
 
-7. **[partially-sourced]** Move add-to-cart and wishlist onto the list/grid card itself (depends
-   on the grid layout landing first). Chloe Youn names this as a specific, deliberate Coupang
-   improvement.
+7. **[partially-sourced] Implemented.** Move add-to-cart and wishlist onto the list/grid card
+   itself (depends on the grid layout landing first). Chloe Youn names this as a specific,
+   deliberate Coupang improvement. **Verified 2026-08-04: real, alongside item 5's grid.**
 
-8. **[inferred]** Add merchandising modules (banner/promo carousel, category shortcuts, curated
-   deal rails) to the Shop landing surface, above the raw item list. This is general,
-   widely-documented Coupang/Naver home-surface structure but was **not independently re-verified**
-   this pass beyond general knowledge — flagged as the weakest-sourced recommendation in this
-   section.
+8. **[inferred] Implemented.** Add merchandising modules (banner/promo carousel, category
+   shortcuts, curated deal rails) to the Shop landing surface, above the raw item list. This is
+   general, widely-documented Coupang/Naver home-surface structure but was **not independently
+   re-verified** this pass beyond general knowledge — flagged as the weakest-sourced recommendation
+   in this section. **Verified 2026-08-04: `getShopDeals()`/a real deals rail exists in both
+   clients (shipped 2026-07-25, `MerchantProductRepository.findDeals`) — this doc entry just wasn't
+   updated when it shipped.**
    *Target: top of `browseBody` in `CommerceShopContent`/`ShopScreen.swift`; bank-mfe shopping tab header*
 
 9. **[sourced] Implemented 2026-07-25.** Add real local-business appointment booking, the single
@@ -620,8 +631,9 @@ they close in itunda's current implementation.
   and named but is a third-party redesign analysis, not Coupang's own documentation.
 - Naver's real filter UX (facet sidebar, price-slider specifics, sort options beyond lowest-price)
   wasn't confirmed with a strong primary source.
-- Didn't check whether Hood's Market surface already has grid/image-card patterns reusable for
-  Shop before building new ones — worth a quick in-repo check first.
+- Moot as of 2026-08-04: items 1-8 above shipped independently, on Shop's own grid/wishlist/detail
+  pattern, not by reusing Hood's Market surface (Market itself went card-less/flat-list per a later
+  2026-08-03 fix — a grid wouldn't have been reusable regardless).
 - Real Coupang/Naver checkout-flow specifics (address selection, payment picker, delivery-slot
   selection) weren't compared against itunda's existing `MultiCartView`.
 
