@@ -1036,6 +1036,7 @@ fun ItundaAppScreen(
                             pendingConversationId = conversationId
                             selectedTab = TossTab.Talk
                         },
+                        onOpenSettings = { showSettings = true },
                     )
                     // Seventh and final Feature extraction (2026-07-23) -- see
                     // TalkScreen.kt's own header comment for why deviceStepUpHost is

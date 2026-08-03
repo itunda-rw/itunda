@@ -246,7 +246,7 @@ private enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
 // (당근부동산) still fold into this one tab via the same chip row (no free bottom-nav
 // slot for each), now styled the way Karrot's own 전체/부동산/중고거래/... row is.
 @Composable
-internal fun HoodTab(onMessageSeller: (String) -> Unit) {
+internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Unit = {}) {
     var mode by remember { mutableStateOf(HoodMode.MARKETPLACE) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodVerificationCount by remember { mutableStateOf(0) }
@@ -297,11 +297,28 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
                         modifier = Modifier.padding(end = 8.dp),
                     )
                 }
+                // Real fix, 2026-08-03: all 3 of these were purely decorative, no
+                // onClick at all -- the same "dead tap" class of bug found and fixed
+                // repeatedly elsewhere this session (Home's old "See all", the All
+                // screen's duplicate rows). Search stays undocumented/unwired
+                // honestly: there's no real keyword-search endpoint for listings on
+                // the backend yet (grepped services/backend/marketplace -- confirmed
+                // absent), and this app doesn't fake search results. Bell and Menu
+                // both route to the real, already-built SettingsScreen -- itunda has
+                // one consolidated notifications+settings screen, not real Karrot's
+                // separate destinations, so routing both there is the honest option
+                // rather than inventing a second screen that doesn't exist yet.
                 Icon(Icons.Outlined.Search, contentDescription = "Search", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
                 Spacer(modifier = Modifier.width(16.dp))
-                Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
+                Icon(
+                    Icons.Outlined.Notifications, contentDescription = "Notifications",
+                    modifier = Modifier.size(24.dp).clickable(onClick = onOpenSettings), tint = Ids.colors.textPrimary,
+                )
                 Spacer(modifier = Modifier.width(16.dp))
-                Icon(Icons.Outlined.Menu, contentDescription = "Menu", modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
+                Icon(
+                    Icons.Outlined.Menu, contentDescription = "Menu",
+                    modifier = Modifier.size(24.dp).clickable(onClick = onOpenSettings), tint = Ids.colors.textPrimary,
+                )
             }
             // Real Karrot pill-chip row (2026-08-03): selected = a solid pill in
             // Ids.colors.textPrimary (near-black in light mode, near-white in dark --
