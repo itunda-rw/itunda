@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,6 +64,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
+import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsTextField
@@ -330,6 +333,52 @@ fun MarketplaceContent(
         if (view == HoodView.NEARBY) requestNearbyLocation() else load()
     }
 
+    // Real listing detail navigation (2026-08-03) -- see ListingDetailScreen's own
+    // doc comment for the real-Karrot-verified sourcing. Local nav state, same
+    // pattern showNewListing (Mine tab) already establishes in this file.
+    var selectedListing by remember { mutableStateOf<ListingDto?>(null) }
+    if (selectedListing != null) {
+        val current = selectedListing!!
+        ListingDetailScreen(
+            listing = current,
+            isMine = view == HoodView.MINE || current.sellerId == currentUserId,
+            onBack = { selectedListing = null },
+            onChanged = { load(); selectedListing = null },
+            favorited = current.id in favoriteIds,
+            favoriteBusy = favoritingId == current.id,
+            onToggleFavorite = { toggleFavorite(current.id) },
+            liked = current.id in likedListingIds,
+            onToggleLike = { toggleLike(current.id) },
+            sellerTrustScore = trustScores[current.sellerId],
+            currentUserId = currentUserId,
+            onMessageSeller = { id ->
+                coroutineScope.launch {
+                    try {
+                        val res = NetworkClient.apiService.contactSeller(id)
+                        if (res.success) onMessageSeller(res.conversation.id)
+                    } catch (e: HttpException) {
+                        error = superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    }
+                }
+            },
+            onMakeOffer = { id, amount ->
+                coroutineScope.launch {
+                    try {
+                        val res = NetworkClient.apiService.makeOffer(id, MakeOfferRequest(amount))
+                        if (res.success) onMessageSeller(res.offer.conversationId)
+                    } catch (e: HttpException) {
+                        error = superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    }
+                }
+            },
+        )
+        return
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal),
         // Real fix, 2026-08-03: a real device screenshot showed the last-visible
@@ -435,42 +484,16 @@ fun MarketplaceContent(
             }
         } else if (listings!!.isNotEmpty()) {
             items(listings!!, key = { it.id }) { listing ->
-                ListingCard(
+                ListingRow(
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
-                    currentUserId = currentUserId,
-                    sellerTrustScore = trustScores[listing.sellerId],
                     viewerLocation = browseLocation,
-                    onChanged = ::load,
                     favorited = listing.id in favoriteIds,
                     favoriteBusy = favoritingId == listing.id,
                     onToggleFavorite = { toggleFavorite(listing.id) },
                     liked = listing.id in likedListingIds,
                     onToggleLike = { toggleLike(listing.id) },
-                    onMessageSeller = { id ->
-                        coroutineScope.launch {
-                            try {
-                                val res = NetworkClient.apiService.contactSeller(id)
-                                if (res.success) onMessageSeller(res.conversation.id)
-                            } catch (e: HttpException) {
-                                error = superAppErrorMessage(e)
-                            } catch (e: IOException) {
-                                error = "Couldn't reach itunda. Check your connection and try again."
-                            }
-                        }
-                    },
-                    onMakeOffer = { id, amount ->
-                        coroutineScope.launch {
-                            try {
-                                val res = NetworkClient.apiService.makeOffer(id, MakeOfferRequest(amount))
-                                if (res.success) onMessageSeller(res.offer.conversationId)
-                            } catch (e: HttpException) {
-                                error = superAppErrorMessage(e)
-                            } catch (e: IOException) {
-                                error = "Couldn't reach itunda. Check your connection and try again."
-                            }
-                        }
-                    },
+                    onOpen = { selectedListing = listing },
                 )
             }
         }
@@ -889,111 +912,31 @@ private fun isListingBoosted(boostedUntil: String?): Boolean {
     }
 }
 
+// Real Karrot flat-list row (2026-08-03) -- the compact browse-list element only.
+// User correction, direct and specific: "당근 don't use cards uses lists 당근 is not
+// noisy like that." No card background, no rounded-rect boundary -- a flat row with
+// a hairline divider, matching FlatSection's own established real-Toss/Karrot list
+// pattern. Real interactive detail (message seller, offer, mark sold, boost, escrow,
+// review, directions, report) lives in ListingDetailScreen below, reached by tapping
+// a row -- confirmed against the real Karrot web marketplace (daangn.com/kr/buy-sell)
+// that tapping a listing navigates to a genuine separate detail page, not an
+// in-place expansion (an earlier pass here guessed at in-place expand without
+// checking; this replaces that guess with the verified real behavior).
 @Composable
-private fun ListingCard(
-    listing: ListingDto, isMine: Boolean, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
-    // Real Marketplace listing wishlist (2026-07-21) -- state is lifted to
-    // MarketplaceContent (mirroring FavoriteRestaurantsView's own already-real
-    // lifted-favoriteIds pattern) so the heart stays correct across Browse/
-    // Neighborhood/My-listings without a per-card refetch.
+private fun ListingRow(
+    listing: ListingDto, isMine: Boolean,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
-    sellerTrustScore: Int? = null,
-    // Real "pay via itunda" Marketplace escrow (2026-07-25) -- needed to tell whether
-    // the viewer is the buyer of an already-SOLD listing, so the Confirm-receipt/
-    // dispute actions only ever show to the one real party who can act on them.
-    currentUserId: String? = null,
-    // Real distance display (2026-08-03) -- see MarketplaceContent's own doc comment
-    // on browseLocation for the silent/opt-in sourcing. Null whenever location isn't
-    // already granted, in which case the meta line falls back to category (below).
     viewerLocation: Pair<Double, Double>? = null,
-    // Real like count (2026-08-03) -- see MarketplaceContent's own doc comment on
-    // toggleLike. `liked` (whether the viewer has liked it) is lifted the same way
-    // `favorited` above is; the *displayed count* is tracked locally just below since
-    // ListingDto is immutable inside an immutable list up in MarketplaceContent.
     liked: Boolean = false, onToggleLike: () -> Unit = {},
+    onOpen: () -> Unit,
 ) {
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var offering by remember { mutableStateOf(false) }
     // Real like count (2026-08-03) -- local optimistic display, reset whenever this
     // exact listing's own server-sourced count changes (a real refetch, e.g. after
     // pull-to-refresh), keyed on (listing.id, listing.likeCount) so a stale local
     // bump from a previous render of a *different* listing recycled into this slot
     // never leaks through.
     var displayedLikeCount by remember(listing.id, listing.likeCount) { mutableStateOf(listing.likeCount) }
-    var offerAmount by remember { mutableStateOf("") }
-    val coroutineScope = rememberCoroutineScope()
-
-    // Real optional buyer identification at mark-sold time (2026-07-24) -- see backend
-    // MarketplaceService.markSold's own doc comment. Deliberately optional: Confirm
-    // with a phone number or Skip, either way the sale completes.
-    var markingSold by remember { mutableStateOf(false) }
-    var buyerPhone by remember { mutableStateOf("") }
-
-    // Real seller-paid sponsored placement (2026-07-25) -- see backend
-    // MarketplaceService.boostListing's own doc comment.
-    var showBoostPicker by remember { mutableStateOf(false) }
-    var boostTiers by remember { mutableStateOf<Map<String, Double>?>(null) }
-    var boosting by remember { mutableStateOf(false) }
-
-    // Real "pay via itunda" Marketplace escrow (2026-07-25) -- see backend
-    // MarketplaceEscrow.kt's own doc comment. Opt-in alongside the existing in-person
-    // cash handoff -- paying = the buyer committing to escrow; escrow/loadedEscrow =
-    // the buyer's own already-paid escrow status once this listing is SOLD to them.
-    var paying by remember { mutableStateOf(false) }
-    var escrow by remember { mutableStateOf<rw.itunda.core.network.MarketplaceEscrowDto?>(null) }
-    var loadedEscrow by remember { mutableStateOf(false) }
-    var showDispute by remember { mutableStateOf(false) }
-    var disputeReason by remember { mutableStateOf("") }
-    var resolvingEscrow by remember { mutableStateOf(false) }
-
-    // Real post-transaction review with asymmetric public/private visibility
-    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
-    var showReviewSheet by remember { mutableStateOf(false) }
-    var selectedGoodPoints by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var submittingReview by remember { mutableStateOf(false) }
-    var reviewSubmitted by remember { mutableStateOf(false) }
-    // Real read-back for the review above (item 192/198) -- see bank-mfe's
-    // HoodReviewResultView (item 192) for the full account. Seeds reviewSubmitted from
-    // a real fetch instead of leaving it purely local/optimistic.
-    var hoodReviews by remember { mutableStateOf<List<rw.itunda.core.network.HoodReviewDto>?>(null) }
-    LaunchedEffect(listing.id, listing.status, listing.buyerId, isMine) {
-        if (isMine && listing.status == "SOLD" && listing.buyerId != null) {
-            try {
-                val reviews = NetworkClient.apiService.getListingReviews(listing.id).reviews
-                hoodReviews = reviews
-                if (reviews.any { it.reviewerId == currentUserId }) reviewSubmitted = true
-            } catch (e: Exception) {
-                // Real, non-critical -- the review form itself still works without this.
-            }
-        }
-    }
-
-    // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
-    // reuses itunda's own self-hosted OSRM directions.
-    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-    var showRoute by remember { mutableStateOf(false) }
-    var locating by remember { mutableStateOf(false) }
-    val requestLocation = rememberRealLocationRequester(
-        onLocating = { locating = it },
-        onSuccess = { lat, lng -> myLocation = lat to lng; showRoute = true },
-        onError = { error = it },
-    )
-
-    // Real escrow-status lazy fetch (2026-07-25) -- only for the one real buyer of an
-    // already-SOLD listing, since that's the only person `getEscrow` will actually
-    // return data to.
-    val isMyEscrowPurchase = !isMine && listing.status == "SOLD" && currentUserId != null && listing.buyerId == currentUserId
-    LaunchedEffect(listing.id, isMyEscrowPurchase) {
-        if (isMyEscrowPurchase && !loadedEscrow) {
-            escrow = try { NetworkClient.apiService.getEscrow(listing.id).escrow } catch (e: Exception) { null }
-            loadedEscrow = true
-        }
-    }
-
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column {
+    Column(modifier = Modifier.fillMaxWidth()) {
             // Real Karrot list-row layout (2026-08-03, user-provided real 당근마켓
             // screenshots, light + dark) -- corrects the 2026-07-24 comment this
             // replaced, which claimed a large full-width hero photo led Karrot's real
@@ -1002,7 +945,10 @@ private fun ListingCard(
             // and the real order is title (bold) -> location/time (muted) -> price
             // (bold, largest). The full-width hero-image version wasn't sourced from a
             // real screenshot at the time it was written.
-            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 // Real fix, 2026-08-03: was 96.dp -- a fresh real 당근마켓 screenshot
                 // (user-provided) measured the actual thumbnail at ~124dp square on an
                 // equivalent screen (326px of a 1080px-wide capture), notably more
@@ -1110,7 +1056,7 @@ private fun ListingCard(
             // comment-thread feature on listings yet, and this app doesn't fabricate
             // a count for a feature that doesn't exist.
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1126,7 +1072,184 @@ private fun ListingCard(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("$displayedLikeCount", color = Ids.colors.textTertiary, fontSize = 12.sp)
             }
-            Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Real flat-list hairline divider (2026-08-03) -- matches FlatSection's own
+        // established real-Toss/Karrot list pattern (core/designsystem's own doc
+        // comment on that composable): rows separated by a thin line, never a card
+        // boundary.
+        Divider(color = Ids.colors.divider)
+    }
+}
+
+// Real listing detail screen (2026-08-03) -- confirmed against the real Karrot web
+// marketplace (daangn.com/kr/buy-sell): tapping a listing navigates to a genuine
+// separate detail page. All of this screen's real interactive functionality (offer,
+// mark sold, boost, escrow, review, directions, report) was previously crammed
+// inline into every row of the browse list -- moved here unchanged, just reached by
+// navigation instead of always being visible.
+@Composable
+private fun ListingDetailScreen(
+    listing: ListingDto, isMine: Boolean, onBack: () -> Unit, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
+    favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
+    sellerTrustScore: Int? = null,
+    // Real "pay via itunda" Marketplace escrow (2026-07-25) -- needed to tell whether
+    // the viewer is the buyer of an already-SOLD listing, so the Confirm-receipt/
+    // dispute actions only ever show to the one real party who can act on them.
+    currentUserId: String? = null,
+    liked: Boolean = false, onToggleLike: () -> Unit = {},
+) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var offering by remember { mutableStateOf(false) }
+    var displayedLikeCount by remember(listing.id, listing.likeCount) { mutableStateOf(listing.likeCount) }
+    var offerAmount by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Real optional buyer identification at mark-sold time (2026-07-24) -- see backend
+    // MarketplaceService.markSold's own doc comment. Deliberately optional: Confirm
+    // with a phone number or Skip, either way the sale completes.
+    var markingSold by remember { mutableStateOf(false) }
+    var buyerPhone by remember { mutableStateOf("") }
+
+    // Real seller-paid sponsored placement (2026-07-25) -- see backend
+    // MarketplaceService.boostListing's own doc comment.
+    var showBoostPicker by remember { mutableStateOf(false) }
+    var boostTiers by remember { mutableStateOf<Map<String, Double>?>(null) }
+    var boosting by remember { mutableStateOf(false) }
+
+    // Real "pay via itunda" Marketplace escrow (2026-07-25) -- see backend
+    // MarketplaceEscrow.kt's own doc comment. Opt-in alongside the existing in-person
+    // cash handoff -- paying = the buyer committing to escrow; escrow/loadedEscrow =
+    // the buyer's own already-paid escrow status once this listing is SOLD to them.
+    var paying by remember { mutableStateOf(false) }
+    var escrow by remember { mutableStateOf<rw.itunda.core.network.MarketplaceEscrowDto?>(null) }
+    var loadedEscrow by remember { mutableStateOf(false) }
+    var showDispute by remember { mutableStateOf(false) }
+    var disputeReason by remember { mutableStateOf("") }
+    var resolvingEscrow by remember { mutableStateOf(false) }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    var showReviewSheet by remember { mutableStateOf(false) }
+    var selectedGoodPoints by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var submittingReview by remember { mutableStateOf(false) }
+    var reviewSubmitted by remember { mutableStateOf(false) }
+    // Real read-back for the review above (item 192/198) -- see bank-mfe's
+    // HoodReviewResultView (item 192) for the full account. Seeds reviewSubmitted from
+    // a real fetch instead of leaving it purely local/optimistic.
+    var hoodReviews by remember { mutableStateOf<List<rw.itunda.core.network.HoodReviewDto>?>(null) }
+    LaunchedEffect(listing.id, listing.status, listing.buyerId, isMine) {
+        if (isMine && listing.status == "SOLD" && listing.buyerId != null) {
+            try {
+                val reviews = NetworkClient.apiService.getListingReviews(listing.id).reviews
+                hoodReviews = reviews
+                if (reviews.any { it.reviewerId == currentUserId }) reviewSubmitted = true
+            } catch (e: Exception) {
+                // Real, non-critical -- the review form itself still works without this.
+            }
+        }
+    }
+
+    // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
+    // reuses itunda's own self-hosted OSRM directions.
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var showRoute by remember { mutableStateOf(false) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; showRoute = true },
+        onError = { error = it },
+    )
+
+    // Real escrow-status lazy fetch (2026-07-25) -- only for the one real buyer of an
+    // already-SOLD listing, since that's the only person `getEscrow` will actually
+    // return data to.
+    val isMyEscrowPurchase = !isMine && listing.status == "SOLD" && currentUserId != null && listing.buyerId == currentUserId
+    LaunchedEffect(listing.id, isMyEscrowPurchase) {
+        if (isMyEscrowPurchase && !loadedEscrow) {
+            escrow = try { NetworkClient.apiService.getEscrow(listing.id).escrow } catch (e: Exception) { null }
+            loadedEscrow = true
+        }
+    }
+
+    BackHandler(onBack = onBack)
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
+        BackTopBar("Listing", onBack)
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(Ids.layout.cardCornerRadius))) {
+                if (listing.photoUrl != null) {
+                    SubcomposeAsyncImage(
+                        model = listing.photoUrl,
+                        contentDescription = listing.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        when (painter.state) {
+                            is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                            else -> ListingPhotoPlaceholder()
+                        }
+                    }
+                } else {
+                    ListingPhotoPlaceholder()
+                }
+                if (listing.status == "SOLD") {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("SOLD", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (isListingBoosted(listing.boostedUntil)) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Ids.colors.brand)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    ) { Text("Sponsored", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.weight(1f))
+                if (!isMine) {
+                    Icon(
+                        if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
+                        tint = if (favorited) Ids.colors.danger else Ids.colors.textTertiary,
+                        modifier = Modifier.size(24.dp).clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                    )
+                }
+            }
+            Text(
+                listOfNotNull(listing.neighborhood, listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
+                color = Ids.colors.textSecondary,
+                fontSize = 13.sp,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            if (listing.price <= 0.0) {
+                Text("Free 🧡", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            } else {
+                Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                Icon(
+                    if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (liked) "Unlike" else "Like",
+                    tint = if (liked) Ids.colors.danger else Ids.colors.textTertiary,
+                    modifier = Modifier.size(16.dp).clickable {
+                        displayedLikeCount = if (liked) (displayedLikeCount - 1).coerceAtLeast(0) else displayedLikeCount + 1
+                        onToggleLike()
+                    },
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("$displayedLikeCount", color = Ids.colors.textTertiary, fontSize = 12.sp)
+            }
+            Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 14.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // Real Karrot-Score trust badge (2026-07-24) -- social proof, the fourth
             // element in Karrot's own real card hierarchy (price -> title ->
             // location/time -> social proof). Only shown for someone else's listing --
@@ -1407,6 +1530,7 @@ private fun ListingCard(
             if (showRoute && loc != null && listingLat != null && listingLng != null) {
                 RouteMiniMap(loc.first, loc.second, listingLat, listingLng, "You", listing.title)
             }
+            Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
