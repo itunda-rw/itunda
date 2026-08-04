@@ -18,10 +18,13 @@ import {
   createPremiumFund,
   enrollInsurance,
   getInsurancePlans,
+  getMyClaims,
   getMyPolicies,
   getMyPremiumFunds,
+  submitClaim,
 } from '@itunda/saronite-react-native';
 import type {
+  InsuranceClaim,
   InsurancePlan,
   InsurancePolicy,
   InsurancePremiumFund,
@@ -58,13 +61,24 @@ export default function InsurancePage() {
   const [fundBusyId, setFundBusyId] = useState<string | null>(null);
   const [contributeAmount, setContributeAmount] = useState<Record<string, string>>({});
 
+  // Real claims filing -- closes InsuranceController.submitClaim/getMyClaims, which
+  // existed on the backend (rate-limited, real policy-ownership + active-status checks)
+  // with zero mobile client anywhere until now. One open claim form per policy at a time,
+  // same UX shape as the premium-fund creation form above.
+  const [claims, setClaims] = useState<InsuranceClaim[]>([]);
+  const [filingClaimPolicyId, setFilingClaimPolicyId] = useState<string | null>(null);
+  const [claimDescription, setClaimDescription] = useState('');
+  const [claimAmount, setClaimAmount] = useState('');
+  const [claimBusy, setClaimBusy] = useState(false);
+
   const load = useCallback(() => {
     setError(null);
-    Promise.all([getInsurancePlans(), getMyPolicies(), getMyPremiumFunds()])
-      .then(([plansResult, policiesResult, fundsResult]) => {
+    Promise.all([getInsurancePlans(), getMyPolicies(), getMyPremiumFunds(), getMyClaims()])
+      .then(([plansResult, policiesResult, fundsResult, claimsResult]) => {
         setPlans(plansResult.plans);
         setPolicies(policiesResult.policies);
         setFunds(fundsResult.funds);
+        setClaims(claimsResult.claims);
       })
       .catch((err: Error) => setError(err.message));
   }, []);
@@ -126,6 +140,32 @@ export default function InsurancePage() {
       Alert.alert("Couldn't add contribution", err instanceof Error ? err.message : 'Please try again');
     } finally {
       setFundBusyId(null);
+    }
+  };
+
+  const handleSubmitClaim = async (policyId: string) => {
+    const trimmedDescription = claimDescription.trim();
+    const amount = Number(claimAmount || '0');
+    if (!trimmedDescription) {
+      Alert.alert('Description required', 'Please describe what happened.');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      Alert.alert('Invalid amount', 'Claim amount must be greater than zero.');
+      return;
+    }
+    setClaimBusy(true);
+    try {
+      const result = await submitClaim(policyId, trimmedDescription, amount);
+      setClaims((prev) => [result.claim, ...prev]);
+      setFilingClaimPolicyId(null);
+      setClaimDescription('');
+      setClaimAmount('');
+      Alert.alert('Claim submitted', 'Your claim has been submitted for review.');
+    } catch (err) {
+      Alert.alert("Couldn't submit claim", err instanceof Error ? err.message : 'Please try again');
+    } finally {
+      setClaimBusy(false);
     }
   };
 
@@ -244,9 +284,84 @@ export default function InsurancePage() {
                     </View>
                   </View>
                 )}
+
+                {policy.status === 'active' && (
+                  <View style={styles.fundSection}>
+                    {filingClaimPolicyId === policy.id ? (
+                      <View style={styles.fundForm}>
+                        <TextInput
+                          style={styles.fundInput}
+                          placeholder="What happened?"
+                          value={claimDescription}
+                          onChangeText={setClaimDescription}
+                          multiline
+                        />
+                        <TextInput
+                          style={styles.fundInput}
+                          keyboardType="numeric"
+                          placeholder="Claim amount (RWF)"
+                          value={claimAmount}
+                          onChangeText={setClaimAmount}
+                        />
+                        <View style={styles.fundButtonRow}>
+                          <TouchableOpacity
+                            style={styles.fundButton}
+                            disabled={claimBusy}
+                            onPress={() => handleSubmitClaim(policy.id)}
+                          >
+                            <Text style={styles.fundButtonText}>{claimBusy ? '...' : 'Submit claim'}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.fundButtonSecondary}
+                            onPress={() => setFilingClaimPolicyId(null)}
+                          >
+                            <Text style={styles.fundButtonSecondaryText}>Cancel</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.fundButtonSecondary}
+                        onPress={() => {
+                          setFilingClaimPolicyId(policy.id);
+                          setClaimDescription('');
+                          setClaimAmount('');
+                        }}
+                      >
+                        <Text style={styles.fundButtonSecondaryText}>File a claim</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </View>
             );
           })}
+        </View>
+      )}
+
+      {claims.length > 0 && (
+        <View style={styles.myPoliciesSection}>
+          <Text style={styles.sectionLabel}>My claims</Text>
+          {claims.map((claim) => (
+            <View key={claim.id} style={styles.policyCard}>
+              <View style={styles.policyRow}>
+                <Text style={styles.policyName}>{claim.description}</Text>
+                <Text
+                  style={[
+                    styles.policyStatus,
+                    claim.status === 'REJECTED' && styles.claimStatusRejected,
+                    claim.status === 'SUBMITTED' && styles.claimStatusPending,
+                  ]}
+                >
+                  {claim.status}
+                </Text>
+              </View>
+              <Text style={styles.fundProgressLabel}>{claim.amount.toLocaleString()} RWF</Text>
+              {claim.decisionReason && (
+                <Text style={styles.fundProgressLabel}>{claim.decisionReason}</Text>
+              )}
+            </View>
+          ))}
         </View>
       )}
 
@@ -319,6 +434,8 @@ const styles = StyleSheet.create({
   },
   policyName: { fontSize: 14, fontWeight: '700', color: '#191F28' },
   policyStatus: { fontSize: 12, color: '#04C065', fontWeight: '700', textTransform: 'capitalize' },
+  claimStatusPending: { color: '#8B95A1' },
+  claimStatusRejected: { color: '#F04452' },
   fundSection: { marginTop: 10, gap: 8 },
   fundForm: { gap: 8 },
   fundInput: {

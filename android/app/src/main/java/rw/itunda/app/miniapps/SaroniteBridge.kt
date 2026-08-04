@@ -202,6 +202,29 @@ class SaroniteBrownfieldModule(
         authorizedCall(get("api/v1/insurance/premium-funds"), promise, ::parseMyPremiumFundsResult)
     }
 
+    // Real claims filing -- InsuranceController.submitClaim/getMyClaims existed on the
+    // backend (rate-limited, real policy-ownership + active-status checks) but had zero
+    // mobile client anywhere: the insurance mini-app only ever surfaced plans/policies/
+    // premium-funds. Not money-moving (only the ADMIN decide step pays out), so post()'s
+    // always-attached Idempotency-Key header is harmless but unused, same as
+    // createPremiumFund above.
+    @ReactMethod
+    fun submitClaim(policyId: String, description: String, amount: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply {
+            addProperty("policyId", policyId)
+            addProperty("description", description)
+            addProperty("amount", amount)
+        }
+        authorizedCall(post("api/v1/insurance/claims", body), promise, ::parseSubmitClaimResult)
+    }
+
+    @ReactMethod
+    fun getMyClaims(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/insurance/claims"), promise, ::parseMyClaimsResult)
+    }
+
     @ReactMethod
     fun getReferralInfo(promise: Promise) {
         if (!requireScope(null, promise)) return
@@ -539,6 +562,41 @@ class SaroniteBrownfieldModule(
         val result = Arguments.createMap()
         result.putBoolean("success", root.get("success")?.asBoolean ?: true)
         result.putArray("funds", funds)
+        return result
+    }
+
+    // Real backend shape: services/backend/insurance's InsuranceController.submitClaim/
+    // getMyClaims return the raw InsuranceClaim entity (no remapping, unlike
+    // fundMap/policyMap above) -- field names read directly from
+    // core/domain/InsuranceClaim.kt. status is one of SUBMITTED/APPROVED/REJECTED;
+    // reviewedBy/reviewedAt/decisionReason are only set once an admin has decided it.
+    private fun parseClaim(c: JsonObject): WritableMap {
+        val claimMap = Arguments.createMap()
+        claimMap.putString("id", c.get("id").asString)
+        claimMap.putString("policyId", c.get("policyId")?.asString ?: "")
+        claimMap.putString("description", c.get("description")?.asString ?: "")
+        claimMap.putDouble("amount", c.get("amount")?.asDouble ?: 0.0)
+        claimMap.putString("status", c.get("status")?.asString ?: "SUBMITTED")
+        claimMap.putString("submittedAt", c.get("submittedAt")?.asString ?: "")
+        c.get("decisionReason")?.takeIf { !it.isJsonNull }?.let { claimMap.putString("decisionReason", it.asString) }
+        return claimMap
+    }
+
+    private fun parseSubmitClaimResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        root.getAsJsonObject("claim")?.let { result.putMap("claim", parseClaim(it)) }
+        return result
+    }
+
+    private fun parseMyClaimsResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val claims = Arguments.createArray()
+        root.getAsJsonArray("claims")?.forEach { element -> claims.pushMap(parseClaim(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        result.putArray("claims", claims)
         return result
     }
 

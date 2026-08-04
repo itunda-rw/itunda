@@ -239,6 +239,33 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real claims filing -- mirrors Android's SaroniteBridge.kt submitClaim/getMyClaims.
+    // InsuranceController.submitClaim/getMyClaims existed on the backend with zero mobile
+    // client on either platform: the insurance mini-app only ever surfaced plans/policies/
+    // premium-funds. Not money-moving (only the ADMIN decide step pays out), so
+    // authorizedCall's always-attached Idempotency-Key header is harmless but unused,
+    // same as createPremiumFund above.
+    @objc func submitClaim(
+        _ policyId: String,
+        description: String,
+        amount: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        authorizedCall(path: "api/v1/insurance/claims", method: "POST", body: ["policyId": policyId, "description": description, "amount": amount], resolve: resolve, reject: reject) { root in
+            var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+            if let claim = root["claim"] as? [String: Any] { result["claim"] = Self.mapClaim(claim) }
+            return result
+        }
+    }
+
+    @objc func getMyClaims(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/claims", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let claims = ((root["claims"] as? [[String: Any]]) ?? []).map(Self.mapClaim)
+            return ["success": root["success"] as? Bool ?? true, "claims": claims]
+        }
+    }
+
     @objc func getReferralInfo(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/rewards/referral", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             [
@@ -291,6 +318,22 @@ final class SaroniteBrownfieldModule: NSObject {
             "monthlyPremium": (p["monthlyPremium"] as? NSNumber)?.doubleValue ?? 0,
             "nextPaymentDate": p["nextPaymentDate"] as? String ?? "",
             "policyNumber": p["policyNumber"] as? String ?? "",
+        ]
+    }
+
+    // Real backend shape: InsuranceController.submitClaim/getMyClaims return the raw
+    // InsuranceClaim entity (no remapping, unlike fundMap/policyMap above) -- field names
+    // read directly from core/domain/InsuranceClaim.kt. status is one of
+    // SUBMITTED/APPROVED/REJECTED; decisionReason is only set once an admin has decided it.
+    private static func mapClaim(_ c: [String: Any]) -> [String: Any] {
+        [
+            "id": c["id"] as? String ?? "",
+            "policyId": c["policyId"] as? String ?? "",
+            "description": c["description"] as? String ?? "",
+            "amount": (c["amount"] as? NSNumber)?.doubleValue ?? 0,
+            "status": c["status"] as? String ?? "SUBMITTED",
+            "submittedAt": c["submittedAt"] as? String ?? "",
+            "decisionReason": (c["decisionReason"] as? String) ?? NSNull(),
         ]
     }
 

@@ -30,6 +30,12 @@ RCT_EXTERN_METHOD(contributeToFund:(NSString *)fundId
                   rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(cancelFund:(NSString *)fundId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getMyPremiumFunds:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(submitClaim:(NSString *)policyId
+                  description:(NSString *)description
+                  amount:(nonnull NSNumber *)amount
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getMyClaims:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getReferralInfo:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(reportSteps:(nonnull NSNumber *)steps resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getTodaySteps:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)

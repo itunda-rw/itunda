@@ -12,6 +12,8 @@ export { createPremiumFund } from './native-modules/natives/createPremiumFund';
 export { contributeToFund } from './native-modules/natives/contributeToFund';
 export { cancelFund } from './native-modules/natives/cancelFund';
 export { getMyPremiumFunds } from './native-modules/natives/getMyPremiumFunds';
+export { submitClaim } from './native-modules/natives/submitClaim';
+export { getMyClaims } from './native-modules/natives/getMyClaims';
 export { getReferralInfo } from './native-modules/natives/getReferralInfo';
 export { reportSteps } from './native-modules/natives/reportSteps';
 export { getTodaySteps } from './native-modules/natives/getTodaySteps';

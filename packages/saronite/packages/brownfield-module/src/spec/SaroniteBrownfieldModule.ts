@@ -168,6 +168,32 @@ export interface MyPremiumFundsResult {
   funds: InsurancePremiumFund[];
 }
 
+/** Mirrors a single claim from `GET /insurance/claims` / `POST /insurance/claims`
+ * (services/backend/insurance's InsuranceController.submitClaim/getMyClaims -- the raw
+ * InsuranceClaim entity, no remapping). decisionReason is only set once an admin has
+ * decided it (InsuranceClaimsAdminController.decideClaim). */
+export interface InsuranceClaim {
+  id: string;
+  policyId: string;
+  description: string;
+  amount: number;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  decisionReason: string | null;
+}
+
+/** Mirrors the response of `POST /insurance/claims`. */
+export interface SubmitClaimResult {
+  success: boolean;
+  claim: InsuranceClaim;
+}
+
+/** Mirrors the response of `GET /insurance/claims`. */
+export interface MyClaimsResult {
+  success: boolean;
+  claims: InsuranceClaim[];
+}
+
 /** Mirrors the response of `GET /rewards/referral`
  * (services/backend/rewards's RewardsController.referral). */
 export interface ReferralInfo {
@@ -234,6 +260,8 @@ export interface SaroniteBrownfieldModuleSpec {
   contributeToFund(fundId: string, amount: number): Promise<ContributeToFundResult>;
   cancelFund(fundId: string): Promise<CancelFundResult>;
   getMyPremiumFunds(): Promise<MyPremiumFundsResult>;
+  submitClaim(policyId: string, description: string, amount: number): Promise<SubmitClaimResult>;
+  getMyClaims(): Promise<MyClaimsResult>;
   getReferralInfo(): Promise<ReferralInfo>;
   reportSteps(steps: number): Promise<StepReportResult>;
   getTodaySteps(): Promise<TodayStepsResult>;
