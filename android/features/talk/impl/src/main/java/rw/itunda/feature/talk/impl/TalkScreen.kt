@@ -45,7 +45,6 @@ import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -57,8 +56,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.input.KeyboardType
@@ -97,6 +94,7 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.IdsAvatar
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
@@ -1047,9 +1045,7 @@ private fun GroupSplitBillsView(
             error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
             item {
                 if (!showNewForm) {
-                    Button(onClick = { showNewForm = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Split a bill")
-                    }
+                    IdsButton(text = "Split a bill", onClick = { showNewForm = true })
                 } else {
                     Column {
                         IdsTextField(amountText, { amountText = it }, label = "Total amount (RWF)", keyboardType = KeyboardType.Number, modifier = Modifier.fillMaxWidth())
@@ -1104,12 +1100,12 @@ private fun GroupSplitBillsView(
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(
+                        IdsButton(
+                            text = if (busyId == "new") "Creating…" else "Create split bill",
                             enabled = busyId == null && amountText.toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO } == true &&
                                 descriptionText.isNotBlank() && selectedParticipantIds.isNotEmpty(),
-                            modifier = Modifier.fillMaxWidth(),
                             onClick = {
-                                val amount = amountText.toBigDecimalOrNull() ?: return@Button
+                                val amount = amountText.toBigDecimalOrNull() ?: return@IdsButton
                                 busyId = "new"
                                 coroutineScope.launch {
                                     try {
@@ -1129,7 +1125,7 @@ private fun GroupSplitBillsView(
                                     } finally { busyId = null }
                                 }
                             },
-                        ) { Text(if (busyId == "new") "Creating…" else "Create split bill") }
+                        )
                     }
                 }
             }
@@ -1155,7 +1151,8 @@ private fun GroupSplitBillsView(
                         }
                         if (myShare != null && myShare.status == "PENDING") {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Button(
+                            IdsButton(
+                                text = if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (RWF ${myShare.shareAmount})",
                                 enabled = busyId == null,
                                 onClick = {
                                     busyId = entry.splitBill.id
@@ -1168,7 +1165,7 @@ private fun GroupSplitBillsView(
                                         } finally { busyId = null }
                                     }
                                 },
-                            ) { Text(if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (RWF ${myShare.shareAmount})") }
+                            )
                         }
                         if (isOrganizer && entry.splitBill.receiptImageUrl == null) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -1179,10 +1176,12 @@ private fun GroupSplitBillsView(
                                     label = "Receipt photo URL",
                                     modifier = Modifier.weight(1f),
                                 )
-                                Button(
+                                IdsButton(
+                                    text = "Attach",
                                     enabled = busyId == null && !(receiptUrlDrafts[entry.splitBill.id].isNullOrBlank()),
+                                    size = IdsButtonSize.Small,
                                     onClick = {
-                                        val url = receiptUrlDrafts[entry.splitBill.id] ?: return@Button
+                                        val url = receiptUrlDrafts[entry.splitBill.id] ?: return@IdsButton
                                         busyId = entry.splitBill.id
                                         coroutineScope.launch {
                                             try {
@@ -1194,13 +1193,15 @@ private fun GroupSplitBillsView(
                                             } finally { busyId = null }
                                         }
                                     },
-                                ) { Text("Attach") }
+                                )
                             }
                         }
                         if (isOrganizer && entry.splitBill.status == "OPEN" && hasPending && entry.splitBill.currentRound < 5) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
+                            IdsButton(
+                                text = "Nudge unpaid → round ${entry.splitBill.currentRound + 1}",
                                 enabled = busyId == null,
+                                variant = IdsButtonVariant.Tinted,
                                 onClick = {
                                     busyId = entry.splitBill.id
                                     coroutineScope.launch {
@@ -1212,7 +1213,7 @@ private fun GroupSplitBillsView(
                                         } finally { busyId = null }
                                     }
                                 },
-                            ) { Text("Nudge unpaid → round ${entry.splitBill.currentRound + 1}") }
+                            )
                         }
                     }
                 }
@@ -1279,7 +1280,8 @@ private fun GroupManageMembersView(
                 )
             }
             item {
-                Button(
+                IdsButton(
+                    text = if (savingInfo) "Saving…" else if (infoSaved) "Saved" else "Save group info",
                     enabled = !savingInfo,
                     onClick = {
                         savingInfo = true
@@ -1294,7 +1296,7 @@ private fun GroupManageMembersView(
                             } finally { savingInfo = false }
                         }
                     },
-                ) { Text(if (savingInfo) "Saving…" else if (infoSaved) "Saved" else "Save group info") }
+                )
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item { Text("Members (${members.size})", fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
@@ -1302,8 +1304,10 @@ private fun GroupManageMembersView(
                 Text(if (member.userId == currentUserId) "${member.name} (you)" else member.name, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
             }
             item {
-                Button(
+                IdsButton(
+                    text = if (leaving) "Leaving…" else "Leave group",
                     enabled = !leaving,
+                    variant = IdsButtonVariant.Tinted,
                     onClick = {
                         leaving = true
                         coroutineScope.launch {
@@ -1316,7 +1320,7 @@ private fun GroupManageMembersView(
                             }
                         }
                     },
-                ) { Text(if (leaving) "Leaving…" else "Leave group") }
+                )
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }
             item { Text("Add from your contacts", fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
@@ -1330,8 +1334,10 @@ private fun GroupManageMembersView(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(contact.name, fontSize = 14.sp)
-                        Button(
+                        IdsButton(
+                            text = if (busyUserId == contact.userId) "Adding…" else "Add",
                             enabled = busyUserId == null,
+                            size = IdsButtonSize.Small,
                             onClick = {
                                 busyUserId = contact.userId
                                 coroutineScope.launch {
@@ -1343,7 +1349,7 @@ private fun GroupManageMembersView(
                                     } finally { busyUserId = null }
                                 }
                             },
-                        ) { Text(if (busyUserId == contact.userId) "Adding…" else "Add") }
+                        )
                     }
                 }
             }
