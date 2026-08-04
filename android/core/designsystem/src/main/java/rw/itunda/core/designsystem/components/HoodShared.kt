@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
@@ -122,6 +123,14 @@ fun EmptyState(message: String, icon: ImageVector = Icons.Outlined.Inbox) {
     }
 }
 
+// Real fix, found live 2026-08-05 (same audit thread that found the design-system
+// gaps this session already closed): EmptyState got a real icon-in-a-soft-circle
+// treatment, but its own sibling ErrorCard -- shown right next to it in the exact
+// same load-failure branches across the app -- stayed plain red text + a bare
+// "Retry" text link. Mirrors EmptyState's layout exactly (centered icon circle,
+// message below), using IdsColors.dangerTint for the circle since this is an error,
+// not a neutral empty state, and a real IdsButton for Retry instead of a plain
+// clickable Text.
 @Composable
 fun ErrorCard(message: String, onRetry: () -> Unit) {
     Card(
@@ -129,10 +138,19 @@ fun ErrorCard(message: String, onRetry: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(message, color = Ids.colors.danger, fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text("Retry", color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = onRetry))
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(56.dp).clip(CircleShape).background(Ids.colors.dangerTint),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.ErrorOutline, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.danger)
+            }
+            Text(message, color = Ids.colors.textSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
+            IdsButton(text = "Retry", onClick = onRetry, size = IdsButtonSize.Small)
         }
     }
 }

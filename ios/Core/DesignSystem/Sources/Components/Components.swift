@@ -37,8 +37,13 @@ public struct EmptyStateView: View {
     }
 }
 
-// Mirrors Android's ErrorCard exactly (Card containing message + a "Retry" link),
-// same reasoning as EmptyStateView above.
+// Real fix, found live 2026-08-05: EmptyStateView got the real icon-in-circle
+// treatment above, but its own sibling ErrorCardView -- shown right next to it in
+// the exact same load-failure branches across the app -- stayed plain red text + a
+// bare "Retry" text link, the exact gap Android's own identical ErrorCard fix (same
+// date) closed. Mirrors EmptyStateView's centered icon-circle layout exactly, using
+// IDS.Colors.dangerTint for the circle since this is an error, not a neutral empty
+// state, and a real IdsButton for Retry instead of a plain text Button.
 public struct ErrorCardView: View {
     let message: String
     let onRetry: () -> Void
@@ -49,16 +54,23 @@ public struct ErrorCardView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(IDS.Colors.dangerTint)
+                    .frame(width: 56, height: 56)
+                Image(systemName: "exclamationmark.circle")
+                    .foregroundColor(IDS.Colors.danger)
+            }
             Text(message)
                 .font(IdsTypeScale.body2)
-                .foregroundColor(IDS.Colors.danger)
-            Button("Retry", action: onRetry)
-                .font(IdsTypeScale.subtitle1)
-                .foregroundColor(IDS.Colors.brand)
+                .foregroundColor(IDS.Colors.textSecondary)
+                .multilineTextAlignment(.center)
+            IdsButton(text: "Retry", action: onRetry)
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .padding(.horizontal, 20)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
     }
