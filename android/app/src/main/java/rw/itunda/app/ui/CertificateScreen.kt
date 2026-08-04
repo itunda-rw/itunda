@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +28,8 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.network.CertificateDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.VerifyCertificateSignatureRequest
+import rw.itunda.core.network.VerifyCertificateSignatureResponse
 import rw.itunda.core.network.isKycRequiredError
 
 // Real digital identity/signing certificate (2026-07-22 port) -- this feature was
@@ -145,6 +148,107 @@ fun CertificateScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(12.dp))
                     Text(it, color = MaterialTheme.colorScheme.error)
                 }
+                Spacer(Modifier.height(20.dp))
+                VerifyCertificateCard()
+            }
+        }
+    }
+}
+
+// Real public certificate status/verify (2026-08-04) -- see ApiService.kt's own doc
+// comment on getCertificateStatus/verifyCertificateSignature: the two endpoints that
+// answer "does this signed thing check out," found via a fresh backend-endpoint
+// sweep with zero client anywhere. Deliberately separate from the card above -- that
+// one manages the caller's own certificate; this one checks someone else's.
+@Composable
+private fun VerifyCertificateCard() {
+    var serialNumber by remember { mutableStateOf("") }
+    var payload by remember { mutableStateOf("") }
+    var signature by remember { mutableStateOf("") }
+    var statusResult by remember { mutableStateOf<CertificateDto?>(null) }
+    var verifyResult by remember { mutableStateOf<VerifyCertificateSignatureResponse?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Verify a certificate", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Check whether a certificate serial number is still active, or verify a document someone signed with theirs.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = serialNumber, onValueChange = { serialNumber = it; statusResult = null; verifyResult = null; error = null },
+                label = { Text("Serial number") }, modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                enabled = !busy && serialNumber.isNotBlank(),
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            statusResult = NetworkClient.apiService.getCertificateStatus(serialNumber).certificate
+                            verifyResult = null
+                            error = null
+                        } catch (_: Exception) {
+                            statusResult = null
+                            error = "No certificate found with that serial number."
+                        } finally { busy = false }
+                    }
+                },
+            ) { Text(if (busy) "Checking…" else "Check status") }
+            statusResult?.let { cert ->
+                Spacer(Modifier.height(8.dp))
+                Text("Status: ${cert.status}", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                Text("Expires ${cert.expiresAt}", style = MaterialTheme.typography.bodySmall)
+            }
+
+            Spacer(Modifier.height(16.dp))
+            Text("Verify a signature", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = payload, onValueChange = { payload = it; verifyResult = null },
+                label = { Text("Payload (the exact text they signed)") }, modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = signature, onValueChange = { signature = it; verifyResult = null },
+                label = { Text("Signature (base64)") }, modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                enabled = !busy && serialNumber.isNotBlank() && payload.isNotBlank() && signature.isNotBlank(),
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            verifyResult = NetworkClient.apiService.verifyCertificateSignature(
+                                VerifyCertificateSignatureRequest(serialNumber, payload, signature),
+                            )
+                            error = null
+                        } catch (_: Exception) {
+                            verifyResult = null
+                            error = "Could not verify this signature."
+                        } finally { busy = false }
+                    }
+                },
+            ) { Text(if (busy) "Verifying…" else "Verify signature") }
+            verifyResult?.let { result ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (result.signatureValid) "✓ Signature is valid" else "✗ Signature does not match",
+                    color = if (result.signatureValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                )
+                Text("Certificate status: ${result.certificateStatus}", style = MaterialTheme.typography.bodySmall)
+            }
+            error?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

@@ -1862,6 +1862,11 @@ data class CertificateDto(
 data class IssueCertificateResponse(val success: Boolean, val certificate: CertificateDto, val privateKey: String)
 data class MyCertificateResponse(val success: Boolean, val certificate: CertificateDto?)
 data class RevokeCertificateResponse(val success: Boolean, val certificate: CertificateDto)
+data class CertificateStatusResponse(val success: Boolean, val certificate: CertificateDto)
+data class VerifyCertificateSignatureRequest(val serialNumber: String, val payload: String, val signature: String)
+data class VerifyCertificateSignatureResponse(
+    val success: Boolean, val signatureValid: Boolean, val certificateStatus: String, val userId: String, val serialNumber: String,
+)
 
 // Real KYC identity submission (rw.itunda.identity) -- found 2026-07-22 fully built on
 // the backend with zero client UI anywhere. documentReference is a real, honest
@@ -3311,6 +3316,20 @@ interface ApiService {
 
     @POST("api/v1/certificate/revoke")
     suspend fun revokeCertificate(): RevokeCertificateResponse
+
+    // Real public certificate status/verify (2026-08-04) -- found via a fresh
+    // "defined but uncalled" endpoint sweep: real, working, deliberately unauthenticated
+    // endpoints (see CertificateController's own doc comment on why /status and /verify
+    // are permitAll, unlike /issue-/me/-revoke) with zero client anywhere, including
+    // this app which already wires the other three. Lets any itunda user check whether
+    // a certificate serial number a counterpart shared with them is still valid, and
+    // verify a signed payload against it -- the actual "does this signed thing check
+    // out" use case a personal signing certificate exists for.
+    @GET("api/v1/certificate/status/{serialNumber}")
+    suspend fun getCertificateStatus(@Path("serialNumber") serialNumber: String): CertificateStatusResponse
+
+    @POST("api/v1/certificate/verify")
+    suspend fun verifyCertificateSignature(@Body request: VerifyCertificateSignatureRequest): VerifyCertificateSignatureResponse
 
     @POST("api/v1/identity/submit")
     suspend fun submitIdentity(@Body request: SubmitIdentityRequest): SubmitIdentityResponse
