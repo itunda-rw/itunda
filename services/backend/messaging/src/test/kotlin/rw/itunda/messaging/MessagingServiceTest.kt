@@ -267,7 +267,7 @@ class MessagingServiceTest : BehaviorSpec({
 
         When("listing conversations with a real last-message preview and unread count") {
             val conversation = Conversation(id = "conversation_1", participantAId = "user_a", participantBId = "user_b")
-            every { conversationRepository.findByParticipant("user_a", PageRequest.of(0, 20)) } returns
+            every { conversationRepository.findByParticipantNotArchived("user_a", PageRequest.of(0, 20)) } returns
                 PageImpl(listOf(conversation), PageRequest.of(0, 20), 1)
             every { userRepository.findAllById(listOf("user_b")) } returns listOf(user("user_b", "Beata"))
             val lastMessage = Message(id = "message_1", conversationId = "conversation_1", senderId = "user_b", body = "hi!")
