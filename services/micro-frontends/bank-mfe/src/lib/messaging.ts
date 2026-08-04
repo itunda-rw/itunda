@@ -16,6 +16,9 @@ export interface ConversationSummary {
   unreadCount: number;
   quiet: boolean;
   pinnedMessageId: string | null;
+  // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+  // .archived's own doc comment. Same private-to-me model as quiet.
+  archived: boolean;
 }
 export interface TalkContact { userId: string; name: string }
 
@@ -51,10 +54,10 @@ export interface Message {
   imageUrl?: string | null;
 }
 
-export const fetchConversations = () =>
-  apiFetch<{ success: boolean; conversations: ConversationSummary[] }>('/api/v1/messages/conversations').then(
-    (r) => r.conversations,
-  );
+export const fetchConversations = (archived = false) =>
+  apiFetch<{ success: boolean; conversations: ConversationSummary[] }>(
+    `/api/v1/messages/conversations?archived=${archived}`,
+  ).then((r) => r.conversations);
 
 export const fetchTalkContacts = () =>
   apiFetch<{ success: boolean; contacts: TalkContact[] }>('/api/v1/messages/contacts').then((r) => r.contacts);
@@ -128,6 +131,14 @@ export const setConversationQuiet = (conversationId: string, quiet: boolean) =>
   apiFetch<{ success: boolean; quiet: boolean }>(`/api/v1/messages/conversations/${conversationId}/quiet`, {
     method: 'POST', body: JSON.stringify({ quiet }),
   }).then((r) => r.quiet);
+
+export const fetchConversationArchived = (conversationId: string) =>
+  apiFetch<{ success: boolean; archived: boolean }>(`/api/v1/messages/conversations/${conversationId}/archive`).then((r) => r.archived);
+
+export const setConversationArchived = (conversationId: string, archived: boolean) =>
+  apiFetch<{ success: boolean; archived: boolean }>(`/api/v1/messages/conversations/${conversationId}/archive`, {
+    method: 'POST', body: JSON.stringify({ archived }),
+  }).then((r) => r.archived);
 
 export const reportChatMessage = (messageId: string, reason: string) =>
   apiFetch<{ success: boolean }>('/api/v1/chat/reports', {

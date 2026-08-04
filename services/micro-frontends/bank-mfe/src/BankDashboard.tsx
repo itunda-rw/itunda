@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
@@ -96,7 +96,7 @@ import {
 } from './lib/stocks';
 import {
   addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage,
-  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationArchived, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
@@ -8258,9 +8258,20 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
 
 function DirectMessagesList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+  // .archived's own doc comment. Loaded alongside the active list so the
+  // "Archived (N)" toggle has a real count without an extra round-trip.
+  const [archivedConversations, setArchivedConversations] = useState<ConversationSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openConversationId, setOpenConversationId] = useState<string | null>(null);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
+  // Real fix, found live 2026-08-05 (same audit that found the identical bug on
+  // Android/iOS): this used to filter on `quiet` (mute) and mislabel the result
+  // "Archived" -- there was no real archive concept on the backend yet, so muting
+  // had been repurposed to also hide a conversation from the list. Muted
+  // conversations now stay visible in the main list (matching real KakaoTalk: muting
+  // only silences notifications, it never hides a room); this toggle now shows the
+  // real archived list.
   const [showArchived, setShowArchived] = useState(false);
 
   const load = () => {
@@ -8268,6 +8279,11 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     fetchConversations()
       .then(setConversations)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your conversations.'));
+    fetchConversations(true).then(setArchivedConversations).catch(() => {});
+  };
+
+  const toggleArchived = (conversationId: string, archived: boolean) => {
+    setConversationArchived(conversationId, archived).then(load).catch(() => {});
   };
 
   useEffect(load, []);
@@ -8322,8 +8338,8 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     return <div className="toss-card skeleton" style={{ height: '220px' }} />;
   }
 
-  const visibleConversations = conversations.filter((conversation) => showArchived ? conversation.quiet : !conversation.quiet);
-  const archivedCount = conversations.filter((conversation) => conversation.quiet).length;
+  const visibleConversations = showArchived ? (archivedConversations ?? []) : conversations;
+  const archivedCount = archivedConversations?.length ?? 0;
 
   return (
     <div>
@@ -8333,49 +8349,63 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
           {showArchived ? 'Show active chats' : `Archived (${archivedCount})`}
         </button>
       )}
-      {conversations.length === 0 ? (
+      {visibleConversations.length === 0 ? (
         <div className="toss-card">
-          <EmptyState message="No conversations yet." />
+          <EmptyState message={showArchived ? 'No archived chats.' : 'No conversations yet.'} />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {visibleConversations.map((c) => (
-            <button
-              key={c.conversationId}
-              onClick={() => setOpenConversationId(c.conversationId)}
-              className="toss-card"
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
-            >
-              <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <MessageCircle size={20} color="var(--toss-blue)" />
+            <div key={c.conversationId} className="toss-card" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '18px 20px' }}>
+              <button
+                onClick={() => setOpenConversationId(c.conversationId)}
+                style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <MessageCircle size={20} color="var(--toss-blue)" />
+                  </div>
+                  {presence[c.otherUserId] && (
+                    <span
+                      style={{
+                        position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', borderRadius: '6px',
+                        backgroundColor: 'var(--toss-green)', border: '2px solid var(--toss-white)',
+                      }}
+                    />
+                  )}
                 </div>
-                {presence[c.otherUserId] && (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{c.otherUserName}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {c.lastMessagePreview ?? 'No messages yet'}
+                  </p>
+                </div>
+                {c.unreadCount > 0 && (
                   <span
                     style={{
-                      position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', borderRadius: '6px',
-                      backgroundColor: 'var(--toss-green)', border: '2px solid var(--toss-white)',
+                      fontSize: '11px', fontWeight: 700, color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
+                      borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
                     }}
-                  />
+                  >
+                    {c.unreadCount}
+                  </span>
                 )}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{c.otherUserName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {c.lastMessagePreview ?? 'No messages yet'}
-                </p>
-              </div>
-              {c.unreadCount > 0 && (
-                <span
-                  style={{
-                    fontSize: '11px', fontWeight: 700, color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
-                    borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
-                  }}
-                >
-                  {c.unreadCount}
-                </span>
-              )}
-            </button>
+              </button>
+              {/* Real archive action (2026-08-05) -- closes docs/DESIGN_REFERENCES.md
+                  Talk recommendation #4's remaining half. An always-visible icon
+                  button, not a swipe gesture: bank-mfe's own established convention
+                  for per-row actions elsewhere (Pin/Delete/Forward) is always-visible
+                  buttons, and desktop-web has no real touch-swipe convention to match
+                  Android/iOS's native one against. */}
+              <button
+                type="button"
+                onClick={() => toggleArchived(c.conversationId, !showArchived)}
+                title={showArchived ? 'Unarchive' : 'Archive'}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0, color: 'var(--toss-grey-500)' }}
+              >
+                {showArchived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
+              </button>
+            </div>
           ))}
         </div>
       )}
