@@ -9,10 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -109,7 +108,10 @@ fun CommerceDeliveryDetailScreen(initialOrder: CommerceOrderDto, onBack: () -> U
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
 
         if (order.status == "SHIPPED") {
-            Button(
+            IdsButton(
+                text = if (advancing) "Updating…" else "I've delivered this order",
+                enabled = !advancing,
+                modifier = Modifier.padding(16.dp),
                 onClick = {
                     advancing = true
                     scope.launch {
@@ -123,12 +125,7 @@ fun CommerceDeliveryDetailScreen(initialOrder: CommerceOrderDto, onBack: () -> U
                         }
                     }
                 },
-                enabled = !advancing,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().padding(16.dp).height(52.dp),
-            ) {
-                Text(if (advancing) "Updating…" else "I've delivered this order")
-            }
+            )
         } else if (order.status == "DELIVERED") {
             Text(
                 "Delivered.",

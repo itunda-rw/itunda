@@ -17,14 +17,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -231,26 +232,35 @@ fun RiderHomeScreen(
                         Text(notification.body, style = MaterialTheme.typography.bodySmall)
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Button(onClick = {
-                                scope.launch {
-                                    try {
-                                        NetworkClient.apiService.claimDelivery(orderId)
-                                        runCatching { NetworkClient.apiService.markNotificationRead(notification.id) }
-                                        refreshOffers(); refreshDeliveries()
-                                        onOpenDelivery(orderId)
-                                    } catch (e: Exception) {
-                                        error = "This delivery is no longer available."
-                                        refreshOffers(); refreshDeliveries()
+                            IdsButton(
+                                text = "Accept",
+                                size = IdsButtonSize.Medium,
+                                onClick = {
+                                    scope.launch {
+                                        try {
+                                            NetworkClient.apiService.claimDelivery(orderId)
+                                            runCatching { NetworkClient.apiService.markNotificationRead(notification.id) }
+                                            refreshOffers(); refreshDeliveries()
+                                            onOpenDelivery(orderId)
+                                        } catch (e: Exception) {
+                                            error = "This delivery is no longer available."
+                                            refreshOffers(); refreshDeliveries()
+                                        }
                                     }
-                                }
-                            }) { Text("Accept") }
-                            OutlinedButton(onClick = {
-                                scope.launch {
-                                    runCatching { NetworkClient.apiService.declineDelivery(orderId) }
-                                    runCatching { NetworkClient.apiService.markNotificationRead(notification.id) }
-                                    refreshOffers()
-                                }
-                            }) { Text("Decline") }
+                                },
+                            )
+                            IdsButton(
+                                text = "Decline",
+                                variant = IdsButtonVariant.Tinted,
+                                size = IdsButtonSize.Medium,
+                                onClick = {
+                                    scope.launch {
+                                        runCatching { NetworkClient.apiService.declineDelivery(orderId) }
+                                        runCatching { NetworkClient.apiService.markNotificationRead(notification.id) }
+                                        refreshOffers()
+                                    }
+                                },
+                            )
                         }
                     }
                 }
@@ -405,7 +415,7 @@ private fun RiderDeliveryRow(
             StatusBadge(delivery.status)
             if (showClaim) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onClaim, modifier = Modifier.fillMaxWidth()) { Text("Claim this delivery") }
+                IdsButton(text = "Claim this delivery", onClick = onClaim)
             }
         }
     }

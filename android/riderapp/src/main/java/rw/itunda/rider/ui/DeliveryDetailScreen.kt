@@ -9,10 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -145,7 +144,10 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
         }
         if (nextAction != null) {
             val (nextStatus, label) = nextAction
-            Button(
+            IdsButton(
+                text = if (advancing) "Updating…" else label,
+                enabled = !advancing,
+                modifier = Modifier.padding(16.dp),
                 onClick = {
                     advancing = true
                     scope.launch {
@@ -159,12 +161,7 @@ fun DeliveryDetailScreen(orderId: String, onBack: () -> Unit) {
                         }
                     }
                 },
-                enabled = !advancing,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().padding(16.dp).height(52.dp),
-            ) {
-                Text(if (advancing) "Updating…" else label)
-            }
+            )
         } else if (current.status == "DELIVERED") {
             Text(
                 "Delivered -- ${"%,.0f".format(current.deliveryFee)} RWF paid to your wallet.",

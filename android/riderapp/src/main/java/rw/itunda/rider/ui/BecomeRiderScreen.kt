@@ -8,8 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,7 +52,9 @@ fun BecomeRiderScreen(onRegistered: () -> Unit, onLogout: () -> Unit) {
             Text(it, color = MaterialTheme.colorScheme.error)
         }
         Spacer(modifier = Modifier.height(20.dp))
-        Button(
+        IdsButton(
+            text = if (busy) "Registering…" else "Become a rider",
+            enabled = !busy,
             onClick = {
                 busy = true
                 error = null
@@ -70,12 +71,7 @@ fun BecomeRiderScreen(onRegistered: () -> Unit, onLogout: () -> Unit) {
                     }
                 }
             },
-            enabled = !busy,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
-            Text(if (busy) "Registering…" else "Become a rider")
-        }
+        )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             "Log out",
