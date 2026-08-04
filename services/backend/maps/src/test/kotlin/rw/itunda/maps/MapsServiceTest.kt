@@ -259,6 +259,63 @@ class MapsServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real user opening the default map view (Smart Around-style)") {
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
+
+        val lat = -1.9441
+        val lng = 30.0619
+
+        When("real places exist across multiple real categories") {
+            val restaurant = NearbyPlace("Real Restaurant", -1.9442, 30.0620, 0.05)
+            val cafe = NearbyPlace("Real Cafe", -1.9443, 30.0621, 0.1)
+            MapPlaceCategory.entries.forEach { category ->
+                every { nominatimGeocodingClient.searchNearby(category.searchTerm, lat, lng, 2.0, limit = 5) } returns emptyList()
+            }
+            every { nominatimGeocodingClient.searchNearby("restaurant", lat, lng, 2.0, limit = 5) } returns listOf(restaurant)
+            every { nominatimGeocodingClient.searchNearby("cafe", lat, lng, 2.0, limit = 5) } returns listOf(cafe)
+
+            val results = service.getAroundMe("user_1", lat, lng, 2.0)
+
+            Then("it merges real results across every real category, sorted by real distance") {
+                results shouldBe listOf(restaurant, cafe)
+            }
+        }
+
+        When("the search center is outside Rwanda's bounding envelope") {
+            Then("it returns an empty list without ever calling Nominatim") {
+                val results = service.getAroundMe("user_1", 0.0, 0.0, 2.0)
+                results shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("real users bookmarking real places this week") {
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val mapBookmarkRepository = mockk<MapBookmarkRepository>()
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
+
+        When("a real place has been saved by multiple real distinct users") {
+            val projection = mockk<rw.itunda.core.repository.TrendingBookmarkProjection>()
+            every { projection.getDisplayName() } returns "Real Popular Cafe"
+            every { projection.getLatitude() } returns -1.9441
+            every { projection.getLongitude() } returns 30.0619
+            every { projection.getSaveCount() } returns 4L
+            every { mapBookmarkRepository.findTrending(any(), any()) } returns listOf(projection)
+
+            val results = service.getTrendingSavedPlaces(7, 10)
+
+            Then("it returns the real aggregate save count, not a fabricated popularity score") {
+                results shouldBe listOf(TrendingPlace("Real Popular Cafe", -1.9441, 30.0619, 4L))
+            }
+        }
+    }
+
     Given("a real user bookmarking a real place") {
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>()

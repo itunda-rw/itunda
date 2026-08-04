@@ -977,6 +977,12 @@ data class ProductSubscriptionsResponse(val success: Boolean, val subscriptions:
 // mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
 data class NearbyPlaceDto(val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
 data class MapNearbyResponse(val success: Boolean, val places: List<NearbyPlaceDto>)
+// Real "Smart Around"-style default map state (2026-08-04) -- see MapsService's own
+// getAroundMe/getTrendingSavedPlaces doc comments for the real, re-verified Naver Map
+// sourcing (brunch.co.kr/@bydot/4) and the honest scope decision.
+data class MapAroundMeResponse(val success: Boolean, val places: List<NearbyPlaceDto>)
+data class TrendingPlaceDto(val displayName: String, val latitude: Double, val longitude: Double, val saveCount: Long)
+data class MapTrendingResponse(val success: Boolean, val places: List<TrendingPlaceDto>)
 // Public-safe cash-point discovery. The backend deliberately omits tills, operator
 // details, and cash availability; customers only need a name, location and distance.
 data class NearbyAgentDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
@@ -2593,6 +2599,21 @@ interface ApiService {
         @Query("lng") lng: Double,
         @Query("radiusKm") radiusKm: Double = 2.0,
     ): MapNearbyResponse
+
+    // Real "Smart Around"-style default map state (2026-08-04) -- see MapAroundMeResponse's
+    // own doc comment.
+    @GET("api/v1/maps/around-me")
+    suspend fun getMapAroundMe(
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radiusKm") radiusKm: Double = 2.0,
+    ): MapAroundMeResponse
+
+    @GET("api/v1/maps/trending")
+    suspend fun getMapTrending(
+        @Query("days") days: Int = 7,
+        @Query("limit") limit: Int = 10,
+    ): MapTrendingResponse
 
     @GET("api/v1/agents/nearby")
     suspend fun searchNearbyAgents(

@@ -115,6 +115,28 @@ class MapsController(private val mapsService: MapsService) {
         mapOf("success" to true, "places" to mapsService.getNearbyPlaces(currentUser.userId, category, lat, lng, radiusKm)),
     )
 
+    // Real "Smart Around"-style default state -- see MapsService.getAroundMe/
+    // getTrendingSavedPlaces's own doc comments for the real, re-verified Naver Map
+    // sourcing and the honest scope decision (2 of Naver's 5 real sections, not a
+    // fabricated 5-for-5).
+    @GetMapping("/around-me")
+    fun aroundMe(
+        @RequestParam lat: Double,
+        @RequestParam lng: Double,
+        @RequestParam(defaultValue = "2.0") radiusKm: Double,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "places" to mapsService.getAroundMe(currentUser.userId, lat, lng, radiusKm)),
+    )
+
+    @GetMapping("/trending")
+    fun trending(
+        @RequestParam(defaultValue = "7") days: Int,
+        @RequestParam(defaultValue = "10") limit: Int,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "places" to mapsService.getTrendingSavedPlaces(days, limit)),
+    )
+
     @PostMapping("/bookmarks")
     fun addBookmark(
         @RequestBody request: AddBookmarkRequest,
