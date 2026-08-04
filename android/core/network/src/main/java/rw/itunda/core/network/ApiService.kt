@@ -548,6 +548,9 @@ data class GroupMessageDto(
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
+// Real group-chat pin (2026-08-04) -- see ApiService's own getPinnedGroupMessage doc
+// comment. Mirrors PinnedMessageResponse's own 1:1 shape.
+data class GroupPinnedMessageResponse(val success: Boolean, val message: GroupMessageDto?)
 data class GroupMessagesResponse(val success: Boolean, val messages: List<GroupMessageDto>)
 data class GroupMessageResponse(val success: Boolean, val message: GroupMessageDto)
 data class LeaveGroupResponse(val success: Boolean)
@@ -2139,6 +2142,19 @@ interface ApiService {
 
     @DELETE("api/v1/messages/groups/{id}/messages/{messageId}")
     suspend fun deleteGroupMessage(@Path("id") groupId: String, @Path("messageId") messageId: String): SuccessResponse
+
+    // Real group-chat pin (2026-08-04) -- see GroupThreadView's own doc comment: the
+    // real backend (GroupMessagingController, 2026-07-26) had no Retrofit client method
+    // or UI anywhere until now. Mirrors getPinnedConversationMessage/
+    // pinConversationMessage/unpinConversationMessage's own 1:1 shape exactly.
+    @GET("api/v1/messages/groups/{id}/pin")
+    suspend fun getPinnedGroupMessage(@Path("id") groupId: String): GroupPinnedMessageResponse
+
+    @POST("api/v1/messages/groups/{id}/pin/{messageId}")
+    suspend fun pinGroupMessage(@Path("id") groupId: String, @Path("messageId") messageId: String): SuccessResponse
+
+    @DELETE("api/v1/messages/groups/{id}/pin")
+    suspend fun unpinGroupMessage(@Path("id") groupId: String): SuccessResponse
 
     @POST("api/v1/messages/groups/messages/{id}/reactions")
     suspend fun toggleGroupReaction(@Path("id") groupMessageId: String, @Body request: ToggleReactionRequest): ReactionsResponse

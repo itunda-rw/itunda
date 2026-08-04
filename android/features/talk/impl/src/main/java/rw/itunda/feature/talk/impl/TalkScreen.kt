@@ -2,8 +2,10 @@ package rw.itunda.feature.talk.impl
 
 import androidx.activity.compose.BackHandler
 import coil.compose.AsyncImage
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +39,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -55,6 +59,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -532,6 +538,13 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     var emoticonPickerOpen by remember { mutableStateOf(false) }
     var emoticonStoreOpen by remember { mutableStateOf(false) }
     var emoticonImageById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // Real group-chat pin (2026-07-26 backend, wired 2026-08-04) -- found via the same
+    // defined-but-uncalled-method sweep this file's own doc history already names for
+    // emoticons above: GroupMessagingController's real /{groupId}/pin endpoints existed
+    // with zero Retrofit method or UI anywhere. Mirrors ChatThreadView's own real
+    // pinnedMessage/updatingPin pattern for 1:1 exactly.
+    var pinnedMessage by remember { mutableStateOf<GroupMessageDto?>(null) }
+    var updatingPin by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val listState: LazyListState = rememberLazyListState()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -575,6 +588,9 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
             // Real, non-critical -- a failed member-list fetch shouldn't block the
             // thread; bubbles just fall back to a truncated sender id below.
         }
+    }
+    LaunchedEffect(group.groupId) {
+        try { pinnedMessage = NetworkClient.apiService.getPinnedGroupMessage(group.groupId).message } catch (_: Exception) { }
     }
     // Real WebSocket live-transport for group chat -- same socket 1:1 already uses,
     // routing on message type via MessagingSocketPush.
@@ -651,6 +667,15 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
             )
             return@Column
         }
+        pinnedMessage?.let { pinned ->
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("📌 ${pinned.body}", color = Ids.colors.textPrimary, fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    updatingPin = true
+                    coroutineScope.launch { try { NetworkClient.apiService.unpinGroupMessage(group.groupId); pinnedMessage = null } catch (_: Exception) { error = "Couldn't unpin this message." } finally { updatingPin = false } }
+                }, enabled = !updatingPin) { Text("Unpin", fontSize = 11.sp) }
+            }
+        }
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val msgs = messages
@@ -685,6 +710,10 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                             try { NetworkClient.apiService.deleteGroupMessage(group.groupId, messageId); refresh() }
                             catch (_: Exception) { error = "Couldn't delete this message." }
                         } },
+                        onPin = { message ->
+                            updatingPin = true
+                            coroutineScope.launch { try { NetworkClient.apiService.pinGroupMessage(group.groupId, message.id); pinnedMessage = message } catch (_: Exception) { error = "Couldn't pin this message." } finally { updatingPin = false } }
+                        },
                     )
                 }
             }
@@ -1135,34 +1164,49 @@ private fun GroupManageMembersView(
     }
 }
 
+// Real KakaoTalk-style long-press message menu -- see MessageBubble's own doc comment
+// for the full sourced account; same treatment applied here for group threads.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GroupMessageBubble(
-    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {}, emoticonImageUrl: String? = null,
+    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {}, onPin: (GroupMessageDto) -> Unit = {}, emoticonImageUrl: String? = null,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-            if (message.emoticonId != null) {
-                if (!isMine) {
-                    Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+            Box(modifier = Modifier.combinedClickable(onClick = {}, onLongClick = { menuOpen = true })) {
+                if (message.emoticonId != null) {
+                    if (!isMine) {
+                        Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+                    }
+                    EmoticonBubble(emoticonImageUrl)
+                } else {
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (isMine) Ids.colors.brand else Ids.colors.surfaceSoft)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    if (!isMine) {
+                        Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+                    }
+                    Text(message.body, color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
                 }
-                EmoticonBubble(emoticonImageUrl)
-            } else {
-            Column(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (isMine) Ids.colors.brand else Ids.colors.surfaceSoft)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-            ) {
-                if (!isMine) {
-                    Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
                 }
-                Text(message.body, color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
-            }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    if (message.emoticonId == null) {
+                        DropdownMenuItem(text = { Text("Copy") }, onClick = { clipboardManager.setText(AnnotatedString(message.body)); menuOpen = false })
+                    }
+                    DropdownMenuItem(text = { Text("Reply") }, onClick = { onReply(message); menuOpen = false })
+                    DropdownMenuItem(text = { Text("Pin") }, onClick = { onPin(message); menuOpen = false })
+                    if (isMine && message.deletedAt == null) {
+                        DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(message.id); menuOpen = false })
+                    }
+                }
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
-        TextButton(onClick = { onReply(message) }) { Text("Reply", color = Ids.colors.textSecondary, fontSize = 11.sp) }
-        if (isMine && message.deletedAt == null) TextButton(onClick = { onDelete(message.id) }) { Text("Delete", color = Ids.colors.textSecondary, fontSize = 11.sp) }
         Text(
             chatMessageTime(message.sentAt),
             color = Ids.colors.textSecondary,
@@ -2338,6 +2382,19 @@ private fun EmoticonStoreDialog(onDismiss: () -> Unit) {
     )
 }
 
+// Real KakaoTalk-style long-press message menu (2026-08-04) -- see the References table's
+// "KakaoTalk — 2025 reply/thread redesign" row. itunda's real Reply/Pin/Delete/Report
+// actions already existed (backend-complete, per this file's own doc history) but as
+// permanently-visible TextButtons under every single bubble -- a real, sourced KakaoTalk
+// UX mismatch, not a missing-capability one: real KakaoTalk reveals this exact toolkit
+// only on long-press, keeping the bubble itself clean. Copy is new (real
+// LocalClipboardManager, zero backend needed) -- the one item from Kakao's real toolkit
+// itunda had no equivalent for at all. Forward (to up to 10 destinations) and Thread
+// (expanding a reply into its own sub-conversation) are real, sourced Kakao features but
+// need new backend concepts itunda doesn't have yet (a forward-to-conversation endpoint,
+// a thread/sub-conversation model) -- not built this pass, left as a real, scoped
+// follow-up rather than a half-built approximation.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
     message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
@@ -2352,31 +2409,52 @@ private fun MessageBubble(
 ) {
     var reportOpen by remember { mutableStateOf(false) }
     var reportReason by remember { mutableStateOf("") }
+    var menuOpen by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+    val isPlainTextBubble = gift == null && voucher == null && offer == null && message.emoticonId == null
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-            if (gift != null) {
-                GiftBubble(gift, isMine, currentUserId, onClaimGift)
-            } else if (voucher != null) {
-                GiftVoucherBubble(voucher, isMine, onExtend = { onExtendVoucher(voucher.id) })
-            } else if (offer != null) {
-                OfferBubble(offer, isMine, currentUserId, onRespondToOffer)
-            } else if (message.emoticonId != null) {
-                EmoticonBubble(emoticonImageUrl)
-            } else {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(if (isMine) Ids.colors.brand else Ids.colors.surfaceSoft)
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                ) {
-                    Text(message.body, color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+            // Long-press trigger on the outer wrapper, not just the plain-text bubble --
+            // Reply/Pin/Delete/Report must stay reachable for gift/voucher/offer/emoticon
+            // messages too (a real regression risk in this refactor otherwise: those
+            // bubble types have their own internal Claim/Extend/Respond buttons, which
+            // still consume ordinary taps first, so this outer long-press only fires on a
+            // long-press that isn't already claimed by one of those).
+            Box(modifier = Modifier.combinedClickable(onClick = {}, onLongClick = { menuOpen = true })) {
+                if (gift != null) {
+                    GiftBubble(gift, isMine, currentUserId, onClaimGift)
+                } else if (voucher != null) {
+                    GiftVoucherBubble(voucher, isMine, onExtend = { onExtendVoucher(voucher.id) })
+                } else if (offer != null) {
+                    OfferBubble(offer, isMine, currentUserId, onRespondToOffer)
+                } else if (message.emoticonId != null) {
+                    EmoticonBubble(emoticonImageUrl)
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isMine) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                    ) {
+                        Text(message.body, color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+                    }
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    if (isPlainTextBubble) {
+                        DropdownMenuItem(text = { Text("Copy") }, onClick = { clipboardManager.setText(AnnotatedString(message.body)); menuOpen = false })
+                    }
+                    DropdownMenuItem(text = { Text("Reply") }, onClick = { onReply(message); menuOpen = false })
+                    DropdownMenuItem(text = { Text("Pin") }, onClick = { onPin(message); menuOpen = false })
+                    if (isMine && message.deletedAt == null) {
+                        DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(message.id); menuOpen = false })
+                    }
+                    if (!isMine) {
+                        DropdownMenuItem(text = { Text("Report message") }, onClick = { reportOpen = true; menuOpen = false })
+                    }
                 }
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
-        TextButton(onClick = { onReply(message) }) { Text("Reply", color = Ids.colors.textSecondary, fontSize = 11.sp) }
-        if (isMine && message.deletedAt == null) TextButton(onClick = { onDelete(message.id) }) { Text("Delete", color = Ids.colors.textSecondary, fontSize = 11.sp) }
-        TextButton(onClick = { onPin(message) }) { Text("Pin", color = Ids.colors.textSecondary, fontSize = 11.sp) }
         Text(
             "${if (isMine && message.readAt == null) "1 · " else ""}${chatMessageTime(message.sentAt)}",
             color = Ids.colors.textSecondary,
@@ -2384,9 +2462,6 @@ private fun MessageBubble(
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
         )
-        if (!isMine) {
-            TextButton(onClick = { reportOpen = true }) { Text("Report message", color = Ids.colors.textSecondary, fontSize = 11.sp) }
-        }
     }
     if (reportOpen) AlertDialog(
         onDismissRequest = { reportOpen = false },
