@@ -109,7 +109,14 @@ they close in itunda's current implementation.
    address/contact/hours/menu/photos/parking), but no primary Naver source with precise
    action-row/hero-image layout specifics was found (only a general feature-list description). The
    action-row/hero-image part is real but still open (needs primary Naver sourcing before building
-   Kakao's specific layout as if it were Naver's). The address part shipped 2026-08-04:
+   Kakao's specific layout as if it were Naver's). **Re-attempted 2026-08-05**: three more targeted
+   web searches (Korean-language, aimed at UI/UX breakdown blogs and app-review sites) still found
+   no primary source with precise action-row-ordering or hero-image-placement specifics -- one
+   design-analysis blog post (brunch.co.kr/@bydot/4) covers the place-detail screen's scrollable
+   content sections (기본 정보/메뉴/방문자 사진/리뷰) but not the header/action-row layout. Still
+   genuinely unsourced, not just unsearched -- don't re-attempt without a materially different
+   search angle (e.g. an actual screenshot walkthrough, not a feature-list article). The address
+   part shipped 2026-08-04:
    **correcting an earlier same-day misdiagnosis** -- this session's own backend restarts had been
    omitting `NOMINATIM_BASE_URL`, so itunda's self-hosted Nominatim (which genuinely IS configured
    and populated with real Rwanda OSM data, confirmed once restarted correctly -- e.g. "Miracle
