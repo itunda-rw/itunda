@@ -53,6 +53,9 @@ public struct PublicUser: Decodable {
     public let neighborhood: String?
     public let neighborhoodVerifiedAt: String?
     public let neighborhoodVerificationCount: Int?
+    // Real second neighborhood (2026-07-30) -- see AuthService.setSecondNeighborhood's own
+    // doc comment. Same real-coordinate, reverse-geocoded-server-side rule as `neighborhood`.
+    public let secondNeighborhood: String?
     // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
     // MiniWalletService.kt's own doc comment. Set via NetworkClient.setBirthDate.
     public let birthDate: String?
@@ -74,6 +77,11 @@ public struct ConfirmEmailVerificationRequest: Encodable { public let token: Str
 public struct ConfirmPhoneVerificationRequest: Encodable { public let code: String }
 
 public struct SetNeighborhoodRequest: Encodable {
+    public let latitude: Double
+    public let longitude: Double
+}
+
+public struct SetSecondNeighborhoodRequest: Encodable {
     public let latitude: Double
     public let longitude: Double
 }
@@ -1419,6 +1427,17 @@ extension NetworkClient {
     // and bank-mfe's lib/neighborhood.ts, which this mirrors exactly.
     public func setNeighborhood(latitude: Double, longitude: Double) async throws -> ProfileResponse {
         try await authenticatedPost("api/v1/auth/profile/neighborhood", body: SetNeighborhoodRequest(latitude: latitude, longitude: longitude))
+    }
+
+    // Real second neighborhood (2026-07-30) -- see PublicUser.secondNeighborhood's own
+    // doc comment. Mirrors setNeighborhood exactly; separate add/remove endpoints since
+    // the second neighborhood is optional and independently clearable.
+    public func setSecondNeighborhood(latitude: Double, longitude: Double) async throws -> ProfileResponse {
+        try await authenticatedPost("api/v1/auth/profile/second-neighborhood", body: SetSecondNeighborhoodRequest(latitude: latitude, longitude: longitude))
+    }
+
+    public func clearSecondNeighborhood() async throws -> ProfileResponse {
+        try await authenticatedDelete("api/v1/auth/profile/second-neighborhood")
     }
 
     // Real profile photo (URL, not a binary upload) -- see PublicUser.profilePhotoUrl's

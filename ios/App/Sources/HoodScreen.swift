@@ -138,6 +138,9 @@ private struct HoodRadiusControl: View {
 /// NewListingForm's own "share my location" already established -- one location
 /// permission flow, not a second one invented for this.
 private struct NeighborhoodSetupPrompt: View {
+    // Real second neighborhood (2026-08-04) -- see NetworkClient.setSecondNeighborhood's
+    // own doc comment; mirrors Android HoodShared.kt's own isSecond param and copy exactly.
+    var isSecond: Bool = false
     let onDone: (String) -> Void
 
     @State private var busy = false
@@ -146,8 +149,8 @@ private struct NeighborhoodSetupPrompt: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("Set your neighborhood").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            Text("Share your real location once to see what's happening near you.")
+            Text(isSecond ? "Add a second neighborhood" : "Set your neighborhood").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            Text(isSecond ? "Share a second real place -- like work -- to see what's happening there too." : "Share your real location once to see what's happening near you.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary).multilineTextAlignment(.center)
             Button(action: { if !busy { locationFetcher.requestLocation() } }) {
                 Text(busy ? "Finding your neighborhood…" : "📍 Share my location")
@@ -169,9 +172,12 @@ private struct NeighborhoodSetupPrompt: View {
                 busy = true
                 Task {
                     do {
-                        let res = try await NetworkClient.shared.setNeighborhood(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                        let res = isSecond
+                            ? try await NetworkClient.shared.setSecondNeighborhood(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                            : try await NetworkClient.shared.setNeighborhood(latitude: coordinate.latitude, longitude: coordinate.longitude)
                         busy = false
-                        if let neighborhood = res.user.neighborhood { onDone(neighborhood) }
+                        let value = isSecond ? res.user.secondNeighborhood : res.user.neighborhood
+                        if let value { onDone(value) }
                     } catch let NetworkError.httpError(statusCode) {
                         busy = false
                         error = TalkScreen.errorMessage(statusCode)
@@ -184,6 +190,44 @@ private struct NeighborhoodSetupPrompt: View {
         }
         .onChange(of: locationFetcher.errorMessage) { newValue in
             if let newValue { error = newValue }
+        }
+    }
+}
+
+// Real dual-neighborhood switcher (2026-08-04) -- mirrors Android SuperAppTabs.kt's
+// HoodTab showNeighborhoodPrompt overlay exactly: the primary NeighborhoodSetupPrompt
+// plus an Add/Change/Remove row for the optional second neighborhood (e.g. home + work).
+private struct NeighborhoodSwitcherOverlay: View {
+    let secondNeighborhoodName: String?
+    let onPrimaryDone: (String) -> Void
+    let onAddSecondTapped: () -> Void
+    let onRemoveSecond: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.32).ignoresSafeArea()
+                .onTapGesture { onDismiss() }
+            VStack(spacing: 10) {
+                NeighborhoodSetupPrompt(onDone: onPrimaryDone)
+                HStack {
+                    Text(secondNeighborhoodName.map { "Second: \($0)" } ?? "Add a second neighborhood")
+                        .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Spacer()
+                    HStack(spacing: 12) {
+                        Button(secondNeighborhoodName != nil ? "Change" : "Add") { onAddSecondTapped() }
+                            .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                        if secondNeighborhoodName != nil {
+                            Button("Remove") { onRemoveSecond() }
+                                .font(.caption).bold().foregroundColor(.red)
+                        }
+                    }
+                }
+                .padding(16)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
         }
     }
 }
@@ -226,6 +270,11 @@ struct HoodScreen: View {
     @State private var mode: HoodMode = .marketplace
     @State private var neighborhoodName: String?
     @State private var neighborhoodVerificationCount = 0
+    // Real dual-neighborhood support (2026-08-04) -- see NetworkClient.setSecondNeighborhood's
+    // own doc comment; mirrors Android SuperAppTabs.kt's HoodTab exactly.
+    @State private var secondNeighborhoodName: String?
+    @State private var showNeighborhoodSwitcher = false
+    @State private var showSecondNeighborhoodPrompt = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -241,17 +290,20 @@ struct HoodScreen: View {
 
             HStack(spacing: 6) {
                 Text("📍")
-                Text(neighborhoodName.map {
-                    neighborhoodVerificationCount > 0
-                        ? "Near \($0) · confirmed \(neighborhoodVerificationCount)×"
-                        : "Near \($0)"
-                } ?? "Choose your neighborhood in any Hood service")
+                Text(
+                    [neighborhoodName, secondNeighborhoodName].compactMap { $0 }.isEmpty
+                        ? "Choose your neighborhood in any Hood service"
+                        : [neighborhoodName, secondNeighborhoodName].compactMap { $0 }.joined(separator: " · ")
+                        + (neighborhoodVerificationCount > 0 ? " · confirmed \(neighborhoodVerificationCount)×" : "")
+                )
                     .font(IDS.Typography.caption)
                     .foregroundColor(IDS.Colors.textSecondary)
                 Spacer()
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .onTapGesture { showNeighborhoodSwitcher = true }
 
             switch mode {
             case .marketplace:
@@ -269,6 +321,40 @@ struct HoodScreen: View {
             if let profile = try? await NetworkClient.shared.getProfile() {
                 neighborhoodName = profile.user.neighborhood
                 neighborhoodVerificationCount = profile.user.neighborhoodVerificationCount ?? 0
+                secondNeighborhoodName = profile.user.secondNeighborhood
+            }
+        }
+        .overlay {
+            if showNeighborhoodSwitcher {
+                NeighborhoodSwitcherOverlay(
+                    secondNeighborhoodName: secondNeighborhoodName,
+                    onPrimaryDone: { name in
+                        neighborhoodName = name
+                        showNeighborhoodSwitcher = false
+                    },
+                    onAddSecondTapped: { showNeighborhoodSwitcher = false; showSecondNeighborhoodPrompt = true },
+                    onRemoveSecond: {
+                        Task {
+                            if let res = try? await NetworkClient.shared.clearSecondNeighborhood() {
+                                secondNeighborhoodName = res.user.secondNeighborhood
+                            }
+                        }
+                    },
+                    onDismiss: { showNeighborhoodSwitcher = false }
+                )
+            }
+        }
+        .overlay {
+            if showSecondNeighborhoodPrompt {
+                ZStack {
+                    Color.black.opacity(0.32).ignoresSafeArea()
+                        .onTapGesture { showSecondNeighborhoodPrompt = false }
+                    NeighborhoodSetupPrompt(isSecond: true, onDone: { name in
+                        secondNeighborhoodName = name
+                        showSecondNeighborhoodPrompt = false
+                    })
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                }
             }
         }
     }
