@@ -1470,7 +1470,14 @@ private fun SwipeableConversationRow(
             }
         },
     ) {
-        ConversationRow(conversation, online = online, onClick = onClick)
+        // Real fix, found live 2026-08-05: ConversationRow has no opaque background of
+        // its own -- it always relied on sitting directly against the screen's own
+        // background color. SwipeToDismissBox's foreground content needs real opacity
+        // to actually cover backgroundContent at rest; without this the red/blue swipe
+        // reveal showed through underneath the row even when not swiping.
+        Box(modifier = Modifier.background(Ids.colors.background)) {
+            ConversationRow(conversation, online = online, onClick = onClick)
+        }
     }
 }
 

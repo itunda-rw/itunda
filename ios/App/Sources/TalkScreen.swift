@@ -26,6 +26,10 @@ struct TalkScreen: View {
     @State private var view: TalkView = .direct
     @State private var conversations: [ConversationSummaryDto]?
     @State private var conversationsError: String?
+    // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+    // .archived's own doc comment. Loaded alongside the active list so the
+    // "Archived (N)" toggle has a real count without an extra round-trip.
+    @State private var archivedConversations: [ConversationSummaryDto]?
     @State private var openConversation: ConversationSummaryDto?
     @State private var groups: [GroupSummaryDto]?
     @State private var groupsError: String?
@@ -52,6 +56,7 @@ struct TalkScreen: View {
             }
         }
         .task { await loadConversations() }
+        .task { await loadArchivedConversations() }
         .task { await loadGroups() }
         .task(id: conversations?.map { $0.otherUserId }) { await pollPresence() }
         .onChange(of: pendingConversationId) { _ in tryOpenPending() }
@@ -88,6 +93,7 @@ struct TalkScreen: View {
             if view == .direct {
                 DirectMessagesList(
                     conversations: conversations,
+                    archivedConversations: archivedConversations,
                     error: conversationsError,
                     presence: presence,
                     onRetry: { Task { await loadConversations() } },
@@ -99,7 +105,13 @@ struct TalkScreen: View {
                             }
                         }
                     },
-                    onOpen: { openConversation = $0 }
+                    onOpen: { openConversation = $0 },
+                    onArchiveChanged: {
+                        Task {
+                            await loadConversations()
+                            await loadArchivedConversations()
+                        }
+                    }
                 )
             } else {
                 GroupsList(
@@ -148,6 +160,12 @@ struct TalkScreen: View {
         }
     }
 
+    private func loadArchivedConversations() async {
+        // Real, non-critical -- the active list and "Archived (N)" count still work
+        // even if this background fetch fails; retried on next load.
+        archivedConversations = try? await NetworkClient.shared.getConversations(archived: true).conversations
+    }
+
     private func loadGroups() async {
         do {
             let res = try await NetworkClient.shared.getMyGroups()
@@ -182,100 +200,152 @@ struct TalkScreen: View {
 
 private struct DirectMessagesList: View {
     let conversations: [ConversationSummaryDto]?
+    let archivedConversations: [ConversationSummaryDto]?
     let error: String?
     let presence: [String: Bool]
     let onRetry: () -> Void
     let onStarted: (String) -> Void
     let onOpen: (ConversationSummaryDto) -> Void
+    let onArchiveChanged: () -> Void
 
     @State private var newChatPhone = ""
     @State private var startError: String?
     @State private var starting = false
     @State private var contacts: [TalkContactDto]?
+    // Real fix, found live 2026-08-05 (same audit that found the identical Android
+    // bug): this used to filter on `quiet` (mute) and mislabel the result "Archived"
+    // -- there was no real archive concept on the backend yet, so muting had been
+    // repurposed to also hide a conversation from the main list. Now that a real,
+    // distinct `archived` field exists, muted conversations stay visible in the main
+    // list (matching real KakaoTalk: muting only silences notifications, it never
+    // hides a room) and this toggle switches to the real archived list.
     @State private var showArchived = false
 
+    // Real swipe actions (2026-08-05) -- closes docs/DESIGN_REFERENCES.md Talk
+    // recommendation #4's remaining swipe-gesture half (archive itself is the
+    // setConversationArchived call below). `.swipeActions` is a real, hard iOS
+    // constraint: it only works on rows inside a `List`, never inside a plain
+    // ScrollView/VStack (silently no-ops there, no compile error) -- this whole body
+    // moved from ScrollView+VStack to List for that reason, with `.listRowInsets`/
+    // `.listRowSeparator(.hidden)`/`.listRowBackground(Color.clear)` on every "row" to
+    // preserve the exact same custom-card look the ScrollView version had. Scoped
+    // honestly to a single swipe action, matching the Android port's own identical
+    // scope note (itunda's Talk has no per-conversation "favorite" to wire a second
+    // swipe to).
     var body: some View {
-        ScrollView {
-            VStack(spacing: IDS.Layout.cardGap) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("New chat").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                    Text("Choose a saved contact, or enter their phone number.")
-                        .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
+        List {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("New chat").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                Text("Choose a saved contact, or enter their phone number.")
+                    .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
+                    .foregroundColor(IDS.Colors.textSecondary)
+                if let contacts, !contacts.isEmpty {
+                    Text("Your contacts")
+                        .font(IDS.scaledFont(size: 12, weight: .semibold, relativeTo: .caption1))
                         .foregroundColor(IDS.Colors.textSecondary)
-                    if let contacts, !contacts.isEmpty {
-                        Text("Your contacts")
-                            .font(IDS.scaledFont(size: 12, weight: .semibold, relativeTo: .caption1))
-                            .foregroundColor(IDS.Colors.textSecondary)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(contacts) { contact in
-                                    Button(contact.name) { Task { await startConversation(contact: contact) } }
-                                        .font(IDS.Typography.bodyBold)
-                                        .lineLimit(1)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(IDS.Colors.chipBackground)
-                                        .cornerRadius(12)
-                                        .disabled(starting)
-                                }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(contacts) { contact in
+                                Button(contact.name) { Task { await startConversation(contact: contact) } }
+                                    .font(IDS.Typography.bodyBold)
+                                    .lineLimit(1)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(IDS.Colors.chipBackground)
+                                    .cornerRadius(12)
+                                    .disabled(starting)
                             }
                         }
                     }
-                    HStack {
-                        IdsTextField("+250788123456", text: $newChatPhone, keyboardType: .phonePad)
-                        Button(action: { Task { await startConversation() } }) {
-                            Text(starting ? "..." : "Chat")
-                                .font(IDS.Typography.bodyBold)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 14)
-                                .background(IDS.Colors.brand)
-                                .cornerRadius(14)
-                        }
-                        .disabled(starting || newChatPhone.isEmpty)
-                    }
-                    if let startError {
-                        Text(startError).font(.caption).foregroundColor(.red)
-                    }
                 }
+                HStack {
+                    IdsTextField("+250788123456", text: $newChatPhone, keyboardType: .phonePad)
+                    Button(action: { Task { await startConversation() } }) {
+                        Text(starting ? "..." : "Chat")
+                            .font(IDS.Typography.bodyBold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 14)
+                            .background(IDS.Colors.brand)
+                            .cornerRadius(14)
+                    }
+                    .disabled(starting || newChatPhone.isEmpty)
+                }
+                if let startError {
+                    Text(startError).font(.caption).foregroundColor(.red)
+                }
+            }
+            .padding(20)
+            .background(IDS.Colors.card)
+            .cornerRadius(IDS.Layout.cardCornerRadius)
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, 12)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+
+            let archivedCount = archivedConversations?.count ?? 0
+            if archivedCount > 0 {
+                Button(showArchived ? "Show active chats" : "Archived (\(archivedCount))") { showArchived.toggle() }
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+
+            let visibleList = showArchived ? archivedConversations : conversations
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry", action: onRetry)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
-
-                if let conversations {
-                    let archivedCount = conversations.filter { $0.quiet == true }.count
-                    if archivedCount > 0 {
-                        Button(showArchived ? "Show active chats" : "Archived (\(archivedCount))") { showArchived.toggle() }
-                            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            } else if visibleList == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            } else if visibleList!.isEmpty {
+                EmptyStateView(showArchived ? "No archived chats." : "No conversations yet.")
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            } else {
+                ForEach(visibleList!) { conversation in
+                    Button(action: { onOpen(conversation) }) {
+                        ConversationRow(conversation: conversation, online: presence[conversation.otherUserId] == true)
+                            .padding(.horizontal, IDS.Layout.screenHorizontal)
                     }
-                }
-
-                if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry", action: onRetry)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
-                } else if conversations == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if conversations!.filter({ showArchived ? $0.quiet == true : $0.quiet != true }).isEmpty {
-                    EmptyStateView("No conversations yet.")
-                } else {
-                    ForEach(conversations!.filter { showArchived ? $0.quiet == true : $0.quiet != true }) { conversation in
-                        Button(action: { onOpen(conversation) }) {
-                            ConversationRow(conversation: conversation, online: presence[conversation.otherUserId] == true)
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .swipeActions(edge: .trailing) {
+                        Button(showArchived ? "Unarchive" : "Archive") {
+                            Task {
+                                _ = try? await NetworkClient.shared.setConversationArchived(
+                                    conversationId: conversation.conversationId, archived: !showArchived
+                                )
+                                onArchiveChanged()
+                            }
                         }
-                        .buttonStyle(.plain)
+                        .tint(showArchived ? IDS.Colors.brand : IDS.Colors.danger)
                     }
                 }
             }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, 12)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(IDS.Colors.backgroundPrimary)
         .task { await loadContacts() }
     }
 

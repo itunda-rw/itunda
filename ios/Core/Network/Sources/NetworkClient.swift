@@ -2147,6 +2147,9 @@ public struct ConversationSummaryDto: Decodable, Identifiable {
     public let unreadCount: Int
     public let quiet: Bool?
     public let pinnedMessageId: String?
+    // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+    // .archived's own doc comment. Same private-to-me model as quiet.
+    public let archived: Bool?
     public var id: String { conversationId }
 }
 
@@ -2291,6 +2294,10 @@ public struct SendMessageRequest: Encodable {
 public struct TalkContactDto: Decodable, Identifiable { public let userId: String; public let name: String; public var id: String { userId } }
 public struct TalkContactsResponse: Decodable { public let success: Bool; public let contacts: [TalkContactDto] }
 public struct ConversationQuietResponse: Decodable { public let success: Bool; public let quiet: Bool }
+// Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+// .archived's own doc comment.
+public struct ConversationArchivedResponse: Decodable { public let success: Bool; public let archived: Bool }
+public struct SetConversationArchivedRequest: Encodable { public let archived: Bool }
 public struct CreateChatReportRequest: Encodable { public let messageId: String; public let reason: String }
 public struct SetConversationQuietRequest: Encodable { public let quiet: Bool }
 public struct EmptyRequest: Encodable {}
@@ -3635,7 +3642,9 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/messages/conversations", body: StartConversationRequest(phoneNumber: nil, otherUserId: otherUserId))
     }
 
-    public func getConversations() async throws -> ConversationsResponse { try await get("api/v1/messages/conversations") }
+    public func getConversations(archived: Bool = false) async throws -> ConversationsResponse {
+        try await get("api/v1/messages/conversations", query: [URLQueryItem(name: "archived", value: archived ? "true" : "false")])
+    }
 
     public func getTalkContacts() async throws -> TalkContactsResponse { try await get("api/v1/messages/contacts") }
 
@@ -3689,6 +3698,14 @@ extension NetworkClient {
 
     public func setConversationQuiet(conversationId: String, quiet: Bool) async throws -> ConversationQuietResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/quiet", body: SetConversationQuietRequest(quiet: quiet))
+    }
+
+    public func getConversationArchived(conversationId: String) async throws -> ConversationArchivedResponse {
+        try await get("api/v1/messages/conversations/\(conversationId)/archive")
+    }
+
+    public func setConversationArchived(conversationId: String, archived: Bool) async throws -> ConversationArchivedResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/archive", body: SetConversationArchivedRequest(archived: archived))
     }
 
     public func reportChatMessage(messageId: String, reason: String) async throws -> SuccessResponse {
