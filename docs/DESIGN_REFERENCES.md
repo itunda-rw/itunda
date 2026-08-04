@@ -427,30 +427,36 @@ they close in itunda's current implementation.
    just conversation-level `unreadCount`) plus the UI badge.
    *Target: `MessageBubble`/`GroupMessageBubble` in `SuperAppTabs.kt` for UI; backend messaging service for the read-state model*
 
-3. **[sourced] Implemented on Android, 2026-08-04; iOS/bank-mfe partial.** Long-press message menu:
-   reply/forward/pin/delete, plus Copy for plain-text messages (`GroupMessageBubble`/`MessageBubble`
-   in `TalkScreen.kt`, `combinedClickable(onLongClick = ...)` opening a real `DropdownMenu`) --
-   closes Kakao's confirmed Copy/Reply/Forward/Pin/Delete toolkit (mention closed separately, #7
-   below) on Android. **iOS/bank-mfe have the underlying reply/pin/forward/delete capabilities
-   (via always-visible per-message buttons on iOS, mixed UI on bank-mfe) but not the long-press-menu
-   presentation itself** -- a real gap in *how* these are surfaced, not *whether* they exist,
-   found while auditing this row 2026-08-05.
+3. **[sourced] Implemented on Android, 2026-08-04; iOS/bank-mfe partial, re-verified 2026-08-05.**
+   Long-press message menu: reply/forward/pin/delete, plus Copy for plain-text messages
+   (`GroupMessageBubble`/`MessageBubble` in `TalkScreen.kt`, `combinedClickable(onLongClick = ...)`
+   opening a real `DropdownMenu`) -- closes Kakao's confirmed Copy/Reply/Forward/Pin/Delete toolkit
+   (mention closed separately, #7 below) on Android. **bank-mfe already has the full real
+   Reply/Copy/Forward/Delete/Pin set on group threads (always-visible buttons, confirmed by direct
+   code read 2026-08-05) -- only the long-press-menu *presentation* is the remaining gap there,
+   not any missing capability.** **iOS is narrower**: 1:1 threads have real Reply/Delete/Pin but no
+   Forward; group threads have only Reply/Delete -- both Forward (either thread) and Pin (group)
+   are genuinely missing capabilities on iOS, not just a presentation gap, confirmed by direct code
+   read 2026-08-05 (`forwardedFromMessageId` isn't modeled in `TalkScreen.swift` at all).
 
 4. **[sourced]** Add swipe actions and per-chat mute/archive ("quiet chat room") to the
    conversation list. `ConversationRow`/`GroupRow` (`~478-498`, `~712-749`) support only tap-to-open.
    Real KakaoTalk supports right-swipe (favorite/notify/pin) and left-swipe (read/leave), plus an
    official archive-without-leaving feature.
 
-5. **[sourced] Implemented on Android only, 2026-08-04.** Per-thread shared-media gallery (Chat
-   Room Drawer) -- `MediaGalleryView`, built entirely client-side from the conversation's own
-   already-loaded messages (filtered to real `imageUrl != null` entries), no new backend endpoint.
-   Scoped honestly to photos only (no file-attachment type or link-preview system exists to back a
-   real "files/links" tab). **iOS/bank-mfe not yet ported**, found while auditing this row
-   2026-08-05.
+5. **[sourced] Implemented on all 3 platforms, 2026-08-04/05.** Per-thread shared-media gallery
+   (Chat Room Drawer) -- `MediaGalleryView`/`MediaGalleryModal`, built entirely client-side from
+   the conversation's own already-loaded messages (filtered to real `imageUrl != null` entries), no
+   new backend endpoint. Scoped honestly to photos only (no file-attachment type or link-preview
+   system exists to back a real "files/links" tab). Android shipped first; iOS
+   (`TalkScreen.swift`) and bank-mfe (`BankDashboard.tsx`) ported the identical client-side-filter
+   approach the next turn, reusing each platform's own pre-existing photo-upload primitive
+   (iOS `uploadPhoto`/`ImagePickerView`, bank-mfe `uploadFile`, both real since 2026-08-01).
 
-6. **[sourced] Implemented on Android only, 2026-08-04.** Real attach ("+") menu on the composer
-   (📷 Photo / 😊 Emoticon), plus real photo-message send/display. **iOS/bank-mfe not yet
-   ported**, found while auditing this row 2026-08-05.
+6. **[sourced] Implemented on all 3 platforms, 2026-08-04/05.** Real attach ("+") menu on the
+   composer (📷 Photo / 😊 Emoticon, plus each platform's own pre-existing Gift/Gift-voucher
+   options folded in on 1:1 threads), plus real photo-message send/display. Closes this row
+   everywhere in the same pass as #5 above.
 
 7. **[sourced] Implemented on all 3 platforms, 2026-08-04/05.** @mention support in group chats:
    typing `@` shows a row of real group members' first names as tappable chips, inserting
