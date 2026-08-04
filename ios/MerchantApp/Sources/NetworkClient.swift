@@ -43,6 +43,19 @@ struct MerchantDto: Decodable {
     let acceptsScheduledOrders: Bool
 }
 struct MerchantResponse: Decodable { let success: Bool; let merchant: MerchantDto }
+// Real API key + webhook delivery log/replay -- found via a fresh "defined but
+// uncalled" endpoint sweep: real, working since ship day, zero client anywhere. See
+// merchant-mfe's lib/merchant.ts own doc comment for the full account, including the
+// real Toss Payments-sourced 7-attempt/4096-minute retry schedule this delivery log
+// reflects.
+struct GenerateApiKeyResponse: Decodable { let success: Bool; let apiKey: String }
+struct WebhookDeliveryDto: Decodable, Identifiable {
+    let id: String; let eventType: String; let status: String; let attemptCount: Int
+    let createdAt: String; let nextAttemptAt: String; let deliveredAt: String?; let lastError: String?
+}
+struct WebhookDeliveriesResponse: Decodable { let success: Bool; let deliveries: [WebhookDeliveryDto] }
+struct ReplayWebhookDeliveryResultDto: Decodable { let id: String; let status: String; let replayOf: String }
+struct ReplayWebhookDeliveryResponse: Decodable { let success: Bool; let delivery: ReplayWebhookDeliveryResultDto }
 struct SetMerchantLocationRequest: Encodable { let latitude: Double; let longitude: Double }
 struct SetCategoryRequest: Encodable { let category: String }
 struct SetMerchantPhotoUrlRequest: Encodable { let photoUrl: String }
@@ -605,6 +618,16 @@ final class MerchantNetworkClient {
     // Android already have this; this is the first iOS client.
     func setWebhookUrl(_ webhookUrl: String) async throws -> MerchantResponse {
         try await post("api/v1/merchant/webhook-url", body: SetWebhookUrlRequest(webhookUrl: webhookUrl))
+    }
+
+    func generateApiKey() async throws -> GenerateApiKeyResponse {
+        try await post("api/v1/merchant/api-key/generate", body: EmptyBody())
+    }
+
+    func getWebhookDeliveries() async throws -> WebhookDeliveriesResponse { try await get("api/v1/merchant/webhook-deliveries") }
+
+    func replayWebhookDelivery(_ deliveryId: String) async throws -> ReplayWebhookDeliveryResponse {
+        try await post("api/v1/merchant/webhook-deliveries/\(deliveryId)/replay", body: EmptyBody())
     }
 
     // Real store-settings endpoints -- see MerchantController.kt's own doc comments.

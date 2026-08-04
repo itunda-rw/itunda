@@ -34,6 +34,7 @@ struct BusinessAccountTab: View {
             if let merchant {
                 FeeWaiverCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                 WebhookUrlCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                ApiIntegrationCard()
                 StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
             }
             Text("Business account").font(.title3).bold()
@@ -59,6 +60,7 @@ struct BusinessAccountTab: View {
             VStack(alignment: .leading, spacing: 12) {
                 if let merchant {
                     FeeWaiverCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                    ApiIntegrationCard()
                     StoreSettingsCard(merchant: merchant, onUpdated: { self.merchant = $0 })
                 }
                 VStack(alignment: .leading, spacing: 4) {
@@ -298,6 +300,109 @@ private struct WebhookUrlCard: View {
             saved = true
         } catch {
             self.error = "Could not save."
+        }
+    }
+}
+
+/// Real API key + webhook delivery log/replay -- see NetworkClient.swift's own doc
+/// comment. The natural companion to WebhookUrlCard above: generate a key to
+/// authenticate programmatic requests, and see whether the configured URL is
+/// actually receiving delivery attempts (with a Replay action once all 7 real
+/// retries are exhausted).
+private struct ApiIntegrationCard: View {
+    @State private var apiKey: String?
+    @State private var generating = false
+    @State private var generateError: String?
+    @State private var deliveries: [WebhookDeliveryDto]?
+    @State private var replayingId: String?
+    @State private var deliveriesError: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("API integration").bold()
+            Text("For merchants integrating their own systems with itunda.")
+                .font(.footnote).foregroundColor(.secondary)
+
+            Button(action: { Task { await generate() } }) {
+                Text(generating ? "Generating…" : "Generate a new API key")
+                    .bold().foregroundColor(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(IDS.Colors.brand).cornerRadius(8)
+            }
+            .disabled(generating)
+            if let apiKey {
+                Text(apiKey).font(.system(.footnote, design: .monospaced))
+                    .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+            }
+            if let generateError {
+                Text(generateError).font(.footnote).foregroundColor(.red)
+            }
+
+            Text("Recent webhook deliveries").bold().font(.subheadline).padding(.top, 8)
+            if let deliveriesError {
+                Text(deliveriesError).font(.footnote).foregroundColor(.red)
+            }
+            if let deliveries {
+                if deliveries.isEmpty {
+                    Text("No webhook deliveries yet.").font(.footnote).foregroundColor(.secondary)
+                } else {
+                    ForEach(deliveries.prefix(20)) { d in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(d.eventType).bold().font(.footnote)
+                                Text("\(d.status) · \(d.attemptCount) attempt\(d.attemptCount == 1 ? "" : "s")")
+                                    .font(.caption).foregroundColor(d.status == "EXHAUSTED" ? .red : .secondary)
+                            }
+                            Spacer()
+                            if d.status == "EXHAUSTED" {
+                                Button(action: { Task { await replay(d.id) } }) {
+                                    Text(replayingId == d.id ? "Replaying…" : "Replay")
+                                        .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                                }
+                                .disabled(replayingId == d.id)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            } else {
+                Text("Loading…").font(.footnote).foregroundColor(.secondary)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+        .task { await loadDeliveries() }
+    }
+
+    private func loadDeliveries() async {
+        do {
+            deliveries = try await MerchantNetworkClient.shared.getWebhookDeliveries().deliveries
+            deliveriesError = nil
+        } catch {
+            deliveriesError = "Could not load webhook deliveries."
+        }
+    }
+
+    private func generate() async {
+        generating = true
+        generateError = nil
+        defer { generating = false }
+        do {
+            apiKey = try await MerchantNetworkClient.shared.generateApiKey().apiKey
+        } catch {
+            generateError = "Could not generate an API key."
+        }
+    }
+
+    private func replay(_ deliveryId: String) async {
+        replayingId = deliveryId
+        defer { replayingId = nil }
+        do {
+            _ = try await MerchantNetworkClient.shared.replayWebhookDelivery(deliveryId)
+            await loadDeliveries()
+        } catch {
+            deliveriesError = "Could not replay this delivery."
         }
     }
 }

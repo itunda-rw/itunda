@@ -96,6 +96,7 @@ fun BusinessAccountTab() {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             merchant?.let { m -> FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) }
             merchant?.let { m -> WebhookUrlCard(merchant = m, onUpdated = { merchant = it }) }
+            ApiIntegrationCard()
             merchant?.let { m -> StoreSettingsCard(merchant = m, onUpdated = { merchant = it }) }
             Text("Business account", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
@@ -128,6 +129,7 @@ fun BusinessAccountTab() {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         merchant?.let { m -> item { FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) } }
         merchant?.let { m -> item { WebhookUrlCard(merchant = m, onUpdated = { merchant = it }) } }
+        item { ApiIntegrationCard() }
         merchant?.let { m -> item { StoreSettingsCard(merchant = m, onUpdated = { merchant = it }) } }
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -334,6 +336,109 @@ private fun WebhookUrlCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Un
                 },
                 enabled = !busy,
             ) { Text(if (busy) "Saving…" else "Save") }
+        }
+    }
+}
+
+/**
+ * Real API key + webhook delivery log/replay -- see ApiService.kt's own doc comment.
+ * The natural companion to WebhookUrlCard above: generate a key to authenticate
+ * programmatic requests, and see whether the configured URL is actually receiving
+ * delivery attempts (with a Replay action once all 7 real retries are exhausted).
+ */
+@Composable
+private fun ApiIntegrationCard() {
+    var apiKey by remember { mutableStateOf<String?>(null) }
+    var generating by remember { mutableStateOf(false) }
+    var generateError by remember { mutableStateOf<String?>(null) }
+    var deliveries by remember { mutableStateOf<List<rw.itunda.merchant.network.WebhookDeliveryDto>?>(null) }
+    var replayingId by remember { mutableStateOf<String?>(null) }
+    var deliveriesError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun loadDeliveries() {
+        scope.launch {
+            try {
+                deliveries = NetworkClient.apiService.getWebhookDeliveries().deliveries
+                deliveriesError = null
+            } catch (e: Exception) {
+                deliveriesError = "Could not load webhook deliveries."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadDeliveries() }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("API integration", fontWeight = FontWeight.Bold)
+            Text(
+                "For merchants integrating their own systems with itunda.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(
+                onClick = {
+                    generating = true
+                    generateError = null
+                    scope.launch {
+                        try {
+                            apiKey = NetworkClient.apiService.generateApiKey().apiKey
+                        } catch (e: Exception) {
+                            generateError = "Could not generate an API key."
+                        } finally {
+                            generating = false
+                        }
+                    }
+                },
+                enabled = !generating,
+            ) { Text(if (generating) "Generating…" else "Generate a new API key") }
+            apiKey?.let { key ->
+                Text(key, style = MaterialTheme.typography.bodySmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            }
+            generateError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+
+            Text("Recent webhook deliveries", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+            deliveriesError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            val list = deliveries
+            if (list == null) {
+                Text("Loading…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else if (list.isEmpty()) {
+                EmptyState("No webhook deliveries yet.", icon = Icons.Outlined.ReceiptLong)
+            } else {
+                list.take(20).forEach { d ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(d.eventType, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "${d.status} · ${d.attemptCount} attempt${if (d.attemptCount == 1) "" else "s"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (d.status == "EXHAUSTED") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (d.status == "EXHAUSTED") {
+                            Button(
+                                onClick = {
+                                    replayingId = d.id
+                                    scope.launch {
+                                        try {
+                                            NetworkClient.apiService.replayWebhookDelivery(d.id)
+                                            loadDeliveries()
+                                        } catch (e: Exception) {
+                                            deliveriesError = "Could not replay this delivery."
+                                        } finally {
+                                            replayingId = null
+                                        }
+                                    }
+                                },
+                                enabled = replayingId != d.id,
+                            ) { Text(if (replayingId == d.id) "Replaying…" else "Replay") }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -158,6 +158,20 @@ data class MerchantBillingPlansResponse(val success: Boolean, val plans: List<Me
 
 data class SetWebhookUrlRequest(val webhookUrl: String)
 
+// Real API key + webhook delivery log/replay -- found via a fresh "defined but
+// uncalled" endpoint sweep: real, working since ship day, zero client anywhere. See
+// merchant-mfe's lib/merchant.ts own doc comment for the full account, including the
+// real Toss Payments-sourced 7-attempt/4096-minute retry schedule this delivery log
+// reflects.
+data class GenerateApiKeyResponse(val success: Boolean, val apiKey: String)
+data class WebhookDeliveryDto(
+    val id: String, val eventType: String, val status: String, val attemptCount: Int,
+    val createdAt: String, val nextAttemptAt: String, val deliveredAt: String? = null, val lastError: String? = null,
+)
+data class WebhookDeliveriesResponse(val success: Boolean, val deliveries: List<WebhookDeliveryDto>)
+data class ReplayWebhookDeliveryResultDto(val id: String, val status: String, val replayOf: String)
+data class ReplayWebhookDeliveryResponse(val success: Boolean, val delivery: ReplayWebhookDeliveryResultDto)
+
 data class RegisterMerchantRequest(val businessName: String)
 
 data class MerchantProductDto(
@@ -525,6 +539,15 @@ interface ApiService {
     // already has this; this is the first Android client.
     @POST("api/v1/merchant/webhook-url")
     suspend fun setWebhookUrl(@Body request: SetWebhookUrlRequest): MerchantResponse
+
+    @POST("api/v1/merchant/api-key/generate")
+    suspend fun generateApiKey(): GenerateApiKeyResponse
+
+    @GET("api/v1/merchant/webhook-deliveries")
+    suspend fun getWebhookDeliveries(): WebhookDeliveriesResponse
+
+    @POST("api/v1/merchant/webhook-deliveries/{id}/replay")
+    suspend fun replayWebhookDelivery(@Path("id") deliveryId: String): ReplayWebhookDeliveryResponse
 
     // Real store-settings endpoints -- see MerchantController.kt's own doc comments.
     // Found 2026-08-01 via a dead-field sweep: category/photo/min-order/cashback-rate/
