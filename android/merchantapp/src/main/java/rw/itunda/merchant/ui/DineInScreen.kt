@@ -16,11 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -73,9 +73,12 @@ private fun TableQrGenerator(restaurantId: String) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IdsTextField(value = tableNumber, onValueChange = { if (it.length <= 50) tableNumber = it }, label = "Table number", modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.padding(start = 8.dp))
-            Button(onClick = { qrContent = dineInTableQrPayload(restaurantId, tableNumber.trim()) }, enabled = tableNumber.isNotBlank()) {
-                Text("Generate")
-            }
+            IdsButton(
+                text = "Generate",
+                enabled = tableNumber.isNotBlank(),
+                size = IdsButtonSize.Medium,
+                onClick = { qrContent = dineInTableQrPayload(restaurantId, tableNumber.trim()) },
+            )
         }
         val content = qrContent
         if (content != null) {
@@ -146,7 +149,8 @@ private fun DineInOrdersQueue() {
                     }
                     nextDineInAction(order.status)?.let { (nextStatus, label) ->
                         Spacer(modifier = Modifier.padding(top = 8.dp))
-                        Button(
+                        IdsButton(
+                            text = label,
                             onClick = {
                                 scope.launch {
                                     try {
@@ -157,8 +161,7 @@ private fun DineInOrdersQueue() {
                                     }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text(label) }
+                        )
                     }
                 }
             }

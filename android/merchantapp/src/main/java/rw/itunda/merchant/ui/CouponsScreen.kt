@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -101,10 +103,11 @@ private fun CreateCouponCard(onCreated: () -> Unit) {
             Text("Create a coupon", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = description, onValueChange = { description = it }, label = "Description (optional)", modifier = Modifier.fillMaxWidth())
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { percentType = true }) { Text(if (percentType) "✓ Percent off" else "Percent off") }
-                Button(onClick = { percentType = false }) { Text(if (!percentType) "✓ Fixed amount off" else "Fixed amount off") }
-            }
+            IdsSegmentedControl(
+                options = listOf(true to "Percent off", false to "Fixed amount off"),
+                selected = percentType,
+                onSelect = { percentType = it },
+            )
             IdsTextField(
                 value = discountValue, onValueChange = { discountValue = it },
                 label = if (percentType) "Percent (1-100)" else "Amount (RWF)",
@@ -116,12 +119,14 @@ private fun CreateCouponCard(onCreated: () -> Unit) {
                 Text("Reserve for regular customers only (3+ past payments)", style = MaterialTheme.typography.bodySmall)
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            IdsButton(
+                text = if (submitting) "Creating…" else "Create coupon",
+                enabled = !submitting,
                 onClick = {
                     val value = discountValue.toBigDecimalOrNull()
                     if (title.isBlank() || value == null || value <= java.math.BigDecimal.ZERO) {
                         error = "Enter a real title and discount value."
-                        return@Button
+                        return@IdsButton
                     }
                     submitting = true
                     error = null
@@ -146,8 +151,7 @@ private fun CreateCouponCard(onCreated: () -> Unit) {
                         }
                     }
                 },
-                enabled = !submitting,
-            ) { Text(if (submitting) "Creating…" else "Create coupon") }
+            )
         }
     }
 }
@@ -179,7 +183,11 @@ private fun CouponRow(coupon: MerchantCouponDto, onChanged: () -> Unit) {
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             if (coupon.active) {
-                Button(
+                IdsButton(
+                    text = if (deactivating) "…" else "Deactivate",
+                    enabled = !deactivating,
+                    variant = IdsButtonVariant.Tinted,
+                    size = IdsButtonSize.Small,
                     onClick = {
                         deactivating = true
                         error = null
@@ -194,8 +202,7 @@ private fun CouponRow(coupon: MerchantCouponDto, onChanged: () -> Unit) {
                             }
                         }
                     },
-                    enabled = !deactivating,
-                ) { Text(if (deactivating) "…" else "Deactivate") }
+                )
             }
         }
     }
