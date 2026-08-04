@@ -16,11 +16,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -146,19 +146,20 @@ private fun AvailabilityEditor() {
                 IdsTextField(value = end, onValueChange = { end = it }, label = "End (HH:mm)", modifier = Modifier.weight(1f))
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            IdsButton(
+                text = if (saving) "Saving…" else "Add window",
+                enabled = !saving,
+                modifier = Modifier.padding(top = 8.dp),
                 onClick = {
                     val startTime = parseHm(start)
                     val endTime = parseHm(end)
                     if (startTime == null || endTime == null || startTime >= endTime) {
                         error = "Enter a real start time before the end time (HH:mm)."
-                        return@Button
+                        return@IdsButton
                     }
                     save(current.orEmpty() + AvailabilityWindowDto(day, "$start:00", "$end:00"))
                 },
-                enabled = !saving,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            ) { Text(if (saving) "Saving…" else "Add window") }
+            )
         }
     }
 }
@@ -230,7 +231,11 @@ private fun BookingQueue() {
                     }
                     if (booking.status == "REQUESTED") {
                         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                            Button(
+                            IdsButton(
+                                text = "Confirm",
+                                enabled = busyId != booking.id,
+                                size = IdsButtonSize.Medium,
+                                modifier = Modifier.weight(1f),
                                 onClick = {
                                     busyId = booking.id
                                     scope.launch {
@@ -244,9 +249,7 @@ private fun BookingQueue() {
                                         }
                                     }
                                 },
-                                enabled = busyId != booking.id,
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Confirm") }
+                            )
                             Spacer(modifier = Modifier.padding(horizontal = 4.dp))
                             TextButton(
                                 onClick = {
@@ -266,7 +269,10 @@ private fun BookingQueue() {
                             ) { Text("Decline") }
                         }
                     } else if (booking.status == "CONFIRMED") {
-                        Button(
+                        IdsButton(
+                            text = if (busyId == booking.id) "Updating…" else "Mark completed",
+                            enabled = busyId != booking.id,
+                            modifier = Modifier.padding(top = 8.dp),
                             onClick = {
                                 busyId = booking.id
                                 scope.launch {
@@ -280,9 +286,7 @@ private fun BookingQueue() {
                                     }
                                 }
                             },
-                            enabled = busyId != booking.id,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        ) { Text(if (busyId == booking.id) "Updating…" else "Mark completed") }
+                        )
                     }
                 }
             }

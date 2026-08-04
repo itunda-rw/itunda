@@ -10,11 +10,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -107,7 +108,9 @@ fun BusinessAccountTab() {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            IdsButton(
+                text = if (opening) "Opening…" else "Open business account",
+                enabled = !opening,
                 onClick = {
                     opening = true
                     scope.launch {
@@ -121,8 +124,7 @@ fun BusinessAccountTab() {
                         }
                     }
                 },
-                enabled = !opening,
-            ) { Text(if (opening) "Opening…" else "Open business account") }
+            )
         }
         return
     }
@@ -148,10 +150,14 @@ fun BusinessAccountTab() {
                     IdsTextField(value = moveAmount, onValueChange = { moveAmount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
+                        IdsButton(
+                            text = "To business",
+                            enabled = !moving,
+                            size = IdsButtonSize.Medium,
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 val amount = moveAmount.toDoubleOrNull()
-                                if (amount == null || amount <= 0.0) { error = "Enter a real amount."; return@Button }
+                                if (amount == null || amount <= 0.0) { error = "Enter a real amount."; return@IdsButton }
                                 moving = true
                                 error = null
                                 scope.launch {
@@ -172,13 +178,15 @@ fun BusinessAccountTab() {
                                     }
                                 }
                             },
+                        )
+                        IdsButton(
+                            text = "To personal",
                             enabled = !moving,
+                            size = IdsButtonSize.Medium,
                             modifier = Modifier.weight(1f),
-                        ) { Text("To business") }
-                        Button(
                             onClick = {
                                 val amount = moveAmount.toDoubleOrNull()
-                                if (amount == null || amount <= 0.0) { error = "Enter a real amount."; return@Button }
+                                if (amount == null || amount <= 0.0) { error = "Enter a real amount."; return@IdsButton }
                                 moving = true
                                 error = null
                                 scope.launch {
@@ -199,9 +207,7 @@ fun BusinessAccountTab() {
                                     }
                                 }
                             },
-                            enabled = !moving,
-                            modifier = Modifier.weight(1f),
-                        ) { Text("To personal") }
+                        )
                     }
                 }
             }
@@ -268,7 +274,10 @@ private fun FeeWaiverCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Uni
                     )
                 }
                 if (!waived) {
-                    Button(
+                    IdsButton(
+                        text = if (busy) "…" else "Apply",
+                        enabled = !busy,
+                        size = IdsButtonSize.Small,
                         onClick = {
                             busy = true
                             error = null
@@ -282,8 +291,7 @@ private fun FeeWaiverCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Uni
                                 }
                             }
                         },
-                        enabled = !busy,
-                    ) { Text(if (busy) "…" else "Apply") }
+                    )
                 }
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -314,7 +322,9 @@ private fun WebhookUrlCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Un
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             if (saved) Text("Saved.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
-            Button(
+            IdsButton(
+                text = if (busy) "Saving…" else "Save",
+                enabled = !busy,
                 onClick = {
                     busy = true
                     error = null
@@ -330,8 +340,7 @@ private fun WebhookUrlCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Un
                         }
                     }
                 },
-                enabled = !busy,
-            ) { Text(if (busy) "Saving…" else "Save") }
+            )
         }
     }
 }
@@ -371,7 +380,9 @@ private fun ApiIntegrationCard() {
                 "For merchants integrating their own systems with itunda.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(
+            IdsButton(
+                text = if (generating) "Generating…" else "Generate a new API key",
+                enabled = !generating,
                 onClick = {
                     generating = true
                     generateError = null
@@ -385,8 +396,7 @@ private fun ApiIntegrationCard() {
                         }
                     }
                 },
-                enabled = !generating,
-            ) { Text(if (generating) "Generating…" else "Generate a new API key") }
+            )
             apiKey?.let { key ->
                 Text(key, style = MaterialTheme.typography.bodySmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
             }
@@ -415,7 +425,10 @@ private fun ApiIntegrationCard() {
                             )
                         }
                         if (d.status == "EXHAUSTED") {
-                            Button(
+                            IdsButton(
+                                text = if (replayingId == d.id) "Replaying…" else "Replay",
+                                enabled = replayingId != d.id,
+                                size = IdsButtonSize.Small,
                                 onClick = {
                                     replayingId = d.id
                                     scope.launch {
@@ -429,8 +442,7 @@ private fun ApiIntegrationCard() {
                                         }
                                     }
                                 },
-                                enabled = replayingId != d.id,
-                            ) { Text(if (replayingId == d.id) "Replaying…" else "Replay") }
+                            )
                         }
                     }
                 }
@@ -469,14 +481,16 @@ private fun StoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDto) ->
             IdsTextField(value = cashbackPercent, onValueChange = { cashbackPercent = it; saved = false }, label = "Boosted cashback (0-5%, blank = standard)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             if (saved) Text("Saved.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
-            Button(
+            IdsButton(
+                text = if (busy) "Saving…" else "Save",
+                enabled = !busy,
                 onClick = {
                     val trimmedCategory = category.trim()
-                    if (trimmedCategory.isEmpty()) { error = "Enter a real category."; return@Button }
+                    if (trimmedCategory.isEmpty()) { error = "Enter a real category."; return@IdsButton }
                     val minOrder = minOrderAmount.trim().let { if (it.isEmpty()) null else it.toDoubleOrNull() }
-                    if (minOrderAmount.trim().isNotEmpty() && minOrder == null) { error = "Enter a real minimum order amount."; return@Button }
+                    if (minOrderAmount.trim().isNotEmpty() && minOrder == null) { error = "Enter a real minimum order amount."; return@IdsButton }
                     val cashbackRate = cashbackPercent.trim().let { if (it.isEmpty()) null else it.toDoubleOrNull()?.div(100.0) }
-                    if (cashbackPercent.trim().isNotEmpty() && cashbackRate == null) { error = "Enter a real cashback percent."; return@Button }
+                    if (cashbackPercent.trim().isNotEmpty() && cashbackRate == null) { error = "Enter a real cashback percent."; return@IdsButton }
                     busy = true
                     error = null
                     saved = false
@@ -495,8 +509,7 @@ private fun StoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDto) ->
                         }
                     }
                 },
-                enabled = !busy,
-            ) { Text(if (busy) "Saving…" else "Save") }
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -506,7 +519,11 @@ private fun StoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDto) ->
                     Text("Accept scheduled orders", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     Text("Let buyers pick a future delivery/pickup time.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Button(
+                IdsButton(
+                    text = if (scheduledBusy) "…" else if (merchant.acceptsScheduledOrders) "On" else "Off",
+                    enabled = !scheduledBusy,
+                    variant = if (merchant.acceptsScheduledOrders) IdsButtonVariant.Filled else IdsButtonVariant.Tinted,
+                    size = IdsButtonSize.Small,
                     onClick = {
                         scheduledBusy = true
                         scheduledError = null
@@ -520,8 +537,7 @@ private fun StoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDto) ->
                             }
                         }
                     },
-                    enabled = !scheduledBusy,
-                ) { Text(if (scheduledBusy) "…" else if (merchant.acceptsScheduledOrders) "On" else "Off") }
+                )
             }
             scheduledError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         }
