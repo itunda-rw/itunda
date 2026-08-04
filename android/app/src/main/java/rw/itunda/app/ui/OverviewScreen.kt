@@ -13,10 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -122,15 +123,18 @@ fun OverviewScreen(onBack: () -> Unit) {
                 }
                 item {
                     if (!showLinkForm) {
-                        Button(onClick = { showLinkForm = true }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Link a bank or mobile money account")
-                        }
+                        IdsButton(text = "Link a bank or mobile money account", onClick = { showLinkForm = true })
                     } else {
                         Column {
                             Text("Provider", style = MaterialTheme.typography.labelMedium)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 COMMON_LINK_PROVIDERS.forEach { name ->
-                                    Button(onClick = { providerText = name }) { Text(name) }
+                                    IdsButton(
+                                        text = name,
+                                        variant = IdsButtonVariant.Tinted,
+                                        size = IdsButtonSize.Small,
+                                        onClick = { providerText = name },
+                                    )
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
@@ -138,9 +142,9 @@ fun OverviewScreen(onBack: () -> Unit) {
                             Spacer(Modifier.height(8.dp))
                             IdsTextField(value = accountNumberText, onValueChange = { accountNumberText = it }, label = "Account / phone number", modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
-                            Button(
+                            IdsButton(
+                                text = if (busy) "Linking…" else "Link account",
                                 enabled = !busy && providerText.isNotBlank() && accountNumberText.length >= 4,
-                                modifier = Modifier.fillMaxWidth(),
                                 onClick = {
                                     busy = true
                                     scope.launch {
@@ -153,7 +157,7 @@ fun OverviewScreen(onBack: () -> Unit) {
                                         } finally { busy = false }
                                     }
                                 },
-                            ) { Text(if (busy) "Linking…" else "Link account") }
+                            )
                         }
                     }
                 }
@@ -181,7 +185,7 @@ private fun LinkedAccountCard(account: LinkedAccountEntityDto, busy: Boolean, on
             Text("Demo balance: ${account.demoBalanceCurrency} ${account.demoBalance}", style = MaterialTheme.typography.bodySmall)
         }
         if (account.status == "LINKED") {
-            Button(enabled = !busy, onClick = onUnlink, modifier = Modifier.padding(top = 8.dp)) { Text("Unlink") }
+            IdsButton(text = "Unlink", enabled = !busy, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small, onClick = onUnlink)
         }
     }
 }

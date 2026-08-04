@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,37 +76,36 @@ fun SupportScreen(onBack: () -> Unit) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             item {
                 if (!showNewTicketForm) {
-                    Button(onClick = { showNewTicketForm = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Report an issue with a transaction")
-                    }
+                    IdsButton(text = "Report an issue with a transaction", onClick = { showNewTicketForm = true })
                 } else {
                     Column {
                         Text("Which transaction?", style = MaterialTheme.typography.labelMedium)
                         transactions.take(10).forEach { tx ->
                             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${tx.description} · ${tx.currency} ${tx.amount}", style = MaterialTheme.typography.bodySmall)
-                                Button(onClick = { selectedTransactionId = tx.id }) {
-                                    Text(if (selectedTransactionId == tx.id) "Selected" else "Select")
-                                }
+                                IdsButton(
+                                    text = if (selectedTransactionId == tx.id) "Selected" else "Select",
+                                    variant = if (selectedTransactionId == tx.id) IdsButtonVariant.Filled else IdsButtonVariant.Tinted,
+                                    size = IdsButtonSize.Small,
+                                    onClick = { selectedTransactionId = tx.id },
+                                )
                             }
                         }
                         Spacer(Modifier.height(8.dp))
                         Text("Category", style = MaterialTheme.typography.labelMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CATEGORIES.forEach { category ->
-                                Button(onClick = { selectedCategory = category }) {
-                                    Text(if (selectedCategory == category) "✓ $category" else category)
-                                }
-                            }
-                        }
+                        IdsSegmentedControl(
+                            options = CATEGORIES.map { it to it },
+                            selected = selectedCategory,
+                            onSelect = { selectedCategory = it },
+                        )
                         Spacer(Modifier.height(8.dp))
                         IdsTextField(value = descriptionText, onValueChange = { descriptionText = it }, label = "Describe the issue", modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(8.dp))
-                        Button(
+                        IdsButton(
+                            text = if (busy) "Submitting…" else "Submit ticket",
                             enabled = !busy && selectedTransactionId != null && descriptionText.isNotBlank(),
-                            modifier = Modifier.fillMaxWidth(),
                             onClick = {
-                                val transactionId = selectedTransactionId ?: return@Button
+                                val transactionId = selectedTransactionId ?: return@IdsButton
                                 busy = true
                                 scope.launch {
                                     try {
@@ -120,7 +121,7 @@ fun SupportScreen(onBack: () -> Unit) {
                                     } finally { busy = false }
                                 }
                             },
-                        ) { Text(if (busy) "Submitting…" else "Submit ticket") }
+                        )
                     }
                 }
             }

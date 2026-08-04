@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -414,32 +413,29 @@ private fun PropertyValuationCard(propertyTypes: List<PropertyTypeDto>) {
             }
             IdsTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, label = "Size (sqm)", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
-            Button(
-                onClick = {
-                    val lat = latitude.toDoubleOrNull()
-                    val lng = longitude.toDoubleOrNull()
-                    val size = sizeSqm.toDoubleOrNull()
-                    if (propertyType == null || lat == null || lng == null || size == null || size <= 0.0) {
-                        error = "Fill in a real location, property type, and size."
-                        return@Button
+            ListingActionButton(if (loading) "Estimating…" else "Estimate value", loading, filled = true) {
+                val lat = latitude.toDoubleOrNull()
+                val lng = longitude.toDoubleOrNull()
+                val size = sizeSqm.toDoubleOrNull()
+                if (propertyType == null || lat == null || lng == null || size == null || size <= 0.0) {
+                    error = "Fill in a real location, property type, and size."
+                    return@ListingActionButton
+                }
+                loading = true
+                error = null
+                estimate = null
+                scope.launch {
+                    try {
+                        estimate = NetworkClient.apiService.getPropertyValuation(lat, lng, propertyType!!, listingType, size).estimate
+                    } catch (e: HttpException) {
+                        error = if (e.code() == 422) "Not enough comparable listings nearby to estimate a value." else superAppErrorMessage(e)
+                    } catch (e: IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    } finally {
+                        loading = false
                     }
-                    loading = true
-                    error = null
-                    estimate = null
-                    scope.launch {
-                        try {
-                            estimate = NetworkClient.apiService.getPropertyValuation(lat, lng, propertyType!!, listingType, size).estimate
-                        } catch (e: HttpException) {
-                            error = if (e.code() == 422) "Not enough comparable listings nearby to estimate a value." else superAppErrorMessage(e)
-                        } catch (e: IOException) {
-                            error = "Couldn't reach itunda. Check your connection and try again."
-                        } finally {
-                            loading = false
-                        }
-                    }
-                },
-                enabled = !loading,
-            ) { Text(if (loading) "Estimating…" else "Estimate value") }
+                }
+            }
             estimate?.let { est ->
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(12.dp),
