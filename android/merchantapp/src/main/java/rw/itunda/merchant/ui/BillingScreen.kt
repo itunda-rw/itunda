@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,13 +103,15 @@ private fun CreatePlanCard(onCreated: () -> Unit) {
             }
             IdsTextField(value = intervalDays, onValueChange = { intervalDays = it }, label = "Every (days)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            IdsButton(
+                text = if (submitting) "Creating…" else "Create plan",
+                enabled = !submitting,
                 onClick = {
                     val amt = amount.toBigDecimalOrNull()
                     val days = intervalDays.toIntOrNull()
                     if (name.isBlank() || amt == null || amt <= java.math.BigDecimal.ZERO || days == null || days <= 0) {
                         error = "Enter a real plan name, amount, and interval."
-                        return@Button
+                        return@IdsButton
                     }
                     submitting = true
                     error = null
@@ -126,8 +129,7 @@ private fun CreatePlanCard(onCreated: () -> Unit) {
                         }
                     }
                 },
-                enabled = !submitting,
-            ) { Text(if (submitting) "Creating…" else "Create plan") }
+            )
         }
     }
 }
@@ -155,7 +157,11 @@ private fun PlanRow(plan: MerchantBillingPlanDto, onChanged: () -> Unit) {
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             if (plan.active) {
-                Button(
+                IdsButton(
+                    text = if (deactivating) "…" else "Deactivate",
+                    enabled = !deactivating,
+                    variant = IdsButtonVariant.Tinted,
+                    size = IdsButtonSize.Small,
                     onClick = {
                         deactivating = true
                         error = null
@@ -170,8 +176,7 @@ private fun PlanRow(plan: MerchantBillingPlanDto, onChanged: () -> Unit) {
                             }
                         }
                     },
-                    enabled = !deactivating,
-                ) { Text(if (deactivating) "…" else "Deactivate") }
+                )
             }
         }
     }

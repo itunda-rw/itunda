@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -110,13 +110,15 @@ private fun LocationSetupCard(onSaved: () -> Unit) {
             IdsTextField(value = latitude, onValueChange = { latitude = it }, label = "Latitude", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = longitude, onValueChange = { longitude = it }, label = "Longitude", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            IdsButton(
+                text = if (submitting) "Saving…" else "Save location",
+                enabled = !submitting,
                 onClick = {
                     val lat = latitude.toDoubleOrNull()
                     val lng = longitude.toDoubleOrNull()
                     if (lat == null || lng == null) {
                         error = "Enter a real latitude and longitude."
-                        return@Button
+                        return@IdsButton
                     }
                     submitting = true
                     error = null
@@ -131,8 +133,7 @@ private fun LocationSetupCard(onSaved: () -> Unit) {
                         }
                     }
                 },
-                enabled = !submitting,
-            ) { Text(if (submitting) "Saving…" else "Save location") }
+            )
         }
     }
 }
@@ -154,26 +155,28 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
             IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = description, onValueChange = { description = it }, label = "Description (optional)", modifier = Modifier.fillMaxWidth())
             Text("Radius: ${if (radiusMeters >= 1000) "%.1fkm".format(radiusMeters / 1000.0) else "${radiusMeters}m"}", style = MaterialTheme.typography.bodySmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(300, 700, 1000, 1500).forEach { r ->
-                    Button(onClick = { radiusMeters = r }) { Text(if (r == radiusMeters) "✓ ${if (r >= 1000) "%.1fkm".format(r / 1000.0) else "${r}m"}" else if (r >= 1000) "%.1fkm".format(r / 1000.0) else "${r}m") }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                AD_DURATION_TIERS.forEach { t ->
-                    Button(onClick = { days = t.days }) { Text(if (t.days == days) "✓ ${t.days}d" else "${t.days}d") }
-                }
-            }
+            IdsSegmentedControl(
+                options = listOf(300, 700, 1000, 1500).map { r -> r to (if (r >= 1000) "%.1fkm".format(r / 1000.0) else "${r}m") },
+                selected = radiusMeters,
+                onSelect = { radiusMeters = it },
+            )
+            IdsSegmentedControl(
+                options = AD_DURATION_TIERS.map { it.days to "${it.days}d" },
+                selected = days,
+                onSelect = { days = it },
+            )
             Text(
                 "${selectedTier.price} RWF will be charged from your wallet. If you already have an active ad, this extends it.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            IdsButton(
+                text = if (submitting) "Starting…" else "Pay ${selectedTier.price} RWF & run ad",
+                enabled = !submitting,
                 onClick = {
                     if (title.isBlank()) {
                         error = "Enter a real title."
-                        return@Button
+                        return@IdsButton
                     }
                     submitting = true
                     error = null
@@ -191,8 +194,7 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
                         }
                     }
                 },
-                enabled = !submitting,
-            ) { Text(if (submitting) "Starting…" else "Pay ${selectedTier.price} RWF & run ad") }
+            )
         }
     }
 }
