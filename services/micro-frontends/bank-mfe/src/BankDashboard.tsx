@@ -7635,6 +7635,58 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   );
 }
 
+// Real @mention composer UI -- ports Android TalkScreen.kt's own identical addition
+// (2026-08-04) to bank-mfe. GroupMessagingService.parseMentions (backend) already
+// resolves `@FirstName` tokens against real group members purely from the message body
+// text -- no separate mentionedUserIds field on the send request, so this composer
+// only needs to insert the right text, not call any new endpoint. v1 scope matches the
+// backend's own honest limitation (first-name collisions resolve to whichever member
+// matches first): only suggests/inserts a plain `@FirstName` token, not a richer
+// inline chip.
+function activeMentionQuery(draft: string): string | null {
+  const at = draft.lastIndexOf('@');
+  if (at === -1) return null;
+  const tail = draft.slice(at + 1);
+  if (tail.includes(' ') || tail.includes('\n')) return null;
+  return tail;
+}
+
+function applyMention(draft: string, memberName: string): string {
+  const at = draft.lastIndexOf('@');
+  if (at === -1) return draft;
+  const firstName = memberName.trim().split(' ')[0];
+  return draft.slice(0, at) + `@${firstName} `;
+}
+
+function MentionSuggestions({ draft, members, currentUserId, onPick }: {
+  draft: string; members: GroupMember[]; currentUserId: string | undefined; onPick: (name: string) => void;
+}) {
+  const query = activeMentionQuery(draft);
+  if (query === null) return null;
+  const matches = members.filter((m) => m.userId !== currentUserId && m.name.split(' ')[0].toLowerCase().startsWith(query.toLowerCase()));
+  if (matches.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '6px' }}>
+      {matches.map((m) => {
+        const firstName = m.name.split(' ')[0];
+        return (
+          <button
+            key={m.userId}
+            type="button"
+            onClick={() => onPick(m.name)}
+            style={{
+              whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
+              color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
+            }}
+          >
+            @{firstName}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<GroupMessage[] | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
@@ -7969,6 +8021,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       {emoticonStoreOpen && <EmoticonStoreModal onClose={() => setEmoticonStoreOpen(false)} />}
 
       {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
+      <MentionSuggestions draft={draft} members={members} currentUserId={currentUser?.id} onPick={(name) => setDraft((d) => applyMention(d, name))} />
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
         <button
           type="button"

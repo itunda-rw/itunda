@@ -450,6 +450,58 @@ private struct GroupRow: View {
     }
 }
 
+// Real @mention composer UI -- ports Android TalkScreen.kt's own identical addition
+// (2026-08-04) to iOS. GroupMessagingService.parseMentions (backend) already resolves
+// `@FirstName` tokens against real group members purely from the message body text --
+// no separate mentionedUserIds field on the send request, so this composer only needs
+// to insert the right text, not call any new endpoint. v1 scope matches the backend's
+// own honest limitation (first-name collisions resolve to whichever member matches
+// first): only suggests/inserts a plain `@FirstName` token, not a richer inline chip.
+private func activeMentionQuery(_ draft: String) -> String? {
+    guard let atIndex = draft.lastIndex(of: "@") else { return nil }
+    let tail = draft[draft.index(after: atIndex)...]
+    if tail.contains(" ") || tail.contains("\n") { return nil }
+    return String(tail)
+}
+
+private func applyMention(_ draft: String, memberName: String) -> String {
+    guard let atIndex = draft.lastIndex(of: "@") else { return draft }
+    let firstName = memberName.trimmingCharacters(in: .whitespaces).split(separator: " ").first.map(String.init) ?? memberName
+    return String(draft[draft.startIndex..<atIndex]) + "@\(firstName) "
+}
+
+private struct MentionSuggestions: View {
+    let draft: String
+    let members: [GroupMemberDto]
+    let currentUserId: String?
+    let onPick: (String) -> Void
+
+    var body: some View {
+        if let query = activeMentionQuery(draft) {
+            let matches = members.filter {
+                $0.userId != currentUserId && ($0.name.split(separator: " ").first.map(String.init) ?? $0.name).lowercased().hasPrefix(query.lowercased())
+            }
+            if !matches.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(matches) { member in
+                            let firstName = member.name.split(separator: " ").first.map(String.init) ?? member.name
+                            Button(action: { onPick(member.name) }) {
+                                Text("@\(firstName)")
+                                    .font(.caption).bold().foregroundColor(.white)
+                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .background(IDS.Colors.brand)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+                .padding(.bottom, 6)
+            }
+        }
+    }
+}
+
 private struct GroupThreadScreen: View {
     let group: GroupSummaryDto
     let onBack: () -> Void
@@ -569,6 +621,8 @@ private struct GroupThreadScreen: View {
                 )
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
             }
+            MentionSuggestions(draft: draft, members: members, currentUserId: currentUserId, onPick: { name in draft = applyMention(draft, memberName: name) })
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
             HStack {
                 Button(action: { emoticonPickerOpen.toggle() }) {
                     Text("😊")
