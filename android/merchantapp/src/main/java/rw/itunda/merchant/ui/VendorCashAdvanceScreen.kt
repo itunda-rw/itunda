@@ -12,6 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -221,7 +222,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Repay early", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                    OutlinedTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
                     Button(onClick = { repayEarly(currentAdvance.id) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                         Text(if (busy) "Repaying…" else "Repay now")
                     }

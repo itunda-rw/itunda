@@ -1,5 +1,7 @@
 package rw.itunda.merchant.ui
 
+import rw.itunda.core.designsystem.components.IdsTextField
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -357,12 +359,7 @@ private fun ReviewReplyRow(review: rw.itunda.merchant.network.EatsReviewDto, onR
             )
         }
         replying -> {
-            androidx.compose.material3.OutlinedTextField(
-                value = reply,
-                onValueChange = { reply = it },
-                label = { Text("Write a reply") },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = reply, onValueChange = { reply = it }, label = "Write a reply", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             Button(
                 onClick = {
@@ -408,12 +405,7 @@ private fun ProductInquiryAnswerRow(inquiry: rw.itunda.merchant.network.ProductI
             )
         }
         answering -> {
-            androidx.compose.material3.OutlinedTextField(
-                value = answer,
-                onValueChange = { answer = it },
-                label = { Text("Write an answer") },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = answer, onValueChange = { answer = it }, label = "Write an answer", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             Button(
                 onClick = {
@@ -459,12 +451,7 @@ private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductRevi
             )
         }
         replying -> {
-            androidx.compose.material3.OutlinedTextField(
-                value = reply,
-                onValueChange = { reply = it },
-                label = { Text("Write a reply") },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = reply, onValueChange = { reply = it }, label = "Write a reply", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             Button(
                 onClick = {
@@ -522,18 +509,8 @@ private fun FollowersTab() {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        androidx.compose.material3.OutlinedTextField(
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Title") },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        androidx.compose.material3.OutlinedTextField(
-            value = body,
-            onValueChange = { body = it },
-            label = { Text("Tell your followers what's new.") },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
+        IdsTextField(value = body, onValueChange = { body = it }, label = "Tell your followers what's new.", modifier = Modifier.fillMaxWidth())
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         val hasFollowers = (count ?: 0) > 0
         Button(

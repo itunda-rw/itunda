@@ -15,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -144,7 +145,7 @@ fun BusinessAccountTab() {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Move money", fontWeight = FontWeight.Bold)
-                    OutlinedTextField(value = moveAmount, onValueChange = { moveAmount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = moveAmount, onValueChange = { moveAmount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
@@ -306,12 +307,7 @@ private fun WebhookUrlCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Un
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Webhook URL", fontWeight = FontWeight.Bold)
-            OutlinedTextField(
-                value = webhookUrl,
-                onValueChange = { webhookUrl = it; saved = false },
-                placeholder = { Text("https://your-server.example.com/webhooks/itunda") },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = webhookUrl, onValueChange = { webhookUrl = it; saved = false }, label = "https://your-server.example.com/webhooks/itunda", modifier = Modifier.fillMaxWidth())
             Text(
                 "We'll notify this address every time a payment completes. If it doesn't respond, we'll keep retrying for about 3 days.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -467,10 +463,10 @@ private fun StoreSettingsCard(merchant: MerchantDto, onUpdated: (MerchantDto) ->
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Store settings", fontWeight = FontWeight.Bold)
-            OutlinedTextField(value = category, onValueChange = { category = it; saved = false }, label = { Text("Category (e.g. Rwandan, Bakery, Cafe)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = photoUrl, onValueChange = { photoUrl = it; saved = false }, label = { Text("Store photo URL") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = minOrderAmount, onValueChange = { minOrderAmount = it; saved = false }, label = { Text("Minimum order (RWF, blank = none)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = cashbackPercent, onValueChange = { cashbackPercent = it; saved = false }, label = { Text("Boosted cashback (0-5%, blank = standard)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = category, onValueChange = { category = it; saved = false }, label = "Category (e.g. Rwandan, Bakery, Cafe)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = photoUrl, onValueChange = { photoUrl = it; saved = false }, label = "Store photo URL", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = minOrderAmount, onValueChange = { minOrderAmount = it; saved = false }, label = "Minimum order (RWF, blank = none)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = cashbackPercent, onValueChange = { cashbackPercent = it; saved = false }, label = "Boosted cashback (0-5%, blank = standard)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             if (saved) Text("Saved.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
             Button(

@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -98,18 +99,18 @@ private fun CreateCouponCard(onCreated: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Create a coupon", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") }, placeholder = { Text("10% off your next visit") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = "Description (optional)", modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { percentType = true }) { Text(if (percentType) "✓ Percent off" else "Percent off") }
                 Button(onClick = { percentType = false }) { Text(if (!percentType) "✓ Fixed amount off" else "Fixed amount off") }
             }
-            OutlinedTextField(
+            IdsTextField(
                 value = discountValue, onValueChange = { discountValue = it },
-                label = { Text(if (percentType) "Percent (1-100)" else "Amount (RWF)") },
+                label = if (percentType) "Percent (1-100)" else "Amount (RWF)",
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(value = expiresAt, onValueChange = { expiresAt = it }, label = { Text("Expires (YYYY-MM-DD, optional)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = expiresAt, onValueChange = { expiresAt = it }, label = "Expires (YYYY-MM-DD, optional)", modifier = Modifier.fillMaxWidth())
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 androidx.compose.material3.Checkbox(checked = regularsOnly, onCheckedChange = { regularsOnly = it })
                 Text("Reserve for regular customers only (3+ past payments)", style = MaterialTheme.typography.bodySmall)

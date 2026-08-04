@@ -15,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -74,20 +75,16 @@ fun CatalogTab() {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Add a product", fontWeight = FontWeight.Bold)
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (RWF)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = originalPrice, onValueChange = { originalPrice = it }, label = { Text("Original price (optional, for a sale)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = imageUrl, onValueChange = { imageUrl = it }, label = { Text("Public image URL (optional)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4)
-                OutlinedTextField(value = stockQuantity, onValueChange = { stockQuantity = it }, label = { Text("Stock (optional — blank means unlimited)") }, modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = name, onValueChange = { name = it }, label = "Name", modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = price, onValueChange = { price = it }, label = "Price (RWF)", modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = originalPrice, onValueChange = { originalPrice = it }, label = "Original price (optional, for a sale)", modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = imageUrl, onValueChange = { imageUrl = it }, label = "Public image URL (optional)", modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = description, onValueChange = { description = it }, label = "Description (optional)", modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = stockQuantity, onValueChange = { stockQuantity = it }, label = "Stock (optional — blank means unlimited)", modifier = Modifier.fillMaxWidth())
                 // Real bookable-service duration (2026-07-25) -- leaving this blank
                 // keeps the product a normal cataloged good; a real minute value marks
                 // it bookable (e.g. "Haircut", 30) via the new Availability tab.
-                OutlinedTextField(
-                    value = durationMinutes, onValueChange = { durationMinutes = it },
-                    label = { Text("Booking duration in minutes (optional -- makes this a bookable service)") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                IdsTextField(value = durationMinutes, onValueChange = { durationMinutes = it }, label = "Booking duration in minutes (optional -- makes this a bookable service)", modifier = Modifier.fillMaxWidth())
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 androidx.compose.material3.Button(
                     onClick = {
@@ -266,12 +263,7 @@ private fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto?
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    OutlinedTextField(
-                        value = stockDraft,
-                        onValueChange = { stockDraft = it },
-                        label = { Text("Available units") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    IdsTextField(value = stockDraft, onValueChange = { stockDraft = it }, label = "Available units", modifier = Modifier.fillMaxWidth())
                     androidx.compose.material3.Button(
                         onClick = {
                             val stock = stockDraft.trim().ifBlank { null }?.toIntOrNull()
@@ -327,19 +319,13 @@ private fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto?
                             "Real Coupang 타임특가-style scarcity pricing: a time-boxed, quantity-capped discount on this product.",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        OutlinedTextField(
+                        IdsTextField(
                             value = dealPrice, onValueChange = { dealPrice = it },
-                            label = { Text("Deal price (RWF, must be less than ${"%,.0f".format(product.price)})") },
+                            label = "Deal price (RWF, must be less than ${"%,.0f".format(product.price)})",
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        OutlinedTextField(
-                            value = dealQuantity, onValueChange = { dealQuantity = it },
-                            label = { Text("Total quantity") }, modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = dealHours, onValueChange = { dealHours = it },
-                            label = { Text("Runs for how many hours") }, modifier = Modifier.fillMaxWidth(),
-                        )
+                        IdsTextField(value = dealQuantity, onValueChange = { dealQuantity = it }, label = "Total quantity", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = dealHours, onValueChange = { dealHours = it }, label = "Runs for how many hours", modifier = Modifier.fillMaxWidth())
                         androidx.compose.material3.Button(
                             onClick = {
                                 val priceValue = dealPrice.trim().toDoubleOrNull()
@@ -391,14 +377,8 @@ private fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto?
                     )
                     tierRows.forEachIndexed { index, (qty, unitPrice) ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = qty, onValueChange = { v -> tierRows = tierRows.toMutableList().also { it[index] = v to unitPrice } },
-                                label = { Text("Min qty") }, modifier = Modifier.weight(1f),
-                            )
-                            OutlinedTextField(
-                                value = unitPrice, onValueChange = { v -> tierRows = tierRows.toMutableList().also { it[index] = qty to v } },
-                                label = { Text("Price each (RWF)") }, modifier = Modifier.weight(1f),
-                            )
+                            IdsTextField(value = qty, onValueChange = { v -> tierRows = tierRows.toMutableList().also { it[index] = v to unitPrice } }, label = "Min qty", modifier = Modifier.weight(1f))
+                            IdsTextField(value = unitPrice, onValueChange = { v -> tierRows = tierRows.toMutableList().also { it[index] = qty to v } }, label = "Price each (RWF)", modifier = Modifier.weight(1f))
                         }
                     }
                     androidx.compose.material3.Button(
@@ -467,22 +447,11 @@ private fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto?
                         }
                     }
                     Text("Add an option group", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
-                    OutlinedTextField(
-                        value = newGroupName, onValueChange = { newGroupName = it },
-                        label = { Text("Group name (e.g. Size)") }, modifier = Modifier.fillMaxWidth(),
-                    )
+                    IdsTextField(value = newGroupName, onValueChange = { newGroupName = it }, label = "Group name (e.g. Size)", modifier = Modifier.fillMaxWidth())
                     newChoiceRows.forEachIndexed { index, (choiceName, priceDelta) ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = choiceName,
-                                onValueChange = { v -> newChoiceRows = newChoiceRows.toMutableList().also { it[index] = v to priceDelta } },
-                                label = { Text("Choice") }, modifier = Modifier.weight(1f),
-                            )
-                            OutlinedTextField(
-                                value = priceDelta,
-                                onValueChange = { v -> newChoiceRows = newChoiceRows.toMutableList().also { it[index] = choiceName to v } },
-                                label = { Text("+RWF") }, modifier = Modifier.weight(1f),
-                            )
+                            IdsTextField(value = choiceName, onValueChange = { v -> newChoiceRows = newChoiceRows.toMutableList().also { it[index] = v to priceDelta } }, label = "Choice", modifier = Modifier.weight(1f))
+                            IdsTextField(value = priceDelta, onValueChange = { v -> newChoiceRows = newChoiceRows.toMutableList().also { it[index] = choiceName to v } }, label = "+RWF", modifier = Modifier.weight(1f))
                         }
                     }
                     TextButton(onClick = { newChoiceRows = newChoiceRows + ("" to "0") }) { Text("Add another choice") }

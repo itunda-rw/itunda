@@ -21,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,12 +71,7 @@ private fun TableQrGenerator(restaurantId: String) {
         )
         Spacer(modifier = Modifier.padding(top = 8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = tableNumber,
-                onValueChange = { if (it.length <= 50) tableNumber = it },
-                label = { Text("Table number") },
-                modifier = Modifier.weight(1f),
-            )
+            IdsTextField(value = tableNumber, onValueChange = { if (it.length <= 50) tableNumber = it }, label = "Table number", modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.padding(start = 8.dp))
             Button(onClick = { qrContent = dineInTableQrPayload(restaurantId, tableNumber.trim()) }, enabled = tableNumber.isNotBlank()) {
                 Text("Generate")

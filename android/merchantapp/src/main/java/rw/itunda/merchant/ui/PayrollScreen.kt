@@ -12,6 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -93,8 +94,8 @@ private fun AddEmployeeCard(onAdded: () -> Unit) {
                 "Must be an existing Itunda user's phone number -- payroll pays directly into their wallet.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = { Text("Phone number") }, placeholder = { Text("+250788123456") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = salaryAmount, onValueChange = { salaryAmount = it }, label = { Text("Monthly salary (RWF)") }, placeholder = { Text("150000") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = salaryAmount, onValueChange = { salaryAmount = it }, label = "Monthly salary (RWF)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
                 onClick = {

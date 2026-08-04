@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Inventory2
@@ -251,15 +252,15 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
     }
 
     Column {
-        OutlinedTextField(
-            value = cardNumber, onValueChange = { cardNumber = it }, label = { Text("Card number") },
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+        IdsTextField(
+            value = cardNumber, onValueChange = { cardNumber = it }, label = "Card number",
+            keyboardType = KeyboardType.Number,
             modifier = Modifier.fillMaxWidth(),
         )
         Row {
-            OutlinedTextField(value = expiryMonth, onValueChange = { expiryMonth = it }, label = { Text("MM") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-            OutlinedTextField(value = expiryYear, onValueChange = { expiryYear = it }, label = { Text("YYYY") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
-            OutlinedTextField(value = cvc, onValueChange = { cvc = it }, label = { Text("CVC") }, keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+            IdsTextField(value = expiryMonth, onValueChange = { expiryMonth = it }, label = "MM", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
+            IdsTextField(value = expiryYear, onValueChange = { expiryYear = it }, label = "YYYY", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
+            IdsTextField(value = cvc, onValueChange = { cvc = it }, label = "CVC", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(

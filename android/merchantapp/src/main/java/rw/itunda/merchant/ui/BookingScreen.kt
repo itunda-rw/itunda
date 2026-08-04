@@ -21,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -140,9 +141,9 @@ private fun AvailabilityEditor() {
                 }
             }
             Row(modifier = Modifier.padding(top = 8.dp)) {
-                OutlinedTextField(value = start, onValueChange = { start = it }, label = { Text("Start (HH:mm)") }, modifier = Modifier.weight(1f))
+                IdsTextField(value = start, onValueChange = { start = it }, label = "Start (HH:mm)", modifier = Modifier.weight(1f))
                 Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                OutlinedTextField(value = end, onValueChange = { end = it }, label = { Text("End (HH:mm)") }, modifier = Modifier.weight(1f))
+                IdsTextField(value = end, onValueChange = { end = it }, label = "End (HH:mm)", modifier = Modifier.weight(1f))
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(

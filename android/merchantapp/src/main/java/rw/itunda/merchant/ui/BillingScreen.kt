@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -94,12 +95,12 @@ private fun CreatePlanCard(onCreated: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Create a billing plan", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Plan name") }, placeholder = { Text("Monthly coffee subscription") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = "Description (optional)", modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount (RWF)") }, placeholder = { Text("8000") }, modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             }
-            OutlinedTextField(value = intervalDays, onValueChange = { intervalDays = it }, label = { Text("Every (days)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = intervalDays, onValueChange = { intervalDays = it }, label = "Every (days)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
                 onClick = {

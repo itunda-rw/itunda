@@ -10,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -106,8 +107,8 @@ private fun LocationSetupCard(onSaved: () -> Unit) {
                 "A radius-targeted ad needs your business's real location to match nearby customers.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedTextField(value = latitude, onValueChange = { latitude = it }, label = { Text("Latitude") }, placeholder = { Text("-1.9536") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = longitude, onValueChange = { longitude = it }, label = { Text("Longitude") }, placeholder = { Text("30.0605") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = latitude, onValueChange = { latitude = it }, label = "Latitude", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = longitude, onValueChange = { longitude = it }, label = "Longitude", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
                 onClick = {
@@ -150,8 +151,8 @@ private fun CreateOrExtendAdCard(onCreated: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Run a local ad", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") }, placeholder = { Text("Fresh bread every morning") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = "Title", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = "Description (optional)", modifier = Modifier.fillMaxWidth())
             Text("Radius: ${if (radiusMeters >= 1000) "%.1fkm".format(radiusMeters / 1000.0) else "${radiusMeters}m"}", style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(300, 700, 1000, 1500).forEach { r ->
