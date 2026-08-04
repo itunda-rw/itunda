@@ -38,6 +38,39 @@ export const advanceRestaurantOrder = (orderId: string, status: EatsOrderStatus)
     body: JSON.stringify({ status }),
   }).then((r) => r.order);
 
+// Real 배민오더-style table/QR in-store ordering, restaurant side -- found via a fresh
+// "defined but uncalled" endpoint sweep: real, working since 2026-07-25 on Android/iOS
+// MerchantApp, zero client on this web dashboard. A customer scans a printed per-table
+// QR straight into the dine-in ordering screen for that exact restaurant + table --
+// same real, restaurant-driven-only status chain (PLACED -> ACCEPTED -> PREPARING ->
+// SERVED) as the Eats queue above, minus the rider-handoff step this order type never
+// has.
+export type DineInOrderStatus = 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'SERVED' | 'CANCELLED';
+
+export interface DineInOrder {
+  id: string;
+  buyerId: string;
+  restaurantId: string;
+  tableNumber: string;
+  totalAmount: number;
+  status: DineInOrderStatus;
+  notes: string | null;
+  createdAt: string;
+}
+
+export const fetchDineInOrders = () =>
+  apiFetch<{ success: boolean; orders: DineInOrder[] }>('/api/v1/eats/dine-in/orders/restaurant-orders').then((r) => r.orders);
+
+export const advanceDineInOrder = (orderId: string, status: DineInOrderStatus) =>
+  apiFetch<{ success: boolean; order: DineInOrder }>(`/api/v1/eats/dine-in/orders/${orderId}/status`, {
+    method: 'POST',
+    body: JSON.stringify({ status }),
+  }).then((r) => r.order);
+
+// Same encoding convention as lib/merchant.ts's own paymentIntentQrPayload/staticQrPayload.
+export const dineInTableQrPayload = (restaurantId: string, tableNumber: string) =>
+  `itunda://eats/dine-in?restaurantId=${restaurantId}&table=${encodeURIComponent(tableNumber)}`;
+
 export const completePickupOrder = (orderId: string) =>
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/complete-pickup`, {
     method: 'POST',
