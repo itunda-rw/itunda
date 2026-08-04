@@ -527,6 +527,55 @@ private fun GroupRow(group: GroupSummaryDto, onClick: () -> Unit) {
 }
 
 @Composable
+// Real @mention composer UI (2026-08-04) -- closes docs/DESIGN_REFERENCES.md's Talk
+// recommendation #7's own explicit remaining scope. GroupMessagingService.parseMentions
+// (backend, since 2026-07-25) already resolves `@FirstName` tokens against real group
+// members purely from the message body text -- no separate mentionedUserIds field on
+// the send request, so this composer only needs to insert the right text, not call any
+// new endpoint. v1 scope matches the backend's own honest limitation (first-name
+// collisions resolve to whichever member matches first): only suggests/inserts a plain
+// `@FirstName` token, not a richer inline chip.
+private fun activeMentionQuery(draft: String): String? {
+    val at = draft.lastIndexOf('@')
+    if (at == -1) return null
+    val tail = draft.substring(at + 1)
+    if (tail.contains(' ') || tail.contains('\n')) return null
+    return tail
+}
+
+private fun applyMention(draft: String, memberName: String): String {
+    val at = draft.lastIndexOf('@')
+    if (at == -1) return draft
+    val firstName = memberName.trim().substringBefore(' ')
+    return draft.substring(0, at) + "@$firstName "
+}
+
+@Composable
+private fun MentionSuggestions(draft: String, members: List<GroupMemberDto>, currentUserId: String?, onPick: (String) -> Unit) {
+    val query = activeMentionQuery(draft) ?: return
+    val matches = members.filter { it.userId != currentUserId && it.name.substringBefore(' ').startsWith(query, ignoreCase = true) }
+    if (matches.isEmpty()) return
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        matches.forEach { member ->
+            Text(
+                "@${member.name.substringBefore(' ')}",
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Ids.colors.brand)
+                    .clickable { onPick(member.name) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var messages by remember { mutableStateOf<List<GroupMessageDto>?>(null) }
@@ -826,6 +875,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 }
             }
         }
+        MentionSuggestions(draft, members, currentUserId, onPick = { name -> draft = applyMention(draft, name) })
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Box {
                 Box(
