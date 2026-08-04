@@ -391,7 +391,7 @@ class CommunityServiceTest : BehaviorSpec({
             val caller = realUser("user_1", "A", "B").also { it.neighborhood = "Kimironko" }
             val expectedPage = PageImpl(listOf(mockk<CommunityPost>()))
             every { userRepository.findById("user_1") } returns Optional.of(caller)
-            every { postRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, "Kimironko", any()) } returns expectedPage
+            every { postRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, listOf("Kimironko"), any()) } returns expectedPage
 
             val page = service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
 
