@@ -385,6 +385,35 @@ data class CreateAutoTransferRequest(
 data class AutoTransferResponse(val success: Boolean, val autoTransfer: AutoTransferDto)
 data class AutoTransfersListResponse(val success: Boolean, val autoTransfers: List<AutoTransferDto>)
 
+// Real Toss 예약송금 (scheduled/reserved one-time transfer) -- see ScheduledTransfer.kt's
+// own doc comment on the backend for the full sourced account. Genuinely distinct from
+// AutoTransfer above: explicitly ONE-TIME on a single future date, not recurring. Had
+// zero client anywhere until now despite being fully built (ScheduledTransferController,
+// a real scheduler executing it via P2pService.sendDirect). Mirrors
+// ScheduledTransferController's real DTOs exactly.
+data class ScheduledTransferDto(
+    val id: String,
+    val recipientIdentifier: String,
+    val recipientName: String,
+    val amount: java.math.BigDecimal,
+    val description: String,
+    val scheduledDate: String,
+    val status: String,
+    val createdAt: String,
+    val executedAt: String?,
+    val transactionId: String?,
+    val failureReason: String?,
+    val cancelledAt: String?,
+)
+data class CreateScheduledTransferRequest(
+    val recipient: String,
+    val amount: java.math.BigDecimal,
+    val scheduledDate: String,
+    val description: String = "",
+)
+data class ScheduledTransferResponse(val success: Boolean, val scheduledTransfer: ScheduledTransferDto)
+data class ScheduledTransfersListResponse(val success: Boolean, val scheduledTransfers: List<ScheduledTransferDto>)
+
 // Real Toss 사기계좌 조회 (fraud-account lookup before transfer) -- see backend
 // ScamReportService's own doc comment. itunda's own crowd-sourced report registry,
 // not a real police-database integration. Real on bank-mfe only until now (2026-07-31).
@@ -2057,6 +2086,18 @@ interface ApiService {
 
     @DELETE("api/v1/p2p/auto-transfers/{id}")
     suspend fun cancelAutoTransfer(@Path("id") id: String): AutoTransferResponse
+
+    // Real Toss 예약송금 (scheduled/reserved one-time transfer) -- see
+    // ScheduledTransferDto's own doc comment. ScheduledTransferController existed fully
+    // on the backend with zero client anywhere until now.
+    @POST("api/v1/p2p/scheduled-transfers")
+    suspend fun createScheduledTransfer(@Header("Idempotency-Key") idempotencyKey: String, @Body request: CreateScheduledTransferRequest): ScheduledTransferResponse
+
+    @GET("api/v1/p2p/scheduled-transfers")
+    suspend fun getMyScheduledTransfers(): ScheduledTransfersListResponse
+
+    @POST("api/v1/p2p/scheduled-transfers/{id}/cancel")
+    suspend fun cancelScheduledTransfer(@Path("id") id: String): ScheduledTransferResponse
 
     @GET("api/v1/p2p/scam-reports/check")
     suspend fun checkScamStatus(@Query("identifier") identifier: String): ScamCheckResponse

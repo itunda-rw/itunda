@@ -343,6 +343,9 @@ fun ItundaAppScreen(
         // page (Send money/Auto-transfer/history) lives one level into the menu.
         var showTransferHub by rememberSaveable { mutableStateOf(false) }
         var showAutoTransfers by rememberSaveable { mutableStateOf(false) }
+        // Real Toss 예약송금 (scheduled/reserved one-time transfer) -- see
+        // ScheduledTransferListScreen's own doc comment for the full sourced account.
+        var showScheduledTransfers by rememberSaveable { mutableStateOf(false) }
         var autoTransferCount by remember { mutableStateOf(0) }
         LaunchedEffect(showTransferHub) {
             if (showTransferHub) {
@@ -1003,12 +1006,15 @@ fun ItundaAppScreen(
                         }
                     },
                 )
+            } else if (showScheduledTransfers) {
+                ScheduledTransferListScreen(onBack = { showScheduledTransfers = false })
             } else {
                 TransferHubScreen(
                     autoTransferCount = autoTransferCount,
                     onBack = { showTransferHub = false },
                     onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient },
                     onOpenAutoTransfers = { showAutoTransfers = true },
+                    onOpenScheduledTransfers = { showScheduledTransfers = true },
                     onSplitBill = { showTransferHub = false; selectedTab = TossTab.Talk },
                     onOpenHistory = { showTransferHub = false; showTransactionHistory = true },
                 )
