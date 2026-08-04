@@ -595,10 +595,11 @@ they close in itunda's current implementation.
    user's own activity into distinct `MINE`/`PURCHASES`/`WISHLIST` tabs (plus `ALERTS`), not one
    flat list (`MarketplaceScreen.kt`'s own `HoodView` enum).
 
-7. **[partially-sourced]** Nearly closed — a repo-wide check found only one remaining bare
-   `Text("Loading…")` across Hood (`MarketplaceScreen.kt`'s boost-options dialog); every list-level
-   loading state already uses `SkeletonBlock`. **Genuinely open, but tiny scope now**, not the
-   "5+ instances" this entry originally described.
+7. **[partially-sourced] Closed -- doc was stale, corrected 2026-08-05.** The one remaining bare
+   `Text("Loading…")` this entry named (`MarketplaceScreen.kt`'s boost-options dialog) is gone --
+   a repo-wide grep for "Loading" (any casing/spacing) across `MarketplaceScreen.kt` found zero
+   matches. Every loading state in the file now uses something else, matching the rest of the
+   file's `SkeletonBlock` convention.
 
 8. **[sourced] Dual-neighborhood implemented 2026-08-04; radius control deliberately not built.**
    `User.secondNeighborhood` (migration V226), `AuthService.setSecondNeighborhood`/
@@ -1081,12 +1082,16 @@ backend) so every recommendation below cites a real file, not a hypothetical.
    ("do you have your ID or passport with you?") over an open question, and test the imperative-
    vs-question microcopy distinction the senior-usability research also independently confirms.
 
-5. **[sourced]** Inherit full native OS font-scaling rather than building (or not building) any
-   in-app text-size toggle. Currently zero font-scaling override exists in any client — meaning
-   itunda's SwiftUI/Compose text should already inherit the OS setting by default unless something
-   is explicitly overriding it; this recommendation is really "audit for accidental fixed-size
-   text and fix it," not "build a new feature," matching Toss's own finding that full OS-native
-   scaling beats a limited in-app toggle.
+5. **[sourced] Audited 2026-08-05 -- functionally already satisfied.** Inherit full native
+   OS font-scaling rather than building (or not building) any in-app text-size toggle.
+   Android's Compose `sp` unit is inherently OS-scalable by platform default; a
+   spot-check across `app/ui/*.kt` found no `fontSize = X.dp` anti-pattern or
+   `LocalDensity`/`fontScale` override disabling it. iOS's `IDS.scaledFont`/
+   `IdsTypeScale` (`Core/DesignSystem/Sources/IDS.swift`) already wrap
+   `UIFontMetrics.scaledFont(for:)`, Apple's own documented Dynamic-Type pattern, per
+   that file's own doc comment. Not an exhaustive file-by-file audit (dozens of call
+   sites use `.sp`/`.font()`), but the correct pattern was confirmed as the default,
+   not an exception -- no accidental fixed-size text found in the sample checked.
    *Target: audit `sp`/fixed-size `Text()` calls across `SuperAppTabs.kt` and SwiftUI `.font()`
    modifiers for hardcoded sizes that don't respond to system text-size settings*
 
