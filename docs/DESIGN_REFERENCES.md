@@ -1259,11 +1259,20 @@ reasonably well).
    `Text(...)` empty-state calls across `SuperAppTabs.kt`/feature modules, `HoodScreen.swift`/iOS
    equivalents, and `BankDashboard.tsx`/`insurance_mini_app`*
 
-2. **[sourced]** Apply the same treatment to itunda's error states — Toss's documented
-   friction-softening reasoning plus Baemin's real UX-writing register both point the same
-   direction: itunda's current `ErrorCard`/inline error rows are plain red text with a bare
-   "Retry" link. Same shared icon-based visual language as item 1, not a second design language.
-   *Target: `ErrorCard` (`SuperAppTabs.kt`) and its iOS/bank-mfe/merchantapp equivalents*
+2. **[sourced] Implemented on all 3 platforms, 2026-08-05.** Apply the same treatment to
+   itunda's error states — Toss's documented friction-softening reasoning plus Baemin's
+   real UX-writing register both point the same direction: itunda's `ErrorCard`/inline
+   error rows were plain red text with a bare "Retry" link, unlike `EmptyState`'s own
+   already-real icon-in-circle treatment right next to it in the same load-failure
+   branches. Same shared icon-based visual language as item 1, not a second design
+   language: `ErrorCard` (Android `core/designsystem`), `ErrorCardView` (iOS
+   `Core/DesignSystem`), and bank-mfe's `ErrorCard` all now render a danger-tinted
+   icon circle + centered message + a real button component, mirroring each
+   platform's own `EmptyState` layout exactly. Merchantapp doesn't currently call
+   `ErrorCard` anywhere, so there was no separate merchantapp-specific copy to fix.
+   Live-verified on Android (a real network-error state triggered against an
+   unreachable backend port on the review emulator); iOS/bank-mfe verified via
+   swiftc -parse / `yarn build` only, not visually.
 
 3. **[sourced]** Write itunda a short, real copy-voice guideline (5-10 concrete before/after
    examples, not an abstract tone document) before or alongside item 1 — Baemin's own real
