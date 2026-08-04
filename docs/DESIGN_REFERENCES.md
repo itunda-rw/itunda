@@ -552,8 +552,14 @@ they close in itunda's current implementation.
    recommendation's own specific figures (8-63-area radius scaling) were already flagged
    `partially-sourced`/secondary-only in the original entry -- building a fabricated radius tier
    system off an admittedly-illustrative source would be inventing a number, not implementing a
-   researched one. **iOS/bank-mfe second-neighborhood UI not yet ported** -- Android-only this
-   pass, same honest scope note as other cross-platform features when time didn't allow all three.
+   researched one. **iOS and bank-mfe ported 2026-08-04**, closing this gap on all three
+   platforms: iOS's `NeighborhoodSetupPrompt` gained the same `isSecond` parameter and copy,
+   `HoodScreen`'s neighborhood line is now tappable into a `NeighborhoodSwitcherOverlay` mirroring
+   Android's dialog; bank-mfe's `NeighborhoodSetupPrompt` gained the same `isSecond` prop and a new
+   `NeighborhoodSwitcherRow` (Add/Change/Remove) wired into all four Hood-tab modules
+   (Marketplace/Community/Jobs/Property), each of which manages its own local neighborhood state
+   independently rather than through one shared header component (a bank-mfe/iOS-vs-Android
+   architecture difference, not a scope gap).
 
 9. **[sourced] Implemented 2026-07-25.** Add per-listing ownership verification to Property —
    before this, `PropertyListingService.createListing` had zero ownership proof of any kind,
