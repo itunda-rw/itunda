@@ -624,7 +624,50 @@ interface ApiService {
 
     @POST("api/v1/merchant/followers/broadcast")
     suspend fun broadcastToFollowers(@Body request: BroadcastToFollowersRequest): BroadcastToFollowersResponse
+
+    // Real Isoko ("market" in Kinyarwanda) Vendor Cash Advance -- see
+    // VendorCashAdvanceDto's own doc comment. merchant-mfe shipped first (its own doc
+    // comment explicitly names Android/iOS as a follow-up, not built there); this is
+    // the first native client. No Idempotency-Key on apply (row creation only, money
+    // only moves at disburse); disburse/repay-early both require one.
+    @GET("api/v1/vendor-advance/offer")
+    suspend fun getVendorCashAdvanceOffer(@Query("merchantId") merchantId: String): VendorCashAdvanceOfferResponse
+
+    @POST("api/v1/vendor-advance/apply")
+    suspend fun applyForVendorCashAdvance(@Body request: ApplyForVendorCashAdvanceRequest): VendorCashAdvanceResponse
+
+    @POST("api/v1/vendor-advance/{advanceId}/disburse")
+    suspend fun disburseVendorCashAdvance(@Path("advanceId") advanceId: String, @Header("Idempotency-Key") idempotencyKey: String): VendorCashAdvanceResponse
+
+    @GET("api/v1/vendor-advance/me")
+    suspend fun getMyVendorCashAdvance(@Query("merchantId") merchantId: String): VendorCashAdvanceNullableResponse
+
+    @POST("api/v1/vendor-advance/{advanceId}/repay-early")
+    suspend fun repayVendorCashAdvanceEarly(@Path("advanceId") advanceId: String, @Body request: RepayVendorCashAdvanceEarlyRequest, @Header("Idempotency-Key") idempotencyKey: String): VendorCashAdvanceResponse
 }
+
+// Real Isoko ("market" in Kinyarwanda) Vendor Cash Advance -- see the backend's
+// VendorCashAdvanceService.kt doc comment for the full sourced account. Genuinely
+// distinct from every other lending product in this codebase: repayment is
+// auto-collected as a variable % of this merchant's own real itunda-routed daily
+// settlement inflow (QR/card collections), never a fixed installment the merchant
+// initiates. Honest v1 limitation: a vendor's off-platform cash sales are invisible
+// to both underwriting and collection -- surfaced directly in this screen's own copy.
+// Mirrors merchant-mfe's lib/vendorCashAdvance.ts exactly.
+data class VendorCashAdvanceDto(
+    val id: String, val merchantId: String, val principalAmount: java.math.BigDecimal, val feeAmount: java.math.BigDecimal,
+    val totalOwed: java.math.BigDecimal, val remainingOwed: java.math.BigDecimal, val collectionRatePercent: Double,
+    val status: String, val requestedAt: String, val disbursedAt: String?, val repaidAt: String?, val lastCollectionAt: String?,
+)
+data class ApplyForVendorCashAdvanceRequest(val merchantId: String)
+data class RepayVendorCashAdvanceEarlyRequest(val amount: java.math.BigDecimal)
+data class VendorCashAdvanceResponse(val success: Boolean, val advance: VendorCashAdvanceDto)
+data class VendorCashAdvanceNullableResponse(val success: Boolean, val advance: VendorCashAdvanceDto?)
+data class VendorCashAdvanceOfferResponse(
+    val success: Boolean, val eligible: Boolean, val reason: String? = null, val offerAmount: java.math.BigDecimal? = null,
+    val feeAmount: java.math.BigDecimal? = null, val collectionRatePercent: Double? = null,
+    val averageDailySettlement: java.math.BigDecimal? = null, val tradingDays: Int? = null,
+)
 
 enum class DevicePlatform { ANDROID, IOS, WEB }
 data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: String)
