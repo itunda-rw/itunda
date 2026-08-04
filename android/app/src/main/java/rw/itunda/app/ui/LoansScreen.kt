@@ -1,7 +1,11 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.theme.Ids
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -16,11 +20,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -99,12 +102,17 @@ fun LoansScreen(onBack: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(20.dp)) {
             BackTopBar(title = "Loans", onBack = onBack)
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { mode = LoansMode.OFFERS }) { Text("Offers") }
-            Button(onClick = { mode = LoansMode.MY_LOANS }) { Text("My loans (${myLoans?.size ?: 0})") }
-            Button(onClick = { mode = LoansMode.OVERDRAFT }) { Text("Overdraft") }
-            Button(onClick = { mode = LoansMode.POSTPAID_CREDIT }) { Text("Postpaid credit") }
-        }
+        IdsSegmentedControl(
+            options = listOf(
+                LoansMode.OFFERS to "Offers",
+                LoansMode.MY_LOANS to "My loans (${myLoans?.size ?: 0})",
+                LoansMode.OVERDRAFT to "Overdraft",
+                LoansMode.POSTPAID_CREDIT to "Postpaid credit",
+            ),
+            selected = mode,
+            onSelect = { mode = it },
+            modifier = Modifier.padding(horizontal = 20.dp),
+        )
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
@@ -211,14 +219,14 @@ private fun OfferCard(offer: LoanOfferDto, busy: Boolean, onApply: (BigDecimal) 
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button(
+            IdsButton(
+                text = if (busy) "Applying…" else "Apply",
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     val amount = amountText.toBigDecimalOrNull()
                     if (amount != null && amount > BigDecimal.ZERO) onApply(amount)
                 },
-            ) { Text(if (busy) "Applying…" else "Apply") }
+            )
         }
     }
 }
@@ -240,19 +248,38 @@ private fun MyLoanCard(
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = repayText, onValueChange = onRepayTextChanged, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button(enabled = !busy, onClick = onRepay, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Repaying…" else "Repay") }
+            IdsButton(text = if (busy) "Repaying…" else "Repay", enabled = !busy, onClick = onRepay)
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(enabled = !busy, onClick = onRefinance, modifier = Modifier.fillMaxWidth()) {
-                Text(if (busy) "Checking…" else "Refinance to a lower rate")
-            }
+            IdsButton(
+                text = if (busy) "Checking…" else "Refinance to a lower rate",
+                enabled = !busy,
+                onClick = onRefinance,
+                variant = IdsButtonVariant.Tinted,
+            )
         }
     }
 }
 
+// Selectable filter chip, not a CTA -- kept as a custom shape (same call as the Maps
+// search pill earlier this sweep) rather than forced into IdsButton, which has no
+// "selected" visual state. Real bug was the *colors*: MaterialTheme.colorScheme.primary/
+// onSurface/outline are stock Material3 defaults, not itunda's Ids tokens, so this
+// rendered off-brand purple/black regardless of what the rest of the screen looked like.
 @Composable
 private fun LenderChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, shape = RoundedCornerShape(14.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+    OutlinedButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (selected) Ids.colors.pressed else androidx.compose.ui.graphics.Color.Transparent,
+            contentColor = if (selected) Ids.colors.textBrand else Ids.colors.textPrimary,
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (selected) Ids.colors.brand else Ids.colors.divider,
+        ),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium)
     }
 }
 
@@ -296,12 +323,12 @@ private fun OverdraftPanel() {
                 Spacer(Modifier.height(8.dp))
                 IdsTextField(value = requestedLimit, onValueChange = { requestedLimit = it }, label = "Requested limit (RWF)", modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                Button(
+                IdsButton(
+                    text = if (busy) "Opening…" else "Open overdraft",
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         val limit = requestedLimit.toBigDecimalOrNull()
-                        if (limit == null || limit <= BigDecimal.ZERO) { error = "Enter a valid credit limit."; return@Button }
+                        if (limit == null || limit <= BigDecimal.ZERO) { error = "Enter a valid credit limit."; return@IdsButton }
                         busy = true
                         error = null
                         scope.launch {
@@ -312,7 +339,7 @@ private fun OverdraftPanel() {
                             } finally { busy = false }
                         }
                     },
-                ) { Text(if (busy) "Opening…" else "Open overdraft") }
+                )
             }
         }
         return
@@ -329,12 +356,12 @@ private fun OverdraftPanel() {
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = drawAmount, onValueChange = { drawAmount = it }, label = "Draw amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button(
+            IdsButton(
+                text = if (busy) "Drawing…" else "Draw",
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     val amount = drawAmount.toBigDecimalOrNull()
-                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid amount to draw."; return@Button }
+                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid amount to draw."; return@IdsButton }
                     busy = true
                     error = null
                     notice = null
@@ -349,16 +376,17 @@ private fun OverdraftPanel() {
                         } finally { busy = false }
                     }
                 },
-            ) { Text(if (busy) "Drawing…" else "Draw") }
+            )
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(
+            IdsButton(
+                text = if (busy) "Repaying…" else "Repay",
                 enabled = !busy && current.drawnBalance > BigDecimal.ZERO,
-                modifier = Modifier.fillMaxWidth(),
+                variant = IdsButtonVariant.Tinted,
                 onClick = {
                     val amount = repayAmount.toBigDecimalOrNull()
-                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@OutlinedButton }
+                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@IdsButton }
                     busy = true
                     error = null
                     notice = null
@@ -373,7 +401,7 @@ private fun OverdraftPanel() {
                         } finally { busy = false }
                     }
                 },
-            ) { Text(if (busy) "Repaying…" else "Repay") }
+            )
         }
     }
 }
@@ -418,9 +446,9 @@ private fun PostpaidCreditPanel() {
                 )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(8.dp))
-                Button(
+                IdsButton(
+                    text = if (busy) "Applying…" else "Get postpaid credit",
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         busy = true
                         error = null
@@ -432,7 +460,7 @@ private fun PostpaidCreditPanel() {
                             } finally { busy = false }
                         }
                     },
-                ) { Text(if (busy) "Applying…" else "Get postpaid credit") }
+                )
             }
         }
         return
@@ -453,12 +481,12 @@ private fun PostpaidCreditPanel() {
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = spendAmount, onValueChange = { spendAmount = it }, label = "Spend amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button(
+            IdsButton(
+                text = if (busy) "Adding…" else "Add to wallet",
                 enabled = !busy && !suspended,
-                modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     val amount = spendAmount.toBigDecimalOrNull()
-                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid amount to spend."; return@Button }
+                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid amount to spend."; return@IdsButton }
                     busy = true
                     error = null
                     notice = null
@@ -473,16 +501,17 @@ private fun PostpaidCreditPanel() {
                         } finally { busy = false }
                     }
                 },
-            ) { Text(if (busy) "Adding…" else "Add to wallet") }
+            )
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(
+            IdsButton(
+                text = if (busy) "Repaying…" else "Repay",
                 enabled = !busy && current.currentBalance > BigDecimal.ZERO,
-                modifier = Modifier.fillMaxWidth(),
+                variant = IdsButtonVariant.Tinted,
                 onClick = {
                     val amount = repayAmount.toBigDecimalOrNull()
-                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@OutlinedButton }
+                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@IdsButton }
                     busy = true
                     error = null
                     notice = null
@@ -497,7 +526,7 @@ private fun PostpaidCreditPanel() {
                         } finally { busy = false }
                     }
                 },
-            ) { Text(if (busy) "Repaying…" else "Repay") }
+            )
         }
     }
 }

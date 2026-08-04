@@ -10,10 +10,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,9 +57,7 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
         item { Text("Cash out at an Itunda agent", style = MaterialTheme.typography.headlineSmall) }
         item { Text("Create a one-time code, then show it to the agent only when they are ready to hand over cash. Codes expire in 10 minutes.") }
         item {
-            Button(onClick = onFindNearbyAgent, modifier = Modifier.fillMaxWidth()) {
-                Text("Find a nearby Itunda agent")
-            }
+            IdsButton(text = "Find a nearby Itunda agent", onClick = onFindNearbyAgent)
         }
         item {
             IdsTextField(value = amountText, onValueChange = {
@@ -68,9 +67,9 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
                     pendingCreationKey = null
                 }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
+            IdsButton(text = if (busy) "Creating…" else "Create withdrawal code", enabled = !busy, onClick = {
                 val amount = amountText.toBigDecimalOrNull()
-                if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid positive amount."; return@Button }
+                if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid positive amount."; return@IdsButton }
                 busy = true; error = null
                 scope.launch {
                     try {
@@ -85,7 +84,7 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
                     catch (_: Exception) { error = "Could not create a code. You may already have three active codes." }
                     finally { busy = false }
                 }
-            }) { Text(if (busy) "Creating…" else "Create withdrawal code") }
+            })
         }
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
         item {
@@ -128,13 +127,24 @@ private fun AuthorizationCard(
             Text("Withdrawal code", style = MaterialTheme.typography.labelMedium)
             Text(authorization.code, style = MaterialTheme.typography.headlineSmall)
             Text("Show it only when the agent is ready to give you cash.", style = MaterialTheme.typography.bodySmall)
-            Button(enabled = !busy, onClick = onCopy, modifier = Modifier.padding(top = 8.dp)) {
-                Text(if (copied) "Code copied" else "Copy code")
-            }
+            IdsButton(
+                text = if (copied) "Code copied" else "Copy code",
+                enabled = !busy,
+                onClick = onCopy,
+                size = IdsButtonSize.Medium,
+            )
         } else {
             Text(authorization.status)
         }
         Text("Expires: ${authorization.expiresAt}", style = MaterialTheme.typography.bodySmall)
-        if (authorization.status == "ACTIVE") Button(enabled = !busy, onClick = onCancel, modifier = Modifier.padding(top = 8.dp)) { Text("Cancel code") }
+        if (authorization.status == "ACTIVE") {
+            IdsButton(
+                text = "Cancel code",
+                enabled = !busy,
+                onClick = onCancel,
+                variant = IdsButtonVariant.Tinted,
+                size = IdsButtonSize.Medium,
+            )
+        }
     }
 }
