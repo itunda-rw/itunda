@@ -62,11 +62,20 @@ they close in itunda's current implementation.
    this doc), and a real `AnchoredDraggableState`-based 3-state sheet exists there.**
    *Target: `android/features/maps/impl/src/main/java/rw/itunda/feature/maps/impl/MapsScreen.kt`*
 
-2. **[sourced]** Give the sheet a default "around me" state instead of only rendering when a place
-   is selected or bookmarks exist. Naver's Smart Around keeps a non-modal sheet permanently docked
-   with curated nearby sections even before any search, contracting to a peek rather than
-   vanishing.
-   *Target: `MapScreen.kt` — new default state when `selectedPlace == null && activeCategory == null`, around line 658*
+2. **[sourced] Implemented 2026-08-04 (partial, honest scope).** Give the sheet a default "around
+   me" state instead of only rendering when a place is selected or bookmarks exist. Naver's Smart
+   Around keeps a non-modal sheet permanently docked with 5 curated sections (오늘의 PICK/주변/이번
+   주에 가볼 만한/이번 주에 많이 저장한/새로 오픈한) even before any search, contracting to a peek
+   rather than vanishing -- confirmed by directly re-fetching the primary teardown
+   (brunch.co.kr/@bydot/4), not just a search snippet. itunda has real, non-fabricated data for
+   exactly 2 of the 5: 주변 (`MapsService.getAroundMe`, merging a real Nominatim call per real
+   `MapPlaceCategory` since the pre-existing `getNearbyPlaces` required a category to already be
+   picked) and 이번 주에 많이 저장한 (`getTrendingSavedPlaces`, a real cross-user aggregate over
+   `MapBookmark.createdAt` -- how many distinct real users saved a place in the real trailing
+   window). The other 3 imply editorial curation or a "date opened" signal Nominatim/OSM carries
+   neither of -- deliberately not built as fabricated lists, documented in the code itself. Rendered
+   in `MapsScreen.kt`'s sheet as two real horizontal-scroll sections in the true empty state.
+   *Target: `MapsScreen.kt` — default state when `selectedPlace == null && activeCategory == null`*
 
 3. **[sourced]** Elevate the place-detail card's action row and image. itunda's selected-place
    Card (lines 583–656) shows only a name, a star toggle, and a single "Directions" button.
@@ -79,7 +88,14 @@ they close in itunda's current implementation.
    public/private, shareable URL) let the list color become the marker pin color on the map —
    letting a user visually distinguish saved-place categories on the map itself, not just in text.
    **Verified 2026-08-04: `BOOKMARK_COLOR_PALETTE`, per-folder `color`, and a real move-between-
-   folders flow all exist in `MapsScreen.kt`.**
+   folders flow all exist in `MapsScreen.kt`.** The public/private + shareable-URL half was
+   genuinely still missing at that point (no `isPublic` concept anywhere) -- **closed the same day**:
+   migration V225 adds `MapBookmark.isPublic`; `MapsService.setFolderPublic`/`getPublicFolder`
+   bulk-toggle and read a whole named folder. itunda has no public web frontend for Maps (only the
+   existing app-only `itunda://maps` deep link), so sharing reuses that real mechanism instead of a
+   fabricated web URL -- a real, deliberately unauthenticated `GET /api/v1/maps/shared/{userId}/
+   {folderName}` backs a folder-level Share toggle in `MapsScreen.kt`'s bookmarks list. Live-verified
+   with a genuinely unauthenticated curl call (no token at all).
    *Target: `MapsScreen.kt` plus backend `MapBookmarkDto`/`AddMapBookmarkRequest`, which needed a list/group + color field*
 
 5. **[partially-sourced]** Give turn-by-turn its own presentation instead of an inline
