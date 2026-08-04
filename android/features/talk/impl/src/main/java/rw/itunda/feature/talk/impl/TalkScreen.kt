@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,6 +46,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -107,6 +110,7 @@ import rw.itunda.core.network.ProductSearchResultDto
 import rw.itunda.core.network.PurchaseGiftVoucherRequest
 import rw.itunda.core.network.SendEmoticonRequest
 import rw.itunda.core.network.GroupMemberDto
+import rw.itunda.core.network.ForwardMessageRequest
 import rw.itunda.core.network.GroupMessageDto
 import rw.itunda.core.network.GroupSummaryDto
 import rw.itunda.core.network.MessageDto
@@ -549,6 +553,9 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     // conversation's own already-loaded `messages` list (filtered to real `imageUrl !=
     // null` entries) -- no new backend endpoint, since the data already exists in memory.
     var showMediaGallery by remember { mutableStateOf(false) }
+    // Real message forwarding (2026-08-04) -- see ForwardDestinationDialog's own doc
+    // comment.
+    var forwardingMessageId by remember { mutableStateOf<String?>(null) }
     // Real KakaoTalk Emoticon Store, group-send side (item 133/204) -- see
     // sendGroupEmoticon's own doc comment. 1:1 chat has had this since the Emoticon
     // Store shipped; group chat never got a client for the identical, already-real
@@ -747,9 +754,13 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                             updatingPin = true
                             coroutineScope.launch { try { NetworkClient.apiService.pinGroupMessage(group.groupId, message.id); pinnedMessage = message } catch (_: Exception) { error = "Couldn't pin this message." } finally { updatingPin = false } }
                         },
+                        onForward = { message -> forwardingMessageId = message.id },
                     )
                 }
             }
+        }
+        forwardingMessageId?.let { messageId ->
+            ForwardDestinationDialog(sourceMessageId = messageId, isGroupSource = true, onDismiss = { forwardingMessageId = null })
         }
         if (typingUserIds.isNotEmpty()) {
             val names = typingUserIds.keys.map { id -> members.find { it.userId == id }?.name ?: id.take(8) }
@@ -1238,11 +1249,17 @@ private fun GroupManageMembersView(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GroupMessageBubble(
-    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {}, onPin: (GroupMessageDto) -> Unit = {}, emoticonImageUrl: String? = null,
+    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {}, onPin: (GroupMessageDto) -> Unit = {}, onForward: (GroupMessageDto) -> Unit = {}, emoticonImageUrl: String? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     Column(modifier = Modifier.fillMaxWidth()) {
+        // Real forwarded-message provenance (2026-08-04) -- see ForwardMessageRequest's
+        // own doc comment. Always genuine: the backend only ever stamps this on a real
+        // forward, never client-asserted.
+        if (message.forwardedFromMessageId != null) {
+            Text("↪ Forwarded", color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = if (isMine) TextAlign.End else TextAlign.Start)
+        }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             Box(modifier = Modifier.combinedClickable(onClick = {}, onLongClick = { menuOpen = true })) {
                 if (message.emoticonId != null) {
@@ -1282,6 +1299,7 @@ private fun GroupMessageBubble(
                     }
                     DropdownMenuItem(text = { Text("Reply") }, onClick = { onReply(message); menuOpen = false })
                     DropdownMenuItem(text = { Text("Pin") }, onClick = { onPin(message); menuOpen = false })
+                    DropdownMenuItem(text = { Text("Forward") }, onClick = { onForward(message); menuOpen = false })
                     if (isMine && message.deletedAt == null) {
                         DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(message.id); menuOpen = false })
                     }
@@ -1397,6 +1415,9 @@ private fun ChatThreadView(
     var emoticonPickerOpen by remember { mutableStateOf(false) }
     var emoticonStoreOpen by remember { mutableStateOf(false) }
     var emoticonImageById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // Real message forwarding (2026-08-04) -- see ForwardDestinationDialog's own doc
+    // comment.
+    var forwardingMessageId by remember { mutableStateOf<String?>(null) }
     // Real KakaoTalk-style 기프티콘 gift voucher (item 137) -- see
     // GiftVoucherComposerPanel's own doc comment.
     var vouchersByMessageId by remember { mutableStateOf<Map<String, GiftVoucherDto>>(emptyMap()) }
@@ -1659,6 +1680,7 @@ private fun ChatThreadView(
                             updatingPin = true
                             coroutineScope.launch { try { NetworkClient.apiService.pinConversationMessage(conversation.conversationId, message.id); pinnedMessage = message } catch (_: Exception) { error = "Couldn't pin this message." } finally { updatingPin = false } }
                         },
+                        onForward = { message -> forwardingMessageId = message.id },
                         onClaimGift = { giftId ->
                             coroutineScope.launch {
                                 try {
@@ -1720,6 +1742,9 @@ private fun ChatThreadView(
                     )
                 }
             }
+        }
+        forwardingMessageId?.let { messageId ->
+            ForwardDestinationDialog(sourceMessageId = messageId, isGroupSource = false, onDismiss = { forwardingMessageId = null })
         }
         if (otherTyping) {
             Text("${conversation.otherUserName} is typing…", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
@@ -2185,6 +2210,112 @@ private fun GiftVoucherBubble(voucher: GiftVoucherDto, isMine: Boolean, onExtend
     }
 }
 
+// Real message forwarding (2026-08-04) -- see ForwardMessageRequest's own doc comment
+// for the full "defined but uncalled" backend account (MessageForwardService, real since
+// 2026-07-25). isGroupSource picks which pair of Retrofit methods to call since the
+// source message's own origin (1:1 vs group) determines the real endpoint URL; the
+// destination the user picks independently determines DIRECT vs GROUP per selection.
+// Capped at 10 total destinations, matching Kakao's own real, sourced limit (References
+// table) -- enforced by disabling further selection past 10, not just documented.
+@Composable
+private fun ForwardDestinationDialog(sourceMessageId: String, isGroupSource: Boolean, onDismiss: () -> Unit) {
+    var conversations by remember { mutableStateOf<List<ConversationSummaryDto>?>(null) }
+    var groups by remember { mutableStateOf<List<GroupSummaryDto>?>(null) }
+    var selectedConversationIds by remember { mutableStateOf(setOf<String>()) }
+    var selectedGroupIds by remember { mutableStateOf(setOf<String>()) }
+    var sending by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var done by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val totalSelected = selectedConversationIds.size + selectedGroupIds.size
+
+    LaunchedEffect(Unit) {
+        try { conversations = NetworkClient.apiService.getConversations().conversations } catch (_: Exception) { conversations = emptyList() }
+        try { groups = NetworkClient.apiService.getMyGroups().groups } catch (_: Exception) { groups = emptyList() }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (done) "Forwarded" else "Forward to (up to 10)") },
+        text = {
+            if (done) {
+                Text("Sent to $totalSelected destination${if (totalSelected == 1) "" else "s"}.", color = Ids.colors.textPrimary)
+            } else {
+                Column(modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp)) }
+                    if (conversations == null || groups == null) {
+                        Text("Loading…", color = Ids.colors.textSecondary)
+                    } else {
+                        (conversations ?: emptyList()).forEach { c ->
+                            val checked = c.conversationId in selectedConversationIds
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable(enabled = checked || totalSelected < 10) {
+                                        selectedConversationIds = if (checked) selectedConversationIds - c.conversationId else selectedConversationIds + c.conversationId
+                                    }
+                                    .padding(vertical = 4.dp),
+                            ) {
+                                Checkbox(checked = checked, onCheckedChange = null, enabled = checked || totalSelected < 10)
+                                Text(c.otherUserName, fontSize = 14.sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(start = 4.dp))
+                            }
+                        }
+                        (groups ?: emptyList()).forEach { g ->
+                            val checked = g.groupId in selectedGroupIds
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable(enabled = checked || totalSelected < 10) {
+                                        selectedGroupIds = if (checked) selectedGroupIds - g.groupId else selectedGroupIds + g.groupId
+                                    }
+                                    .padding(vertical = 4.dp),
+                            ) {
+                                Checkbox(checked = checked, onCheckedChange = null, enabled = checked || totalSelected < 10)
+                                Text("${g.name} (group)", fontSize = 14.sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(start = 4.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (done) {
+                TextButton(onClick = onDismiss) { Text("Done") }
+            } else {
+                TextButton(
+                    enabled = totalSelected > 0 && !sending,
+                    onClick = {
+                        sending = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                selectedConversationIds.forEach { destId ->
+                                    val req = ForwardMessageRequest("DIRECT", destId)
+                                    if (isGroupSource) NetworkClient.apiService.forwardGroupMessageToConversation(sourceMessageId, req)
+                                    else NetworkClient.apiService.forwardDirectMessageToConversation(sourceMessageId, req)
+                                }
+                                selectedGroupIds.forEach { destId ->
+                                    val req = ForwardMessageRequest("GROUP", destId)
+                                    if (isGroupSource) NetworkClient.apiService.forwardGroupMessageToGroup(sourceMessageId, req)
+                                    else NetworkClient.apiService.forwardDirectMessageToGroup(sourceMessageId, req)
+                                }
+                                done = true
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                sending = false
+                            }
+                        }
+                    },
+                ) { Text(if (sending) "…" else if (totalSelected > 0) "Send ($totalSelected)" else "Send") }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
 // Real per-thread shared-media gallery (2026-08-04, Kakao's real "Chat Room Drawer")
 // -- see GroupThreadView's own doc comment for the full sourced account and the honest
 // photos-only scope. imageUrls is already in newest-first order (reversed by the caller
@@ -2543,6 +2674,7 @@ private fun MessageBubble(
     onReply: (MessageDto) -> Unit = {},
     onDelete: (String) -> Unit = {},
     onPin: (MessageDto) -> Unit = {},
+    onForward: (MessageDto) -> Unit = {},
     onReportMessage: (String, String) -> Unit = { _, _ -> },
 ) {
     var reportOpen by remember { mutableStateOf(false) }
@@ -2551,6 +2683,9 @@ private fun MessageBubble(
     val clipboardManager = LocalClipboardManager.current
     val isPlainTextBubble = gift == null && voucher == null && offer == null && message.emoticonId == null && message.imageUrl == null
     Column(modifier = Modifier.fillMaxWidth()) {
+        if (message.forwardedFromMessageId != null) {
+            Text("↪ Forwarded", color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = if (isMine) TextAlign.End else TextAlign.Start)
+        }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             // Long-press trigger on the outer wrapper, not just the plain-text bubble --
             // Reply/Pin/Delete/Report must stay reachable for gift/voucher/offer/emoticon
@@ -2592,6 +2727,7 @@ private fun MessageBubble(
                     }
                     DropdownMenuItem(text = { Text("Reply") }, onClick = { onReply(message); menuOpen = false })
                     DropdownMenuItem(text = { Text("Pin") }, onClick = { onPin(message); menuOpen = false })
+                    DropdownMenuItem(text = { Text("Forward") }, onClick = { onForward(message); menuOpen = false })
                     if (isMine && message.deletedAt == null) {
                         DropdownMenuItem(text = { Text("Delete") }, onClick = { onDelete(message.id); menuOpen = false })
                     }

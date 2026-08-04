@@ -492,6 +492,11 @@ data class MessageDto(
     // /api/v1/uploads/ URL since before this field existed on the Android DTO; this
     // just finally reads it back.
     val imageUrl: String? = null,
+    // Real message forwarding (2026-08-04) -- see ForwardMessageRequest's own doc
+    // comment. MessageForwardService (backend, 2026-07-25) already stamped these on a
+    // real forwarded message's genuine provenance; no Android DTO ever read them back.
+    val forwardedFromMessageId: String? = null,
+    val forwardedFromType: String? = null,
 )
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
@@ -515,6 +520,10 @@ data class ConversationResponse(val success: Boolean, val conversation: Conversa
 data class ConversationsResponse(val success: Boolean, val conversations: List<ConversationSummaryDto>)
 data class MessagesResponse(val success: Boolean, val messages: List<MessageDto>)
 data class MessageResponse(val success: Boolean, val message: MessageDto)
+// Real message forwarding (2026-08-04) -- see MessagingController.forwardMessage's own
+// doc comment on the backend. destinationType is "DIRECT" (a conversationId) or "GROUP"
+// (a groupId).
+data class ForwardMessageRequest(val destinationType: String, val destinationId: String)
 data class PinnedMessageResponse(val success: Boolean, val message: MessageDto?)
 data class ReactionsResponse(val success: Boolean, val reactions: List<ReactionGroupDto>)
 
@@ -560,6 +569,10 @@ data class GroupMessageDto(
     val emoticonId: String? = null,
     // Real photo message (2026-08-04) -- see SendMessageRequest's own doc comment.
     val imageUrl: String? = null,
+    // Real message forwarding (2026-08-04) -- see ForwardMessageRequest's own doc
+    // comment.
+    val forwardedFromMessageId: String? = null,
+    val forwardedFromType: String? = null,
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
@@ -2112,6 +2125,26 @@ interface ApiService {
 
     @DELETE("api/v1/messages/conversations/{id}/messages/{messageId}")
     suspend fun deleteMessage(@Path("id") conversationId: String, @Path("messageId") messageId: String): SuccessResponse
+
+    // Real message forwarding (2026-08-04) -- see ForwardMessageRequest's own doc
+    // comment: MessageForwardService (backend, 2026-07-25) already fully supported
+    // forwarding any 1:1 or group message to any 1:1 or group destination, with zero
+    // Retrofit method anywhere -- the same "defined but uncalled" pattern this session
+    // already found for group pin/photo messages. Two methods per real source (this
+    // message is the source) since the response shape depends on which destination type
+    // the caller picks -- both hit the identical real endpoint, Retrofit routes purely
+    // by Kotlin signature, not a conflict.
+    @POST("api/v1/messages/messages/{id}/forward")
+    suspend fun forwardDirectMessageToConversation(@Path("id") messageId: String, @Body request: ForwardMessageRequest): MessageResponse
+
+    @POST("api/v1/messages/messages/{id}/forward")
+    suspend fun forwardDirectMessageToGroup(@Path("id") messageId: String, @Body request: ForwardMessageRequest): GroupMessageResponse
+
+    @POST("api/v1/messages/groups/messages/{id}/forward")
+    suspend fun forwardGroupMessageToConversation(@Path("id") messageId: String, @Body request: ForwardMessageRequest): MessageResponse
+
+    @POST("api/v1/messages/groups/messages/{id}/forward")
+    suspend fun forwardGroupMessageToGroup(@Path("id") messageId: String, @Body request: ForwardMessageRequest): GroupMessageResponse
 
     @GET("api/v1/messages/conversations/{id}/pin")
     suspend fun getPinnedConversationMessage(@Path("id") conversationId: String): PinnedMessageResponse
