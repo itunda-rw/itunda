@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
+import { EmptyState, ErrorCard } from './EmptyState';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from './lib/notifications';
@@ -482,7 +483,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         </div>
       )}
       {contacts.length === 0 && !showAddContact && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No saved contacts yet.</p>
+        <EmptyState message="No saved contacts yet." />
       )}
       {contacts.map((c) => (
         <button
@@ -542,7 +543,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
       </div>
 
       {transactions.length === 0 ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', padding: '0 4px' }}>No transactions yet.</p>
+        <EmptyState message="No transactions yet." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <AnimatePresence>
@@ -612,10 +613,7 @@ function HomeView() {
 
   if (error) {
     return (
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
 
@@ -911,7 +909,7 @@ function ScheduledTransfersCard() {
       {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {pending.length === 0 && past.length === 0 && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No scheduled transfers yet.</p>
+        <EmptyState message="No scheduled transfers yet." />
       )}
 
       {[...pending, ...past.slice(0, 3)].map((t) => (
@@ -1065,7 +1063,7 @@ function AutoTransfersCard() {
       {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {active.length === 0 && cancelled.length === 0 && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No auto-transfers set up yet.</p>
+        <EmptyState message="No auto-transfers set up yet." />
       )}
 
       {[...active, ...cancelled.slice(0, 2)].map((t) => (
@@ -1700,7 +1698,7 @@ function LoansView() {
             </div>
           )}
           {offers === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> :
-           offers.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No offers from this lender right now.</p> :
+           offers.length === 0 ? <EmptyState message="No offers from this lender right now." /> :
            offers.map((offer) => (
             <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
           ))}
@@ -3678,7 +3676,7 @@ function AgentOperatorView() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Recent activity</h3>
-        {activity.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No cash movements yet today.</p>}
+        {activity.length === 0 && <EmptyState message="No cash movements yet today." />}
         {activity.map((a) => (
           <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{a.type === 'CASH_IN' ? '↓ Cash in' : '↑ Cash out'} · {a.receiptNumber}</span>
@@ -3837,7 +3835,7 @@ function FloatMarketplaceSection() {
         <button className="toss-btn toss-btn-secondary" disabled={locating} onClick={handleFindNearby} style={{ marginBottom: '8px' }}>
           {locating ? 'Finding…' : 'Find nearby listings'}
         </button>
-        {nearby.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No nearby listings loaded yet.</p>}
+        {nearby.length === 0 && <EmptyState message="No nearby listings loaded yet." />}
         {nearby.map((n) => (
           <div key={n.listing.id} style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -3856,7 +3854,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
-        {myListings.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No listings posted yet.</p>}
+        {myListings.length === 0 && <EmptyState message="No listings posted yet." />}
         {myListings.map((l) => (
           <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
             <span>{l.amount.toLocaleString()} RWF offered · {l.claimedAmount.toLocaleString()} claimed · {l.status}</span>
@@ -3867,7 +3865,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Requests against my listings</h3>
-        {incomingRequests.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No requests received yet.</p>}
+        {incomingRequests.length === 0 && <EmptyState message="No requests received yet." />}
         {incomingRequests.map((r) => (
           <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
             <span>{r.amount.toLocaleString()} RWF · {r.status}</span>
@@ -3883,7 +3881,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My requests</h3>
-        {myRequests.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No requests sent yet.</p>}
+        {myRequests.length === 0 && <EmptyState message="No requests sent yet." />}
         {myRequests.map((r) => (
           <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{r.amount.toLocaleString()} RWF</span>
@@ -4165,7 +4163,7 @@ function SpendingInsightView() {
       <div className="toss-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>By category</h3>
         {categories.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No spending recorded yet.</p>
+          <EmptyState message="No spending recorded yet." />
         ) : (
           categories.map((c) => (
             <div key={c.name} style={{ padding: '8px 0' }}>
@@ -4212,7 +4210,7 @@ function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
       {budgets === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
       ) : budgets.length === 0 ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No budgets set yet -- set a monthly limit to get alerted before you overspend.</p>
+        <EmptyState message="No budgets set yet -- set a monthly limit to get alerted before you overspend." />
       ) : (
         budgets.map((b) => {
           const barColor = b.status === 'OVER' ? '#E53935' : b.status === 'NEAR' ? '#F5A623' : 'var(--toss-blue)';
@@ -4321,7 +4319,7 @@ function SubscriptionsView() {
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Detected from your own real payment history, not a linked-card feed.</p>
       </div>
       {subscriptions.length === 0 ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No recurring payments detected yet.</p>
+        <EmptyState message="No recurring payments detected yet." />
       ) : (
         subscriptions.map((s) => (
           <div key={`${s.displayName}-${s.cadence}`} className="toss-card" style={{ padding: '16px' }}>
@@ -4354,7 +4352,7 @@ function SubscriptionsView() {
         {billingSubs === null && !billingError ? (
           <div className="toss-card skeleton" style={{ height: '80px' }} />
         ) : billingSubs && billingSubs.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No merchant subscriptions yet.</p>
+          <EmptyState message="No merchant subscriptions yet." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {billingSubs?.map((sub) => (
@@ -4854,7 +4852,7 @@ function NotificationsCard() {
         )}
       </div>
       {notifications.length === 0 ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', textAlign: 'center', padding: '16px 0' }}>No notifications</p>
+        <EmptyState message="No notifications" />
       ) : (
         notifications.slice(0, 10).map((n) => (
           <div
@@ -4990,7 +4988,7 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
   };
 
   if (kind === 'email' && !hasEmail) {
-    return <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', padding: '6px 0' }}>No email address on file to verify.</p>;
+    return <EmptyState message="No email address on file to verify." />;
   }
 
   return (
@@ -5143,7 +5141,7 @@ function MyVehiclesCard() {
 
       {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
 
-      {(vehicles ?? []).length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No vehicles added yet.</p>}
+      {(vehicles ?? []).length === 0 && <EmptyState message="No vehicles added yet." />}
 
       {(vehicles ?? []).map((v) => {
         const valuation = valuations[v.id];
@@ -5323,7 +5321,7 @@ function FamilyLinkCard() {
                   {overview.recentTransactions.slice(0, 5).map((t) => (
                     <p key={t.id}>{t.description} · {t.amount.toLocaleString()} RWF</p>
                   ))}
-                  {overview.recentTransactions.length === 0 && <p>No transactions yet.</p>}
+                  {overview.recentTransactions.length === 0 && <EmptyState message="No transactions yet." />}
                 </div>
               )}
             </div>
@@ -5345,7 +5343,7 @@ function FamilyLinkCard() {
         </div>
       )}
 
-      {!hasAnything && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No family members linked yet.</p>}
+      {!hasAnything && <EmptyState message="No family members linked yet." />}
     </div>
   );
 }
@@ -5786,10 +5784,7 @@ function ShoppingView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
 
@@ -5813,7 +5808,7 @@ function ShoppingView() {
       </p>
       {merchants.length === 0 ? (
         <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No merchants registered yet.</p>
+          <EmptyState message="No merchants registered yet." />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -6093,10 +6088,7 @@ function StocksView() {
       </div>
 
       {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={subTab === 'MARKET' ? loadMarket : subTab === 'PORTFOLIO' ? loadPortfolio : loadWatchlist} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
+        <ErrorCard message={error} onRetry={subTab === 'MARKET' ? loadMarket : subTab === 'PORTFOLIO' ? loadPortfolio : loadWatchlist} />
       )}
 
       {subTab === 'MARKET' && (
@@ -6169,7 +6161,7 @@ function StocksView() {
       {subTab === 'WATCHLIST' && (
         watchlist === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : watchlist.length === 0 ? (
           <div className="toss-card">
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No stocks watched yet. Tap the star on any stock in the Market tab to follow it.</p>
+            <EmptyState message="No stocks watched yet. Tap the star on any stock in the Market tab to follow it." />
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -6842,7 +6834,7 @@ function GiftVoucherComposerPanel({
           </form>
           {results !== null && (
             results.length === 0 ? (
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No products found.</p>
+              <EmptyState message="No products found." />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '160px', overflowY: 'auto' }}>
                 {results.map((p) => (
@@ -7869,7 +7861,7 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
         {conversations === null || groups === null ? (
           <div className="toss-card skeleton" style={{ height: '100px' }} />
         ) : conversations.length === 0 && groups.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No conversations or groups to forward to yet.</p>
+          <EmptyState message="No conversations or groups to forward to yet." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {conversations.map((c) => (
@@ -7960,10 +7952,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
 
@@ -7984,7 +7973,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
       )}
       {conversations.length === 0 ? (
         <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No conversations yet.</p>
+          <EmptyState message="No conversations yet." />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -8192,7 +8181,7 @@ function GroupSplitBillsView({
       )}
       {splitBills === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
       {splitBills !== null && splitBills.length === 0 && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No split bills in this group yet.</p>
+        <EmptyState message="No split bills in this group yet." />
       )}
       {splitBills?.map(({ splitBill, participants }) => {
         const myShare = participants.find((p) => p.userId === currentUserId);
@@ -8362,7 +8351,7 @@ function GroupManageMembersView({
         {leaving ? 'Leaving…' : 'Leave group'}
       </button>
       <h4 style={{ fontSize: '13px', fontWeight: 700, marginTop: '8px' }}>Add from your contacts</h4>
-      {addable.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No contacts left to add.</p>}
+      {addable.length === 0 && <EmptyState message="No contacts left to add." />}
       {addable.map((c) => (
         <div key={c.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '13px' }}>{c.name}</span>
@@ -8414,10 +8403,7 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
 
@@ -8430,7 +8416,7 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
       <NewGroupCard onCreated={(id) => { load(); setOpenGroupId(id); }} />
       {groups.length === 0 ? (
         <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No groups yet.</p>
+          <EmptyState message="No groups yet." />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -9030,14 +9016,11 @@ function ListingWishlistView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
-  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved listings yet -- tap ♡ on any listing to save it here.</p></div>;
+  if (favorites.length === 0) return <EmptyState message="No saved listings yet -- tap ♡ on any listing to save it here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -9145,7 +9128,7 @@ function KeywordAlertsView() {
       {alerts === null ? (
         <div className="toss-card skeleton" style={{ height: '80px' }} />
       ) : alerts.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No keyword alerts yet -- add one to get notified when a matching listing is posted.</p></div>
+        <EmptyState message="No keyword alerts yet -- add one to get notified when a matching listing is posted." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {alerts.map((a) => (
@@ -9302,10 +9285,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
           )}
 
           {error && (
-            <div className="toss-card">
-              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-            </div>
+            <ErrorCard message={error} onRetry={load} />
           )}
           {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
@@ -9521,7 +9501,7 @@ function VehicleInspectionsView() {
           {myBookings === null ? (
             <div className="toss-card skeleton" style={{ height: '100px' }} />
           ) : myBookings.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No inspections booked yet.</p>
+            <EmptyState message="No inspections booked yet." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {myBookings.map((b) => (
@@ -9574,7 +9554,7 @@ function VehicleInspectionsView() {
           {mechanicBookings === null ? (
             <div className="toss-card skeleton" style={{ height: '100px' }} />
           ) : mechanicBookings.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No inspection bookings yet.</p>
+            <EmptyState message="No inspection bookings yet." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {mechanicBookings.map((b) => (
@@ -9851,7 +9831,7 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Sessions</h3>
       {sessions === null && <div className="toss-card skeleton" style={{ height: '60px' }} />}
       {sessions !== null && sessions.length === 0 && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>No sessions scheduled yet.</p>
+        <EmptyState message="No sessions scheduled yet." />
       )}
       {sessions !== null && sessions.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
@@ -10029,7 +10009,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
       {comments === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
       {comments !== null && comments.length === 0 && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>No comments yet -- be the first to reply.</p>
+        <EmptyState message="No comments yet -- be the first to reply." />
       )}
       {comments !== null && comments.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
@@ -10171,10 +10151,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
       )}
 
       {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
+        <ErrorCard message={error} onRetry={load} />
       )}
       {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
       {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
@@ -10554,7 +10531,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
           {showApplicants && (
             applications === null ? <div className="toss-card skeleton" style={{ height: '60px' }} /> :
             applications.filter((a) => a.status === 'PENDING').length === 0 ? (
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No applications yet</p>
+              <EmptyState message="No applications yet" />
             ) : (
               applications.filter((a) => a.status === 'PENDING').map((app) => (
                 <div key={app.id} style={{ backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -10653,14 +10630,11 @@ function JobPostWishlistView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
-  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved jobs yet -- tap ♡ on any job post to save it here.</p></div>;
+  if (favorites.length === 0) return <EmptyState message="No saved jobs yet -- tap ♡ on any job post to save it here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -10825,10 +10799,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
           )}
 
           {error && (
-            <div className="toss-card">
-              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-            </div>
+            <ErrorCard message={error} onRetry={load} />
           )}
           {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
@@ -11294,14 +11265,11 @@ function PropertyListingWishlistView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
-  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved properties yet -- tap ♡ on any listing to save it here.</p></div>;
+  if (favorites.length === 0) return <EmptyState message="No saved properties yet -- tap ♡ on any listing to save it here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -11490,10 +11458,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
           )}
 
           {error && (
-            <div className="toss-card">
-              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-            </div>
+            <ErrorCard message={error} onRetry={load} />
           )}
           {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
@@ -11768,7 +11733,7 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
           {reviews === null ? (
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
           ) : reviews.length === 0 ? (
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No written reviews yet.</p>
+            <EmptyState message="No written reviews yet." />
           ) : (
             reviews.map((r) => (
               <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
@@ -12188,10 +12153,7 @@ function MenuView({
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
 
@@ -12280,7 +12242,7 @@ function MenuView({
         <RestaurantRatingBadge restaurantId={restaurant.merchantId} />
       </div>
       {menu.products.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No menu items yet.</p></div>
+        <EmptyState message="No menu items yet." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cartCount > 0 ? '80px' : 0 }}>
           {menu.products.map((item) => {
@@ -12415,14 +12377,11 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder:
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-  if (orders.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No orders yet.</p></div>;
+  if (orders.length === 0) return <EmptyState message="No orders yet." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -12682,10 +12641,7 @@ function OrderFoodView() {
             onSelectCategory={setSelectedCategory}
           />
           {error ? (
-            <div className="toss-card">
-              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-            </div>
+            <ErrorCard message={error} onRetry={load} />
           ) : restaurants === null ? (
             <div className="toss-card skeleton" style={{ height: '220px' }} />
           ) : restaurants.length === 0 ? (
@@ -12784,17 +12740,14 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (favorites === null) {
     return <div className="toss-card skeleton" style={{ height: '220px' }} />;
   }
   if (favorites.length === 0) {
-    return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No favorite restaurants yet. Tap the heart on a restaurant to save it here.</p></div>;
+    return <EmptyState message="No favorite restaurants yet. Tap the heart on a restaurant to save it here." />;
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -12978,7 +12931,7 @@ function DeliverView() {
           {available === null ? (
             <div className="toss-card skeleton" style={{ height: '100px' }} />
           ) : available.length === 0 ? (
-            <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No deliveries waiting right now.</p></div>
+            <EmptyState message="No deliveries waiting right now." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {available.map((o) => (
@@ -13069,10 +13022,7 @@ function RestaurantOrdersView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
@@ -13607,7 +13557,7 @@ function RidesView() {
                   {availableTrips === null ? (
                     <div className="toss-card skeleton" style={{ height: '100px' }} />
                   ) : availableTrips.length === 0 ? (
-                    <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No trip requests waiting right now.</p></div>
+                    <EmptyState message="No trip requests waiting right now." />
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {availableTrips.map((t) => (
@@ -14167,7 +14117,7 @@ function BikeShareView() {
               {nearbyBikes === null ? (
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
               ) : nearbyBikes.length === 0 ? (
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No bikes nearby right now.</p>
+                <EmptyState message="No bikes nearby right now." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {nearbyBikes.map((bike) => (
@@ -14405,7 +14355,7 @@ function ParkingView() {
               {nearbySpots === null ? (
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
               ) : nearbySpots.length === 0 ? (
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No parking nearby right now.</p>
+                <EmptyState message="No parking nearby right now." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {nearbySpots.map((spot) => (
@@ -14634,7 +14584,7 @@ function BusView() {
           {trips === null ? (
             <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
           ) : trips.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No upcoming trips found.</p>
+            <EmptyState message="No upcoming trips found." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {trips.map((trip) => (
@@ -14740,7 +14690,7 @@ function BusView() {
                         {manifestError && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{manifestError}</p>}
                         {!manifestError && tripBookings === null && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading…</p>}
                         {tripBookings !== null && tripBookings.length === 0 && (
-                          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No bookings yet.</p>
+                          <EmptyState message="No bookings yet." />
                         )}
                         {tripBookings !== null && tripBookings.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -14851,7 +14801,7 @@ function KnowledgeView() {
       {questions === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
       ) : questions.length === 0 ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No questions yet.</p>
+        <EmptyState message="No questions yet." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {questions.map((q) => (
@@ -15005,7 +14955,7 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Answers</h3>
       {answers === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
       {answers !== null && answers.length === 0 && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>No answers yet -- be the first to help.</p>
+        <EmptyState message="No answers yet -- be the first to help." />
       )}
       {answers !== null && answers.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
@@ -15132,10 +15082,7 @@ function DineInRestaurantOrdersView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
@@ -15300,7 +15247,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{menu.businessName}</h3>
       </div>
       {menu.products.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No menu items yet.</p></div>
+        <EmptyState message="No menu items yet." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cartCount > 0 ? '80px' : 0 }}>
           {menu.products.map((item) => {
@@ -15445,7 +15392,7 @@ function DineInCustomerView() {
       ) : orders === null ? (
         <div className="toss-card skeleton" style={{ height: '160px' }} />
       ) : orders.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No table orders yet.</p></div>
+        <EmptyState message="No table orders yet." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {orders.map((o) => <DineInOrderCard key={o.id} order={o} />)}
@@ -15683,7 +15630,7 @@ function ProductRatingBadge({ productId }: { productId: string }) {
           {reviews === null ? (
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
           ) : reviews.length === 0 ? (
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No written reviews yet.</p>
+            <EmptyState message="No written reviews yet." />
           ) : (
             reviews.map((r) => (
               <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
@@ -15804,7 +15751,7 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
       {error && <p style={{ fontSize: '12px', color: '#E53935' }}>{error}</p>}
       {date && slots !== null && (
         slots.length === 0 ? (
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No open times on this date.</p>
+          <EmptyState message="No open times on this date." />
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {slots.map((slot) => (
@@ -15876,7 +15823,7 @@ function ProductInquirySection({ productId }: { productId: string }) {
       {inquiries === null ? (
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading questions…</p>
       ) : inquiries.length === 0 ? (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No questions yet -- be the first to ask.</p>
+        <EmptyState message="No questions yet -- be the first to ask." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {inquiries.map((q) => (
@@ -16612,10 +16559,7 @@ function ProductCatalogView({
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
 
@@ -16655,7 +16599,7 @@ function ProductCatalogView({
         </div>
       )}
       {catalog.products.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products yet.</p></div>
+        <EmptyState message="No products yet." />
       ) : (
         // Real 2-column image-led grid (2026-07-21), replacing the previous
         // single-column text-only row -- closes docs/DESIGN_REFERENCES.md Section 5
@@ -16966,14 +16910,11 @@ function MyCommerceOrdersView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-  if (orders.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No orders yet.</p></div>;
+  if (orders.length === 0) return <EmptyState message="No orders yet." />;
 
   return (
     <div>
@@ -17044,10 +16985,7 @@ function MerchantOrdersView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
@@ -17104,14 +17042,11 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
-  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved items yet -- tap ♡ on any product to save it here.</p></div>;
+  if (favorites.length === 0) return <EmptyState message="No saved items yet -- tap ♡ on any product to save it here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -17501,10 +17436,7 @@ function ShopView() {
           </div>
         )
       ) : error ? (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
+        <ErrorCard message={error} onRetry={load} />
       ) : merchants === null ? (
         <div className="toss-card skeleton" style={{ height: '220px' }} />
       ) : merchants.length === 0 ? (
@@ -17575,10 +17507,7 @@ function DevicesView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (devices === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
@@ -17589,7 +17518,7 @@ function DevicesView() {
         Devices that have signed in to your account. A device must be verified before it can send money.
       </p>
       {devices.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No devices recorded yet.</p></div>
+        <EmptyState message="No devices recorded yet." />
       ) : (
         devices.map((d) => (
           <div key={d.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -17715,10 +17644,7 @@ function CardView() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (card === undefined) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
@@ -17805,7 +17731,7 @@ function CardView() {
       <div className="toss-card">
         <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Recent card activity</p>
         {transactions.length === 0 ? (
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No purchases yet.</p>
+          <EmptyState message="No purchases yet." />
         ) : (
           transactions.map((t) => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
@@ -17944,10 +17870,7 @@ function InterestJarCard() {
 
   if (error) {
     return (
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
+      <ErrorCard message={error} onRetry={load} />
     );
   }
   if (jar === null) return <div className="toss-card skeleton" style={{ height: '140px', marginBottom: '16px' }} />;
@@ -18444,7 +18367,7 @@ function GroupAccountsSection() {
       {accounts === null ? (
         <div className="toss-card skeleton" style={{ height: '64px' }} />
       ) : accounts.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No group accounts yet -- start one to save or split expenses with others.</p></div>
+        <EmptyState message="No group accounts yet -- start one to save or split expenses with others." />
       ) : (
         accounts.map((a) => (
           <button
@@ -18497,7 +18420,7 @@ function IkiminaSection() {
       {ikiminas === null ? (
         <div className="toss-card skeleton" style={{ height: '64px' }} />
       ) : ikiminas.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No ikimina groups yet -- start one with people you trust.</p></div>
+        <EmptyState message="No ikimina groups yet -- start one with people you trust." />
       ) : (
         ikiminas.map((k) => (
           <button
@@ -19115,7 +19038,7 @@ function WeeklySavingsSection() {
       {plans === null ? (
         <div className="toss-card skeleton" style={{ height: '64px' }} />
       ) : plans.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No 26-week savings plans yet — start one with an escalating weekly auto-debit and a streak-gated bonus rate.</p></div>
+        <EmptyState message="No 26-week savings plans yet — start one with an escalating weekly auto-debit and a streak-gated bonus rate." />
       ) : (
         plans.map((p) => {
           const pct = Math.min(100, Math.round((p.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
@@ -19171,7 +19094,7 @@ function UpfrontDepositSection() {
       {deposits === null ? (
         <div className="toss-card skeleton" style={{ height: '64px' }} />
       ) : deposits.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No 12-month deposits yet — open one to get a full year's interest paid today, principal locked for 12 months.</p></div>
+        <EmptyState message="No 12-month deposits yet — open one to get a full year's interest paid today, principal locked for 12 months." />
       ) : (
         deposits.map((d) => <UpfrontDepositCard key={d.id} deposit={d} onChanged={load} />)
       )}
@@ -19282,7 +19205,7 @@ function SavingsView() {
       {goals === null ? (
         <div className="toss-card skeleton" style={{ height: '100px' }} />
       ) : goals.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No savings goals yet.</p></div>
+        <EmptyState message="No savings goals yet." />
       ) : (
         goals.map((g) => <GoalCard key={g.id} goal={g} onChanged={load} />)
       )}
