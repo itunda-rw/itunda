@@ -3525,6 +3525,14 @@ public struct StockPortfolioDto: Decodable {
 public struct StockPortfolioResponse: Decodable { public let success: Bool; public let portfolio: StockPortfolioDto }
 public struct TradeStockRequest: Encodable { public let stockId: String; public let shares: Double }
 public struct TradeStockResponse: Decodable { public let success: Bool; public let message: String }
+// Real Investment-wallet top-up (2026-08-04) -- found via a fresh "defined but
+// uncalled" endpoint sweep: StocksService.fundInvestmentWallet (a real MAIN ->
+// INVESTMENT internal ledger transfer) had zero client anywhere, so a user with no
+// pre-seeded investment balance had no way to ever actually buy a stock. Ports the
+// same fix already shipped on Android/bank-mfe.
+public struct FundInvestmentRequest: Encodable { public let amount: Double }
+public struct FundInvestmentTransactionDto: Decodable { public let id: String; public let amount: Double; public let completedAt: String }
+public struct FundInvestmentResponse: Decodable { public let success: Bool; public let transaction: FundInvestmentTransactionDto }
 
 extension NetworkClient {
     public func startConversation(phoneNumber: String) async throws -> ConversationResponse {
@@ -4567,6 +4575,10 @@ extension NetworkClient {
 
     public func getPortfolioHistory(days: Int = 30) async throws -> PortfolioHistoryResponse {
         try await get("api/v1/stocks/portfolio/history", query: [URLQueryItem(name: "days", value: String(days))])
+    }
+
+    public func fundInvestmentWallet(amount: Double) async throws -> FundInvestmentResponse {
+        try await authenticatedPost("api/v1/stocks/fund", body: FundInvestmentRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func buyStock(stockId: String, shares: Double) async throws -> TradeStockResponse {

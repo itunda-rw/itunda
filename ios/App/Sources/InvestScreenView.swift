@@ -205,6 +205,8 @@ private struct PortfolioContent: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(14)
 
+                AddFundsCard(onFunded: load)
+
                 if portfolio.holdings.isEmpty {
                     Text("You don't hold any real shares yet. Browse the Market tab to buy some.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding()
@@ -255,6 +257,84 @@ private struct HoldingRow: View {
         .padding()
         .background(IDS.Colors.card)
         .cornerRadius(14)
+    }
+}
+
+// Real Investment-wallet top-up (2026-08-04) -- see NetworkClient.swift's own
+// FundInvestmentRequest doc comment. Without this, a user with no pre-seeded
+// investment balance had no in-app way to ever actually buy a stock.
+private struct AddFundsCard: View {
+    let onFunded: () -> Void
+
+    @State private var expanded = false
+    @State private var amount = ""
+    @State private var busy = false
+    @State private var error: String?
+    @State private var needsDeviceVerification = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Investment cash").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                Spacer()
+                Button(expanded ? "Cancel" : "Add funds") { expanded.toggle(); error = nil }
+                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+            }
+            Text("Move money from your main wallet into your investment account.")
+                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            if expanded {
+                HStack {
+                    TextField("Amount (RWF)", text: $amount)
+                        .keyboardType(.decimalPad)
+                        .padding(10)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(10)
+                    Button(action: fund) {
+                        Text(busy ? "Working…" : "Add")
+                            .foregroundColor(.white).bold()
+                            .padding(.horizontal, 20).padding(.vertical, 12)
+                            .background(IDS.Colors.brand)
+                            .cornerRadius(10)
+                    }
+                    .disabled(busy)
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(IDS.Colors.card)
+        .cornerRadius(14)
+        DeviceStepUpHost(
+            visible: needsDeviceVerification,
+            onDismiss: { needsDeviceVerification = false },
+            onVerified: { needsDeviceVerification = false; fund() }
+        )
+    }
+
+    private func fund() {
+        guard let value = Double(amount), value > 0 else {
+            error = "Enter a real amount."
+            return
+        }
+        busy = true
+        needsDeviceVerification = false
+        Task {
+            do {
+                _ = try await NetworkClient.shared.fundInvestmentWallet(amount: value)
+                amount = ""
+                expanded = false
+                error = nil
+                onFunded()
+            } catch NetworkError.deviceNotVerified {
+                needsDeviceVerification = true
+            } catch {
+                self.error = "Could not add funds."
+            }
+            busy = false
+        }
     }
 }
 
