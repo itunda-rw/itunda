@@ -3769,6 +3769,29 @@ interface ApiService {
     @GET("api/v1/loans/vup/{loanId}")
     suspend fun getVupLoan(@Path("loanId") loanId: String): VupLoanResponse
 
+    // Real Rwanda BRD (Development Bank of Rwanda) higher-education student loan --
+    // see StudentLoanDto's own doc comment. bank-mfe shipped first (lib/studentLoan.ts);
+    // this is the first native client. No Idempotency-Key on apply/declare-graduated
+    // (not money movement); disburse/repay both require one, matching every other
+    // money-moving call in this file.
+    @POST("api/v1/loans/student/apply")
+    suspend fun applyForStudentLoan(@Body request: ApplyForStudentLoanRequest): StudentLoanResponse
+
+    @POST("api/v1/loans/student/{loanId}/disburse")
+    suspend fun disburseStudentLoan(@Path("loanId") loanId: String, @Header("Idempotency-Key") idempotencyKey: String): StudentLoanResponse
+
+    @POST("api/v1/loans/student/{loanId}/declare-graduated")
+    suspend fun declareStudentLoanGraduated(@Path("loanId") loanId: String): StudentLoanResponse
+
+    @POST("api/v1/loans/student/{loanId}/repay")
+    suspend fun repayStudentLoan(@Path("loanId") loanId: String, @Body request: RepayStudentLoanRequest, @Header("Idempotency-Key") idempotencyKey: String): StudentLoanResponse
+
+    @GET("api/v1/loans/student/my")
+    suspend fun getMyStudentLoans(): StudentLoansResponse
+
+    @GET("api/v1/loans/student/{loanId}/suggested-payment")
+    suspend fun getStudentLoanSuggestedPayment(@Path("loanId") loanId: String): StudentLoanSuggestedPaymentResponse
+
     // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
     // MotoOwnershipPlanDto's own doc comment for the full sourced account. No
     // Idempotency-Key on create (not money movement itself, matching the backend's
@@ -4186,6 +4209,31 @@ data class VupLoansResponse(val success: Boolean, val loans: List<VupLoanDto>)
 data class VupLoanEligibilityResponse(
     val success: Boolean, val hasActiveLoan: Boolean, val canApply: Boolean,
     val minUbudeheCategory: Int, val maxUbudeheCategory: Int, val interestRate: Double, val maxAmount: java.math.BigDecimal,
+)
+
+// Real Rwanda BRD (Development Bank of Rwanda) higher-education student loan -- sourced
+// beyond this session's usual Toss/Kakao/Naver/Coupang reference ecosystems. Rwanda has
+// run a national student-loan-and-bursary scheme since Law No. 44/2015, administered by
+// BRD since an October 2016 MINEDUC agreement. Real scale: RWF 221.85 billion disbursed
+// to 139,925 students (through mid-2023), fixed interest rates of 11% undergraduate /
+// 12% postgraduate, repayment terms of 2-10 years (brd.rw). Honest v1 limitation:
+// declaredAnnualHouseholdIncome is self-declared, not verified against BRD's real
+// Financial Means Testing (FMT) process, and the real 8%-of-income payroll deduction is
+// only ever a SUGGESTED amount here -- itunda has no payroll/RRA-integration path to
+// enforce it. Mirrors bank-mfe's lib/studentLoan.ts exactly.
+data class StudentLoanDto(
+    val id: String, val userId: String, val level: String, val declaredAnnualHouseholdIncome: java.math.BigDecimal,
+    val principalAmount: java.math.BigDecimal, val outstandingBalance: java.math.BigDecimal, val interestRate: Double,
+    val status: String, val appliedAt: String, val disbursedAt: String?, val expectedGraduationDate: String, val graceEndsAt: String?,
+)
+data class ApplyForStudentLoanRequest(
+    val level: String, val declaredAnnualHouseholdIncome: java.math.BigDecimal, val amount: java.math.BigDecimal, val expectedGraduationDate: String,
+)
+data class RepayStudentLoanRequest(val amount: java.math.BigDecimal)
+data class StudentLoanResponse(val success: Boolean, val loan: StudentLoanDto)
+data class StudentLoansResponse(val success: Boolean, val loans: List<StudentLoanDto>)
+data class StudentLoanSuggestedPaymentResponse(
+    val success: Boolean, val loanId: String, val outstandingBalance: java.math.BigDecimal, val suggestedMonthlyPayment: java.math.BigDecimal, val note: String,
 )
 
 // Real Rwanda moto-taxi ownership savings-to-loan plan -- sourced beyond this

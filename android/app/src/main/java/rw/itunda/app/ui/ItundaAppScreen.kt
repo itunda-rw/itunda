@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Apps
@@ -323,6 +324,10 @@ fun ItundaAppScreen(
         // microloan -- see VupLoanScreen.kt's own doc comment for the full sourced
         // account. bank-mfe shipped first; this is the first native client.
         var showVupLoan by rememberSaveable { mutableStateOf(false) }
+        // Real Rwanda BRD (Development Bank of Rwanda) higher-education student loan --
+        // see StudentLoanScreen.kt's own doc comment for the full sourced account.
+        // bank-mfe shipped first; this is the first native client.
+        var showStudentLoan by rememberSaveable { mutableStateOf(false) }
         // Real Rwanda moto-taxi ownership savings-to-loan plan -- see
         // MotoOwnershipScreen.kt's own doc comment for the full sourced account.
         // bank-mfe shipped first (commits cf9d72fe/808a7ce4); this is the first
@@ -828,6 +833,11 @@ fun ItundaAppScreen(
             FloatMarketplaceScreen(onBack = { showFloatMarketplace = false })
             return@IdsTheme
         }
+        if (showStudentLoan) {
+            BackHandler { showStudentLoan = false }
+            StudentLoanScreen(onBack = { showStudentLoan = false })
+            return@IdsTheme
+        }
         if (showVupLoan) {
             BackHandler { showVupLoan = false }
             VupLoanScreen(onBack = { showVupLoan = false })
@@ -1092,6 +1102,7 @@ fun ItundaAppScreen(
                             onOpenAgentOperator = { showAgentOperator = true },
                             onOpenFloatMarketplace = { showFloatMarketplace = true },
                             onOpenVupLoan = { showVupLoan = true },
+                            onOpenStudentLoan = { showStudentLoan = true },
                             onOpenMotoOwnership = { showMotoOwnership = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
@@ -1731,6 +1742,7 @@ private fun MenuScreen(
     onOpenAgentOperator: () -> Unit = {},
     onOpenFloatMarketplace: () -> Unit = {},
     onOpenVupLoan: () -> Unit = {},
+    onOpenStudentLoan: () -> Unit = {},
     onOpenMotoOwnership: () -> Unit = {},
     onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
@@ -1872,6 +1884,7 @@ private fun MenuScreen(
                 FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
                 FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
                 FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenVupLoan),
+                FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", icon = Icons.Outlined.School, iconColor = AccentPurple, onClick = onOpenStudentLoan),
                 FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
                 FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
                 FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
