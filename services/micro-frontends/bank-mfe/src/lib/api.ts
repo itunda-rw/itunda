@@ -86,6 +86,47 @@ export async function login(phoneNumber: string, password: string): Promise<Auth
   return body.user as AuthedUser;
 }
 
+// Real sign-up (2026-08-04) -- closes docs/DESIGN_REFERENCES.md Section 8 recommendation
+// #7: bank-mfe had no registration page at all, unlike Android/iOS's real 3-step
+// phone -> name -> password flow (LoginScreen.kt/.swift). Mirrors login's own real device
+// binding (a device that registers proves password ownership in the same request, so
+// it's auto-trusted server-side, same reasoning LoginScreen.kt's own doc comment gives).
+export async function register(
+  phoneNumber: string,
+  password: string,
+  firstName: string,
+  lastName: string,
+  referralCode?: string,
+): Promise<AuthedUser> {
+  const { getOrCreateDeviceId, getDeviceName } = await import('./device');
+  const response = await fetch(`${BASE_URL}/api/v1/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      phoneNumber,
+      email: null,
+      firstName,
+      lastName,
+      password,
+      referralCode: referralCode?.trim() || null,
+      deviceId: getOrCreateDeviceId(),
+      deviceName: getDeviceName(),
+    }),
+  });
+
+  if (!response.ok) {
+    const { code, message } = await parseErrorBody(response);
+    throw new ApiError(response.status, code, message);
+  }
+
+  const body = await response.json();
+  localStorage.setItem(TOKEN_KEY, body.accessToken);
+  localStorage.setItem(REFRESH_KEY, body.refreshToken);
+  localStorage.setItem(USER_KEY, JSON.stringify(body.user));
+  import('./device').then(({ registerDeviceToken }) => registerDeviceToken()).catch(() => {});
+  return body.user as AuthedUser;
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const response = await fetch(`${BASE_URL}${path}`, {

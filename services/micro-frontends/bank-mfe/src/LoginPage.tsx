@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { ApiError, login } from './lib/api';
 
-export default function LoginPage({ onLogin }: { onLogin: () => void }) {
+export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () => void; onCreateAccount: () => void }) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +82,14 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
 
         <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
           {submitting ? 'Signing in…' : 'Sign in'}
+        </button>
+
+        <button
+          type="button"
+          onClick={onCreateAccount}
+          style={{ background: 'none', border: 'none', fontSize: '13px', color: 'var(--toss-grey-500)', cursor: 'pointer' }}
+        >
+          New to itunda? Create an account
         </button>
       </form>
     </div>
