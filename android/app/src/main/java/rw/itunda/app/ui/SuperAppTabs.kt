@@ -250,6 +250,11 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
     var mode by remember { mutableStateOf(HoodMode.MARKETPLACE) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodVerificationCount by remember { mutableStateOf(0) }
+    // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own
+    // doc comment on the backend.
+    var secondNeighborhoodName by remember { mutableStateOf<String?>(null) }
+    var showSecondNeighborhoodPrompt by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     // Bumped by the FAB below; MarketplaceContent reacts to any change by forcing its
     // own new-listing form open -- see that Composable's own doc comment on this param.
     var requestNewListingSignal by remember { mutableStateOf(0) }
@@ -287,6 +292,7 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
             val user = NetworkClient.authApi.getProfile().user
             neighborhoodName = user.neighborhood
             neighborhoodVerificationCount = user.neighborhoodVerificationCount
+            secondNeighborhoodName = user.secondNeighborhood
         } catch (_: Exception) {
             // The individual Hood services retain their own usable neighborhood setup
             // prompt; this shared context label is deliberately best-effort.
@@ -316,7 +322,9 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    neighborhoodName ?: "Set your neighborhood",
+                    // Real dual-neighborhood display (2026-08-04) -- Karrot's own real
+                    // primary/secondary neighborhood pair, shown together once both are set.
+                    listOfNotNull(neighborhoodName, secondNeighborhoodName).joinToString(" · ").ifBlank { "Set your neighborhood" },
                     color = Ids.colors.textPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
@@ -553,9 +561,65 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 contentAlignment = Alignment.Center,
             ) {
                 Box(modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal).clickable(enabled = false) {}) {
-                    NeighborhoodSetupPrompt(onDone = { name ->
-                        neighborhoodName = name
-                        showNeighborhoodPrompt = false
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        NeighborhoodSetupPrompt(onDone = { name ->
+                            neighborhoodName = name
+                            showNeighborhoodPrompt = false
+                            neighborhoodRefreshSignal++
+                        })
+                        // Real dual-neighborhood support (2026-08-04) -- Karrot's own real
+                        // second-neighborhood mechanic (e.g. home + workplace), surfaced
+                        // right alongside the primary setup rather than buried elsewhere.
+                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    secondNeighborhoodName?.let { "Second: $it" } ?: "Add a second neighborhood",
+                                    color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(
+                                        if (secondNeighborhoodName != null) "Change" else "Add",
+                                        color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                                        modifier = Modifier.clickable { showSecondNeighborhoodPrompt = true },
+                                    )
+                                    if (secondNeighborhoodName != null) {
+                                        Text(
+                                            "Remove",
+                                            color = Ids.colors.danger, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                                            modifier = Modifier.clickable {
+                                                coroutineScope.launch {
+                                                    try {
+                                                        val res = NetworkClient.authApi.clearSecondNeighborhood()
+                                                        secondNeighborhoodName = res.user.secondNeighborhood
+                                                        neighborhoodRefreshSignal++
+                                                    } catch (_: Exception) {
+                                                        // Best-effort -- the switcher stays open so the user can retry.
+                                                    }
+                                                }
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (showSecondNeighborhoodPrompt) {
+            BackHandler { showSecondNeighborhoodPrompt = false }
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)).clickable { showSecondNeighborhoodPrompt = false },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal).clickable(enabled = false) {}) {
+                    NeighborhoodSetupPrompt(isSecond = true, onDone = { name ->
+                        secondNeighborhoodName = name
+                        showSecondNeighborhoodPrompt = false
                         neighborhoodRefreshSignal++
                     })
                 }

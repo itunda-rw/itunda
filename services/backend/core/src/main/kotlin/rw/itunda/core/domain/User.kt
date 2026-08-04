@@ -90,6 +90,17 @@ class User(
     @Column(name = "neighborhood_verification_count", nullable = false)
     var neighborhoodVerificationCount: Int = 0,
 
+    // Real dual-neighborhood support (2026-08-04) -- closes docs/DESIGN_REFERENCES.md
+    // Section 4 recommendation #8's real, officially-sourced Karrot mechanic (Karrot's
+    // own CS docs confirm users may register a second neighborhood, e.g. home + a
+    // workplace/frequent area, and browse content scoped to either). Deliberately does
+    // NOT add the secondary-sourced radius-scaling figures that recommendation also
+    // named (nuthang.com's 8-63-area numbers) -- this doc's own "Unresolved" note flags
+    // those as illustrative-only, not something to hardcode as if verified. Same real
+    // reverse-geocode-only provenance as `neighborhood` above -- never self-declared text.
+    @Column(name = "second_neighborhood", length = 120)
+    var secondNeighborhood: String? = null,
+
     // Real Karrot-Score-style numeric trust/reputation badge (2026-07-21) -- closes
     // the "Hood cards show no seller/poster reputation at all" gap docs/
     // DESIGN_REFERENCES.md's Hood research names directly. Deliberately a plain

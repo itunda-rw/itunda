@@ -31,6 +31,9 @@ interface PropertyListingRepository : JpaRepository<PropertyListing, String> {
     // this project's own "one new capability per turn" precedent.
     fun findByStatusAndNeighborhoodOrderByCreatedAtDesc(status: PropertyListingStatus, neighborhood: String, pageable: Pageable): Page<PropertyListing>
 
+    // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own doc comment.
+    fun findByStatusAndNeighborhoodInOrderByCreatedAtDesc(status: PropertyListingStatus, neighborhoods: Collection<String>, pageable: Pageable): Page<PropertyListing>
+
     // Real Karrot-Score-style trust badge input (2026-07-21) -- see
     // rw.itunda.core.trust.TrustScoreService's own doc comment; identical shape to
     // ListingRepository.countBySellerIdAndStatus.

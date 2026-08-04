@@ -60,6 +60,9 @@ data class PublicUser(
     val neighborhood: String? = null,
     val neighborhoodVerifiedAt: String? = null,
     val neighborhoodVerificationCount: Int = 0,
+    // Real dual-neighborhood support (2026-08-04) -- see AuthService.setSecondNeighborhood's
+    // own doc comment. Same real reverse-geocode-only provenance as neighborhood above.
+    val secondNeighborhood: String? = null,
     // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
     // MiniWalletService.kt's own doc comment. Set via AuthApi.setBirthDate.
     val birthDate: String? = null,
@@ -112,6 +115,15 @@ interface AuthApi {
     // mirrors exactly.
     @POST("api/v1/auth/profile/neighborhood")
     suspend fun setNeighborhood(@Body request: SetNeighborhoodRequest): ProfileResponse
+
+    // Real dual-neighborhood support (2026-08-04) -- see AuthService.setSecondNeighborhood's
+    // own doc comment. Browse endpoints (marketplace/community/jobs/property my-neighborhood)
+    // automatically include this once set -- no separate client call needed to opt in.
+    @POST("api/v1/auth/profile/second-neighborhood")
+    suspend fun setSecondNeighborhood(@Body request: SetNeighborhoodRequest): ProfileResponse
+
+    @DELETE("api/v1/auth/profile/second-neighborhood")
+    suspend fun clearSecondNeighborhood(): ProfileResponse
 
     // Real profile photo (URL, not a binary upload) -- see PublicUser.profilePhotoUrl's
     // own doc comment.

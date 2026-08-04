@@ -30,6 +30,15 @@ interface JobPostRepository : JpaRepository<JobPost, String> {
         pageable: Pageable,
     ): Page<JobPost>
 
+    // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own doc comment.
+    fun findByStatusAndNeighborhoodInOrderByCreatedAtDesc(status: JobPostStatus, neighborhoods: Collection<String>, pageable: Pageable): Page<JobPost>
+    fun findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(
+        status: JobPostStatus,
+        neighborhoods: Collection<String>,
+        category: String,
+        pageable: Pageable,
+    ): Page<JobPost>
+
     // Real Karrot-Score-style trust badge input (2026-07-21) -- see
     // rw.itunda.core.trust.TrustScoreService's own doc comment; identical shape to
     // ListingRepository.countBySellerIdAndStatus.

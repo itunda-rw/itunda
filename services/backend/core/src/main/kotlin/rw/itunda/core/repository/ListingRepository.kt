@@ -56,6 +56,17 @@ interface ListingRepository : JpaRepository<Listing, String> {
         pageable: Pageable,
     ): Page<Listing>
 
+    // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own
+    // doc comment. `In` variants so a caller with a second neighborhood set sees listings
+    // from either real place, not just their primary one.
+    fun findByStatusAndNeighborhoodInOrderByCreatedAtDesc(status: ListingStatus, neighborhoods: Collection<String>, pageable: Pageable): Page<Listing>
+    fun findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(
+        status: ListingStatus,
+        neighborhoods: Collection<String>,
+        category: String,
+        pageable: Pageable,
+    ): Page<Listing>
+
     // Real Karrot-Score-style trust badge input (2026-07-21) -- see
     // rw.itunda.core.trust.TrustScoreService's own doc comment. A cheap COUNT query, not
     // a full listing load, since only the count of the seller's own completed (SOLD)

@@ -195,10 +195,14 @@ class MarketplaceService(
         val caller = userRepository.findById(callerUserId).orElseThrow { ListingNotFoundException("User not found") }
         val neighborhood = caller.neighborhood
             ?: throw NeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
+        // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own
+        // doc comment. A set second neighborhood is included alongside the primary one, not
+        // instead of it.
+        val neighborhoods = listOfNotNull(neighborhood, caller.secondNeighborhood)
         return if (category.isNullOrBlank()) {
-            listingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(ListingStatus.ACTIVE, neighborhood, pageable)
+            listingRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(ListingStatus.ACTIVE, neighborhoods, pageable)
         } else {
-            listingRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(ListingStatus.ACTIVE, neighborhood, category, pageable)
+            listingRepository.findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(ListingStatus.ACTIVE, neighborhoods, category, pageable)
         }
     }
 

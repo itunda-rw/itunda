@@ -539,12 +539,21 @@ they close in itunda's current implementation.
    loading state already uses `SkeletonBlock`. **Genuinely open, but tiny scope now**, not the
    "5+ instances" this entry originally described.
 
-8. **[partially-sourced]** Upgrade single-shot, single-neighborhood setup to dual-neighborhood +
-   radius control + verification-frequency trust signal. `NeighborhoodSetupPrompt` (`~1324`) is a
-   one-time single-GPS-capture with no radius control. Karrot's official CS docs confirm the
-   dual-neighborhood and verification-count mechanics; the specific 8–63-area radius-scaling
-   figures are secondary-sourced (nuthang.com) and should be treated as illustrative only.
-   *Target: `NeighborhoodSetupPrompt`, `bank-mfe/src/lib/neighborhood.ts`, `V50__hyperlocal_neighborhood.sql` (currently one VARCHAR(120) column, no radius/verification fields)*
+8. **[sourced] Dual-neighborhood implemented 2026-08-04; radius control deliberately not built.**
+   `User.secondNeighborhood` (migration V226), `AuthService.setSecondNeighborhood`/
+   `clearSecondNeighborhood`, `POST`/`DELETE /api/v1/auth/profile/second-neighborhood` -- same
+   real reverse-geocode-only provenance as the primary neighborhood. All four Hood browse
+   services (Marketplace/Community/Jobs/Property) now match either neighborhood via a real
+   `findByStatusAndNeighborhoodIn...` query, not just the primary. Android UI: the neighborhood
+   switcher shows both names (`primary · second`) and an Add/Change/Remove row for the second one,
+   reusing `NeighborhoodSetupPrompt(isSecond = true)`. Live-verified end-to-end against the real
+   dev backend (set primary -> set second via real coordinates -> profile reflects both -> clear
+   -> profile reflects null again). **Radius control intentionally not built**: this
+   recommendation's own specific figures (8-63-area radius scaling) were already flagged
+   `partially-sourced`/secondary-only in the original entry -- building a fabricated radius tier
+   system off an admittedly-illustrative source would be inventing a number, not implementing a
+   researched one. **iOS/bank-mfe second-neighborhood UI not yet ported** -- Android-only this
+   pass, same honest scope note as other cross-platform features when time didn't allow all three.
 
 9. **[sourced] Implemented 2026-07-25.** Add per-listing ownership verification to Property —
    before this, `PropertyListingService.createListing` had zero ownership proof of any kind,

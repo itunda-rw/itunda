@@ -223,10 +223,12 @@ class CommunityService(
         val caller = userRepository.findById(callerUserId).orElseThrow { CommunityPostNotFoundException("User not found") }
         val neighborhood = caller.neighborhood
             ?: throw CommunityNeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
+        // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own doc comment.
+        val neighborhoods = listOfNotNull(neighborhood, caller.secondNeighborhood)
         return if (category.isNullOrBlank()) {
-            postRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, neighborhood, pageable)
+            postRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, neighborhoods, pageable)
         } else {
-            postRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, neighborhood, category, pageable)
+            postRepository.findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, neighborhoods, category, pageable)
         }
     }
 

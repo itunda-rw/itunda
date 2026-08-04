@@ -411,8 +411,12 @@ fun HoodReportAction(targetType: String, targetId: String) {
 // NeighborhoodSetupPrompt exactly. Reuses rememberRealLocationRequester, the same real
 // FusedLocationProviderClient helper NewListingForm's own "share my location" already
 // established -- one location permission flow, not a second one invented for this.
+// isSecond (2026-08-04) -- real dual-neighborhood support, see User.secondNeighborhood's
+// own doc comment on the backend. Same real GPS+reverse-geocode flow, routed to
+// setSecondNeighborhood instead of setNeighborhood so a user can register an additional
+// real place (e.g. a workplace) without overwriting their primary one.
 @Composable
-fun NeighborhoodSetupPrompt(onDone: (String) -> Unit) {
+fun NeighborhoodSetupPrompt(isSecond: Boolean = false, onDone: (String) -> Unit) {
     val coroutineScope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -422,9 +426,13 @@ fun NeighborhoodSetupPrompt(onDone: (String) -> Unit) {
             coroutineScope.launch {
                 busy = true
                 try {
-                    val res = NetworkClient.authApi.setNeighborhood(SetNeighborhoodRequest(lat, lng))
+                    val res = if (isSecond) {
+                        NetworkClient.authApi.setSecondNeighborhood(SetNeighborhoodRequest(lat, lng))
+                    } else {
+                        NetworkClient.authApi.setNeighborhood(SetNeighborhoodRequest(lat, lng))
+                    }
                     busy = false
-                    res.user.neighborhood?.let(onDone)
+                    (if (isSecond) res.user.secondNeighborhood else res.user.neighborhood)?.let(onDone)
                 } catch (e: HttpException) {
                     busy = false
                     error = superAppErrorMessage(e)
@@ -439,10 +447,10 @@ fun NeighborhoodSetupPrompt(onDone: (String) -> Unit) {
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Set your neighborhood", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(if (isSecond) "Add a second neighborhood" else "Set your neighborhood", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Share your real location once to see what's happening near you.",
+                if (isSecond) "Share a second real place -- like work -- to see what's happening there too." else "Share your real location once to see what's happening near you.",
                 color = Ids.colors.textSecondary, fontSize = 13.sp, textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(16.dp))

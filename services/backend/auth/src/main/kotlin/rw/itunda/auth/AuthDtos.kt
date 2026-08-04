@@ -45,6 +45,7 @@ data class PublicUser(
     val neighborhood: String?,
     val neighborhoodVerifiedAt: Instant? = null,
     val neighborhoodVerificationCount: Int = 0,
+    val secondNeighborhood: String? = null,
     val birthDate: LocalDate? = null,
 )
 

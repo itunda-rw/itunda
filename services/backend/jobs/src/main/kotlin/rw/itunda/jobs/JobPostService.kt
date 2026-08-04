@@ -154,10 +154,12 @@ class JobPostService(
         val caller = userRepository.findById(callerUserId).orElseThrow { JobPostNotFoundException("User not found") }
         val neighborhood = caller.neighborhood
             ?: throw JobsNeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
+        // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own doc comment.
+        val neighborhoods = listOfNotNull(neighborhood, caller.secondNeighborhood)
         return if (category.isNullOrBlank()) {
-            jobPostRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhood, pageable)
+            jobPostRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhoods, pageable)
         } else {
-            jobPostRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhood, category, pageable)
+            jobPostRepository.findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhoods, category, pageable)
         }
     }
 

@@ -278,6 +278,35 @@ class AuthService(
         return user.toPublic()
     }
 
+    // Real dual-neighborhood support (2026-08-04) -- see User.kt's own doc comment.
+    // Same real reverse-geocode-only provenance and anti-spam limit as setNeighborhood
+    // above (shares the same rate-limit key/budget -- a second Nominatim call is exactly
+    // as expensive as the first, no reason for a separate allowance). A caller with no
+    // primary neighborhood yet can still call this -- it doesn't require setNeighborhood
+    // to have run first, since "second" here just means "an additional real place", not
+    // literally the second one ever set.
+    @Transactional
+    fun setSecondNeighborhood(userId: String, latitude: Double, longitude: Double): PublicUser {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        rateLimiter.checkLimit("auth:neighborhood:$userId", limit = 10, window = Duration.ofHours(1))
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        val neighborhood = nominatimGeocodingClient.reverseGeocode(latitude, longitude)
+            ?: throw NeighborhoodNotResolvedException("Couldn't determine a neighborhood for this location")
+        user.secondNeighborhood = neighborhood
+        userRepository.save(user)
+        return user.toPublic()
+    }
+
+    @Transactional
+    fun clearSecondNeighborhood(userId: String): PublicUser {
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        user.secondNeighborhood = null
+        userRepository.save(user)
+        return user.toPublic()
+    }
+
     // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
     // MiniWalletService's own doc comment for the sourced 만 7세~18세 real eligibility
     // window this backs. Set once; a real, plausible past date only -- neither a future
@@ -462,6 +491,7 @@ class AuthService(
         phoneVerified = phoneVerified,
         neighborhood = neighborhood, neighborhoodVerifiedAt = neighborhoodVerifiedAt,
         neighborhoodVerificationCount = neighborhoodVerificationCount,
+        secondNeighborhood = secondNeighborhood,
         birthDate = birthDate,
     )
 }

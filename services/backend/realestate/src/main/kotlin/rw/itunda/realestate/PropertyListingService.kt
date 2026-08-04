@@ -190,7 +190,9 @@ class PropertyListingService(
         val caller = userRepository.findById(callerUserId).orElseThrow { PropertyListingNotFoundException("User not found") }
         val neighborhood = caller.neighborhood
             ?: throw RealEstateNeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
-        return propertyListingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(PropertyListingStatus.AVAILABLE, neighborhood, pageable)
+        // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own doc comment.
+        val neighborhoods = listOfNotNull(neighborhood, caller.secondNeighborhood)
+        return propertyListingRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(PropertyListingStatus.AVAILABLE, neighborhoods, pageable)
     }
 
     // Real opt-in "near me" browse -- location matters a lot for real estate, same shape

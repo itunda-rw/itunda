@@ -32,6 +32,15 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, String> {
         pageable: Pageable,
     ): Page<CommunityPost>
 
+    // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own doc comment.
+    fun findByStatusAndNeighborhoodInOrderByCreatedAtDesc(status: CommunityPostStatus, neighborhoods: Collection<String>, pageable: Pageable): Page<CommunityPost>
+    fun findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(
+        status: CommunityPostStatus,
+        neighborhoods: Collection<String>,
+        category: String,
+        pageable: Pageable,
+    ): Page<CommunityPost>
+
     // Real 당근모임-style "upcoming" browse (2026-07-25) -- see CommunityPost
     // .eventDate's own doc comment. Soonest-first, and only ever real future meetups --
     // a past eventDate just means the meetup already happened, not a fabricated filter.

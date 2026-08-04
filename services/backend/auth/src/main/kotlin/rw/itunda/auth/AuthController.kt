@@ -105,6 +105,24 @@ class AuthController(private val authService: AuthService, private val deviceSer
             ),
         )
 
+    // Real dual-neighborhood support (2026-08-04) -- see AuthService.setSecondNeighborhood's
+    // own doc comment.
+    @PostMapping("/profile/second-neighborhood")
+    fun setSecondNeighborhood(
+        @RequestBody request: SetNeighborhoodRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "user" to authService.setSecondNeighborhood(currentUser.userId, request.latitude, request.longitude),
+            ),
+        )
+
+    @DeleteMapping("/profile/second-neighborhood")
+    fun clearSecondNeighborhood(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "user" to authService.clearSecondNeighborhood(currentUser.userId)))
+
     // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
     // AuthService.setBirthDate's own doc comment.
     @PostMapping("/profile/birth-date")
