@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -235,8 +236,8 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
                     ) { Text(c.label, color = if (selected) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
-            OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Your question") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = body, onValueChange = { body = it }, label = { Text("Add more detail") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = title, onValueChange = { title = it }, label = "Your question", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = body, onValueChange = { body = it }, label = "Add more detail", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
@@ -356,10 +357,7 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
             if (q?.adoptedAnswerId == null) {
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        OutlinedTextField(
-                            value = answerBody, onValueChange = { answerBody = it }, label = { Text("Write an answer") },
-                            modifier = Modifier.weight(1f),
-                        )
+                        IdsTextField(value = answerBody, onValueChange = { answerBody = it }, label = "Write an answer", modifier = Modifier.weight(1f))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                 .background(if (answerBody.isNotBlank()) TossBlue else TossCardSoft)

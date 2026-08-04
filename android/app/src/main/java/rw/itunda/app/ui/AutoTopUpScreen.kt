@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -199,8 +200,8 @@ private fun AutoTopUpConfigCard(
             } else {
                 Text("${linkedAccounts.first().provider} ${linkedAccounts.first().externalAccountNumberMasked}", color = TossSecondary, fontSize = 13.sp)
             }
-            OutlinedTextField(value = threshold, onValueChange = { threshold = it }, label = { Text("Top up when wallet drops below (RWF)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = topUpAmount, onValueChange = { topUpAmount = it }, label = { Text("Amount to top up (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = threshold, onValueChange = { threshold = it }, label = "Top up when wallet drops below (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = topUpAmount, onValueChange = { topUpAmount = it }, label = "Amount to top up (RWF)", modifier = Modifier.fillMaxWidth())
             if (setting != null) {
                 Text("Triggered ${setting.triggersToday}/${setting.dailyTriggerCap} times today.", color = TossSecondary, fontSize = 12.sp)
             }

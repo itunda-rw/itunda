@@ -16,6 +16,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -132,13 +133,13 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
             TextButton(onClick = onBack, enabled = !busy) { Text("Back") }
         }
         if (mode == TransactionMode.COUNT_TILL) {
-            OutlinedTextField(amount, { amount = it }, label = { Text("Counted cash (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Counted cash (RWF)", modifier = Modifier.fillMaxWidth())
         } else {
-            OutlinedTextField(account, { account = it }, label = { Text("Customer account number") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(amount, { amount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(receipt, { receipt = it }, label = { Text("Store receipt number") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = account, onValueChange = { account = it }, label = "Customer account number", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Store receipt number", modifier = Modifier.fillMaxWidth())
             if (mode == TransactionMode.CASH_OUT) {
-                OutlinedTextField(code, { code = it.uppercase() }, label = { Text("Customer withdrawal code") }, modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = code, onValueChange = { code = it.uppercase() }, label = "Customer withdrawal code", modifier = Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Checkbox(checked = payoutChecked, onCheckedChange = { payoutChecked = it }, enabled = !busy)
                     Text("I checked the code and counted the cash. Do not hand over cash until Itunda confirms.", modifier = Modifier.padding(top = 12.dp))

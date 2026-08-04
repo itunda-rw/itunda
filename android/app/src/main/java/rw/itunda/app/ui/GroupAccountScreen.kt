@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -137,10 +138,7 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 GroupAccountActionButton(title = "+ New group account", enabled = true) { showCreate = true }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = name, onValueChange = { name = it }, label = { Text("Group name (e.g. Roommates)") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Roommates)", modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
@@ -361,10 +359,7 @@ private fun GroupAccountDetailContent(id: String) {
                     when {
                         currentDues == null -> Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().height(40.dp)) {}
                         currentDues.duesAmount == null && isOwner -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = duesAmountInput, onValueChange = { duesAmountInput = it }, label = { Text("Monthly dues (RWF)") },
-                                modifier = Modifier.weight(1f),
-                            )
+                            IdsTextField(value = duesAmountInput, onValueChange = { duesAmountInput = it }, label = "Monthly dues (RWF)", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
                                     .clickable(enabled = !duesBusy) { duesAmountInput.toBigDecimalOrNull()?.let { setDues(it) } }
@@ -420,7 +415,7 @@ private fun GroupAccountDetailContent(id: String) {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(if (isOwner) "Deposit or withdraw" else "Deposit", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             GroupAccountActionButton(title = if (busy) "…" else "Deposit", enabled = !busy && amount.isNotBlank(), modifier = Modifier.weight(1f)) { deposit() }
                             if (isOwner) {
@@ -441,7 +436,7 @@ private fun GroupAccountDetailContent(id: String) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Invite a member", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = { Text("Phone number") }, modifier = Modifier.weight(1f))
+                            IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
                                     .clickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -314,8 +315,8 @@ private fun ParkingMineContent() {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("List a spot you own", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text("Any itunda user can list a driveway or private lot space into the shared rental pool.", color = TossSecondary, fontSize = 12.sp)
-                    OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = hourlyRate, onValueChange = { hourlyRate = it }, label = { Text("Hourly rate (RWF)") }, modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = address, onValueChange = { address = it }, label = "Address", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = hourlyRate, onValueChange = { hourlyRate = it }, label = "Hourly rate (RWF)", modifier = Modifier.fillMaxWidth())
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
                             .clickable(enabled = !registering) { register() }.padding(vertical = 12.dp),

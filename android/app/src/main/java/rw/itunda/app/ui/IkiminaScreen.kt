@@ -21,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -157,14 +158,8 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 ) { Text("+ New ikimina", color = TossText, fontWeight = FontWeight.Bold) }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = name, onValueChange = { name = it }, label = { Text("Group name (e.g. Umuryango)") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = contributionAmount, onValueChange = { contributionAmount = it }, label = { Text("Contribution per round (RWF)") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Umuryango)", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = contributionAmount, onValueChange = { contributionAmount = it }, label = "Contribution per round (RWF)", modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
                             Box(
@@ -176,10 +171,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                                 DropdownMenuItem(text = { Text("Monthly") }, onClick = { cycleFrequencyDays = 30; frequencyMenuOpen = false })
                             }
                         }
-                        OutlinedTextField(
-                            value = memberCap, onValueChange = { memberCap = it }, label = { Text("Max members") },
-                            modifier = Modifier.weight(1f),
-                        )
+                        IdsTextField(value = memberCap, onValueChange = { memberCap = it }, label = "Max members", modifier = Modifier.weight(1f))
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
@@ -386,7 +378,7 @@ private fun IkiminaDetailContent(id: String) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Invite a member", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = { Text("Phone number") }, modifier = Modifier.weight(1f))
+                            IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
                                     .clickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }

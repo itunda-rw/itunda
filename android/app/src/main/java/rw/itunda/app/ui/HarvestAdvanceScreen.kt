@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -225,8 +226,8 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Register a cooperative", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            OutlinedTextField(value = coopName, onValueChange = { coopName = it }, label = { Text("Cooperative name") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = coopCrop, onValueChange = { coopCrop = it }, label = { Text("Crop (e.g. COFFEE)") }, modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = coopName, onValueChange = { coopName = it }, label = "Cooperative name", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = coopCrop, onValueChange = { coopCrop = it }, label = "Crop (e.g. COFFEE)", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
                                     .clickable(enabled = !busy && coopName.isNotBlank()) { registerCooperative() }
@@ -234,7 +235,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Register & join", color = Color.White, fontWeight = FontWeight.Bold) }
                             Text("Already have a cooperative ID?", color = TossSecondary, fontSize = 12.sp)
-                            OutlinedTextField(value = coopId, onValueChange = { coopId = it }, label = { Text("Cooperative ID") }, modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = coopId, onValueChange = { coopId = it }, label = "Cooperative ID", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
                                     .clickable(enabled = !busy && coopId.isNotBlank()) { joinCooperative() }
@@ -263,9 +264,9 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Request an advance", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            OutlinedTextField(value = advanceAmount, onValueChange = { advanceAmount = it }, label = { Text("Amount (RWF, max 500,000)") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = advancePurpose, onValueChange = { advancePurpose = it }, label = { Text("Purpose (INPUT_FINANCING / POST_HARVEST)") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = harvestMonthsAway, onValueChange = { harvestMonthsAway = it }, label = { Text("Expected harvest (months from now)") }, modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = advanceAmount, onValueChange = { advanceAmount = it }, label = "Amount (RWF, max 500,000)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = advancePurpose, onValueChange = { advancePurpose = it }, label = "Purpose (INPUT_FINANCING / POST_HARVEST)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = harvestMonthsAway, onValueChange = { harvestMonthsAway = it }, label = "Expected harvest (months from now)", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
                                     .clickable(enabled = !busy && advanceAmount.toBigDecimalOrNull()?.signum() == 1 && harvestMonthsAway.toLongOrNull() != null) { requestAdvance(membershipId) }

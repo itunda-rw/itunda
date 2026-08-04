@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -189,7 +190,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
             if (showInvite) {
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(value = childPhone, onValueChange = { childPhone = it }, label = { Text("Phone number") }, singleLine = true, modifier = Modifier.weight(1f))
+                        IdsTextField(value = childPhone, onValueChange = { childPhone = it }, label = "Phone number", modifier = Modifier.weight(1f))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
                                 .background(if (busy || childPhone.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
@@ -265,11 +266,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                             }
                             if (editingLimitFor == c.link.childUserId) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                    OutlinedTextField(
-                                        value = limitInput, onValueChange = { limitInput = it },
-                                        label = { Text("Daily limit (RWF, blank = no limit)") },
-                                        singleLine = true, modifier = Modifier.weight(1f),
-                                    )
+                                    IdsTextField(value = limitInput, onValueChange = { limitInput = it }, label = "Daily limit (RWF, blank = no limit)", modifier = Modifier.weight(1f))
                                     Box(
                                         modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                             .clickable(enabled = limitBusyId != c.link.childUserId) {

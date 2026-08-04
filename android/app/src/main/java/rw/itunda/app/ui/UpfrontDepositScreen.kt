@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -233,10 +234,7 @@ private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
                 "the full $TERM_MONTHS months with no early withdrawal.",
             color = TossSecondary, fontSize = 13.sp,
         )
-        OutlinedTextField(
-            value = principal, onValueChange = { principal = it }, label = { Text("Deposit amount (RWF)") },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        IdsTextField(value = principal, onValueChange = { principal = it }, label = "Deposit amount (RWF)", modifier = Modifier.fillMaxWidth())
         previewInterest?.let {
             Text("You'll receive ${formatMoneyUpfront(it.toDouble())} RWF immediately", color = Ids.colors.success, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }

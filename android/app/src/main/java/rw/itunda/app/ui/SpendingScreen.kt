@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -220,11 +221,11 @@ private fun SetBudgetForm(categories: List<SpendingCategoryDto>, onSet: (String?
                     }
                 }
             }
-            OutlinedTextField(
+            IdsTextField(
                 value = limitText,
                 onValueChange = { limitText = it },
-                label = { Text("Monthly limit (RWF)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                label = "Monthly limit (RWF)",
+                keyboardType = KeyboardType.Number,
                 modifier = Modifier.fillMaxWidth(),
             )
             Button(

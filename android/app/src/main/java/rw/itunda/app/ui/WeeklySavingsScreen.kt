@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -252,14 +253,8 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
                 "top of the base rate.",
             color = TossSecondary, fontSize = 13.sp,
         )
-        OutlinedTextField(
-            value = name, onValueChange = { name = it }, label = { Text("Plan name") },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = baseAmount, onValueChange = { baseAmount = it }, label = { Text("Base weekly amount (RWF)") },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
+        IdsTextField(value = baseAmount, onValueChange = { baseAmount = it }, label = "Base weekly amount (RWF)", modifier = Modifier.fillMaxWidth())
         Text("Escalation rate", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             escalationOptions.chunked(3).forEach { rowOptions ->

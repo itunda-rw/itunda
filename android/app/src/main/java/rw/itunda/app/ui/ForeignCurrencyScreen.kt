@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -221,11 +222,7 @@ private fun ConvertPanel(wallets: List<WalletDto>, onConverted: () -> Unit) {
                     ) { Text(code, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                 }
             }
-            OutlinedTextField(
-                value = amountText, onValueChange = { amountText = it },
-                label = { Text("Amount ($fromCurrency)") },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount ($fromCurrency)", modifier = Modifier.fillMaxWidth())
             rate?.let { r ->
                 Text("Live rate: 1 $fromCurrency = ${"%.4f".format(r)} $toCurrency", color = TossSecondary, fontSize = 12.sp)
             }

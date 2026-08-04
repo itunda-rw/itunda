@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -330,16 +331,8 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
             modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedTextField(
-                value = recipient, onValueChange = { recipient = it },
-                placeholder = { Text("Phone number or account number") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = amount, onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
-                placeholder = { Text("Amount (RWF)") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = recipient, onValueChange = { recipient = it }, label = "Phone number or account number", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(AutoTransferFrequency.WEEKLY to "Weekly", AutoTransferFrequency.MONTHLY to "Monthly").forEach { (f, label) ->
                     val selected = frequency == f
@@ -357,11 +350,7 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                 }
             }
             if (frequency == AutoTransferFrequency.MONTHLY) {
-                OutlinedTextField(
-                    value = dayOfMonth, onValueChange = { dayOfMonth = it.filter(Char::isDigit) },
-                    placeholder = { Text("Day of month (1-28)") },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
-                )
+                IdsTextField(value = dayOfMonth, onValueChange = { dayOfMonth = it.filter(Char::isDigit) }, label = "Day of month (1-28)", modifier = Modifier.fillMaxWidth())
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(1 to "Mon", 2 to "Tue", 3 to "Wed", 4 to "Thu", 5 to "Fri", 6 to "Sat", 7 to "Sun").forEach { (d, label) ->
@@ -380,11 +369,7 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                     }
                 }
             }
-            OutlinedTextField(
-                value = description, onValueChange = { description = it },
-                placeholder = { Text("What's this for? (optional)") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = description, onValueChange = { description = it }, label = "What's this for? (optional)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
             IdsButton(
                 if (submitting) "Setting up…" else "Set up auto-transfer",
@@ -551,26 +536,10 @@ fun NewScheduledTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
             modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedTextField(
-                value = recipient, onValueChange = { recipient = it },
-                placeholder = { Text("Phone number or account number") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = amount, onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
-                placeholder = { Text("Amount (RWF)") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = daysFromNow, onValueChange = { daysFromNow = it.filter(Char::isDigit) },
-                placeholder = { Text("Send in how many days") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = description, onValueChange = { description = it },
-                placeholder = { Text("What's this for? (optional)") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = recipient, onValueChange = { recipient = it }, label = "Phone number or account number", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = daysFromNow, onValueChange = { daysFromNow = it.filter(Char::isDigit) }, label = "Send in how many days", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = description, onValueChange = { description = it }, label = "What's this for? (optional)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
             IdsButton(
                 if (submitting) "Setting up…" else "Schedule transfer",

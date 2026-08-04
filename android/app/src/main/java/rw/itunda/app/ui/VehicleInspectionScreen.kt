@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -172,7 +173,7 @@ private fun InspectionBuyerContent() {
                         "Pay a local mechanic to inspect a used car before you buy it -- held until they deliver their findings.",
                         fontSize = 12.sp, color = TossSecondary,
                     )
-                    OutlinedTextField(value = listingId, onValueChange = { listingId = it }, label = { Text("Listing ID") }, modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = listingId, onValueChange = { listingId = it }, label = "Listing ID", modifier = Modifier.fillMaxWidth())
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Mechanic", fontSize = 12.sp, color = TossSecondary)
                         (mechanics ?: emptyList()).forEach { m ->
@@ -185,8 +186,8 @@ private fun InspectionBuyerContent() {
                         }
                         if (mechanics?.isEmpty() == true) Text("No mechanics available right now.", fontSize = 12.sp, color = TossSecondary)
                     }
-                    OutlinedTextField(value = fee, onValueChange = { fee = it }, label = { Text("Inspection fee (RWF)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = scheduleHours, onValueChange = { scheduleHours = it }, label = { Text("Hours from now") }, modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = fee, onValueChange = { fee = it }, label = "Inspection fee (RWF)", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = scheduleHours, onValueChange = { scheduleHours = it }, label = "Hours from now", modifier = Modifier.fillMaxWidth())
                     error?.let { Text(it, color = Color(0xFFE53935), fontSize = 12.sp) }
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
@@ -318,7 +319,7 @@ private fun InspectionMechanicContent() {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Become an inspection mechanic", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text("Get booked and paid to inspect used cars for real buyers before they purchase.", fontSize = 12.sp, color = TossSecondary)
-                    OutlinedTextField(value = businessName, onValueChange = { businessName = it }, label = { Text("Business name") }, modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = businessName, onValueChange = { businessName = it }, label = "Business name", modifier = Modifier.fillMaxWidth())
                     error?.let { Text(it, color = Color(0xFFE53935), fontSize = 12.sp) }
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
@@ -373,12 +374,7 @@ private fun InspectionMechanicContent() {
                             ) { Text(if (busyBookingId == b.id) "Accepting…" else "Accept", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                         if (b.status == "ACCEPTED") {
-                            OutlinedTextField(
-                                value = findingsByBooking[b.id] ?: "",
-                                onValueChange = { findingsByBooking = findingsByBooking + (b.id to it) },
-                                label = { Text("Inspection findings") },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            IdsTextField(value = findingsByBooking[b.id] ?: "", onValueChange = { findingsByBooking = findingsByBooking + (b.id to it) }, label = "Inspection findings", modifier = Modifier.fillMaxWidth())
                             Row(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(TossBlue)
                                     .clickable(enabled = busyBookingId != b.id) { complete(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),

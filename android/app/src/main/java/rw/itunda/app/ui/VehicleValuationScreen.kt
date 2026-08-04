@@ -18,6 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -180,12 +181,12 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                 item {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(value = make, onValueChange = { make = it }, label = { Text("Make (e.g. Toyota)") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Model (e.g. RAV4)") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = modelYear, onValueChange = { modelYear = it }, label = { Text("Model year") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = purchasePrice, onValueChange = { purchasePrice = it }, label = { Text("Purchase price (RWF)") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = purchaseDate, onValueChange = { purchaseDate = it }, label = { Text("Purchase date (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = mileageKm, onValueChange = { mileageKm = it }, label = { Text("Current mileage (km)") }, modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = make, onValueChange = { make = it }, label = "Make (e.g. Toyota)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = model, onValueChange = { model = it }, label = "Model (e.g. RAV4)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = modelYear, onValueChange = { modelYear = it }, label = "Model year", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = purchasePrice, onValueChange = { purchasePrice = it }, label = "Purchase price (RWF)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = purchaseDate, onValueChange = { purchaseDate = it }, label = "Purchase date (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = mileageKm, onValueChange = { mileageKm = it }, label = "Current mileage (km)", modifier = Modifier.fillMaxWidth())
                             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
@@ -250,10 +251,7 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
             onDismissRequest = { if (!editMileageBusy) editingMileage = null },
             title = { Text("Update mileage") },
             text = {
-                OutlinedTextField(
-                    value = editMileageText, onValueChange = { editMileageText = it },
-                    label = { Text("Current mileage (km)") }, modifier = Modifier.fillMaxWidth(),
-                )
+                IdsTextField(value = editMileageText, onValueChange = { editMileageText = it }, label = "Current mileage (km)", modifier = Modifier.fillMaxWidth())
             },
             confirmButton = {
                 TextButton(

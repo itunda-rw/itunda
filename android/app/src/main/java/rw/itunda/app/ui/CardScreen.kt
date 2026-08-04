@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -225,8 +226,8 @@ fun CardScreen(onBack: () -> Unit) {
                                     Text("Today: ${c.spentToday.toPlainString()} / ${c.dailyLimit.toPlainString()} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     Text("This month: ${c.spentThisMonth.toPlainString()} / ${c.monthlyLimit.toPlainString()} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedTextField(value = dailyLimitInput, onValueChange = { dailyLimitInput = it }, label = { Text("Daily limit") }, modifier = Modifier.weight(1f))
-                                        OutlinedTextField(value = monthlyLimitInput, onValueChange = { monthlyLimitInput = it }, label = { Text("Monthly limit") }, modifier = Modifier.weight(1f))
+                                        IdsTextField(value = dailyLimitInput, onValueChange = { dailyLimitInput = it }, label = "Daily limit", modifier = Modifier.weight(1f))
+                                        IdsTextField(value = monthlyLimitInput, onValueChange = { monthlyLimitInput = it }, label = "Monthly limit", modifier = Modifier.weight(1f))
                                     }
                                     CardActionButton("Save limits", enabled = !busy) { saveLimits() }
                                 }
@@ -241,8 +242,8 @@ fun CardScreen(onBack: () -> Unit) {
                                         color = Ids.colors.textTertiary, fontSize = 11.sp,
                                     )
                                     chargeMessage?.let { Text(it, color = if (it.startsWith("Paid")) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp) }
-                                    OutlinedTextField(value = merchantName, onValueChange = { merchantName = it }, label = { Text("Merchant name") }, modifier = Modifier.fillMaxWidth())
-                                    OutlinedTextField(value = chargeAmount, onValueChange = { chargeAmount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+                                    IdsTextField(value = merchantName, onValueChange = { merchantName = it }, label = "Merchant name", modifier = Modifier.fillMaxWidth())
+                                    IdsTextField(value = chargeAmount, onValueChange = { chargeAmount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
                                     CardActionButton(if (c.frozen) "Card is frozen" else if (busy) "Paying…" else "Pay", enabled = !busy && !c.frozen) { charge() }
                                 }
                             }

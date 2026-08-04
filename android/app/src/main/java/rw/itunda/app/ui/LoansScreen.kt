@@ -21,6 +21,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -208,7 +209,7 @@ private fun OfferCard(offer: LoanOfferDto, busy: Boolean, onApply: (BigDecimal) 
             Text("Up to RWF ${offer.maxAmount} · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
             Text(offer.requirements, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(amountText, { amountText = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Button(
                 enabled = !busy,
@@ -237,7 +238,7 @@ private fun MyLoanCard(
         Text("Status: ${loan.status} · ${loan.interestRate}%", style = MaterialTheme.typography.bodySmall)
         if (loan.status == "ACTIVE") {
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(repayText, onRepayTextChanged, label = { Text("Repay amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = repayText, onValueChange = onRepayTextChanged, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Button(enabled = !busy, onClick = onRepay, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Repaying…" else "Repay") }
             Spacer(Modifier.height(8.dp))
@@ -293,7 +294,7 @@ private fun OverdraftPanel() {
                 )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(requestedLimit, { requestedLimit = it }, label = { Text("Requested limit (RWF)") }, modifier = Modifier.fillMaxWidth())
+                IdsTextField(value = requestedLimit, onValueChange = { requestedLimit = it }, label = "Requested limit (RWF)", modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Button(
                     enabled = !busy,
@@ -326,7 +327,7 @@ private fun OverdraftPanel() {
             notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(drawAmount, { drawAmount = it }, label = { Text("Draw amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = drawAmount, onValueChange = { drawAmount = it }, label = "Draw amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Button(
                 enabled = !busy,
@@ -350,7 +351,7 @@ private fun OverdraftPanel() {
                 },
             ) { Text(if (busy) "Drawing…" else "Draw") }
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(repayAmount, { repayAmount = it }, label = { Text("Repay amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 enabled = !busy && current.drawnBalance > BigDecimal.ZERO,
@@ -450,7 +451,7 @@ private fun PostpaidCreditPanel() {
             notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(spendAmount, { spendAmount = it }, label = { Text("Spend amount (RWF)") }, modifier = Modifier.fillMaxWidth(), enabled = !suspended)
+            IdsTextField(value = spendAmount, onValueChange = { spendAmount = it }, label = "Spend amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Button(
                 enabled = !busy && !suspended,
@@ -474,7 +475,7 @@ private fun PostpaidCreditPanel() {
                 },
             ) { Text(if (busy) "Adding…" else "Add to wallet") }
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(repayAmount, { repayAmount = it }, label = { Text("Repay amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 enabled = !busy && current.currentBalance > BigDecimal.ZERO,

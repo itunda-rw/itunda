@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -133,17 +134,9 @@ fun OverviewScreen(onBack: () -> Unit) {
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(
-                                providerText, { providerText = it },
-                                label = { Text("Provider name") },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            IdsTextField(value = providerText, onValueChange = { providerText = it }, label = "Provider name", modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
-                            OutlinedTextField(
-                                accountNumberText, { accountNumberText = it },
-                                label = { Text("Account / phone number") },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            IdsTextField(value = accountNumberText, onValueChange = { accountNumberText = it }, label = "Account / phone number", modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
                             Button(
                                 enabled = !busy && providerText.isNotBlank() && accountNumberText.length >= 4,

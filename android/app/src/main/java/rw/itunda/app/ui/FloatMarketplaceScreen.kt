@@ -16,6 +16,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -231,7 +232,7 @@ private fun PostListingCard(busy: Boolean, onPost: (java.math.BigDecimal) -> Uni
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Offer surplus float", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount to offer (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount to offer (RWF)", modifier = Modifier.fillMaxWidth())
             Button(
                 onClick = {
                     val value = amount.toBigDecimalOrNull()
@@ -254,7 +255,7 @@ private fun NearbyListingRow(listing: NearbyFloatListingDto, busy: Boolean, onRe
             Text("${"%,.0f".format(listing.remainingAmount)} RWF available", style = MaterialTheme.typography.bodySmall)
         }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount to request") }, modifier = Modifier.fillMaxWidth().padding(end = 8.dp))
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount to request", modifier = Modifier.fillMaxWidth().padding(end = 8.dp))
             Button(
                 onClick = {
                     val value = amount.toBigDecimalOrNull()

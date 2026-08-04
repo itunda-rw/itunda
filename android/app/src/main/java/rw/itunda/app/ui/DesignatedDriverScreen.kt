@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -210,24 +211,21 @@ private fun DesignatedDriverRequestContent() {
                             color = TossSecondary, fontSize = 12.sp,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = pickupAddress, onValueChange = { pickupAddress = it }, label = { Text("Pickup") },
-                                modifier = Modifier.weight(1f),
-                            )
+                            IdsTextField(value = pickupAddress, onValueChange = { pickupAddress = it }, label = "Pickup", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
                                     .clickable(enabled = !locating) { requestLocation() }
                                     .padding(horizontal = 14.dp, vertical = 14.dp),
                             ) { Text(if (locating) "…" else "Use my location", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
-                        OutlinedTextField(value = dropoffAddress, onValueChange = { dropoffAddress = it }, label = { Text("Drop-off address") }, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = dropoffAddress, onValueChange = { dropoffAddress = it }, label = "Drop-off address", modifier = Modifier.fillMaxWidth())
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(value = dropoffLat, onValueChange = { dropoffLat = it }, label = { Text("Drop-off latitude") }, modifier = Modifier.weight(1f))
-                            OutlinedTextField(value = dropoffLng, onValueChange = { dropoffLng = it }, label = { Text("Drop-off longitude") }, modifier = Modifier.weight(1f))
+                            IdsTextField(value = dropoffLat, onValueChange = { dropoffLat = it }, label = "Drop-off latitude", modifier = Modifier.weight(1f))
+                            IdsTextField(value = dropoffLng, onValueChange = { dropoffLng = it }, label = "Drop-off longitude", modifier = Modifier.weight(1f))
                         }
-                        OutlinedTextField(value = vehicleMake, onValueChange = { vehicleMake = it }, label = { Text("Car make (e.g. Toyota)") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = vehicleModel, onValueChange = { vehicleModel = it }, label = { Text("Car model (e.g. RAV4)") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(value = vehiclePlate, onValueChange = { vehiclePlate = it }, label = { Text("License plate") }, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = vehicleMake, onValueChange = { vehicleMake = it }, label = "Car make (e.g. Toyota)", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = vehicleModel, onValueChange = { vehicleModel = it }, label = "Car model (e.g. RAV4)", modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = vehiclePlate, onValueChange = { vehiclePlate = it }, label = "License plate", modifier = Modifier.fillMaxWidth())
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .background(TossBlue)
@@ -377,7 +375,7 @@ private fun DesignatedDriverDriveContent() {
                             color = TossSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         )
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(value = licenseNumber, onValueChange = { licenseNumber = it }, label = { Text("License number") }, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = licenseNumber, onValueChange = { licenseNumber = it }, label = "License number", modifier = Modifier.fillMaxWidth())
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)

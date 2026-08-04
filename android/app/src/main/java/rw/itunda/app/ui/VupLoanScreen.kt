@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ApplyForVupLoanRequest
 import rw.itunda.core.network.NetworkClient
@@ -215,9 +216,9 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                         ) { Text(label, color = if (purpose == value) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                     }
                                 }
-                                OutlinedTextField(
+                                IdsTextField(
                                     value = amount, onValueChange = { amount = it },
-                                    label = { Text("Loan amount (RWF, up to ${"%,.0f".format(eligibilityNow.maxAmount)})") },
+                                    label = "Loan amount (RWF, up to ${"%,.0f".format(eligibilityNow.maxAmount)})",
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                                 Box(
@@ -259,10 +260,10 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                 ) { Text(if (busyId == loan.id) "…" else "Disburse", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
                             if (loan.status == "DISBURSED" || loan.status == "OVERDUE") {
-                                OutlinedTextField(
+                                IdsTextField(
                                     value = repayAmounts[loan.id] ?: "",
                                     onValueChange = { repayAmounts = repayAmounts + (loan.id to it) },
-                                    label = { Text("Repayment amount (RWF)") },
+                                    label = "Repayment amount (RWF)",
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                                 Box(

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -257,20 +258,17 @@ private fun RidePassengerContent() {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Request a ride", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(
-                                value = pickupAddress, onValueChange = { pickupAddress = it }, label = { Text("Pickup") },
-                                modifier = Modifier.weight(1f),
-                            )
+                            IdsTextField(value = pickupAddress, onValueChange = { pickupAddress = it }, label = "Pickup", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
                                     .clickable(enabled = !locating) { requestLocation() }
                                     .padding(horizontal = 14.dp, vertical = 14.dp),
                             ) { Text(if (locating) "…" else "Use my location", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
-                        OutlinedTextField(value = dropoffAddress, onValueChange = { dropoffAddress = it }, label = { Text("Dropoff address") }, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(value = dropoffAddress, onValueChange = { dropoffAddress = it }, label = "Dropoff address", modifier = Modifier.fillMaxWidth())
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedTextField(value = dropoffLat, onValueChange = { dropoffLat = it }, label = { Text("Dropoff latitude") }, modifier = Modifier.weight(1f))
-                            OutlinedTextField(value = dropoffLng, onValueChange = { dropoffLng = it }, label = { Text("Dropoff longitude") }, modifier = Modifier.weight(1f))
+                            IdsTextField(value = dropoffLat, onValueChange = { dropoffLat = it }, label = "Dropoff latitude", modifier = Modifier.weight(1f))
+                            IdsTextField(value = dropoffLng, onValueChange = { dropoffLng = it }, label = "Dropoff longitude", modifier = Modifier.weight(1f))
                         }
                         stops.forEachIndexed { index, stop ->
                             Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = TossCardSoft), modifier = Modifier.fillMaxWidth()) {
@@ -279,10 +277,10 @@ private fun RidePassengerContent() {
                                         Text("Stop ${index + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossSecondary)
                                         Text("Remove", fontSize = 12.sp, color = Ids.colors.danger, modifier = Modifier.clickable { stops.removeAt(index) })
                                     }
-                                    OutlinedTextField(value = stop.address, onValueChange = { stops[index] = stop.copy(address = it) }, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
+                                    IdsTextField(value = stop.address, onValueChange = { stops[index] = stop.copy(address = it) }, label = "Address", modifier = Modifier.fillMaxWidth())
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedTextField(value = stop.lat, onValueChange = { stops[index] = stop.copy(lat = it) }, label = { Text("Latitude") }, modifier = Modifier.weight(1f))
-                                        OutlinedTextField(value = stop.lng, onValueChange = { stops[index] = stop.copy(lng = it) }, label = { Text("Longitude") }, modifier = Modifier.weight(1f))
+                                        IdsTextField(value = stop.lat, onValueChange = { stops[index] = stop.copy(lat = it) }, label = "Latitude", modifier = Modifier.weight(1f))
+                                        IdsTextField(value = stop.lng, onValueChange = { stops[index] = stop.copy(lng = it) }, label = "Longitude", modifier = Modifier.weight(1f))
                                     }
                                 }
                             }
@@ -293,10 +291,7 @@ private fun RidePassengerContent() {
                                 modifier = Modifier.clickable { stops.add(StopInput()) },
                             )
                         }
-                        OutlinedTextField(
-                            value = scheduleHours, onValueChange = { scheduleHours = it },
-                            label = { Text("Schedule for later (hours from now, optional)") }, modifier = Modifier.fillMaxWidth(),
-                        )
+                        IdsTextField(value = scheduleHours, onValueChange = { scheduleHours = it }, label = "Schedule for later (hours from now, optional)", modifier = Modifier.fillMaxWidth())
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                                 .background(TossBlue)
@@ -338,7 +333,7 @@ private fun RideReviewRow(busy: Boolean, onSubmit: (Int, String) -> Unit) {
             }
         }
         if (rating > 0) {
-            OutlinedTextField(value = comment, onValueChange = { comment = it }, label = { Text("Comment (optional)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = comment, onValueChange = { comment = it }, label = "Comment (optional)", modifier = Modifier.fillMaxWidth())
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
                     .clickable(enabled = !busy) { onSubmit(rating, comment) }.padding(vertical = 10.dp),

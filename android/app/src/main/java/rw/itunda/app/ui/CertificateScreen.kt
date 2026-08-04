@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -180,10 +181,7 @@ private fun VerifyCertificateCard() {
                 style = MaterialTheme.typography.bodySmall,
             )
             Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = serialNumber, onValueChange = { serialNumber = it; statusResult = null; verifyResult = null; error = null },
-                label = { Text("Serial number") }, modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = serialNumber, onValueChange = { serialNumber = it; statusResult = null; verifyResult = null; error = null }, label = "Serial number", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Button(
                 enabled = !busy && serialNumber.isNotBlank(),
@@ -210,15 +208,9 @@ private fun VerifyCertificateCard() {
             Spacer(Modifier.height(16.dp))
             Text("Verify a signature", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = payload, onValueChange = { payload = it; verifyResult = null },
-                label = { Text("Payload (the exact text they signed)") }, modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = payload, onValueChange = { payload = it; verifyResult = null }, label = "Payload (the exact text they signed)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = signature, onValueChange = { signature = it; verifyResult = null },
-                label = { Text("Signature (base64)") }, modifier = Modifier.fillMaxWidth(),
-            )
+            IdsTextField(value = signature, onValueChange = { signature = it; verifyResult = null }, label = "Signature (base64)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Button(
                 enabled = !busy && serialNumber.isNotBlank() && payload.isNotBlank() && signature.isNotBlank(),

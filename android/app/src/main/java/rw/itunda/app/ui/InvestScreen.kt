@@ -27,6 +27,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -352,10 +353,7 @@ private fun AddFundsCard(onFunded: () -> Unit) {
             if (expanded) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = amount, onValueChange = { amount = it }, placeholder = { Text("Amount (RWF)") },
-                        modifier = Modifier.weight(1f),
-                    )
+                    IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.width(10.dp))
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(10.dp))
@@ -513,10 +511,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = shares, onValueChange = { shares = it }, placeholder = { Text("Shares") },
-                modifier = Modifier.weight(1f),
-            )
+            IdsTextField(value = shares, onValueChange = { shares = it }, label = "Shares", modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(10.dp))
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))

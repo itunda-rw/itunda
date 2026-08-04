@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,17 +61,12 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
             }
         }
         item {
-            OutlinedTextField(
-                amountText,
-                {
+            IdsTextField(value = amountText, onValueChange = {
                     amountText = it
                     // Editing the amount is a new customer intent. Retrying unchanged
                     // input after a timeout deliberately keeps the original key.
                     pendingCreationKey = null
-                },
-                label = { Text("Amount (RWF)") },
-                modifier = Modifier.fillMaxWidth(),
-            )
+                }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
                 val amount = amountText.toBigDecimalOrNull()

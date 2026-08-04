@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -166,8 +167,8 @@ private fun BusRideContent() {
         item {
             Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = origin, onValueChange = { origin = it }, label = { Text("From") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = destination, onValueChange = { destination = it }, label = { Text("To") }, modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = origin, onValueChange = { origin = it }, label = "From", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = destination, onValueChange = { destination = it }, label = "To", modifier = Modifier.fillMaxWidth())
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
                             .clickable { search() }.padding(vertical = 12.dp),
@@ -192,11 +193,7 @@ private fun BusRideContent() {
                             color = TossSecondary, fontSize = 12.sp,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = seatCounts[trip.id] ?: "1",
-                                onValueChange = { seatCounts = seatCounts + (trip.id to it) },
-                                label = { Text("Seats") }, modifier = Modifier.weight(1f),
-                            )
+                            IdsTextField(value = seatCounts[trip.id] ?: "1", onValueChange = { seatCounts = seatCounts + (trip.id to it) }, label = "Seats", modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier.weight(2f).clip(RoundedCornerShape(10.dp)).background(TossBlue)
                                     .clickable(enabled = busyTripId != trip.id) { bookSeats(trip.id) }.padding(vertical = 12.dp),
@@ -319,14 +316,11 @@ private fun BusOperateContent() {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Post a route", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text("Any itunda user can post a scheduled trip -- no transport-licensing check.", color = TossSecondary, fontSize = 12.sp)
-                    OutlinedTextField(value = origin, onValueChange = { origin = it }, label = { Text("Origin") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = destination, onValueChange = { destination = it }, label = { Text("Destination") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(
-                        value = departureHours, onValueChange = { departureHours = it },
-                        label = { Text("Departs in (hours from now)") }, modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(value = totalSeats, onValueChange = { totalSeats = it }, label = { Text("Total seats") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = farePerSeat, onValueChange = { farePerSeat = it }, label = { Text("Fare per seat (RWF)") }, modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = origin, onValueChange = { origin = it }, label = "Origin", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = destination, onValueChange = { destination = it }, label = "Destination", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = departureHours, onValueChange = { departureHours = it }, label = "Departs in (hours from now)", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = totalSeats, onValueChange = { totalSeats = it }, label = "Total seats", modifier = Modifier.fillMaxWidth())
+                    IdsTextField(value = farePerSeat, onValueChange = { farePerSeat = it }, label = "Fare per seat (RWF)", modifier = Modifier.fillMaxWidth())
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
                             .clickable(enabled = !posting) { postTrip() }.padding(vertical = 12.dp),

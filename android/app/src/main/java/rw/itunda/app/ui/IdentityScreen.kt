@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,17 +90,9 @@ fun IdentityScreen(onBack: () -> Unit) {
                             }
                         }
                         Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            documentNumber, { documentNumber = it },
-                            label = { Text("Document number") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        IdsTextField(value = documentNumber, onValueChange = { documentNumber = it }, label = "Document number", modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            documentReference, { documentReference = it },
-                            label = { Text("Document reference (scan/photo reference)") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        IdsTextField(value = documentReference, onValueChange = { documentReference = it }, label = "Document reference (scan/photo reference)", modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(8.dp))
                         Button(
                             enabled = !busy && documentNumber.isNotBlank() && documentReference.length >= 3,

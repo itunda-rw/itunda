@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -236,16 +237,8 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                     color = TossSecondary, fontSize = 12.sp,
                                 )
                             } else {
-                                OutlinedTextField(
-                                    value = bikePrice, onValueChange = { bikePrice = it },
-                                    label = { Text("Bike price (RWF, 300,000-2,500,000)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                OutlinedTextField(
-                                    value = dailyContribution, onValueChange = { dailyContribution = it },
-                                    label = { Text("Daily contribution (RWF)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+                                IdsTextField(value = bikePrice, onValueChange = { bikePrice = it }, label = "Bike price (RWF, 300,000-2,500,000)", modifier = Modifier.fillMaxWidth())
+                                IdsTextField(value = dailyContribution, onValueChange = { dailyContribution = it }, label = "Daily contribution (RWF)", modifier = Modifier.fillMaxWidth())
                                 previewDownPayment?.let {
                                     Text("Down payment target (30%): ${formatMoneyMoto(it)} RWF", color = TossSecondary, fontSize = 11.sp)
                                 }
@@ -290,12 +283,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                             .clip(RoundedCornerShape(3.dp)).background(TossBlue),
                                     )
                                 }
-                                OutlinedTextField(
-                                    value = contributeAmounts[plan.id] ?: "",
-                                    onValueChange = { contributeAmounts = contributeAmounts + (plan.id to it) },
-                                    label = { Text("Contribution amount (RWF)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+                                IdsTextField(value = contributeAmounts[plan.id] ?: "", onValueChange = { contributeAmounts = contributeAmounts + (plan.id to it) }, label = "Contribution amount (RWF)", modifier = Modifier.fillMaxWidth())
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(
                                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
@@ -325,12 +313,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                             }
                             if (plan.status == "LOAN_ACTIVE") {
                                 Text("Loan outstanding: ${formatMoneyMoto(plan.loanOutstanding)} RWF", color = TossSecondary, fontSize = 11.sp)
-                                OutlinedTextField(
-                                    value = repayAmounts[plan.id] ?: "",
-                                    onValueChange = { repayAmounts = repayAmounts + (plan.id to it) },
-                                    label = { Text("Repayment amount (RWF)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+                                IdsTextField(value = repayAmounts[plan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (plan.id to it) }, label = "Repayment amount (RWF)", modifier = Modifier.fillMaxWidth())
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
                                         .clickable(enabled = busyId == null) { repay(plan.id) }

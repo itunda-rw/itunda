@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -224,9 +225,9 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                     )
                                 }
                             }
-                            OutlinedTextField(value = income, onValueChange = { income = it }, label = { Text("Declared annual household income (RWF)") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Loan amount (RWF, up to 2,000,000)") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(value = yearsToGraduation, onValueChange = { yearsToGraduation = it }, label = { Text("Years until you graduate") }, modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = income, onValueChange = { income = it }, label = "Declared annual household income (RWF)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Loan amount (RWF, up to 2,000,000)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = yearsToGraduation, onValueChange = { yearsToGraduation = it }, label = "Years until you graduate", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
                                     .clickable(enabled = busyId != "apply") { apply() }
@@ -285,12 +286,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                         color = TossSecondary, fontSize = 11.sp,
                                     )
                                 }
-                                OutlinedTextField(
-                                    value = repayAmounts[loan.id] ?: "",
-                                    onValueChange = { repayAmounts = repayAmounts + (loan.id to it) },
-                                    label = { Text("Repayment amount (RWF)") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+                                IdsTextField(value = repayAmounts[loan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (loan.id to it) }, label = "Repayment amount (RWF)", modifier = Modifier.fillMaxWidth())
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
                                         .clickable(enabled = busyId != loan.id) { repay(loan.id) }

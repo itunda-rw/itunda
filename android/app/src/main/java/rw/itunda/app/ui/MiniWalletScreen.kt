@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -165,11 +166,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
                 MiniWalletMode.NEEDS_BIRTH_DATE -> item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Enter your birth date to check eligibility.", color = TossSecondary, fontSize = 13.sp)
-                        OutlinedTextField(
-                            value = birthDate, onValueChange = { birthDate = it },
-                            label = { Text("Birth date (YYYY-MM-DD)") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        IdsTextField(value = birthDate, onValueChange = { birthDate = it }, label = "Birth date (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
                         MiniWalletActionButton(if (busy) "Checking…" else "Continue", enabled = !busy) { submitBirthDateAndOpen() }
                     }
                 }
@@ -189,10 +186,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
-                                    value = amount, onValueChange = { amount = it }, label = { Text("Amount (RWF)") },
-                                    modifier = Modifier.weight(1f),
-                                )
+                                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.weight(1f))
                             }
                             MiniWalletActionButton(if (busy) "Adding…" else "Add money", enabled = !busy) { deposit() }
                         }

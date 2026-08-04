@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -151,9 +152,9 @@ private fun CashInCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (St
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Accept cash-in", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value = account, onValueChange = { account = it }, label = { Text("Customer account number") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = receipt, onValueChange = { receipt = it }, label = { Text("Receipt number") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = account, onValueChange = { account = it }, label = "Customer account number", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Receipt number", modifier = Modifier.fillMaxWidth())
             Button(
                 onClick = {
                     val value = amount.toBigDecimalOrNull()
@@ -192,10 +193,10 @@ private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (S
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pay cash-out", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value = account, onValueChange = { account = it }, label = { Text("Customer account number") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = receipt, onValueChange = { receipt = it }, label = { Text("Receipt number") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Customer's withdrawal code") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = account, onValueChange = { account = it }, label = "Customer account number", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Receipt number", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = code, onValueChange = { code = it }, label = "Customer's withdrawal code", modifier = Modifier.fillMaxWidth())
             Button(
                 onClick = {
                     val value = amount.toBigDecimalOrNull()
@@ -231,7 +232,7 @@ private fun TillCountCard(onSubmitted: (java.math.BigDecimal, String) -> Unit, o
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Submit today's till count", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(value = counted, onValueChange = { counted = it }, label = { Text("Counted cash (RWF)") }, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = counted, onValueChange = { counted = it }, label = "Counted cash (RWF)", modifier = Modifier.fillMaxWidth())
             Button(
                 onClick = {
                     val value = counted.toBigDecimalOrNull()

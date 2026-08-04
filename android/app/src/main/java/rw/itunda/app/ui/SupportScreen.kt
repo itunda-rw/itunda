@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -97,11 +98,7 @@ fun SupportScreen(onBack: () -> Unit) {
                             }
                         }
                         Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            descriptionText, { descriptionText = it },
-                            label = { Text("Describe the issue") },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        IdsTextField(value = descriptionText, onValueChange = { descriptionText = it }, label = "Describe the issue", modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(8.dp))
                         Button(
                             enabled = !busy && selectedTransactionId != null && descriptionText.isNotBlank(),
