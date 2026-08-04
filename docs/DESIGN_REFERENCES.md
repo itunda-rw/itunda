@@ -346,9 +346,12 @@ they close in itunda's current implementation.
 
 4. **[partially implemented]** Talk has private, durable quiet-room controls and suppresses notifications for the participant who enables one. Recoverable archive/list placement and conversation-list swipe actions remain.
 
-5. **[sourced]** Add a per-thread shared-media gallery (Chat Room Drawer). itunda has zero
-   aggregation of media/files/links shared in a conversation. Directly relevant to itunda's
-   Hood-to-Talk handoff flows (listing photos, offer/gift bubbles).
+5. **[sourced] Implemented 2026-08-04 (honest partial scope).** Add a per-thread shared-media
+   gallery (Chat Room Drawer). itunda had zero aggregation of media shared in a conversation.
+   Scoped to photos only -- no file-attachment type or link-preview system exists to aggregate, so
+   a "files/links" tab wasn't built as a fabricated empty one. `MediaGalleryView` filters each
+   thread's already-loaded message list to real `imageUrl` entries client-side, no new backend
+   endpoint needed.
 
 6. **[sourced] Implemented 2026-08-04.** Add a real attach ("+") menu to the composer. Both thread
    composers were just a text field + send button (plus separate always-visible gift/emoticon/
