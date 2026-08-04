@@ -185,6 +185,30 @@ data class AddProductRequest(
 )
 data class UpdateProductStockRequest(val stockQuantity: Int? = null)
 
+// Real Coupang 타임특가 (Time Deal) -- see the backend's TimeDeal.kt/TimeDealService doc
+// comments. TimeDealController's create/mine/end were live on the backend with zero
+// merchant-app client (the consumer Android app already reads active deals via
+// getActiveTimeDeals, mirroring this exact TimeDealDto/TimeDealViewDto shape -- see that
+// app's ApiService.kt). create/end return the raw TimeDeal entity; mine returns it
+// wrapped in TimeDealView (deal + productName/productImageUrl/businessName), since
+// TimeDealService.getMyDeals batch-enriches for display the same way getActiveDeals does.
+data class TimeDealDto(
+    val id: String,
+    val merchantId: String,
+    val productId: String,
+    val dealPrice: Double,
+    val originalPrice: Double,
+    val totalQuantity: Int,
+    val remainingQuantity: Int,
+    val startsAt: String,
+    val endsAt: String,
+    val createdAt: String,
+)
+data class TimeDealViewDto(val deal: TimeDealDto, val productName: String, val productImageUrl: String?, val businessName: String)
+data class CreateTimeDealRequest(val productId: String, val dealPrice: Double, val totalQuantity: Int, val startsAt: String, val endsAt: String)
+data class TimeDealResponse(val success: Boolean, val deal: TimeDealDto)
+data class TimeDealsResponse(val success: Boolean, val deals: List<TimeDealViewDto>)
+
 // Real Commerce product reviews + owner-side reply (item 187/188) -- see
 // ProductReviewService.replyToProductReview's own doc comment. merchant-mfe already has
 // this (item 187); this is the first Android client.
@@ -379,6 +403,17 @@ interface ApiService {
 
     @POST("api/v1/orders/reviews/{reviewId}/reply")
     suspend fun replyToProductReview(@Path("reviewId") reviewId: String, @Body request: ReplyToProductReviewRequest): ProductReviewResponse
+
+    // Real Coupang 타임특가 (Time Deal) -- see TimeDealDto's own doc comment. Lives under
+    // /api/v1/time-deals (TimeDealController), not /api/v1/merchant.
+    @POST("api/v1/time-deals")
+    suspend fun createTimeDeal(@Body request: CreateTimeDealRequest): TimeDealResponse
+
+    @GET("api/v1/time-deals/mine")
+    suspend fun getMyTimeDeals(): TimeDealsResponse
+
+    @POST("api/v1/time-deals/{dealId}/end")
+    suspend fun endTimeDeal(@Path("dealId") dealId: String): TimeDealResponse
 
     @POST("api/v1/merchant/products")
     suspend fun addProduct(@Body request: AddProductRequest): MerchantProductResponse

@@ -31,17 +31,22 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.AddMenuOptionGroupRequest
 import rw.itunda.merchant.network.AddProductRequest
+import rw.itunda.merchant.network.CreateTimeDealRequest
 import rw.itunda.merchant.network.MenuOptionChoiceRequest
 import rw.itunda.merchant.network.MenuOptionGroupDto
 import rw.itunda.merchant.network.MerchantProductDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.PriceTierDto
 import rw.itunda.merchant.network.SetPriceTiersRequest
+import rw.itunda.merchant.network.TimeDealViewDto
 import rw.itunda.merchant.network.UpdateProductStockRequest
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 @Composable
 fun CatalogTab() {
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
+    var timeDeals by remember { mutableStateOf<List<TimeDealViewDto>>(emptyList()) }
     var name by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var durationMinutes by remember { mutableStateOf("") }
@@ -56,6 +61,7 @@ fun CatalogTab() {
     fun load() {
         scope.launch {
             products = try { NetworkClient.apiService.getProductCatalog().products } catch (e: Exception) { emptyList() }
+            timeDeals = try { NetworkClient.apiService.getMyTimeDeals().deals } catch (e: Exception) { emptyList() }
         }
     }
 
@@ -149,7 +155,8 @@ fun CatalogTab() {
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(list, key = { it.id }) { product ->
-                    ProductRow(product, onRemoved = ::load, onError = { error = it })
+                    val activeDeal = timeDeals.find { it.deal.productId == product.id && Instant.parse(it.deal.endsAt).isAfter(Instant.now()) }
+                    ProductRow(product, activeDeal = activeDeal, onRemoved = ::load, onError = { error = it })
                 }
             }
         }
@@ -165,8 +172,13 @@ fun CatalogTab() {
  * a discount" validation this relies on server-side.
  */
 @Composable
-private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onError: (String) -> Unit) {
+private fun ProductRow(product: MerchantProductDto, activeDeal: TimeDealViewDto?, onRemoved: () -> Unit, onError: (String) -> Unit) {
     val scope = rememberCoroutineScope()
+    var showTimeDeal by remember { mutableStateOf(false) }
+    var dealPrice by remember { mutableStateOf("") }
+    var dealQuantity by remember { mutableStateOf("") }
+    var dealHours by remember { mutableStateOf("24") }
+    var savingDeal by remember { mutableStateOf(false) }
     var showTiers by remember { mutableStateOf(false) }
     var tierRows by remember { mutableStateOf(listOf("" to "", "" to "", "" to "")) }
     var loadedTiers by remember { mutableStateOf(false) }
@@ -231,6 +243,7 @@ private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onErr
                         stockDraft = product.stockQuantity?.toString() ?: ""
                         showStockEditor = !showStockEditor
                     }) { Text(if (showStockEditor) "Close stock" else "Adjust stock") }
+                    TextButton(onClick = { showTimeDeal = !showTimeDeal }) { Text(if (showTimeDeal) "Close" else if (activeDeal != null) "Time deal running" else "Time deal") }
                     TextButton(onClick = { if (showTiers) showTiers = false else openTierEditor() }) { Text(if (showTiers) "Close" else "Bulk pricing") }
                     TextButton(onClick = {
                         showOptions = !showOptions
@@ -279,6 +292,92 @@ private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onErr
                         enabled = !savingStock,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(if (savingStock) "Saving…" else "Save stock") }
+                }
+            }
+            if (showTimeDeal) {
+                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (activeDeal != null) {
+                        val deal = activeDeal.deal
+                        Text(
+                            "Running: ${"%,.0f".format(deal.dealPrice)} RWF (was ${"%,.0f".format(deal.originalPrice)}), ${deal.remainingQuantity}/${deal.totalQuantity} left, ends ${deal.endsAt}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                savingDeal = true
+                                scope.launch {
+                                    try {
+                                        NetworkClient.apiService.endTimeDeal(deal.id)
+                                        onRemoved()
+                                    } catch (e: Exception) {
+                                        onError("Couldn't end this time deal.")
+                                    } finally {
+                                        savingDeal = false
+                                    }
+                                }
+                            },
+                            enabled = !savingDeal,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(if (savingDeal) "Ending…" else "End deal now") }
+                    } else {
+                        Text(
+                            "Real Coupang 타임특가-style scarcity pricing: a time-boxed, quantity-capped discount on this product.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedTextField(
+                            value = dealPrice, onValueChange = { dealPrice = it },
+                            label = { Text("Deal price (RWF, must be less than ${"%,.0f".format(product.price)})") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = dealQuantity, onValueChange = { dealQuantity = it },
+                            label = { Text("Total quantity") }, modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = dealHours, onValueChange = { dealHours = it },
+                            label = { Text("Runs for how many hours") }, modifier = Modifier.fillMaxWidth(),
+                        )
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                val priceValue = dealPrice.trim().toDoubleOrNull()
+                                val quantityValue = dealQuantity.trim().toIntOrNull()
+                                val hoursValue = dealHours.trim().toLongOrNull()
+                                if (priceValue == null || priceValue <= 0 || priceValue >= product.price) {
+                                    onError("Deal price must be greater than zero and less than the regular price.")
+                                    return@Button
+                                }
+                                if (quantityValue == null || quantityValue <= 0) {
+                                    onError("Total quantity must be at least 1.")
+                                    return@Button
+                                }
+                                if (hoursValue == null || hoursValue <= 0) {
+                                    onError("Runtime must be at least 1 hour.")
+                                    return@Button
+                                }
+                                val now = Instant.now()
+                                savingDeal = true
+                                scope.launch {
+                                    try {
+                                        NetworkClient.apiService.createTimeDeal(
+                                            CreateTimeDealRequest(
+                                                productId = product.id, dealPrice = priceValue, totalQuantity = quantityValue,
+                                                startsAt = now.toString(), endsAt = now.plus(hoursValue, ChronoUnit.HOURS).toString(),
+                                            )
+                                        )
+                                        dealPrice = ""; dealQuantity = ""; dealHours = "24"
+                                        showTimeDeal = false
+                                        onRemoved()
+                                    } catch (e: Exception) {
+                                        onError("Couldn't start this time deal.")
+                                    } finally {
+                                        savingDeal = false
+                                    }
+                                }
+                            },
+                            enabled = !savingDeal,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(if (savingDeal) "Starting…" else "Start time deal") }
+                    }
                 }
             }
             if (showTiers) {
