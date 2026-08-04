@@ -39,6 +39,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CooperativeMembershipDto
+import rw.itunda.core.network.CooperativeOverviewResponse
 import rw.itunda.core.network.HarvestAdvanceDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.RegisterCooperativeRequest
@@ -72,6 +73,9 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var memberships by remember { mutableStateOf<List<CooperativeMembershipDto>?>(null) }
     var advances by remember { mutableStateOf<List<HarvestAdvanceDto>?>(null) }
+    // Real member-facing cooperative detail (2026-08-04) -- see ApiService.kt's own
+    // getCooperativeOverview doc comment.
+    var overview by remember { mutableStateOf<CooperativeOverviewResponse?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
@@ -89,6 +93,9 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
             try {
                 memberships = NetworkClient.apiService.getMyCooperativeMemberships().memberships
                 advances = NetworkClient.apiService.getMyHarvestAdvances().advances
+                overview = memberships?.firstOrNull()?.let {
+                    try { NetworkClient.apiService.getCooperativeOverview(it.cooperativeId) } catch (_: Exception) { null }
+                }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -239,6 +246,19 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                 }
             } else {
                 val membershipId = memberships!!.first().id
+                overview?.let { o ->
+                    item {
+                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCardSoft), modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(o.cooperative.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text(
+                                    "${o.cooperative.cropType} · ${o.memberCount} member${if (o.memberCount == 1) "" else "s"} · member since ${o.myMembership.memberSince.take(10)}",
+                                    color = TossSecondary, fontSize = 12.sp,
+                                )
+                            }
+                        }
+                    }
+                }
                 item {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

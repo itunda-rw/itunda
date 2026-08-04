@@ -3725,6 +3725,13 @@ interface ApiService {
     @GET("api/v1/cooperatives/my-memberships")
     suspend fun getMyCooperativeMemberships(): CooperativeMembershipsResponse
 
+    // Real member-facing cooperative detail (2026-08-04) -- CooperativeController.
+    // getCooperativeOverview existed on the backend (real 403 via NotMemberException for
+    // a non-member) with zero client anywhere: a member could request/repay advances but
+    // never actually saw their own cooperative's name, crop type, or member count.
+    @GET("api/v1/cooperatives/{cooperativeId}/overview")
+    suspend fun getCooperativeOverview(@Path("cooperativeId") cooperativeId: String): CooperativeOverviewResponse
+
     @POST("api/v1/cooperatives/advances")
     suspend fun requestHarvestAdvance(@Body request: RequestAdvanceRequest): HarvestAdvanceResponse
 
@@ -4151,6 +4158,9 @@ data class RepayAdvanceRequest(val amount: java.math.BigDecimal)
 data class CooperativeResponse(val success: Boolean, val cooperative: CooperativeDto)
 data class CooperativeMembershipResponse(val success: Boolean, val membership: CooperativeMembershipDto)
 data class CooperativeMembershipsResponse(val success: Boolean, val memberships: List<CooperativeMembershipDto>)
+data class CooperativeOverviewResponse(
+    val success: Boolean, val cooperative: CooperativeDto, val myMembership: CooperativeMembershipDto, val memberCount: Int,
+)
 data class HarvestAdvanceResponse(val success: Boolean, val advance: HarvestAdvanceDto)
 data class HarvestAdvancesResponse(val success: Boolean, val advances: List<HarvestAdvanceDto>)
 
