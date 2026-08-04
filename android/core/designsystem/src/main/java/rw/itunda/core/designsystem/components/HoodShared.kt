@@ -191,6 +191,20 @@ fun StatusBadge(text: String, filled: Boolean = true, tint: Color = Ids.colors.b
     }
 }
 
+// Real persistent edge-fade ("scroll fog") -- Seed Design's documented, always-rendered
+// gradient hint that content continues below the fold (closes docs/DESIGN_REFERENCES.md
+// Section 4 recommendation #5). Purely decorative, non-interactive: a sibling Box drawn
+// on top of a scrolling list's bottom edge, not part of the list's own content/padding.
+@Composable
+fun ScrollFog(modifier: Modifier = Modifier, height: Dp = 24.dp) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .background(Brush.verticalGradient(colors = listOf(Color.Transparent, Ids.colors.background))),
+    )
+}
+
 // Real post-transaction review preset checklist labels (2026-07-24) -- ids must match
 // backend HoodReviewService.GOOD_POINTS/UNCOMFORTABLE_POINTS exactly.
 val HoodGoodPointLabels = mapOf(

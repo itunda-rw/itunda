@@ -73,6 +73,7 @@ import rw.itunda.core.designsystem.components.HoodReviewResultView
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
+import rw.itunda.core.designsystem.components.ScrollFog
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.TrustBadge
 import rw.itunda.core.designsystem.components.relativeTimeAgo
@@ -424,6 +425,7 @@ fun MarketplaceContent(
         return
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal),
         // Real fix, 2026-08-03: a real device screenshot showed the last-visible
@@ -509,6 +511,8 @@ fun MarketplaceContent(
                 )
             }
         }
+    }
+        ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -1344,7 +1348,7 @@ private fun ListingDetailScreen(
             if (showBoostPicker) {
                 val tiers = boostTiers
                 if (tiers == null) {
-                    Text("Loading boost options…", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    SkeletonBlock(height = 60.dp)
                 } else if (tiers.isEmpty()) {
                     Text("Couldn't load boost options. Try again.", color = Ids.colors.danger, fontSize = 13.sp)
                 } else {

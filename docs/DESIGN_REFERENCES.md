@@ -498,20 +498,18 @@ they close in itunda's current implementation.
 
 ### Recommendations (ranked)
 
-1. **[sourced]** Replace itunda's missing trust signal with a Karrot-Score-style numeric badge —
-   **not** a literal manner-temperature metaphor. itunda's Hood cards show no seller/poster
-   reputation at all today. Seed Design's real "Manner Temp & Badge" component (10 levels, pill
-   variant for cards) is the mechanic to borrow; Karrot's own localization research (dropped the
-   temperature/Celsius framing for non-Korean users, replaced with a neutral 0–1000 score starting
-   at 30) is the specific choice itunda should copy, since Rwanda is exactly this kind of
-   non-Korean market.
-   *Target: new `SellerTrustBadge` for `ListingCard`/`JobPostCard`/`PropertyListing` in `SuperAppTabs.kt` (~1685+), mirrored in `HoodScreen.swift`; needs a new trust-score field on `User`*
+1. **[sourced] Implemented — doc was stale, corrected 2026-08-04.** Karrot-Score-style numeric
+   trust badge, plain `0–1000` number (not a Celsius/manner-temperature metaphor — see this doc's
+   own reasoning for why that's specifically wrong for a non-Korean market). Shipped as
+   `TrustBadge` in `core/designsystem/components/HoodShared.kt`, real-called from
+   Marketplace/Jobs/Property listing cards (verified via a repo-wide call-site check, not just
+   "the component exists").
 
-2. **[sourced]** Add a post-transaction review flow with asymmetric public/private visibility.
-   itunda has star reviews for Shop/Eats but Marketplace/Jobs/Property have zero review step —
-   "Mark sold" just flips status. Extend the existing `ProductReviewDto`/`StarRatingRow` pattern
-   with Karrot's public-good/private-uncomfortable split rather than inventing free-text review.
-   *Target: `markListingSold` flow and Job/Property equivalents; template at `~3355-3490`*
+2. **[sourced] Implemented — doc was stale, corrected 2026-08-04.** Post-transaction review flow
+   with Karrot's real asymmetric public/private split. Shipped as `HoodReviewForm`/
+   `HoodReviewResultView` in the same shared file — a preset good-points/uncomfortable-points
+   checklist, good points public (feed the trust score above), uncomfortable points private
+   between the two real parties. Also real-called from all three Hood verticals.
 
 3. **[implemented, correction 2026-07-26]** This was miscategorized as still-open — checking the
    actual backend before starting a fresh build (this session's own discipline) found
@@ -521,29 +519,26 @@ they close in itunda's current implementation.
    wasn't updated when those shipped. Client UI (toast-confirmed add/remove, a Saved `HoodView`)
    still worth checking separately.
 
-4. **[sourced]** Differentiate community-board post types by interaction verb; give "join
-   together" posts a dedicated feed slot. `CommunityContent` (`~1795+`) treats every post
-   identically today. Karrot's real board: distinct CTA pairing for questions vs. ordinary posts,
-   strictly chronological feed (no popularity ranking, to preserve voice diversity), and a pinned
-   mid-feed slot for 같이해요 posts whose group chat requires an explicit join tap.
-   *Target: `CommunityContent`/`CommunityPostCard` (~1795-2160)*
+4. **[sourced] Implemented — doc was stale, corrected 2026-08-04.** 같이해요 (join-together) posts
+   get a pinned mid-feed slot, sorted by real `eventDate`, with an explicit 참여하기 join tap and a
+   real live member count off that meetup's own group chat (`CommunityScreen.kt`, 2026-07-24).
 
-5. **[sourced]** Add a persistent edge-fade ("scroll fog") to Hood's scrollable lists. Seed
-   Design's Scroll Fog is a specifically documented, always-rendered gradient (15–20% depth, min
-   20px) — itunda's feeds have no equivalent hint that content continues below the fold.
-   *Target: shared `LazyColumn` styling across Hood's four modes*
+5. **[sourced] Implemented 2026-08-04 (partial, honest scope).** Shared `ScrollFog` composable in
+   `core/designsystem/components/HoodShared.kt` (a persistent bottom edge-fade gradient, matching
+   Seed Design's documented always-rendered spec). Wired into Marketplace's main browse feed as
+   the real proof of the pattern. **Community/Jobs/Property still need the identical wrap** — same
+   component, same mechanical `Box { LazyColumn {...}; ScrollFog(...) }` change, not done in this
+   pass to avoid rushing brace-matching edits in three more large files without re-verifying each
+   individually; a real, named follow-up, not silently dropped.
 
-6. **[sourced]** Group a user's own activity into labeled sales/purchases/wishlist tabs instead of
-   one flat "my listings" list. Karrot's real screen splits this three ways specifically to avoid
-   one overloaded list mixing different user intents (cited as an application of Miller's Law).
-   *Target: `HoodView` enum, `MINE` branch in `MarketplaceContent` (~1310-1480)*
+6. **[sourced] Implemented — doc was stale, corrected 2026-08-04.** `HoodView` already splits a
+   user's own activity into distinct `MINE`/`PURCHASES`/`WISHLIST` tabs (plus `ALERTS`), not one
+   flat list (`MarketplaceScreen.kt`'s own `HoodView` enum).
 
-7. **[partially-sourced]** Replace bare "Loading…" text (5+ instances across Hood's feeds) with
-   shaped skeleton placeholders — Seed Design ships named Content Placeholder / Skeleton /
-   Identity Placeholder components for exactly this, confirming Karrot's real product uses
-   card-shaped placeholders rather than a spinner or text; the itunda-side call sites are enumerated
-   but the *visual* skeleton spec wasn't independently pulled beyond the component index.
-   *Target: `SuperAppTabs.kt` lines ~592, 900, 3083, 3393, 4105 and iOS equivalents*
+7. **[partially-sourced]** Nearly closed — a repo-wide check found only one remaining bare
+   `Text("Loading…")` across Hood (`MarketplaceScreen.kt`'s boost-options dialog); every list-level
+   loading state already uses `SkeletonBlock`. **Genuinely open, but tiny scope now**, not the
+   "5+ instances" this entry originally described.
 
 8. **[partially-sourced]** Upgrade single-shot, single-neighborhood setup to dual-neighborhood +
    radius control + verification-frequency trust signal. `NeighborhoodSetupPrompt` (`~1324`) is a
@@ -562,12 +557,12 @@ they close in itunda's current implementation.
    registry this backend has no real access to.
    *Shipped: `PropertyOwnershipSubmission`, `PropertyOwnershipService`, `PropertyListing.ownershipVerificationStatus`, `POST /api/v1/realestate/listings/{id}/verify-ownership`, `/api/v1/system/property-verification/**` (admin queue+decide)*
 
-10. **[sourced]** Replace Jobs' "just message the poster" apply flow with 당근알바's real
-    three-step structure: post → review applicants → *then* chat. itunda's `JobPostService`
-    has no application/resume object at all today — `contactPoster()` is a bare DM, so a
-    poster has no way to review candidates before opening a conversation with each one.
-    *Target: new `JobApplication` entity (résumé snapshot per Karrot's real "snapshot at submit
-    time" mechanic), `JobPostService.contactPoster` → gated behind an application review step*
+10. **[sourced] Implemented — doc was stale, corrected 2026-08-04.** 당근알바's real
+    post → review applicants → chat structure. `JobApplication` (résumé snapshot at submit time,
+    matching Karrot's real mechanic), `JobApplicationService`, `GET /posts/{id}/applications`
+    (poster reviews), `GET /my-applications`, `POST /applications/{id}/respond` all real and
+    Android-wired (`MyJobApplicationsView` in `JobsScreen.kt`) — applying is additive alongside
+    "Message poster", not a replacement.
 
 11. **[sourced] Implemented 2026-07-25.** Add seller-paid sponsored placement to Marketplace --
     independently converged on by Coupang's real self-serve seller Ads product and Baemin's real
