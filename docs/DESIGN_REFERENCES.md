@@ -355,22 +355,35 @@ they close in itunda's current implementation.
 
 2. **[implemented]** Direct messages now show a Kakao-style pending-read `1` and message timestamps across all clients. Group receipts now have a true per-member model too (2026-07-26): a live per-message unread countdown built on the existing per-member `lastReadAt` cursor — backend-only so far, no client UI touchpoint yet.
 
-3. **[sourced] Forward closed 2026-08-04; Thread remains open.** Add a long-press message menu:
-   reply/thread, forward, pin, delete. Kakao's confirmed 2025 toolkit is Copy/Reply (→ thread)/
-   Forward (≤10 destinations)/Pin/Delete/@mention. Real finding on inspection: itunda's
-   Reply/Pin/Delete/Report already existed (backend-complete) but as permanently-visible
-   `TextButton`s under every bubble, not a long-press menu -- a real UX-pattern mismatch, not a
-   missing-capability one. Both `MessageBubble`/`GroupMessageBubble` now use
-   `combinedClickable(onLongClick)` + a real `DropdownMenu`. Copy is new (real
+3. **[sourced] Forward+Pin closed on Android 2026-08-04, on iOS 2026-08-05; Thread remains open.**
+   Add a long-press message menu: reply/thread, forward, pin, delete. Kakao's confirmed 2025
+   toolkit is Copy/Reply (→ thread)/Forward (≤10 destinations)/Pin/Delete/@mention. Real finding on
+   inspection: itunda's Reply/Pin/Delete/Report already existed (backend-complete) but as
+   permanently-visible `TextButton`s under every bubble, not a long-press menu -- a real
+   UX-pattern mismatch, not a missing-capability one. Both `MessageBubble`/`GroupMessageBubble` now
+   use `combinedClickable(onLongClick)` + a real `DropdownMenu`. Copy is new (real
    `LocalClipboardManager`). **Correction, same day**: this entry previously claimed Forward
    "needs new backend concepts itunda doesn't have" -- that was an unverified assumption, not a
    checked fact. Direct inspection found a complete, real `MessageForwardService` (2026-07-25)
    already supporting forwarding any 1:1/group message to any 1:1/group destination with real
-   read-authorization and genuine server-stamped provenance -- zero Retrofit method or UI anywhere.
-   Closed: `ForwardDestinationDialog` (multi-select, capped at 10 real destinations), a real
-   "↪ Forwarded" label. Live-verified end-to-end in both directions against the real dev backend.
-   **Thread (reply expanding into its own sub-conversation) remains genuinely unbuilt** -- this one
-   does need a new backend concept (a thread/sub-conversation model) itunda doesn't have.
+   read-authorization and genuine server-stamped provenance -- zero Retrofit method or UI anywhere
+   on Android at the time. Closed: `ForwardDestinationDialog` (multi-select, capped at 10 real
+   destinations), a real "↪ Forwarded" label. Live-verified end-to-end in both directions against
+   the real dev backend. **iOS closed 2026-08-05**: `NetworkClient.swift` had zero group-pin
+   functions and zero forward functions of any kind despite both backend contracts already being
+   real. Added `getPinnedGroupMessage`/`pinGroupMessage`/`unpinGroupMessage` (exact mirror of the
+   already-real 1:1 pin trio) plus `forwardDirectMessage`/`forwardGroupMessage` and a
+   `ForwardPickerView` sheet (single-destination picker over real conversations+groups --
+   deliberately scoped narrower than Android's up-to-10 multi-select, matching bank-mfe's own
+   simpler single-destination convention). `MessageBubble`/`GroupMessageBubble` gained
+   Forward buttons and a "↪ Forwarded" label from the now-modeled `forwardedFromMessageId`/
+   `forwardedFromType` fields; `GroupThreadScreen` gained the same pinned-message banner
+   `ChatThreadScreen` already had. Live-verified against the real dev backend: pinned a real group
+   message (`GET` reflected it), unpinned (`GET` returned null), forwarded a group message into a
+   1:1 conversation and a 1:1 message into a group, both directions returning a real
+   `forwardedFromMessageId`/`forwardedFromType` on the created message. **Thread (reply expanding
+   into its own sub-conversation) remains genuinely unbuilt** -- this one does need a new backend
+   concept (a thread/sub-conversation model) itunda doesn't have.
    *Target for the remaining work: a real thread/sub-conversation model, likely its own migration*
 
 4. **[partially implemented]** Talk has private, durable quiet-room controls and suppresses notifications for the participant who enables one. Recoverable archive/list placement and conversation-list swipe actions remain.
@@ -427,17 +440,21 @@ they close in itunda's current implementation.
    just conversation-level `unreadCount`) plus the UI badge.
    *Target: `MessageBubble`/`GroupMessageBubble` in `SuperAppTabs.kt` for UI; backend messaging service for the read-state model*
 
-3. **[sourced] Implemented on Android, 2026-08-04; iOS/bank-mfe partial, re-verified 2026-08-05.**
-   Long-press message menu: reply/forward/pin/delete, plus Copy for plain-text messages
+3. **[sourced] Implemented on Android, 2026-08-04; iOS capabilities closed 2026-08-05; bank-mfe
+   partial.** Long-press message menu: reply/forward/pin/delete, plus Copy for plain-text messages
    (`GroupMessageBubble`/`MessageBubble` in `TalkScreen.kt`, `combinedClickable(onLongClick = ...)`
    opening a real `DropdownMenu`) -- closes Kakao's confirmed Copy/Reply/Forward/Pin/Delete toolkit
    (mention closed separately, #7 below) on Android. **bank-mfe already has the full real
    Reply/Copy/Forward/Delete/Pin set on group threads (always-visible buttons, confirmed by direct
    code read 2026-08-05) -- only the long-press-menu *presentation* is the remaining gap there,
-   not any missing capability.** **iOS is narrower**: 1:1 threads have real Reply/Delete/Pin but no
-   Forward; group threads have only Reply/Delete -- both Forward (either thread) and Pin (group)
-   are genuinely missing capabilities on iOS, not just a presentation gap, confirmed by direct code
-   read 2026-08-05 (`forwardedFromMessageId` isn't modeled in `TalkScreen.swift` at all).
+   not any missing capability.** **iOS's Forward (both thread types) and group Pin were genuinely
+   missing capabilities as of 2026-08-05's morning read** (`forwardedFromMessageId` wasn't modeled
+   in `TalkScreen.swift` at all) **-- closed same day**: real `forwardDirectMessage`/
+   `forwardGroupMessage`/`getPinnedGroupMessage`/`pinGroupMessage`/`unpinGroupMessage` in
+   `NetworkClient.swift`, a `ForwardPickerView` destination-picker sheet, Forward buttons + a
+   "↪ Forwarded" label on both bubble types, and a pinned-message banner on `GroupThreadScreen`.
+   Presentation (always-visible buttons vs. a long-press menu) is now iOS's only remaining gap
+   here too, matching bank-mfe's own remaining gap -- not a capability gap on either platform.
 
 4. **[sourced]** Add swipe actions and per-chat mute/archive ("quiet chat room") to the
    conversation list. `ConversationRow`/`GroupRow` (`~478-498`, `~712-749`) support only tap-to-open.

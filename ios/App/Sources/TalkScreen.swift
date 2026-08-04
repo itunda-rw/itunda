@@ -511,6 +511,11 @@ private struct GroupThreadScreen: View {
     @State private var members: [GroupMemberDto] = []
     @State private var draft = ""
     @State private var replyingTo: GroupMessageDto?
+    // Real group Pin -- exact mirror of ChatThreadScreen's own 1:1 pinnedMessage state.
+    @State private var pinnedMessage: GroupMessageDto?
+    @State private var updatingPin = false
+    // Real Forward -- see ForwardPickerView's own doc comment.
+    @State private var forwarding: GroupMessageDto?
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
@@ -586,6 +591,17 @@ private struct GroupThreadScreen: View {
             }
             .padding(.horizontal, 8)
 
+            if let pinnedMessage {
+                HStack(spacing: 8) {
+                    Text("📌 \(pinnedMessage.body)").font(.caption).lineLimit(1)
+                    Spacer()
+                    Button("Unpin") { Task { await unpinMessage() } }
+                        .font(.caption).disabled(updatingPin)
+                }
+                .padding(8).background(IDS.Colors.chipBackground).cornerRadius(10)
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
@@ -600,6 +616,8 @@ private struct GroupThreadScreen: View {
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
                                     onReply: { replyingTo = $0 },
                                     onDelete: { messageId in Task { await deleteGroupMessage(messageId) } },
+                                    onPin: { pinned in Task { await pinMessage(pinned) } },
+                                    onForward: { forwarding = $0 },
                                     emoticonImageUrl: message.emoticonId.flatMap { emoticonImageById[$0] },
                                 )
                                 .id(message.id)
@@ -701,6 +719,9 @@ private struct GroupThreadScreen: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await refresh() }
+        .task {
+            pinnedMessage = try? await NetworkClient.shared.getPinnedGroupMessage(groupId: group.groupId).message
+        }
         // Real member list with real resolved display names (2026-07-18), fetched once
         // per thread open -- closes the honest, named limitation this UI carried since
         // group chat first shipped (a truncated sender id instead of a real name).
@@ -788,6 +809,14 @@ private struct GroupThreadScreen: View {
         .sheet(isPresented: $showMediaGallery) {
             MediaGalleryView(imageUrls: (messages ?? []).compactMap { $0.imageUrl }.reversed())
         }
+        .sheet(item: $forwarding) { message in
+            ForwardPickerView(
+                onForward: { destinationType, destinationId in
+                    (try? await NetworkClient.shared.forwardGroupMessage(messageId: message.id, destinationType: destinationType, destinationId: destinationId).success) ?? false
+                },
+                onDismiss: { forwarding = nil }
+            )
+        }
     }
 
     private func refresh() async {
@@ -798,6 +827,24 @@ private struct GroupThreadScreen: View {
             // Keep showing the last-known messages rather than blanking the thread on
             // a transient poll failure.
         }
+    }
+
+    private func pinMessage(_ message: GroupMessageDto) async {
+        updatingPin = true
+        defer { updatingPin = false }
+        do {
+            _ = try await NetworkClient.shared.pinGroupMessage(groupId: group.groupId, messageId: message.id)
+            pinnedMessage = message
+        } catch { self.error = "Couldn't pin this message. Check your connection and try again." }
+    }
+
+    private func unpinMessage() async {
+        updatingPin = true
+        defer { updatingPin = false }
+        do {
+            _ = try await NetworkClient.shared.unpinGroupMessage(groupId: group.groupId)
+            pinnedMessage = nil
+        } catch { self.error = "Couldn't unpin this message. Check your connection and try again." }
     }
 
     private func toggleReaction(_ groupMessageId: String, _ emoji: String) async {
@@ -884,6 +931,8 @@ private struct GroupMessageBubble: View {
     let onToggleReaction: (String) -> Void
     let onReply: (GroupMessageDto) -> Void
     let onDelete: (String) -> Void
+    let onPin: (GroupMessageDto) -> Void
+    let onForward: (GroupMessageDto) -> Void
     var emoticonImageUrl: String?
 
     var body: some View {
@@ -932,6 +981,13 @@ private struct GroupMessageBubble: View {
             Button("Reply") { onReply(message) }
                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             if isMine && message.deletedAt == nil { Button("Delete") { onDelete(message.id) }.font(.caption2).foregroundColor(IDS.Colors.textSecondary) }
+            Button("Pin") { onPin(message) }
+                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            Button("Forward") { onForward(message) }
+                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            if message.forwardedFromMessageId != nil {
+                Text("↪ Forwarded").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            }
             Text(chatMessageTime(message.sentAt))
                 .font(.caption2)
                 .foregroundColor(IDS.Colors.textSecondary)
@@ -1298,6 +1354,8 @@ private struct ChatThreadScreen: View {
     @State private var replyingTo: MessageDto?
     @State private var pinnedMessage: MessageDto?
     @State private var updatingPin = false
+    // Real Forward -- see ForwardPickerView's own doc comment.
+    @State private var forwarding: MessageDto?
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
@@ -1434,6 +1492,7 @@ private struct ChatThreadScreen: View {
                                     onReply: { replyingTo = $0 },
                                     onDelete: { messageId in Task { await deleteMessage(messageId) } },
                                     onPin: { pinned in Task { await pinMessage(pinned) } },
+                                    onForward: { forwarding = $0 },
                                     onReportMessage: reportHandler,
                                 )
                                 .id(message.id)
@@ -1685,6 +1744,14 @@ private struct ChatThreadScreen: View {
         }
         .sheet(isPresented: $showMediaGallery) {
             MediaGalleryView(imageUrls: (messages ?? []).compactMap { $0.imageUrl }.reversed())
+        }
+        .sheet(item: $forwarding) { message in
+            ForwardPickerView(
+                onForward: { destinationType, destinationId in
+                    (try? await NetworkClient.shared.forwardDirectMessage(messageId: message.id, destinationType: destinationType, destinationId: destinationId).success) ?? false
+                },
+                onDismiss: { forwarding = nil }
+            )
         }
     }
 
@@ -2509,6 +2576,7 @@ private struct MessageBubble: View {
     let onReply: (MessageDto) -> Void
     let onDelete: (String) -> Void
     let onPin: (MessageDto) -> Void
+    let onForward: (MessageDto) -> Void
     let onReportMessage: (String, String) -> Void
     @State private var reportOpen = false
     @State private var reportReason = ""
@@ -2555,6 +2623,11 @@ private struct MessageBubble: View {
             }
             Button("Pin") { onPin(message) }
                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            Button("Forward") { onForward(message) }
+                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            if message.forwardedFromMessageId != nil {
+                Text("↪ Forwarded").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            }
             Text("\(isMine && message.readAt == nil ? "1 · " : "")\(chatMessageTime(message.sentAt))")
                 .font(.caption2)
                 .foregroundColor(IDS.Colors.textSecondary)
@@ -2571,6 +2644,58 @@ private struct MessageBubble: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Explain why this selected message should be reviewed.") }
+    }
+}
+
+// Real message Forward destination picker -- ports Android TalkScreen.kt's own
+// ForwardDestinationDialog to iOS, deliberately scoped to a single destination (not
+// Android's up-to-10 multi-select) to match bank-mfe's own simpler forwardMessage
+// convention. Loads real conversations + groups, calls whichever of
+// forwardDirectMessage/forwardGroupMessage matches this message's source thread type.
+private struct ForwardPickerView: View {
+    let onForward: (_ destinationType: String, _ destinationId: String) async -> Bool
+    let onDismiss: () -> Void
+
+    @State private var conversations: [ConversationSummaryDto] = []
+    @State private var groups: [GroupSummaryDto] = []
+    @State private var sending = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationView {
+            List {
+                Section("Direct messages") {
+                    ForEach(conversations) { c in
+                        Button(c.otherUserName) { Task { await forward(to: "DIRECT", id: c.conversationId) } }
+                            .disabled(sending)
+                    }
+                }
+                Section("Groups") {
+                    ForEach(groups) { g in
+                        Button(g.name) { Task { await forward(to: "GROUP", id: g.groupId) } }
+                            .disabled(sending)
+                    }
+                }
+            }
+            .navigationTitle("Forward to…")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: onDismiss) }
+            }
+            .task {
+                conversations = (try? await NetworkClient.shared.getConversations().conversations) ?? []
+                groups = (try? await NetworkClient.shared.getMyGroups().groups) ?? []
+            }
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+        }
+    }
+
+    private func forward(to destinationType: String, id destinationId: String) async {
+        sending = true
+        defer { sending = false }
+        let ok = await onForward(destinationType, destinationId)
+        if ok { onDismiss() } else { error = "Couldn't forward this message. Check your connection and try again." }
     }
 }
 

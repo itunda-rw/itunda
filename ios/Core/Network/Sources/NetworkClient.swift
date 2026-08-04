@@ -2172,6 +2172,11 @@ public struct MessageDto: Decodable, Identifiable {
     // (2026-08-04) to iOS. Set only on a message sent with a real uploaded photo
     // (POST /api/v1/uploads -> imageUrl passed to sendMessage), never client-asserted.
     public let imageUrl: String?
+    // Real message forwarding -- ports Android TalkScreen.kt's own identical addition
+    // (2026-08-04) to iOS. A real provenance label, only ever set on a message
+    // actually created via the forward endpoint, never client-asserted.
+    public let forwardedFromMessageId: String?
+    public let forwardedFromType: String?
 
     // A custom init(from:) below suppresses Swift's automatic memberwise initializer,
     // so this is needed explicitly for real call sites that construct a MessageDto
@@ -2187,6 +2192,8 @@ public struct MessageDto: Decodable, Identifiable {
         self.reactions = reactions
         self.emoticonId = nil
         self.imageUrl = nil
+        self.forwardedFromMessageId = nil
+        self.forwardedFromType = nil
     }
 
     // Custom decode: the real-time WebSocket push for a brand-new message omits
@@ -2204,9 +2211,11 @@ public struct MessageDto: Decodable, Identifiable {
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
         emoticonId = try container.decodeIfPresent(String.self, forKey: .emoticonId)
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        forwardedFromMessageId = try container.decodeIfPresent(String.self, forKey: .forwardedFromMessageId)
+        forwardedFromType = try container.decodeIfPresent(String.self, forKey: .forwardedFromType)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, reactions, emoticonId, imageUrl }
+    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, reactions, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType }
 }
 
 // Real WebSocket push envelopes (2026-07-18) -- see
@@ -2319,6 +2328,9 @@ public struct GroupMessageDto: Decodable, Identifiable {
     public let emoticonId: String?
     // Real photo message -- see MessageDto's own identical doc comment.
     public let imageUrl: String?
+    // Real message forwarding -- see MessageDto's own identical doc comment.
+    public let forwardedFromMessageId: String?
+    public let forwardedFromType: String?
 
     // Explicit memberwise init -- see MessageDto's own identical note on why this is
     // needed once a custom init(from:) is present.
@@ -2333,6 +2345,8 @@ public struct GroupMessageDto: Decodable, Identifiable {
         self.reactions = reactions
         self.emoticonId = emoticonId
         self.imageUrl = nil
+        self.forwardedFromMessageId = nil
+        self.forwardedFromType = nil
     }
 
     // Same real-time-push-omits-reactions handling as MessageDto's own custom decode.
@@ -2348,14 +2362,23 @@ public struct GroupMessageDto: Decodable, Identifiable {
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
         emoticonId = try container.decodeIfPresent(String.self, forKey: .emoticonId)
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
+        forwardedFromMessageId = try container.decodeIfPresent(String.self, forKey: .forwardedFromMessageId)
+        forwardedFromType = try container.decodeIfPresent(String.self, forKey: .forwardedFromType)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId, imageUrl }
+    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType }
 }
 public struct GroupResponse: Decodable { public let success: Bool; public let group: GroupSummaryDto }
 public struct GroupsResponse: Decodable { public let success: Bool; public let groups: [GroupSummaryDto] }
 public struct GroupMessagesResponse: Decodable { public let success: Bool; public let messages: [GroupMessageDto] }
 public struct GroupMessageResponse: Decodable { public let success: Bool; public let message: GroupMessageDto }
+public struct PinnedGroupMessageResponse: Decodable { public let success: Bool; public let message: GroupMessageDto? }
+// Real message forwarding -- ports Android TalkScreen.kt's own identical addition
+// (2026-08-04) to iOS. Deliberately mirrors bank-mfe's own simpler
+// {success, destinationType} response (not the full forwarded message) -- the picker
+// only needs a success/fail signal, matching lib/messaging.ts's own forwardMessage.
+public struct ForwardMessageRequest: Encodable { public let destinationType: String; public let destinationId: String }
+public struct ForwardMessageResponse: Decodable { public let success: Bool; public let destinationType: String }
 public struct LeaveGroupResponse: Decodable { public let success: Bool }
 
 // Real member list with real resolved display names (2026-07-18) -- closes the honest,
@@ -3590,6 +3613,13 @@ extension NetworkClient {
         try await authenticatedDelete("api/v1/messages/conversations/\(conversationId)/pin")
     }
 
+    // Real message forwarding, 1:1 source (item 3 remainder) -- ports Android
+    // TalkScreen.kt's ForwardDestinationDialog / bank-mfe's forwardMessage to iOS.
+    // See rw.itunda.messaging.web.MessagingController's own forward endpoint.
+    public func forwardDirectMessage(messageId: String, destinationType: String, destinationId: String) async throws -> ForwardMessageResponse {
+        try await authenticatedPost("api/v1/messages/messages/\(messageId)/forward", body: ForwardMessageRequest(destinationType: destinationType, destinationId: destinationId))
+    }
+
     public func blockConversationParticipant(conversationId: String) async throws -> SuccessResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/block", body: EmptyRequest())
     }
@@ -3641,6 +3671,29 @@ extension NetworkClient {
 
     public func getGroupMembers(groupId: String) async throws -> GroupMembersResponse {
         try await get("api/v1/messages/groups/\(groupId)/members")
+    }
+
+    // Real group Pin -- exact mirror of the already-real 1:1
+    // getPinnedConversationMessage/pinConversationMessage/unpinConversationMessage above;
+    // group threads never got this client despite the backend endpoint being real since
+    // group Pin's own 1:1 counterpart shipped. See GroupMessagingController's own pin
+    // endpoints.
+    public func getPinnedGroupMessage(groupId: String) async throws -> PinnedGroupMessageResponse {
+        try await get("api/v1/messages/groups/\(groupId)/pin")
+    }
+
+    public func pinGroupMessage(groupId: String, messageId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/messages/groups/\(groupId)/pin/\(messageId)", body: EmptyRequest())
+    }
+
+    public func unpinGroupMessage(groupId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/messages/groups/\(groupId)/pin")
+    }
+
+    // Real message forwarding, group source -- see forwardDirectMessage's own doc
+    // comment above for the shared contract; this is the group-sourced sibling URL.
+    public func forwardGroupMessage(messageId: String, destinationType: String, destinationId: String) async throws -> ForwardMessageResponse {
+        try await authenticatedPost("api/v1/messages/groups/messages/\(messageId)/forward", body: ForwardMessageRequest(destinationType: destinationType, destinationId: destinationId))
     }
 
     // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
