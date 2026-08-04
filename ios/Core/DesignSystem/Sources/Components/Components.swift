@@ -95,6 +95,58 @@ public struct IdsButton: View {
     }
 }
 
+// Real fix, found live 2026-08-05 auditing the app (user flagged the whole app still
+// looks unstyled): this design system had IdsButton/IdsListRow but no text field at
+// all -- 51 files / 247 raw `TextField(...)` call sites (confirmed via a repo-wide
+// grep), every one hand-rolling its own `.padding().background(Color(.systemXyz) or
+// IDS.Colors.chipBackground).cornerRadius()` combination, none sharing one real
+// style. Matches Android's own IdsTextField.kt fix from 2026-08-03 (same root cause,
+// same shape of fix): a filled field, muted at rest, lifted with a brand-colored
+// ring on focus -- not Android's floating Material label (SwiftUI/iOS convention is
+// a fixed label above the field, not an animated inset one), but the same intent.
+public struct IdsTextField: View {
+    let label: String
+    @Binding var text: String
+    var isSecure: Bool = false
+    var keyboardType: UIKeyboardType = .default
+
+    @FocusState private var isFocused: Bool
+
+    public init(_ label: String, text: Binding<String>, isSecure: Bool = false, keyboardType: UIKeyboardType = .default) {
+        self.label = label
+        self._text = text
+        self.isSecure = isSecure
+        self.keyboardType = keyboardType
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(IdsTypeScale.body2)
+                .foregroundColor(isFocused ? IDS.Colors.brand : IDS.Colors.textSecondary)
+            Group {
+                if isSecure {
+                    SecureField(label, text: $text)
+                } else {
+                    TextField(label, text: $text)
+                        .keyboardType(keyboardType)
+                }
+            }
+            .font(IdsTypeScale.subtitle1)
+            .foregroundColor(IDS.Colors.textPrimary)
+            .focused($isFocused)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(isFocused ? IDS.Colors.card : IDS.Colors.chipBackground)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isFocused ? IDS.Colors.brand : Color.clear, lineWidth: 1.5)
+            )
+        }
+    }
+}
+
 public struct IdsListRow: View {
     let title: String
     let subtitle: String?

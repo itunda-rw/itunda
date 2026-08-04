@@ -64,16 +64,10 @@ private struct CreatePlanCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Create a billing plan").font(.headline)
-            TextField("Plan name (e.g. Monthly coffee subscription)", text: $name)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Description (optional)", text: $description)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Amount (RWF)", text: $amount)
-                .keyboardType(.decimalPad)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Every (days)", text: $intervalDays)
-                .keyboardType(.numberPad)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Plan name (e.g. Monthly coffee subscription)", text: $name)
+            IdsTextField("Description (optional)", text: $description)
+            IdsTextField("Amount (RWF)", text: $amount, keyboardType: .decimalPad)
+            IdsTextField("Every (days)", text: $intervalDays, keyboardType: .numberPad)
             if let error {
                 Text(error).font(.footnote).foregroundColor(.red)
             }

@@ -55,10 +55,8 @@ struct HarvestAdvanceScreenView: View {
                     if memberships?.isEmpty ?? true {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Register a cooperative").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                            TextField("Cooperative name", text: $coopName)
-                                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                            TextField("Crop (e.g. COFFEE)", text: $coopCrop)
-                                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Cooperative name", text: $coopName)
+                            IdsTextField("Crop (e.g. COFFEE)", text: $coopCrop)
                             Button(action: { Task { await registerCooperative() } }) {
                                 Text(busy ? "…" : "Register & join").bold().foregroundColor(.white)
                                     .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -67,8 +65,7 @@ struct HarvestAdvanceScreenView: View {
                             .disabled(busy || coopName.trimmingCharacters(in: .whitespaces).isEmpty)
 
                             Text("Already have a cooperative ID?").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                            TextField("Cooperative ID", text: $coopId)
-                                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Cooperative ID", text: $coopId)
                             Button(action: { Task { await joinCooperative() } }) {
                                 Text(busy ? "…" : "Join").bold().foregroundColor(IDS.Colors.textPrimary)
                                     .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -81,14 +78,9 @@ struct HarvestAdvanceScreenView: View {
                     } else if let membership = memberships?.first {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Request an advance").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                            TextField("Amount (RWF, max 500,000)", text: $advanceAmount)
-                                .keyboardType(.numberPad)
-                                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                            TextField("Purpose (INPUT_FINANCING / POST_HARVEST)", text: $advancePurpose)
-                                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                            TextField("Expected harvest (months from now)", text: $harvestMonthsAway)
-                                .keyboardType(.numberPad)
-                                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Amount (RWF, max 500,000)", text: $advanceAmount, keyboardType: .numberPad)
+                            IdsTextField("Purpose (INPUT_FINANCING / POST_HARVEST)", text: $advancePurpose)
+                            IdsTextField("Expected harvest (months from now)", text: $harvestMonthsAway, keyboardType: .numberPad)
                             Button(action: { Task { await requestAdvance(membershipId: membership.id) } }) {
                                 Text(busy ? "…" : "Request advance").bold().foregroundColor(.white)
                                     .frame(maxWidth: .infinity).padding(.vertical, 12)

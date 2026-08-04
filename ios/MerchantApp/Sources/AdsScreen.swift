@@ -86,12 +86,8 @@ private struct LocationSetupCard: View {
             Text("Set your business location").font(.headline)
             Text("A radius-targeted ad needs your business's real location to match nearby customers.")
                 .font(.footnote).foregroundColor(.secondary)
-            TextField("Latitude (-1.9536)", text: $latitude)
-                .keyboardType(.numbersAndPunctuation)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Longitude (30.0605)", text: $longitude)
-                .keyboardType(.numbersAndPunctuation)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Latitude (-1.9536)", text: $latitude, keyboardType: .numbersAndPunctuation)
+            IdsTextField("Longitude (30.0605)", text: $longitude, keyboardType: .numbersAndPunctuation)
             if let error {
                 Text(error).font(.footnote).foregroundColor(.red)
             }
@@ -138,10 +134,8 @@ private struct CreateOrExtendAdCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Run a local ad").font(.headline)
-            TextField("Title (e.g. Fresh bread every morning)", text: $title)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Description (optional)", text: $description)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Title (e.g. Fresh bread every morning)", text: $title)
+            IdsTextField("Description (optional)", text: $description)
             Text("Radius").font(.footnote).foregroundColor(.secondary)
             Picker("Radius", selection: $radiusMeters) {
                 ForEach(AD_VALID_RADII_METERS, id: \.self) { r in

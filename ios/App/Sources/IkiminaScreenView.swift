@@ -63,19 +63,14 @@ private struct IkiminaListContent: View {
 
             if showCreate {
                 VStack(spacing: 8) {
-                    TextField("Group name (e.g. Umuryango)", text: $name)
-                        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                    TextField("Contribution per round (RWF)", text: $contributionAmount)
-                        .keyboardType(.numberPad)
-                        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    IdsTextField("Group name (e.g. Umuryango)", text: $name)
+                    IdsTextField("Contribution per round (RWF)", text: $contributionAmount, keyboardType: .numberPad)
                     Picker("Frequency", selection: $cycleFrequencyDays) {
                         Text("Weekly").tag(7)
                         Text("Monthly").tag(30)
                     }
                     .pickerStyle(.segmented)
-                    TextField("Max members", text: $memberCap)
-                        .keyboardType(.numberPad)
-                        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    IdsTextField("Max members", text: $memberCap, keyboardType: .numberPad)
                     HStack(spacing: 8) {
                         Button("Cancel") { showCreate = false }
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -229,9 +224,7 @@ private struct IkiminaDetailContent: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Invite a member").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                             HStack(spacing: 8) {
-                                TextField("Phone number", text: $phoneNumber)
-                                    .keyboardType(.phonePad)
-                                    .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                IdsTextField("Phone number", text: $phoneNumber, keyboardType: .phonePad)
                                 Button(action: { Task { await invite() } }) {
                                     Text(busy ? "…" : "Invite").bold().foregroundColor(.white)
                                         .padding(.horizontal, 16).padding(.vertical, 12)

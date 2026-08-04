@@ -227,11 +227,11 @@ private struct CardCheckoutView: View {
             }
         } else {
             VStack(spacing: 10) {
-                TextField("Card number", text: $cardNumber).keyboardType(.numberPad).padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                IdsTextField("Card number", text: $cardNumber, keyboardType: .numberPad)
                 HStack {
-                    TextField("MM", text: $expiryMonth).keyboardType(.numberPad).padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                    TextField("YYYY", text: $expiryYear).keyboardType(.numberPad).padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                    TextField("CVC", text: $cvc).keyboardType(.numberPad).padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    IdsTextField("MM", text: $expiryMonth, keyboardType: .numberPad)
+                    IdsTextField("YYYY", text: $expiryYear, keyboardType: .numberPad)
+                    IdsTextField("CVC", text: $cvc, keyboardType: .numberPad)
                 }
                 if let error {
                     Text(error).foregroundColor(.red).font(.footnote)

@@ -176,10 +176,8 @@ private struct KnowledgeAskCard: View {
                         }
                     }
                 }
-                TextField("Your question", text: $title)
-                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                TextField("Add more detail", text: $questionBody)
-                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                IdsTextField("Your question", text: $title)
+                IdsTextField("Add more detail", text: $questionBody)
                 if let error { Text(error).font(.caption).foregroundColor(.red) }
                 Button(action: { Task { await submit() } }) {
                     Text(submitting ? "Posting…" : "Post question").bold().foregroundColor(.white)
@@ -273,8 +271,7 @@ private struct KnowledgeQuestionDetailScreen: View {
 
                     if question?.adoptedAnswerId == nil {
                         HStack {
-                            TextField("Write an answer", text: $answerBody)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Write an answer", text: $answerBody)
                             Button(action: { Task { await sendAnswer() } }) {
                                 Text(answering ? "…" : "Send").bold().foregroundColor(.white)
                                     .padding(.horizontal, 16).padding(.vertical, 12)

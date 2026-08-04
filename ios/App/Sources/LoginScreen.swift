@@ -41,20 +41,14 @@ struct LoginScreen: View {
                     Spacer(minLength: 24)
 
                     if isRegisterMode {
-                        TextField("First name", text: $firstName)
-                            .textFieldStyle()
-                        TextField("Last name", text: $lastName)
-                            .textFieldStyle()
-                        TextField("Referral code (optional)", text: $referralCode)
-                            .textFieldStyle()
+                        IdsTextField("First name", text: $firstName)
+                        IdsTextField("Last name", text: $lastName)
+                        IdsTextField("Referral code (optional)", text: $referralCode)
                     }
 
-                    TextField("Phone number", text: $phoneNumber)
-                        .keyboardType(.phonePad)
-                        .textFieldStyle()
+                    IdsTextField("Phone number", text: $phoneNumber, keyboardType: .phonePad)
 
-                    SecureField("Password", text: $password)
-                        .textFieldStyle()
+                    IdsTextField("Password", text: $password, isSecure: true)
 
                     if let errorMessage {
                         Text(errorMessage)
@@ -117,18 +111,5 @@ struct LoginScreen: View {
                 errorMessage = message
             }
         }
-    }
-}
-
-private extension View {
-    func textFieldStyle() -> some View {
-        self
-            .font(IDS.Typography.bodyMedium)
-            .padding(14)
-            .background(IDS.Colors.backgroundSecondary)
-            .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(IDS.Colors.divider, lineWidth: 1))
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
     }
 }

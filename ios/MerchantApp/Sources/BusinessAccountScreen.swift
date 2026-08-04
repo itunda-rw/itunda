@@ -143,11 +143,7 @@ private struct MoveMoneyCard: View {
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Move money").bold()
-                TextField("Amount (RWF)", text: $amountText)
-                    .keyboardType(.numberPad)
-                    .padding(12)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(10)
+                IdsTextField("Amount (RWF)", text: $amountText, keyboardType: .numberPad)
                 if let error {
                     Text(error).font(.footnote).foregroundColor(.red)
                 }
@@ -265,8 +261,7 @@ private struct WebhookUrlCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Webhook URL").bold()
-            TextField("https://your-server.example.com/webhooks/itunda", text: $webhookUrl)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("https://your-server.example.com/webhooks/itunda", text: $webhookUrl)
                 .onChange(of: webhookUrl) { _ in saved = false }
             Text("We'll notify this address every time a payment completes. If it doesn't respond, we'll keep retrying for about 3 days.")
                 .font(.footnote).foregroundColor(.secondary)
@@ -430,19 +425,13 @@ private struct StoreSettingsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Store settings").bold()
-            TextField("Category (e.g. Rwandan, Bakery, Cafe)", text: $category)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Category (e.g. Rwandan, Bakery, Cafe)", text: $category)
                 .onChange(of: category) { _ in saved = false }
-            TextField("Store photo URL", text: $photoUrl)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Store photo URL", text: $photoUrl)
                 .onChange(of: photoUrl) { _ in saved = false }
-            TextField("Minimum order (RWF, blank = none)", text: $minOrderAmount)
-                .keyboardType(.numberPad)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Minimum order (RWF, blank = none)", text: $minOrderAmount, keyboardType: .numberPad)
                 .onChange(of: minOrderAmount) { _ in saved = false }
-            TextField("Boosted cashback (0-5%, blank = standard)", text: $cashbackPercent)
-                .keyboardType(.decimalPad)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Boosted cashback (0-5%, blank = standard)", text: $cashbackPercent, keyboardType: .decimalPad)
                 .onChange(of: cashbackPercent) { _ in saved = false }
             if let error {
                 Text(error).font(.footnote).foregroundColor(.red)

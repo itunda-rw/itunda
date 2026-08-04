@@ -60,12 +60,8 @@ private struct AddEmployeeCard: View {
             Text("Add an employee").font(.headline)
             Text("Must be an existing Itunda user's phone number — payroll pays directly into their wallet.")
                 .font(.footnote).foregroundColor(.secondary)
-            TextField("Phone number (+250788123456)", text: $phoneNumber)
-                .keyboardType(.phonePad)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Monthly salary (RWF)", text: $salaryAmount)
-                .keyboardType(.decimalPad)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Phone number (+250788123456)", text: $phoneNumber, keyboardType: .phonePad)
+            IdsTextField("Monthly salary (RWF)", text: $salaryAmount, keyboardType: .decimalPad)
             if let error {
                 Text(error).font(.footnote).foregroundColor(.red)
             }

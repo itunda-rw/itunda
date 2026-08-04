@@ -17,8 +17,7 @@ struct BecomeMerchantScreen: View {
             Text("Accept real payments, manage your menu, and handle incoming Eats orders from one app.")
                 .font(.subheadline).foregroundColor(.secondary)
 
-            TextField("Business name", text: $businessName)
-                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+            IdsTextField("Business name", text: $businessName)
 
             if let error {
                 Text(error).foregroundColor(.red).font(.footnote)

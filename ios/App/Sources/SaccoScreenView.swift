@@ -50,9 +50,7 @@ struct SaccoScreenView: View {
                     .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
 
                     VStack(spacing: 8) {
-                        TextField("Amount (RWF)", text: $amount)
-                            .keyboardType(.numberPad)
-                            .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                        IdsTextField("Amount (RWF)", text: $amount, keyboardType: .numberPad)
                         HStack(spacing: 8) {
                             Button(action: { Task { await buy() } }) {
                                 Text(busy ? "…" : "Buy shares").bold().foregroundColor(.white)

@@ -648,14 +648,13 @@ private struct NewListingForm: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("List an item").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-            TextField("What are you selling?", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            TextField("Description", text: $description).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            IdsTextField("What are you selling?", text: $title)
+            IdsTextField("Description", text: $description)
             HStack {
-                TextField("Price (RWF)", text: $price).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-                TextField("Category", text: $category).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+                IdsTextField("Price (RWF)", text: $price, keyboardType: .numberPad)
+                IdsTextField("Category", text: $category)
             }
-            TextField("Suggested meeting place (optional)", text: $meetingPlace)
-                .padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            IdsTextField("Suggested meeting place (optional)", text: $meetingPlace)
             Text("Use a public landmark, not a home address.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             Button(action: { showPhotoPicker = true }) {
@@ -1044,11 +1043,7 @@ private struct ListingCard: View {
             }
             if offering {
                 HStack(spacing: 10) {
-                    TextField("Your offer (RWF)", text: $offerAmount)
-                        .keyboardType(.numberPad)
-                        .padding(10)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(10)
+                    IdsTextField("Your offer (RWF)", text: $offerAmount, keyboardType: .numberPad)
                     Button(action: {
                         guard let amount = Double(offerAmount) else { return }
                         offering = false
@@ -1065,11 +1060,7 @@ private struct ListingCard: View {
             // Real optional "who bought this?" prompt (2026-07-24) -- see backend
             // MarketplaceService.markSold's own doc comment.
             if markingSold {
-                TextField("Buyer's phone (optional)", text: $buyerPhone)
-                    .keyboardType(.phonePad)
-                    .padding(10)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(10)
+                IdsTextField("Buyer's phone (optional)", text: $buyerPhone, keyboardType: .phonePad)
                 HStack(spacing: 10) {
                     actionButton("Skip", filled: false) { await markSold(buyerPhoneNumber: nil) }
                     actionButton("Confirm", filled: true) { await markSold(buyerPhoneNumber: buyerPhone.trimmingCharacters(in: .whitespaces)) }
@@ -1367,8 +1358,7 @@ private struct KeywordAlertsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                TextField("Alert me for (e.g. iPhone 15)", text: $keyword)
-                    .textFieldStyle(.roundedBorder)
+                IdsTextField("Alert me for (e.g. iPhone 15)", text: $keyword)
                 Button(action: { Task { await addAlert() } }) {
                     Text(adding ? "…" : "Add").font(.caption).bold().foregroundColor(.white)
                         .padding(.horizontal, 14).padding(.vertical, 8)
@@ -1408,8 +1398,8 @@ private struct KeywordAlertsView: View {
                     Text("Don't send alert notifications during these hours.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     HStack(spacing: 8) {
-                        TextField("Start (HH:mm)", text: $quietStart).textFieldStyle(.roundedBorder)
-                        TextField("End (HH:mm)", text: $quietEnd).textFieldStyle(.roundedBorder)
+                        IdsTextField("Start (HH:mm)", text: $quietStart)
+                        IdsTextField("End (HH:mm)", text: $quietEnd)
                     }
                     Button(action: { Task { await saveQuietHours(enabled: quietHours?.enabled != true) } }) {
                         Text(savingQuietHours ? "…" : (quietHours?.enabled == true ? "Turn off quiet hours" : "Turn on quiet hours"))
@@ -1758,16 +1748,14 @@ private struct NewCommunityPostForm: View {
                     }
                 }
             }
-            TextField("Title", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            TextField("What's going on in the neighborhood?", text: $postBody).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            IdsTextField("Title", text: $title)
+            IdsTextField("What's going on in the neighborhood?", text: $postBody)
             if category == "meetup" {
                 HStack(spacing: 8) {
-                    TextField("Date (YYYY-MM-DD)", text: $eventDateText).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-                    TextField("Time (HH:mm)", text: $eventTimeText).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+                    IdsTextField("Date (YYYY-MM-DD)", text: $eventDateText)
+                    IdsTextField("Time (HH:mm)", text: $eventTimeText)
                 }
-                TextField("Max people (optional -- blank means unlimited)", text: $capacityText)
-                    .keyboardType(.numberPad)
-                    .padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+                IdsTextField("Max people (optional -- blank means unlimited)", text: $capacityText, keyboardType: .numberPad)
             }
             Button(action: {
                 if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
@@ -2035,8 +2023,7 @@ private struct CommunityPostDetailView: View {
             }
 
             HStack {
-                TextField("Add a comment", text: $commentBody)
-                    .padding(12).background(IDS.Colors.chipBackground).cornerRadius(10)
+                IdsTextField("Add a comment", text: $commentBody)
                 Button(action: { Task { await addComment() } }) {
                     Text(commenting ? "…" : "Send").foregroundColor(.white)
                         .padding(.horizontal, 16).padding(.vertical, 12)
@@ -2132,9 +2119,7 @@ private struct MeetupSessionsSection: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Schedule sessions (up to 6)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                     ForEach(dates.indices, id: \.self) { i in
-                        TextField("Hours from now", text: Binding(get: { dates[i] }, set: { dates[i] = $0 }))
-                            .keyboardType(.decimalPad)
-                            .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                        IdsTextField("Hours from now", text: Binding(get: { dates[i] }, set: { dates[i] = $0 }), keyboardType: .decimalPad)
                     }
                     HStack(spacing: 8) {
                         if dates.count < 6 {
@@ -2222,11 +2207,8 @@ private struct GroupBuyFinalizeSection: View {
                 Text("Split the cost").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                 Text("Enter what you paid up front -- every real member who joined will be asked for their even share.")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                TextField("Total amount (RWF)", text: $totalAmount)
-                    .keyboardType(.decimalPad)
-                    .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
-                TextField("What was this for?", text: $description)
-                    .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                IdsTextField("Total amount (RWF)", text: $totalAmount, keyboardType: .decimalPad)
+                IdsTextField("What was this for?", text: $description)
                 if let error {
                     Text(error).font(.caption).foregroundColor(.red)
                 }
@@ -2667,15 +2649,15 @@ private struct NewJobPostForm: View {
                     }
                 }
             }
-            TextField("What do you need done?", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            TextField("Describe the work", text: $description).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            IdsTextField("What do you need done?", text: $title)
+            IdsTextField("Describe the work", text: $description)
             HStack {
                 Picker("", selection: $payType) {
                     Text("Per hour").tag("HOURLY")
                     Text("Fixed price").tag("FIXED")
                 }
                 .pickerStyle(.segmented)
-                TextField("Pay (RWF)", text: $payAmount).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+                IdsTextField("Pay (RWF)", text: $payAmount, keyboardType: .numberPad)
             }
             Button(action: {
                 if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
@@ -2817,11 +2799,7 @@ private struct JobPostCard: View {
             // Real optional "who did you hire?" prompt (2026-07-24) -- see backend
             // JobPostService.markFilled's own doc comment.
             if markingFilled {
-                TextField("Worker's phone (optional)", text: $workerPhone)
-                    .keyboardType(.phonePad)
-                    .padding(10)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(10)
+                IdsTextField("Worker's phone (optional)", text: $workerPhone, keyboardType: .phonePad)
                 HStack(spacing: 10) {
                     actionButton("Skip", filled: false) { await markFilled(workerPhoneNumber: nil) }
                     actionButton("Confirm", filled: true) { await markFilled(workerPhoneNumber: workerPhone.trimmingCharacters(in: .whitespaces)) }
@@ -3352,13 +3330,12 @@ private struct NewPropertyListingForm: View {
                     }
                 }
             }
-            TextField("e.g. 2-bedroom apartment in Kacyiru", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-            TextField("Describe the property", text: $description).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            IdsTextField("e.g. 2-bedroom apartment in Kacyiru", text: $title)
+            IdsTextField("Describe the property", text: $description)
             HStack {
-                TextField(listingType == "RENT" ? "Rent/mo (RWF)" : "Price (RWF)", text: $price)
-                    .keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-                TextField("Bedrooms", text: $bedrooms).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
-                TextField("Size (m²)", text: $sizeSqm).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+                IdsTextField(listingType == "RENT" ? "Rent/mo (RWF)" : "Price (RWF)", text: $price, keyboardType: .numberPad)
+                IdsTextField("Bedrooms", text: $bedrooms, keyboardType: .numberPad)
+                IdsTextField("Size (m²)", text: $sizeSqm, keyboardType: .numberPad)
             }
             Button(action: {
                 if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
@@ -3439,12 +3416,8 @@ private struct PropertyValuationCard: View {
             Text("우리집 시세 — Estimate my home's value").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             Text("A real estimate based on comparable listings near you, not a fabricated number.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            TextField("Latitude", text: $latitude)
-                .keyboardType(.decimalPad)
-                .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
-            TextField("Longitude", text: $longitude)
-                .keyboardType(.decimalPad)
-                .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+            IdsTextField("Latitude", text: $latitude, keyboardType: .decimalPad)
+            IdsTextField("Longitude", text: $longitude, keyboardType: .decimalPad)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(propertyTypes) { t in
@@ -3473,9 +3446,7 @@ private struct PropertyValuationCard: View {
                         .onTapGesture { listingType = v }
                 }
             }
-            TextField("Size (sqm)", text: $sizeSqm)
-                .keyboardType(.decimalPad)
-                .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+            IdsTextField("Size (sqm)", text: $sizeSqm, keyboardType: .decimalPad)
             if let error { Text(error).font(.caption).foregroundColor(.red) }
             Button(action: { Task { await estimateValue() } }) {
                 Text(loading ? "Estimating…" : "Estimate value")
@@ -3675,11 +3646,7 @@ private struct PropertyListingCard: View {
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             if offering {
                 HStack(spacing: 8) {
-                    TextField("Your offer (RWF)", text: $offerAmount)
-                        .keyboardType(.numberPad)
-                        .padding(10)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(10)
+                    IdsTextField("Your offer (RWF)", text: $offerAmount, keyboardType: .numberPad)
                     Button(action: {
                         guard let amount = Double(offerAmount) else { return }
                         offering = false
@@ -3699,11 +3666,7 @@ private struct PropertyListingCard: View {
             // Real optional "who's the buyer/tenant?" prompt (2026-07-24) -- see
             // backend PropertyListingService.markTaken's own doc comment.
             if markingTaken {
-                TextField("Their phone (optional)", text: $counterpartyPhone)
-                    .keyboardType(.phonePad)
-                    .padding(10)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(10)
+                IdsTextField("Their phone (optional)", text: $counterpartyPhone, keyboardType: .phonePad)
                 HStack(spacing: 10) {
                     actionButton("Skip", filled: false) { await markTaken(counterpartyPhoneNumber: nil) }
                     actionButton("Confirm", filled: true) { await markTaken(counterpartyPhoneNumber: counterpartyPhone.trimmingCharacters(in: .whitespaces)) }

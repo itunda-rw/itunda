@@ -110,9 +110,9 @@ private struct CashInCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Accept cash-in").bold()
-            TextField("Customer account number", text: $account).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Amount (RWF)", text: $amount).keyboardType(.decimalPad).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Receipt number", text: $receipt).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Customer account number", text: $account)
+            IdsTextField("Amount (RWF)", text: $amount, keyboardType: .decimalPad)
+            IdsTextField("Receipt number", text: $receipt)
             Button(action: { Task { await submit() } }) {
                 Text(busy ? "Working…" : "Accept cash-in").bold().foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -153,10 +153,10 @@ private struct CashOutCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Pay cash-out").bold()
-            TextField("Customer account number", text: $account).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Amount (RWF)", text: $amount).keyboardType(.decimalPad).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Receipt number", text: $receipt).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Customer's withdrawal code", text: $code).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Customer account number", text: $account)
+            IdsTextField("Amount (RWF)", text: $amount, keyboardType: .decimalPad)
+            IdsTextField("Receipt number", text: $receipt)
+            IdsTextField("Customer's withdrawal code", text: $code)
             Button(action: { Task { await submit() } }) {
                 Text(busy ? "Working…" : "Pay cash-out").bold().foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -197,7 +197,7 @@ private struct TillCountCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Submit today's till count").bold()
-            TextField("Counted cash (RWF)", text: $counted).keyboardType(.decimalPad).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Counted cash (RWF)", text: $counted, keyboardType: .decimalPad)
             Button(action: { Task { await submit() } }) {
                 Text(busy ? "Working…" : "Submit count").bold()
                     .frame(maxWidth: .infinity).padding(.vertical, 12)

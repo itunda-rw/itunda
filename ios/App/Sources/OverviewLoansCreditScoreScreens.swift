@@ -88,8 +88,8 @@ struct OverviewScreenView: View {
                                             Button(p) { provider = p }.font(.caption).bold()
                                         }
                                     }
-                                    TextField("Provider name", text: $provider).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
-                                    TextField("Account / phone number", text: $accountNumber).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                                    IdsTextField("Provider name", text: $provider)
+                                    IdsTextField("Account / phone number", text: $accountNumber)
                                     Button(action: { Task { await link() } }) {
                                         Text(busy ? "Linking…" : "Link account").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
                                     }
@@ -203,10 +203,10 @@ struct LoansScreenView: View {
                                     Text("Outstanding: \(Int(loan.outstanding)) RWF").font(.subheadline)
                                     Text("Status: \(loan.status) · \(loan.interestRate)%").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     if loan.status == "ACTIVE" {
-                                        TextField("Repay amount (RWF)", text: Binding(
+                                        IdsTextField("Repay amount (RWF)", text: Binding(
                                             get: { repayAmounts[loan.id] ?? "" },
                                             set: { repayAmounts[loan.id] = $0 }
-                                        )).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                                        ), keyboardType: .numberPad)
                                         Button(action: { Task { await repay(loan) } }) {
                                             Text(busyId == loan.id ? "Repaying…" : "Repay").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
                                         }
@@ -315,7 +315,7 @@ private struct LoanOfferCard: View {
             Text(offer.lenderName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
             Text("Up to \(Int(offer.maxAmount)) RWF · \(offer.interestRate)% · \(offer.term)").font(.subheadline)
             Text(offer.requirements).font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            TextField("Amount (RWF)", text: $amountText).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+            IdsTextField("Amount (RWF)", text: $amountText, keyboardType: .numberPad)
             Button(action: { if let n = Double(amountText), n > 0 { onApply(n) } }) {
                 Text(busy ? "Applying…" : "Apply").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
             }
@@ -351,12 +351,12 @@ private struct OverdraftPanel: View {
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     if let notice { Text(notice).font(.caption).foregroundColor(IDS.Colors.brand) }
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
-                    TextField("Draw amount (RWF)", text: $drawAmount).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    IdsTextField("Draw amount (RWF)", text: $drawAmount, keyboardType: .numberPad)
                     Button(action: { Task { await draw() } }) {
                         Text(busy ? "Drawing…" : "Draw").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
                     }
                     .disabled(busy)
-                    TextField("Repay amount (RWF)", text: $repayAmount).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    IdsTextField("Repay amount (RWF)", text: $repayAmount, keyboardType: .numberPad)
                     Button(action: { Task { await repay() } }) {
                         Text(busy ? "Repaying…" : "Repay").bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
                     }
@@ -369,7 +369,7 @@ private struct OverdraftPanel: View {
                     Text("A pre-approved credit limit you can draw from anytime -- pay interest only on what you actually use, up to 500,000 RWF.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
-                    TextField("Requested limit (RWF)", text: $requestedLimit).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    IdsTextField("Requested limit (RWF)", text: $requestedLimit, keyboardType: .numberPad)
                     Button(action: { Task { await open() } }) {
                         Text(busy ? "Opening…" : "Open overdraft").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
                     }
@@ -456,12 +456,12 @@ private struct PostpaidCreditPanel: View {
                     }
                     if let notice { Text(notice).font(.caption).foregroundColor(IDS.Colors.brand) }
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
-                    TextField("Spend amount (RWF)", text: $spendAmount).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8).disabled(suspended)
+                    IdsTextField("Spend amount (RWF)", text: $spendAmount, keyboardType: .numberPad).disabled(suspended)
                     Button(action: { Task { await spend() } }) {
                         Text(busy ? "Adding…" : "Add to wallet").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
                     }
                     .disabled(busy || suspended)
-                    TextField("Repay amount (RWF)", text: $repayAmount).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    IdsTextField("Repay amount (RWF)", text: $repayAmount, keyboardType: .numberPad)
                     Button(action: { Task { await repay() } }) {
                         Text(busy ? "Repaying…" : "Repay").bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
                     }
@@ -653,8 +653,7 @@ private struct VerifyCertificateCard: View {
             Text("Check whether a certificate serial number is still active, or verify a document someone signed with theirs.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
 
-            TextField("Serial number", text: $serialNumber)
-                .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+            IdsTextField("Serial number", text: $serialNumber)
                 .onChange(of: serialNumber) { _ in statusResult = nil; verifyResult = nil }
             Button(action: { Task { await checkStatus() } }) {
                 Text(busy ? "Checking…" : "Check status").bold().frame(maxWidth: .infinity).padding(10)
@@ -667,11 +666,9 @@ private struct VerifyCertificateCard: View {
             }
 
             Text("Verify a signature").font(.footnote).bold().foregroundColor(IDS.Colors.textPrimary).padding(.top, 6)
-            TextField("Payload (the exact text they signed)", text: $payload)
-                .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+            IdsTextField("Payload (the exact text they signed)", text: $payload)
                 .onChange(of: payload) { _ in verifyResult = nil }
-            TextField("Signature (base64)", text: $signature)
-                .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+            IdsTextField("Signature (base64)", text: $signature)
                 .onChange(of: signature) { _ in verifyResult = nil }
             Button(action: { Task { await verify() } }) {
                 Text(busy ? "Verifying…" : "Verify signature").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12)
@@ -759,8 +756,8 @@ struct IdentityScreenView: View {
                                         .background(documentType == t ? IDS.Colors.brand : IDS.Colors.chipBackground).cornerRadius(999)
                                 }
                             }
-                            TextField("Document number", text: $documentNumber).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
-                            TextField("Document reference (scan/photo reference)", text: $documentReference).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                            IdsTextField("Document number", text: $documentNumber)
+                            IdsTextField("Document reference (scan/photo reference)", text: $documentReference)
                             Button(action: { Task { await submit() } }) {
                                 Text(busy ? "Submitting…" : "Submit for review").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
                             }
@@ -862,7 +859,7 @@ struct SupportScreenView: View {
                                         .background(category == c ? IDS.Colors.brand : IDS.Colors.chipBackground).cornerRadius(8)
                                 }
                             }
-                            TextField("Describe the issue", text: $descriptionText).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                            IdsTextField("Describe the issue", text: $descriptionText)
                             Button(action: { Task { await submit() } }) {
                                 Text(busy ? "Submitting…" : "Submit ticket").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
                             }

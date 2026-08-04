@@ -125,30 +125,21 @@ private struct DesignatedDriverRequestContent: View {
                         Text("A real professional driver comes to you and drives YOUR OWN CAR home.")
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         HStack(spacing: 8) {
-                            TextField("Pickup", text: $pickupAddress)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Pickup", text: $pickupAddress)
                             Button(action: { locationFetcher.requestLocation() }) {
                                 Text("Use my location").font(.caption).bold()
                                     .padding(.horizontal, 12).padding(.vertical, 14)
                                     .background(Color(.tertiarySystemBackground)).cornerRadius(10)
                             }
                         }
-                        TextField("Drop-off address", text: $dropoffAddress)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        IdsTextField("Drop-off address", text: $dropoffAddress)
                         HStack(spacing: 8) {
-                            TextField("Drop-off latitude", text: $dropoffLat)
-                                .keyboardType(.decimalPad)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                            TextField("Drop-off longitude", text: $dropoffLng)
-                                .keyboardType(.decimalPad)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Drop-off latitude", text: $dropoffLat, keyboardType: .decimalPad)
+                            IdsTextField("Drop-off longitude", text: $dropoffLng, keyboardType: .decimalPad)
                         }
-                        TextField("Car make (e.g. Toyota)", text: $vehicleMake)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                        TextField("Car model (e.g. RAV4)", text: $vehicleModel)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                        TextField("License plate", text: $vehiclePlate)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        IdsTextField("Car make (e.g. Toyota)", text: $vehicleMake)
+                        IdsTextField("Car model (e.g. RAV4)", text: $vehicleModel)
+                        IdsTextField("License plate", text: $vehiclePlate)
                         Button(action: { Task { await requestTrip() } }) {
                             Text(requesting ? "Requesting…" : "Request a driver")
                                 .bold().foregroundColor(.white)
@@ -253,8 +244,7 @@ private struct DesignatedDriverDriveContent: View {
                         Text("Become a designated driver").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                         Text("Any itunda user can register. License number is self-declared, not verified against a real registry.")
                             .font(.footnote).foregroundColor(IDS.Colors.textSecondary).multilineTextAlignment(.center)
-                        TextField("License number", text: $licenseNumber)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        IdsTextField("License number", text: $licenseNumber)
                         Button(action: { Task { await register() } }) {
                             Text(registering ? "Registering…" : "Register").bold().foregroundColor(.white)
                                 .padding(.horizontal, 24).padding(.vertical, 14)

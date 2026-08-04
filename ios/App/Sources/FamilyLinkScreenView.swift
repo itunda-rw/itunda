@@ -49,8 +49,7 @@ struct FamilyLinkScreenView: View {
 
                     if showInvite {
                         HStack(spacing: 10) {
-                            TextField("Phone number", text: $childPhone)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Phone number", text: $childPhone)
                             Button(action: { Task { await invite() } }) {
                                 Text(busy ? "…" : "Invite").bold().foregroundColor(.white)
                                     .padding(.horizontal, 16).padding(.vertical, 14)

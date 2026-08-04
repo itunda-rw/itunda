@@ -300,8 +300,7 @@ private struct ReviewReplyCard: View {
                 Text("Your reply: \(ownerReply)").font(.footnote).foregroundColor(.secondary)
             } else if replying {
                 HStack {
-                    TextField("Write a reply…", text: $reply)
-                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                    IdsTextField("Write a reply…", text: $reply)
                     Button(action: { Task { await submit() } }) {
                         Text(submitting ? "…" : "Reply").bold().foregroundColor(.white)
                             .padding(.horizontal, 14).padding(.vertical, 10)
@@ -361,8 +360,7 @@ private struct ProductReviewReplyCard: View {
                 Text("Your reply: \(ownerReply)").font(.footnote).foregroundColor(.secondary)
             } else if replying {
                 HStack {
-                    TextField("Write a reply…", text: $reply)
-                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                    IdsTextField("Write a reply…", text: $reply)
                     Button(action: { Task { await submit() } }) {
                         Text(submitting ? "…" : "Reply").bold().foregroundColor(.white)
                             .padding(.horizontal, 14).padding(.vertical, 10)
@@ -418,10 +416,8 @@ private struct FollowersTab: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(count == nil ? "Loading…" : "\(count!) customer\(count == 1 ? "" : "s") following your store")
                     .font(.subheadline).foregroundColor(.secondary)
-                TextField("Title", text: $title)
-                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                TextField("Tell your followers what's new.", text: $body_)
-                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                IdsTextField("Title", text: $title)
+                IdsTextField("Tell your followers what's new.", text: $body_)
                 if let error { Text(error).font(.caption).foregroundColor(.red) }
                 let hasFollowers = (count ?? 0) > 0
                 Button(action: { Task { await send() } }) {

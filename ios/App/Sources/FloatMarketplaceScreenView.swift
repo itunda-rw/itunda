@@ -106,7 +106,7 @@ struct FloatMarketplaceScreenView: View {
     private var postListingCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Offer surplus float").bold()
-            TextField("Amount to offer (RWF)", text: $listAmount).keyboardType(.decimalPad).padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Amount to offer (RWF)", text: $listAmount, keyboardType: .decimalPad)
             Button(action: { Task { await postListing() } }) {
                 Text(busy ? "Working…" : "Post listing").bold().foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -137,10 +137,10 @@ struct FloatMarketplaceScreenView: View {
                         Text("\(Int(n.remainingAmount)) RWF available").font(.footnote).bold()
                     }
                     HStack {
-                        TextField("Amount to request", text: Binding(
+                        IdsTextField("Amount to request", text: Binding(
                             get: { requestAmounts[n.listing.id] ?? "" },
                             set: { requestAmounts[n.listing.id] = $0 }
-                        )).keyboardType(.decimalPad).padding(8).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                        ), keyboardType: .decimalPad)
                         Button("Request") { Task { await requestFloat(listingId: n.listing.id, remainingAmount: n.remainingAmount) } }
                             .disabled(busy)
                     }

@@ -21,11 +21,8 @@ struct LoginScreen: View {
             Text("Use the itunda account assigned to this store.")
                 .font(.subheadline).foregroundColor(.secondary)
 
-            TextField("Phone number", text: $phoneNumber)
-                .keyboardType(.phonePad)
-                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
-            SecureField("Password", text: $password)
-                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+            IdsTextField("Phone number", text: $phoneNumber, keyboardType: .phonePad)
+            IdsTextField("Password", text: $password, isSecure: true)
 
             if let error {
                 Text(error).foregroundColor(.red).font(.footnote)

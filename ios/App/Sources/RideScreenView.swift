@@ -138,23 +138,17 @@ private struct RidePassengerContent: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Request a ride").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                         HStack(spacing: 8) {
-                            TextField("Pickup", text: $pickupAddress)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Pickup", text: $pickupAddress)
                             Button(action: { locationFetcher.requestLocation() }) {
                                 Text("Use my location").font(.caption).bold()
                                     .padding(.horizontal, 12).padding(.vertical, 14)
                                     .background(Color(.tertiarySystemBackground)).cornerRadius(10)
                             }
                         }
-                        TextField("Dropoff address", text: $dropoffAddress)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        IdsTextField("Dropoff address", text: $dropoffAddress)
                         HStack(spacing: 8) {
-                            TextField("Dropoff latitude", text: $dropoffLat)
-                                .keyboardType(.decimalPad)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                            TextField("Dropoff longitude", text: $dropoffLng)
-                                .keyboardType(.decimalPad)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Dropoff latitude", text: $dropoffLat, keyboardType: .decimalPad)
+                            IdsTextField("Dropoff longitude", text: $dropoffLng, keyboardType: .decimalPad)
                         }
                         ForEach($stops) { $stop in
                             VStack(alignment: .leading, spacing: 6) {
@@ -164,13 +158,10 @@ private struct RidePassengerContent: View {
                                     Button("Remove") { stops.removeAll { $0.id == stop.id } }
                                         .font(.caption).foregroundColor(.red)
                                 }
-                                TextField("Address", text: $stop.address)
-                                    .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                IdsTextField("Address", text: $stop.address)
                                 HStack(spacing: 8) {
-                                    TextField("Latitude", text: $stop.lat).keyboardType(.decimalPad)
-                                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                                    TextField("Longitude", text: $stop.lng).keyboardType(.decimalPad)
-                                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                    IdsTextField("Latitude", text: $stop.lat, keyboardType: .decimalPad)
+                                    IdsTextField("Longitude", text: $stop.lng, keyboardType: .decimalPad)
                                 }
                             }
                             .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
@@ -179,9 +170,7 @@ private struct RidePassengerContent: View {
                             Button("+ Add a stop") { stops.append(RideStopInput()) }
                                 .font(.caption).bold().foregroundColor(IDS.Colors.brand)
                         }
-                        TextField("Schedule for later (hours from now, optional)", text: $scheduleHours)
-                            .keyboardType(.decimalPad)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        IdsTextField("Schedule for later (hours from now, optional)", text: $scheduleHours, keyboardType: .decimalPad)
                         Button(action: { Task { await requestRide() } }) {
                             Text(requesting ? "Requesting…" : (Double(scheduleHours) != nil ? "Schedule ride" : "Request ride"))
                                 .bold().foregroundColor(.white)
@@ -311,8 +300,7 @@ private struct RideReviewRow: View {
                 }
             }
             if rating > 0 {
-                TextField("Comment (optional)", text: $comment)
-                    .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                IdsTextField("Comment (optional)", text: $comment)
                 Button(action: { Task { await onSubmit(rating, comment) } }) {
                     Text(busy ? "Submitting…" : "Submit rating").bold().foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)

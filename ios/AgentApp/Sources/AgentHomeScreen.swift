@@ -187,21 +187,14 @@ private struct CashOperationScreen: View {
             }
 
             if mode == .countTill {
-                TextField("Counted cash (RWF)", text: $amount)
-                    .keyboardType(.numberPad)
-                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                IdsTextField("Counted cash (RWF)", text: $amount, keyboardType: .numberPad)
             } else {
-                TextField("Customer account number", text: $account)
-                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
-                TextField("Amount (RWF)", text: $amount)
-                    .keyboardType(.numberPad)
-                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
-                TextField("Store receipt number", text: $receipt)
-                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                IdsTextField("Customer account number", text: $account)
+                IdsTextField("Amount (RWF)", text: $amount, keyboardType: .numberPad)
+                IdsTextField("Store receipt number", text: $receipt)
                 if mode == .cashOut {
-                    TextField("Customer withdrawal code", text: $code)
+                    IdsTextField("Customer withdrawal code", text: $code)
                         .textInputAutocapitalization(.characters)
-                        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
                         .onChange(of: code) { code = $0.uppercased() }
                     HStack(alignment: .top, spacing: 6) {
                         Button(action: { payoutChecked.toggle() }) {

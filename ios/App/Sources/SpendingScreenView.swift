@@ -186,9 +186,7 @@ private struct SetBudgetForm: View {
             }
             .font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
 
-            TextField("Monthly limit (RWF)", text: $limitText)
-                .keyboardType(.decimalPad)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Monthly limit (RWF)", text: $limitText, keyboardType: .decimalPad)
 
             Button(action: {
                 if let limit = Double(limitText.trimmingCharacters(in: .whitespaces)), limit > 0 {

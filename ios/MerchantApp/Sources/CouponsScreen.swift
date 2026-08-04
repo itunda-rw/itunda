@@ -67,20 +67,15 @@ private struct CreateCouponCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Create a coupon").font(.headline)
-            TextField("Title (e.g. 10% off your next visit)", text: $title)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Description (optional)", text: $description)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField("Title (e.g. 10% off your next visit)", text: $title)
+            IdsTextField("Description (optional)", text: $description)
             Picker("Discount type", selection: $percentType) {
                 Text("Percent off").tag(true)
                 Text("Fixed amount off").tag(false)
             }
             .pickerStyle(.segmented)
-            TextField(percentType ? "Percent (1-100)" : "Amount (RWF)", text: $discountValue)
-                .keyboardType(.decimalPad)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-            TextField("Expires (YYYY-MM-DD, optional)", text: $expiresAt)
-                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+            IdsTextField(percentType ? "Percent (1-100)" : "Amount (RWF)", text: $discountValue, keyboardType: .decimalPad)
+            IdsTextField("Expires (YYYY-MM-DD, optional)", text: $expiresAt)
             Toggle("Reserve for regular customers only (3+ past payments)", isOn: $regularsOnly)
                 .font(.footnote)
             if let error {

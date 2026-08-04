@@ -88,9 +88,7 @@ struct VupLoanScreenView: View {
                                         }
                                     }
                                 }
-                                TextField("Loan amount (RWF, up to \(Int(eligibility.maxAmount)))", text: $amount)
-                                    .keyboardType(.numberPad)
-                                    .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                IdsTextField("Loan amount (RWF, up to \(Int(eligibility.maxAmount)))", text: $amount, keyboardType: .numberPad)
                                 Button(action: { Task { await apply() } }) {
                                     Text(busyId == "apply" ? "Applying…" : "Apply").bold().foregroundColor(.white)
                                         .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -131,12 +129,10 @@ struct VupLoanScreenView: View {
                                             .disabled(busyId != nil)
                                         }
                                         if loan.status == "DISBURSED" || loan.status == "OVERDUE" {
-                                            TextField("Repayment amount (RWF)", text: Binding(
+                                            IdsTextField("Repayment amount (RWF)", text: Binding(
                                                 get: { repayAmounts[loan.id] ?? "" },
                                                 set: { repayAmounts[loan.id] = $0 }
-                                            ))
-                                            .keyboardType(.numberPad)
-                                            .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                                            ), keyboardType: .numberPad)
                                             Button(action: { Task { await repay(loan.id) } }) {
                                                 Text(busyId == loan.id ? "…" : "Repay").bold().font(.footnote).foregroundColor(IDS.Colors.textPrimary)
                                                     .frame(maxWidth: .infinity).padding(.vertical, 10)

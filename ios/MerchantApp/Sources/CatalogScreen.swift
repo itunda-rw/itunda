@@ -25,12 +25,12 @@ struct CatalogTab: View {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Add a product").bold()
-                    TextField("Name", text: $name).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
-                    TextField("Price (RWF)", text: $price).keyboardType(.numberPad).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
-                    TextField("Original price (optional, for a sale)", text: $originalPrice).keyboardType(.numberPad).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
-                    TextField("Public image URL (optional)", text: $imageUrl).keyboardType(.URL).textInputAutocapitalization(.never).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    IdsTextField("Name", text: $name)
+                    IdsTextField("Price (RWF)", text: $price, keyboardType: .numberPad)
+                    IdsTextField("Original price (optional, for a sale)", text: $originalPrice, keyboardType: .numberPad)
+                    IdsTextField("Public image URL (optional)", text: $imageUrl, keyboardType: .URL).textInputAutocapitalization(.never)
                     TextField("Description (optional)", text: $description, axis: .vertical).lineLimit(2...4).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
-                    TextField("Stock (optional — blank means unlimited)", text: $stockQuantity).keyboardType(.numberPad).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    IdsTextField("Stock (optional — blank means unlimited)", text: $stockQuantity, keyboardType: .numberPad)
                     if let error {
                         Text(error).foregroundColor(.red).font(.footnote)
                     }
@@ -104,8 +104,7 @@ struct CatalogTab: View {
             get: { stockProduct != nil },
             set: { if !$0 { stockProduct = nil } }
         )) {
-            TextField("Available units (blank = unlimited)", text: $stockDraft)
-                .keyboardType(.numberPad)
+            IdsTextField("Available units (blank = unlimited)", text: $stockDraft, keyboardType: .numberPad)
             Button("Save") {
                 guard let product = stockProduct else { return }
                 let stock = stockDraft.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty.flatMap(Int.init)
@@ -236,15 +235,11 @@ private struct ProductOptionsView: View {
                     }
 
                     Text("Add an option group").bold().font(.subheadline)
-                    TextField("Group name (e.g. Size)", text: $groupName)
-                        .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                    IdsTextField("Group name (e.g. Size)", text: $groupName)
                     ForEach(choiceRows.indices, id: \.self) { i in
                         HStack {
-                            TextField("Choice", text: Binding(get: { choiceRows[i].name }, set: { choiceRows[i].name = $0 }))
-                                .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
-                            TextField("+RWF", text: Binding(get: { choiceRows[i].priceDelta }, set: { choiceRows[i].priceDelta = $0 }))
-                                .keyboardType(.numberPad)
-                                .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                            IdsTextField("Choice", text: Binding(get: { choiceRows[i].name }, set: { choiceRows[i].name = $0 }))
+                            IdsTextField("+RWF", text: Binding(get: { choiceRows[i].priceDelta }, set: { choiceRows[i].priceDelta = $0 }), keyboardType: .numberPad)
                         }
                     }
                     Button("Add another choice") { choiceRows.append(("", "0")) }
@@ -338,12 +333,8 @@ private struct PriceTiersView: View {
                     if loaded {
                         ForEach(tierRows.indices, id: \.self) { i in
                             HStack {
-                                TextField("Min qty", text: Binding(get: { tierRows[i].minQuantity }, set: { tierRows[i].minQuantity = $0 }))
-                                    .keyboardType(.numberPad)
-                                    .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
-                                TextField("Price each (RWF)", text: Binding(get: { tierRows[i].unitPrice }, set: { tierRows[i].unitPrice = $0 }))
-                                    .keyboardType(.numberPad)
-                                    .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                                IdsTextField("Min qty", text: Binding(get: { tierRows[i].minQuantity }, set: { tierRows[i].minQuantity = $0 }), keyboardType: .numberPad)
+                                IdsTextField("Price each (RWF)", text: Binding(get: { tierRows[i].unitPrice }, set: { tierRows[i].unitPrice = $0 }), keyboardType: .numberPad)
                             }
                         }
                     } else {

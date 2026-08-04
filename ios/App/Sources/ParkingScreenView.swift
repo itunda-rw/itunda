@@ -215,11 +215,8 @@ private struct ParkingMineContent: View {
                     Text("List a spot you own").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                     Text("Any itunda user can list a driveway or private lot space into the shared rental pool.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    TextField("Address", text: $address)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                    TextField("Hourly rate (RWF)", text: $hourlyRate)
-                        .keyboardType(.decimalPad)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                    IdsTextField("Address", text: $address)
+                    IdsTextField("Hourly rate (RWF)", text: $hourlyRate, keyboardType: .decimalPad)
                     Button(action: { Task { await register() } }) {
                         Text(registering ? "Registering…" : "List at my current location").bold().foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)

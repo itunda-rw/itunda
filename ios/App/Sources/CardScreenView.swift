@@ -69,10 +69,8 @@ struct CardScreenView: View {
                                 Text("Today: \(formatMoney(card.spentToday)) / \(formatMoney(card.dailyLimit)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 Text("This month: \(formatMoney(card.spentThisMonth)) / \(formatMoney(card.monthlyLimit)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 HStack(spacing: 8) {
-                                    TextField("Daily limit", text: $dailyLimitInput).keyboardType(.numberPad)
-                                        .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
-                                    TextField("Monthly limit", text: $monthlyLimitInput).keyboardType(.numberPad)
-                                        .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                                    IdsTextField("Daily limit", text: $dailyLimitInput, keyboardType: .numberPad)
+                                    IdsTextField("Monthly limit", text: $monthlyLimitInput, keyboardType: .numberPad)
                                 }
                                 CardActionButton(title: "Save limits", disabled: busy, action: saveLimits)
                             }
@@ -85,10 +83,8 @@ struct CardScreenView: View {
                                 if let chargeMessage {
                                     Text(chargeMessage).font(.caption).foregroundColor(chargeMessage.hasPrefix("Paid") ? .green : .red)
                                 }
-                                TextField("Merchant name", text: $merchantName)
-                                    .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
-                                TextField("Amount (RWF)", text: $chargeAmount).keyboardType(.numberPad)
-                                    .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                                IdsTextField("Merchant name", text: $merchantName)
+                                IdsTextField("Amount (RWF)", text: $chargeAmount, keyboardType: .numberPad)
                                 CardActionButton(title: card.frozen ? "Card is frozen" : (busy ? "Paying…" : "Pay"), disabled: busy || card.frozen, action: charge)
                             }
                             .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(16)

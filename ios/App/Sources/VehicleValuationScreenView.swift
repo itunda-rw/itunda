@@ -55,21 +55,12 @@ struct VehicleValuationScreenView: View {
 
                     if showCreate {
                         VStack(spacing: 8) {
-                            TextField("Make (e.g. Toyota)", text: $make)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                            TextField("Model (e.g. RAV4)", text: $model)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                            TextField("Model year", text: $modelYear)
-                                .keyboardType(.numberPad)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                            TextField("Purchase price (RWF)", text: $purchasePrice)
-                                .keyboardType(.decimalPad)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                            TextField("Purchase date (YYYY-MM-DD)", text: $purchaseDate)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                            TextField("Current mileage (km)", text: $mileageKm)
-                                .keyboardType(.numberPad)
-                                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Make (e.g. Toyota)", text: $make)
+                            IdsTextField("Model (e.g. RAV4)", text: $model)
+                            IdsTextField("Model year", text: $modelYear, keyboardType: .numberPad)
+                            IdsTextField("Purchase price (RWF)", text: $purchasePrice, keyboardType: .decimalPad)
+                            IdsTextField("Purchase date (YYYY-MM-DD)", text: $purchaseDate)
+                            IdsTextField("Current mileage (km)", text: $mileageKm, keyboardType: .numberPad)
                             if let error {
                                 Text(error).font(.caption).foregroundColor(.red)
                             }
@@ -133,7 +124,7 @@ struct VehicleValuationScreenView: View {
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await load() }
         .alert("Update mileage", isPresented: Binding(get: { editingMileageVehicle != nil }, set: { if !$0 { editingMileageVehicle = nil } })) {
-            TextField("Current mileage (km)", text: $editMileageText).keyboardType(.numberPad)
+            IdsTextField("Current mileage (km)", text: $editMileageText, keyboardType: .numberPad)
             Button("Cancel", role: .cancel) {}
             Button("Save") {
                 if let v = editingMileageVehicle, let mileage = Int(editMileageText), mileage >= 0 {

@@ -63,12 +63,8 @@ struct MotoOwnershipScreenView: View {
                                 Text("You already have an active moto-taxi ownership plan -- complete or cancel it before starting another.")
                                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             } else {
-                                TextField("Bike price (RWF, 300,000-2,500,000)", text: $bikePrice)
-                                    .keyboardType(.numberPad)
-                                    .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                                TextField("Daily contribution (RWF)", text: $dailyContribution)
-                                    .keyboardType(.numberPad)
-                                    .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                IdsTextField("Bike price (RWF, 300,000-2,500,000)", text: $bikePrice, keyboardType: .numberPad)
+                                IdsTextField("Daily contribution (RWF)", text: $dailyContribution, keyboardType: .numberPad)
                                 if let previewDownPayment {
                                     Text("Down payment target (30%): \(formatMoneyMoto(previewDownPayment)) RWF")
                                         .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
@@ -111,12 +107,10 @@ struct MotoOwnershipScreenView: View {
                                                 }
                                             }
                                             .frame(height: 6)
-                                            TextField("Contribution amount (RWF)", text: Binding(
+                                            IdsTextField("Contribution amount (RWF)", text: Binding(
                                                 get: { contributeAmounts[plan.id] ?? "" },
                                                 set: { contributeAmounts[plan.id] = $0 }
-                                            ))
-                                            .keyboardType(.numberPad)
-                                            .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                                            ), keyboardType: .numberPad)
                                             HStack(spacing: 8) {
                                                 Button(action: { Task { await contribute(plan.id) } }) {
                                                     Text(busyId == plan.id ? "Saving…" : "Contribute").bold().font(.footnote).foregroundColor(IDS.Colors.textPrimary)
@@ -145,12 +139,10 @@ struct MotoOwnershipScreenView: View {
                                         if plan.status == "LOAN_ACTIVE" {
                                             Text("Loan outstanding: \(formatMoneyMoto(plan.loanOutstanding)) RWF")
                                                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
-                                            TextField("Repayment amount (RWF)", text: Binding(
+                                            IdsTextField("Repayment amount (RWF)", text: Binding(
                                                 get: { repayAmounts[plan.id] ?? "" },
                                                 set: { repayAmounts[plan.id] = $0 }
-                                            ))
-                                            .keyboardType(.numberPad)
-                                            .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                                            ), keyboardType: .numberPad)
                                             Button(action: { Task { await repay(plan.id) } }) {
                                                 Text(busyId == plan.id ? "Repaying…" : "Repay").bold().font(.footnote).foregroundColor(IDS.Colors.textPrimary)
                                                     .frame(maxWidth: .infinity).padding(.vertical, 10)

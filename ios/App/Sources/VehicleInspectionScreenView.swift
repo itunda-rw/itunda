@@ -60,8 +60,7 @@ private struct InspectionBuyerContent: View {
                     Text("Book an inspection").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                     Text("Pay a local mechanic to inspect a used car before you buy it — held until they deliver their findings.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    TextField("Listing ID", text: $listingId)
-                        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    IdsTextField("Listing ID", text: $listingId)
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Mechanic").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         ForEach(mechanics, id: \.id) { m in
@@ -79,12 +78,8 @@ private struct InspectionBuyerContent: View {
                             EmptyStateView("No mechanics available right now.")
                         }
                     }
-                    TextField("Inspection fee (RWF)", text: $fee)
-                        .keyboardType(.decimalPad)
-                        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
-                    TextField("Hours from now", text: $scheduleHours)
-                        .keyboardType(.decimalPad)
-                        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    IdsTextField("Inspection fee (RWF)", text: $fee, keyboardType: .decimalPad)
+                    IdsTextField("Hours from now", text: $scheduleHours, keyboardType: .decimalPad)
                     if let error {
                         Text(error).font(.footnote).foregroundColor(.red)
                     }
@@ -196,8 +191,7 @@ private struct InspectionMechanicContent: View {
             Text("Become an inspection mechanic").font(.headline).foregroundColor(IDS.Colors.textPrimary)
             Text("Get booked and paid to inspect used cars for real buyers before they purchase.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            TextField("Business name", text: $businessName)
-                .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+            IdsTextField("Business name", text: $businessName)
             if let error {
                 Text(error).font(.footnote).foregroundColor(.red)
             }
@@ -249,11 +243,10 @@ private struct InspectionMechanicContent: View {
                                 .disabled(busyBookingId == b.id)
                             }
                             if b.status == "ACCEPTED" {
-                                TextField("Inspection findings", text: Binding(
+                                IdsTextField("Inspection findings", text: Binding(
                                     get: { findingsByBooking[b.id] ?? "" },
                                     set: { findingsByBooking[b.id] = $0 }
                                 ))
-                                .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
                                 Button(action: { Task { await complete(b.id) } }) {
                                     Text(busyBookingId == b.id ? "Completing…" : "Mark complete").bold().foregroundColor(.white)
                                         .padding(.horizontal, 14).padding(.vertical, 8)

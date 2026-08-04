@@ -32,8 +32,7 @@ private struct TableQrGeneratorView: View {
             Text("Print this and leave it on a table -- a customer scans it to order straight to that table.")
                 .font(.footnote).foregroundColor(.secondary)
             HStack {
-                TextField("Table number", text: $tableNumber)
-                    .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                IdsTextField("Table number", text: $tableNumber)
                 Button("Generate") { qrContent = dineInTableQrPayload(restaurantId: restaurantId, tableNumber: tableNumber.trimmingCharacters(in: .whitespaces)) }
                     .disabled(tableNumber.trimmingCharacters(in: .whitespaces).isEmpty)
             }

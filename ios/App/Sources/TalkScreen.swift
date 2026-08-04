@@ -222,11 +222,7 @@ private struct DirectMessagesList: View {
                         }
                     }
                     HStack {
-                        TextField("+250788123456", text: $newChatPhone)
-                            .keyboardType(.phonePad)
-                            .padding(12)
-                            .background(IDS.Colors.chipBackground)
-                            .cornerRadius(12)
+                        IdsTextField("+250788123456", text: $newChatPhone, keyboardType: .phonePad)
                         Button(action: { Task { await startConversation() } }) {
                             Text(starting ? "..." : "Chat")
                                 .font(IDS.Typography.bodyBold)
@@ -343,14 +339,8 @@ private struct GroupsList: View {
                     Text("A group name and everyone's real phone number, comma-separated.")
                         .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                         .foregroundColor(IDS.Colors.textSecondary)
-                    TextField("Group name", text: $name)
-                        .padding(12)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(12)
-                    TextField("+250788123456, +250788987654", text: $phoneNumbers)
-                        .padding(12)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(12)
+                    IdsTextField("Group name", text: $name)
+                    IdsTextField("+250788123456, +250788987654", text: $phoneNumbers)
                     Button(action: { Task { await createGroup() } }) {
                         Text(creating ? "Creating…" : "Create group")
                             .font(IDS.Typography.bodyBold)
@@ -691,7 +681,7 @@ private struct GroupThreadScreen: View {
                 }
                 .disabled(uploadingPhoto)
                 .accessibilityLabel("Attach")
-                TextField("Message", text: Binding(
+                IdsTextField("Message", text: Binding(
                     get: { draft },
                     set: { newValue in
                         draft = newValue
@@ -703,9 +693,6 @@ private struct GroupThreadScreen: View {
                         }
                     }
                 ))
-                    .padding(12)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(14)
                 Button(action: { Task { await send() } }) {
                     Image(systemName: "paperplane.fill")
                         .foregroundColor(.white)
@@ -1073,8 +1060,8 @@ private struct GroupSplitBillsView: View {
                         }
                     } else {
                         VStack(alignment: .leading, spacing: 8) {
-                            TextField("Total amount (RWF)", text: $amountText).keyboardType(.numberPad).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
-                            TextField("What was it for?", text: $descriptionText).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                            IdsTextField("Total amount (RWF)", text: $amountText, keyboardType: .numberPad)
+                            IdsTextField("What was it for?", text: $descriptionText)
                             Text("Split with").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             ForEach(otherMembers) { member in
                                 HStack {
@@ -1142,10 +1129,10 @@ private struct GroupSplitBillsView: View {
                                 }
                                 if isOrganizer && entry.splitBill.receiptImageUrl == nil {
                                     HStack(spacing: 6) {
-                                        TextField("Receipt photo URL", text: Binding(
+                                        IdsTextField("Receipt photo URL", text: Binding(
                                             get: { receiptUrlDrafts[entry.splitBill.id] ?? "" },
                                             set: { receiptUrlDrafts[entry.splitBill.id] = $0 }
-                                        )).font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                                        ))
                                         Button(action: { Task { await attachReceipt(entry.splitBill.id) } }) {
                                             Text("Attach").font(.caption).bold().padding(.horizontal, 12).padding(.vertical, 8)
                                                 .background(IDS.Colors.chipBackground).cornerRadius(8)
@@ -1267,10 +1254,8 @@ private struct GroupManageMembersView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     Text("Group info").bold()
-                    TextField("Photo URL (blank to clear)", text: $photoUrl)
-                        .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
-                    TextField("Group description (blank to clear)", text: $groupDescription)
-                        .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                    IdsTextField("Photo URL (blank to clear)", text: $photoUrl)
+                    IdsTextField("Group description (blank to clear)", text: $groupDescription)
                     Button(action: { Task { await saveInfo() } }) {
                         Text(savingInfo ? "Saving…" : (infoSaved ? "Saved" : "Save group info")).bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
                     }
@@ -1443,8 +1428,7 @@ private struct ChatThreadScreen: View {
             }
 
             HStack(spacing: 8) {
-                TextField("Search this conversation", text: $searchQuery)
-                    .padding(9).background(IDS.Colors.chipBackground).cornerRadius(8)
+                IdsTextField("Search this conversation", text: $searchQuery)
                 Button(searching ? "…" : "Search") { Task { await search() } }
                     .disabled(searching || searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
             }
@@ -1536,15 +1520,8 @@ private struct ChatThreadScreen: View {
             if giftComposerOpen {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("🎁 Send a gift").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                    TextField("Amount (RWF)", text: $giftAmount)
-                        .keyboardType(.numberPad)
-                        .padding(10)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(8)
-                    TextField("Add a note (optional)", text: $giftNote)
-                        .padding(10)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(8)
+                    IdsTextField("Amount (RWF)", text: $giftAmount, keyboardType: .numberPad)
+                    IdsTextField("Add a note (optional)", text: $giftNote)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
                             ForEach([(nil as String?, "No theme")] + giftThemeLabels.sorted(by: { $0.key < $1.key }).map { ($0.key as String?, $0.value) }, id: \.0) { value, label in
@@ -1626,7 +1603,7 @@ private struct ChatThreadScreen: View {
                 }
                 .disabled(uploadingPhoto)
                 .accessibilityLabel("Attach")
-                TextField("Message", text: Binding(
+                IdsTextField("Message", text: Binding(
                     get: { draft },
                     set: { newValue in
                         draft = newValue
@@ -1640,9 +1617,6 @@ private struct ChatThreadScreen: View {
                         }
                     }
                 ))
-                    .padding(12)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(14)
                 Button(action: { Task { await send() } }) {
                     Image(systemName: "paperplane.fill")
                         .foregroundColor(.white)
@@ -2045,12 +2019,7 @@ private struct OfferBubble: View {
             }
             if canRespond && countering {
                 HStack(spacing: 6) {
-                    TextField("Counter (RWF)", text: $counterAmount)
-                        .keyboardType(.numberPad)
-                        .font(.caption)
-                        .padding(6)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(8)
+                    IdsTextField("Counter (RWF)", text: $counterAmount, keyboardType: .numberPad)
                         .frame(width: 100)
                     offerActionButton("Send") {
                         guard let amount = Double(counterAmount) else { return }
@@ -2222,11 +2191,7 @@ private struct GiftVoucherComposerPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("🎟️ Send a gift voucher").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-            TextField("Recipient phone number", text: $phone)
-                .keyboardType(.phonePad)
-                .padding(10)
-                .background(IDS.Colors.card)
-                .cornerRadius(8)
+            IdsTextField("Recipient phone number", text: $phone, keyboardType: .phonePad)
 
             if let selected {
                 HStack {
@@ -2241,10 +2206,7 @@ private struct GiftVoucherComposerPanel: View {
                 .cornerRadius(8)
             } else {
                 HStack(spacing: 8) {
-                    TextField("Search a product to gift", text: $query)
-                        .padding(10)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(8)
+                    IdsTextField("Search a product to gift", text: $query)
                     Button(action: { Task { await search() } }) {
                         Text(searching ? "…" : "Search").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                             .padding(.horizontal, 10).padding(.vertical, 8)
@@ -2474,10 +2436,7 @@ private struct EmoticonStoreView: View {
                                 }
                                 if giftingPackId == pack.id {
                                     HStack {
-                                        TextField("Recipient phone number", text: $giftPhone)
-                                            .padding(8)
-                                            .background(IDS.Colors.card)
-                                            .cornerRadius(8)
+                                        IdsTextField("Recipient phone number", text: $giftPhone)
                                         Button(action: { Task { await gift(pack.id) } }) {
                                             Text(busyPackId == pack.id ? "…" : "Send gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
                                                 .padding(.horizontal, 10).padding(.vertical, 6)
@@ -2637,7 +2596,7 @@ private struct MessageBubble: View {
             }
         }
         .alert("Report message", isPresented: $reportOpen) {
-            TextField("Reason", text: $reportReason)
+            IdsTextField("Reason", text: $reportReason)
             Button("Send") {
                 let trimmed = reportReason.trimmingCharacters(in: .whitespacesAndNewlines)
                 if trimmed.count >= 3 { onReportMessage(message.id, trimmed); reportReason = "" }

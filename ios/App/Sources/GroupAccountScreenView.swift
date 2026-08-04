@@ -53,8 +53,7 @@ private struct GroupAccountListContent: View {
         VStack(spacing: 10) {
             if showCreate {
                 VStack(spacing: 8) {
-                    TextField("Group name (e.g. Roommates)", text: $name)
-                        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    IdsTextField("Group name (e.g. Roommates)", text: $name)
                     HStack(spacing: 8) {
                         Button("Cancel") { showCreate = false; name = "" }
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -186,9 +185,7 @@ private struct GroupAccountDetailContent: View {
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text(isOwner ? "Deposit or withdraw" : "Deposit").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-                            TextField("Amount (RWF)", text: $amount)
-                                .keyboardType(.numberPad)
-                                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                            IdsTextField("Amount (RWF)", text: $amount, keyboardType: .numberPad)
                             HStack(spacing: 8) {
                                 Button(action: { Task { await deposit() } }) {
                                     Text(busy ? "…" : "Deposit").bold().foregroundColor(.white)
@@ -213,9 +210,7 @@ private struct GroupAccountDetailContent: View {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Invite a member").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                 HStack(spacing: 8) {
-                                    TextField("Phone number", text: $phoneNumber)
-                                        .keyboardType(.phonePad)
-                                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                    IdsTextField("Phone number", text: $phoneNumber, keyboardType: .phonePad)
                                     Button(action: { Task { await invite() } }) {
                                         Text(busy ? "…" : "Invite").bold().foregroundColor(.white)
                                             .padding(.horizontal, 16).padding(.vertical, 12)
@@ -289,9 +284,7 @@ private struct GroupAccountDetailContent: View {
                     }
                 } else if isOwner {
                     HStack(spacing: 8) {
-                        TextField("Monthly dues (RWF)", text: $duesAmountInput)
-                            .keyboardType(.numberPad)
-                            .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                        IdsTextField("Monthly dues (RWF)", text: $duesAmountInput, keyboardType: .numberPad)
                         Button(action: { if let amt = Double(duesAmountInput) { Task { await setDues(amt) } } }) {
                             Text(duesBusy ? "…" : "Set").bold().foregroundColor(.white)
                                 .padding(.horizontal, 16).padding(.vertical, 10)

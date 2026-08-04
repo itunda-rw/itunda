@@ -48,17 +48,14 @@ struct MiniWalletScreenView: View {
                     case .needsBirthDate:
                         Text("Enter your birth date to check eligibility.")
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        TextField("Birth date (YYYY-MM-DD)", text: $birthDate)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        IdsTextField("Birth date (YYYY-MM-DD)", text: $birthDate)
                         MiniWalletActionButton(title: busy ? "Checking…" : "Continue", disabled: busy, action: submitBirthDateAndOpen)
                     case .open:
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(formatMoney(wallet?.balance ?? 0)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)
                             Text(wallet?.accountNumber ?? "").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         }
-                        TextField("Amount (RWF)", text: $amount)
-                            .keyboardType(.numberPad)
-                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        IdsTextField("Amount (RWF)", text: $amount, keyboardType: .numberPad)
                         MiniWalletActionButton(title: busy ? "Adding…" : "Add money", disabled: busy, action: deposit)
                     }
                 }

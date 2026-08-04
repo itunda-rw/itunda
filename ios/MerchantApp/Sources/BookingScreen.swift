@@ -64,10 +64,8 @@ private struct AvailabilityEditor: View {
                     }
                 }
                 HStack {
-                    TextField("Start (HH:mm)", text: $start)
-                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
-                    TextField("End (HH:mm)", text: $end)
-                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                    IdsTextField("Start (HH:mm)", text: $start)
+                    IdsTextField("End (HH:mm)", text: $end)
                 }
                 if let error {
                     Text(error).font(.footnote).foregroundColor(.red)

@@ -100,11 +100,8 @@ private struct CreateRequestCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("New request").bold()
-            TextField("Amount (RWF)", text: $amountText)
-                .keyboardType(.decimalPad)
-                .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
-            TextField("What's it for? (optional)", text: $description)
-                .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+            IdsTextField("Amount (RWF)", text: $amountText, keyboardType: .decimalPad)
+            IdsTextField("What's it for? (optional)", text: $description)
             if let error { Text(error).font(.caption).foregroundColor(.red) }
             Button(action: { Task { await submit() } }) {
                 Text(submitting ? "Creating…" : "Create request").bold().foregroundColor(.white)
@@ -151,8 +148,7 @@ private struct PayRequestCard: View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Pay a request").bold()
-                TextField("Request code", text: $code)
-                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                IdsTextField("Request code", text: $code)
                 if let error { Text(error).font(.caption).foregroundColor(.red) }
                 Button(action: { Task { await pay() } }) {
                     Text(paying ? "Paying…" : "Pay").bold().foregroundColor(.white)

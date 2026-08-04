@@ -61,10 +61,8 @@ private struct BusRideContent: View {
                     Text(error).font(.footnote).foregroundColor(.red)
                 }
                 VStack(alignment: .leading, spacing: 8) {
-                    TextField("From", text: $origin)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                    TextField("To", text: $destination)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                    IdsTextField("From", text: $origin)
+                    IdsTextField("To", text: $destination)
                     Button(action: { Task { await search() } }) {
                         Text("Search").bold().foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
@@ -85,12 +83,10 @@ private struct BusRideContent: View {
                                 Text("\(formatMoneyBus(trip.farePerSeat)) RWF/seat · \(trip.availableSeats) seat(s) left")
                                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                 HStack {
-                                    TextField("Seats", text: Binding(
+                                    IdsTextField("Seats", text: Binding(
                                         get: { seatCounts[trip.id] ?? "1" },
                                         set: { seatCounts[trip.id] = $0 }
-                                    ))
-                                    .keyboardType(.numberPad)
-                                    .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                                    ), keyboardType: .numberPad)
                                     .frame(width: 60)
                                     Button(action: { Task { await bookSeats(trip.id) } }) {
                                         Text(busyTripId == trip.id ? "…" : "Book seats").bold().foregroundColor(.white)
@@ -197,19 +193,11 @@ private struct BusOperateContent: View {
                     Text("Post a route").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                     Text("Any itunda user can post a scheduled trip -- no transport-licensing check.")
                         .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    TextField("Origin", text: $origin)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                    TextField("Destination", text: $destination)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                    TextField("Departs in (hours from now)", text: $departureHours)
-                        .keyboardType(.decimalPad)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                    TextField("Total seats", text: $totalSeats)
-                        .keyboardType(.numberPad)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
-                    TextField("Fare per seat (RWF)", text: $farePerSeat)
-                        .keyboardType(.decimalPad)
-                        .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                    IdsTextField("Origin", text: $origin)
+                    IdsTextField("Destination", text: $destination)
+                    IdsTextField("Departs in (hours from now)", text: $departureHours, keyboardType: .decimalPad)
+                    IdsTextField("Total seats", text: $totalSeats, keyboardType: .numberPad)
+                    IdsTextField("Fare per seat (RWF)", text: $farePerSeat, keyboardType: .decimalPad)
                     Button(action: { Task { await postTrip() } }) {
                         Text(posting ? "Posting…" : "Post route").bold().foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
