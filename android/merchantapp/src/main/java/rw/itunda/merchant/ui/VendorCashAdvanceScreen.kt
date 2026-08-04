@@ -8,10 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -159,9 +158,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Button(onClick = ::apply, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (busy) "Applying…" else "Apply for this advance")
-                    }
+                    IdsButton(text = if (busy) "Applying…" else "Apply for this advance", enabled = !busy, onClick = ::apply)
                 }
             }
         }
@@ -186,9 +183,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Button(onClick = { disburse(currentAdvance.id) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (busy) "Disbursing…" else "Disburse to my wallet")
-                    }
+                    IdsButton(text = if (busy) "Disbursing…" else "Disburse to my wallet", enabled = !busy, onClick = { disburse(currentAdvance.id) })
                 }
             }
         }
@@ -223,9 +218,7 @@ fun VendorCashAdvanceTab(merchantId: String) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Repay early", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
-                    Button(onClick = { repayEarly(currentAdvance.id) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (busy) "Repaying…" else "Repay now")
-                    }
+                    IdsButton(text = if (busy) "Repaying…" else "Repay now", enabled = !busy, onClick = { repayEarly(currentAdvance.id) })
                 }
             }
         }
