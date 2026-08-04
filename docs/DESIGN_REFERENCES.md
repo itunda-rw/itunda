@@ -1050,14 +1050,18 @@ backend) so every recommendation below cites a real file, not a hypothetical.
    authenticated when they see the in-app notification, same limitation the recommendation itself
    anticipated. No client UI touchpoint yet on any of the 3 clients' registration screens.
 
-2. **[sourced]** Reuse itunda's own existing biometric primitive as a login/app-launch quick-unlock,
-   not just a transaction step-up gate. Toss's real login credential is a 6-digit PIN or Face ID,
-   never a conventional password — itunda already built the exact crypto/Keystore plumbing this
-   needs (`NIDABiometricAuth.kt`/`.swift`) and already uses it for transfers; extending it to gate
-   app-launch/resume (on top of an already-issued session token, not a full re-login) is almost
-   pure reuse, no new external dependency, no schema change.
-   *Target: `NIDABiometricAuth.kt`/`.swift` (existing), new call site at app launch/foreground in
-   `ItundaAppScreen.kt`/`ContentView.swift`, a settings toggle to enable/disable*
+2. **[sourced] Implemented -- doc was stale, corrected 2026-08-05.** Reuse itunda's own
+   existing biometric primitive as a login/app-launch quick-unlock, not just a
+   transaction step-up gate. This was actually built 2026-07-21, two weeks before this
+   correction -- the recommendation just never got marked closed. Real, fully wired on
+   both native apps: `AppLockScreen.kt`/`AppLockScreenView.swift` gate entry into the
+   app once per process launch (checked in `MainActivity.kt`/`ItundaApp.swift`),
+   backed by `TokenStore.isAppLockEnabled()`/`KeychainTokenStore.isAppLockEnabled()`
+   with a real toggle in `SettingsScreen.kt`/`SettingsScreen.swift`, reusing
+   `NIDABiometricAuth`'s already-real Keystore/BiometricPrompt plumbing -- no new
+   crypto, no schema change, matching exactly what this recommendation asked for. Not
+   applicable to bank-mfe (a browser tab has no native biometric-gate equivalent to
+   this).
 
 3. **[implemented, backend, correction 2026-07-26]** This description was already stale when
    written -- checking the code directly found `IdentityService` did NOT reject `PASSPORT`
