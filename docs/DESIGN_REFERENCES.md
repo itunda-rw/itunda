@@ -331,10 +331,18 @@ they close in itunda's current implementation.
 
 2. **[implemented]** Direct messages now show a Kakao-style pending-read `1` and message timestamps across all clients. Group receipts now have a true per-member model too (2026-07-26): a live per-message unread countdown built on the existing per-member `lastReadAt` cursor — backend-only so far, no client UI touchpoint yet.
 
-3. **[sourced]** Add a long-press message menu: reply/thread, forward, pin, delete. itunda's only
-   per-message interaction today is tap-to-toggle a reaction (`MessageReactionsRow`). Kakao's
-   confirmed 2025 toolkit is Copy/Reply (→ thread)/Forward (≤10 destinations)/Pin/Delete/@mention
-   — none of this exists in `ChatThreadView`/`GroupThreadView`.
+3. **[sourced] Partially implemented 2026-08-04.** Add a long-press message menu: reply/thread,
+   forward, pin, delete. Kakao's confirmed 2025 toolkit is Copy/Reply (→ thread)/Forward (≤10
+   destinations)/Pin/Delete/@mention. Real finding on inspection: itunda's Reply/Pin/Delete/Report
+   already existed (backend-complete) but as permanently-visible `TextButton`s under every bubble,
+   not a long-press menu -- a real UX-pattern mismatch, not a missing-capability one. Both
+   `MessageBubble`/`GroupMessageBubble` now use `combinedClickable(onLongClick)` + a real
+   `DropdownMenu`. Copy is new (real `LocalClipboardManager`). **Forward (≤10 destinations) and
+   Thread (reply expanding into its own sub-conversation) remain genuinely unbuilt** -- both need
+   new backend concepts (a forward-to-conversation endpoint; a thread/sub-conversation model) itunda
+   doesn't have yet.
+   *Target for the remaining work: a new `POST .../forward` endpoint + destination picker; a real
+   thread/sub-conversation model, likely its own migration*
 
 4. **[partially implemented]** Talk has private, durable quiet-room controls and suppresses notifications for the participant who enables one. Recoverable archive/list placement and conversation-list swipe actions remain.
 
@@ -347,12 +355,18 @@ they close in itunda's current implementation.
    or sticker send at all. Kakao's emoticon picker alone is core, monetized product surface (~1/3
    of 2020 revenue), not a nice-to-have.
 
-7. **[implemented, backend]** @mention support in group chats is real (`GroupMessagingService
-   .parseMentions`, 2026-07-25): `@FirstName` tokens resolve against real group members and
-   trigger a distinctly-titled `GROUP_MENTION` notification. Group-chat pin is also now real
-   (2026-07-26), matching 1:1's own pin. UI affordance to actually type/select a mention or
-   trigger pin from a long-press menu is still missing on every client — see item 3.
-   *Target: `GroupThreadView` header/composer, `GroupMessageBubble` (~500-676)*
+7. **[implemented, backend; pin UI closed 2026-08-04]** @mention support in group chats is real
+   (`GroupMessagingService.parseMentions`, 2026-07-25): `@FirstName` tokens resolve against real
+   group members and trigger a distinctly-titled `GROUP_MENTION` notification. Group-chat pin is
+   also now real (2026-07-26), matching 1:1's own pin. **Pin's UI affordance was closed alongside
+   item 3's long-press menu**: `GroupMessagingController`'s real `/{groupId}/pin` endpoints had no
+   Retrofit client method or UI anywhere until now (the same "defined but uncalled" pattern this
+   file's own history already names for group emoticons) -- added
+   `getPinnedGroupMessage`/`pinGroupMessage`/`unpinGroupMessage` mirroring 1:1's exact shape, plus a
+   pinned-message banner in `GroupThreadView`. Live-verified end-to-end against the real dev
+   backend (pin -> real GET reflects it -> unpin -> real GET returns null again). **@mention's own
+   UI affordance (typing/selecting a mention in the composer) remains genuinely open.**
+   *Target: `GroupThreadView` composer for @mention*
 
 8. **[implemented]** Per-message timestamps now appear in direct and group threads across all clients.
 
