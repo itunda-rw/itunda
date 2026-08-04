@@ -45,6 +45,7 @@ import rw.itunda.core.network.WeeklySavingsPlanDto
 import rw.itunda.core.network.superAppErrorMessage
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.EmptyState
 import java.io.IOException
 import java.math.BigDecimal
 
@@ -444,7 +445,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                 }
                 item { Text("Installments", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                 if (current.installments.isEmpty()) {
-                    item { Text("No installments collected yet.", color = TossSecondary, fontSize = 13.sp) }
+                    item { EmptyState("No installments collected yet.") }
                 } else {
                     items(current.installments.sortedByDescending { it.weekNumber }) { installment ->
                         InstallmentRowWeekly(installment)

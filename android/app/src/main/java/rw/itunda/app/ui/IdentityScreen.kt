@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.core.network.KycSubmissionDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.network.SubmitIdentityRequest
 
 // Real KYC identity submission (2026-07-22) -- found fully built on the backend
@@ -124,7 +125,7 @@ fun IdentityScreen(onBack: () -> Unit) {
             item { Text("Your submissions", style = MaterialTheme.typography.titleMedium) }
             val current = submissions
             if (current == null) item { SkeletonBlock() }
-            else if (current.isEmpty()) item { Text("No submissions yet.") }
+            else if (current.isEmpty()) item { EmptyState("No submissions yet.") }
             else items(current, key = { it.id }) { submission -> SubmissionCard(submission) }
         }
     }

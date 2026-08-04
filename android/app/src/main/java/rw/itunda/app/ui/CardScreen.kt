@@ -47,6 +47,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) -- first
 // Android client, direct port of bank-mfe's CardView. See backend DebitCard.kt's own
@@ -250,7 +251,7 @@ fun CardScreen(onBack: () -> Unit) {
                             Text("Recent card activity", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                         if (transactions.isEmpty()) {
-                            item { Text("No purchases yet.", color = Ids.colors.textSecondary, fontSize = 12.sp) }
+                            item { EmptyState("No purchases yet.") }
                         } else {
                             items(transactions) { t ->
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

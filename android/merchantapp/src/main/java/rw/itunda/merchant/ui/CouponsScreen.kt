@@ -25,7 +25,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.LocalOffer
 import kotlinx.coroutines.launch
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.merchant.network.CreateCouponRequest
 import rw.itunda.merchant.network.MerchantCouponDto
 import rw.itunda.merchant.network.NetworkClient
@@ -68,7 +71,7 @@ fun CouponsTab() {
                     val list = coupons
                     when {
                         list == null -> Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        list.isEmpty() -> Text("No coupons yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        list.isEmpty() -> EmptyState("No coupons yet — create one above to give repeat customers a reason to come back.", icon = Icons.Outlined.LocalOffer)
                     }
                 }
             }

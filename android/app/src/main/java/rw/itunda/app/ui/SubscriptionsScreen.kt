@@ -34,6 +34,7 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.DetectedSubscriptionDto
 import rw.itunda.core.network.MerchantBillingSubscriptionDto
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.network.NetworkClient
 
 // Real recurring-payment ("subscription") detection over a user's own real transaction
@@ -93,7 +94,7 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                     }
                 }
                 if (detectedList.isEmpty()) {
-                    item { Text("No recurring payments detected yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+                    item { EmptyState("No recurring payments detected yet — they'll show up here once we spot a pattern.") }
                 } else {
                     items(detectedList, key = { "detected_${it.displayName}_${it.cadence}" }) { s ->
                         Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
@@ -135,7 +136,7 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                         if (subs == null) {
                             Text("Loading…", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         } else if (subs.isEmpty()) {
-                            Text("No merchant subscriptions yet.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            EmptyState("No merchant subscriptions yet.")
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 subs.forEach { sub -> MerchantBillingSubscriptionRow(subscription = sub, onChanged = ::loadBilling) }

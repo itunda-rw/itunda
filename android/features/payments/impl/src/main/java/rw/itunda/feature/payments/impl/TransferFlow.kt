@@ -10,7 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Savings
+import rw.itunda.core.designsystem.components.EmptyState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -210,7 +212,7 @@ fun RecipientEntryScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 if (contacts.isEmpty() && !showAddContactForm) {
-                    Text("No saved contacts yet.", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                    EmptyState("No saved contacts yet — add one above to send faster next time.", icon = Icons.Outlined.PersonOutline)
                 } else {
                     contacts.forEach { contact ->
                         RecentRecipientRow(name = contact.name, bankAndAccount = "${contact.bank} - ${contact.phoneNumber}") {

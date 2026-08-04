@@ -48,6 +48,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.components.BackTopBar
 import java.io.IOException
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 /**
  * Real ikimina -- Rwanda's own rotating savings & credit association (ROSCA). See the
@@ -201,7 +202,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(64.dp)) {}
             }
             ikiminas!!.isEmpty() -> item {
-                Text("No ikimina groups yet -- start one with people you trust.", color = TossSecondary, fontSize = 13.sp)
+                EmptyState("No ikimina groups yet — start one with people you trust.")
             }
             else -> items(ikiminas!!) { k ->
                 Card(

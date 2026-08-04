@@ -33,6 +33,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SubmitTillCountRequest
 import rw.itunda.core.network.apiErrorCode
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own doc
 // comment: "Store-facing API: the operator's JWT determines the agent; callers never
@@ -104,7 +105,7 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
                 }
                 item { Text("Recent activity", style = MaterialTheme.typography.titleMedium) }
                 if (activity.isEmpty()) {
-                    item { Text("No cash movements yet today.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    item { EmptyState("No cash movements yet today.") }
                 }
                 items(activity, key = { it.id }) { a ->
                     Card(Modifier.fillMaxWidth()) {

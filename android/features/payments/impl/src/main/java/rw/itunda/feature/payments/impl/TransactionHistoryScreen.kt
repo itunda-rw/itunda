@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.ReceiptLong
+import rw.itunda.core.designsystem.components.EmptyState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -74,9 +76,7 @@ fun TransactionHistoryScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         if (transactions.isEmpty()) {
-            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
-                Text("No transactions yet", color = Ids.colors.textTertiary, fontSize = 15.sp)
-            }
+            EmptyState("No transactions yet — sends, receives, and payments will show up here.", icon = Icons.Outlined.ReceiptLong)
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
                 items(transactions, key = { it.id }) { tx -> TransactionRow(tx) }

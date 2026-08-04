@@ -50,6 +50,7 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client for
 // this feature (item 104, found via a fresh matrix scan for still-open "zero client on
@@ -161,7 +162,7 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {}
             }
             accounts!!.isEmpty() -> item {
-                Text("No group accounts yet. Start one to split a shared expense with roommates or friends.", color = TossSecondary, fontSize = 13.sp)
+                EmptyState("No group accounts yet — start one to split a shared expense with roommates or friends.")
             }
             else -> items(accounts!!) { account ->
                 Card(

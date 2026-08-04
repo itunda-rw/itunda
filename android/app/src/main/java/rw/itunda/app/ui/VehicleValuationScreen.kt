@@ -47,6 +47,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.math.BigDecimal
 import java.time.Year
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see
 // rw.itunda.vehicle.VehicleValuationService's own doc comment for the full sourced
@@ -201,7 +202,7 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
             if (list == null) {
                 item { Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             } else if (list.isEmpty()) {
-                item { Text("No vehicles added yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+                item { EmptyState("No vehicles added yet.") }
             } else {
                 items(list, key = { it.id }) { v ->
                     val valuation = valuations[v.id]

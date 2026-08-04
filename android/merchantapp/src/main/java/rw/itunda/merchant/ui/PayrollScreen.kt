@@ -24,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Groups
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.merchant.network.AddPayrollEmployeeRequest
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.PayrollEmployeeDto
@@ -179,7 +182,7 @@ private fun RosterHeaderCard(
                 enabled = !running && roster.isNotEmpty(),
             ) { Text(if (running) "Running…" else "Run payroll (${"%,.0f".format(total)} RWF)") }
             if (roster.isEmpty()) {
-                Text("No employees on the roster yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                EmptyState("No employees on the roster yet — add one above to start running payroll.", icon = Icons.Outlined.Groups)
             }
         }
     }

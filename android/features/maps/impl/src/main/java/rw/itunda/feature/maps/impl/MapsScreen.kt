@@ -43,6 +43,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Remove
@@ -123,6 +124,7 @@ import rw.itunda.core.network.ItineraryDirectionsRequest
 import rw.itunda.core.network.ItineraryWaypointRequest
 import rw.itunda.core.network.NearbyPlaceDto
 import rw.itunda.core.network.TrendingPlaceDto
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
@@ -1935,7 +1937,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 Text(it, fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 4.dp))
                             }
                             if (bookmarks.isEmpty()) {
-                                Text("No saved places yet -- tap ☆ on a place to save it.", fontSize = 12.sp, color = Ids.colors.textSecondary)
+                                EmptyState("No saved places yet — tap ☆ on a place to save it here.", icon = Icons.Outlined.BookmarkBorder)
                             } else {
                                 // Real "My Places" folder grouping (2026-07-22) --
                                 // ported from bank-mfe's own real grouping. groupBy

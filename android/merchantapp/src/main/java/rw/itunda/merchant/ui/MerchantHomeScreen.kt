@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.outlined.RateReview
+import rw.itunda.core.designsystem.components.EmptyState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -280,7 +282,7 @@ private fun ReviewsTab(restaurantId: String) {
     }
     if (restaurantList.isEmpty() && productList.isEmpty() && inquiryList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No reviews yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            EmptyState("No reviews or questions yet — they'll show up here once customers start ordering.", icon = Icons.Outlined.RateReview)
         }
         return
     }

@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.AddMenuOptionGroupRequest
 import rw.itunda.merchant.network.AddProductRequest
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Inventory2
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.merchant.network.CreateTimeDealRequest
 import rw.itunda.merchant.network.MenuOptionChoiceRequest
 import rw.itunda.merchant.network.MenuOptionGroupDto
@@ -136,7 +139,7 @@ fun CatalogTab() {
         if (list == null) {
             CircularProgressIndicator()
         } else if (list.isEmpty()) {
-            Text("No products yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            EmptyState("No products yet — add your first one above.", icon = Icons.Outlined.Inventory2)
         } else {
             val lowStock = list.filter { it.stockQuantity != null && it.stockQuantity <= 5 }
             if (lowStock.isNotEmpty()) {

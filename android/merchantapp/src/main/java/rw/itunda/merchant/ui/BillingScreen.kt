@@ -24,7 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Autorenew
 import kotlinx.coroutines.launch
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.merchant.network.CreateBillingPlanRequest
 import rw.itunda.merchant.network.MerchantBillingPlanDto
 import rw.itunda.merchant.network.NetworkClient
@@ -66,7 +69,7 @@ fun BillingTab() {
                     val list = plans
                     when {
                         list == null -> Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        list.isEmpty() -> Text("No billing plans yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        list.isEmpty() -> EmptyState("No billing plans yet — create one above for recurring charges.", icon = Icons.Outlined.Autorenew)
                     }
                 }
             }

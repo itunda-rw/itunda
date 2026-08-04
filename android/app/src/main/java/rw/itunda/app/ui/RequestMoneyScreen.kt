@@ -43,6 +43,7 @@ import rw.itunda.core.network.P2pPaymentRequestDto
 import rw.itunda.core.network.isDeviceNotVerifiedError
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real fixed-amount person-to-person payment request (item 170) -- the P2P counterpart
 // to a merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's own doc
@@ -104,7 +105,7 @@ fun RequestMoneyScreen(onBack: () -> Unit) {
             if (list == null) {
                 item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(60.dp)) {} }
             } else if (list.isEmpty()) {
-                item { Text("No requests yet.", color = TossSecondary, fontSize = 13.sp) }
+                item { EmptyState("No requests yet — ask someone to pay you above.") }
             } else {
                 items(list, key = { it.id }) { req ->
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {

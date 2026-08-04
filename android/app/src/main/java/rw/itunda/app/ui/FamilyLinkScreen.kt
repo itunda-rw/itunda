@@ -44,6 +44,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.RespondToInviteRequest
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Toss 유스 (Toss Youth)-style guardian-child account link -- see
 // rw.itunda.family.FamilyLinkService's own doc comment for the full sourced account and
@@ -259,7 +260,7 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
             }
 
             if (!hasAnything) {
-                item { Text("No family members linked yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+                item { EmptyState("No family members linked yet — invite one above.") }
             }
         }
     }

@@ -45,6 +45,7 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 /**
  * Real Umurenge SACCO-style shares & dividends -- Rwanda's own government-backed
@@ -185,7 +186,7 @@ fun SaccoScreen(onBack: () -> Unit) {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
                 }
                 dividends!!.isEmpty() -> item {
-                    Text("No dividends declared yet.", color = TossSecondary, fontSize = 13.sp)
+                    EmptyState("No dividends declared yet.")
                 }
                 else -> items(dividends!!) { d ->
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {

@@ -44,6 +44,7 @@ import rw.itunda.core.network.PostKnowledgeAnswerRequest
 import rw.itunda.core.network.PostKnowledgeQuestionRequest
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a genuinely
 // different shape from RideScreen.kt/DesignatedDriverScreen.kt/BikeRentalScreen.kt/
@@ -168,7 +169,7 @@ fun KnowledgeScreen(onBack: () -> Unit) {
             if (list == null) {
                 item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
             } else if (list.isEmpty()) {
-                item { Text("No questions yet.", color = TossSecondary, fontSize = 13.sp) }
+                item { EmptyState("No questions yet — be the first to ask.") }
             } else {
                 items(list, key = { it.id }) { q ->
                     Card(
@@ -316,7 +317,7 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
             if (list == null) {
                 item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
             } else if (list.isEmpty()) {
-                item { Text("No answers yet -- be the first to help.", color = TossSecondary, fontSize = 13.sp) }
+                item { EmptyState("No answers yet — be the first to help.") }
             } else {
                 items(list, key = { it.id }) { a ->
                     Card(

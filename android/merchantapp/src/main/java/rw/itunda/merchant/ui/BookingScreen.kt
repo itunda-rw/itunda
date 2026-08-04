@@ -36,6 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Schedule
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.merchant.network.AvailabilityWindowDto
 import rw.itunda.merchant.network.MerchantBookingDto
 import rw.itunda.merchant.network.NetworkClient
@@ -111,7 +114,7 @@ private fun AvailabilityEditor() {
             CircularProgressIndicator()
         } else {
             if (current.isEmpty()) {
-                Text("No availability set yet -- add a window below.", style = MaterialTheme.typography.bodySmall)
+                EmptyState("No availability set yet — add a window below.", icon = Icons.Outlined.Schedule)
             } else {
                 current.forEach { w ->
                     Row(

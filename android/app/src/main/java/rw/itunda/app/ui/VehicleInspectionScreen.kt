@@ -48,6 +48,7 @@ import java.io.IOException
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
 // rw.itunda.marketplace.VehicleInspectionService's own doc comment. A buyer books and
@@ -200,7 +201,7 @@ private fun InspectionBuyerContent() {
         if (bookings == null) {
             item { Text("Loading…", fontSize = 13.sp, color = TossSecondary, modifier = Modifier.padding(8.dp)) }
         } else if (bookings.isEmpty()) {
-            item { Text("No inspections booked yet.", fontSize = 13.sp, color = TossSecondary, modifier = Modifier.padding(8.dp)) }
+            item { EmptyState("No inspections booked yet.") }
         } else {
             items(bookings, key = { it.id }) { b ->
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {
@@ -358,7 +359,7 @@ private fun InspectionMechanicContent() {
         error?.let { item { Text(it, color = Color(0xFFE53935), fontSize = 13.sp) } }
         val list = bookings
         if (list.isNullOrEmpty()) {
-            item { Text("No inspection bookings yet.", fontSize = 13.sp, color = TossSecondary) }
+            item { EmptyState("No inspection bookings yet.") }
         } else {
             items(list, key = { it.id }) { b ->
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {

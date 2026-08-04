@@ -42,6 +42,7 @@ import rw.itunda.core.network.SetBudgetRequest
 import rw.itunda.core.network.SpendingCategoryDto
 import rw.itunda.core.network.SpendingInsightResponse
 import java.math.BigDecimal
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
 // WalletService.getSpendingInsight, real since 2026-07-13) -- first Android client for
@@ -86,7 +87,7 @@ fun SpendingScreen(onBack: () -> Unit) {
                     }
                 }
                 if (current.categories.isEmpty()) {
-                    item { Text("No spending recorded yet.", style = MaterialTheme.typography.bodyMedium) }
+                    item { EmptyState("No spending recorded yet.") }
                 } else {
                     item { Text("By category", style = MaterialTheme.typography.titleMedium) }
                     val maxAmount = current.categories.maxOf { it.amount }.let { if (it > BigDecimal.ZERO) it else BigDecimal.ONE }

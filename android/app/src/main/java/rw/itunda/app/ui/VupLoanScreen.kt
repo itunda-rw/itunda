@@ -47,6 +47,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 /**
  * Real Rwanda VUP (Vision 2020 Umurenge Programme) Financial Services means-tested
@@ -235,7 +236,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
             when {
                 loans == null -> item {}
                 loans!!.isEmpty() -> item {
-                    Text("No VUP loans yet.", color = TossSecondary, fontSize = 13.sp)
+                    EmptyState("No VUP loans yet.")
                 }
                 else -> items(loans!!, key = { it.id }) { loan ->
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {

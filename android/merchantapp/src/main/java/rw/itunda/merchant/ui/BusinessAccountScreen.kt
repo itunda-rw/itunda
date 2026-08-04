@@ -29,6 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.BusinessLedgerEntryDto
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ReceiptLong
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.merchant.network.BusinessWalletDto
 import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.MoveBusinessMoneyRequest
@@ -203,7 +206,7 @@ fun BusinessAccountTab() {
         item { Text("Business transactions", fontWeight = FontWeight.Bold) }
         val txns = transactions
         if (txns.isNullOrEmpty()) {
-            item { Text("No business transactions yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { EmptyState("No business transactions yet.", icon = Icons.Outlined.ReceiptLong) }
         } else {
             items(txns, key = { it.id }) { entry ->
                 Card(modifier = Modifier.fillMaxWidth()) {

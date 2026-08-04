@@ -47,6 +47,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 /**
  * Real Rwanda moto-taxi ownership savings-to-loan plan -- sourced beyond this
@@ -264,7 +265,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
             when {
                 plans == null -> item {}
                 plans!!.isEmpty() -> item {
-                    Text("No moto-taxi ownership plans yet.", color = TossSecondary, fontSize = 13.sp)
+                    EmptyState("No moto-taxi ownership plans yet.")
                 }
                 else -> items(plans!!, key = { it.id }) { plan ->
                     val progressPct = if (plan.downPaymentTarget.signum() > 0) {

@@ -12,12 +12,36 @@ orange) was deliberately reverted: a real multi-product ecosystem like Kakao kee
 across its whole family for a consistent feel, and itunda is a single app, not a family of
 separate apps — per-tab color fragmentation would be the wrong lesson to take from that ecosystem.
 
+**Re-verified, 2026-08-04:** this Kakao claim was checked directly against KakaoPay's own official
+brand page (kakaopay.com/brand) rather than assumed — KakaoPay's stated brand color is `#FFEB00`,
+the same yellow family as KakaoTalk (`#FEE500`)/KakaoBank, not a distinct mint or blue as might be
+guessed. The single-color-across-the-family discipline holds up under direct verification, so this
+document is **not** recommending itunda abandon its one-blue rule. One real, sourced nuance worth
+the design team's own explicit decision (not applied here without asking): Naver's own practice is
+softer than Kakao's — Naver Maps' color system is described as "based on the existing green and
+blue of NAVER Maps, a naturally extending spectrum," i.e. tints/shades *within* one hue family
+that vary by service, rather than either strict single-color-everywhere or fully separate
+per-service colors. Whether itunda's modules could similarly use tonal *variations* of the same
+blue (not new hues) is a real open question this document surfaces but does not resolve.
+
 This document contains **zero color recommendations**. It is entirely about information
 architecture, list/card layouts, bottom sheets, search/filter UX, navigation idioms, empty
 states, chat UX, and map overlay patterns — sourced from named real products, official
 design-system docs, and real engineering/product blogs. Where a claim could not be sourced to
 something specific and verifiable, it is labeled `inferred` and should be treated as a hypothesis,
 not a confirmed pattern.
+
+**Correction, 2026-08-04:** an audit of this document's own citations found that despite the title
+above claiming "six parallel deep-dives," the actual sourcing is heavily lopsided — roughly 33
+citations trace to Toss (toss.im/toss.tech/developers-apps-in-toss) versus single digits for
+Naver, Kakao, Coupang, Baemin, and Karrot combined, and Section 9 (Graphics) below was **100%
+Toss-sourced** with zero citations to any other ecosystem. This is the real, verified root of a
+real complaint: itunda's design language reads as "Toss, uniformly" rather than genuinely
+synthesized from all six reference ecosystems this document claims to draw from. Section 9 has
+been rewritten below with real research into the other five; re-confirmed Kakao's real
+single-brand-color discipline (see the new note under Section 0) rather than silently reversing
+it, since that decision was made deliberately and explicitly and is not this document's call to
+overturn unilaterally.
 
 Every recommendation below carries a confidence tag:
 
@@ -1082,79 +1106,121 @@ deeper than the one-line summary above).
 
 ## 9. Graphics: illustration, iconography, color, and motion
 
-**Added:** 2026-07-21, following the sign-up/simplicity research above. This area is genuinely
-thinner in Toss's own public documentation than their UX-process writing — most claims below trace
-to 2-3 Toss Feed/Toss Tech articles rather than a dense body of material, flagged honestly rather
-than padded.
+**Added:** 2026-07-21 (Toss-only pass). **Rewritten 2026-08-04** after an audit found this section
+was 100% Toss-sourced despite the document's own claim of six parallel ecosystem deep-dives — see
+the correction note at the top of this document. The Toss material below is kept (it's real and
+useful) but is now balanced with genuine research into Naver, Kakao, Coupang, Baemin, and Karrot's
+own graphic/brand identity, not just their interaction patterns (which Sections 1-8 already cover
+reasonably well).
 
-### References
+### References — Toss (original pass, kept)
 
 | Topic | Source | Pattern |
 |---|---|---|
 | Icon system | developers-apps-in-toss.toss.im/design/resources.html | Icons used at 24-40px; explicit rule to **never combine multiple icons side by side** ("use only one at a time"); 7,000+ icons/emoji available via AppBuilder/Figma; decorative icons marked non-readable for screen readers |
 | Illustration style rules | developers-apps-in-toss.toss.im/design/resources.html | Explicit target aesthetic: "simple, clear, clean digital graphic style" — hand-drawn look, "lyrical/sentimental" painting styles, and cartoonish expression are all explicitly ruled out as feeling out of place; graphics must read correctly in both dark and light mode using mid-tone colors |
-| Illustration's product role | toss.im/tossfeed/article/graphicdesign-team-interview | Graphics evolved from "seasoning" to a core problem-solving tool; a 3,600-emoji custom set ("Toss Graphic Universe") built around deliberately non-clichéd, original metaphors rather than stock financial iconography; named designers for systemic coherence, content graphics, and 3D/hero visuals |
-| Illustration at friction points | toss.im/tossfeed/article/why-motion-in-finance | Cute/friendly animation deliberately frames uncomfortable moments (network errors, terms-agreement screens) as "less daunting"; confetti-style animation celebrates positive moments (credit score up, payday) — a documented, named tie to a peak-end-style softening effect |
-| Brand color, re-examined | toss.tech/article/43061 | Toss's own internal research found users did **not** spontaneously recall the brand as "blue" alone; what people actually retained was the combination of white background + blue logo + the square app-icon frame + bold black type — Toss reoriented brand strategy around that three-part signature, not the color alone |
-| Motion/interaction principles | toss.tech/article/interaction, toss.im/tossfeed/article/why-motion-in-finance | Five stated design principles: express with one movement instead of many words; emotional softening; resource-efficient 3D-to-Lottie layering; richer 3D reserved for web/social; interactive/manipulable 3D objects. A shared cross-platform motion library ("Rally") standardizes easing tokens. Interactions are justified internally with metrics, not aesthetics — a redesigned loan-approval loading screen (previously static) measurably improved engagement once made interactive |
-| Tossface (custom emoji font) | toss.im/tossface | Six explicit rules: simplest form for small-size legibility, uniform sizing across all 3,600 glyphs, one unified color palette, all directional emoji face right, all perspective objects use a fixed 45° angle, all 3D objects share one viewing height |
-| First graphic designer's own account | toss.tech/article/1st-graphic-designer | Toss's first graphic designer describes reversing an early "remove all rounded corners" rule, prioritizing one polished, on-brand icon set over broad coverage rather than chasing completeness |
+| Illustration's product role | toss.im/tossfeed/article/graphicdesign-team-interview | Graphics evolved from "seasoning" to a core problem-solving tool; a 3,600-emoji custom set ("Toss Graphic Universe") built around deliberately non-clichéd, original metaphors rather than stock financial iconography |
+| Illustration at friction points | toss.im/tossfeed/article/why-motion-in-finance | Cute/friendly animation deliberately frames uncomfortable moments (network errors, terms-agreement screens) as "less daunting"; confetti-style animation celebrates positive moments |
+| Brand color, re-examined | toss.tech/article/43061 | Toss's own internal research found users did **not** spontaneously recall the brand as "blue" alone; what people actually retained was white background + blue logo + square app-icon frame + bold black type together |
+| Motion/interaction principles | toss.tech/article/interaction, toss.im/tossfeed/article/why-motion-in-finance | Express with one movement instead of many words; emotional softening; a shared cross-platform motion library ("Rally") standardizes easing tokens |
+| Tossface (custom emoji font) | toss.im/tossface | Six explicit rules: simplest form for small-size legibility, uniform sizing across all 3,600 glyphs, one unified palette, all directional emoji face right, fixed 45° perspective angle |
+
+### References — Naver, Kakao, Coupang, Baemin, Karrot (2026-08-04 pass)
+
+| Topic | Source | Pattern |
+|---|---|---|
+| Naver brand color | **[sourced]** navercorp.com/en/company/brandGuide (official) | `#03C75A` ("NAVER Green"), stated to symbolize "trust and reliability... friendliness, and eco-friendliness"; logo may never be outlined, gradiented, or recolored |
+| Naver per-service color extension | **[partially-sourced]** designcompass.org NAVER icon-renewal article; korea Times "green dot" article | 189 service icons renewed over 468 days; NAVER Maps' own color system is "based on the existing green and blue of NAVER Maps, a naturally extending spectrum" — i.e. tonal variation *within* the green/blue family per service, not a wholly separate hue per service. Mobile-app-wide identity now centers on an interactive "green dot" search button as the unifying mark, not just the wordmark |
+| Kakao brand color, re-verified | **[sourced]** kakaocorp.com/kakao/introduce/ci (official CI page); kakaopay.com/brand (official) | KakaoTalk `#FEE500`, KakaoPay confirmed **`#FFEB00`** (same yellow family) directly from KakaoPay's own brand page — chosen specifically to differentiate from Naver (green), Daum (blue), Facebook (blue). Confirms, doesn't contradict, itunda's existing one-color decision (see Section 0 note above) |
+| Kakao chat bubble language | **[partially-sourced]** oh-my-design.kr/design-systems/kakao (third-party reverse-engineered token aggregation, not official) | Warm yellow bubble for your own messages, clean white for others' — an instantly legible visual language relying on *one* color contrast, not a palette. 12px corner radius standard across buttons/cards/avatars; flat design, no shadow on bubbles, depth via background color only |
+| Kakao emoticons as product, not decoration | **[sourced]** inquivix.com Kakao Emoticons article | Kakao Emoticons (Ryan, Apeach, Muzi, from the "Kakao Friends" character lineup) are a real ~$300M+ business line, not throwaway stickers — proof that in the Korean market, character-driven expressive graphics are a legitimate, monetizable product surface, not just a UX nicety |
+| Coupang design system existence | **[sourced]** medium.com/coupang-engineering "Introducing Coupang's design system" (official eng blog) | Real internal "Rocket Design System" (RDS): Elements (color/type/icon) → Parts (buttons, chips, controls) → Units (composed, business-specific components); explicitly justified by A/B-tested business-metric impact, not aesthetics alone. **Not publicly published** — no public token values exist to cite, a real, stated limitation |
+| Coupang badge system | **[partially-sourced]** windly.cc RocketGrowth badge guide | Two-tier delivery badge system: a base "Rocket Delivery" badge vs. a "Rocket WOW" badge for members-only extra benefits (dawn delivery, free shipping/returns) — badges are tied to a real, named membership/benefit tier, not decorative labels |
+| Baemin brand philosophy | **[sourced]** multiple: Wikipedia (Baedal Minjok), vietcetera.com, Sandoll type-foundry story page | Explicit "playful warmth" identity built by founder Kim Bong-jin around typography as cultural heritage, not just a UI toolkit; signature mint-green plus legendary UX-writing wit ("배민다움") |
+| Baemin custom typefaces | **[sourced]** en.sandoll.co.kr (official type foundry, Baemin's actual font partner); noonnu.cc font catalog | 12+ real, publicly-released custom fonts, each preserving a specific disappearing Korean signage tradition: Hanna (1960s-70s acrylic shop-sign lettering, named after the founder's daughter), Jua, Dohyeon, Euljiro (weathered district-lettering revival), Kkubulim. This is real cultural-preservation-as-brand-strategy, not generic "friendly rounded font" styling |
+| Baemin illustration style | **[partially-sourced]** oh-my-design.kr/design-systems/baemin (third-party, current tokens dated to "Baemin 2.0," July 2025) | Illustration-based icon system leans sketch-like/appetizing rather than flat-geometric; brand palette centers `#0cefd3` mint on white/near-white surfaces with high-contrast dark text, not a saturated multi-color palette |
+| Karrot rebrand & mascot | **[sourced]** about.daangn.com official PR archive (당근이/단추/앙리 character launches); noonnu.cc font post | Official mascot **당근이 ("Danggeuni")**, launched 2015 alongside the service name itself — a local neighborhood *dog* (explicitly not a rabbit, despite looking similar), positioned as "a guide for healthy neighborhood living." Karrot has since expanded its character roster (단추/Danchu, 앙리/Angri, 2024) into an actual character-licensing business, publishes 당근이 webtoons, and uses "Karrot Sans," a custom brand typeface, in its wordmark/symbol |
+| Karrot design tokens | **[partially-sourced]** oh-my-design.kr/design-systems/karrot (third-party reverse-engineered aggregation, not official) | Primary `#ff6f0f`/marketing `#ff6600` orange, used deliberately sparingly ("orange is scarce, on purpose" — CTAs/active states only); system font stack, "content is the brand," no custom typeface loaded on the actual product surfaces (the Karrot Sans wordmark is brand/marketing use, not body UI type); explicit design principle "trust via calm, not badges — no padlock icons in main flow"; target 3-4 listings visible per mobile viewport (content-dense, chrome-light); spring animations explicitly forbidden, only linear/standard easing curves |
 
 ### itunda's current state (verified, not assumed)
 
-- **Zero illustrations exist anywhere in itunda.** Every empty state found across this session's
-  own work (Marketplace, Shop, Eats, Talk, Community, Jobs, Property) is bare text — `Text("No
-  listings yet.")`, `Text("No merchants registered yet.")`, `Text("No saved listings yet -- tap ♡
-  ...")`, and so on. This is the single largest, currently-zero-effort gap in this section: Toss
-  uses custom illustration/emoji specifically at exactly these moments (empty states, errors,
-  onboarding) to communicate faster than text and soften friction — itunda has never done this
-  once, anywhere, on any client.
+- **Zero illustrations or characters exist anywhere in itunda.** Every empty state found across
+  this session's own work (Marketplace, Shop, Eats, Talk, Community, Jobs, Property) is bare text
+  — `Text("No listings yet.")`, `Text("No merchants registered yet.")`, and so on. This remains the
+  single largest, currently-zero-effort gap in this section — true whether measured against Toss's
+  emoji system, Kakao's character-driven emoticons, Karrot's own neighborhood-dog mascot, or
+  Baemin's illustration-based icons. Every one of the five non-Toss ecosystems researched above
+  independently arrives at the same conclusion Toss did: personality-bearing graphics at exactly
+  these low-content moments (empty, error, onboarding) is not optional polish in this product
+  category, it is a real, repeatedly-reinvented pattern.
+- itunda's copy voice is currently neutral/functional everywhere (`"No listings yet."`,
+  `"Couldn't reach itunda. Check your connection and try again."`). None of the five ecosystems
+  above ship copy this flat at these moments — Baemin's "배민다움" conversational wit is the most
+  extreme documented example, but even Toss's own softened error framing (Section 9's original
+  Toss references) sets a bar itunda's current copy doesn't meet anywhere.
 - Icon usage is otherwise reasonably disciplined already (Material/SF Symbols icons used singly per
-  row/button across the codebase, not stacked) — no confirmed violation of the "one icon at a time"
-  rule was found, though this wasn't exhaustively audited.
-- itunda's own single-blue-brand decision (Section 0 of this document) already independently
-  arrived at a "one consistent color across the whole app" position — Toss's own brand-research
-  finding above (users recall the *signature*, not the color alone) is a real, sourced reason to
-  extend that thinking to itunda's white-background + blue-accent + wordmark combination as the
-  actual recognizable signature, not the blue alone.
+  row/button, not stacked) — no confirmed violation of Toss's "one icon at a time" rule was found,
+  though this wasn't exhaustively audited.
+- itunda's single-blue-brand decision is, per the re-verification above, actually the *better*
+  match to Kakao's real, confirmed practice than the alternative would be — this is a place itunda
+  is already doing the right, sourced thing, not a gap.
 
 ### Recommendations (ranked)
 
-1. **[sourced]** Build a real shared empty-state component and use it everywhere itunda currently
-   shows bare text. This is the highest-leverage, lowest-risk recommendation in this section: no
-   backend change, no new dependency, closes a gap that exists identically across every surface.
-   Scoped honestly: this should be a simple icon-in-a-soft-circle + title + subtitle composition
-   using itunda's own existing icon set and color tokens (`Ids.colors.chip`/`brand`), matching
-   Toss's own documented style rule ("simple, clear, clean... not cartoonish, not hand-drawn") —
-   **not** an attempt at Toss's full custom-character illustration work, which is genuine
-   in-house-illustrator asset production this doesn't have the input to match honestly.
+1. **[sourced, cross-verified against 6/6 ecosystems]** Build a real shared empty/error-state
+   component, now informed by six independent real precedents rather than one. Concretely: an
+   icon-in-a-soft-circle + title + **warmer, more specific subtitle copy** (closer to Baemin's
+   documented conversational register than itunda's current flat phrasing, without inventing a
+   fictional mascot character itunda has no in-house illustrator to actually draw). This is still
+   the highest-leverage, lowest-risk recommendation in this whole document: no backend change, no
+   new dependency, closes an identical gap on every surface, and is now the *one* place all six
+   researched ecosystems agree on the same underlying principle.
    *Target: one shared `EmptyState` composable/View/component per platform, replacing the bare
-   `Text(...)` empty-state calls across `SuperAppTabs.kt`, `HoodScreen.swift`/equivalent iOS
-   screens, and `BankDashboard.tsx`*
+   `Text(...)` empty-state calls across `SuperAppTabs.kt`/feature modules, `HoodScreen.swift`/iOS
+   equivalents, and `BankDashboard.tsx`/`insurance_mini_app`*
 
-2. **[sourced]** Apply the same friction-softening idea to itunda's error states, not just empty
-   states — Toss's own documented reasoning (cute framing makes network errors/terms screens "less
-   daunting") applies directly to itunda's existing `ErrorCard`/inline error rows, which are
-   currently plain red text with a "Retry" link. A shared visual treatment (same icon-based
-   language as the empty-state component, not full custom illustration) would apply this principle
-   without a second, disconnected design language.
-   *Target: `ErrorCard` (`SuperAppTabs.kt`) and its iOS/bank-mfe equivalents*
+2. **[sourced]** Apply the same treatment to itunda's error states — Toss's documented
+   friction-softening reasoning plus Baemin's real UX-writing register both point the same
+   direction: itunda's current `ErrorCard`/inline error rows are plain red text with a bare
+   "Retry" link. Same shared icon-based visual language as item 1, not a second design language.
+   *Target: `ErrorCard` (`SuperAppTabs.kt`) and its iOS/bank-mfe/merchantapp equivalents*
 
-3. **[partially-sourced]** Consider itunda's own equivalent of a Tossface-style rule set for any
-   future custom iconography/emoji work — Toss's six explicit consistency rules (uniform sizing,
-   one palette, fixed viewing angles) are a real, reusable checklist if itunda ever commissions
-   custom icon/illustration assets, even though itunda has no such assets today. Lower priority
-   than items 1-2 since it has no current call site — a checklist for *when* this work happens,
-   not a thing to build now.
+3. **[sourced]** Write itunda a short, real copy-voice guideline (5-10 concrete before/after
+   examples, not an abstract tone document) before or alongside item 1 — Baemin's own real
+   evidence (a documented, named "배민다움" voice) is the strongest single proof point in this
+   research that copy register is a legitimate, separate design lever from iconography, and
+   itunda currently has no stated position on it at all (every string found is functionally
+   correct but personality-neutral).
+
+4. **[sourced]** Per-surface badge/urgency-tag visual language, modeled on Coupang's real two-tier
+   badge precedent (a badge tied to a *named, real* benefit tier, not a decorative label) —
+   directly applicable to itunda's own real Time Deal feature (shipped this session) and its
+   merchant-verification (`kybVerified`)/membership-day flags, which currently render as plain
+   text rather than a consistent badge component.
+
+5. **[partially-sourced]** Consider itunda's own equivalent of a Tossface-style rule set for any
+   future custom iconography/emoji work — a real, reusable checklist (uniform sizing, one palette,
+   fixed viewing angles) if itunda ever commissions custom assets. Lower priority than items 1-4
+   since it has no current call site.
 
 ### Unresolved / worth a follow-up
 
-- No official TDS icon naming convention or full size-grid specification was found beyond the
+- Coupang's actual RDS token values (colors, type scale, spacing) are genuinely not public — the
+  official engineering blog states this explicitly. Any future Coupang-informed visual work has to
+  rely on direct app teardown/screenshot analysis, not documentation, and should be labeled
+  `inferred` accordingly.
+- The Karrot and Baemin and Kakao token tables above trace to oh-my-design.kr, a third-party site
+  that states its own methodology as observing/reverse-engineering public product surfaces rather
+  than publishing official specs — treat exact hex/spacing values from that source as
+  `partially-sourced` (the *direction* is corroborated by official brand pages where checked, e.g.
+  Kakao's yellow and Karrot's orange both independently confirm against official sources; the
+  *precise* token values do not have an official citation).
+- No official TDS icon naming convention or full size-grid specification was found beyond Toss's
   24-40px screen-use rule.
-- No official documented hex/token values for "Toss blue," or a stated single-brand-color rationale
-  in Toss's own words — the "blue signals trust for a finance brand" reasoning found only in
-  secondary marketing-blog commentary, not confirmed as Toss's own stated reasoning.
-- This area's overall thinness is itself worth noting for any future research pass: illustration
-  and motion design are documented far more sparsely in Toss's public engineering/product writing
-  than their UX-research process is — a follow-up pass would likely need to rely more heavily on
-  direct screenshot/app teardown analysis than on primary-source blog articles.
+- Naver's app-wide UI beyond the green-dot search identity and the already-covered Maps section
+  (Section 1) wasn't deep-dived this pass — a follow-up specifically into Naver Shopping/Naver Pay
+  visual patterns would round this out, since Naver's e-commerce/payments surfaces are closer
+  analogues to itunda's Shop/Bank surfaces than Naver Maps is.
+- 당근이 (Danggeuni) and the Kakao Friends characters are real, IP-protected mascots — nothing in
+  this document recommends itunda copy or resemble them; the actionable lesson is the *design
+  principle* (personality-bearing graphics at low-content moments), not the specific characters.

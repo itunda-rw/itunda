@@ -50,6 +50,7 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 /**
  * Real Rwanda coffee-cooperative harvest-advance / input financing -- sourced beyond
@@ -262,7 +263,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
                 }
                 advances!!.isEmpty() -> item {
-                    Text("No advances yet.", color = TossSecondary, fontSize = 13.sp)
+                    EmptyState("No advances yet.")
                 }
                 else -> items(advances!!) { a ->
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {

@@ -34,6 +34,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PostFloatListingRequest
 import rw.itunda.core.network.RequestFloatRequest
 import java.util.UUID
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Rwanda-native peer-to-peer agent float rebalancing marketplace -- sourced
 // beyond this session's usual Toss/Kakao/Naver/Coupang reference ecosystems. Running
@@ -114,7 +115,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                             Text(if (locating) "Finding…" else "Find nearby listings")
                         }
                         if (nearby.isEmpty()) {
-                            Text("No nearby listings loaded yet.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            EmptyState("No nearby listings loaded yet.")
                         }
                         nearby.forEach { n ->
                             NearbyListingRow(
@@ -142,7 +143,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
 
             item { Text("My listings", style = MaterialTheme.typography.titleMedium) }
             if (myListings.isEmpty()) {
-                item { Text("No listings posted yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { EmptyState("No listings posted yet.") }
             }
             items(myListings, key = { it.id }) { l ->
                 Card(Modifier.fillMaxWidth()) {
@@ -169,7 +170,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
 
             item { Text("Requests against my listings", style = MaterialTheme.typography.titleMedium) }
             if (incomingRequests.isEmpty()) {
-                item { Text("No requests received yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { EmptyState("No requests received yet.") }
             }
             items(incomingRequests, key = { it.id }) { r ->
                 Card(Modifier.fillMaxWidth()) {
@@ -212,7 +213,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
 
             item { Text("My requests", style = MaterialTheme.typography.titleMedium) }
             if (myRequests.isEmpty()) {
-                item { Text("No requests sent yet.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { EmptyState("No requests sent yet.") }
             }
             items(myRequests, key = { it.id }) { r ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {

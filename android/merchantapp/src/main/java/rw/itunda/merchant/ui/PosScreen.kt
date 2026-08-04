@@ -33,6 +33,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Inventory2
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.merchant.network.ChargeCardRequest
 import rw.itunda.merchant.network.GenerateQrRequest
 import rw.itunda.merchant.network.MerchantProductDto
@@ -76,7 +79,7 @@ fun PosTab() {
             if (list == null) {
                 SkeletonBlock()
             } else if (list.isEmpty()) {
-                Text("No products yet — add some in the Catalog tab first.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                EmptyState("No products yet — add some in the Catalog tab first.", icon = Icons.Outlined.Inventory2)
             } else {
                 ProductGrid(
                     products = list,

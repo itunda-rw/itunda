@@ -58,6 +58,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.util.UUID
 import kotlin.math.max
+import rw.itunda.core.designsystem.components.EmptyState
 
 // Real Toss Securities-style stock investing UI (2026-07-20) -- the first Invest UI
 // this feature has ever had on any client, ported from bank-mfe's own real BankDashboard
@@ -184,7 +185,7 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
 private fun WatchlistContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit) {
     when {
         watchlist == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
-        watchlist.isEmpty() -> Text("No stocks watched yet. Open a stock in the Market tab and tap the star to follow it.", color = TossSecondary, fontSize = 14.sp)
+        watchlist.isEmpty() -> EmptyState("No stocks watched yet — open a stock in the Market tab and tap the star to follow it.")
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             watchlist.forEach { StockRow(it, isWatched = true, onClick = { onOpen(it) }) }
         }
