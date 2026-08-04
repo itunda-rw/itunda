@@ -386,7 +386,29 @@ they close in itunda's current implementation.
    concept (a thread/sub-conversation model) itunda doesn't have.
    *Target for the remaining work: a real thread/sub-conversation model, likely its own migration*
 
-4. **[partially implemented]** Talk has private, durable quiet-room controls and suppresses notifications for the participant who enables one. Recoverable archive/list placement and conversation-list swipe actions remain.
+4. **[implemented 2026-08-05]** Talk has private, durable quiet-room controls and
+   suppresses notifications for the participant who enables one. Recoverable
+   archive/list placement and conversation-list actions are now real too: backend
+   `ConversationPreference.archived` (same private-to-one-participant model as
+   `quiet`), `GET /conversations?archived=true|false` filtered at the DB level (not
+   post-hoc, so pagination stays correct), `POST/GET .../conversations/{id}/archive`.
+   **Real bug found and fixed on all 3 platforms while wiring this in**: each
+   client's "Archived (N)" toggle was actually filtering on `quiet` (mute) and
+   mislabeling the result -- muting had been repurposed to hide a conversation from
+   the list since no real archive concept existed yet. Muted conversations now stay
+   visible in the main list on all 3 platforms (matching real KakaoTalk: muting only
+   silences notifications, never hides a room); the toggle now shows the real
+   archived list. Per-row action scoped per-platform idiom rather than forcing
+   identical UI: Android uses a real `SwipeToDismissBox` swipe gesture (live-verified
+   against the real dev backend via curl; the swipe *gesture* itself could not be
+   triggered through this environment's adb automation, only the underlying API
+   contract), iOS uses `.swipeActions` inside a real `List` (a hard SwiftUI
+   constraint -- `.swipeActions` silently no-ops outside a `List`, so
+   `DirectMessagesList` moved off ScrollView+VStack for this), and bank-mfe uses an
+   always-visible icon button matching its own established Pin/Delete/Forward
+   convention (no real touch-swipe convention on desktop web to match against). iOS
+   and bank-mfe changes are syntax/build-verified only (no simulator or headless
+   browser in this environment) -- not screenshot-verified like Android's.
 
 5. **[sourced] Implemented 2026-08-04 (honest partial scope).** Add a per-thread shared-media
    gallery (Chat Room Drawer). itunda had zero aggregation of media shared in a conversation.
@@ -456,10 +478,15 @@ they close in itunda's current implementation.
    Presentation (always-visible buttons vs. a long-press menu) is now iOS's only remaining gap
    here too, matching bank-mfe's own remaining gap -- not a capability gap on either platform.
 
-4. **[sourced]** Add swipe actions and per-chat mute/archive ("quiet chat room") to the
-   conversation list. `ConversationRow`/`GroupRow` (`~478-498`, `~712-749`) support only tap-to-open.
-   Real KakaoTalk supports right-swipe (favorite/notify/pin) and left-swipe (read/leave), plus an
-   official archive-without-leaving feature.
+4. **[sourced] Implemented on all 3 platforms, 2026-08-05.** Add swipe actions and
+   per-chat mute/archive ("quiet chat room") to the conversation list.
+   `ConversationRow`/`GroupRow` used to support only tap-to-open. Real KakaoTalk
+   supports right-swipe (favorite/notify/pin) and left-swipe (read/leave), plus an
+   official archive-without-leaving feature -- scoped honestly to the archive half
+   (itunda's Talk has no per-conversation "favorite" concept to wire a second swipe
+   direction to). See recommendation #4 above (live list) for the full account,
+   including a real quiet/archived conflation bug found identically on all 3
+   platforms and fixed the same way on each.
 
 5. **[sourced] Implemented on all 3 platforms, 2026-08-04/05.** Per-thread shared-media gallery
    (Chat Room Drawer) -- `MediaGalleryView`/`MediaGalleryModal`, built entirely client-side from
