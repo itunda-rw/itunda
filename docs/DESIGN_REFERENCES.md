@@ -728,35 +728,34 @@ they close in itunda's current implementation.
 
 ### Recommendations (ranked)
 
-1. **[sourced]** Build a Talk-chat-embedded split-bill/settlement feature — itunda has none today
-   (confirmed via grep across `docs/TOSS_PARITY_MATRIX.md`: Group Account and Gift both exist and
-   are marked "real," nothing named split/dutch/settlement is). KakaoPay's real 정산하기 is
-   structurally richer than Toss's own 더치페이: chat-embedded entry point (same "+" family as
-   transfer), randomized ladder-game split with adjustable intensity, up to 5 tracked rounds,
-   silent rounding-remainder absorption, scheduled reminder nudges, 3-photo receipt attach. Since
-   itunda's own Gift feature was deliberately built as "a real chat message rather than a separate
-   notification surface" (per `GiftService.kt`'s own doc comment), the chat-embedded Kakao pattern
-   — not Toss's spending-history-anchored one — is the natural fit for itunda's Talk-first
-   architecture. The ladder-game/multi-round/reminder/rounding mechanics are the genuine
-   differentiators worth porting; a plain even-split alone would just be re-doing Toss.
-   *Target: new backend module analogous to `services/backend/gift` (reusing `GiftService`'s escrow-ledger conventions), surfaced as a chat action in bank-mfe's Talk thread (mirror `lib/gift.ts`), Android `SuperAppTabs.kt`/`ItundaAppScreen.kt`, iOS `TalkScreen.swift`*
+1. **[sourced] Implemented -- doc was stale, corrected 2026-08-04.** Build a Talk-chat-embedded
+   split-bill/settlement feature. KakaoPay's real 정산하기 is structurally richer than Toss's own
+   더치페이: chat-embedded entry point, randomized ladder-game split with adjustable intensity, up
+   to 5 tracked rounds, silent rounding-remainder absorption, scheduled reminder nudges, photo
+   receipt attach. **Verified 2026-08-04 (re-audit while sourcing Talk's message-forwarding
+   feature): every one of these mechanics is real and shipped** --
+   `services/backend/splitbill/SplitBillService.kt`'s own doc comment lists all four real,
+   dated follow-ups as closed: `ladderSplit` (사다리타기, 2026-07-25), `SplitBillReminderScheduler`
+   (2026-07-27), `attachReceipt` (2026-07-28), `requestNextRound` (up to 5 rounds, 2026-07-28) --
+   plus the base even-split with real rounding-remainder absorption. `GroupSplitBillsView` is wired
+   into `GroupThreadView`'s own Talk thread (a real "+"-family chat action) in both Android and iOS.
+   This recommendation was simply never marked closed when the feature shipped.
+   *Shipped: `services/backend/splitbill` (SplitBillService/SplitBillController/
+   SplitBillReminderScheduler), `GroupSplitBillsView` in `TalkScreen.kt`*
 
-2. **[sourced]** Add a Kakao-Bank-style auto-escalating, day-locked weekly savings product
-   (26주적금 pattern) as a distinct gamified product type, sibling to the already-shipped Group
-   Account. Structurally distinct from a generic recurring deposit: escalating auto-debit amount,
-   hard-locked opening weekday, per-installment interest computation, and a streak-gated
-   preferential rate. itunda has the Group Account mechanic already sourced and live but nothing
-   for this second, differently-gamified KakaoBank product.
-   *Target: `services/backend/savings` module, sibling to `GroupAccountService.kt`; surfaced wherever Group Account currently lists*
+2. **[sourced] Implemented -- doc was stale, corrected 2026-08-04.** Add a Kakao-Bank-style
+   auto-escalating, day-locked weekly savings product (26주적금 pattern). **Verified 2026-08-04**:
+   `services/backend/savings/WeeklySavingsService.kt` + `WeeklySavingsScheduler.kt` +
+   `WeeklySavingsController.kt` are real and shipped, sibling to `GroupAccountService.kt` in the same
+   module, covered by their own `WeeklySavingsServiceTest.kt`.
+   *Shipped: `services/backend/savings/WeeklySavingsService.kt`*
 
-3. **[partially-sourced]** Give itunda's existing Gift feature themed "envelope" presets instead
-   of (or alongside) free-text notes. itunda's Gift already matches KakaoPay's core structure well
-   (escrow-then-explicit-claim, inline chat bubble, 7-day auto-expiry-refund). What's missing is
-   송금봉투: the envelope itself is a themed preset that communicates occasion without typed text —
-   the envelope *is* the message. The specific 4-name preset list came from a search-engine summary
-   of Kakao's help content, not a re-verified primary catalog page, so treat the exact preset names
-   as illustrative.
-   *Target: `services/backend/gift/.../Gift.kt` (add an envelope-theme field), `bank-mfe/src/lib/gift.ts` + gift bubble rendering, Android gift-send sheet, iOS gift-send flow*
+3. **[partially-sourced] Implemented -- doc was stale, corrected 2026-08-04.** Give itunda's Gift
+   feature themed "envelope" presets instead of free-text notes. **Verified 2026-08-04**:
+   `GiftService.kt` has a real `theme: GiftTheme?` parameter on `sendGift`/`sendGiftInConversation`,
+   with a `themeLabel` mapping and its own doc comment confirming "exactly the 4 real, sourced
+   presets; nothing invented."
+   *Shipped: `GiftTheme`, `GiftService.kt`'s theme param/themeLabel*
 
 4. **[sourced — validation, no action]** itunda's Gift claim/escrow flow and Group Account already
    match Kakao's real structural pattern point-for-point: Gift's escrow-then-explicit-claim
