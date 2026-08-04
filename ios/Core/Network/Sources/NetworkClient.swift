@@ -2196,6 +2196,31 @@ public struct MessageDto: Decodable, Identifiable {
         self.forwardedFromType = nil
     }
 
+    // Real fix (found 2026-08-05 while adding GroupMessageDto.unreadCount): applying a
+    // real-time reaction update by rebuilding via the memberwise init above silently
+    // dropped imageUrl/forwardedFromMessageId/forwardedFromType, since that init always
+    // hardcodes them to nil -- a photo or forward label would flicker away for a
+    // message the instant its reaction changed, until the next 4s poll refresh. This
+    // preserves every field and only replaces reactions.
+    public func withReactions(_ reactions: [ReactionGroupDto]) -> MessageDto {
+        MessageDto(id: id, conversationId: conversationId, senderId: senderId, body: body, sentAt: sentAt, readAt: readAt, deletedAt: deletedAt, reactions: reactions, emoticonId: emoticonId, imageUrl: imageUrl, forwardedFromMessageId: forwardedFromMessageId, forwardedFromType: forwardedFromType)
+    }
+
+    private init(id: String, conversationId: String, senderId: String, body: String, sentAt: String, readAt: String?, deletedAt: String?, reactions: [ReactionGroupDto], emoticonId: String?, imageUrl: String?, forwardedFromMessageId: String?, forwardedFromType: String?) {
+        self.id = id
+        self.conversationId = conversationId
+        self.senderId = senderId
+        self.body = body
+        self.sentAt = sentAt
+        self.readAt = readAt
+        self.deletedAt = deletedAt
+        self.reactions = reactions
+        self.emoticonId = emoticonId
+        self.imageUrl = imageUrl
+        self.forwardedFromMessageId = forwardedFromMessageId
+        self.forwardedFromType = forwardedFromType
+    }
+
     // Custom decode: the real-time WebSocket push for a brand-new message omits
     // `reactions` entirely (a message can't have a reaction the instant it's sent) --
     // defaults to empty rather than failing to decode the whole push.
@@ -2331,6 +2356,12 @@ public struct GroupMessageDto: Decodable, Identifiable {
     // Real message forwarding -- see MessageDto's own identical doc comment.
     public let forwardedFromMessageId: String?
     public let forwardedFromType: String?
+    // Real Kakao-style per-message unread countdown (backend since 2026-07-26, client
+    // gap found 2026-08-05 via a doc-accuracy audit) -- see
+    // GroupMessagingController.getMessages's own doc comment. Counts real members
+    // whose lastReadAt is still before this message's sentAt; decrements live as
+    // members open the thread.
+    public let unreadCount: Int
 
     // Explicit memberwise init -- see MessageDto's own identical note on why this is
     // needed once a custom init(from:) is present.
@@ -2347,6 +2378,29 @@ public struct GroupMessageDto: Decodable, Identifiable {
         self.imageUrl = nil
         self.forwardedFromMessageId = nil
         self.forwardedFromType = nil
+        self.unreadCount = 0
+    }
+
+    // Real fix -- see MessageDto's own identical withReactions doc comment; same bug,
+    // same fix, for the group side (also would have dropped the new unreadCount).
+    public func withReactions(_ reactions: [ReactionGroupDto]) -> GroupMessageDto {
+        GroupMessageDto(id: id, groupConversationId: groupConversationId, senderId: senderId, body: body, sentAt: sentAt, deletedAt: deletedAt, replyToMessageId: replyToMessageId, reactions: reactions, emoticonId: emoticonId, imageUrl: imageUrl, forwardedFromMessageId: forwardedFromMessageId, forwardedFromType: forwardedFromType, unreadCount: unreadCount)
+    }
+
+    private init(id: String, groupConversationId: String, senderId: String, body: String, sentAt: String, deletedAt: String?, replyToMessageId: String?, reactions: [ReactionGroupDto], emoticonId: String?, imageUrl: String?, forwardedFromMessageId: String?, forwardedFromType: String?, unreadCount: Int) {
+        self.id = id
+        self.groupConversationId = groupConversationId
+        self.senderId = senderId
+        self.body = body
+        self.sentAt = sentAt
+        self.deletedAt = deletedAt
+        self.replyToMessageId = replyToMessageId
+        self.reactions = reactions
+        self.emoticonId = emoticonId
+        self.imageUrl = imageUrl
+        self.forwardedFromMessageId = forwardedFromMessageId
+        self.forwardedFromType = forwardedFromType
+        self.unreadCount = unreadCount
     }
 
     // Same real-time-push-omits-reactions handling as MessageDto's own custom decode.
@@ -2364,9 +2418,10 @@ public struct GroupMessageDto: Decodable, Identifiable {
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         forwardedFromMessageId = try container.decodeIfPresent(String.self, forKey: .forwardedFromMessageId)
         forwardedFromType = try container.decodeIfPresent(String.self, forKey: .forwardedFromType)
+        unreadCount = try container.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
     }
 
-    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType }
+    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType, unreadCount }
 }
 public struct GroupResponse: Decodable { public let success: Bool; public let group: GroupSummaryDto }
 public struct GroupsResponse: Decodable { public let success: Bool; public let groups: [GroupSummaryDto] }

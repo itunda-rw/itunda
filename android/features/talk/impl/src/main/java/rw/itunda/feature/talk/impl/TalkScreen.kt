@@ -1358,7 +1358,7 @@ private fun GroupMessageBubble(
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
         Text(
-            chatMessageTime(message.sentAt),
+            "${if (isMine && message.unreadCount > 0) "${message.unreadCount} · " else ""}${chatMessageTime(message.sentAt)}",
             color = Ids.colors.textSecondary,
             fontSize = 10.sp,
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp),

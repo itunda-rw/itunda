@@ -776,7 +776,7 @@ private struct GroupThreadScreen: View {
                     }
                 case .reactionChange(_, let groupId, let messageId, let reactions) where groupId == group.groupId:
                     Task { @MainActor in
-                        messages = messages?.map { $0.id == messageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: reactions, emoticonId: $0.emoticonId) : $0 }
+                        messages = messages?.map { $0.id == messageId ? $0.withReactions(reactions) : $0 }
                     }
                 default:
                     break
@@ -850,7 +850,7 @@ private struct GroupThreadScreen: View {
     private func toggleReaction(_ groupMessageId: String, _ emoji: String) async {
         do {
             let res = try await NetworkClient.shared.toggleGroupReaction(groupMessageId: groupMessageId, emoji: emoji)
-            messages = messages?.map { $0.id == groupMessageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: res.reactions, emoticonId: $0.emoticonId) : $0 }
+            messages = messages?.map { $0.id == groupMessageId ? $0.withReactions(res.reactions) : $0 }
         } catch {
             // Best-effort -- a failed reaction toggle just leaves the badge as it was.
         }
@@ -1722,7 +1722,7 @@ private struct ChatThreadScreen: View {
                     }
                 case .reactionChange(let conversationId, _, let messageId, let reactions) where conversationId == conversation.conversationId:
                     Task { @MainActor in
-                        messages = messages?.map { $0.id == messageId ? MessageDto(id: $0.id, conversationId: $0.conversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, readAt: $0.readAt, reactions: reactions) : $0 }
+                        messages = messages?.map { $0.id == messageId ? $0.withReactions(reactions) : $0 }
                     }
                 default:
                     break
@@ -1884,7 +1884,7 @@ private struct ChatThreadScreen: View {
     private func toggleReaction(_ messageId: String, _ emoji: String) async {
         do {
             let res = try await NetworkClient.shared.toggleReaction(messageId: messageId, emoji: emoji)
-            messages = messages?.map { $0.id == messageId ? MessageDto(id: $0.id, conversationId: $0.conversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, readAt: $0.readAt, reactions: res.reactions) : $0 }
+            messages = messages?.map { $0.id == messageId ? $0.withReactions(res.reactions) : $0 }
         } catch {
             // Best-effort -- a failed reaction toggle just leaves the badge as it was.
         }

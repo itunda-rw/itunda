@@ -614,6 +614,11 @@ data class GroupMessageDto(
     // comment.
     val forwardedFromMessageId: String? = null,
     val forwardedFromType: String? = null,
+    // Real Kakao-style per-message unread countdown (backend since 2026-07-26, client
+    // gap found 2026-08-05 via a doc-accuracy audit) -- see GroupMessagingController
+    // .getMessages's own doc comment. Counts real members whose lastReadAt is still
+    // before this message's sentAt; decrements live as members open the thread.
+    val unreadCount: Long = 0,
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
