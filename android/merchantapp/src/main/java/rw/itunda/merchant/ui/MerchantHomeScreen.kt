@@ -18,7 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.outlined.RateReview
 import rw.itunda.core.designsystem.components.EmptyState
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -177,7 +178,8 @@ private fun OrdersTab() {
                     val readyForPickupHandoff = order.fulfillmentType == "PICKUP" && order.status == "READY_FOR_PICKUP"
                     if (readyForPickupHandoff) {
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
-                        Button(
+                        IdsButton(
+                            text = "Mark picked up",
                             onClick = {
                                 scope.launch {
                                     try {
@@ -188,12 +190,12 @@ private fun OrdersTab() {
                                     }
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text("Mark picked up") }
+                        )
                     } else {
                         nextRestaurantAction(order.status)?.let { (nextStatus, label) ->
                             androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
-                            Button(
+                            IdsButton(
+                                text = label,
                                 onClick = {
                                     scope.launch {
                                         try {
@@ -204,8 +206,7 @@ private fun OrdersTab() {
                                         }
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) { Text(label) }
+                            )
                         }
                     }
                 }
@@ -361,7 +362,9 @@ private fun ReviewReplyRow(review: rw.itunda.merchant.network.EatsReviewDto, onR
         replying -> {
             IdsTextField(value = reply, onValueChange = { reply = it }, label = "Write a reply", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            Button(
+            IdsButton(
+                text = if (submitting) "Submitting…" else "Reply",
+                enabled = !submitting && reply.isNotBlank(),
                 onClick = {
                     submitting = true
                     error = null
@@ -377,12 +380,10 @@ private fun ReviewReplyRow(review: rw.itunda.merchant.network.EatsReviewDto, onR
                         }
                     }
                 },
-                enabled = !submitting && reply.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (submitting) "Submitting…" else "Reply") }
+            )
         }
         else -> {
-            Button(onClick = { replying = true }) { Text("Reply") }
+            IdsButton(text = "Reply", size = IdsButtonSize.Small, onClick = { replying = true })
         }
     }
 }
@@ -407,7 +408,9 @@ private fun ProductInquiryAnswerRow(inquiry: rw.itunda.merchant.network.ProductI
         answering -> {
             IdsTextField(value = answer, onValueChange = { answer = it }, label = "Write an answer", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            Button(
+            IdsButton(
+                text = if (submitting) "Submitting…" else "Answer",
+                enabled = !submitting && answer.isNotBlank(),
                 onClick = {
                     submitting = true
                     error = null
@@ -423,12 +426,10 @@ private fun ProductInquiryAnswerRow(inquiry: rw.itunda.merchant.network.ProductI
                         }
                     }
                 },
-                enabled = !submitting && answer.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (submitting) "Submitting…" else "Answer") }
+            )
         }
         else -> {
-            Button(onClick = { answering = true }) { Text("Answer") }
+            IdsButton(text = "Answer", size = IdsButtonSize.Small, onClick = { answering = true })
         }
     }
 }
@@ -453,7 +454,9 @@ private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductRevi
         replying -> {
             IdsTextField(value = reply, onValueChange = { reply = it }, label = "Write a reply", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            Button(
+            IdsButton(
+                text = if (submitting) "Submitting…" else "Reply",
+                enabled = !submitting && reply.isNotBlank(),
                 onClick = {
                     submitting = true
                     error = null
@@ -469,12 +472,10 @@ private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductRevi
                         }
                     }
                 },
-                enabled = !submitting && reply.isNotBlank(),
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (submitting) "Submitting…" else "Reply") }
+            )
         }
         else -> {
-            Button(onClick = { replying = true }) { Text("Reply") }
+            IdsButton(text = "Reply", size = IdsButtonSize.Small, onClick = { replying = true })
         }
     }
 }
@@ -513,7 +514,9 @@ private fun FollowersTab() {
         IdsTextField(value = body, onValueChange = { body = it }, label = "Tell your followers what's new.", modifier = Modifier.fillMaxWidth())
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         val hasFollowers = (count ?: 0) > 0
-        Button(
+        IdsButton(
+            text = if (sending) "Sending…" else "Broadcast to followers",
+            enabled = !sending && hasFollowers && title.isNotBlank() && body.isNotBlank(),
             onClick = {
                 sending = true
                 error = null
@@ -533,9 +536,7 @@ private fun FollowersTab() {
                     }
                 }
             },
-            enabled = !sending && hasFollowers && title.isNotBlank() && body.isNotBlank(),
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (sending) "Sending…" else "Broadcast to followers") }
+        )
         if (!hasFollowers) {
             Text(
                 "You need at least one follower to send a broadcast.",
