@@ -59,6 +59,7 @@ import java.io.IOException
 import java.util.UUID
 import kotlin.math.max
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.ErrorCard
 
 // Real Toss Securities-style stock investing UI (2026-07-20) -- the first Invest UI
 // this feature has ever had on any client, ported from bank-mfe's own real BankDashboard
@@ -158,7 +159,7 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
     LaunchedEffect(Unit) { load() }
 
     when {
-        error != null -> ErrorCardInvest(error!!, onRetry = ::load)
+        error != null -> ErrorCard(error!!, onRetry = ::load)
         stocks == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -264,7 +265,7 @@ private fun PortfolioContent() {
     LaunchedEffect(Unit) { load() }
 
     when {
-        error != null -> ErrorCardInvest(error!!, onRetry = ::load)
+        error != null -> ErrorCard(error!!, onRetry = ::load)
         portfolio == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
         else -> {
             val p = portfolio!!
@@ -494,21 +495,6 @@ private fun Sparkline(values: List<Double>, positive: Boolean) {
                     .fillMaxHeight(heightFraction)
                     .background(if (positive) Ids.colors.success else Ids.colors.danger, RoundedCornerShape(2.dp)),
             )
-        }
-    }
-}
-
-@Composable
-private fun ErrorCardInvest(message: String, onRetry: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(message, color = Ids.colors.danger, fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text("Retry", color = TossBlue, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = onRetry))
         }
     }
 }

@@ -46,6 +46,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.ErrorCard
 import java.io.IOException
 import java.math.BigDecimal
 
@@ -131,16 +132,15 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
                     }
                 }
                 when {
-                    listError != null -> item { ErrorCardWeeklySavings(listError!!, onRetry = ::loadPlans) }
+                    listError != null -> item { ErrorCard(listError!!, onRetry = ::loadPlans) }
                     plans == null -> item {
                         Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
                     }
                     plans!!.isEmpty() -> item {
-                        Text(
-                            "No 26-week plans yet. Start one -- the weekly amount steps up automatically every " +
+                        EmptyState(
+                            "No 26-week plans yet — start one below. The weekly amount steps up automatically every " +
                                 "$ESCALATION_STEP_WEEKS weeks, and keeping an unbroken streak all the way to week " +
                                 "$TERM_WEEKS earns a bonus interest rate on top.",
-                            color = TossSecondary, fontSize = 14.sp,
                         )
                     }
                     else -> items(plans!!) { plan -> WeeklySavingsPlanRow(plan, onClick = { selectedPlanId = plan.id }) }
@@ -355,7 +355,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
     }
 
     when {
-        error != null -> ErrorCardWeeklySavings(error!!, onRetry = ::load)
+        error != null -> ErrorCard(error!!, onRetry = ::load)
         detail == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
         else -> {
             val current = detail!!
@@ -476,21 +476,6 @@ private fun InstallmentRowWeekly(installment: WeeklySavingsInstallmentDto) {
     ) {
         Text("Week ${installment.weekNumber}", color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Text("${formatMoneyWeekly(installment.amount)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-    }
-}
-
-@Composable
-private fun ErrorCardWeeklySavings(message: String, onRetry: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(message, color = Ids.colors.danger, fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text("Retry", color = TossBlue, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = onRetry))
-        }
     }
 }
 

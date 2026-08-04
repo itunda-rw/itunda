@@ -41,6 +41,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.OpenUpfrontDepositRequest
 import rw.itunda.core.network.UpfrontDepositDto
+import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.math.BigDecimal
@@ -107,7 +108,7 @@ fun UpfrontDepositScreen(onBack: () -> Unit) {
                     }
                 }
                 when {
-                    listError != null -> item { ErrorCardUpfrontDeposit(listError!!, onRetry = ::loadDeposits) }
+                    listError != null -> item { ErrorCard(listError!!, onRetry = ::loadDeposits) }
                     deposits == null -> item {
                         Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
                     }
@@ -249,21 +250,6 @@ private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Text(if (submitting) "Working…" else "Open deposit", color = Color.White, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun ErrorCardUpfrontDeposit(message: String, onRetry: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(message, color = Ids.colors.danger, fontSize = 14.sp)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text("Retry", color = TossBlue, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = onRetry))
         }
     }
 }
