@@ -125,6 +125,7 @@ import rw.itunda.core.network.ItineraryWaypointRequest
 import rw.itunda.core.network.NearbyPlaceDto
 import rw.itunda.core.network.TrendingPlaceDto
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
@@ -1597,12 +1598,10 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         .padding(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
-                                    OutlinedTextField(
+                                    IdsTextField(
                                         value = folderNameInput,
                                         onValueChange = { folderNameInput = it },
-                                        placeholder = { Text("Folder name (e.g. Favorites)", fontSize = 12.sp) },
-                                        singleLine = true,
-                                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                                        label = "Folder name (e.g. Favorites)",
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2016,12 +2015,10 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                     .padding(8.dp),
                                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                                             ) {
-                                                OutlinedTextField(
+                                                IdsTextField(
                                                     value = moveFolderNameInput,
                                                     onValueChange = { moveFolderNameInput = it },
-                                                    placeholder = { Text("Folder name", fontSize = 12.sp) },
-                                                    singleLine = true,
-                                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                                                    label = "Folder name",
                                                     modifier = Modifier.fillMaxWidth(),
                                                 )
                                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -132,6 +132,7 @@ import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
 import rw.itunda.core.designsystem.theme.Ids
@@ -2185,6 +2186,7 @@ private fun MyTab(
 @Composable
 private fun ProfilePhotoCard() {
     var profilePhotoUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    var displayName by rememberSaveable { mutableStateOf("") }
     var urlInput by rememberSaveable { mutableStateOf("") }
     var saving by rememberSaveable { mutableStateOf(false) }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
@@ -2195,6 +2197,7 @@ private fun ProfilePhotoCard() {
             val user = rw.itunda.core.network.NetworkClient.authApi.getProfile().user
             profilePhotoUrl = user.profilePhotoUrl
             urlInput = user.profilePhotoUrl ?: ""
+            displayName = "${user.firstName} ${user.lastName}".trim()
         } catch (_: Exception) {
             // Real, non-critical -- the rest of "My" still works without this.
         }
@@ -2202,21 +2205,19 @@ private fun ProfilePhotoCard() {
 
     IdsCard(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            val photoUrl = profilePhotoUrl
-            if (photoUrl != null) {
-                coil.compose.AsyncImage(
-                    model = photoUrl, contentDescription = "Profile photo",
-                    modifier = Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape),
-                )
-            } else {
-                Box(modifier = Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Ids.colors.surfaceSoft))
-            }
+            // Real fix, 2026-08-05 (same audit that found Talk's avatar bugs) -- this
+            // rendered an empty gray circle with nothing in it when no photo was set,
+            // the exact same "missing avatar" gap Talk's GroupRow had.
+            rw.itunda.core.designsystem.components.IdsAvatar(
+                name = displayName.ifBlank { "?" },
+                photoUrl = profilePhotoUrl,
+                size = 56.dp,
+            )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
-                OutlinedTextField(
+                IdsTextField(
                     value = urlInput, onValueChange = { urlInput = it },
-                    placeholder = { Text("Profile photo URL") },
-                    singleLine = true,
+                    label = "Profile photo URL",
                     modifier = Modifier.fillMaxWidth(),
                 )
                 IdsButton(
@@ -2324,7 +2325,7 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
             }
         } else {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Enter code") }, modifier = Modifier.weight(1f))
+                IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", modifier = Modifier.weight(1f))
                 Box(
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy || code.isBlank()) Ids.colors.textTertiary else TossBlue)
                         .clickable(enabled = !busy && code.isNotBlank()) {

@@ -526,11 +526,10 @@ fun SearchAndCategoryChips(
     onSelectCategory: (String?) -> Unit,
 ) {
     Column {
-        OutlinedTextField(
+        IdsTextField(
             value = searchInput,
             onValueChange = onSearchChange,
-            placeholder = { Text(placeholder) },
-            singleLine = true,
+            label = placeholder,
             modifier = Modifier.fillMaxWidth(),
         )
         if (categories.isNotEmpty()) {

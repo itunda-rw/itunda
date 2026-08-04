@@ -42,6 +42,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,6 +78,7 @@ import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.StatusBadge
 import kotlin.math.roundToInt
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.components.SearchAndCategoryChips
@@ -559,11 +561,10 @@ fun CommerceShopContent(
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = productSearchInput,
                         onValueChange = { productSearchInput = it },
-                        placeholder = { Text("Search products across every merchant") },
-                        singleLine = true,
+                        label = "Search products across every merchant",
                         modifier = Modifier.weight(1f),
                     )
                     Box(
@@ -1174,10 +1175,10 @@ private fun BookingReviewButton(bookingId: String) {
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
         StarRatingRow(rating) { rating = it }
-        OutlinedTextField(
+        IdsTextField(
             value = comment,
             onValueChange = { comment = it },
-            placeholder = { Text("How was it? (optional)") },
+            label = "How was it? (optional)",
             modifier = Modifier.fillMaxWidth(),
         )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
@@ -1330,10 +1331,10 @@ private fun MerchantBookingFlowView(
                 }
             }
         }
-        OutlinedTextField(
+        IdsTextField(
             value = notes,
             onValueChange = { if (it.length <= 500) notes = it },
-            placeholder = { Text("Notes (optional)") },
+            label = "Notes (optional)",
             modifier = Modifier.fillMaxWidth(),
         )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
@@ -1405,7 +1406,7 @@ private fun SubscribeAndSaveButton(merchantId: String, productId: String) {
                 Column {
                     Text("Delivered every 30 days. Cancel anytime.", color = Ids.colors.textSecondary, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("Delivery address") }, singleLine = true)
+                    IdsTextField(value = address, onValueChange = { address = it }, label = "Delivery address")
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
                 }
             },
@@ -1584,10 +1585,10 @@ private fun MultiCartView(
                         Text("%,.0f RWF".format(grandTotal), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                     Spacer(modifier = Modifier.height(14.dp))
-                    OutlinedTextField(
+                    IdsTextField(
                         value = address,
                         onValueChange = { address = it },
-                        placeholder = { Text("Delivery address") },
+                        label = "Delivery address",
                         modifier = Modifier.fillMaxWidth(),
                     )
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
@@ -2041,10 +2042,10 @@ private fun ReturnExchangeAction(orderId: String) {
                 }
             }
         }
-        OutlinedTextField(
+        IdsTextField(
             value = note,
             onValueChange = { note = it },
-            placeholder = { Text("Add a note (optional)") },
+            label = "Add a note (optional)",
             modifier = Modifier.fillMaxWidth(),
         )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
@@ -2217,7 +2218,7 @@ private fun ProductInquirySection(productId: String) {
         Text("Questions & answers", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
         Spacer(modifier = Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(value = question, onValueChange = { question = it }, placeholder = { Text("Ask the seller a question") }, singleLine = true, modifier = Modifier.weight(1f))
+            IdsTextField(value = question, onValueChange = { question = it }, label = "Ask the seller a question", modifier = Modifier.weight(1f))
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                     .background(if (asking || question.isBlank()) Ids.colors.textTertiary else Ids.colors.surfaceSoft)
@@ -2363,10 +2364,10 @@ private fun ProductReviewRow(item: OrderItemDto) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
         Text(item.productName, color = Ids.colors.textSecondary, fontSize = 12.sp)
         StarRatingRow(rating) { rating = it }
-        OutlinedTextField(
+        IdsTextField(
             value = comment,
             onValueChange = { comment = it },
-            placeholder = { Text("How was it? (optional)") },
+            label = "How was it? (optional)",
             modifier = Modifier.fillMaxWidth(),
         )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
@@ -2663,7 +2664,7 @@ private fun PayByCodeCard(
                 }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(value = code, onValueChange = { code = it }, placeholder = { Text("Payment code") }, singleLine = true, modifier = Modifier.weight(1f))
+                    IdsTextField(value = code, onValueChange = { code = it }, label = "Payment code", modifier = Modifier.weight(1f))
                     ListingActionButtonShop(
                         if (submitting) (if (facePayEnrolled) "Authorizing…" else "Paying…") else if (facePayEnrolled) "😊 Pay" else "Pay",
                         submitting || code.isBlank(), filled = true,
@@ -2691,9 +2692,9 @@ private fun PayByStaticQrCard(onPaid: (CollectPaymentResultDto) -> Unit) {
                 "For a merchant with one permanent code (like a market stall) -- enter their merchant ID and how much you're paying.",
                 color = Ids.colors.textSecondary, fontSize = 12.sp,
             )
-            OutlinedTextField(value = merchantId, onValueChange = { merchantId = it }, placeholder = { Text("Merchant ID") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = merchantId, onValueChange = { merchantId = it }, label = "Merchant ID", modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value = amount, onValueChange = { amount = it }, placeholder = { Text("Amount (RWF)") }, singleLine = true, modifier = Modifier.weight(1f))
+                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
                 ListingActionButtonShop(
                     if (submitting) "Paying…" else "Pay",
                     submitting || merchantId.isBlank() || amount.toBigDecimalOrNull() == null,

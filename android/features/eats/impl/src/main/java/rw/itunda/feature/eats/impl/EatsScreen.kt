@@ -69,6 +69,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.LiveRiderMiniMap
 import rw.itunda.core.designsystem.components.QtyButton
@@ -1017,26 +1018,26 @@ private fun ReviewOrderCard(order: EatsOrderDto) {
         Column {
             Text("Restaurant", color = Ids.colors.textSecondary, fontSize = 12.sp)
             StarRatingRow(restaurantRating) { restaurantRating = it }
-            OutlinedTextField(
+            IdsTextField(
                 value = restaurantComment,
                 onValueChange = { restaurantComment = it },
-                placeholder = { Text("How was the food? (optional)") },
+                label = "How was the food? (optional)",
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
+            IdsTextField(
                 value = photoUrl,
                 onValueChange = { photoUrl = it },
-                placeholder = { Text("Photo URL of your food (optional)") },
+                label = "Photo URL of your food (optional)",
                 modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
             )
         }
         Column {
             Text("Rider", color = Ids.colors.textSecondary, fontSize = 12.sp)
             StarRatingRow(riderRating) { riderRating = it }
-            OutlinedTextField(
+            IdsTextField(
                 value = riderComment,
                 onValueChange = { riderComment = it },
-                placeholder = { Text("How was the delivery? (optional)") },
+                label = "How was the delivery? (optional)",
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -1258,10 +1259,10 @@ private fun AddressAutocompleteField(
     }
 
     Column {
-        OutlinedTextField(
+        IdsTextField(
             value = address,
             onValueChange = onAddressChange,
-            placeholder = { Text("Delivery address") },
+            label = "Delivery address",
             modifier = Modifier.fillMaxWidth(),
         )
         if (suggestions.isNotEmpty()) {
@@ -1431,30 +1432,30 @@ private fun EatsCheckoutView(
                     item { Text("Pinned -- real distance-based delivery fee applies", color = Ids.colors.success, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
                 }
                 item {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = deliveryNotes,
                         onValueChange = { if (it.length <= 500) deliveryNotes = it },
-                        placeholder = { Text("Delivery notes (optional) -- e.g. Leave at the gate") },
+                        label = "Delivery notes (optional) -- e.g. Leave at the gate",
                         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     )
                 }
             } else if (mode == EatsCheckoutMode.PICKUP) {
                 item { Text("No delivery fee -- collect your order at the restaurant once it's ready", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
                 item {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = deliveryNotes,
                         onValueChange = { if (it.length <= 500) deliveryNotes = it },
-                        placeholder = { Text("Pickup notes (optional)") },
+                        label = "Pickup notes (optional)",
                         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     )
                 }
             } else {
                 item { Text("No delivery fee -- served straight to your table", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
                 item {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = tableNumber,
                         onValueChange = { if (it.length <= 50) tableNumber = it },
-                        placeholder = { Text("Table number -- e.g. 12") },
+                        label = "Table number -- e.g. 12",
                         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     )
                 }
