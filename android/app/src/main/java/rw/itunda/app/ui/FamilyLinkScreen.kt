@@ -65,6 +65,12 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var openOverviewFor by remember { mutableStateOf<String?>(null) }
     var overview by remember { mutableStateOf<ChildOverviewDto?>(null) }
+    // Real spend-limit enforcement (2026-08-04) -- see FamilyLinkDto.dailySpendLimit's
+    // own doc comment: already enforced server-side on every P2P send a child makes, but
+    // a guardian had no way to ever set one until now.
+    var editingLimitFor by remember { mutableStateOf<String?>(null) }
+    var limitInput by remember { mutableStateOf("") }
+    var limitBusyId by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -121,6 +127,24 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                 error = superAppErrorMessage(e)
             } finally {
                 busyId = null
+            }
+        }
+    }
+
+    fun setSpendLimit(childUserId: String, limit: java.math.BigDecimal?) {
+        limitBusyId = childUserId
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.setFamilySpendLimit(childUserId, rw.itunda.core.network.SetSpendLimitRequest(limit))
+                editingLimitFor = null
+                limitInput = ""
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                limitBusyId = null
             }
         }
     }
@@ -219,6 +243,40 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
                                             .clickable(enabled = busyId != c.link.id) { revoke(c.link.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
                                     ) { Text("Unlink", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    c.link.dailySpendLimit?.let { "Daily limit: ${"%,.0f".format(it)} RWF" } ?: "No daily spend limit set",
+                                    color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    if (editingLimitFor == c.link.childUserId) "Cancel" else "Edit",
+                                    color = Ids.colors.brand, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.clickable {
+                                        if (editingLimitFor == c.link.childUserId) {
+                                            editingLimitFor = null
+                                        } else {
+                                            editingLimitFor = c.link.childUserId
+                                            limitInput = c.link.dailySpendLimit?.toPlainString() ?: ""
+                                        }
+                                    },
+                                )
+                            }
+                            if (editingLimitFor == c.link.childUserId) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    OutlinedTextField(
+                                        value = limitInput, onValueChange = { limitInput = it },
+                                        label = { Text("Daily limit (RWF, blank = no limit)") },
+                                        singleLine = true, modifier = Modifier.weight(1f),
+                                    )
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                                            .clickable(enabled = limitBusyId != c.link.childUserId) {
+                                                setSpendLimit(c.link.childUserId, limitInput.trim().ifBlank { null }?.toBigDecimalOrNull())
+                                            }
+                                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    ) { Text(if (limitBusyId == c.link.childUserId) "…" else "Save", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                 }
                             }
                             if (openOverviewFor == c.link.childUserId) {

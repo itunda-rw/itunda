@@ -3675,6 +3675,12 @@ interface ApiService {
     @POST("api/v1/family/links/{id}/revoke")
     suspend fun revokeFamilyLink(@Path("id") id: String): FamilyLinkResponse
 
+    // Real spend-limit enforcement (2026-07-27) -- see FamilyLinkDto.dailySpendLimit's
+    // own doc comment. FamilyLinkController.setSpendLimit existed on the backend, already
+    // real-enforced, with zero client anywhere until now. Pass null to clear the limit.
+    @POST("api/v1/family/children/{childUserId}/spend-limit")
+    suspend fun setFamilySpendLimit(@Path("childUserId") childUserId: String, @Body request: SetSpendLimitRequest): FamilyLinkResponse
+
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client
     // for this feature (item 104, found via a fresh matrix scan: zero client on either
     // mobile platform despite being real and live since well before this session).
@@ -4084,6 +4090,12 @@ data class RespondToInviteRequest(val accept: Boolean)
 data class FamilyLinkDto(
     val id: String, val guardianUserId: String, val childUserId: String,
     val status: String, val createdAt: String, val respondedAt: String?,
+    // Real spend-limit enforcement (2026-07-27) -- see FamilyLinkService.setSpendLimit's
+    // own doc comment on the backend. Already real-enforced against every P2P send a
+    // child makes (P2pService.sendDirect calls enforceSpendLimit before the ledger
+    // movement) -- but a guardian had no way to ever SET one until now, so the
+    // enforcement path could never actually trigger.
+    val dailySpendLimit: java.math.BigDecimal? = null,
 )
 data class FamilyLinkViewDto(val link: FamilyLinkDto, val guardianName: String, val childName: String)
 data class ChildOverviewDto(val childUserId: String, val childName: String, val walletBalance: Double, val recentTransactions: List<TransactionDto>)
@@ -4091,6 +4103,7 @@ data class FamilyLinkResponse(val success: Boolean, val link: FamilyLinkDto)
 data class FamilyLinksResponse(val success: Boolean, val invites: List<FamilyLinkDto>)
 data class FamilyLinkViewsResponse(val success: Boolean, val children: List<FamilyLinkViewDto> = emptyList(), val guardians: List<FamilyLinkViewDto> = emptyList())
 data class ChildOverviewResponse(val success: Boolean, val overview: ChildOverviewDto)
+data class SetSpendLimitRequest(val dailySpendLimit: java.math.BigDecimal?)
 
 data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
 data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)
