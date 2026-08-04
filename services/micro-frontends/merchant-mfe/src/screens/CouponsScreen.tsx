@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
+import { EmptyState } from '../components/EmptyState';
 import { createCoupon, deactivateCoupon, fetchMyCoupons, type CouponDiscountType, type MerchantCoupon } from '../lib/merchant';
 
 // Real merchant coupons + 단골 loyalty gating (item 146) -- see lib/merchant.ts's own
@@ -33,7 +34,7 @@ export default function CouponsScreen() {
         {coupons === null ? (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
         ) : coupons.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No coupons yet.</p>
+          <EmptyState message="No coupons yet." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {coupons.map((coupon) => (

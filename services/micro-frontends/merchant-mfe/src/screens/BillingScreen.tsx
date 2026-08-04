@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
+import { EmptyState } from '../components/EmptyState';
 import { createBillingPlan, deactivateBillingPlan, fetchMyBillingPlans, type MerchantBillingPlan } from '../lib/merchant';
 
 // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing
@@ -33,7 +34,7 @@ export default function BillingScreen() {
         {plans === null ? (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
         ) : plans.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No billing plans yet.</p>
+          <EmptyState message="No billing plans yet." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {plans.map((plan) => (

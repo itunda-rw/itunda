@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
 import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, getMyIdentitySubmissions, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
@@ -202,7 +203,7 @@ function DevicesCard() {
       {devices === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
       ) : devices.length === 0 ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No devices recorded yet.</p>
+        <EmptyState message="No devices recorded yet." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {devices.map((d) => (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
+import { ErrorCard } from '../components/EmptyState';
 import { advanceRestaurantOrder, completePickupOrder, fetchRestaurantOrders, type EatsOrder, type EatsOrderStatus } from '../lib/eats';
 
 // Real Coupang Eats/Baemin-style restaurant order queue (item 208) -- see lib/eats.ts's
@@ -79,12 +80,7 @@ export default function EatsOrdersScreen() {
   };
 
   if (error) {
-    return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-      </div>
-    );
+    return <ErrorCard message={error} onRetry={load} />;
   }
   if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
   if (orders.length === 0) {

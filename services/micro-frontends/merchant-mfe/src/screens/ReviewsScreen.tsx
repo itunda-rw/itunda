@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
+import { EmptyState } from '../components/EmptyState';
 import {
   fetchMerchantReviews, fetchProductReviews, getProductCatalog, replyToBookingReview, replyToProductReview,
   type Merchant, type MerchantBookingReview, type ProductReview,
@@ -47,7 +48,7 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
 
       {reviews !== null && reviews.length === 0 && (
         <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No booking reviews yet.</p>
+          <EmptyState message="No booking reviews yet." />
         </div>
       )}
 
@@ -102,7 +103,7 @@ function ProductReviewsSection() {
       )}
       {reviews !== null && reviews.length === 0 && (
         <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No product reviews yet.</p>
+          <EmptyState message="No product reviews yet." />
         </div>
       )}
       {reviews?.map((review) => (

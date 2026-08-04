@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { ChevronDown, ChevronUp, CreditCard, Minus, Plus, RefreshCw, Store, Trash2 } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 import {
@@ -141,9 +142,7 @@ function RegisterView() {
       <div style={{ flex: 2 }}>
         {products.length === 0 ? (
           <div className="toss-card">
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-              No products yet — add some in the Catalog tab first.
-            </p>
+            <EmptyState message="No products yet — add some in the Catalog tab first." />
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
@@ -551,7 +550,7 @@ function CatalogView() {
         <div className="toss-card">Loading…</div>
       ) : products.length === 0 ? (
         <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products yet.</p>
+          <EmptyState message="No products yet." />
         </div>
       ) : (
         <div className="toss-card" style={{ padding: 0, overflow: 'hidden' }}>

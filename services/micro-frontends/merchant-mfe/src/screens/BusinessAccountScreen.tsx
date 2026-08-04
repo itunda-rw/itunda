@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
+import { EmptyState } from '../components/EmptyState';
 import {
   fetchBusinessTransactions,
   getBusinessAccount,
@@ -84,7 +85,7 @@ export default function BusinessAccountScreen() {
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Business transactions</h3>
         {transactions.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No business transactions yet.</p>
+          <EmptyState message="No business transactions yet." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {transactions.map((entry) => (
