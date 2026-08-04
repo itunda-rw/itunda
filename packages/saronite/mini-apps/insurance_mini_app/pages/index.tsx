@@ -12,22 +12,29 @@ import {
 } from 'react-native';
 import { createRoute } from '@granite-js/react-native';
 import {
+  cancelCropIndexPolicy,
   cancelFund,
   closeView,
   contributeToFund,
   createPremiumFund,
+  enrollCropIndexPolicy,
   enrollInsurance,
+  getCropIndexCatalog,
   getInsurancePlans,
   getMyClaims,
+  getMyCropIndexPolicies,
   getMyPolicies,
   getMyPremiumFunds,
   submitClaim,
 } from '@itunda/saronite-react-native';
 import type {
+  CropIndexCatalogEntry,
   InsuranceClaim,
   InsurancePlan,
   InsurancePolicy,
   InsurancePremiumFund,
+  WeatherIndexCropType,
+  WeatherIndexPolicy,
 } from '@itunda/saronite-react-native';
 
 /**
@@ -71,14 +78,36 @@ export default function InsurancePage() {
   const [claimAmount, setClaimAmount] = useState('');
   const [claimBusy, setClaimBusy] = useState(false);
 
+  // Real Rwanda NAIS-style parametric/weather-index crop insurance -- closes
+  // WeatherIndexInsuranceController, which existed on the backend with zero mobile
+  // client anywhere until now. Structurally separate from the claims-based plans above:
+  // no individual claim is ever filed, a published district+season rainfall index
+  // auto-triggers payout for every enrolled policy at once.
+  const [cropCatalog, setCropCatalog] = useState<CropIndexCatalogEntry[] | null>(null);
+  const [cropPolicies, setCropPolicies] = useState<WeatherIndexPolicy[]>([]);
+  const [enrollingCropType, setEnrollingCropType] = useState<WeatherIndexCropType | null>(null);
+  const [cropDistrict, setCropDistrict] = useState('');
+  const [cropSeason, setCropSeason] = useState('');
+  const [cropInsuredAmount, setCropInsuredAmount] = useState('');
+  const [cropBusyKey, setCropBusyKey] = useState<string | null>(null);
+
   const load = useCallback(() => {
     setError(null);
-    Promise.all([getInsurancePlans(), getMyPolicies(), getMyPremiumFunds(), getMyClaims()])
-      .then(([plansResult, policiesResult, fundsResult, claimsResult]) => {
+    Promise.all([
+      getInsurancePlans(),
+      getMyPolicies(),
+      getMyPremiumFunds(),
+      getMyClaims(),
+      getCropIndexCatalog(),
+      getMyCropIndexPolicies(),
+    ])
+      .then(([plansResult, policiesResult, fundsResult, claimsResult, cropCatalogResult, cropPoliciesResult]) => {
         setPlans(plansResult.plans);
         setPolicies(policiesResult.policies);
         setFunds(fundsResult.funds);
         setClaims(claimsResult.claims);
+        setCropCatalog(cropCatalogResult.catalog);
+        setCropPolicies(cropPoliciesResult.policies);
       })
       .catch((err: Error) => setError(err.message));
   }, []);
@@ -166,6 +195,51 @@ export default function InsurancePage() {
       Alert.alert("Couldn't submit claim", err instanceof Error ? err.message : 'Please try again');
     } finally {
       setClaimBusy(false);
+    }
+  };
+
+  const handleEnrollCrop = async (cropType: WeatherIndexCropType) => {
+    const trimmedDistrict = cropDistrict.trim();
+    const trimmedSeason = cropSeason.trim();
+    const insuredAmount = Number(cropInsuredAmount || '0');
+    if (!trimmedDistrict) {
+      Alert.alert('District required', 'Please enter your district.');
+      return;
+    }
+    if (!trimmedSeason) {
+      Alert.alert('Season required', 'Please enter the season (e.g. 2026B).');
+      return;
+    }
+    if (!Number.isFinite(insuredAmount) || insuredAmount <= 0) {
+      Alert.alert('Invalid amount', 'Insured amount must be greater than zero.');
+      return;
+    }
+    setCropBusyKey(cropType);
+    try {
+      const result = await enrollCropIndexPolicy(cropType, trimmedDistrict, trimmedSeason, insuredAmount);
+      setCropPolicies((prev) => [result.policy, ...prev]);
+      setEnrollingCropType(null);
+      setCropDistrict('');
+      setCropSeason('');
+      setCropInsuredAmount('');
+      Alert.alert('Enrolled', 'Your crop is now covered for this season.');
+    } catch (err) {
+      Alert.alert("Couldn't enroll", err instanceof Error ? err.message : 'Please try again');
+    } finally {
+      setCropBusyKey(null);
+    }
+  };
+
+  const handleCancelCropPolicy = async (policyId: string) => {
+    setCropBusyKey(policyId);
+    try {
+      const result = await cancelCropIndexPolicy(policyId);
+      setCropPolicies((prev) => prev.map((p) => (p.id === policyId ? result.policy : p)));
+      Alert.alert('Cancelled', 'Crop policy cancelled.');
+    } catch (err) {
+      Alert.alert("Couldn't cancel", err instanceof Error ? err.message : 'Please try again');
+    } finally {
+      setCropBusyKey(null);
     }
   };
 
@@ -365,6 +439,114 @@ export default function InsurancePage() {
         </View>
       )}
 
+      {cropPolicies.length > 0 && (
+        <View style={styles.myPoliciesSection}>
+          <Text style={styles.sectionLabel}>My crop policies</Text>
+          {cropPolicies.map((policy) => (
+            <View key={policy.id} style={styles.policyCard}>
+              <View style={styles.policyRow}>
+                <Text style={styles.policyName}>
+                  {policy.cropType} · {policy.district} · {policy.season}
+                </Text>
+                <Text
+                  style={[
+                    styles.policyStatus,
+                    policy.status === 'CANCELLED' && styles.claimStatusPending,
+                    policy.status === 'SEASON_ENDED_NO_PAYOUT' && styles.claimStatusPending,
+                  ]}
+                >
+                  {policy.status}
+                </Text>
+              </View>
+              <Text style={styles.fundProgressLabel}>
+                Insured {policy.insuredAmount.toLocaleString()} RWF · Premium{' '}
+                {policy.premiumAmount.toLocaleString()} RWF
+              </Text>
+              {policy.status === 'ENROLLED' && (
+                <TouchableOpacity
+                  style={[styles.fundButtonSecondary, styles.fundSection]}
+                  disabled={cropBusyKey === policy.id}
+                  onPress={() => handleCancelCropPolicy(policy.id)}
+                >
+                  <Text style={styles.fundButtonSecondaryText}>
+                    {cropBusyKey === policy.id ? '...' : 'Cancel policy'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {cropCatalog && (
+        <View style={styles.myPoliciesSection}>
+          <Text style={styles.sectionLabel}>Crop insurance</Text>
+          {cropCatalog.map((entry) => (
+            <View key={entry.cropType} style={styles.row}>
+              <View style={styles.cropCard}>
+                <View style={styles.rowLeft}>
+                  <Text style={styles.planName}>{entry.name}</Text>
+                  <Text style={styles.provider}>{entry.description}</Text>
+                  <Text style={styles.premium}>{entry.premiumRatePercent}% of insured amount</Text>
+                </View>
+                {enrollingCropType === entry.cropType ? (
+                  <View style={[styles.fundForm, styles.fundSection]}>
+                    <TextInput
+                      style={styles.fundInput}
+                      placeholder="District"
+                      value={cropDistrict}
+                      onChangeText={setCropDistrict}
+                    />
+                    <TextInput
+                      style={styles.fundInput}
+                      placeholder="Season (e.g. 2026B)"
+                      value={cropSeason}
+                      onChangeText={setCropSeason}
+                    />
+                    <TextInput
+                      style={styles.fundInput}
+                      keyboardType="numeric"
+                      placeholder="Insured amount (RWF)"
+                      value={cropInsuredAmount}
+                      onChangeText={setCropInsuredAmount}
+                    />
+                    <View style={styles.fundButtonRow}>
+                      <TouchableOpacity
+                        style={styles.fundButton}
+                        disabled={cropBusyKey === entry.cropType}
+                        onPress={() => handleEnrollCrop(entry.cropType)}
+                      >
+                        <Text style={styles.fundButtonText}>
+                          {cropBusyKey === entry.cropType ? '...' : 'Enroll'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.fundButtonSecondary}
+                        onPress={() => setEnrollingCropType(null)}
+                      >
+                        <Text style={styles.fundButtonSecondaryText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.fundButtonSecondary, styles.fundSection]}
+                    onPress={() => {
+                      setEnrollingCropType(entry.cropType);
+                      setCropDistrict('');
+                      setCropSeason('');
+                      setCropInsuredAmount('');
+                    }}
+                  >
+                    <Text style={styles.fundButtonSecondaryText}>Insure this crop</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
       {plans && (
         <>
           <Text style={styles.sectionLabel}>Available plans</Text>
@@ -480,6 +662,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   rowLeft: { flex: 1 },
+  cropCard: { flex: 1 },
   planName: { fontSize: 15, fontWeight: '700', color: '#191F28' },
   provider: { fontSize: 12, color: '#8B95A1', marginTop: 2 },
   premium: { fontSize: 13, color: '#4E5968', marginTop: 4, fontWeight: '600' },

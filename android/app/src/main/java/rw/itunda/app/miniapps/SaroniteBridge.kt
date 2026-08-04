@@ -225,6 +225,52 @@ class SaroniteBrownfieldModule(
         authorizedCall(get("api/v1/insurance/claims"), promise, ::parseMyClaimsResult)
     }
 
+    // Real Rwanda NAIS-style parametric/weather-index crop insurance
+    // (WeatherIndexInsuranceController) -- see that controller's own doc comment.
+    // Structurally distinct from claims-based InsuranceController above: no individual
+    // claim is ever filed, a published district+season rainfall index auto-triggers
+    // payout for every enrolled policy at once. Had zero mobile client anywhere until now.
+    @ReactMethod
+    fun getCropIndexCatalog(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/insurance/crop-index/catalog"), promise, ::parseCropIndexCatalogResult)
+    }
+
+    @ReactMethod
+    fun getMyCropIndexPolicies(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/insurance/crop-index/policies"), promise, ::parseMyCropIndexPoliciesResult)
+    }
+
+    @ReactMethod
+    fun enrollCropIndexPolicy(cropType: String, district: String, season: String, insuredAmount: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply {
+            addProperty("cropType", cropType)
+            addProperty("district", district)
+            addProperty("season", season)
+            addProperty("insuredAmount", insuredAmount)
+        }
+        authorizedCall(post("api/v1/insurance/crop-index/policies", body), promise, ::parseCropIndexPolicyResult)
+    }
+
+    // Money movement in reverse only if the policy hasn't already paid out --
+    // WeatherIndexInsuranceService.cancel enforces that server-side; a real
+    // Idempotency-Key is required (same as InsuranceController's fund endpoints).
+    @ReactMethod
+    fun cancelCropIndexPolicy(policyId: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(post("api/v1/insurance/crop-index/policies/$policyId/cancel", JsonObject()), promise, ::parseCropIndexPolicyResult)
+    }
+
+    @ReactMethod
+    fun getCropIndexSeasonIndex(district: String, season: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val encodedDistrict = java.net.URLEncoder.encode(district, "UTF-8")
+        val encodedSeason = java.net.URLEncoder.encode(season, "UTF-8")
+        authorizedCall(get("api/v1/insurance/crop-index/districts/$encodedDistrict/seasons/$encodedSeason/index"), promise, ::parseCropIndexSeasonIndexResult)
+    }
+
     @ReactMethod
     fun getReferralInfo(promise: Promise) {
         if (!requireScope(null, promise)) return
@@ -597,6 +643,82 @@ class SaroniteBrownfieldModule(
         val result = Arguments.createMap()
         result.putBoolean("success", root.get("success")?.asBoolean ?: true)
         result.putArray("claims", claims)
+        return result
+    }
+
+    // Real backend shape: WeatherIndexInsuranceService.getCatalog -- cropType serializes
+    // as the enum's real name (MAIZE/RICE/CHILLI_PEPPER/FRENCH_BEANS/IRISH_POTATO),
+    // confirmed live against the running backend, not guessed.
+    private fun parseCropIndexCatalogResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val catalog = Arguments.createArray()
+        root.getAsJsonArray("catalog")?.forEach { element ->
+            val c = element.asJsonObject
+            val entry = Arguments.createMap()
+            entry.putString("cropType", c.get("cropType")?.asString ?: "")
+            entry.putString("name", c.get("name")?.asString ?: "")
+            entry.putDouble("premiumRatePercent", c.get("premiumRatePercent")?.asDouble ?: 0.0)
+            entry.putString("description", c.get("description")?.asString ?: "")
+            catalog.pushMap(entry)
+        }
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        result.putArray("catalog", catalog)
+        return result
+    }
+
+    // Real backend shape: WeatherIndexInsuranceController.policyMap -- read directly from
+    // that controller, not guessed. status is one of ENROLLED/PAYOUT_TRIGGERED/
+    // SEASON_ENDED_NO_PAYOUT/CANCELLED; payoutAt is null until a payout actually fires.
+    private fun parseCropIndexPolicy(p: JsonObject): WritableMap {
+        val policyMap = Arguments.createMap()
+        policyMap.putString("id", p.get("id").asString)
+        policyMap.putString("cropType", p.get("cropType")?.asString ?: "")
+        policyMap.putString("district", p.get("district")?.asString ?: "")
+        policyMap.putString("season", p.get("season")?.asString ?: "")
+        policyMap.putDouble("insuredAmount", p.get("insuredAmount")?.asDouble ?: 0.0)
+        policyMap.putDouble("premiumAmount", p.get("premiumAmount")?.asDouble ?: 0.0)
+        policyMap.putString("status", p.get("status")?.asString ?: "ENROLLED")
+        policyMap.putString("createdAt", p.get("createdAt")?.asString ?: "")
+        p.get("payoutAt")?.takeIf { !it.isJsonNull }?.let { policyMap.putString("payoutAt", it.asString) }
+        return policyMap
+    }
+
+    private fun parseMyCropIndexPoliciesResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val policies = Arguments.createArray()
+        root.getAsJsonArray("policies")?.forEach { element -> policies.pushMap(parseCropIndexPolicy(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        result.putArray("policies", policies)
+        return result
+    }
+
+    private fun parseCropIndexPolicyResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        root.getAsJsonObject("policy")?.let { result.putMap("policy", parseCropIndexPolicy(it)) }
+        return result
+    }
+
+    // Real backend shape: WeatherIndexInsuranceController.indexMap / SeasonRainfallIndex.kt.
+    // "index" is null (confirmed live) until an ADMIN has transcribed that district+season's
+    // real published NISR/Rwanda Meteorology Agency rainfall figure.
+    private fun parseCropIndexSeasonIndexResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putBoolean("success", root.get("success")?.asBoolean ?: true)
+        val indexObj = root.get("index")?.takeIf { !it.isJsonNull }?.asJsonObject
+        if (indexObj != null) {
+            val indexMap = Arguments.createMap()
+            indexMap.putString("district", indexObj.get("district")?.asString ?: "")
+            indexMap.putString("season", indexObj.get("season")?.asString ?: "")
+            indexMap.putDouble("rainfallIndexPercent", indexObj.get("rainfallIndexPercent")?.asDouble ?: 0.0)
+            indexMap.putDouble("droughtThresholdPercent", indexObj.get("droughtThresholdPercent")?.asDouble ?: 0.0)
+            indexMap.putString("publishedAt", indexObj.get("publishedAt")?.asString ?: "")
+            result.putMap("index", indexMap)
+        }
         return result
     }
 

@@ -194,6 +194,72 @@ export interface MyClaimsResult {
   claims: InsuranceClaim[];
 }
 
+/** Real Rwanda National Agricultural Insurance Scheme (NAIS)-style parametric/weather-index
+ * crop insurance -- see services/backend's WeatherIndexInsuranceService doc comment for the
+ * full sourced account (WFP, Columbia IRI/Kilimo Salama, NISR Seasonal Agricultural Survey).
+ * Structurally distinct from InsuranceClaim above: no individual claim is ever filed here --
+ * a district+season's published rainfall index auto-triggers payout for every enrolled
+ * policy at once. Mirrors `GET /insurance/crop-index/catalog`. */
+export type WeatherIndexCropType = 'MAIZE' | 'RICE' | 'CHILLI_PEPPER' | 'FRENCH_BEANS' | 'IRISH_POTATO';
+
+export interface CropIndexCatalogEntry {
+  cropType: WeatherIndexCropType;
+  name: string;
+  premiumRatePercent: number;
+  description: string;
+}
+
+export interface CropIndexCatalogResult {
+  success: boolean;
+  catalog: CropIndexCatalogEntry[];
+}
+
+/** Mirrors a single policy from `GET /insurance/crop-index/policies`
+ * (WeatherIndexInsuranceController.policyMap). payoutAt is null until a payout actually
+ * fires. */
+export interface WeatherIndexPolicy {
+  id: string;
+  cropType: WeatherIndexCropType;
+  district: string;
+  season: string;
+  insuredAmount: number;
+  premiumAmount: number;
+  status: 'ENROLLED' | 'PAYOUT_TRIGGERED' | 'SEASON_ENDED_NO_PAYOUT' | 'CANCELLED';
+  createdAt: string;
+  payoutAt: string | null;
+}
+
+export interface MyCropIndexPoliciesResult {
+  success: boolean;
+  policies: WeatherIndexPolicy[];
+}
+
+/** Mirrors the response of `POST /insurance/crop-index/policies` and
+ * `POST /insurance/crop-index/policies/{id}/cancel`. */
+export interface CropIndexPolicyResult {
+  success: boolean;
+  policy: WeatherIndexPolicy;
+}
+
+/** Mirrors a published season rainfall index from
+ * `GET /insurance/crop-index/districts/{district}/seasons/{season}/index`
+ * (WeatherIndexInsuranceController.indexMap). Null until an ADMIN has transcribed that
+ * district+season's real published NISR/Rwanda Meteorology Agency figure -- itunda has no
+ * live satellite/rainfall-gauge feed integration (see WeatherIndexInsuranceService's own
+ * doc comment for the full honesty note). */
+export interface SeasonRainfallIndex {
+  district: string;
+  season: string;
+  rainfallIndexPercent: number;
+  droughtThresholdPercent: number;
+  publishedAt: string;
+}
+
+export interface CropIndexSeasonIndexResult {
+  success: boolean;
+  index: SeasonRainfallIndex | null;
+}
+
 /** Mirrors the response of `GET /rewards/referral`
  * (services/backend/rewards's RewardsController.referral). */
 export interface ReferralInfo {
@@ -262,6 +328,16 @@ export interface SaroniteBrownfieldModuleSpec {
   getMyPremiumFunds(): Promise<MyPremiumFundsResult>;
   submitClaim(policyId: string, description: string, amount: number): Promise<SubmitClaimResult>;
   getMyClaims(): Promise<MyClaimsResult>;
+  getCropIndexCatalog(): Promise<CropIndexCatalogResult>;
+  getMyCropIndexPolicies(): Promise<MyCropIndexPoliciesResult>;
+  enrollCropIndexPolicy(
+    cropType: WeatherIndexCropType,
+    district: string,
+    season: string,
+    insuredAmount: number,
+  ): Promise<CropIndexPolicyResult>;
+  cancelCropIndexPolicy(policyId: string): Promise<CropIndexPolicyResult>;
+  getCropIndexSeasonIndex(district: string, season: string): Promise<CropIndexSeasonIndexResult>;
   getReferralInfo(): Promise<ReferralInfo>;
   reportSteps(steps: number): Promise<StepReportResult>;
   getTodaySteps(): Promise<TodayStepsResult>;

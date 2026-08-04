@@ -266,6 +266,88 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real Rwanda NAIS-style parametric/weather-index crop insurance
+    // (WeatherIndexInsuranceController) -- mirrors Android's SaroniteBridge.kt additions.
+    // Structurally distinct from claims-based InsuranceController above: no individual
+    // claim is ever filed, a published district+season rainfall index auto-triggers
+    // payout for every enrolled policy at once. Had zero mobile client anywhere until now.
+    @objc func getCropIndexCatalog(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/crop-index/catalog", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let catalog = ((root["catalog"] as? [[String: Any]]) ?? []).map { c -> [String: Any] in
+                [
+                    "cropType": c["cropType"] as? String ?? "",
+                    "name": c["name"] as? String ?? "",
+                    "premiumRatePercent": (c["premiumRatePercent"] as? NSNumber)?.doubleValue ?? 0,
+                    "description": c["description"] as? String ?? "",
+                ]
+            }
+            return ["success": root["success"] as? Bool ?? true, "catalog": catalog]
+        }
+    }
+
+    @objc func getMyCropIndexPolicies(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/crop-index/policies", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let policies = ((root["policies"] as? [[String: Any]]) ?? []).map(Self.mapCropIndexPolicy)
+            return ["success": root["success"] as? Bool ?? true, "policies": policies]
+        }
+    }
+
+    @objc func enrollCropIndexPolicy(
+        _ cropType: String,
+        district: String,
+        season: String,
+        insuredAmount: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        authorizedCall(
+            path: "api/v1/insurance/crop-index/policies",
+            method: "POST",
+            body: ["cropType": cropType, "district": district, "season": season, "insuredAmount": insuredAmount],
+            resolve: resolve,
+            reject: reject
+        ) { root in
+            var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+            if let policy = root["policy"] as? [String: Any] { result["policy"] = Self.mapCropIndexPolicy(policy) }
+            return result
+        }
+    }
+
+    // Money movement in reverse only if the policy hasn't already paid out --
+    // WeatherIndexInsuranceService.cancel enforces that server-side; a real
+    // Idempotency-Key is attached by authorizedCall (same as the fund endpoints above).
+    @objc func cancelCropIndexPolicy(_ policyId: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/insurance/crop-index/policies/\(policyId)/cancel", method: "POST", body: [:], resolve: resolve, reject: reject) { root in
+            var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+            if let policy = root["policy"] as? [String: Any] { result["policy"] = Self.mapCropIndexPolicy(policy) }
+            return result
+        }
+    }
+
+    @objc func getCropIndexSeasonIndex(
+        _ district: String,
+        season: String,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        let allowed = CharacterSet.urlPathAllowed
+        let encodedDistrict = district.addingPercentEncoding(withAllowedCharacters: allowed) ?? district
+        let encodedSeason = season.addingPercentEncoding(withAllowedCharacters: allowed) ?? season
+        authorizedCall(path: "api/v1/insurance/crop-index/districts/\(encodedDistrict)/seasons/\(encodedSeason)/index", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
+            if let index = root["index"] as? [String: Any] {
+                result["index"] = [
+                    "district": index["district"] as? String ?? "",
+                    "season": index["season"] as? String ?? "",
+                    "rainfallIndexPercent": (index["rainfallIndexPercent"] as? NSNumber)?.doubleValue ?? 0,
+                    "droughtThresholdPercent": (index["droughtThresholdPercent"] as? NSNumber)?.doubleValue ?? 0,
+                    "publishedAt": index["publishedAt"] as? String ?? "",
+                ]
+            }
+            return result
+        }
+    }
+
     @objc func getReferralInfo(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/rewards/referral", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             [
@@ -334,6 +416,23 @@ final class SaroniteBrownfieldModule: NSObject {
             "status": c["status"] as? String ?? "SUBMITTED",
             "submittedAt": c["submittedAt"] as? String ?? "",
             "decisionReason": (c["decisionReason"] as? String) ?? NSNull(),
+        ]
+    }
+
+    // Real backend shape: WeatherIndexInsuranceController.policyMap -- read directly from
+    // that controller, not guessed. status is one of ENROLLED/PAYOUT_TRIGGERED/
+    // SEASON_ENDED_NO_PAYOUT/CANCELLED; payoutAt is null until a payout actually fires.
+    private static func mapCropIndexPolicy(_ p: [String: Any]) -> [String: Any] {
+        [
+            "id": p["id"] as? String ?? "",
+            "cropType": p["cropType"] as? String ?? "",
+            "district": p["district"] as? String ?? "",
+            "season": p["season"] as? String ?? "",
+            "insuredAmount": (p["insuredAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "premiumAmount": (p["premiumAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "status": p["status"] as? String ?? "ENROLLED",
+            "createdAt": p["createdAt"] as? String ?? "",
+            "payoutAt": (p["payoutAt"] as? String) ?? NSNull(),
         ]
     }
 

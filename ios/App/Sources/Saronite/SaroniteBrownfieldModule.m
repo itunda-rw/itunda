@@ -36,6 +36,19 @@ RCT_EXTERN_METHOD(submitClaim:(NSString *)policyId
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getMyClaims:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getCropIndexCatalog:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getMyCropIndexPolicies:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(enrollCropIndexPolicy:(NSString *)cropType
+                  district:(NSString *)district
+                  season:(NSString *)season
+                  insuredAmount:(nonnull NSNumber *)insuredAmount
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(cancelCropIndexPolicy:(NSString *)policyId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getCropIndexSeasonIndex:(NSString *)district
+                  season:(NSString *)season
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getReferralInfo:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(reportSteps:(nonnull NSNumber *)steps resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getTodaySteps:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
