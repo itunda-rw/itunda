@@ -2168,6 +2168,10 @@ public struct MessageDto: Decodable, Identifiable {
     // comment. Only ever set on a message actually created via the real
     // /api/v1/emoticons/.../send endpoints.
     public let emoticonId: String?
+    // Real photo message -- ports Android TalkScreen.kt's own identical addition
+    // (2026-08-04) to iOS. Set only on a message sent with a real uploaded photo
+    // (POST /api/v1/uploads -> imageUrl passed to sendMessage), never client-asserted.
+    public let imageUrl: String?
 
     // A custom init(from:) below suppresses Swift's automatic memberwise initializer,
     // so this is needed explicitly for real call sites that construct a MessageDto
@@ -2182,6 +2186,7 @@ public struct MessageDto: Decodable, Identifiable {
         self.deletedAt = nil
         self.reactions = reactions
         self.emoticonId = nil
+        self.imageUrl = nil
     }
 
     // Custom decode: the real-time WebSocket push for a brand-new message omits
@@ -2198,9 +2203,10 @@ public struct MessageDto: Decodable, Identifiable {
         deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
         emoticonId = try container.decodeIfPresent(String.self, forKey: .emoticonId)
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, reactions, emoticonId }
+    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, reactions, emoticonId, imageUrl }
 }
 
 // Real WebSocket push envelopes (2026-07-18) -- see
@@ -2241,9 +2247,11 @@ public struct StartConversationRequest: Encodable {
 public struct SendMessageRequest: Encodable {
     public let body: String
     public let replyToMessageId: String?
-    public init(body: String, replyToMessageId: String? = nil) {
+    public let imageUrl: String?
+    public init(body: String, replyToMessageId: String? = nil, imageUrl: String? = nil) {
         self.body = body
         self.replyToMessageId = replyToMessageId
+        self.imageUrl = imageUrl
     }
 }
 public struct TalkContactDto: Decodable, Identifiable { public let userId: String; public let name: String; public var id: String { userId } }
@@ -2268,9 +2276,11 @@ public struct CreateGroupRequest: Encodable { public let name: String; public le
 public struct SendGroupMessageRequest: Encodable {
     public let body: String
     public let replyToMessageId: String?
-    public init(body: String, replyToMessageId: String? = nil) {
+    public let imageUrl: String?
+    public init(body: String, replyToMessageId: String? = nil, imageUrl: String? = nil) {
         self.body = body
         self.replyToMessageId = replyToMessageId
+        self.imageUrl = imageUrl
     }
 }
 
@@ -2307,6 +2317,8 @@ public struct GroupMessageDto: Decodable, Identifiable {
     // defined-but-uncalled-method sweep: the backend/DTO field existed on bank-mfe's
     // equivalent type, but this DTO never carried it and no client ever sent one.
     public let emoticonId: String?
+    // Real photo message -- see MessageDto's own identical doc comment.
+    public let imageUrl: String?
 
     // Explicit memberwise init -- see MessageDto's own identical note on why this is
     // needed once a custom init(from:) is present.
@@ -2320,6 +2332,7 @@ public struct GroupMessageDto: Decodable, Identifiable {
         self.replyToMessageId = nil
         self.reactions = reactions
         self.emoticonId = emoticonId
+        self.imageUrl = nil
     }
 
     // Same real-time-push-omits-reactions handling as MessageDto's own custom decode.
@@ -2334,9 +2347,10 @@ public struct GroupMessageDto: Decodable, Identifiable {
         replyToMessageId = try container.decodeIfPresent(String.self, forKey: .replyToMessageId)
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
         emoticonId = try container.decodeIfPresent(String.self, forKey: .emoticonId)
+        imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId }
+    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId, imageUrl }
 }
 public struct GroupResponse: Decodable { public let success: Bool; public let group: GroupSummaryDto }
 public struct GroupsResponse: Decodable { public let success: Bool; public let groups: [GroupSummaryDto] }
@@ -3556,8 +3570,8 @@ extension NetworkClient {
         return try await get("api/v1/messages/conversations/\(conversationId)/messages/search?query=\(encoded)")
     }
 
-    public func sendMessage(conversationId: String, body: String, replyToMessageId: String? = nil) async throws -> MessageResponse {
-        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body, replyToMessageId: replyToMessageId))
+    public func sendMessage(conversationId: String, body: String, replyToMessageId: String? = nil, imageUrl: String? = nil) async throws -> MessageResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body, replyToMessageId: replyToMessageId, imageUrl: imageUrl))
     }
 
     public func deleteMessage(conversationId: String, messageId: String) async throws -> SuccessResponse {
@@ -3613,8 +3627,8 @@ extension NetworkClient {
         try await get("api/v1/messages/groups/\(groupId)/messages")
     }
 
-    public func sendGroupMessage(groupId: String, body: String, replyToMessageId: String? = nil) async throws -> GroupMessageResponse {
-        try await authenticatedPost("api/v1/messages/groups/\(groupId)/messages", body: SendGroupMessageRequest(body: body, replyToMessageId: replyToMessageId))
+    public func sendGroupMessage(groupId: String, body: String, replyToMessageId: String? = nil, imageUrl: String? = nil) async throws -> GroupMessageResponse {
+        try await authenticatedPost("api/v1/messages/groups/\(groupId)/messages", body: SendGroupMessageRequest(body: body, replyToMessageId: replyToMessageId, imageUrl: imageUrl))
     }
 
     public func deleteGroupMessage(groupId: String, messageId: String) async throws -> SuccessResponse {

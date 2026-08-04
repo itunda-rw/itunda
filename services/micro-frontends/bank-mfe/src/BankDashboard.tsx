@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
@@ -7061,6 +7061,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [emoticonPickerOpen, setEmoticonPickerOpen] = useState(false);
   const [emoticonStoreOpen, setEmoticonStoreOpen] = useState(false);
   const [emoticonImageById, setEmoticonImageById] = useState<Record<string, string>>({});
+  // Real attach ("+") menu + photo send/gallery -- see GroupThread's own identical
+  // doc comment.
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [blocking, setBlocking] = useState(false);
   // Real unblock (item 193) -- the "Block" button had no way back: blockConversationParticipant's
   // own confirmation copy already promised "you can unblock them later from this
@@ -7287,6 +7293,26 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     }
   };
 
+  // Real photo message -- ports Android TalkScreen.kt's own identical addition
+  // (2026-08-04) to bank-mfe.
+  const handleSendPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setShowAttachMenu(false);
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const { url } = await uploadFile(file);
+      await sendMessage(conversation.conversationId, '', replyingTo?.id, url);
+      setReplyingTo(null);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Check your connection and try again.");
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
   const handleRespondToOffer = async (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => {
     try {
       // Real offer ids are stably prefixed by their real owning service
@@ -7407,12 +7433,15 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             </p>
           )}
         </div>
+        <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)', marginLeft: 'auto' }} aria-label="Shared photos">
+          <ImageIcon size={20} />
+        </button>
         <button
           type="button"
           className="toss-btn toss-btn-secondary"
           onClick={blocked ? handleUnblock : handleBlock}
           disabled={blocking}
-          style={{ marginLeft: 'auto', padding: '8px 10px', fontSize: '12px' }}
+          style={{ padding: '8px 10px', fontSize: '12px' }}
         >
           {blocking ? (blocked ? 'Unblocking…' : 'Blocking…') : blocked ? 'Unblock' : 'Block'}
         </button>
@@ -7420,6 +7449,13 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           {updatingQuiet ? '…' : quiet ? 'Resume alerts' : 'Quiet room'}
         </button>
       </div>
+
+      {showMediaGallery && (
+        <MediaGalleryModal
+          imageUrls={(messages ?? []).map((m) => m.imageUrl).filter((u): u is string => !!u).reverse()}
+          onClose={() => setShowMediaGallery(false)}
+        />
+      )}
 
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
         <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search this conversation" minLength={2} style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }} />
@@ -7463,6 +7499,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 <OfferBubble offer={offer} isMine={isMine} currentUserId={currentUser?.id} onRespond={handleRespondToOffer} />
               ) : m.emoticonId ? (
                 <EmoticonBubble imageUrl={emoticonImageById[m.emoticonId]} />
+              ) : m.imageUrl ? (
+                // Real photo message -- ports Android TalkScreen.kt's own identical
+                // addition (2026-08-04) to bank-mfe.
+                <img src={m.imageUrl} alt="Shared photo" style={{ maxWidth: '220px', borderRadius: '16px' }} />
               ) : (
                 <div
                   style={{
@@ -7586,31 +7626,43 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       )}
 
       {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
-      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
+        onChange={(e) => handleSendPhoto(e.target.files?.[0])}
+      />
+      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', position: 'relative' }}>
+        {/* Real attach ("+") menu (2026-08-04 on Android, ported to bank-mfe) --
+            consolidates what used to be 3 separate always-visible icons
+            (gift/emoticon/gift-voucher), plus real photo send, matching Kakao's own
+            real "+"-opens-a-menu pattern. */}
         <button
           type="button"
-          aria-label="Send a gift"
-          onClick={() => setGiftComposerOpen((v) => !v)}
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
+          aria-label="Attach"
+          disabled={uploadingPhoto}
+          onClick={() => setShowAttachMenu((v) => !v)}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px', fontWeight: 700 }}
         >
-          🎁
+          {uploadingPhoto ? '…' : '+'}
         </button>
-        <button
-          type="button"
-          aria-label="Send a gift voucher"
-          onClick={() => setVoucherComposerOpen((v) => !v)}
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
-        >
-          🎟️
-        </button>
-        <button
-          type="button"
-          aria-label="Send an emoticon"
-          onClick={() => setEmoticonPickerOpen((v) => !v)}
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
-        >
-          😊
-        </button>
+        {showAttachMenu && (
+          <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--toss-white)', border: '1px solid var(--toss-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
+            <button type="button" onClick={() => { setShowAttachMenu(false); photoInputRef.current?.click(); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: '14px' }}>
+              📷 Photo
+            </button>
+            <button type="button" onClick={() => { setShowAttachMenu(false); setEmoticonPickerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: '14px' }}>
+              😊 Emoticon
+            </button>
+            <button type="button" onClick={() => { setShowAttachMenu(false); setGiftComposerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: '14px' }}>
+              🎁 Gift
+            </button>
+            <button type="button" onClick={() => { setShowAttachMenu(false); setVoucherComposerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: '14px' }}>
+              🎟️ Gift voucher
+            </button>
+          </div>
+        )}
         <input
           type="text"
           value={draft}
@@ -7705,11 +7757,36 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   // zero UI anywhere) -- toggles a sibling view over this same thread.
   const [showSplitBills, setShowSplitBills] = useState(false);
   const [showManageMembers, setShowManageMembers] = useState(false);
+  // Real attach ("+") menu + photo send/gallery -- ports Android TalkScreen.kt's own
+  // identical addition (2026-08-04) to bank-mfe. Reuses lib/upload.ts's own uploadFile,
+  // already real since 2026-08-01; this is just the Talk-composer wiring.
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const currentUser = getStoredUser();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<MessagingSocketHandle | null>(null);
   const typingClearTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const lastTypingSentAt = useRef(0);
+
+  const handleSendPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setShowAttachMenu(false);
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const { url } = await uploadFile(file);
+      const sent = await sendGroupMessage(group.groupId, '', replyingTo?.id, url);
+      setMessages((prev) => [...(prev ?? []), sent]);
+      setReplyingTo(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Check your connection and try again.");
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
 
   const load = () =>
     fetchGroupMessages(group.groupId)
@@ -7927,6 +8004,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           </div>
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
+          <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Shared photos">
+            <ImageIcon size={20} />
+          </button>
           <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Manage members">
             <Users size={20} />
           </button>
@@ -7935,6 +8015,13 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           </button>
         </div>
       </div>
+
+      {showMediaGallery && (
+        <MediaGalleryModal
+          imageUrls={(messages ?? []).map((m) => m.imageUrl).filter((u): u is string => !!u).reverse()}
+          onClose={() => setShowMediaGallery(false)}
+        />
+      )}
 
       {pinnedMessage && (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--toss-grey-100)', fontSize: '12px' }}>
@@ -7966,6 +8053,10 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
               )}
               {m.emoticonId ? (
                 <EmoticonBubble imageUrl={emoticonImageById[m.emoticonId]} />
+              ) : m.imageUrl ? (
+                // Real photo message -- ports Android TalkScreen.kt's own identical
+                // addition (2026-08-04) to bank-mfe.
+                <img src={m.imageUrl} alt="Shared photo" style={{ maxWidth: '220px', borderRadius: '16px' }} />
               ) : (
                 <div
                   style={{
@@ -7987,7 +8078,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
               <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
-              <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>
+              {!m.imageUrl && <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>}
               {!(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
               {isMine && !(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
               <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
@@ -8022,15 +8113,36 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
 
       {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
       <MentionSuggestions draft={draft} members={members} currentUserId={currentUser?.id} onPick={(name) => setDraft((d) => applyMention(d, name))} />
-      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
+        onChange={(e) => handleSendPhoto(e.target.files?.[0])}
+      />
+      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px', position: 'relative' }}>
+        {/* Real attach ("+") menu (2026-08-04 on Android, ported to bank-mfe) --
+            Kakao's own real "+"-opens-a-menu pattern (References table: "'+' opens a
+            multi-function attach menu"). */}
         <button
           type="button"
-          aria-label="Send an emoticon"
-          onClick={() => setEmoticonPickerOpen((v) => !v)}
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
+          aria-label="Attach"
+          disabled={uploadingPhoto}
+          onClick={() => setShowAttachMenu((v) => !v)}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px', fontWeight: 700 }}
         >
-          😊
+          {uploadingPhoto ? '…' : '+'}
         </button>
+        {showAttachMenu && (
+          <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--toss-white)', border: '1px solid var(--toss-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
+            <button type="button" onClick={() => { setShowAttachMenu(false); photoInputRef.current?.click(); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: '14px' }}>
+              📷 Photo
+            </button>
+            <button type="button" onClick={() => { setShowAttachMenu(false); setEmoticonPickerOpen((v) => !v); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: '14px' }}>
+              😊 Emoticon
+            </button>
+          </div>
+        )}
         <input
           type="text"
           value={draft}
@@ -8049,6 +8161,37 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           <Send size={16} />
         </button>
       </form>
+    </div>
+  );
+}
+
+// Real per-thread shared-media gallery (Kakao's real "Chat Room Drawer") -- ports
+// Android TalkScreen.kt's own identical addition (2026-08-04) to bank-mfe. Scoped
+// honestly to photos only: itunda has real photo messages but no file-attachment type
+// and no link-preview system, so a real "files/links" tab would have nothing genuine
+// to show. Built entirely client-side from the conversation's own already-loaded
+// messages (filtered to real imageUrl != null entries) -- no new backend endpoint.
+function MediaGalleryModal({ imageUrls, onClose }: { imageUrls: string[]; onClose: () => void }) {
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: 'var(--toss-white)', borderRadius: '16px 16px 0 0', padding: '16px', width: '100%', maxHeight: '70vh', overflowY: 'auto' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Shared photos ({imageUrls.length})</h3>
+        {imageUrls.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No photos shared in this conversation yet.</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
+            {imageUrls.map((url, i) => (
+              <img key={i} src={url} alt="Shared photo" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '6px' }} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

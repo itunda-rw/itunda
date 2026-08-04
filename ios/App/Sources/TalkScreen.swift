@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import CoreDesignSystem
 import CoreNetwork
 
@@ -527,10 +528,38 @@ private struct GroupThreadScreen: View {
     @State private var emoticonPickerOpen = false
     @State private var emoticonStoreOpen = false
     @State private var emoticonImageById: [String: String] = [:]
+    // Real attach ("+") menu + photo send/gallery -- ports Android TalkScreen.kt's own
+    // identical addition (2026-08-04) to iOS. Reuses ImagePickerView (HoodScreen.swift)
+    // and NetworkClient.uploadPhoto, both already real since 2026-08-01; this is just
+    // the Talk-composer wiring. SwiftUI's native `Menu` manages its own open/closed
+    // state, unlike Android's DropdownMenu, so no separate `showAttachMenu` flag is
+    // needed here.
+    @State private var showPhotoPicker = false
+    @State private var uploadingPhoto = false
+    @State private var showMediaGallery = false
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     private func name(for senderId: String) -> String {
         members.first(where: { $0.userId == senderId })?.name ?? String(senderId.prefix(8))
+    }
+
+    private func sendPhoto(_ image: UIImage) async {
+        guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
+            error = "Couldn't read that photo."
+            return
+        }
+        uploadingPhoto = true
+        defer { uploadingPhoto = false }
+        do {
+            let uploaded = try await NetworkClient.shared.uploadPhoto(data: jpegData, filename: "photo.jpg", mimeType: "image/jpeg")
+            let res = try await NetworkClient.shared.sendGroupMessage(groupId: group.groupId, body: "", replyToMessageId: replyingTo?.id, imageUrl: uploaded.url)
+            if res.success {
+                replyingTo = nil
+                messages = (messages ?? []) + [res.message]
+            }
+        } catch {
+            self.error = "Couldn't upload that photo. Check your connection and try again."
+        }
     }
 
     var body: some View {
@@ -542,6 +571,10 @@ private struct GroupThreadScreen: View {
                 .accessibilityLabel("Back")
                 Text(group.name).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
+                Button(action: { showMediaGallery = true }) {
+                    Image(systemName: "photo.on.rectangle").font(.system(size: 18)).frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Shared photos")
                 Button(action: { showManageMembers = true }) {
                     Image(systemName: "person.2").font(.system(size: 18)).frame(width: 40, height: 40)
                 }
@@ -624,13 +657,22 @@ private struct GroupThreadScreen: View {
             MentionSuggestions(draft: draft, members: members, currentUserId: currentUserId, onPick: { name in draft = applyMention(draft, memberName: name) })
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
             HStack {
-                Button(action: { emoticonPickerOpen.toggle() }) {
-                    Text("😊")
+                // Real attach ("+") menu (2026-08-04 on Android, ported to iOS) -- Kakao's
+                // own real "+"-opens-a-menu pattern (References table: "'+' opens a
+                // multi-function attach menu").
+                Menu {
+                    Button("📷 Photo") { showPhotoPicker = true }
+                    Button("😊 Emoticon") { emoticonPickerOpen.toggle() }
+                } label: {
+                    Text(uploadingPhoto ? "…" : "+")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(IDS.Colors.textPrimary)
                         .frame(width: 44, height: 44)
                         .background(IDS.Colors.chipBackground)
                         .clipShape(Circle())
                 }
-                .accessibilityLabel("Send an emoticon")
+                .disabled(uploadingPhoto)
+                .accessibilityLabel("Attach")
                 TextField("Message", text: Binding(
                     get: { draft },
                     set: { newValue in
@@ -736,6 +778,15 @@ private struct GroupThreadScreen: View {
         }
         .sheet(isPresented: $emoticonStoreOpen) {
             EmoticonStoreView(onClose: { emoticonStoreOpen = false })
+        }
+        .sheet(isPresented: $showPhotoPicker) {
+            ImagePickerView { image in
+                showPhotoPicker = false
+                if let image { Task { await sendPhoto(image) } }
+            }
+        }
+        .sheet(isPresented: $showMediaGallery) {
+            MediaGalleryView(imageUrls: (messages ?? []).compactMap { $0.imageUrl }.reversed())
         }
     }
 
@@ -845,6 +896,21 @@ private struct GroupMessageBubble: View {
                             Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                         }
                         EmoticonBubble(imageUrl: emoticonImageUrl)
+                    }
+                } else if let imageUrl = message.imageUrl {
+                    // Real photo message -- ports Android TalkScreen.kt's own identical
+                    // addition (2026-08-04) to iOS.
+                    VStack(alignment: .leading, spacing: 2) {
+                        if !isMine {
+                            Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        AsyncImage(url: URL(string: imageUrl)) { image in
+                            image.resizable().aspectRatio(contentMode: .fit)
+                        } placeholder: {
+                            ProgressView()
+                        }
+                        .frame(maxWidth: 220)
+                        .cornerRadius(16)
                     }
                 } else {
                 VStack(alignment: .leading, spacing: 2) {
@@ -1249,6 +1315,11 @@ private struct ChatThreadScreen: View {
     @State private var emoticonPickerOpen = false
     @State private var emoticonStoreOpen = false
     @State private var emoticonImageById: [String: String] = [:]
+    // Real attach ("+") menu + photo send/gallery -- see GroupThreadScreen's own
+    // identical doc comment.
+    @State private var showPhotoPicker = false
+    @State private var uploadingPhoto = false
+    @State private var showMediaGallery = false
     // Real KakaoTalk-style 기프티콘 gift voucher (item 138) -- see
     // GiftVoucherComposerPanel's own doc comment.
     @State private var vouchersByMessageId: [String: GiftVoucherDto] = [:]
@@ -1287,6 +1358,10 @@ private struct ChatThreadScreen: View {
                     }
                 }
                 Spacer()
+                Button(action: { showMediaGallery = true }) {
+                    Image(systemName: "photo.on.rectangle").font(.system(size: 18)).frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Shared photos")
                 Button(blocking ? "…" : (isBlocked ? "Unblock" : "Block")) {
                     if isBlocked {
                         Task { await unblockParticipant() }
@@ -1473,27 +1548,25 @@ private struct ChatThreadScreen: View {
             }
 
             HStack {
-                Button(action: { giftComposerOpen.toggle() }) {
-                    Text("🎁")
+                // Real attach ("+") menu (2026-08-04 on Android, ported to iOS) --
+                // consolidates what used to be 3 separate always-visible icons
+                // (gift/emoticon/gift-voucher), plus real photo send, matching Kakao's
+                // own real "+"-opens-a-menu pattern.
+                Menu {
+                    Button("📷 Photo") { showPhotoPicker = true }
+                    Button("😊 Emoticon") { emoticonPickerOpen.toggle() }
+                    Button("🎁 Gift") { giftComposerOpen.toggle() }
+                    Button("🎟️ Gift voucher") { voucherComposerOpen.toggle() }
+                } label: {
+                    Text(uploadingPhoto ? "…" : "+")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(IDS.Colors.textPrimary)
                         .frame(width: 44, height: 44)
                         .background(IDS.Colors.chipBackground)
                         .clipShape(Circle())
                 }
-                .accessibilityLabel("Send a gift")
-                Button(action: { emoticonPickerOpen.toggle() }) {
-                    Text("😊")
-                        .frame(width: 44, height: 44)
-                        .background(IDS.Colors.chipBackground)
-                        .clipShape(Circle())
-                }
-                .accessibilityLabel("Send an emoticon")
-                Button(action: { voucherComposerOpen.toggle() }) {
-                    Text("🎟️")
-                        .frame(width: 44, height: 44)
-                        .background(IDS.Colors.chipBackground)
-                        .clipShape(Circle())
-                }
-                .accessibilityLabel("Send a gift voucher")
+                .disabled(uploadingPhoto)
+                .accessibilityLabel("Attach")
                 TextField("Message", text: Binding(
                     get: { draft },
                     set: { newValue in
@@ -1603,6 +1676,34 @@ private struct ChatThreadScreen: View {
         }
         .sheet(isPresented: $emoticonStoreOpen) {
             EmoticonStoreView(onClose: { emoticonStoreOpen = false })
+        }
+        .sheet(isPresented: $showPhotoPicker) {
+            ImagePickerView { image in
+                showPhotoPicker = false
+                if let image { Task { await sendPhoto(image) } }
+            }
+        }
+        .sheet(isPresented: $showMediaGallery) {
+            MediaGalleryView(imageUrls: (messages ?? []).compactMap { $0.imageUrl }.reversed())
+        }
+    }
+
+    private func sendPhoto(_ image: UIImage) async {
+        guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
+            error = "Couldn't read that photo."
+            return
+        }
+        uploadingPhoto = true
+        defer { uploadingPhoto = false }
+        do {
+            let uploaded = try await NetworkClient.shared.uploadPhoto(data: jpegData, filename: "photo.jpg", mimeType: "image/jpeg")
+            let res = try await NetworkClient.shared.sendMessage(conversationId: conversation.conversationId, body: "", replyToMessageId: replyingTo?.id, imageUrl: uploaded.url)
+            if res.success {
+                replyingTo = nil
+                messages = (messages ?? []) + [res.message]
+            }
+        } catch {
+            self.error = "Couldn't upload that photo. Check your connection and try again."
         }
     }
 
@@ -2424,6 +2525,16 @@ private struct MessageBubble: View {
                     OfferBubble(offer: offer, isMine: isMine, currentUserId: currentUserId, onRespond: onRespondToOffer)
                 } else if message.emoticonId != nil {
                     EmoticonBubble(imageUrl: emoticonImageUrl)
+                } else if let imageUrl = message.imageUrl {
+                    // Real photo message -- ports Android TalkScreen.kt's own identical
+                    // addition (2026-08-04) to iOS.
+                    AsyncImage(url: URL(string: imageUrl)) { image in
+                        image.resizable().aspectRatio(contentMode: .fit)
+                    } placeholder: {
+                        ProgressView()
+                    }
+                    .frame(maxWidth: 220)
+                    .cornerRadius(16)
                 } else {
                     Text(message.body)
                         .font(.subheadline)
@@ -2460,5 +2571,46 @@ private struct MessageBubble: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Explain why this selected message should be reviewed.") }
+    }
+}
+
+// Real per-thread shared-media gallery (Kakao's real "Chat Room Drawer") -- ports
+// Android TalkScreen.kt's own identical addition (2026-08-04) to iOS. Scoped honestly
+// to photos only: itunda has real photo messages but no file-attachment type and no
+// link-preview system, so a real "files/links" tab would have nothing genuine to show.
+// Built entirely client-side from the conversation's own already-loaded messages
+// (filtered to real imageUrl != nil entries) -- no new backend endpoint.
+private struct MediaGalleryView: View {
+    let imageUrls: [String]
+    private let columns = [GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4), GridItem(.flexible(), spacing: 4)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Shared photos (\(imageUrls.count))")
+                .font(.headline).foregroundColor(IDS.Colors.textPrimary)
+                .padding(16)
+            if imageUrls.isEmpty {
+                Text("No photos shared in this conversation yet.")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    .padding(.horizontal, 16)
+                Spacer()
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 4) {
+                        ForEach(imageUrls, id: \.self) { url in
+                            AsyncImage(url: URL(string: url)) { image in
+                                image.resizable().aspectRatio(1, contentMode: .fill)
+                            } placeholder: {
+                                Color(.tertiarySystemBackground)
+                            }
+                            .aspectRatio(1, contentMode: .fill)
+                            .clipped()
+                            .cornerRadius(6)
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+            }
+        }
     }
 }

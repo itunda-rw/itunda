@@ -45,6 +45,10 @@ export interface Message {
   // via EmoticonController's /send endpoints, never a client-asserted label. See
   // lib/emoticons.ts's own doc comment.
   emoticonId?: string | null;
+  // Real photo message -- ports Android TalkScreen.kt's own identical addition
+  // (2026-08-04) to bank-mfe. Set only on a message sent with a real uploaded photo
+  // (POST /api/v1/uploads -> imageUrl passed to sendMessage), never client-asserted.
+  imageUrl?: string | null;
 }
 
 export const fetchConversations = () =>
@@ -82,10 +86,10 @@ export const searchConversationMessages = (conversationId: string, query: string
   apiFetch<{ success: boolean; messages: Message[] }>(`/api/v1/messages/conversations/${conversationId}/messages/search?query=${encodeURIComponent(query)}`)
     .then((r) => r.messages);
 
-export const sendMessage = (conversationId: string, body: string, replyToMessageId?: string) =>
+export const sendMessage = (conversationId: string, body: string, replyToMessageId?: string, imageUrl?: string) =>
   apiFetch<{ success: boolean; message: Message }>(`/api/v1/messages/conversations/${conversationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ body, replyToMessageId }),
+    body: JSON.stringify({ body, replyToMessageId, imageUrl }),
   }).then((r) => r.message);
 
 export const deleteMessage = (conversationId: string, messageId: string) =>
@@ -181,6 +185,8 @@ export interface GroupMessage {
   // defined-but-uncalled-method sweep: the backend/DTO field existed, but this type
   // never carried it and no group-chat client ever sent one.
   emoticonId?: string | null;
+  // Real photo message -- see Message.imageUrl's own doc comment.
+  imageUrl?: string | null;
 }
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
@@ -200,10 +206,10 @@ export const fetchGroupMessages = (groupId: string) =>
     (r) => [...r.messages].reverse(),
   );
 
-export const sendGroupMessage = (groupId: string, body: string, replyToMessageId?: string) =>
+export const sendGroupMessage = (groupId: string, body: string, replyToMessageId?: string, imageUrl?: string) =>
   apiFetch<{ success: boolean; message: GroupMessage }>(`/api/v1/messages/groups/${groupId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ body, replyToMessageId }),
+    body: JSON.stringify({ body, replyToMessageId, imageUrl }),
   }).then((r) => r.message);
 
 // Real message forwarding (2026-07-25) -- see forwardMessage's own doc comment above;
