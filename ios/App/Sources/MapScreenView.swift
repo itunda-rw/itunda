@@ -369,7 +369,7 @@ struct MapScreenView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 if let results = searchResults {
                                     if results.isEmpty {
-                                        Text("No real places found for that search.").font(.caption).foregroundColor(IdsPalette.gray500).padding(8)
+                                        EmptyStateView("No real places found for that search.")
                                     } else {
                                         ForEach(Array(results.enumerated()), id: \.offset) { _, place in
                                             Text(place.displayName)
@@ -635,7 +635,7 @@ struct MapScreenView: View {
                                     if let activeCategory, let categoryResults {
                                         let label = mapNearbyCategories.first { $0.id == activeCategory }?.label.lowercased() ?? "places"
                                         if categoryResults.isEmpty {
-                                            Text("No real matches found nearby for \(label).").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                            EmptyStateView("No real matches found nearby for \(label).")
                                         } else {
                                             ForEach(Array(categoryResults.enumerated()), id: \.offset) { _, place in
                                                 Text("\(place.displayName) · \(String(format: "%.1f", place.distanceKm)) km")
@@ -657,7 +657,7 @@ struct MapScreenView: View {
 
                                     Text("★ Your saved places").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary).padding(.top, 8)
                                     if bookmarks.isEmpty {
-                                        Text("No saved places yet -- tap ☆ on a place to save it.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        EmptyStateView("No saved places yet — tap ☆ on a place to save it.")
                                     } else {
                                         let folders = bookmarksByFolder
                                         ForEach(folders, id: \.0) { folderName, folderBookmarks in

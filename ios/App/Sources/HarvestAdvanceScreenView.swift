@@ -104,7 +104,7 @@ struct HarvestAdvanceScreenView: View {
                         Text("My advances").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         if let advances {
                             if advances.isEmpty {
-                                Text("No advances yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                EmptyStateView("No advances yet.")
                             } else {
                                 ForEach(advances) { a in
                                     VStack(alignment: .leading, spacing: 6) {

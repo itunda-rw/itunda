@@ -79,7 +79,7 @@ struct SaccoScreenView: View {
                         Text("Dividend history").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         if let dividends {
                             if dividends.isEmpty {
-                                Text("No dividends declared yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                EmptyStateView("No dividends declared yet.")
                             } else {
                                 ForEach(dividends, id: \.id) { d in
                                     HStack {

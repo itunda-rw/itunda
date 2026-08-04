@@ -86,7 +86,7 @@ struct VehicleValuationScreenView: View {
                     }
 
                     if vehicles.isEmpty {
-                        Text("No vehicles added yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        EmptyStateView("No vehicles added yet.")
                     } else {
                         ForEach(vehicles) { v in
                             VStack(alignment: .leading, spacing: 6) {

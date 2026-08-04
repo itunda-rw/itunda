@@ -82,7 +82,7 @@ private struct GroupAccountListContent: View {
             if !loaded {
                 ProgressView().frame(maxWidth: .infinity).padding(40)
             } else if accounts.isEmpty {
-                Text("No group accounts yet. Start one to split a shared expense with roommates or friends.")
+                EmptyStateView("No group accounts yet. Start one to split a shared expense with roommates or friends.")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding()
             } else {
                 ForEach(accounts, id: \.id) { account in

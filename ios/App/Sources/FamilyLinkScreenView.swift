@@ -141,7 +141,7 @@ struct FamilyLinkScreenView: View {
                     }
 
                     if !hasAnything {
-                        Text("No family members linked yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        EmptyStateView("No family members linked yet — invite one above.")
                     }
                 }
                 .padding(.horizontal)

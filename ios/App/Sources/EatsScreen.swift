@@ -631,7 +631,7 @@ private struct RestaurantRatingBadge: View {
                     if open {
                         if let reviews {
                             if reviews.isEmpty {
-                                Text("No written reviews yet.").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                EmptyStateView("No written reviews yet.")
                             } else {
                                 ForEach(reviews, id: \.id) { r in
                                     let stars = String(repeating: "★", count: r.restaurantRating) + String(repeating: "☆", count: 5 - r.restaurantRating)
@@ -794,7 +794,7 @@ private struct RestaurantMenuView: View {
                 VStack(spacing: 10) {
                     if let menu {
                         if menu.isEmpty {
-                            Text("No menu items yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
+                            EmptyStateView("No menu items yet.")
                         }
                         ForEach(menu) { item in
                             menuItemCard(item)
@@ -1338,7 +1338,7 @@ private struct MyEatsOrdersView: View {
             } else if orders == nil {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if orders!.isEmpty {
-                Text("No orders yet.").foregroundColor(IDS.Colors.textSecondary)
+                EmptyStateView("No orders yet.")
             } else {
                 VStack(spacing: 10) {
                     ForEach(orders!) { order in
@@ -1519,7 +1519,7 @@ private struct FavoriteRestaurantsView: View {
             } else if favorites == nil {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if favorites!.isEmpty {
-                Text("No favorite restaurants yet. Tap the heart on a restaurant to save it here.").foregroundColor(IDS.Colors.textSecondary)
+                EmptyStateView("No favorite restaurants yet. Tap the heart on a restaurant to save it here.")
             } else {
                 ForEach(favorites!) { favorite in
                     HStack(spacing: 14) {
@@ -1682,7 +1682,7 @@ private struct DeliverContent: View {
                     if available == nil {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 80)
                     } else if available!.isEmpty {
-                        Text("No deliveries waiting right now.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        EmptyStateView("No deliveries waiting right now.")
                     } else {
                         ForEach(available!) { order in
                             EatsOrderRow(order: order) {

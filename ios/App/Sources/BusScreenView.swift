@@ -75,7 +75,7 @@ private struct BusRideContent: View {
 
                 if let trips {
                     if trips.isEmpty {
-                        Text("No upcoming trips found.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        EmptyStateView("No upcoming trips found.")
                     } else {
                         ForEach(trips) { trip in
                             VStack(alignment: .leading, spacing: 6) {

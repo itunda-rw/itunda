@@ -127,7 +127,7 @@ struct FloatMarketplaceScreenView: View {
             }
             .disabled(locating)
             if nearby.isEmpty {
-                Text("No nearby listings loaded yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                EmptyStateView("No nearby listings loaded yet.")
             }
             ForEach(nearby) { n in
                 VStack(alignment: .leading, spacing: 6) {
@@ -156,7 +156,7 @@ struct FloatMarketplaceScreenView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("My listings").bold()
             if myListings.isEmpty {
-                Text("No listings posted yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                EmptyStateView("No listings posted yet.")
             }
             ForEach(myListings) { l in
                 HStack {
@@ -176,7 +176,7 @@ struct FloatMarketplaceScreenView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Requests against my listings").bold()
             if incomingRequests.isEmpty {
-                Text("No requests received yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                EmptyStateView("No requests received yet.")
             }
             ForEach(incomingRequests) { r in
                 HStack {
@@ -197,7 +197,7 @@ struct FloatMarketplaceScreenView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("My requests").bold()
             if myRequests.isEmpty {
-                Text("No requests sent yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                EmptyStateView("No requests sent yet.")
             }
             ForEach(myRequests) { r in
                 HStack {

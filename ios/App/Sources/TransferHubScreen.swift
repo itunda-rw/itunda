@@ -178,7 +178,7 @@ struct AutoTransferListScreen: View {
 
                 if let list = autoTransfers {
                     if list.isEmpty {
-                        Text("No auto-transfers yet.")
+                        EmptyStateView("No auto-transfers yet.")
                             .font(.subheadline)
                             .foregroundColor(IDS.Colors.textSecondary)
                             .padding(24)

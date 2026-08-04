@@ -45,7 +45,7 @@ struct AgentOperatorScreenView: View {
 
                             Text("Recent activity").bold()
                             if activity.isEmpty {
-                                Text("No cash movements yet today.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                                EmptyStateView("No cash movements yet today.")
                             } else {
                                 ForEach(activity) { a in
                                     HStack {

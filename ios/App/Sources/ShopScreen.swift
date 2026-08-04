@@ -748,7 +748,7 @@ private struct MerchantDetailView: View {
                 }
                 if let products {
                     if products.isEmpty {
-                        Text("No products yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
+                        EmptyStateView("No products yet.")
                     } else {
                         // Real 2-column image-led grid (2026-07-21), replacing the
                         // previous single-column text-only row -- closes
@@ -1323,7 +1323,7 @@ private struct ProductWishlistView: View {
             } else if favorites == nil {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if favorites!.isEmpty {
-                Text("No saved products yet -- tap ♡ on any product to save it here.")
+                EmptyStateView("No saved products yet -- tap ♡ on any product to save it here.")
                     .foregroundColor(IDS.Colors.textSecondary)
             } else {
                 ForEach(favorites!) { f in
@@ -1401,7 +1401,7 @@ private struct MyProductSubscriptionsView: View {
             } else if subscriptions == nil {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if subscriptions!.isEmpty {
-                Text("No recurring deliveries yet -- subscribe from any product's detail page.")
+                EmptyStateView("No recurring deliveries yet -- subscribe from any product's detail page.")
                     .foregroundColor(IDS.Colors.textSecondary)
             } else {
                 ForEach(subscriptions!) { s in
@@ -1499,7 +1499,7 @@ private struct MyCommerceOrdersView: View {
                 } else if orders == nil {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
                 } else if orders!.isEmpty {
-                    Text("No orders yet.").foregroundColor(IDS.Colors.textSecondary)
+                    EmptyStateView("No orders yet.")
                 } else {
                     VStack(spacing: 10) {
                         ForEach(orders!) { order in
@@ -1967,7 +1967,7 @@ private struct ProductInquirySection: View {
             }
             if let inquiries {
                 if inquiries.isEmpty {
-                    Text("No questions yet — be the first to ask.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    EmptyStateView("No questions yet — be the first to ask.")
                 } else {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(inquiries) { q in

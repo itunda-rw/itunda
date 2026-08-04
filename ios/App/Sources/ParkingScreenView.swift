@@ -121,7 +121,7 @@ private struct ParkingFindContent: View {
                         Text(locError).font(.caption).foregroundColor(.red)
                     }
                     if locationFetcher.coordinate != nil && nearbySpots.isEmpty {
-                        Text("No parking spots available nearby.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        EmptyStateView("No parking spots available nearby.")
                     }
                     ForEach(nearbySpots) { spot in
                         VStack(alignment: .leading, spacing: 6) {

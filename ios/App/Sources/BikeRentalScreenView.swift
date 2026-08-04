@@ -119,7 +119,7 @@ private struct BikeRentContent: View {
                         Text(locError).font(.caption).foregroundColor(.red)
                     }
                     if locationFetcher.coordinate != nil && nearbyBikes.isEmpty {
-                        Text("No bikes available nearby.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        EmptyStateView("No bikes available nearby.")
                     }
                     ForEach(nearbyBikes) { bike in
                         VStack(alignment: .leading, spacing: 6) {

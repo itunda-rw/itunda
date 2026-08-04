@@ -1,5 +1,69 @@
 import SwiftUI
 
+// Real shared empty/error-state components (2026-08-04) -- closes
+// docs/DESIGN_REFERENCES.md Section 9's #1 recommendation on iOS, which had
+// literally zero shared component for this (Android already built EmptyState/
+// ErrorCard in core/designsystem's HoodShared.kt in July; iOS never got the
+// equivalent, so every screen's own bare `Text("No X yet.")`/
+// `Text(error).foregroundColor(.red)` never had anywhere shared to migrate to).
+// Same visual language as Android's EmptyState: an icon in a soft circular
+// badge, centered title text below -- SF Symbols standing in for Android's
+// Material icon set (no icon asset parity attempted, just the same shape).
+public struct EmptyStateView: View {
+    let message: String
+    let systemImage: String
+
+    public init(_ message: String, systemImage: String = "tray") {
+        self.message = message
+        self.systemImage = systemImage
+    }
+
+    public var body: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(IDS.Colors.backgroundTertiary)
+                    .frame(width: 56, height: 56)
+                Image(systemName: systemImage)
+                    .foregroundColor(IDS.Colors.textSecondary)
+            }
+            Text(message)
+                .font(IdsTypeScale.body2)
+                .foregroundColor(IDS.Colors.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
+    }
+}
+
+// Mirrors Android's ErrorCard exactly (Card containing message + a "Retry" link),
+// same reasoning as EmptyStateView above.
+public struct ErrorCardView: View {
+    let message: String
+    let onRetry: () -> Void
+
+    public init(_ message: String, onRetry: @escaping () -> Void) {
+        self.message = message
+        self.onRetry = onRetry
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(message)
+                .font(IdsTypeScale.body2)
+                .foregroundColor(IDS.Colors.danger)
+            Button("Retry", action: onRetry)
+                .font(IdsTypeScale.subtitle1)
+                .foregroundColor(IDS.Colors.brand)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(IDS.Colors.card)
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
 public struct IdsButton: View {
     let text: String
     let action: () -> Void

@@ -91,7 +91,7 @@ struct MotoOwnershipScreenView: View {
                         Text("My moto-taxi ownership plans").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         if let plans {
                             if plans.isEmpty {
-                                Text("No moto-taxi ownership plans yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                EmptyStateView("No moto-taxi ownership plans yet.")
                             } else {
                                 ForEach(plans) { plan in
                                     VStack(alignment: .leading, spacing: 6) {

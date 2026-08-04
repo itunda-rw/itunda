@@ -104,6 +104,12 @@ public struct IDS {
         public static let successTint = Color(light: 0xF5FAFF, dark: 0x10321F)
         public static let warningTint = Color(light: 0xFFF4D6, dark: 0x3A2E10)
         public static let dangerTint = Color(light: 0xFFECEB, dark: 0x3A1418)
+        // Real cross-platform parity fix (2026-08-04) -- iOS had no plain danger TEXT
+        // color token at all (every screen hardcoded `.foregroundColor(.red)`, system
+        // red, not an IDS token); ported directly from Android's own
+        // IdsSemanticColors.kt (light `danger = Color(0xFFF04452)`, dark
+        // `danger = Color(0xFFFF6B7A)`), not guessed.
+        public static let danger = Color(light: 0xF04452, dark: 0xFF6B7A)
         public static let iconPrimary = Color(light: 0x2C3643, dark: 0xE8EAED)
         public static let iconSecondary = Color(light: 0x6B7684, dark: 0x989EAA)
         // No Android IdsDarkSemanticColors counterpart to port -- extrapolated one

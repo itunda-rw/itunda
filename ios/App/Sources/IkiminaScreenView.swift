@@ -103,7 +103,7 @@ private struct IkiminaListContent: View {
             if !loaded {
                 ProgressView().frame(maxWidth: .infinity).padding(40)
             } else if ikiminas.isEmpty {
-                Text("No ikimina groups yet -- start one with people you trust.")
+                EmptyStateView("No ikimina groups yet -- start one with people you trust.")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding()
             } else {
                 ForEach(ikiminas, id: \.id) { k in

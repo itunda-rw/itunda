@@ -76,7 +76,7 @@ private struct InspectionBuyerContent: View {
                             .onTapGesture { selectedMechanicId = m.id }
                         }
                         if mechanics.isEmpty {
-                            Text("No mechanics available right now.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            EmptyStateView("No mechanics available right now.")
                         }
                     }
                     TextField("Inspection fee (RWF)", text: $fee)
@@ -98,7 +98,7 @@ private struct InspectionBuyerContent: View {
                 .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
 
                 if myBookings.isEmpty {
-                    Text("No inspections booked yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                    EmptyStateView("No inspections booked yet.")
                 } else {
                     ForEach(myBookings, id: \.id) { b in
                         VStack(alignment: .leading, spacing: 4) {
@@ -234,7 +234,7 @@ private struct InspectionMechanicContent: View {
                     Text(error).font(.footnote).foregroundColor(.red)
                 }
                 if bookings.isEmpty {
-                    Text("No inspection bookings yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                    EmptyStateView("No inspection bookings yet.")
                 } else {
                     ForEach(bookings, id: \.id) { b in
                         VStack(alignment: .leading, spacing: 6) {

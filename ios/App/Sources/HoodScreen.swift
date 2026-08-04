@@ -1210,7 +1210,7 @@ private struct ListingWishlistView: View {
             } else if favorites == nil {
                 HoodFeedSkeleton()
             } else if favorites!.isEmpty {
-                Text("No saved listings yet -- tap ♡ on any listing to save it here.")
+                EmptyStateView("No saved listings yet -- tap ♡ on any listing to save it here.")
                     .foregroundColor(IDS.Colors.textSecondary)
             } else {
                 ForEach(favorites!) { f in
@@ -1296,7 +1296,7 @@ private struct KeywordAlertsView: View {
             if alerts == nil {
                 HoodFeedSkeleton()
             } else if alerts!.isEmpty {
-                Text("No keyword alerts yet -- add one to get notified when a matching listing is posted.")
+                EmptyStateView("No keyword alerts yet -- add one to get notified when a matching listing is posted.")
                     .foregroundColor(IDS.Colors.textSecondary)
             } else {
                 ForEach(alerts!) { a in
@@ -2437,7 +2437,7 @@ private struct JobPostWishlistView: View {
             } else if favorites == nil {
                 HoodFeedSkeleton()
             } else if favorites!.isEmpty {
-                Text("No saved jobs yet — tap ♡ on a job to keep it here.")
+                EmptyStateView("No saved jobs yet — tap ♡ on a job to keep it here.")
                     .foregroundColor(IDS.Colors.textSecondary)
             } else {
                 ForEach(favorites!) { favorite in
@@ -3436,7 +3436,7 @@ private struct PropertyWishlistView: View {
     @State private var error: String?
     var body: some View {
         Group {
-            if let error { VStack(alignment: .leading, spacing: 10) { Text(error).foregroundColor(.red); Button("Retry") { Task { await load() } } }.padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius) }
+            if let error { ErrorCardView(error) { Task { await load() } } }
             else if favorites == nil { HoodFeedSkeleton() }
             else if favorites!.isEmpty { Text("No saved properties yet — tap ♡ on a property to keep it here.").foregroundColor(IDS.Colors.textSecondary) }
             else { ForEach(favorites!) { favorite in HStack { VStack(alignment: .leading) { Text(favorite.title).font(IDS.Typography.bodyBold); Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(Int(favorite.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary) }; Spacer(); Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8) }.padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius) } }

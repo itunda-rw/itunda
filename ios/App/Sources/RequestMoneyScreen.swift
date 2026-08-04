@@ -53,7 +53,7 @@ struct RequestMoneyScreenView: View {
                     Text("My requests").font(.headline)
                     if let requests {
                         if requests.isEmpty {
-                            Text("No requests yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                            EmptyStateView("No requests yet.")
                         } else {
                             ForEach(requests) { req in
                                 HStack {

@@ -41,7 +41,7 @@ struct SubscriptionsScreenView: View {
                         .background(Color(.secondarySystemBackground)).cornerRadius(IDS.Layout.cardCornerRadius)
 
                         if detected.isEmpty {
-                            Text("No recurring payments detected yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                            EmptyStateView("No recurring payments detected yet.")
                         } else {
                             ForEach(detected, id: \.displayName) { s in
                                 HStack(alignment: .top) {
@@ -74,7 +74,7 @@ struct SubscriptionsScreenView: View {
                         }
                         if let billingSubs {
                             if billingSubs.isEmpty {
-                                Text("No merchant subscriptions yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                EmptyStateView("No merchant subscriptions yet.")
                             } else {
                                 ForEach(billingSubs) { sub in
                                     MerchantBillingSubscriptionRow(subscription: sub, onChanged: { Task { await loadBilling() } })

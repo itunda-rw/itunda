@@ -191,7 +191,7 @@ struct LoansScreenView: View {
                             }
                         }
                         if let offers {
-                            if offers.isEmpty { Text("No offers from this lender right now.").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
+                            EmptyStateView("No offers from this lender right now.")
                             ForEach(offers) { offer in LoanOfferCard(offer: offer, busy: busyId == offer.id, onApply: { amount in Task { await apply(offer, amount) } }) }
                         } else { ProgressView() }
                     } else if mode == .myLoans {

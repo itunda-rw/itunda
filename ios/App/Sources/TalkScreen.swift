@@ -265,7 +265,7 @@ private struct DirectMessagesList: View {
                 } else if conversations == nil {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
                 } else if conversations!.filter({ showArchived ? $0.quiet == true : $0.quiet != true }).isEmpty {
-                    Text("No conversations yet.").foregroundColor(IDS.Colors.textSecondary)
+                    EmptyStateView("No conversations yet.")
                 } else {
                     ForEach(conversations!.filter { showArchived ? $0.quiet == true : $0.quiet != true }) { conversation in
                         Button(action: { onOpen(conversation) }) {
@@ -380,7 +380,7 @@ private struct GroupsList: View {
                 } else if groups == nil {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
                 } else if groups!.isEmpty {
-                    Text("No groups yet.").foregroundColor(IDS.Colors.textSecondary)
+                    EmptyStateView("No groups yet.")
                 } else {
                     ForEach(groups!) { group in
                         Button(action: { onOpen(group) }) {

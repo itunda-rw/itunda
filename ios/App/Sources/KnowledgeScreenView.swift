@@ -71,7 +71,7 @@ struct KnowledgeScreenView: View {
 
                         if let list = questions {
                             if list.isEmpty {
-                                Text("No questions yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                                EmptyStateView("No questions yet — be the first to ask.")
                             } else {
                                 ForEach(list) { q in
                                     Button(action: { openQuestionId = q.id }) {
@@ -248,7 +248,7 @@ private struct KnowledgeQuestionDetailScreen: View {
                     Text("Answers").bold()
                     if let list = answers {
                         if list.isEmpty {
-                            Text("No answers yet -- be the first to help.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                            EmptyStateView("No answers yet -- be the first to help.")
                         } else {
                             ForEach(list) { a in
                                 VStack(alignment: .leading, spacing: 6) {

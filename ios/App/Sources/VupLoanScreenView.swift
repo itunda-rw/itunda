@@ -109,7 +109,7 @@ struct VupLoanScreenView: View {
                         Text("My VUP loans").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                         if let loans {
                             if loans.isEmpty {
-                                Text("No VUP loans yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                EmptyStateView("No VUP loans yet.")
                             } else {
                                 ForEach(loans) { loan in
                                     VStack(alignment: .leading, spacing: 6) {

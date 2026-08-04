@@ -126,8 +126,7 @@ private struct WatchlistContent: View {
     var body: some View {
         VStack(spacing: 10) {
             if watchlist.isEmpty {
-                Text("No stocks watched yet. Open a stock in the Market tab and tap the star to follow it.")
-                    .font(.caption).foregroundColor(IDS.Colors.textSecondary).padding()
+                EmptyStateView("No stocks watched yet — open a stock in the Market tab and tap the star to follow it.")
             } else {
                 ForEach(watchlist) { stock in
                     StockRow(stock: stock, isWatched: true) { onOpen(stock) }
