@@ -4919,6 +4919,17 @@ public struct CertificateDto: Decodable {
 public struct IssueCertificateResponse: Decodable { public let success: Bool; public let certificate: CertificateDto; public let privateKey: String }
 public struct MyCertificateResponse: Decodable { public let success: Bool; public let certificate: CertificateDto? }
 public struct RevokeCertificateResponse: Decodable { public let success: Bool; public let certificate: CertificateDto }
+// Real public certificate status/verify (2026-08-04) -- found via a fresh "defined
+// but uncalled" endpoint sweep: real, working, deliberately unauthenticated endpoints
+// (see CertificateController's own doc comment on why /status and /verify are
+// permitAll, unlike /issue/-me/-revoke above) with zero client anywhere, including
+// this app which already wires the other three. Ports the same fix already shipped
+// on Android/bank-mfe.
+public struct CertificateStatusResponse: Decodable { public let success: Bool; public let certificate: CertificateDto }
+public struct VerifyCertificateSignatureRequest: Encodable { public let serialNumber: String; public let payload: String; public let signature: String }
+public struct VerifyCertificateSignatureResponse: Decodable {
+    public let success: Bool; public let signatureValid: Bool; public let certificateStatus: String; public let userId: String; public let serialNumber: String
+}
 
 public struct SubmitIdentityRequest: Encodable { public let documentType: String; public let documentNumber: String; public let documentReference: String }
 public struct KycSubmissionDto: Decodable, Identifiable {
@@ -5163,6 +5174,14 @@ extension NetworkClient {
 
     public func revokeCertificate() async throws -> RevokeCertificateResponse {
         try await authenticatedPost("api/v1/certificate/revoke", body: EmptyRequest())
+    }
+
+    public func getCertificateStatus(serialNumber: String) async throws -> CertificateStatusResponse {
+        try await get("api/v1/certificate/status/\(serialNumber)")
+    }
+
+    public func verifyCertificateSignature(serialNumber: String, payload: String, signature: String) async throws -> VerifyCertificateSignatureResponse {
+        try await authenticatedPost("api/v1/certificate/verify", body: VerifyCertificateSignatureRequest(serialNumber: serialNumber, payload: payload, signature: signature))
     }
 
     public func submitIdentity(documentType: String, documentNumber: String, documentReference: String) async throws -> SubmitIdentityResponse {

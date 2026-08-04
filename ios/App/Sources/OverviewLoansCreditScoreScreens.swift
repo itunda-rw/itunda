@@ -594,6 +594,8 @@ struct CertificateScreenView: View {
                             .padding(16).background(Color.orange.opacity(0.1)).cornerRadius(IDS.Layout.cardCornerRadius)
                         }
                         if let error { Text(error).font(.caption).foregroundColor(.red) }
+
+                        VerifyCertificateCard()
                     }
                 }
                 .padding(IDS.Layout.screenHorizontal)
@@ -627,6 +629,86 @@ struct CertificateScreenView: View {
             certificate = try await NetworkClient.shared.revokeCertificate().certificate
             issuedPrivateKey = nil
         } catch { self.error = "Could not revoke your certificate." }
+    }
+}
+
+// Real public certificate status/verify (2026-08-04) -- see NetworkClient.swift's own
+// doc comment on getCertificateStatus/verifyCertificateSignature: the two endpoints
+// that answer "does this signed thing check out," found via a fresh backend-endpoint
+// sweep with zero client anywhere. Deliberately separate from CertificateScreenView
+// above -- that one manages the caller's own certificate; this one checks someone
+// else's.
+private struct VerifyCertificateCard: View {
+    @State private var serialNumber = ""
+    @State private var payload = ""
+    @State private var signature = ""
+    @State private var statusResult: CertificateDto?
+    @State private var verifyResult: VerifyCertificateSignatureResponse?
+    @State private var error: String?
+    @State private var busy = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Verify a certificate").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            Text("Check whether a certificate serial number is still active, or verify a document someone signed with theirs.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+
+            TextField("Serial number", text: $serialNumber)
+                .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                .onChange(of: serialNumber) { _ in statusResult = nil; verifyResult = nil }
+            Button(action: { Task { await checkStatus() } }) {
+                Text(busy ? "Checking…" : "Check status").bold().frame(maxWidth: .infinity).padding(10)
+                    .background(IDS.Colors.chipBackground).cornerRadius(8)
+            }
+            .disabled(busy || serialNumber.isEmpty)
+
+            if let statusResult {
+                Text("Status: \(statusResult.status) · Expires \(statusResult.expiresAt)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+
+            Text("Verify a signature").font(.footnote).bold().foregroundColor(IDS.Colors.textPrimary).padding(.top, 6)
+            TextField("Payload (the exact text they signed)", text: $payload)
+                .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                .onChange(of: payload) { _ in verifyResult = nil }
+            TextField("Signature (base64)", text: $signature)
+                .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                .onChange(of: signature) { _ in verifyResult = nil }
+            Button(action: { Task { await verify() } }) {
+                Text(busy ? "Verifying…" : "Verify signature").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12)
+                    .background(IDS.Colors.brand).cornerRadius(10)
+            }
+            .disabled(busy || serialNumber.isEmpty || payload.isEmpty || signature.isEmpty)
+
+            if let verifyResult {
+                Text(verifyResult.signatureValid ? "✓ Signature is valid" : "✗ Signature does not match")
+                    .bold().foregroundColor(verifyResult.signatureValid ? .green : .red)
+                Text("Certificate status: \(verifyResult.certificateStatus)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+            if let error { Text(error).font(.caption).foregroundColor(.red) }
+        }
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+
+    private func checkStatus() async {
+        busy = true; error = nil; verifyResult = nil
+        defer { busy = false }
+        do {
+            statusResult = try await NetworkClient.shared.getCertificateStatus(serialNumber: serialNumber).certificate
+        } catch {
+            statusResult = nil
+            self.error = "No certificate found with that serial number."
+        }
+    }
+
+    private func verify() async {
+        busy = true; error = nil
+        defer { busy = false }
+        do {
+            verifyResult = try await NetworkClient.shared.verifyCertificateSignature(serialNumber: serialNumber, payload: payload, signature: signature)
+        } catch {
+            verifyResult = nil
+            self.error = "Could not verify this signature."
+        }
     }
 }
 

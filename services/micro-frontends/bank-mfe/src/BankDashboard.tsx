@@ -46,7 +46,7 @@ import {
 } from './lib/weeklySavings';
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, type P2pPaymentRequestDto, type P2pPaymentRequestStatus } from './lib/p2p';
-import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
+import { getCertificateStatus, getMyCertificate, issueCertificate, revokeCertificate, verifyCertificateSignature, type Certificate, type VerifyCertificateSignatureResult } from './lib/certificate';
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
 import {
   applyForLoan, applyForPostpaidCredit, drawOverdraft, fetchLenders, fetchLoanOffers, fetchMyLoans, fetchMyOverdraft,
@@ -1442,6 +1442,102 @@ function CertificateView() {
 
       {error && (
         <p style={{ fontSize: '13px', color: '#E53935', marginTop: '16px' }} role="alert">{error}</p>
+      )}
+
+      <VerifyCertificateCard />
+    </div>
+  );
+}
+
+// Real public certificate status/verify (2026-08-04) -- see lib/certificate.ts's own
+// doc comment on getCertificateStatus/verifyCertificateSignature: the two endpoints
+// that answer "does this signed thing check out," found via a fresh backend-endpoint
+// sweep with zero client anywhere. Deliberately separate from CertificateView above --
+// that one manages the caller's own certificate; this one checks someone else's.
+function VerifyCertificateCard() {
+  const [serialNumber, setSerialNumber] = useState('');
+  const [payload, setPayload] = useState('');
+  const [signature, setSignature] = useState('');
+  const [statusResult, setStatusResult] = useState<Certificate | null>(null);
+  const [verifyResult, setVerifyResult] = useState<VerifyCertificateSignatureResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const handleCheckStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setVerifyResult(null);
+    try {
+      setStatusResult(await getCertificateStatus(serialNumber));
+    } catch (err) {
+      setStatusResult(null);
+      setError('No certificate found with that serial number.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      setVerifyResult(await verifyCertificateSignature(serialNumber, payload, signature));
+    } catch (err) {
+      setVerifyResult(null);
+      setError('Could not verify this signature.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--toss-grey-100)' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Verify a certificate</h3>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+        Check whether a certificate serial number is still active, or verify a document someone signed with theirs.
+      </p>
+      <form onSubmit={handleCheckStatus} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+        <input
+          value={serialNumber} onChange={(e) => { setSerialNumber(e.target.value); setStatusResult(null); setVerifyResult(null); }}
+          placeholder="Serial number" required
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn" disabled={busy}>{busy ? 'Checking…' : 'Check status'}</button>
+      </form>
+      {statusResult && (
+        <p style={{ fontSize: '13px', marginBottom: '10px' }}>
+          Status: <strong>{statusResult.status}</strong> · Expires {new Date(statusResult.expiresAt).toLocaleDateString()}
+        </p>
+      )}
+
+      <h4 style={{ fontSize: '13px', fontWeight: 700, marginTop: '16px', marginBottom: '8px' }}>Verify a signature</h4>
+      <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <input
+          value={payload} onChange={(e) => { setPayload(e.target.value); setVerifyResult(null); }}
+          placeholder="Payload (the exact text they signed)" required
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <input
+          value={signature} onChange={(e) => { setSignature(e.target.value); setVerifyResult(null); }}
+          placeholder="Signature (base64)" required
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={busy || !serialNumber}>
+          {busy ? 'Verifying…' : 'Verify signature'}
+        </button>
+      </form>
+      {verifyResult && (
+        <div style={{ marginTop: '10px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: verifyResult.signatureValid ? 'var(--toss-green)' : '#E53935' }}>
+            {verifyResult.signatureValid ? '✓ Signature is valid' : '✗ Signature does not match'}
+          </p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Certificate status: {verifyResult.certificateStatus}</p>
+        </div>
+      )}
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
