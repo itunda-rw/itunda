@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.AlertDialog
@@ -62,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -539,6 +541,14 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     // Real leave-group/add-member (found 2026-07-22: POST/DELETE .../members already
     // existed on the backend with zero UI anywhere -- same toggle pattern as above.
     var showManageMembers by remember { mutableStateOf(false) }
+    // Real per-thread shared-media gallery (2026-08-04, Kakao's real "Chat Room Drawer")
+    // -- see the References table's own "KakaoTalk — Chat Room Drawer" row. Scoped
+    // honestly to photos only: itunda has real photo messages (just shipped, this same
+    // pass) but no file-attachment type and no link-preview system, so a real "files/
+    // links" tab would have nothing genuine to show. Built entirely client-side from the
+    // conversation's own already-loaded `messages` list (filtered to real `imageUrl !=
+    // null` entries) -- no new backend endpoint, since the data already exists in memory.
+    var showMediaGallery by remember { mutableStateOf(false) }
     // Real KakaoTalk Emoticon Store, group-send side (item 133/204) -- see
     // sendGroupEmoticon's own doc comment. 1:1 chat has had this since the Emoticon
     // Store shipped; group chat never got a client for the identical, already-real
@@ -655,6 +665,9 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             BackTopBar(group.name, onBack)
             Row {
+                IconButton(onClick = { showMediaGallery = true }) {
+                    Icon(Icons.Outlined.Photo, contentDescription = "Shared photos")
+                }
                 IconButton(onClick = { showManageMembers = true }) {
                     Icon(Icons.Outlined.Group, contentDescription = "Manage members")
                 }
@@ -662,6 +675,10 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                     Icon(Icons.Outlined.Receipt, contentDescription = "Split a bill")
                 }
             }
+        }
+        if (showMediaGallery) {
+            MediaGalleryView(imageUrls = (messages ?: emptyList()).mapNotNull { it.imageUrl }.reversed(), onBack = { showMediaGallery = false })
+            return@Column
         }
         if (showSplitBills) {
             GroupSplitBillsView(groupConversationId = group.groupId, members = members, currentUserId = currentUserId, onBack = { showSplitBills = false })
@@ -1384,6 +1401,9 @@ private fun ChatThreadView(
     // GiftVoucherComposerPanel's own doc comment.
     var vouchersByMessageId by remember { mutableStateOf<Map<String, GiftVoucherDto>>(emptyMap()) }
     var voucherComposerOpen by remember { mutableStateOf(false) }
+    // Real per-thread shared-media gallery (2026-08-04) -- see GroupThreadView's own
+    // doc comment for the full sourced account.
+    var showMediaGallery by remember { mutableStateOf(false) }
     // Real attach ("+") menu + photo send (2026-08-04) -- see SendMessageRequest's own
     // doc comment. Consolidates the previously-separate always-visible 🎁/😊/🎟️ icons
     // (plus the new 📷) into one real Kakao-style "+" menu -- References table: "'+'
@@ -1539,7 +1559,12 @@ private fun ChatThreadView(
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(conversation.otherUserName, onBack)
+        if (showMediaGallery) {
+            MediaGalleryView(imageUrls = (messages ?: emptyList()).mapNotNull { it.imageUrl }.reversed(), onBack = { showMediaGallery = false })
+            return@Column
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { showMediaGallery = true }) { Text("Photos", color = Ids.colors.textSecondary) }
             TextButton(
                 onClick = {
                     if (isBlocked) {
@@ -2155,6 +2180,31 @@ private fun GiftVoucherBubble(voucher: GiftVoucherDto, isMine: Boolean, onExtend
                     fontSize = 12.sp,
                     modifier = Modifier.clickable(onClick = onExtend),
                 )
+            }
+        }
+    }
+}
+
+// Real per-thread shared-media gallery (2026-08-04, Kakao's real "Chat Room Drawer")
+// -- see GroupThreadView's own doc comment for the full sourced account and the honest
+// photos-only scope. imageUrls is already in newest-first order (reversed by the caller
+// from the thread's own oldest-first message list) -- a real Chat Room Drawer shows the
+// most recently shared media first.
+@Composable
+private fun MediaGalleryView(imageUrls: List<String>, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+            TextButton(onClick = onBack) { Text("← Back", color = Ids.colors.textSecondary) }
+            Text("Shared photos (${imageUrls.size})", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.padding(start = 4.dp))
+        }
+        if (imageUrls.isEmpty()) {
+            Text("No photos shared in this conversation yet.", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(vertical = 16.dp))
+        } else {
+            LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                gridItems(imageUrls) { url ->
+                    AsyncImage(model = url, contentDescription = "Shared photo", contentScale = ContentScale.Crop, modifier = Modifier.aspectRatio(1f).clip(RoundedCornerShape(6.dp)))
+                }
             }
         }
     }
