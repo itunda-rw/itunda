@@ -5177,7 +5177,15 @@ extension NetworkClient {
     }
 
     public func getCertificateStatus(serialNumber: String) async throws -> CertificateStatusResponse {
-        try await get("api/v1/certificate/status/\(serialNumber)")
+        // Unlike every other raw-interpolated GET path in this file, this value comes
+        // directly from a free-text field the user types into (VerifyCertificateCard),
+        // not a server-issued id -- percent-encode it as a single path SEGMENT (so a
+        // pasted "/" is escaped too, not left to reshape the request path into extra
+        // segments the way .urlPathAllowed alone would let it).
+        var segmentAllowed = CharacterSet.urlPathAllowed
+        segmentAllowed.remove(charactersIn: "/")
+        let encoded = serialNumber.addingPercentEncoding(withAllowedCharacters: segmentAllowed) ?? serialNumber
+        return try await get("api/v1/certificate/status/\(encoded)")
     }
 
     public func verifyCertificateSignature(serialNumber: String, payload: String, signature: String) async throws -> VerifyCertificateSignatureResponse {
