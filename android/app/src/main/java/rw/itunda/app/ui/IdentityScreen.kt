@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsSegmentedControl
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -82,21 +82,19 @@ fun IdentityScreen(onBack: () -> Unit) {
                 } else {
                     Column {
                         Text("Document type", style = MaterialTheme.typography.labelMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            DOCUMENT_TYPES.forEach { type ->
-                                Button(onClick = { documentType = type }) {
-                                    Text(if (documentType == type) "✓ $type" else type)
-                                }
-                            }
-                        }
+                        IdsSegmentedControl(
+                            options = DOCUMENT_TYPES.map { it to it },
+                            selected = documentType,
+                            onSelect = { documentType = it },
+                        )
                         Spacer(Modifier.height(8.dp))
                         IdsTextField(value = documentNumber, onValueChange = { documentNumber = it }, label = "Document number", modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(8.dp))
                         IdsTextField(value = documentReference, onValueChange = { documentReference = it }, label = "Document reference (scan/photo reference)", modifier = Modifier.fillMaxWidth())
                         Spacer(Modifier.height(8.dp))
-                        Button(
+                        IdsButton(
+                            text = if (busy) "Submitting…" else "Submit for review",
                             enabled = !busy && documentNumber.isNotBlank() && documentReference.length >= 3,
-                            modifier = Modifier.fillMaxWidth(),
                             onClick = {
                                 busy = true
                                 scope.launch {
@@ -111,7 +109,7 @@ fun IdentityScreen(onBack: () -> Unit) {
                                     } finally { busy = false }
                                 }
                             },
-                        ) { Text(if (busy) "Submitting…" else "Submit for review") }
+                        )
                     }
                 }
             }

@@ -11,11 +11,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -112,9 +112,13 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Nearby agents with float to spare", style = MaterialTheme.typography.titleMedium)
-                        OutlinedButton(onClick = { requestLocation() }, enabled = !locating) {
-                            Text(if (locating) "Finding…" else "Find nearby listings")
-                        }
+                        IdsButton(
+                            text = if (locating) "Finding…" else "Find nearby listings",
+                            enabled = !locating,
+                            variant = IdsButtonVariant.Tinted,
+                            size = IdsButtonSize.Medium,
+                            onClick = { requestLocation() },
+                        )
                         if (nearby.isEmpty()) {
                             EmptyState("No nearby listings loaded yet.")
                         }
@@ -151,19 +155,25 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                     Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${"%,.0f".format(l.amount)} RWF offered · ${"%,.0f".format(l.claimedAmount)} claimed · ${l.status}", style = MaterialTheme.typography.bodySmall)
                         if (l.status == "OPEN") {
-                            OutlinedButton(onClick = {
-                                busy = true
-                                scope.launch {
-                                    try {
-                                        NetworkClient.apiService.cancelFloatListing(l.id)
-                                        loadMine()
-                                    } catch (e: Exception) {
-                                        error = "Could not cancel this listing."
-                                    } finally {
-                                        busy = false
+                            IdsButton(
+                                text = "Cancel",
+                                enabled = !busy,
+                                variant = IdsButtonVariant.Tinted,
+                                size = IdsButtonSize.Small,
+                                onClick = {
+                                    busy = true
+                                    scope.launch {
+                                        try {
+                                            NetworkClient.apiService.cancelFloatListing(l.id)
+                                            loadMine()
+                                        } catch (e: Exception) {
+                                            error = "Could not cancel this listing."
+                                        } finally {
+                                            busy = false
+                                        }
                                     }
-                                }
-                            }, enabled = !busy) { Text("Cancel") }
+                                },
+                            )
                         }
                     }
                 }
@@ -179,33 +189,44 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                         Text("${"%,.0f".format(r.amount)} RWF · ${r.status}", style = MaterialTheme.typography.bodySmall)
                         if (r.status == "REQUESTED") {
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Button(onClick = {
-                                    busy = true; error = null; message = null
-                                    scope.launch {
-                                        try {
-                                            NetworkClient.apiService.acceptFloatRequest(r.id, UUID.randomUUID().toString())
-                                            message = "Float transferred to the requesting agent."
-                                            loadMine()
-                                        } catch (e: Exception) {
-                                            error = "Could not accept this request."
-                                        } finally {
-                                            busy = false
+                                IdsButton(
+                                    text = "Accept",
+                                    enabled = !busy,
+                                    size = IdsButtonSize.Small,
+                                    onClick = {
+                                        busy = true; error = null; message = null
+                                        scope.launch {
+                                            try {
+                                                NetworkClient.apiService.acceptFloatRequest(r.id, UUID.randomUUID().toString())
+                                                message = "Float transferred to the requesting agent."
+                                                loadMine()
+                                            } catch (e: Exception) {
+                                                error = "Could not accept this request."
+                                            } finally {
+                                                busy = false
+                                            }
                                         }
-                                    }
-                                }, enabled = !busy) { Text("Accept") }
-                                OutlinedButton(onClick = {
-                                    busy = true
-                                    scope.launch {
-                                        try {
-                                            NetworkClient.apiService.declineFloatRequest(r.id)
-                                            loadMine()
-                                        } catch (e: Exception) {
-                                            error = "Could not decline this request."
-                                        } finally {
-                                            busy = false
+                                    },
+                                )
+                                IdsButton(
+                                    text = "Decline",
+                                    enabled = !busy,
+                                    variant = IdsButtonVariant.Tinted,
+                                    size = IdsButtonSize.Small,
+                                    onClick = {
+                                        busy = true
+                                        scope.launch {
+                                            try {
+                                                NetworkClient.apiService.declineFloatRequest(r.id)
+                                                loadMine()
+                                            } catch (e: Exception) {
+                                                error = "Could not decline this request."
+                                            } finally {
+                                                busy = false
+                                            }
                                         }
-                                    }
-                                }, enabled = !busy) { Text("Decline") }
+                                    },
+                                )
                             }
                         }
                     }
@@ -233,15 +254,16 @@ private fun PostListingCard(busy: Boolean, onPost: (java.math.BigDecimal) -> Uni
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Offer surplus float", style = MaterialTheme.typography.titleMedium)
             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount to offer (RWF)", modifier = Modifier.fillMaxWidth())
-            Button(
+            IdsButton(
+                text = if (busy) "Working…" else "Post listing",
+                enabled = !busy,
                 onClick = {
                     val value = amount.toBigDecimalOrNull()
-                    if (value == null || value <= java.math.BigDecimal.ZERO) return@Button
+                    if (value == null || value <= java.math.BigDecimal.ZERO) return@IdsButton
                     onPost(value)
                     amount = ""
                 },
-                enabled = !busy,
-            ) { Text(if (busy) "Working…" else "Post listing") }
+            )
         }
     }
 }
@@ -256,15 +278,17 @@ private fun NearbyListingRow(listing: NearbyFloatListingDto, busy: Boolean, onRe
         }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount to request", modifier = Modifier.fillMaxWidth().padding(end = 8.dp))
-            Button(
+            IdsButton(
+                text = "Request",
+                enabled = !busy,
+                size = IdsButtonSize.Medium,
                 onClick = {
                     val value = amount.toBigDecimalOrNull()
-                    if (value == null || value <= java.math.BigDecimal.ZERO || value > listing.remainingAmount) return@Button
+                    if (value == null || value <= java.math.BigDecimal.ZERO || value > listing.remainingAmount) return@IdsButton
                     onRequest(value)
                     amount = ""
                 },
-                enabled = !busy,
-            ) { Text("Request") }
+            )
         }
     }
 }

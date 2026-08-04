@@ -17,12 +17,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -228,13 +227,13 @@ private fun SetBudgetForm(categories: List<SpendingCategoryDto>, onSet: (String?
                 keyboardType = KeyboardType.Number,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Button(
+            IdsButton(
+                text = "Save budget",
                 onClick = {
                     val limit = limitText.toBigDecimalOrNull()
                     if (limit != null && limit > BigDecimal.ZERO) onSet(selectedCategory, limit)
                 },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Save budget") }
+            )
         }
     }
 }
