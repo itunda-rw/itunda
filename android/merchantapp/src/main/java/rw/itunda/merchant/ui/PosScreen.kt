@@ -13,10 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -119,7 +118,7 @@ fun PosTab() {
                     Text("${"%,.0f".format(total)} RWF", fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.padding(top = 8.dp))
-                Button(onClick = { checkingOut = true }, enabled = cart.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Checkout") }
+                IdsButton(text = "Checkout", enabled = cart.isNotEmpty(), onClick = { checkingOut = true })
             }
         }
     }
@@ -213,7 +212,7 @@ private fun QrCheckout(amount: Double, description: String, onDone: () -> Unit) 
         if (content != null) {
             Image(bitmap = generateQrBitmap(content), contentDescription = "Payment QR code", modifier = Modifier.size(240.dp))
             Spacer(modifier = Modifier.padding(top = 12.dp))
-            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done — new sale") }
+            IdsButton(text = "Done — new sale", onClick = onDone)
         } else {
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             TextButton(onClick = { generate() }) { Text("Retry") }
@@ -246,7 +245,7 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             Text("Card charged — •••• $result", fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.padding(top = 12.dp))
-            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done — new sale") }
+            IdsButton(text = "Done — new sale", onClick = onDone)
         }
         return
     }
@@ -263,13 +262,15 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
             IdsTextField(value = cvc, onValueChange = { cvc = it }, label = "CVC", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(
+        IdsButton(
+            text = if (submitting) "Charging…" else "Charge ${"%,.0f".format(amount)} RWF",
+            enabled = !submitting,
             onClick = {
                 val month = expiryMonth.toIntOrNull()
                 val year = expiryYear.toIntOrNull()
                 if (cardNumber.isBlank() || month == null || year == null || cvc.isBlank()) {
                     error = "Fill in every card field."
-                    return@Button
+                    return@IdsButton
                 }
                 submitting = true
                 error = null
@@ -292,8 +293,6 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
                     }
                 }
             },
-            enabled = !submitting,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (submitting) "Charging…" else "Charge ${"%,.0f".format(amount)} RWF") }
+        )
     }
 }

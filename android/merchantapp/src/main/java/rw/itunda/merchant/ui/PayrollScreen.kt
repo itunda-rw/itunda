@@ -8,10 +8,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -97,12 +98,14 @@ private fun AddEmployeeCard(onAdded: () -> Unit) {
             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = salaryAmount, onValueChange = { salaryAmount = it }, label = "Monthly salary (RWF)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            IdsButton(
+                text = if (submitting) "Adding…" else "Add",
+                enabled = !submitting,
                 onClick = {
                     val salary = salaryAmount.toBigDecimalOrNull()
                     if (phoneNumber.isBlank() || salary == null || salary <= java.math.BigDecimal.ZERO) {
                         error = "Enter a real phone number and salary."
-                        return@Button
+                        return@IdsButton
                     }
                     submitting = true
                     error = null
@@ -118,8 +121,7 @@ private fun AddEmployeeCard(onAdded: () -> Unit) {
                         }
                     }
                 },
-                enabled = !submitting,
-            ) { Text(if (submitting) "Adding…" else "Add") }
+            )
         }
     }
 }
@@ -147,7 +149,7 @@ private fun RosterHeaderCard(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (error != null) {
                 Text(error, color = MaterialTheme.colorScheme.error)
-                Button(onClick = onReload) { Text("Retry") }
+                IdsButton(text = "Retry", variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, onClick = onReload)
                 return@Column
             }
             if (roster == null) {
@@ -159,7 +161,9 @@ private fun RosterHeaderCard(
                 Text("Roster (${roster.size})", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             }
             runError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            IdsButton(
+                text = if (running) "Running…" else "Run payroll (${"%,.0f".format(total)} RWF)",
+                enabled = !running && roster.isNotEmpty(),
                 onClick = {
                     running = true
                     runError = null
@@ -180,8 +184,7 @@ private fun RosterHeaderCard(
                         }
                     }
                 },
-                enabled = !running && roster.isNotEmpty(),
-            ) { Text(if (running) "Running…" else "Run payroll (${"%,.0f".format(total)} RWF)") }
+            )
             if (roster.isEmpty()) {
                 EmptyState("No employees on the roster yet — add one above to start running payroll.", icon = Icons.Outlined.Groups)
             }
@@ -202,7 +205,11 @@ private fun EmployeeRow(employee: PayrollEmployeeDto, onChanged: () -> Unit) {
                 Text("${"%,.0f".format(employee.salaryAmount)} RWF", style = MaterialTheme.typography.bodyMedium)
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            Button(
+            IdsButton(
+                text = if (removing) "…" else "Remove",
+                enabled = !removing,
+                variant = IdsButtonVariant.Tinted,
+                size = IdsButtonSize.Small,
                 onClick = {
                     removing = true
                     error = null
@@ -217,8 +224,7 @@ private fun EmployeeRow(employee: PayrollEmployeeDto, onChanged: () -> Unit) {
                         }
                     }
                 },
-                enabled = !removing,
-            ) { Text(if (removing) "…" else "Remove") }
+            )
         }
     }
 }
@@ -237,6 +243,6 @@ private fun PayrollRunConfirmation(result: PayrollRunResponse, onDone: () -> Uni
                 }
             }
         }
-        Button(onClick = onDone) { Text("Back to roster") }
+        IdsButton(text = "Back to roster", onClick = onDone)
     }
 }
