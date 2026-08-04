@@ -1592,6 +1592,13 @@ data class StockPortfolioDto(val totalValue: Double, val totalReturn: Double, va
 data class StockPortfolioResponse(val success: Boolean, val portfolio: StockPortfolioDto)
 data class TradeStockRequest(val stockId: String, val shares: Double)
 data class TradeStockResponse(val success: Boolean, val message: String)
+// Real Investment-wallet top-up (2026-08-04) -- found via a fresh "defined but
+// uncalled" endpoint sweep: StocksService.fundInvestmentWallet (a real MAIN ->
+// INVESTMENT internal ledger transfer) had zero client anywhere, meaning a user with
+// no pre-seeded investment balance had no in-app way to ever actually buy a stock.
+data class FundInvestmentRequest(val amount: Double)
+data class FundInvestmentTransactionDto(val id: String, val amount: Double, val completedAt: String)
+data class FundInvestmentResponse(val success: Boolean, val transaction: FundInvestmentTransactionDto)
 data class WatchStockResponse(val success: Boolean)
 data class UnwatchStockResponse(val success: Boolean)
 
@@ -3150,6 +3157,9 @@ interface ApiService {
 
     @GET("api/v1/stocks/portfolio/history")
     suspend fun getPortfolioHistory(@Query("days") days: Int = 30): PortfolioHistoryResponse
+
+    @POST("api/v1/stocks/fund")
+    suspend fun fundInvestmentWallet(@Header("Idempotency-Key") idempotencyKey: String, @Body request: FundInvestmentRequest): FundInvestmentResponse
 
     @POST("api/v1/stocks/buy")
     suspend fun buyStock(@Header("Idempotency-Key") idempotencyKey: String, @Body request: TradeStockRequest): TradeStockResponse

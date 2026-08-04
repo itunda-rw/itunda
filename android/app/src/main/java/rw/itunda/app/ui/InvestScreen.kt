@@ -47,6 +47,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.FundInvestmentRequest
 import rw.itunda.core.network.isDeviceNotVerifiedError
 import rw.itunda.core.network.PortfolioValuePointDto
 import rw.itunda.core.network.StockDto
@@ -290,6 +291,7 @@ private fun PortfolioContent() {
                         }
                     }
                 }
+                AddFundsCard(onFunded = ::load)
                 if (p.holdings.isEmpty()) {
                     Text("You don't hold any real shares yet. Browse the Market tab to buy some.", color = TossSecondary, fontSize = 14.sp)
                 } else {
@@ -298,6 +300,81 @@ private fun PortfolioContent() {
             }
         }
     }
+}
+
+// Real Investment-wallet top-up (2026-08-04) -- see ApiService.kt's own
+// FundInvestmentRequest doc comment: StocksService.fundInvestmentWallet (a real MAIN
+// -> INVESTMENT internal transfer) had zero client anywhere, so a user with no
+// pre-seeded investment balance had no in-app way to ever actually buy a stock.
+@Composable
+private fun AddFundsCard(onFunded: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    var amount by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var needsDeviceVerification by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    suspend fun doFund() {
+        val value = amount.toDoubleOrNull()
+        if (value == null || value <= 0) {
+            error = "Enter a real amount."
+            return
+        }
+        busy = true
+        needsDeviceVerification = false
+        try {
+            NetworkClient.apiService.fundInvestmentWallet(UUID.randomUUID().toString(), FundInvestmentRequest(value))
+            amount = ""
+            expanded = false
+            error = null
+            onFunded()
+        } catch (e: HttpException) {
+            if (isDeviceNotVerifiedError(e)) needsDeviceVerification = true else error = superAppErrorMessage(e)
+        } catch (e: IOException) {
+            error = "Couldn't reach itunda. Check your connection and try again."
+        } finally {
+            busy = false
+        }
+    }
+
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Investment cash", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    if (expanded) "Cancel" else "Add funds",
+                    color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    modifier = Modifier.clickable { expanded = !expanded; error = null },
+                )
+            }
+            Text("Move money from your main wallet into your investment account.", color = TossSecondary, fontSize = 12.sp)
+            if (expanded) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = amount, onValueChange = { amount = it }, placeholder = { Text("Amount (RWF)") },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Box(
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                            .background(TossBlue)
+                            .clickable(enabled = !busy) { coroutineScope.launch { doFund() } }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                    ) {
+                        Text(if (busy) "Working…" else "Add", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
+            }
+        }
+    }
+    DeviceStepUpHost(
+        visible = needsDeviceVerification,
+        onDismiss = { needsDeviceVerification = false },
+        onVerified = { doFund() },
+    )
 }
 
 @Composable
