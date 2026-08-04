@@ -1782,6 +1782,15 @@ data class SupportTicketsResponse(val success: Boolean, val tickets: List<Suppor
 data class CreditScoreFactorDto(val name: String, val points: Int, val description: String)
 data class CreditScoreResponse(val success: Boolean, val score: Int, val factors: List<CreditScoreFactorDto>, val computedAt: String)
 
+// Real actionable next-steps -- CreditScoreService.getImprovementSuggestions existed on
+// the backend with a client on bank-mfe only; zero Android/iOS UI until now. Distinct
+// from the factor breakdown above (what makes up your score today): this is what to do
+// NEXT to raise it (action + real point gain + why), computed from the same real
+// account-activity gaps (unverified KYC, loan history, transaction count) CreditScoreScreen
+// already reads factors from.
+data class CreditScoreSuggestionDto(val action: String, val pointsGain: Int, val description: String)
+data class CreditScoreSuggestionsResponse(val success: Boolean, val suggestions: List<CreditScoreSuggestionDto>)
+
 // Real Karrot-Score-style numeric trust/reputation badge (rw.itunda.trustscore) --
 // distinct from the per-listing trustScores batch map used for seller/poster/lister
 // badges on Hood cards (see MarketplaceDto etc.) -- this is GET /api/v1/trust-score,
@@ -3238,6 +3247,9 @@ interface ApiService {
 
     @GET("api/v1/credit-score")
     suspend fun getCreditScore(): CreditScoreResponse
+
+    @GET("api/v1/credit-score/suggestions")
+    suspend fun getCreditScoreSuggestions(): CreditScoreSuggestionsResponse
 
     @GET("api/v1/trust-score")
     suspend fun getTrustScore(): TrustScoreResponse

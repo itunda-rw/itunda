@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.network.CreditScoreResponse
+import rw.itunda.core.network.CreditScoreSuggestionDto
 import rw.itunda.core.network.NetworkClient
 
 // Real "alternative data" credit score (2026-07-22) -- found fully built on the
@@ -35,6 +36,7 @@ import rw.itunda.core.network.NetworkClient
 fun CreditScoreScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var score by remember { mutableStateOf<CreditScoreResponse?>(null) }
+    var suggestions by remember { mutableStateOf<List<CreditScoreSuggestionDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -42,6 +44,11 @@ fun CreditScoreScreen(onBack: () -> Unit) {
             score = NetworkClient.apiService.getCreditScore()
         } catch (_: Exception) {
             error = "Could not load your credit score."
+        }
+        try {
+            suggestions = NetworkClient.apiService.getCreditScoreSuggestions().suggestions
+        } catch (_: Exception) {
+            suggestions = emptyList()
         }
     }
 
@@ -76,6 +83,21 @@ fun CreditScoreScreen(onBack: () -> Unit) {
                                 Text(factor.description, style = MaterialTheme.typography.bodySmall)
                             }
                             Text("+${factor.points}", style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+                val suggestionList = suggestions
+                if (!suggestionList.isNullOrEmpty()) {
+                    item { Text("Ways to raise your score", style = MaterialTheme.typography.titleMedium) }
+                    items(suggestionList, key = { it.action }) { suggestion ->
+                        Card(Modifier.fillMaxWidth()) {
+                            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(suggestion.action, style = MaterialTheme.typography.bodyLarge)
+                                    Text(suggestion.description, style = MaterialTheme.typography.bodySmall)
+                                }
+                                Text("+${suggestion.pointsGain}", style = MaterialTheme.typography.bodyLarge)
+                            }
                         }
                     }
                 }
