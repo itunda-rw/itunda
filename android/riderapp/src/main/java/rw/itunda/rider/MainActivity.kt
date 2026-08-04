@@ -17,8 +17,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.rider.network.CommerceOrderDto
 import rw.itunda.rider.network.NetworkClient
 import rw.itunda.rider.ui.BecomeRiderScreen
+import rw.itunda.rider.ui.CommerceDeliveryDetailScreen
 import rw.itunda.rider.ui.DeliveryDetailScreen
 import rw.itunda.rider.ui.LoginScreen
 import rw.itunda.rider.ui.RiderHomeScreen
@@ -29,6 +31,9 @@ private sealed class RiderScreen {
     object BecomeRider : RiderScreen()
     object Home : RiderScreen()
     data class Delivery(val orderId: String) : RiderScreen()
+    // Real Commerce/Shop package delivery -- see CommerceDeliveryDetailScreen's own
+    // doc comment on why this carries the full order object rather than just an id.
+    data class CommerceDelivery(val order: CommerceOrderDto) : RiderScreen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -96,10 +101,15 @@ private fun RiderApp() {
         }
         is RiderScreen.Home -> RiderHomeScreen(
             onOpenDelivery = { orderId -> screen = RiderScreen.Delivery(orderId) },
+            onOpenCommerceDelivery = { order -> screen = RiderScreen.CommerceDelivery(order) },
             onLogout = { screen = RiderScreen.Login },
         )
         is RiderScreen.Delivery -> DeliveryDetailScreen(
             orderId = current.orderId,
+            onBack = { screen = RiderScreen.Home },
+        )
+        is RiderScreen.CommerceDelivery -> CommerceDeliveryDetailScreen(
+            initialOrder = current.order,
             onBack = { screen = RiderScreen.Home },
         )
     }

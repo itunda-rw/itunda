@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import rw.itunda.rider.network.CommerceOrderDto
 import rw.itunda.rider.network.EatsOrderDto
 import rw.itunda.rider.network.NetworkClient
 import rw.itunda.rider.network.NotificationDto
@@ -51,9 +52,44 @@ import rw.itunda.rider.network.SetRiderAvailabilityRequest
 
 private enum class HomeTab { AVAILABLE, MINE }
 
+// Real itunda-own-fleet Commerce (Shop) delivery claim/tracking -- see
+// ApiService.kt's own CommerceOrderDto doc comment. A rider can now see and claim
+// both food (Eats) and package (Shop) deliveries from this one screen, distinguished
+// by this tag since the two are separate real backend order streams with different
+// status vocabularies.
+enum class DeliverySource { EATS, COMMERCE }
+
+sealed class RiderDelivery {
+    abstract val id: String
+    abstract val status: String
+    abstract val merchantId: String
+    abstract val deliveryAddress: String
+    abstract val source: DeliverySource
+
+    data class Eats(val order: EatsOrderDto) : RiderDelivery() {
+        override val id get() = order.id
+        override val status get() = order.status
+        override val merchantId get() = order.restaurantId
+        override val deliveryAddress get() = order.deliveryAddress
+        override val source get() = DeliverySource.EATS
+    }
+
+    data class Commerce(val order: CommerceOrderDto) : RiderDelivery() {
+        override val id get() = order.id
+        override val status get() = order.status
+        override val merchantId get() = order.merchantId
+        override val deliveryAddress get() = order.deliveryAddress
+        override val source get() = DeliverySource.COMMERCE
+    }
+}
+
 @Composable
 fun RiderHomeScreen(
     onOpenDelivery: (String) -> Unit,
+    // Real Commerce/Shop package delivery -- see CommerceDeliveryDetailScreen's own
+    // doc comment on why this hands over the full order object rather than an id
+    // (the rider is never authorized to GET a Commerce order by id directly).
+    onOpenCommerceDelivery: (CommerceOrderDto) -> Unit,
     onLogout: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -66,6 +102,8 @@ fun RiderHomeScreen(
     var tab by remember { mutableStateOf(HomeTab.AVAILABLE) }
     var available by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var mine by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
+    var availableCommerce by remember { mutableStateOf<List<CommerceOrderDto>?>(null) }
+    var mineCommerce by remember { mutableStateOf<List<CommerceOrderDto>?>(null) }
     var offers by remember { mutableStateOf<List<Pair<NotificationDto, String>>>(emptyList()) }
     var restaurantNames by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -92,6 +130,12 @@ fun RiderHomeScreen(
         } catch (e: Exception) {
             error = "Couldn't reach itunda. Check your connection and try again."
         }
+        // Real, separate Commerce delivery stream (2026-08-04) -- kept in its own
+        // try/catch so an outage in one order type never blanks the other.
+        try {
+            availableCommerce = NetworkClient.apiService.getAvailableCommerceDeliveries().orders
+            mineCommerce = NetworkClient.apiService.getMyCommerceDeliveries().orders
+        } catch (e: Exception) { /* package deliveries just won't show this tick */ }
     }
 
     suspend fun refreshOffers() {
@@ -240,52 +284,76 @@ fun RiderHomeScreen(
             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
         }
 
-        val list = if (tab == HomeTab.AVAILABLE) available else mine
-        if (list == null) {
+        val eatsList = if (tab == HomeTab.AVAILABLE) available else mine
+        val commerceList = if (tab == HomeTab.AVAILABLE) availableCommerce else mineCommerce
+        // Real combined delivery feed (2026-08-04): Eats (food) + Commerce (Shop
+        // packages) are two separate real backend order streams sharing this one
+        // rider's claim queue -- loading is "both requests have come back", not
+        // "either one has."
+        if (eatsList == null && commerceList == null) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        } else if (list.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    if (tab == HomeTab.AVAILABLE) "No open deliveries right now." else "No deliveries yet.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         } else {
-            if (tab == HomeTab.MINE) {
-                val delivered = list.filter { it.status == "DELIVERED" }
-                if (delivered.isNotEmpty()) {
+            val combined: List<RiderDelivery> =
+                eatsList.orEmpty().map { RiderDelivery.Eats(it) } + commerceList.orEmpty().map { RiderDelivery.Commerce(it) }
+            if (combined.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
-                        "Recent earnings: ${"%,.0f".format(delivered.sumOf { it.deliveryFee })} RWF (${delivered.size} deliveries)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        if (tab == HomeTab.AVAILABLE) "No open deliveries right now." else "No deliveries yet.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                items(list, key = { it.id }) { order ->
-                    DeliveryRow(
-                        order = order,
-                        restaurantName = restaurantNames[order.restaurantId] ?: order.restaurantId,
-                        showClaim = tab == HomeTab.AVAILABLE,
-                        onClaim = {
-                            scope.launch {
-                                try {
-                                    NetworkClient.apiService.claimDelivery(order.id)
-                                    refreshDeliveries()
-                                    onOpenDelivery(order.id)
-                                } catch (e: Exception) {
-                                    error = "Someone else just claimed this delivery."
-                                    refreshDeliveries()
+            } else {
+                if (tab == HomeTab.MINE) {
+                    val deliveredEatsFees = eatsList.orEmpty().filter { it.status == "DELIVERED" }.sumOf { it.deliveryFee }
+                    val deliveredCount = eatsList.orEmpty().count { it.status == "DELIVERED" } + commerceList.orEmpty().count { it.status == "DELIVERED" }
+                    if (deliveredCount > 0) {
+                        Text(
+                            "Recent earnings: ${"%,.0f".format(deliveredEatsFees)} RWF (${deliveredCount} deliveries)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(combined, key = { "${it.source}:${it.id}" }) { delivery ->
+                        RiderDeliveryRow(
+                            delivery = delivery,
+                            merchantName = restaurantNames[delivery.merchantId] ?: delivery.merchantId,
+                            showClaim = tab == HomeTab.AVAILABLE,
+                            onClaim = {
+                                scope.launch {
+                                    try {
+                                        when (delivery) {
+                                            is RiderDelivery.Eats -> {
+                                                NetworkClient.apiService.claimDelivery(delivery.id)
+                                                refreshDeliveries()
+                                                onOpenDelivery(delivery.id)
+                                            }
+                                            is RiderDelivery.Commerce -> {
+                                                val claimed = NetworkClient.apiService.claimCommerceDelivery(delivery.id).order
+                                                refreshDeliveries()
+                                                onOpenCommerceDelivery(claimed)
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        error = "Someone else just claimed this delivery."
+                                        refreshDeliveries()
+                                    }
                                 }
-                            }
-                        },
-                        onOpen = { onOpenDelivery(order.id) },
-                    )
+                            },
+                            onOpen = {
+                                when (delivery) {
+                                    is RiderDelivery.Eats -> onOpenDelivery(delivery.id)
+                                    is RiderDelivery.Commerce -> onOpenCommerceDelivery(delivery.order)
+                                }
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -293,9 +361,9 @@ fun RiderHomeScreen(
 }
 
 @Composable
-private fun DeliveryRow(
-    order: EatsOrderDto,
-    restaurantName: String,
+private fun RiderDeliveryRow(
+    delivery: RiderDelivery,
+    merchantName: String,
     showClaim: Boolean,
     onClaim: () -> Unit,
     onOpen: () -> Unit,
@@ -305,14 +373,36 @@ private fun DeliveryRow(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(restaurantName, fontWeight = FontWeight.Bold)
-                Text("${"%,.0f".format(order.deliveryFee)} RWF", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Column {
+                    // Real combined feed source tag -- see RiderDelivery's own doc comment.
+                    Text(
+                        if (delivery.source == DeliverySource.EATS) "🍔 Food" else "📦 Package",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(merchantName, fontWeight = FontWeight.Bold)
+                }
+                when (delivery) {
+                    is RiderDelivery.Eats -> Text(
+                        "${"%,.0f".format(delivery.order.deliveryFee)} RWF",
+                        fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary,
+                    )
+                    // Commerce's Order entity models no separate rider-payout field --
+                    // showing the real order total rather than fabricating a delivery-fee
+                    // figure the backend doesn't compute.
+                    is RiderDelivery.Commerce -> Text(
+                        "${"%,.0f".format(delivery.order.totalAmount)} RWF order",
+                        fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
-            Text(order.deliveryAddress, style = MaterialTheme.typography.bodySmall)
-            order.distanceKm?.let {
-                Text("${"%.1f".format(it)} km away", style = MaterialTheme.typography.bodySmall)
+            Text(delivery.deliveryAddress, style = MaterialTheme.typography.bodySmall)
+            if (delivery is RiderDelivery.Eats) {
+                delivery.order.distanceKm?.let {
+                    Text("${"%.1f".format(it)} km away", style = MaterialTheme.typography.bodySmall)
+                }
             }
-            StatusBadge(order.status)
+            StatusBadge(delivery.status)
             if (showClaim) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = onClaim, modifier = Modifier.fillMaxWidth()) { Text("Claim this delivery") }
@@ -326,6 +416,8 @@ internal fun StatusBadge(status: String) {
     val label = when (status) {
         "RIDER_ASSIGNED" -> "Heading to pickup"
         "PICKED_UP" -> "On the way"
+        "PACKED" -> "Ready for pickup"
+        "SHIPPED" -> "On the way"
         "DELIVERED" -> "Delivered"
         else -> status
     }

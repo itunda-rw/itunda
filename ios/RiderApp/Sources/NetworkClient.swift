@@ -67,6 +67,27 @@ struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
 struct ShoppingMerchantDto: Decodable { let merchantId: String; let businessName: String }
 struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: [ShoppingMerchantDto] }
 
+// Real itunda-own-fleet Commerce (Shop) delivery claim/tracking -- see Android
+// riderapp's ApiService.kt CommerceOrderDto doc comment (2026-08-04) for the full
+// backend account this ports: a real, working endpoint set with zero client anywhere,
+// not even this dedicated rider app, which until now only ever saw Eats food
+// deliveries. Mirrors rw.itunda.core.domain.Order exactly. Distinct status set from
+// Eats: PACKED -> SHIPPED (claim) -> DELIVERED (complete), no RIDER_ASSIGNED/PICKED_UP
+// midpoint.
+struct CommerceOrderDto: Decodable, Identifiable, Equatable {
+    let id: String
+    let buyerId: String
+    let merchantId: String
+    let deliveryAddress: String
+    let totalAmount: Double
+    let fee: Double
+    let status: String
+    let createdAt: String
+    let riderId: String?
+}
+struct CommerceOrderDetailResponse: Decodable { let success: Bool; let order: CommerceOrderDto }
+struct CommerceOrdersResponse: Decodable { let success: Bool; let orders: [CommerceOrderDto] }
+
 // Real automatic-dispatch offer notifications (type == "DELIVERY_OFFER") carry the
 // offered order's id in dataJson (a raw JSON string, e.g. {"orderId":"..."}) -- see
 // EatsOrderService's own dispatch code. Neither the consumer app nor bank-mfe has
@@ -155,6 +176,18 @@ final class RiderNetworkClient {
     }
 
     func getShoppingMerchants() async throws -> ShoppingMerchantsResponse { try await get("api/v1/shopping/merchants") }
+
+    func getAvailableCommerceDeliveries() async throws -> CommerceOrdersResponse {
+        try await get("api/v1/orders/available-deliveries", query: [URLQueryItem(name: "size", value: "20")])
+    }
+
+    func getMyCommerceDeliveries() async throws -> CommerceOrdersResponse {
+        try await get("api/v1/orders/my-deliveries", query: [URLQueryItem(name: "size", value: "50")])
+    }
+
+    func claimCommerceDelivery(_ orderId: String) async throws -> CommerceOrderDetailResponse { try await postEmpty("api/v1/orders/\(orderId)/claim-delivery") }
+
+    func completeCommerceDelivery(_ orderId: String) async throws -> CommerceOrderDetailResponse { try await postEmpty("api/v1/orders/\(orderId)/complete-delivery") }
 
     func getNotifications() async throws -> NotificationsResponse { try await get("api/v1/notifications") }
 

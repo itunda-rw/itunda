@@ -75,6 +75,29 @@ data class UpdateEatsOrderStatusRequest(val status: String)
 data class ShoppingMerchantDto(val merchantId: String, val businessName: String)
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
 
+// Real itunda-own-fleet Commerce (Shop) delivery claim/tracking (2026-07-26 on the
+// backend, found 2026-08-04 as a real, working endpoint set with zero client anywhere
+// -- not even this dedicated rider app, which until now only ever saw Eats food
+// deliveries). Mirrors rw.itunda.core.domain.Order exactly (same field names), same
+// "a rider registers once via /eats/riders/register, no separate registration" account
+// as OrderController.getAvailableDeliveries' own doc comment. Distinct status set from
+// Eats: PACKED -> SHIPPED (claim) -> DELIVERED (complete), no RIDER_ASSIGNED/PICKED_UP
+// midpoint since Commerce doesn't model a separate pickup-confirmation step.
+data class CommerceOrderDto(
+    val id: String,
+    val buyerId: String,
+    val merchantId: String,
+    val deliveryAddress: String,
+    val totalAmount: Double,
+    val fee: Double,
+    val status: String,
+    val createdAt: String,
+    val riderId: String? = null,
+)
+
+data class CommerceOrderDetailResponse(val success: Boolean, val order: CommerceOrderDto)
+data class CommerceOrdersResponse(val success: Boolean, val orders: List<CommerceOrderDto>)
+
 // Real automatic-dispatch offer notifications (type == "DELIVERY_OFFER") carry the
 // offered order's id in dataJson (a raw JSON string, e.g. {"orderId":"..."}) -- see
 // EatsOrderService's own dispatch code. The consumer app's NotificationDto has never
@@ -139,6 +162,18 @@ interface ApiService {
 
     @GET("api/v1/shopping/merchants")
     suspend fun getShoppingMerchants(): ShoppingMerchantsResponse
+
+    @GET("api/v1/orders/available-deliveries")
+    suspend fun getAvailableCommerceDeliveries(@Query("size") size: Int = 20): CommerceOrdersResponse
+
+    @GET("api/v1/orders/my-deliveries")
+    suspend fun getMyCommerceDeliveries(@Query("size") size: Int = 50): CommerceOrdersResponse
+
+    @POST("api/v1/orders/{id}/claim-delivery")
+    suspend fun claimCommerceDelivery(@Path("id") orderId: String): CommerceOrderDetailResponse
+
+    @POST("api/v1/orders/{id}/complete-delivery")
+    suspend fun completeCommerceDelivery(@Path("id") orderId: String): CommerceOrderDetailResponse
 
     @GET("api/v1/notifications")
     suspend fun getNotifications(): NotificationsResponse

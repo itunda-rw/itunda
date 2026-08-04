@@ -6,6 +6,9 @@ private enum RiderScreen: Equatable {
     case becomeRider
     case home
     case delivery(orderId: String)
+    // Real Commerce/Shop package delivery -- see CommerceDeliveryDetailScreen's own
+    // doc comment on why this carries the full order object rather than just an id.
+    case commerceDelivery(order: CommerceOrderDto)
 }
 
 @main
@@ -48,10 +51,13 @@ private struct RiderRootView: View {
             case .home:
                 RiderHomeScreen(
                     onOpenDelivery: { orderId in screen = .delivery(orderId: orderId) },
+                    onOpenCommerceDelivery: { order in screen = .commerceDelivery(order: order) },
                     onLogout: { screen = .login }
                 )
             case .delivery(let orderId):
                 DeliveryDetailScreen(orderId: orderId, onBack: { screen = .home })
+            case .commerceDelivery(let order):
+                CommerceDeliveryDetailScreen(initialOrder: order, onBack: { screen = .home })
             }
         }
         .task { await resolveStartScreen() }
