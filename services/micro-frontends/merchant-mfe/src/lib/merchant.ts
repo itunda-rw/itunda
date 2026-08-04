@@ -181,6 +181,38 @@ export const setWebhookUrl = (webhookUrl: string) =>
     body: JSON.stringify({ webhookUrl }),
   }).then((r) => r.merchant);
 
+// Real API key + webhook delivery log/replay -- found via a fresh "defined but
+// uncalled" endpoint sweep: real, working since ship day, zero client anywhere. The
+// natural companion to the webhook-URL setting above: a merchant integrating
+// programmatically needs a key to authenticate with, and a way to see whether their
+// endpoint is actually receiving delivery attempts. See WebhookDeliveryService.kt's
+// own doc comment for the real Toss Payments-sourced 7-attempt/4096-minute retry
+// schedule this delivery log reflects.
+export const generateApiKey = () =>
+  apiFetch<{ success: boolean; apiKey: string }>('/api/v1/merchant/api-key/generate', { method: 'POST' }).then((r) => r.apiKey);
+
+export type WebhookDeliveryStatus = 'PENDING' | 'DELIVERED' | 'EXHAUSTED';
+
+export interface WebhookDelivery {
+  id: string;
+  eventType: string;
+  status: WebhookDeliveryStatus;
+  attemptCount: number;
+  createdAt: string;
+  nextAttemptAt: string;
+  deliveredAt: string | null;
+  lastError: string | null;
+}
+
+export const getWebhookDeliveries = () =>
+  apiFetch<{ success: boolean; deliveries: WebhookDelivery[] }>('/api/v1/merchant/webhook-deliveries').then((r) => r.deliveries);
+
+export const replayWebhookDelivery = (deliveryId: string) =>
+  apiFetch<{ success: boolean; delivery: { id: string; status: string; replayOf: string } }>(
+    `/api/v1/merchant/webhook-deliveries/${deliveryId}/replay`,
+    { method: 'POST' },
+  );
+
 // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
 // see the backend's MerchantFeeWaiverService doc comment.
 export const applyForFeeWaiver = () =>

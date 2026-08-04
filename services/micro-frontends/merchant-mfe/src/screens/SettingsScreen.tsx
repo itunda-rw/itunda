@@ -3,7 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, getMyIdentitySubmissions, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
+import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
 
 export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
   const [webhookUrl, setWebhookUrlInput] = useState(merchant.webhookUrl ?? '');
@@ -71,6 +71,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
       <FeeWaiverCard merchant={merchant} onUpdated={onUpdated} />
       <FollowersCard />
       <KybCard merchant={merchant} />
+      <ApiIntegrationCard />
       <DevicesCard />
     </div>
   );
@@ -158,6 +159,115 @@ function FollowersCard() {
           <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: 0 }}>Sent to {sentCount} follower{sentCount === 1 ? '' : 's'}.</p>
         )}
       </form>
+    </div>
+  );
+}
+
+// Real API key + webhook delivery log/replay -- see lib/merchant.ts's own doc comment.
+// The natural companion to the Webhook URL field above: generate a key to authenticate
+// programmatic requests, and see whether the configured URL is actually receiving
+// delivery attempts (with a Replay action for any exhausted -- all 7 real retries used
+// up -- delivery).
+function ApiIntegrationCard() {
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [deliveries, setDeliveries] = useState<WebhookDelivery[] | null>(null);
+  const [replayingId, setReplayingId] = useState<string | null>(null);
+  const [deliveriesError, setDeliveriesError] = useState<string | null>(null);
+
+  const loadDeliveries = () => {
+    getWebhookDeliveries()
+      .then(setDeliveries)
+      .catch((err) => setDeliveriesError(err instanceof ApiError ? err.message : 'Could not load webhook deliveries.'));
+  };
+  useEffect(loadDeliveries, []);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      setApiKey(await generateApiKey());
+    } catch (err) {
+      setGenerateError(err instanceof ApiError ? err.message : 'Could not generate an API key.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleReplay = async (deliveryId: string) => {
+    setReplayingId(deliveryId);
+    setDeliveriesError(null);
+    try {
+      await replayWebhookDelivery(deliveryId);
+      loadDeliveries();
+    } catch (err) {
+      setDeliveriesError(err instanceof ApiError ? err.message : 'Could not replay this delivery.');
+    } finally {
+      setReplayingId(null);
+    }
+  };
+
+  const statusColor: Record<WebhookDelivery['status'], string> = {
+    DELIVERED: 'var(--toss-green)',
+    PENDING: 'var(--toss-grey-500)',
+    EXHAUSTED: '#E53935',
+  };
+
+  return (
+    <div className="toss-card">
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>API integration</h2>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        For merchants integrating their own systems with itunda.
+      </p>
+
+      <div style={{ marginBottom: '20px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" disabled={generating} onClick={handleGenerate}>
+          {generating ? 'Generating…' : 'Generate a new API key'}
+        </button>
+        {apiKey && (
+          <p style={{ fontSize: '12px', fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '10px', padding: '10px', background: 'var(--toss-grey-100)', borderRadius: '8px' }}>
+            {apiKey}
+          </p>
+        )}
+        {generateError && (
+          <p style={{ fontSize: '13px', color: '#E53935', marginTop: '8px' }} role="alert">{generateError}</p>
+        )}
+      </div>
+
+      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Recent webhook deliveries</h3>
+      {deliveriesError && (
+        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{deliveriesError}</p>
+      )}
+      {deliveries === null ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+      ) : deliveries.length === 0 ? (
+        <EmptyState message="No webhook deliveries yet." />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {deliveries.slice(0, 20).map((d) => (
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 700 }}>{d.eventType}</p>
+                <p style={{ fontSize: '12px', color: statusColor[d.status] }}>
+                  {d.status} · {d.attemptCount} attempt{d.attemptCount === 1 ? '' : 's'}
+                </p>
+                {d.lastError && <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{d.lastError}</p>}
+              </div>
+              {d.status === 'EXHAUSTED' && (
+                <button
+                  className="toss-btn toss-btn-secondary"
+                  disabled={replayingId === d.id}
+                  onClick={() => handleReplay(d.id)}
+                  style={{ padding: '8px 12px', fontSize: '12px' }}
+                >
+                  {replayingId === d.id ? 'Replaying…' : 'Replay'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
