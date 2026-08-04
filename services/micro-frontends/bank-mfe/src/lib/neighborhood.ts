@@ -11,7 +11,19 @@ import { apiFetch } from './api';
 export const fetchProfile = () =>
   apiFetch<{
     success: boolean;
-    user: { neighborhood: string | null; birthDate: string | null; email: string | null; emailVerified: boolean; phoneVerified: boolean; profilePhotoUrl: string | null };
+    user: {
+      neighborhood: string | null;
+      // Real second neighborhood (2026-08-04) -- see AuthService.setSecondNeighborhood's
+      // own doc comment. Same real-coordinate, reverse-geocoded-server-side rule as
+      // `neighborhood`.
+      secondNeighborhood: string | null;
+      neighborhoodVerificationCount: number | null;
+      birthDate: string | null;
+      email: string | null;
+      emailVerified: boolean;
+      phoneVerified: boolean;
+      profilePhotoUrl: string | null;
+    };
   }>('/api/v1/auth/profile').then((r) => r.user);
 
 // Real profile photo (URL, not a binary upload -- see backend UpdateProfilePhotoRequest's
@@ -28,6 +40,21 @@ export const setNeighborhood = (latitude: number, longitude: number) =>
   apiFetch<{ success: boolean; user: { neighborhood: string | null } }>('/api/v1/auth/profile/neighborhood', {
     method: 'POST',
     body: JSON.stringify({ latitude, longitude }),
+  }).then((r) => r.user);
+
+// Real second neighborhood (2026-08-04) -- mirrors setNeighborhood exactly; separate
+// add/remove endpoints since the second neighborhood is optional and independently
+// clearable. See Android SuperAppTabs.kt's HoodTab and iOS HoodScreen.swift's
+// NeighborhoodSwitcherOverlay, which this ports.
+export const setSecondNeighborhood = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean; user: { secondNeighborhood: string | null } }>('/api/v1/auth/profile/second-neighborhood', {
+    method: 'POST',
+    body: JSON.stringify({ latitude, longitude }),
+  }).then((r) => r.user);
+
+export const clearSecondNeighborhood = () =>
+  apiFetch<{ success: boolean; user: { secondNeighborhood: string | null } }>('/api/v1/auth/profile/second-neighborhood', {
+    method: 'DELETE',
   }).then((r) => r.user);
 
 // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see

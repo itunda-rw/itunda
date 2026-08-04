@@ -114,7 +114,7 @@ import {
   markListingSold, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
   submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
-import { fetchProfile, setBirthDate, setNeighborhood, updateProfilePhoto } from './lib/neighborhood';
+import { clearSecondNeighborhood, fetchProfile, setBirthDate, setNeighborhood, setSecondNeighborhood, updateProfilePhoto } from './lib/neighborhood';
 import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
 import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, GIFT_THEME_LABELS, type Gift, type GiftStatus, type GiftTheme } from './lib/gift';
@@ -8947,7 +8947,9 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
 // module (Marketplace/Community/Jobs/Property), same "one small component, four real
 // call sites" shape this project already uses for offer bubbles etc. See
 // lib/neighborhood.ts's own doc comment for the full backend account.
-function NeighborhoodSetupPrompt({ onDone }: { onDone: (neighborhood: string) => void }) {
+// Real second neighborhood (2026-08-04) -- isSecond mirrors Android HoodShared.kt's own
+// NeighborhoodSetupPrompt(isSecond) and iOS's own isSecond port exactly, same copy.
+function NeighborhoodSetupPrompt({ isSecond = false, onDone }: { isSecond?: boolean; onDone: (neighborhood: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -8960,10 +8962,11 @@ function NeighborhoodSetupPrompt({ onDone }: { onDone: (neighborhood: string) =>
     setError(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setNeighborhood(position.coords.latitude, position.coords.longitude)
+        (isSecond ? setSecondNeighborhood(position.coords.latitude, position.coords.longitude) : setNeighborhood(position.coords.latitude, position.coords.longitude))
           .then((user) => {
             setBusy(false);
-            if (user.neighborhood) onDone(user.neighborhood);
+            const value = isSecond ? (user as { secondNeighborhood: string | null }).secondNeighborhood : (user as { neighborhood: string | null }).neighborhood;
+            if (value) onDone(value);
           })
           .catch((err) => {
             setBusy(false);
@@ -8979,14 +8982,56 @@ function NeighborhoodSetupPrompt({ onDone }: { onDone: (neighborhood: string) =>
 
   return (
     <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-      <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Set your neighborhood</p>
+      <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>{isSecond ? 'Add a second neighborhood' : 'Set your neighborhood'}</p>
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
-        Share your real location once to see what's happening near you.
+        {isSecond ? "Share a second real place -- like work -- to see what's happening there too." : "Share your real location once to see what's happening near you."}
       </p>
       <button className="toss-btn toss-btn-primary" onClick={handleShare} disabled={busy}>
         {busy ? 'Finding your neighborhood…' : '📍 Share my location'}
       </button>
       {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '12px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+// Real dual-neighborhood add/change/remove row (2026-08-04) -- mirrors Android
+// SuperAppTabs.kt's HoodTab showNeighborhoodPrompt second-neighborhood card and iOS's
+// own NeighborhoodSwitcherOverlay exactly. Shown alongside the primary
+// NeighborhoodSetupPrompt in every Hood-tab module's NEIGHBORHOOD view.
+function NeighborhoodSwitcherRow({
+  secondNeighborhoodName,
+  onAddTapped,
+  onRemoved,
+}: {
+  secondNeighborhoodName: string | null;
+  onAddTapped: () => void;
+  onRemoved: (neighborhood: string | null) => void;
+}) {
+  const [removing, setRemoving] = useState(false);
+
+  const handleRemove = () => {
+    setRemoving(true);
+    clearSecondNeighborhood()
+      .then((user) => onRemoved(user.secondNeighborhood))
+      .catch(() => {
+        // Best-effort -- the row stays as-is so the user can retry.
+      })
+      .finally(() => setRemoving(false));
+  };
+
+  return (
+    <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', marginTop: '10px' }}>
+      <span style={{ fontSize: '13px', fontWeight: 600 }}>{secondNeighborhoodName ? `Second: ${secondNeighborhoodName}` : 'Add a second neighborhood'}</span>
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-blue)' }} onClick={onAddTapped}>
+          {secondNeighborhoodName ? 'Change' : 'Add'}
+        </button>
+        {secondNeighborhoodName && (
+          <button style={{ fontSize: '13px', fontWeight: 600, color: '#E53935' }} onClick={handleRemove} disabled={removing}>
+            Remove
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -9184,6 +9229,8 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
   const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
+  const [secondNeighborhoodName, setSecondNeighborhoodName] = useState<string | null>(null);
+  const [showSecondNeighborhoodPrompt, setShowSecondNeighborhoodPrompt] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
@@ -9202,6 +9249,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
       Promise.all([fetchProfile(), fetchListingsMyNeighborhood()])
         .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
+          setSecondNeighborhoodName(profile.secondNeighborhood);
           setListings(result.listings);
           setTrustScores(result.trustScores);
         })
@@ -9276,6 +9324,21 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
 
           {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
             <NeighborhoodSetupPrompt onDone={() => load()} />
+          )}
+
+          {view === 'NEIGHBORHOOD' && neighborhoodName && (
+            <NeighborhoodSwitcherRow
+              secondNeighborhoodName={secondNeighborhoodName}
+              onAddTapped={() => setShowSecondNeighborhoodPrompt(true)}
+              onRemoved={(next) => setSecondNeighborhoodName(next)}
+            />
+          )}
+
+          {view === 'NEIGHBORHOOD' && showSecondNeighborhoodPrompt && (
+            <NeighborhoodSetupPrompt
+              isSecond
+              onDone={(name) => { setSecondNeighborhoodName(name); setShowSecondNeighborhoodPrompt(false); }}
+            />
           )}
 
           {view === 'NEIGHBORHOOD' && neighborhoodName && (
@@ -10046,6 +10109,8 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
   const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
+  const [secondNeighborhoodName, setSecondNeighborhoodName] = useState<string | null>(null);
+  const [showSecondNeighborhoodPrompt, setShowSecondNeighborhoodPrompt] = useState(false);
   const currentUser = getStoredUser();
 
   useEffect(() => {
@@ -10059,6 +10124,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
       Promise.all([fetchProfile(), fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined)])
         .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
+          setSecondNeighborhoodName(profile.secondNeighborhood);
           setPosts(result.posts);
           setJoinedCounts(result.joinedCounts);
         })
@@ -10142,6 +10208,21 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
 
       {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
         <NeighborhoodSetupPrompt onDone={() => load()} />
+      )}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName && (
+        <NeighborhoodSwitcherRow
+          secondNeighborhoodName={secondNeighborhoodName}
+          onAddTapped={() => setShowSecondNeighborhoodPrompt(true)}
+          onRemoved={(next) => setSecondNeighborhoodName(next)}
+        />
+      )}
+
+      {view === 'NEIGHBORHOOD' && showSecondNeighborhoodPrompt && (
+        <NeighborhoodSetupPrompt
+          isSecond
+          onDone={(name) => { setSecondNeighborhoodName(name); setShowSecondNeighborhoodPrompt(false); }}
+        />
       )}
 
       {view === 'NEIGHBORHOOD' && neighborhoodName && (
@@ -10669,6 +10750,8 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
   const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
+  const [secondNeighborhoodName, setSecondNeighborhoodName] = useState<string | null>(null);
+  const [showSecondNeighborhoodPrompt, setShowSecondNeighborhoodPrompt] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
@@ -10691,6 +10774,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
       Promise.all([fetchProfile(), fetchJobPostsMyNeighborhood(activeCategory ?? undefined)])
         .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
+          setSecondNeighborhoodName(profile.secondNeighborhood);
           setPosts(result.posts);
           setTrustScores(result.trustScores);
         })
@@ -10790,6 +10874,21 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
 
           {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
             <NeighborhoodSetupPrompt onDone={() => load()} />
+          )}
+
+          {view === 'NEIGHBORHOOD' && neighborhoodName && (
+            <NeighborhoodSwitcherRow
+              secondNeighborhoodName={secondNeighborhoodName}
+              onAddTapped={() => setShowSecondNeighborhoodPrompt(true)}
+              onRemoved={(next) => setSecondNeighborhoodName(next)}
+            />
+          )}
+
+          {view === 'NEIGHBORHOOD' && showSecondNeighborhoodPrompt && (
+            <NeighborhoodSetupPrompt
+              isSecond
+              onDone={(name) => { setSecondNeighborhoodName(name); setShowSecondNeighborhoodPrompt(false); }}
+            />
           )}
 
           {view === 'NEIGHBORHOOD' && neighborhoodName && (
@@ -11305,6 +11404,8 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
   const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
+  const [secondNeighborhoodName, setSecondNeighborhoodName] = useState<string | null>(null);
+  const [showSecondNeighborhoodPrompt, setShowSecondNeighborhoodPrompt] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
@@ -11327,6 +11428,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
       Promise.all([fetchProfile(), fetchPropertyListingsMyNeighborhood()])
         .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
+          setSecondNeighborhoodName(profile.secondNeighborhood);
           setListings(result.listings);
           setTrustScores(result.trustScores);
         })
@@ -11449,6 +11551,21 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
 
           {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
             <NeighborhoodSetupPrompt onDone={() => load()} />
+          )}
+
+          {view === 'NEIGHBORHOOD' && neighborhoodName && (
+            <NeighborhoodSwitcherRow
+              secondNeighborhoodName={secondNeighborhoodName}
+              onAddTapped={() => setShowSecondNeighborhoodPrompt(true)}
+              onRemoved={(next) => setSecondNeighborhoodName(next)}
+            />
+          )}
+
+          {view === 'NEIGHBORHOOD' && showSecondNeighborhoodPrompt && (
+            <NeighborhoodSetupPrompt
+              isSecond
+              onDone={(name) => { setSecondNeighborhoodName(name); setShowSecondNeighborhoodPrompt(false); }}
+            />
           )}
 
           {view === 'NEIGHBORHOOD' && neighborhoodName && (
