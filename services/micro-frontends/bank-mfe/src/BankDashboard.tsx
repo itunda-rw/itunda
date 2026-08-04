@@ -90,6 +90,7 @@ import { cancelBillingSubscription, collectPayment, fetchMembershipDayStatus, fe
 import { fetchActiveTimeDeals, type TimeDealView } from './lib/timeDeal';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
+  fundInvestmentWallet,
   sellStock, unwatchStock, watchStock,
   type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
 } from './lib/stocks';
@@ -5992,6 +5993,74 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   );
 }
 
+// Real Investment-wallet top-up (2026-08-04) -- see lib/stocks.ts's own
+// fundInvestmentWallet doc comment. Without this, a user with no pre-seeded
+// investment balance had no in-app way to ever actually buy a stock.
+function AddFundsCard({ onFunded }: { onFunded: () => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+
+  const handleFund = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setNeedsDeviceVerification(false);
+    const value = Number(amount);
+    if (!value || value <= 0) {
+      setError('Enter a real amount.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await fundInvestmentWallet(value);
+      setAmount('');
+      setExpanded(false);
+      onFunded();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not add funds.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ fontSize: '15px', fontWeight: 700 }}>Investment cash</p>
+        <button onClick={() => { setExpanded(!expanded); setError(null); }} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+          {expanded ? 'Cancel' : 'Add funds'}
+        </button>
+      </div>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Move money from your main wallet into your investment account.</p>
+      {expanded && (
+        <form onSubmit={handleFund} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+          <input
+            type="number" min="1" step="any" value={amount} onChange={(e) => setAmount(e.target.value)}
+            placeholder="Amount (RWF)" required
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>
+            {busy ? 'Working…' : 'Add'}
+          </button>
+        </form>
+      )}
+      {needsDeviceVerification ? (
+        <div style={{ marginTop: '10px' }}>
+          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        </div>
+      ) : (
+        error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+      )}
+    </div>
+  );
+}
+
 function StocksView() {
   const [subTab, setSubTab] = useState<'MARKET' | 'PORTFOLIO' | 'WATCHLIST'>('MARKET');
   // Real Toss/Naver 해외주식 (overseas stock trading, item 230) -- a market filter on
@@ -6132,6 +6201,7 @@ function StocksView() {
                 </div>
               )}
             </div>
+            <AddFundsCard onFunded={loadPortfolio} />
             {portfolio.holdings.length === 0 ? (
               <div className="toss-card">
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You don't hold any real shares yet. Browse the Market tab to buy some.</p>
