@@ -46,4 +46,8 @@ dependencies {
     // so Marketplace/Jobs/Property/Eats can render a real drawn route directly instead
     // of receiving it as an injected routeMiniMap callback.
     implementation("org.maplibre.gl:android-sdk:13.3.1")
+
+    // Added 2026-08-05 for IdsAvatar.kt -- same version already used by :app and
+    // :features:talk:impl, so this stays a single real dependency, not a second one.
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

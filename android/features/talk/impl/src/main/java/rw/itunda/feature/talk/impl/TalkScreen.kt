@@ -55,6 +55,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -87,6 +88,11 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.IdsAvatar
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsSegmentedControl
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.components.chatMessageTime
@@ -251,23 +257,12 @@ fun TalkTab(
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         TabHeader("Talk")
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = Ids.layout.cardGap).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary),
-        ) {
-            listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups").forEach { (v, label) ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (view == v) Ids.colors.brand else Color.Transparent)
-                        .clickable { view = v }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(label, color = if (view == v) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-            }
-        }
+        IdsSegmentedControl(
+            options = listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups"),
+            selected = view,
+            onSelect = { view = it },
+            modifier = Modifier.padding(bottom = Ids.layout.cardGap),
+        )
         if (view == TalkView.DIRECT) {
             DirectMessagesList(
                 conversations = conversations,
@@ -359,11 +354,12 @@ private fun DirectMessagesList(
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
+                        IdsTextField(
                             value = startPhoneNumber,
                             onValueChange = { startPhoneNumber = it },
-                            placeholder = { Text("+250788123456") },
-                            singleLine = true,
+                            label = "Phone number",
+                            placeholder = "+250788123456",
+                            keyboardType = KeyboardType.Phone,
                             modifier = Modifier.weight(1f),
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -441,52 +437,48 @@ private fun GroupsList(
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text("New group", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("A group name and everyone's real phone number, comma-separated.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
-                    OutlinedTextField(
+                    IdsTextField(
                         value = name,
                         onValueChange = { name = it },
-                        placeholder = { Text("Group name") },
-                        singleLine = true,
+                        label = "Group name",
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
+                    IdsTextField(
                         value = phoneNumbers,
                         onValueChange = { phoneNumbers = it },
-                        placeholder = { Text("+250788123456, +250788987654") },
+                        label = "Members",
+                        placeholder = "+250788123456, +250788987654",
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (creating || name.isBlank() || phoneNumbers.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                            .clickable(enabled = !creating && name.isNotBlank() && phoneNumbers.isNotBlank()) {
-                                creating = true
-                                createError = null
-                                val numbers = phoneNumbers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                                coroutineScope.launch {
-                                    try {
-                                        val res = NetworkClient.apiService.createGroup(CreateGroupRequest(name = name.trim(), memberPhoneNumbers = numbers))
-                                        if (res.success) {
-                                            name = ""
-                                            phoneNumbers = ""
-                                            onCreated(res.group.groupId)
-                                        }
-                                    } catch (e: HttpException) {
-                                        createError = superAppErrorMessage(e)
-                                    } catch (e: IOException) {
-                                        createError = "Couldn't reach itunda. Check your connection and try again."
-                                    } finally {
-                                        creating = false
+                    IdsButton(
+                        text = if (creating) "Creating…" else "Create group",
+                        enabled = !creating && name.isNotBlank() && phoneNumbers.isNotBlank(),
+                        onClick = {
+                            creating = true
+                            createError = null
+                            val numbers = phoneNumbers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.createGroup(CreateGroupRequest(name = name.trim(), memberPhoneNumbers = numbers))
+                                    if (res.success) {
+                                        name = ""
+                                        phoneNumbers = ""
+                                        onCreated(res.group.groupId)
                                     }
+                                } catch (e: HttpException) {
+                                    createError = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    createError = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    creating = false
                                 }
                             }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(if (creating) "Creating…" else "Create group", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
+                        },
+                        size = IdsButtonSize.Medium,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     createError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
                 }
             }
@@ -509,6 +501,12 @@ private fun GroupRow(group: GroupSummaryDto, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Real fix, found live 2026-08-05: GroupRow had no avatar at all, unlike
+        // ConversationRow -- an inconsistency between the two list types on the same
+        // screen. group.photoUrl has been real since 2026-07-28 (setGroupPhotoUrl);
+        // this is the first client surface to actually render it in the list.
+        IdsAvatar(name = group.name, photoUrl = group.photoUrl)
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(group.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -896,7 +894,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
-            OutlinedTextField(
+            IdsTextField(
                 value = draft,
                 onValueChange = { newValue ->
                     draft = newValue
@@ -906,7 +904,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                         socket?.let { NetworkClient.sendTyping(it, groupConversationId = group.groupId) }
                     }
                 },
-                placeholder = { Text("Message") },
+                label = "Message",
                 modifier = Modifier.weight(1f),
             )
             Spacer(modifier = Modifier.width(10.dp))
@@ -995,9 +993,9 @@ private fun GroupSplitBillsView(
                     }
                 } else {
                     Column {
-                        OutlinedTextField(amountText, { amountText = it }, label = { Text("Total amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(amountText, { amountText = it }, label = "Total amount (RWF)", keyboardType = KeyboardType.Number, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(descriptionText, { descriptionText = it }, label = { Text("What was it for?") }, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(descriptionText, { descriptionText = it }, label = "What was it for?", modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Split with", fontSize = 13.sp, color = Ids.colors.textSecondary)
                         otherMembers.forEach { member ->
@@ -1116,10 +1114,10 @@ private fun GroupSplitBillsView(
                         if (isOrganizer && entry.splitBill.receiptImageUrl == null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                OutlinedTextField(
+                                IdsTextField(
                                     receiptUrlDrafts[entry.splitBill.id] ?: "",
                                     { receiptUrlDrafts = receiptUrlDrafts + (entry.splitBill.id to it) },
-                                    label = { Text("Receipt photo URL", fontSize = 11.sp) },
+                                    label = "Receipt photo URL",
                                     modifier = Modifier.weight(1f),
                                 )
                                 Button(
@@ -1206,18 +1204,18 @@ private fun GroupManageMembersView(
             error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
             item { Text("Group info", fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
             item {
-                OutlinedTextField(
+                IdsTextField(
                     value = photoUrl,
                     onValueChange = { photoUrl = it },
-                    label = { Text("Photo URL (blank to clear)") },
+                    label = "Photo URL (blank to clear)",
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             item {
-                OutlinedTextField(
+                IdsTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Group description (blank to clear)") },
+                    label = "Group description (blank to clear)",
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -1389,9 +1387,12 @@ private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolea
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.BottomEnd) {
-            Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Send, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.brand)
-            }
+            // Real fix, found live 2026-08-05: this rendered Icons.Outlined.Send -- the
+            // SEND-message glyph -- as the other person's avatar, not a person at all.
+            // itunda has no other-user profile photo on ConversationSummaryDto yet (a
+            // real, separate backend+DTO gap, not fixed here); IdsAvatar's colored-
+            // initials fallback is still correct and honest, unlike a send icon.
+            IdsAvatar(name = conversation.otherUserName)
             if (online) {
                 Box(
                     modifier = Modifier
@@ -1664,7 +1665,7 @@ private fun ChatThreadView(
             }, enabled = !updatingQuiet) { Text(if (updatingQuiet) "…" else if (quiet) "Resume alerts" else "Quiet room", color = Ids.colors.textSecondary) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it; if (it.isBlank()) searchResults = null }, placeholder = { Text("Search this conversation") }, singleLine = true, modifier = Modifier.weight(1f))
+            IdsTextField(value = searchQuery, onValueChange = { searchQuery = it; if (it.isBlank()) searchResults = null }, label = "Search this conversation", modifier = Modifier.weight(1f))
             TextButton(onClick = {
                 val query = searchQuery.trim(); if (query.length < 2) { error = "Enter at least 2 characters to search."; return@TextButton }
                 searching = true
@@ -1839,18 +1840,17 @@ private fun ChatThreadView(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text("🎁 Send a gift", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary)
-                OutlinedTextField(
+                IdsTextField(
                     value = giftAmount,
                     onValueChange = { giftAmount = it },
-                    placeholder = { Text("Amount (RWF)") },
-                    singleLine = true,
+                    label = "Amount (RWF)",
+                    keyboardType = KeyboardType.Number,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                OutlinedTextField(
+                IdsTextField(
                     value = giftNote,
                     onValueChange = { if (it.length <= 200) giftNote = it },
-                    placeholder = { Text("Add a note (optional)") },
-                    singleLine = true,
+                    label = "Add a note (optional)",
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(
@@ -1995,7 +1995,7 @@ private fun ChatThreadView(
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
-            OutlinedTextField(
+            IdsTextField(
                 value = draft,
                 onValueChange = { newValue ->
                     draft = newValue
@@ -2007,7 +2007,7 @@ private fun ChatThreadView(
                         socket?.let { NetworkClient.sendTyping(it, conversationId = conversation.conversationId) }
                     }
                 },
-                placeholder = { Text("Message") },
+                label = "Message",
                 modifier = Modifier.weight(1f),
             )
             Spacer(modifier = Modifier.width(10.dp))
@@ -2140,12 +2140,12 @@ private fun OfferBubble(offer: OfferBubbleData, isMine: Boolean, currentUserId: 
             }
             if (canRespond && countering) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
+                    IdsTextField(
                         value = counterAmount,
                         onValueChange = { counterAmount = it },
-                        placeholder = { Text("Counter (RWF)", fontSize = 11.sp) },
-                        singleLine = true,
-                        modifier = Modifier.width(120.dp),
+                        label = "Counter (RWF)",
+                        keyboardType = KeyboardType.Number,
+                        modifier = Modifier.width(140.dp),
                     )
                     OfferActionButton("Send") {
                         val amount = counterAmount.toDoubleOrNull() ?: return@OfferActionButton
@@ -2429,11 +2429,11 @@ private fun GiftVoucherComposerPanel(onSent: () -> Unit, onCancel: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("🎟️ Send a gift voucher", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary)
-        OutlinedTextField(
+        IdsTextField(
             value = phone,
             onValueChange = { phone = it },
-            placeholder = { Text("Recipient phone number") },
-            singleLine = true,
+            label = "Recipient phone number",
+            keyboardType = KeyboardType.Phone,
             modifier = Modifier.fillMaxWidth(),
         )
         val currentSelected = selected
@@ -2454,11 +2454,10 @@ private fun GiftVoucherComposerPanel(onSent: () -> Unit, onCancel: () -> Unit) {
             }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
+                IdsTextField(
                     value = query,
                     onValueChange = { query = it },
-                    placeholder = { Text("Search a product to gift") },
-                    singleLine = true,
+                    label = "Search a product to gift",
                     modifier = Modifier.weight(1f),
                 )
                 OfferActionButton(if (searching) "…" else "Search") {
@@ -2666,11 +2665,11 @@ private fun EmoticonStoreDialog(onDismiss: () -> Unit) {
                             }
                             if (giftingPackId == pack.id) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    OutlinedTextField(
+                                    IdsTextField(
                                         value = giftPhone,
                                         onValueChange = { giftPhone = it },
-                                        placeholder = { Text("Recipient phone number") },
-                                        singleLine = true,
+                                        label = "Recipient phone number",
+                                        keyboardType = KeyboardType.Phone,
                                         modifier = Modifier.weight(1f),
                                     )
                                     OfferActionButton(if (busyPackId == pack.id) "…" else "Send gift") {
@@ -2799,7 +2798,7 @@ private fun MessageBubble(
     if (reportOpen) AlertDialog(
         onDismissRequest = { reportOpen = false },
         title = { Text("Report message") },
-        text = { OutlinedTextField(value = reportReason, onValueChange = { if (it.length <= 180) reportReason = it }, label = { Text("Reason") }) },
+        text = { IdsTextField(value = reportReason, onValueChange = { if (it.length <= 180) reportReason = it }, label = "Reason") },
         confirmButton = { TextButton(onClick = { if (reportReason.trim().length >= 3) { onReportMessage(message.id, reportReason.trim()); reportReason = ""; reportOpen = false } }) { Text("Send") } },
         dismissButton = { TextButton(onClick = { reportOpen = false }) { Text("Cancel") } },
     )

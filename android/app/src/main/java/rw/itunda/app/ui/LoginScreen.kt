@@ -171,10 +171,15 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         .weight(1f)
                         .fillMaxWidth()
                         .padding(horizontal = Ids.layout.screenHorizontal),
-                    verticalArrangement = Arrangement.Top,
+                    // Real fix, found live 2026-08-05 on a real emulator screenshot: with
+                    // Arrangement.Top, every step's headline+field sat pinned at the very
+                    // top of this weighted column while the button sat pinned to the
+                    // bottom of its own column below -- leaving roughly half the screen as
+                    // dead gray space on both the phone-number and password steps. Real
+                    // Toss/Kakao onboarding centers the one active question vertically in
+                    // the available viewport instead of stranding it at the top.
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    Spacer(modifier = Modifier.height(24.dp))
-
                     if (step == 0) {
                         BrandMark()
                         Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
