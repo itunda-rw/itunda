@@ -1,6 +1,9 @@
 package rw.itunda.feature.talk.impl
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import coil.compose.AsyncImage
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -60,6 +64,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,6 +74,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.WebSocket
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
@@ -538,6 +546,14 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     var emoticonPickerOpen by remember { mutableStateOf(false) }
     var emoticonStoreOpen by remember { mutableStateOf(false) }
     var emoticonImageById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // Real attach ("+") menu + photo send (2026-08-04) -- closes
+    // docs/DESIGN_REFERENCES.md's Talk recommendation #6. Reuses the exact real upload
+    // flow MarketplaceScreen/PropertyScreen already established (GetContent() picker ->
+    // uploadPhoto() -> real server URL) -- see SendMessageRequest's own doc comment for
+    // the full "defined but uncalled" backend account.
+    var attachMenuOpen by remember { mutableStateOf(false) }
+    var uploadingPhoto by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     // Real group-chat pin (2026-07-26 backend, wired 2026-08-04) -- found via the same
     // defined-but-uncalled-method sweep this file's own doc history already names for
     // emoticons above: GroupMessagingController's real /{groupId}/pin endpoints existed
@@ -754,16 +770,52 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         if (emoticonStoreOpen) {
             EmoticonStoreDialog(onDismiss = { emoticonStoreOpen = false })
         }
+        val pickGroupPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            uploadingPhoto = true
+            error = null
+            coroutineScope.launch {
+                try {
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (bytes == null) {
+                        error = "Couldn't read that photo."
+                        return@launch
+                    }
+                    val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                    val part = MultipartBody.Part.createFormData("file", "photo.jpg", bytes.toRequestBody(mimeType.toMediaTypeOrNull()))
+                    val photoUrl = NetworkClient.apiService.uploadPhoto(part).url
+                    val res = NetworkClient.apiService.sendGroupMessage(group.groupId, SendGroupMessageRequest("", replyingTo?.id, photoUrl))
+                    if (res.success) {
+                        replyingTo = null
+                        messages = (messages ?: emptyList()) + res.message
+                    }
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: IOException) {
+                    error = "Couldn't upload that photo. Check your connection and try again."
+                } finally {
+                    uploadingPhoto = false
+                }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(Ids.layout.minTouchTarget)
-                    .clip(CircleShape)
-                    .background(Ids.colors.surfaceSoft)
-                    .clickable { emoticonPickerOpen = !emoticonPickerOpen },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("😊", fontSize = 18.sp)
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(Ids.layout.minTouchTarget)
+                        .clip(CircleShape)
+                        .background(Ids.colors.surfaceSoft)
+                        .clickable(enabled = !uploadingPhoto) { attachMenuOpen = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(if (uploadingPhoto) "…" else "+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                }
+                // Real attach menu (2026-08-04) -- Kakao's own real "+"-opens-a-menu
+                // pattern (References table: "'+' opens a multi-function attach menu").
+                DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
+                    DropdownMenuItem(text = { Text("📷 Photo") }, onClick = { attachMenuOpen = false; pickGroupPhoto.launch("image/*") })
+                    DropdownMenuItem(text = { Text("😊 Emoticon") }, onClick = { attachMenuOpen = false; emoticonPickerOpen = !emoticonPickerOpen })
+                }
             }
             Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
@@ -1181,6 +1233,19 @@ private fun GroupMessageBubble(
                         Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
                     }
                     EmoticonBubble(emoticonImageUrl)
+                } else if (message.imageUrl != null) {
+                    // Real photo message (2026-08-04) -- see SendMessageRequest's own doc
+                    // comment.
+                    Column {
+                        if (!isMine) {
+                            Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+                        }
+                        AsyncImage(
+                            model = message.imageUrl,
+                            contentDescription = "Photo",
+                            modifier = Modifier.widthIn(max = 220.dp).clip(RoundedCornerShape(16.dp)),
+                        )
+                    }
                 } else {
                 Column(
                     modifier = Modifier
@@ -1195,7 +1260,7 @@ private fun GroupMessageBubble(
                 }
                 }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    if (message.emoticonId == null) {
+                    if (message.emoticonId == null && message.imageUrl == null) {
                         DropdownMenuItem(text = { Text("Copy") }, onClick = { clipboardManager.setText(AnnotatedString(message.body)); menuOpen = false })
                     }
                     DropdownMenuItem(text = { Text("Reply") }, onClick = { onReply(message); menuOpen = false })
@@ -1319,6 +1384,13 @@ private fun ChatThreadView(
     // GiftVoucherComposerPanel's own doc comment.
     var vouchersByMessageId by remember { mutableStateOf<Map<String, GiftVoucherDto>>(emptyMap()) }
     var voucherComposerOpen by remember { mutableStateOf(false) }
+    // Real attach ("+") menu + photo send (2026-08-04) -- see SendMessageRequest's own
+    // doc comment. Consolidates the previously-separate always-visible 🎁/😊/🎟️ icons
+    // (plus the new 📷) into one real Kakao-style "+" menu -- References table: "'+'
+    // opens a multi-function attach menu".
+    var attachMenuOpen by remember { mutableStateOf(false) }
+    var uploadingPhoto by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     var typingClearJob by remember { mutableStateOf<Job?>(null) }
     var socket by remember { mutableStateOf<WebSocket?>(null) }
     var lastTypingSentAt by remember { mutableStateOf(0L) }
@@ -1773,38 +1845,54 @@ private fun ChatThreadView(
                 TextButton(onClick = { replyingTo = null }) { Text("×", color = Ids.colors.textSecondary) }
             }
         }
+        val pickChatPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            uploadingPhoto = true
+            error = null
+            coroutineScope.launch {
+                try {
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (bytes == null) {
+                        error = "Couldn't read that photo."
+                        return@launch
+                    }
+                    val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                    val part = MultipartBody.Part.createFormData("file", "photo.jpg", bytes.toRequestBody(mimeType.toMediaTypeOrNull()))
+                    val photoUrl = NetworkClient.apiService.uploadPhoto(part).url
+                    val res = NetworkClient.apiService.sendMessage(conversation.conversationId, SendMessageRequest("", replyingTo?.id, photoUrl))
+                    if (res.success) {
+                        replyingTo = null
+                        messages = (messages ?: emptyList()) + res.message
+                    }
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: IOException) {
+                    error = "Couldn't upload that photo. Check your connection and try again."
+                } finally {
+                    uploadingPhoto = false
+                }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(Ids.layout.minTouchTarget)
-                    .clip(CircleShape)
-                    .background(Ids.colors.surfaceSoft)
-                    .clickable { giftComposerOpen = !giftComposerOpen },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("🎁", fontSize = 18.sp)
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(Ids.layout.minTouchTarget)
-                    .clip(CircleShape)
-                    .background(Ids.colors.surfaceSoft)
-                    .clickable { emoticonPickerOpen = !emoticonPickerOpen },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("😊", fontSize = 18.sp)
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(Ids.layout.minTouchTarget)
-                    .clip(CircleShape)
-                    .background(Ids.colors.surfaceSoft)
-                    .clickable { voucherComposerOpen = !voucherComposerOpen },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("🎟️", fontSize = 18.sp)
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(Ids.layout.minTouchTarget)
+                        .clip(CircleShape)
+                        .background(Ids.colors.surfaceSoft)
+                        .clickable(enabled = !uploadingPhoto) { attachMenuOpen = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(if (uploadingPhoto) "…" else "+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                }
+                // Real attach menu (2026-08-04) -- Kakao's own real "+"-opens-a-menu
+                // pattern, consolidating what used to be 3 separate always-visible icons.
+                DropdownMenu(expanded = attachMenuOpen, onDismissRequest = { attachMenuOpen = false }) {
+                    DropdownMenuItem(text = { Text("📷 Photo") }, onClick = { attachMenuOpen = false; pickChatPhoto.launch("image/*") })
+                    DropdownMenuItem(text = { Text("😊 Emoticon") }, onClick = { attachMenuOpen = false; emoticonPickerOpen = !emoticonPickerOpen })
+                    DropdownMenuItem(text = { Text("🎁 Gift") }, onClick = { attachMenuOpen = false; giftComposerOpen = !giftComposerOpen })
+                    DropdownMenuItem(text = { Text("🎟️ Gift voucher") }, onClick = { attachMenuOpen = false; voucherComposerOpen = !voucherComposerOpen })
+                }
             }
             Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
@@ -2411,7 +2499,7 @@ private fun MessageBubble(
     var reportReason by remember { mutableStateOf("") }
     var menuOpen by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
-    val isPlainTextBubble = gift == null && voucher == null && offer == null && message.emoticonId == null
+    val isPlainTextBubble = gift == null && voucher == null && offer == null && message.emoticonId == null && message.imageUrl == null
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             // Long-press trigger on the outer wrapper, not just the plain-text bubble --
@@ -2429,6 +2517,15 @@ private fun MessageBubble(
                     OfferBubble(offer, isMine, currentUserId, onRespondToOffer)
                 } else if (message.emoticonId != null) {
                     EmoticonBubble(emoticonImageUrl)
+                } else if (message.imageUrl != null) {
+                    // Real photo message (2026-08-04) -- see SendMessageRequest's own doc
+                    // comment. imageUrl is always a real /api/v1/uploads/ URL (backend-
+                    // enforced), never a placeholder.
+                    AsyncImage(
+                        model = message.imageUrl,
+                        contentDescription = "Photo",
+                        modifier = Modifier.widthIn(max = 220.dp).clip(RoundedCornerShape(16.dp)),
+                    )
                 } else {
                     Box(
                         modifier = Modifier

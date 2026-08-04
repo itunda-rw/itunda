@@ -487,10 +487,23 @@ data class MessageDto(
     // comment. Only ever set on a message actually created via the real
     // /api/v1/emoticons/.../send endpoints.
     val emoticonId: String? = null,
+    // Real photo message (2026-08-04) -- see SendMessageRequest's own doc comment.
+    // Backend (MessagingService.sendMessage) already validated/enforced a real
+    // /api/v1/uploads/ URL since before this field existed on the Android DTO; this
+    // just finally reads it back.
+    val imageUrl: String? = null,
 )
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
-data class SendMessageRequest(val body: String, val replyToMessageId: String? = null)
+// Real photo message (2026-08-04) -- closes docs/DESIGN_REFERENCES.md's Talk
+// recommendation #6 (no photo/file send at all). The backend (MessagingService
+// .sendMessage/GroupMessagingService.sendMessage) already validated a real
+// /api/v1/uploads/-prefixed imageUrl before this field existed on either Android
+// request DTO -- a real "defined but uncalled" gap, same class this file's own history
+// already names for group emoticons/group pin. Reuses the exact real upload flow
+// MarketplaceScreen/PropertyScreen already established (GetContent() picker ->
+// uploadPhoto() -> real server URL), not a new upload pipeline.
+data class SendMessageRequest(val body: String, val replyToMessageId: String? = null, val imageUrl: String? = null)
 data class TalkContactDto(val userId: String, val name: String)
 data class TalkContactsResponse(val success: Boolean, val contacts: List<TalkContactDto>)
 data class ConversationQuietResponse(val success: Boolean, val quiet: Boolean)
@@ -509,7 +522,7 @@ data class ReactionsResponse(val success: Boolean, val reactions: List<ReactionG
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
 // StartConversationRequest.phoneNumber).
 data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
-data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null)
+data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null, val imageUrl: String? = null)
 data class AddGroupMemberRequest(val userId: String)
 
 data class GroupSummaryDto(
@@ -545,6 +558,8 @@ data class GroupMessageDto(
     // defined-but-uncalled-method sweep: the backend/DTO field existed on bank-mfe's
     // equivalent type, but this DTO never carried it and no client ever sent one.
     val emoticonId: String? = null,
+    // Real photo message (2026-08-04) -- see SendMessageRequest's own doc comment.
+    val imageUrl: String? = null,
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
