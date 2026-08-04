@@ -427,35 +427,46 @@ they close in itunda's current implementation.
    just conversation-level `unreadCount`) plus the UI badge.
    *Target: `MessageBubble`/`GroupMessageBubble` in `SuperAppTabs.kt` for UI; backend messaging service for the read-state model*
 
-3. **[sourced]** Add a long-press message menu: reply/thread, forward, pin, delete. itunda's only
-   per-message interaction today is tap-to-toggle a reaction (`MessageReactionsRow`). Kakao's
-   confirmed 2025 toolkit is Copy/Reply (→ thread)/Forward (≤10 destinations)/Pin/Delete/@mention
-   — none of this exists in `ChatThreadView`/`GroupThreadView`.
+3. **[sourced] Implemented on Android, 2026-08-04; iOS/bank-mfe partial.** Long-press message menu:
+   reply/forward/pin/delete, plus Copy for plain-text messages (`GroupMessageBubble`/`MessageBubble`
+   in `TalkScreen.kt`, `combinedClickable(onLongClick = ...)` opening a real `DropdownMenu`) --
+   closes Kakao's confirmed Copy/Reply/Forward/Pin/Delete toolkit (mention closed separately, #7
+   below) on Android. **iOS/bank-mfe have the underlying reply/pin/forward/delete capabilities
+   (via always-visible per-message buttons on iOS, mixed UI on bank-mfe) but not the long-press-menu
+   presentation itself** -- a real gap in *how* these are surfaced, not *whether* they exist,
+   found while auditing this row 2026-08-05.
 
 4. **[sourced]** Add swipe actions and per-chat mute/archive ("quiet chat room") to the
    conversation list. `ConversationRow`/`GroupRow` (`~478-498`, `~712-749`) support only tap-to-open.
    Real KakaoTalk supports right-swipe (favorite/notify/pin) and left-swipe (read/leave), plus an
    official archive-without-leaving feature.
 
-5. **[sourced]** Add a per-thread shared-media gallery (Chat Room Drawer). itunda has zero
-   aggregation of media/files/links shared in a conversation. Directly relevant to itunda's
-   Hood-to-Talk handoff flows (listing photos, offer/gift bubbles).
-   *Target: new surface off `ChatThreadView`/`GroupThreadView`*
+5. **[sourced] Implemented on Android only, 2026-08-04.** Per-thread shared-media gallery (Chat
+   Room Drawer) -- `MediaGalleryView`, built entirely client-side from the conversation's own
+   already-loaded messages (filtered to real `imageUrl != null` entries), no new backend endpoint.
+   Scoped honestly to photos only (no file-attachment type or link-preview system exists to back a
+   real "files/links" tab). **iOS/bank-mfe not yet ported**, found while auditing this row
+   2026-08-05.
 
-6. **[sourced]** Add a real attach ("+") menu to the composer. Both thread composers are just a
-   text field + send button (plus a gift icon on `ChatThreadView`, `~1016-1027`) — no photo, file,
-   or sticker send at all. Kakao's emoticon picker alone is core, monetized product surface (~1/3
-   of 2020 revenue), not a nice-to-have.
+6. **[sourced] Implemented on Android only, 2026-08-04.** Real attach ("+") menu on the composer
+   (📷 Photo / 😊 Emoticon), plus real photo-message send/display. **iOS/bank-mfe not yet
+   ported**, found while auditing this row 2026-08-05.
 
-7. **[sourced]** Add @mention support in group chats. No mention parsing exists anywhere; Kakao's
-   own message-toolkit coverage lists mention alongside pin/forward/delete as shipped.
-   *Target: `GroupThreadView` header/composer, `GroupMessageBubble` (~500-676)*
+7. **[sourced] Implemented on all 3 platforms, 2026-08-04/05.** @mention support in group chats:
+   typing `@` shows a row of real group members' first names as tappable chips, inserting
+   `@FirstName ` on tap -- `GroupMessagingService.parseMentions` (backend) already resolved these
+   tokens purely from message-body text since 2026-07-25, so every client needed was a composer
+   addition, no new endpoint. Android shipped first (`activeMentionQuery`/`applyMention`/
+   `MentionSuggestions` in `TalkScreen.kt`); iOS (`TalkScreen.swift`) and bank-mfe
+   (`BankDashboard.tsx`) ported the identical logic the next turn, closing this row on every
+   platform.
 
-8. **[partially-sourced]** Add per-message timestamps — currently entirely absent from both bubble
-   types (`MessageBubble ~1236`, `GroupMessageBubble ~679`). Kakao's bubble redesign coverage
-   discusses time placement alongside read state, but the exact collapsed-per-run convention
-   recommended here is general chat-UI practice, not confirmed pixel-for-pixel from a Kakao
-   source.
+8. **[partially-sourced] Implemented on all 3 platforms.** Per-message timestamps
+   (`chatMessageTime`) exist in both bubble types on Android, iOS, and bank-mfe -- found already
+   real while auditing this row 2026-08-05; this entry had gone stale, not the code. The exact
+   collapsed-per-run convention originally proposed here was never built (each message shows its
+   own timestamp, not grouped by consecutive-run), a real, honest, remaining polish gap, but the
+   core capability this row asked for is closed everywhere.
 
 9. **[inferred, low priority]** Consider Kakao's newer inline-dots typing indicator. itunda's
    existing text-line typing indicator ("X is typing…", 3s auto-clear) already covers the core
