@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -178,6 +179,23 @@ class MapsController(private val mapsService: MapsService) {
         return ResponseEntity.ok(mapOf("success" to true))
     }
 
+    // Real Naver Map-style public/private folder + share -- see MapBookmark.isPublic's
+    // own doc comment.
+    @PatchMapping("/bookmarks/folder-visibility")
+    fun setFolderVisibility(
+        @RequestBody request: SetFolderVisibilityRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "updatedCount" to mapsService.setFolderPublic(currentUser.userId, request.folderName, request.isPublic)),
+    )
+
+    // Deliberately unauthenticated -- see MapsService.getPublicFolder's own doc comment.
+    // Mapped under /api/v1/maps/shared specifically so SecurityConfig can permitAll it
+    // without loosening the rest of /api/v1/maps/**.
+    @GetMapping("/shared/{userId}/{folderName}")
+    fun sharedFolder(@PathVariable userId: String, @PathVariable folderName: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "bookmarks" to mapsService.getPublicFolder(userId, folderName)))
+
     @GetMapping("/bookmarks")
     fun bookmarks(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "bookmarks" to mapsService.getMyBookmarks(currentUser.userId)))
@@ -236,6 +254,7 @@ data class AddBookmarkRequest(
 )
 
 data class MoveBookmarkRequest(val folderName: String, val color: String)
+data class SetFolderVisibilityRequest(val folderName: String, val isPublic: Boolean)
 
 data class ItineraryDirectionsRequest(
     val waypoints: List<ItineraryWaypointRequest>,

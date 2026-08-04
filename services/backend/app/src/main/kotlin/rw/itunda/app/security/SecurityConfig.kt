@@ -120,6 +120,13 @@ class SecurityConfig(
                     // write" shape as itunda's self-hosted tiles/glyphs. GET only;
                     // POST (creating an upload) stays behind the default JWT gate below.
                     .requestMatchers(HttpMethod.GET, "/api/v1/uploads/**").permitAll()
+                    // Real Naver Map-style public/private saved-place folder share link
+                    // (2026-08-04) -- see MapBookmark.isPublic's own doc comment. Whoever
+                    // opens a real share link genuinely has no itunda session of their
+                    // own yet (the whole point of sharing); MapsService.getPublicFolder
+                    // itself only ever returns bookmarks the owner explicitly marked
+                    // public, so this permitAll never exposes a private folder.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/maps/shared/**").permitAll()
                     // Real USSD gateway webhook (item 231, 2026-08-02) -- same exact
                     // reasoning as /api/v1/partners/**/pay/** above: the real USSD gateway
                     // itself (Africa's Talking-style, the real East African regional

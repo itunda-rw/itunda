@@ -14,6 +14,11 @@ interface MapBookmarkRepository : JpaRepository<MapBookmark, String> {
 
     fun deleteByUserIdAndLatitudeAndLongitude(userId: String, latitude: Double, longitude: Double): Long
 
+    // Real shareable public/private folder -- see MapBookmark.isPublic's own doc comment.
+    fun findByUserIdAndFolderName(userId: String, folderName: String): List<MapBookmark>
+
+    fun findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc(userId: String, folderName: String): List<MapBookmark>
+
     // Real cross-user "popular this week" aggregate -- see MapsService.getTrendingSavedPlaces's
     // own doc comment. COUNT(DISTINCT userId) so one user re-saving the same place (not
     // actually possible today given addBookmark's own unique constraint, but a real defensive

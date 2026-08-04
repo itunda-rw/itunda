@@ -296,6 +296,7 @@ class MapsService(
                 longitude = existing.longitude,
                 folderName = trimmedFolder,
                 color = color,
+                isPublic = existing.isPublic,
                 createdAt = existing.createdAt,
             ),
         )
@@ -305,6 +306,37 @@ class MapsService(
     fun removeBookmark(userId: String, latitude: Double, longitude: Double) {
         mapBookmarkRepository.deleteByUserIdAndLatitudeAndLongitude(userId, latitude, longitude)
     }
+
+    // Real Naver Map-style public/private folder + share -- see MapBookmark.isPublic's
+    // own doc comment for the full sourced account and the honest scope decision (a real
+    // itunda deep link, not an invented public web URL). Bulk, not per-bookmark: a real
+    // "share this whole folder" action, matching what a user actually means when they hit
+    // Share on a named list, not a single pin.
+    @Transactional
+    fun setFolderPublic(userId: String, folderName: String, isPublic: Boolean): Int {
+        val trimmedFolder = folderName.trim().ifEmpty { DEFAULT_BOOKMARK_FOLDER }
+        val bookmarks = mapBookmarkRepository.findByUserIdAndFolderName(userId, trimmedFolder)
+        if (bookmarks.isEmpty()) return 0
+        mapBookmarkRepository.saveAll(
+            bookmarks.map {
+                MapBookmark(
+                    id = it.id, userId = it.userId, displayName = it.displayName,
+                    latitude = it.latitude, longitude = it.longitude,
+                    folderName = it.folderName, color = it.color,
+                    isPublic = isPublic, createdAt = it.createdAt,
+                )
+            },
+        )
+        return bookmarks.size
+    }
+
+    // Real, deliberately unauthenticated read -- the whole point of a share link is that
+    // whoever opens it doesn't need to already be signed in as the folder's owner. Only
+    // ever returns bookmarks the owner explicitly marked isPublic=true; a private folder
+    // (or one that was shared and later made private again) returns an honest empty list,
+    // never a 403/404 that would confirm whether a private folder exists at all.
+    fun getPublicFolder(userId: String, folderName: String): List<MapBookmark> =
+        mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc(userId, folderName.trim())
 
     fun getMyBookmarks(userId: String): List<MapBookmark> = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)
 

@@ -991,7 +991,7 @@ data class NearbyAgentsResponse(val success: Boolean, val agents: List<NearbyAge
 // backend (migration V73). Every bookmark belongs to exactly one named folder with its
 // own pin color; a bookmark saved before this existed defaults into "Saved places" /
 // "#F5A623" (the same star-yellow the ★ icon already used).
-data class MapBookmarkDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val folderName: String, val color: String, val createdAt: String)
+data class MapBookmarkDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val folderName: String, val color: String, val isPublic: Boolean = false, val createdAt: String)
 data class MapBookmarksResponse(val success: Boolean, val bookmarks: List<MapBookmarkDto>)
 data class AddMapBookmarkRequest(val displayName: String, val latitude: Double, val longitude: Double, val folderName: String? = null, val color: String? = null)
 data class AddMapBookmarkResponse(val success: Boolean, val bookmark: MapBookmarkDto)
@@ -999,6 +999,11 @@ data class AddMapBookmarkResponse(val success: Boolean, val bookmark: MapBookmar
 data class MoveMapBookmarkRequest(val folderName: String, val color: String)
 data class MoveMapBookmarkResponse(val success: Boolean, val bookmark: MapBookmarkDto)
 data class RemoveMapBookmarkResponse(val success: Boolean)
+// Real Naver Map-style public/private folder + share (2026-08-04) -- see
+// MapBookmark.isPublic's own doc comment on the backend.
+data class SetMapFolderVisibilityRequest(val folderName: String, val isPublic: Boolean)
+data class SetMapFolderVisibilityResponse(val success: Boolean, val updatedCount: Int)
+data class SharedMapFolderResponse(val success: Boolean, val bookmarks: List<MapBookmarkDto>)
 
 data class MapPlaceCategory(val id: String, val label: String)
 val MAP_NEARBY_CATEGORIES = listOf(
@@ -2634,6 +2639,18 @@ interface ApiService {
 
     @DELETE("api/v1/maps/bookmarks")
     suspend fun removeMapBookmark(@Query("lat") lat: Double, @Query("lng") lng: Double): RemoveMapBookmarkResponse
+
+    // Real Naver Map-style public/private folder + share (2026-08-04) -- see
+    // SetMapFolderVisibilityRequest's own doc comment.
+    @PATCH("api/v1/maps/bookmarks/folder-visibility")
+    suspend fun setMapFolderVisibility(@Body request: SetMapFolderVisibilityRequest): SetMapFolderVisibilityResponse
+
+    // Deliberately unauthenticated on the backend (SecurityConfig permitAll) -- whoever
+    // opens a real share link doesn't need an itunda session. Reuses the same NetworkClient
+    // Retrofit instance, which is harmless: a caller who IS logged in just attaches a token
+    // the backend never required for this specific path.
+    @GET("api/v1/maps/shared/{userId}/{folderName}")
+    suspend fun getSharedMapFolder(@Path("userId") userId: String, @Path("folderName") folderName: String): SharedMapFolderResponse
 
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment on the backend.

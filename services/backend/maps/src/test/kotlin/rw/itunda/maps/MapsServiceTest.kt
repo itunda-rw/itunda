@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
@@ -477,6 +478,63 @@ class MapsServiceTest : BehaviorSpec({
                 } catch (e: BookmarkNotFoundException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    Given("a real user sharing a real saved-place folder (Naver Map-style public/private)") {
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val mapBookmarkRepository = mockk<MapBookmarkRepository>()
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
+
+        When("making a real non-empty folder public") {
+            val bookmarks = listOf(
+                MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try"),
+                MapBookmark(id = "map_bookmark_2", userId = "user_1", displayName = "Cafe B", latitude = -1.91, longitude = 30.01, folderName = "Cafes to try"),
+            )
+            every { mapBookmarkRepository.findByUserIdAndFolderName("user_1", "Cafes to try") } returns bookmarks
+            val savedSlot = slot<List<MapBookmark>>()
+            every { mapBookmarkRepository.saveAll<MapBookmark>(capture(savedSlot)) } answers { firstArg() }
+
+            val updatedCount = service.setFolderPublic("user_1", "Cafes to try", true)
+
+            Then("it real-bulk-updates every bookmark in that folder, not just one") {
+                updatedCount shouldBe 2
+                savedSlot.captured.all { it.isPublic } shouldBe true
+            }
+        }
+
+        When("making a real folder with no bookmarks in it public") {
+            every { mapBookmarkRepository.findByUserIdAndFolderName("user_1", "Empty folder") } returns emptyList()
+
+            val updatedCount = service.setFolderPublic("user_1", "Empty folder", true)
+
+            Then("it returns a real 0 without ever calling saveAll") {
+                updatedCount shouldBe 0
+                io.mockk.verify(exactly = 0) { mapBookmarkRepository.saveAll<MapBookmark>(any()) }
+            }
+        }
+
+        When("a real share link is opened for a public folder") {
+            val publicBookmarks = listOf(MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try", isPublic = true))
+            every { mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc("user_1", "Cafes to try") } returns publicBookmarks
+
+            val results = service.getPublicFolder("user_1", "Cafes to try")
+
+            Then("it returns the real public bookmarks -- no auth required, matching a real share link") {
+                results shouldBe publicBookmarks
+            }
+        }
+
+        When("a real share link is opened for a folder that was never made public") {
+            every { mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc("user_1", "Private stuff") } returns emptyList()
+
+            val results = service.getPublicFolder("user_1", "Private stuff")
+
+            Then("it returns a real empty list -- never reveals whether a private folder exists") {
+                results shouldBe emptyList()
             }
         }
     }

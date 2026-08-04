@@ -2,6 +2,7 @@ package rw.itunda.feature.maps.impl
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -125,6 +126,8 @@ import rw.itunda.core.network.TrendingPlaceDto
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SetMapFolderVisibilityRequest
+import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.PlaceSearchResultDto
 import rw.itunda.core.network.RecentMapSearchesStore
 import rw.itunda.core.network.RouteResultDto
@@ -365,6 +368,11 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
     var categoryResults by remember { mutableStateOf<List<NearbyPlaceDto>?>(null) }
     var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
     var bookmarking by remember { mutableStateOf(false) }
+    // Real Naver Map-style public/private folder + share (2026-08-04) -- see
+    // SetMapFolderVisibilityRequest's own doc comment on the backend.
+    val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+    var sharingFolder by remember { mutableStateOf<String?>(null) }
+    var shareConfirmation by remember { mutableStateOf<String?>(null) }
     // Real folder/color picker (2026-07-22) -- see MapBookmarkDto's own doc comment;
     // ported from bank-mfe's own real save-time picker. `savingToFolder` holds whichever
     // real place's picker is currently expanded (null = closed).
@@ -539,6 +547,39 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
         folderNameInput = bookmarks.firstOrNull()?.folderName ?: DEFAULT_BOOKMARK_FOLDER
         folderColorInput = bookmarks.firstOrNull()?.color ?: BOOKMARK_COLOR_PALETTE[0]
         savingToFolder = place
+    }
+
+    // Real Naver Map-style public/private folder + share (2026-08-04) -- see
+    // SetMapFolderVisibilityRequest's own doc comment on the backend. Toggles the whole
+    // folder (every bookmark in it), matching what "Share" on a named list actually means
+    // -- not a single pin. On making it public, opens Android's native share sheet with a
+    // real itunda:// deep link, same real "genuinely resolves to real content" bar the
+    // per-place 📤 share above deliberately doesn't clear (that one is plain text because
+    // no public per-place page exists; a shared folder now genuinely has one).
+    fun toggleFolderShare(folderName: String, makePublic: Boolean) {
+        sharingFolder = folderName
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.setMapFolderVisibility(SetMapFolderVisibilityRequest(folderName, makePublic))
+                bookmarks = bookmarks.map { if (it.folderName == folderName) it.copy(isPublic = makePublic) else it }
+                if (makePublic && currentUserId != null) {
+                    val link = "itunda://maps/shared/$currentUserId/${Uri.encode(folderName)}"
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "Check out my \"$folderName\" places on itunda Maps: $link")
+                    }
+                    context.startActivity(Intent.createChooser(intent, folderName))
+                } else {
+                    shareConfirmation = "\"$folderName\" is now private."
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: Exception) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                sharingFolder = null
+            }
+        }
     }
 
     fun confirmSaveToFolder() {
@@ -1854,6 +1895,9 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 color = Ids.colors.textSecondary,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
+                            shareConfirmation?.let {
+                                Text(it, fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 4.dp))
+                            }
                             if (bookmarks.isEmpty()) {
                                 Text("No saved places yet -- tap ☆ on a place to save it.", fontSize = 12.sp, color = Ids.colors.textSecondary)
                             } else {
@@ -1865,10 +1909,28 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 // alphabetic re-sort.
                                 val bookmarksByFolder = bookmarks.groupBy { it.folderName }
                                 bookmarksByFolder.forEach { (folderName, folderBookmarks) ->
-                                    if (bookmarksByFolder.size > 1) {
+                                    // Real Naver Map-style public/private folder + share
+                                    // (2026-08-04) -- see toggleFolderShare's own doc
+                                    // comment. Always shown (not gated on >1 folder like
+                                    // the name label below) since even the single default
+                                    // folder is real and shareable.
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                    ) {
+                                        if (bookmarksByFolder.size > 1) {
+                                            Text(folderName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
+                                        } else {
+                                            Box(modifier = Modifier)
+                                        }
+                                        val isPublic = folderBookmarks.any { it.isPublic }
                                         Text(
-                                            folderName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary,
-                                            modifier = Modifier.padding(top = 4.dp),
+                                            if (sharingFolder == folderName) "…" else if (isPublic) "🌐 Public · Share" else "🔒 Private · Share",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = if (isPublic) Ids.colors.brand else Ids.colors.textSecondary,
+                                            modifier = Modifier.clickable(enabled = sharingFolder == null) { toggleFolderShare(folderName, !isPublic) },
                                         )
                                     }
                                     folderBookmarks.forEach { bookmark ->
