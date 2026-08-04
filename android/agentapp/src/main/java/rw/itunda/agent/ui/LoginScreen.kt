@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +23,7 @@ import rw.itunda.agent.network.LoginRequest
 import rw.itunda.agent.network.NetworkClient
 import rw.itunda.agent.network.RegisterDeviceTokenRequest
 import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTypography
 
@@ -39,9 +39,9 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         Text("Agent", style = IdsTypography.Title2, color = Ids.colors.textSecondary)
         Text("Use the Itunda account assigned to this store.", style = IdsTypography.Body1, color = Ids.colors.textSecondary)
         Spacer(Modifier.height(24.dp))
-        OutlinedTextField(phone, { phone = it }, label = { Text("Phone number") }, modifier = Modifier.fillMaxWidth())
+        IdsTextField(phone, { phone = it }, label = "Phone number", modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(password, { password = it }, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+        IdsTextField(password, { password = it }, label = "Password", visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
         error?.let { Text(it, color = Ids.colors.danger, style = IdsTypography.Body2, modifier = Modifier.padding(top = 12.dp)) }
         Spacer(Modifier.height(20.dp))
         IdsButton(enabled = !busy, onClick = {

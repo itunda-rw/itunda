@@ -6,10 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,12 +15,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTypography
 import rw.itunda.rider.network.DevicePlatform
 import rw.itunda.rider.network.LoginRequest
 import rw.itunda.rider.network.NetworkClient
@@ -43,38 +42,40 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("Itunda Rider", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text("Log in with your existing itunda account to start delivering.", style = MaterialTheme.typography.bodyMedium)
+        Text("Itunda Rider", style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+        Text("Log in with your existing itunda account to start delivering.", style = IdsTypography.Body1, color = Ids.colors.textSecondary)
 
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(24.dp))
 
-        OutlinedTextField(
+        IdsTextField(
             value = phoneNumber,
             onValueChange = { phoneNumber = it },
-            label = { Text("Phone number") },
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Phone),
+            label = "Phone number",
+            keyboardType = KeyboardType.Phone,
             modifier = Modifier.fillMaxWidth(),
         )
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        IdsTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = "Password",
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
         )
 
         error?.let {
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
+            Text(it, color = Ids.colors.danger, style = IdsTypography.Body2)
         }
 
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(20.dp))
-        Button(
+        IdsButton(
+            text = if (busy) "Logging in…" else "Log in",
+            enabled = !busy,
             onClick = {
                 if (phoneNumber.isBlank() || password.isBlank()) {
                     error = "Enter your phone number and password."
-                    return@Button
+                    return@IdsButton
                 }
                 busy = true
                 error = null
@@ -104,17 +105,13 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     }
                 }
             },
-            enabled = !busy,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
-            Text(if (busy) "Logging in…" else "Log in")
-        }
+        )
 
         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
         Text(
             "Don't have an itunda account yet? Register in the main itunda app first, then come back here to log in as a rider.",
-            style = MaterialTheme.typography.bodySmall,
+            style = IdsTypography.Typography7,
+            color = Ids.colors.textSecondary,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
