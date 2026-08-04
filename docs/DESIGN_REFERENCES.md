@@ -331,18 +331,23 @@ they close in itunda's current implementation.
 
 2. **[implemented]** Direct messages now show a Kakao-style pending-read `1` and message timestamps across all clients. Group receipts now have a true per-member model too (2026-07-26): a live per-message unread countdown built on the existing per-member `lastReadAt` cursor — backend-only so far, no client UI touchpoint yet.
 
-3. **[sourced] Partially implemented 2026-08-04.** Add a long-press message menu: reply/thread,
-   forward, pin, delete. Kakao's confirmed 2025 toolkit is Copy/Reply (→ thread)/Forward (≤10
-   destinations)/Pin/Delete/@mention. Real finding on inspection: itunda's Reply/Pin/Delete/Report
-   already existed (backend-complete) but as permanently-visible `TextButton`s under every bubble,
-   not a long-press menu -- a real UX-pattern mismatch, not a missing-capability one. Both
-   `MessageBubble`/`GroupMessageBubble` now use `combinedClickable(onLongClick)` + a real
-   `DropdownMenu`. Copy is new (real `LocalClipboardManager`). **Forward (≤10 destinations) and
-   Thread (reply expanding into its own sub-conversation) remain genuinely unbuilt** -- both need
-   new backend concepts (a forward-to-conversation endpoint; a thread/sub-conversation model) itunda
-   doesn't have yet.
-   *Target for the remaining work: a new `POST .../forward` endpoint + destination picker; a real
-   thread/sub-conversation model, likely its own migration*
+3. **[sourced] Forward closed 2026-08-04; Thread remains open.** Add a long-press message menu:
+   reply/thread, forward, pin, delete. Kakao's confirmed 2025 toolkit is Copy/Reply (→ thread)/
+   Forward (≤10 destinations)/Pin/Delete/@mention. Real finding on inspection: itunda's
+   Reply/Pin/Delete/Report already existed (backend-complete) but as permanently-visible
+   `TextButton`s under every bubble, not a long-press menu -- a real UX-pattern mismatch, not a
+   missing-capability one. Both `MessageBubble`/`GroupMessageBubble` now use
+   `combinedClickable(onLongClick)` + a real `DropdownMenu`. Copy is new (real
+   `LocalClipboardManager`). **Correction, same day**: this entry previously claimed Forward
+   "needs new backend concepts itunda doesn't have" -- that was an unverified assumption, not a
+   checked fact. Direct inspection found a complete, real `MessageForwardService` (2026-07-25)
+   already supporting forwarding any 1:1/group message to any 1:1/group destination with real
+   read-authorization and genuine server-stamped provenance -- zero Retrofit method or UI anywhere.
+   Closed: `ForwardDestinationDialog` (multi-select, capped at 10 real destinations), a real
+   "↪ Forwarded" label. Live-verified end-to-end in both directions against the real dev backend.
+   **Thread (reply expanding into its own sub-conversation) remains genuinely unbuilt** -- this one
+   does need a new backend concept (a thread/sub-conversation model) itunda doesn't have.
+   *Target for the remaining work: a real thread/sub-conversation model, likely its own migration*
 
 4. **[partially implemented]** Talk has private, durable quiet-room controls and suppresses notifications for the participant who enables one. Recoverable archive/list placement and conversation-list swipe actions remain.
 
