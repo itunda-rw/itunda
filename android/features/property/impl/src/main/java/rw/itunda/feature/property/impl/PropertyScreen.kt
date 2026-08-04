@@ -63,6 +63,7 @@ import rw.itunda.core.designsystem.components.HoodReviewResultView
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
+import rw.itunda.core.designsystem.components.ScrollFog
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.TrustBadge
 import rw.itunda.core.designsystem.components.relativeTimeAgo
@@ -233,6 +234,7 @@ fun PropertyContent(
         BackHandler { showNewListing = false }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
@@ -363,6 +365,8 @@ fun PropertyContent(
                 )
             }
         }
+    }
+        ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 

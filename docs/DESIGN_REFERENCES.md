@@ -523,13 +523,12 @@ they close in itunda's current implementation.
    get a pinned mid-feed slot, sorted by real `eventDate`, with an explicit 참여하기 join tap and a
    real live member count off that meetup's own group chat (`CommunityScreen.kt`, 2026-07-24).
 
-5. **[sourced] Implemented 2026-08-04 (partial, honest scope).** Shared `ScrollFog` composable in
+5. **[sourced] Implemented 2026-08-04.** Shared `ScrollFog` composable in
    `core/designsystem/components/HoodShared.kt` (a persistent bottom edge-fade gradient, matching
-   Seed Design's documented always-rendered spec). Wired into Marketplace's main browse feed as
-   the real proof of the pattern. **Community/Jobs/Property still need the identical wrap** — same
-   component, same mechanical `Box { LazyColumn {...}; ScrollFog(...) }` change, not done in this
-   pass to avoid rushing brace-matching edits in three more large files without re-verifying each
-   individually; a real, named follow-up, not silently dropped.
+   Seed Design's documented always-rendered spec), wired into all four Hood modules' main browse
+   feeds — Marketplace, Community, Jobs, and Property — each verified individually (exact
+   brace-matched span located per file via script before wrapping, not eyeballed) and each
+   module compiled clean on its own before the full-app build was re-verified.
 
 6. **[sourced] Implemented — doc was stale, corrected 2026-08-04.** `HoodView` already splits a
    user's own activity into distinct `MINE`/`PURCHASES`/`WISHLIST` tabs (plus `ALERTS`), not one

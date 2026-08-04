@@ -53,6 +53,7 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
+import rw.itunda.core.designsystem.components.ScrollFog
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
@@ -231,6 +232,7 @@ fun CommunityContent(
         BackHandler { showNewPost = false }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
@@ -342,6 +344,8 @@ fun CommunityContent(
                 )
             }
         }
+    }
+        ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
 
