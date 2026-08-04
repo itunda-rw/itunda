@@ -173,6 +173,24 @@ fun TrustBadge(score: Int, modifier: Modifier = Modifier) {
     }
 }
 
+// Real shared status/urgency badge (2026-08-04) -- modeled on Coupang's own real
+// two-tier badge precedent (a plain Rocket Delivery badge vs. a Rocket WOW badge for
+// members-only extra benefits): a badge is tied to a real, named status/benefit, never
+// a decorative label. Closes docs/DESIGN_REFERENCES.md Section 9 recommendation #4 --
+// itunda's own real Time Deal discount and merchant verification status both rendered
+// as plain colored text before this, with no consistent pill treatment anywhere.
+@Composable
+fun StatusBadge(text: String, filled: Boolean = true, tint: Color = Ids.colors.brand, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (filled) tint else tint.copy(alpha = 0.12f))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Text(text, color = if (filled) Color.White else tint, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
 // Real post-transaction review preset checklist labels (2026-07-24) -- ids must match
 // backend HoodReviewService.GOOD_POINTS/UNCOMFORTABLE_POINTS exactly.
 val HoodGoodPointLabels = mapOf(

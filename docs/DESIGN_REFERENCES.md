@@ -1224,3 +1224,68 @@ reasonably well).
 - 당근이 (Danggeuni) and the Kakao Friends characters are real, IP-protected mascots — nothing in
   this document recommends itunda copy or resemble them; the actionable lesson is the *design
   principle* (personality-bearing graphics at low-content moments), not the specific characters.
+
+---
+
+## 10. Copy voice — a real position, not an abstract tone document
+
+**Added 2026-08-04**, closing Section 9's own recommendation #3. Baemin's real, named "배민다움"
+voice is the single strongest piece of evidence in this whole research pass that copy register is
+a legitimate, separate design lever from iconography/color — a food-delivery app with genuinely
+funny, warm push notifications and in-app copy, not a coincidence but a deliberate, staffed
+discipline (Woowa Brothers is documented as having dedicated copywriters for exactly this). itunda
+currently has **no stated position on voice at all**: every string audited this session was
+functionally correct and personality-neutral (`"No listings yet."`, `"Couldn't reach itunda. Check
+your connection and try again."`). This section is deliberately short and concrete — a real
+before/after list, not an abstract tone essay nobody will apply.
+
+### itunda's voice, stated plainly
+
+Not Baemin's register (Baemin's specific jokes are a Korean food-delivery brand's own IP, not a
+transferable "be funny" instruction, and itunda is a financial super-app, a genuinely different
+trust context where a wrong joke lands badly). The actual, applicable lesson: **be specific and
+warm instead of generic and flat.** Concretely:
+
+1. **Name the next action, don't just report the absence.** "No X yet." describes a void; "No X
+   yet — [do this] to get started" points somewhere. This is the single change applied throughout
+   this session's own EmptyState conversion pass (Sections above) — e.g. `"No saved contacts yet."`
+   → `"No saved contacts yet — add one above to send faster next time."`
+2. **Use real second person, not passive description.** "Enter a name and a real price." reads as
+   a rule the system is stating; "Enter a name and a price to add this product." reads as itunda
+   talking to the one specific person about the one specific thing they're doing right now.
+3. **Prefer a plain word to a formal one where both are equally clear.** "Insufficient funds" vs.
+   "You don't have enough in your wallet for this" — itunda already does this well in several
+   places (`"Couldn't reach itunda."` rather than "A network error has occurred"); the inconsistency
+   is the actual problem, not the absence of a rule.
+
+### Before / after (real strings, not invented examples)
+
+| Before (found in the codebase) | After | Why |
+|---|---|---|
+| `"No requests yet."` | `"No requests yet — ask someone to pay you above."` | Names the next action |
+| `"No coupons yet."` | `"No coupons yet — create one above to give repeat customers a reason to come back."` | Names the action AND the reason it matters to a merchant specifically |
+| `"No employees on the roster yet."` | `"No employees on the roster yet — add one above to start running payroll."` | Connects the empty state to the feature it's blocking |
+| `"Enter a name and a real price."` | *(kept as-is — already second person and specific; a genuine example of itunda's voice already working)* | Shows the bar other strings should meet, not just what to change |
+| `"Couldn't reach itunda. Check your connection and try again."` | *(kept as-is)* | Already itunda's best error-copy example — plain words, real second person, no jargon |
+| `"IDEMPOTENCY_KEY_REQUIRED"`-style raw error codes ever reaching a user-facing surface | Always resolve through `superAppErrorMessage()`/the platform-equivalent human-message mapper | Machine codes are never voice — an easy, mechanical rule, not a judgment call |
+
+### Recommendations (ranked)
+
+1. **[sourced principle, itunda-specific application]** Apply the three rules above during any
+   future copy pass — this session's own EmptyState conversion (Sections 1-9 above) already is
+   the first real application, not a hypothetical. No new component or backend change needed;
+   this is a writing discipline, not an engineering task.
+2. **[inferred]** If itunda ever staffs a dedicated copywriter role (Baemin's real precedent for
+   why this pays off at scale), that's the point to build a real, versioned copy-voice reference
+   doc with more than 6 examples — premature today given itunda has no one dedicated to this yet.
+
+### Unresolved / worth a follow-up
+
+- This section deliberately does NOT attempt to define a "brand personality" in the abstract
+  (playful/serious/etc.) — Baemin's own real lesson is that voice work is concrete copy decisions,
+  not a mood board, and an abstract personality statement with no examples is exactly the kind of
+  artifact that gets written once and never applied. Any future expansion of this section should
+  stay in the same before/after format.
+- Push-notification copy (a real, separate surface with its own real precedent in Baemin's
+  research) wasn't audited this pass — itunda's notification copy across Android/iOS wasn't
+  reviewed for this same specific/generic distinction.

@@ -74,6 +74,8 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.StatusBadge
+import kotlin.math.roundToInt
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
@@ -683,16 +685,28 @@ fun CommerceShopContent(
                                         .clickable { openMerchant(ShoppingMerchantDto(merchantId = v.deal.merchantId, businessName = v.businessName, category = null, cashbackRate = "1%")) }
                                         .padding(10.dp),
                                 ) {
-                                    ProductImageThumb(v.productImageUrl, size = 96.dp, corner = 10.dp)
+                                    Box {
+                                        ProductImageThumb(v.productImageUrl, size = 96.dp, corner = 10.dp)
+                                        val discountPercent = if (v.deal.originalPrice > 0) {
+                                            (100 - (v.deal.dealPrice / v.deal.originalPrice * 100)).roundToInt()
+                                        } else 0
+                                        if (discountPercent > 0) {
+                                            StatusBadge(
+                                                "$discountPercent% OFF",
+                                                tint = Ids.colors.danger,
+                                                modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
+                                            )
+                                        }
+                                    }
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(v.productName, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2)
                                     Text("%,.0f RWF".format(v.deal.dealPrice), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                    Text(formatTimeDealCountdown(v.deal.endsAt), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                    Text(
-                                        "${v.deal.remainingQuantity} left",
-                                        color = if (v.deal.remainingQuantity <= 3) Ids.colors.danger else Ids.colors.textSecondary,
-                                        fontSize = 10.sp,
-                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        StatusBadge(formatTimeDealCountdown(v.deal.endsAt), filled = false, tint = Ids.colors.brand)
+                                        if (v.deal.remainingQuantity <= 3) {
+                                            StatusBadge("${v.deal.remainingQuantity} left", tint = Ids.colors.danger)
+                                        }
+                                    }
                                 }
                             }
                         }
