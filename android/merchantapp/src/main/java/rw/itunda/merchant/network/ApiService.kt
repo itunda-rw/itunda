@@ -229,6 +229,16 @@ data class ProductReviewResponse(val success: Boolean, val review: ProductReview
 data class ProductReviewsResponse(val success: Boolean, val reviews: List<ProductReviewDto>)
 data class ReplyToProductReviewRequest(val reply: String)
 
+// Real Coupang-style pre-purchase product Q&A (상품문의) -- mirrors the consumer app's
+// ProductInquiryDto field-for-field (see android/core/network's ApiService.kt).
+data class ProductInquiryDto(
+    val id: String, val productId: String, val merchantId: String, val buyerId: String,
+    val question: String, val answer: String?, val answeredAt: String?, val createdAt: String,
+)
+data class ProductInquiryResponse(val success: Boolean, val inquiry: ProductInquiryDto)
+data class ProductInquiriesResponse(val success: Boolean, val inquiries: List<ProductInquiryDto>)
+data class AnswerProductInquiryRequest(val answer: String)
+
 // Real bulk/wholesale pricing (2026-07-25) -- see ProductPriceTier.kt's own doc comment
 // on the backend (closes the gap named in Baemin's own real 배민상회 B2B supplies
 // marketplace research).
@@ -403,6 +413,17 @@ interface ApiService {
 
     @POST("api/v1/orders/reviews/{reviewId}/reply")
     suspend fun replyToProductReview(@Path("reviewId") reviewId: String, @Body request: ReplyToProductReviewRequest): ProductReviewResponse
+
+    // Real Coupang-style pre-purchase product Q&A (상품문의), owner-answer side --
+    // ProductInquiryService.answerQuestion existed on the backend with genuinely zero
+    // client anywhere (the consumer app's own ApiService.kt honestly notes this: "the
+    // seller-answer flow has zero UI anywhere yet, not even on bank-mfe/merchant-mfe").
+    // Mirrors ProductInquiryDto field-for-field from the consumer app.
+    @GET("api/v1/orders/products/{id}/inquiries")
+    suspend fun getProductInquiries(@Path("id") productId: String): ProductInquiriesResponse
+
+    @POST("api/v1/orders/inquiries/{inquiryId}/answer")
+    suspend fun answerProductInquiry(@Path("inquiryId") inquiryId: String, @Body request: AnswerProductInquiryRequest): ProductInquiryResponse
 
     // Real Coupang 타임특가 (Time Deal) -- see TimeDealDto's own doc comment. Lives under
     // /api/v1/time-deals (TimeDealController), not /api/v1/merchant.

@@ -227,6 +227,12 @@ private fun nextRestaurantAction(status: String): Pair<String, String>? = when (
 private fun ReviewsTab(restaurantId: String) {
     var restaurantReviews by remember { mutableStateOf<List<rw.itunda.merchant.network.EatsReviewDto>?>(null) }
     var productReviews by remember { mutableStateOf<List<Pair<String, rw.itunda.merchant.network.ProductReviewDto>>?>(null) }
+    // Real Coupang-style pre-purchase product Q&A (상품문의), owner-answer side -- see
+    // ApiService.kt's own doc comment: ProductInquiryService.answerQuestion existed on
+    // the backend with genuinely zero client anywhere until now. Same "no aggregate
+    // backend endpoint, fan out per product" reasoning as productReviews above -- no
+    // real "all my products' questions" endpoint exists either.
+    var productInquiries by remember { mutableStateOf<List<Pair<String, rw.itunda.merchant.network.ProductInquiryDto>>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
@@ -247,6 +253,13 @@ private fun ReviewsTab(restaurantId: String) {
                     emptyList()
                 }
             }.sortedByDescending { it.second.createdAt }
+            productInquiries = products.flatMap { p ->
+                try {
+                    NetworkClient.apiService.getProductInquiries(p.id).inquiries.map { p.name to it }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }.sortedByDescending { it.second.createdAt }
         } catch (e: Exception) {
             error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -260,11 +273,12 @@ private fun ReviewsTab(restaurantId: String) {
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
     val restaurantList = restaurantReviews
     val productList = productReviews
-    if (restaurantList == null || productList == null) {
+    val inquiryList = productInquiries
+    if (restaurantList == null || productList == null || inquiryList == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    if (restaurantList.isEmpty() && productList.isEmpty()) {
+    if (restaurantList.isEmpty() && productList.isEmpty() && inquiryList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No reviews yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -275,6 +289,18 @@ private fun ReviewsTab(restaurantId: String) {
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        if (inquiryList.isNotEmpty()) {
+            item { Text("Product questions", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+        }
+        items(inquiryList, key = { "q_${it.second.id}" }) { (productName, inquiry) ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(productName, fontWeight = FontWeight.Bold)
+                    Text(inquiry.question, style = MaterialTheme.typography.bodyMedium)
+                    ProductInquiryAnswerRow(inquiry = inquiry, onAnswered = { scope.launch { refreshProducts() } })
+                }
+            }
+        }
         if (restaurantList.isNotEmpty()) {
             item { Text("Restaurant reviews", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
         }
@@ -356,6 +382,57 @@ private fun ReviewReplyRow(review: rw.itunda.merchant.network.EatsReviewDto, onR
         }
         else -> {
             Button(onClick = { replying = true }) { Text("Reply") }
+        }
+    }
+}
+
+@Composable
+private fun ProductInquiryAnswerRow(inquiry: rw.itunda.merchant.network.ProductInquiryDto, onAnswered: () -> Unit) {
+    var answering by remember { mutableStateOf(false) }
+    var answer by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
+    when {
+        !inquiry.answer.isNullOrBlank() -> {
+            Text(
+                "Your answer: ${inquiry.answer}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        answering -> {
+            androidx.compose.material3.OutlinedTextField(
+                value = answer,
+                onValueChange = { answer = it },
+                label = { Text("Write an answer") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            Button(
+                onClick = {
+                    submitting = true
+                    error = null
+                    scope.launch {
+                        try {
+                            NetworkClient.apiService.answerProductInquiry(inquiry.id, rw.itunda.merchant.network.AnswerProductInquiryRequest(answer.trim()))
+                            answering = false
+                            onAnswered()
+                        } catch (e: Exception) {
+                            error = "Could not submit your answer."
+                        } finally {
+                            submitting = false
+                        }
+                    }
+                },
+                enabled = !submitting && answer.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (submitting) "Submitting…" else "Answer") }
+        }
+        else -> {
+            Button(onClick = { answering = true }) { Text("Answer") }
         }
     }
 }

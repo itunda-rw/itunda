@@ -2896,14 +2896,20 @@ interface ApiService {
     // Real Coupang-style pre-purchase product Q&A (상품문의) -- see
     // rw.itunda.commerce.ProductInquiryService's own doc comment. Genuinely distinct
     // from a review: no order/purchase required at all. bank-mfe already has the
-    // buyer-side ask/view flow; this is the first Android client. Honest scope
-    // boundary: the seller-answer flow has zero UI anywhere yet, not even on
-    // bank-mfe/merchant-mfe -- not a mobile-specific gap, so not built here either.
+    // buyer-side ask/view flow; this is the first Android client. The seller-answer
+    // flow (2026-08-04) now lives on the merchant app -- see that app's
+    // ProductInquiryAnswerRow.
     @POST("api/v1/orders/products/{id}/inquiries")
     suspend fun askProductInquiry(@Path("id") productId: String, @Body request: AskProductInquiryRequest): ProductInquiryResponse
 
     @GET("api/v1/orders/products/{id}/inquiries")
     suspend fun getProductInquiries(@Path("id") productId: String): ProductInquiriesResponse
+
+    // Real "my questions across every product I've ever asked about" (2026-08-04) --
+    // OrderController.getMyInquiries existed on the backend with zero client anywhere;
+    // ShopScreen's ProductInquirySection only ever showed one product's Q&A at a time.
+    @GET("api/v1/orders/inquiries/my-questions")
+    suspend fun getMyProductInquiries(): ProductInquiriesResponse
 
     // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing --
     // see rw.itunda.merchant.MerchantBillingService's own doc comment. Customer-facing

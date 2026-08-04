@@ -137,7 +137,7 @@ import java.util.UUID
 //   split exists) -- so this stays an app-level composition, injected here exactly like
 //   routeMiniMap, rather than pulled into this module.
 
-private enum class CommerceView { BROWSE, ORDERS, WISHLIST, SUBSCRIPTIONS }
+private enum class CommerceView { BROWSE, ORDERS, WISHLIST, SUBSCRIPTIONS, QUESTIONS }
 
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification the
@@ -505,7 +505,7 @@ fun CommerceShopContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders", CommerceView.WISHLIST to "♡ Wishlist", CommerceView.SUBSCRIPTIONS to "Subscriptions").forEach { (v, label) ->
+                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders", CommerceView.WISHLIST to "♡ Wishlist", CommerceView.SUBSCRIPTIONS to "Subscriptions", CommerceView.QUESTIONS to "My questions").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
                         Text(
@@ -532,6 +532,8 @@ fun CommerceShopContent(
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
         } else if (view == CommerceView.SUBSCRIPTIONS) {
             item { MyProductSubscriptionsView() }
+        } else if (view == CommerceView.QUESTIONS) {
+            item { MyProductInquiriesView() }
         } else {
             item {
                 PayAMerchantSection(deviceStepUpHost = deviceStepUpHost)
@@ -1741,6 +1743,52 @@ private fun ProductWishlistView(onRemoved: () -> Unit) {
                             }
                         }) {
                             Text(if (removingId == f.productId) "Removing…" else "Remove", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real "my questions across every product I've ever asked about" (2026-08-04) -- see
+// core/network's getMyProductInquiries doc comment. ProductInquirySection (on a single
+// product's detail page) already lets a buyer ask/view that one product's Q&A; this is
+// the first place a buyer can see every question they've ever asked, across every
+// product, in one list. Read-only from here -- answering is the merchant app's job.
+@Composable
+private fun MyProductInquiriesView() {
+    var inquiries by remember { mutableStateOf<List<ProductInquiryDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                inquiries = NetworkClient.apiService.getMyProductInquiries().inquiries
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        inquiries == null -> SkeletonBlock()
+        inquiries!!.isEmpty() -> EmptyState("No questions asked yet -- ask one from any product's detail page.", icon = Icons.Outlined.RateReview)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            inquiries!!.forEach { q ->
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(q.question, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        if (!q.answer.isNullOrBlank()) {
+                            Text("Answered: ${q.answer}", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                        } else {
+                            Text("Waiting for an answer…", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                         }
                     }
                 }
