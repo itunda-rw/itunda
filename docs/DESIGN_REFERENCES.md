@@ -396,18 +396,19 @@ they close in itunda's current implementation.
    against the real dev backend (upload -> send -> real GET reflects it -> real static fetch
    returns 200), test messages cleaned up afterward.
 
-7. **[implemented, backend; pin UI closed 2026-08-04]** @mention support in group chats is real
-   (`GroupMessagingService.parseMentions`, 2026-07-25): `@FirstName` tokens resolve against real
+7. **[implemented]** @mention support in group chats is real end-to-end, both backend and UI.
+   `GroupMessagingService.parseMentions` (2026-07-25): `@FirstName` tokens resolve against real
    group members and trigger a distinctly-titled `GROUP_MENTION` notification. Group-chat pin is
-   also now real (2026-07-26), matching 1:1's own pin. **Pin's UI affordance was closed alongside
-   item 3's long-press menu**: `GroupMessagingController`'s real `/{groupId}/pin` endpoints had no
-   Retrofit client method or UI anywhere until now (the same "defined but uncalled" pattern this
-   file's own history already names for group emoticons) -- added
-   `getPinnedGroupMessage`/`pinGroupMessage`/`unpinGroupMessage` mirroring 1:1's exact shape, plus a
-   pinned-message banner in `GroupThreadView`. Live-verified end-to-end against the real dev
-   backend (pin -> real GET reflects it -> unpin -> real GET returns null again). **@mention's own
-   UI affordance (typing/selecting a mention in the composer) remains genuinely open.**
-   *Target: `GroupThreadView` composer for @mention*
+   also real (2026-07-26), matching 1:1's own pin -- UI closed 2026-08-04 alongside item 3's
+   long-press menu (`getPinnedGroupMessage`/`pinGroupMessage`/`unpinGroupMessage` + a pinned-message
+   banner in `GroupThreadView`, live-verified pin -> GET reflects it -> unpin -> GET returns null).
+   **@mention's own composer UI closed 2026-08-04**: typing "@" with no following space now shows a
+   real inline suggestion row of matching group members (client-side, from the already-fetched
+   member list -- no new endpoint, since `parseMentions` only ever reads the message body text);
+   tapping one inserts `@FirstName` matching the backend's own first-token resolution exactly.
+   Live-verified against the real dev backend: a real 3-member group, a real message
+   ("Hey @Ladder are you around?"), the response's `mentionedUserIds` resolving to exactly the
+   right member's real user id.
 
 8. **[implemented]** Per-message timestamps now appear in direct and group threads across all clients.
 
