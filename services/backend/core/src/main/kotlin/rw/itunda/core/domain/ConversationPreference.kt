@@ -31,6 +31,13 @@ class ConversationPreference(
     @Column(name = "quiet", nullable = false)
     var quiet: Boolean = false,
 
+    // Real recoverable archive (Kakao's official "archive-without-leaving" feature) --
+    // same private-to-one-participant model as quiet above: removed from this user's
+    // active list without leaving, deleting history, or affecting the other
+    // participant. Recoverable: unarchiving is just flipping this back to false.
+    @Column(name = "archived", nullable = false)
+    var archived: Boolean = false,
+
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 ) {

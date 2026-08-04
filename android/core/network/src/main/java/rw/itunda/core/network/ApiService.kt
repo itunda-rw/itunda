@@ -508,6 +508,9 @@ data class ConversationSummaryDto(
     val unreadCount: Int,
     val quiet: Boolean = false,
     val pinnedMessageId: String? = null,
+    // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+    // .archived's own doc comment. Same private-to-me model as quiet.
+    val archived: Boolean = false,
 )
 
 // Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
@@ -553,6 +556,10 @@ data class SendMessageRequest(val body: String, val replyToMessageId: String? = 
 data class TalkContactDto(val userId: String, val name: String)
 data class TalkContactsResponse(val success: Boolean, val contacts: List<TalkContactDto>)
 data class ConversationQuietResponse(val success: Boolean, val quiet: Boolean)
+// Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+// .archived's own doc comment.
+data class ConversationArchivedResponse(val success: Boolean, val archived: Boolean)
+data class SetConversationArchivedRequest(val archived: Boolean)
 data class CreateChatReportRequest(val messageId: String, val reason: String)
 data class SetConversationQuietRequest(val quiet: Boolean)
 data class ToggleReactionRequest(val emoji: String)
@@ -2188,7 +2195,7 @@ interface ApiService {
     suspend fun startConversation(@Body request: StartConversationRequest): ConversationResponse
 
     @GET("api/v1/messages/conversations")
-    suspend fun getConversations(): ConversationsResponse
+    suspend fun getConversations(@Query("archived") archived: Boolean = false): ConversationsResponse
 
     @GET("api/v1/messages/contacts")
     suspend fun getTalkContacts(): TalkContactsResponse
@@ -2245,6 +2252,12 @@ interface ApiService {
 
     @POST("api/v1/messages/conversations/{id}/quiet")
     suspend fun setConversationQuiet(@Path("id") conversationId: String, @Body request: SetConversationQuietRequest): ConversationQuietResponse
+
+    @GET("api/v1/messages/conversations/{id}/archive")
+    suspend fun getConversationArchived(@Path("id") conversationId: String): ConversationArchivedResponse
+
+    @POST("api/v1/messages/conversations/{id}/archive")
+    suspend fun setConversationArchived(@Path("id") conversationId: String, @Body request: SetConversationArchivedRequest): ConversationArchivedResponse
 
     @POST("api/v1/chat/reports")
     suspend fun reportChatMessage(@Body request: CreateChatReportRequest): SuccessResponse

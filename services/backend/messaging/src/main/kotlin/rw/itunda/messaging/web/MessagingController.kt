@@ -48,6 +48,7 @@ data class StartConversationRequest(val phoneNumber: String? = null, val otherUs
 data class SendMessageRequest(val body: String, val replyToMessageId: String? = null, val imageUrl: String? = null)
 data class ToggleReactionRequest(val emoji: String)
 data class SetConversationQuietRequest(val quiet: Boolean)
+data class SetConversationArchivedRequest(val archived: Boolean)
 // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc comment.
 data class ForwardMessageRequest(val destinationType: String, val destinationId: String)
 
@@ -79,9 +80,10 @@ class MessagingController(
     @GetMapping("/conversations")
     fun listConversations(
         @PageableDefault(size = 20) pageable: Pageable,
+        @RequestParam(required = false, defaultValue = "false") archived: Boolean,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val page = messagingService.listConversations(currentUser.userId, pageable)
+        val page = messagingService.listConversations(currentUser.userId, pageable, archived)
         return ResponseEntity.ok(mapOf("success" to true, "conversations" to page.content) + pageMeta(page))
     }
 
@@ -234,6 +236,27 @@ class MessagingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "quiet" to messagingService.isConversationQuiet(currentUser.userId, conversationId)))
+
+    // Real recoverable archive (2026-08-05) -- see ConversationPreference.archived's
+    // own doc comment. Same request/response shape as quiet above, deliberately
+    // reusing SetConversationQuietRequest's own {archived:Bool}-shaped sibling rather
+    // than a third near-identical DTO.
+    @PostMapping("/conversations/{conversationId}/archive")
+    fun setConversationArchived(
+        @PathVariable conversationId: String,
+        @RequestBody request: SetConversationArchivedRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> {
+        messagingService.setConversationArchived(currentUser.userId, conversationId, request.archived)
+        return ResponseEntity.ok(mapOf("success" to true, "archived" to request.archived))
+    }
+
+    @GetMapping("/conversations/{conversationId}/archive")
+    fun getConversationArchived(
+        @PathVariable conversationId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "archived" to messagingService.isConversationArchived(currentUser.userId, conversationId)))
 
     // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
     // own doc comment. Works for any set of user ids, not just 1:1 conversation

@@ -37,7 +37,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddReaction
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Photo
 import androidx.compose.material.icons.outlined.Receipt
@@ -49,8 +51,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -130,6 +136,7 @@ import rw.itunda.core.network.RespondToPropertyOfferRequest
 import rw.itunda.core.network.SendGiftInConversationRequest
 import rw.itunda.core.network.SendGroupMessageRequest
 import rw.itunda.core.network.SendMessageRequest
+import rw.itunda.core.network.SetConversationArchivedRequest
 import rw.itunda.core.network.SetConversationQuietRequest
 import rw.itunda.core.network.SplitBillWithParticipants
 import rw.itunda.core.network.StartConversationRequest
@@ -176,6 +183,10 @@ fun TalkTab(
     var view by remember { mutableStateOf(TalkView.DIRECT) }
     var conversations by remember { mutableStateOf<List<ConversationSummaryDto>?>(null) }
     var conversationsError by remember { mutableStateOf<String?>(null) }
+    // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
+    // .archived's own doc comment. Loaded alongside the active list so the "Archived
+    // (N)" toggle has a real count without an extra round-trip when first tapped.
+    var archivedConversations by remember { mutableStateOf<List<ConversationSummaryDto>?>(null) }
     var openConversationId by remember { mutableStateOf<String?>(null) }
     var groups by remember { mutableStateOf<List<GroupSummaryDto>?>(null) }
     var groupsError by remember { mutableStateOf<String?>(null) }
@@ -199,6 +210,17 @@ fun TalkTab(
             }
         }
     }
+    fun loadArchivedConversations() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getConversations(archived = true)
+                if (res.success) archivedConversations = res.conversations
+            } catch (_: Exception) {
+                // Real, non-critical -- the active list and "Archived (N)" count still
+                // work even if this background fetch fails; retried on next load.
+            }
+        }
+    }
     fun loadGroups() {
         coroutineScope.launch {
             try {
@@ -212,7 +234,7 @@ fun TalkTab(
             }
         }
     }
-    LaunchedEffect(Unit) { loadConversations(); loadGroups() }
+    LaunchedEffect(Unit) { loadConversations(); loadArchivedConversations(); loadGroups() }
 
     LaunchedEffect(conversations?.map { it.otherUserId }) {
         val otherIds = conversations?.map { it.otherUserId }?.takeIf { it.isNotEmpty() } ?: return@LaunchedEffect
@@ -266,11 +288,13 @@ fun TalkTab(
         if (view == TalkView.DIRECT) {
             DirectMessagesList(
                 conversations = conversations,
+                archivedConversations = archivedConversations,
                 error = conversationsError,
                 presence = presence,
                 onRetry = ::loadConversations,
                 onStarted = { conversationId -> loadConversations(); openConversationId = conversationId },
                 onOpen = { openConversationId = it },
+                onArchiveChanged = { loadConversations(); loadArchivedConversations() },
             )
         } else {
             GroupsList(
@@ -287,18 +311,39 @@ fun TalkTab(
 @Composable
 private fun DirectMessagesList(
     conversations: List<ConversationSummaryDto>?,
+    archivedConversations: List<ConversationSummaryDto>?,
     error: String?,
     presence: Map<String, Boolean>,
     onRetry: () -> Unit,
     onStarted: (String) -> Unit,
     onOpen: (String) -> Unit,
+    onArchiveChanged: () -> Unit,
 ) {
     var startPhoneNumber by remember { mutableStateOf("") }
     var startError by remember { mutableStateOf<String?>(null) }
     var starting by remember { mutableStateOf(false) }
     var contacts by remember { mutableStateOf<List<TalkContactDto>?>(null) }
+    // Real fix, found live 2026-08-05: this used to filter on `quiet` (mute) and
+    // mislabel the result "Archived" -- there was no real archive concept on the
+    // backend yet, so muting was repurposed to also hide a conversation from the
+    // main list. Now that a real, distinct `archived` field exists
+    // (ConversationPreference.archived), muted conversations stay visible in the
+    // main list (matching real KakaoTalk: muting only silences notifications, it
+    // never hides a room) and this toggle switches to the real archived list.
     var showArchived by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    fun setArchived(conversationId: String, archived: Boolean) {
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.setConversationArchived(conversationId, SetConversationArchivedRequest(archived))
+                onArchiveChanged()
+            } catch (_: Exception) {
+                // Real, non-critical -- a failed archive/unarchive just leaves the row
+                // where it was; the user can retry the swipe.
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         contacts = try {
@@ -395,20 +440,34 @@ private fun DirectMessagesList(
                 }
             }
         }
-        val archivedCount = conversations?.count { it.quiet } ?: 0
+        val archivedCount = archivedConversations?.size ?: 0
         if (archivedCount > 0) item {
             TextButton(onClick = { showArchived = !showArchived }) {
                 Text(if (showArchived) "Show active chats" else "Archived ($archivedCount)", color = Ids.colors.textSecondary)
             }
         }
+        val visibleList = if (showArchived) archivedConversations else conversations
         if (error != null) {
             item { ErrorCard(error, onRetry = onRetry) }
-        } else if (conversations == null) {
+        } else if (visibleList == null) {
             item { SkeletonBlock() }
-        } else if (conversations.filter { if (showArchived) it.quiet else !it.quiet }.isEmpty()) {
-            item { EmptyState("No conversations yet.", icon = Icons.Outlined.ChatBubbleOutline) }
+        } else if (visibleList.isEmpty()) {
+            item {
+                EmptyState(
+                    if (showArchived) "No archived chats." else "No conversations yet.",
+                    icon = Icons.Outlined.ChatBubbleOutline,
+                )
+            }
         } else {
-            items(conversations.filter { if (showArchived) it.quiet else !it.quiet }, key = { it.conversationId }) { c -> ConversationRow(c, online = presence[c.otherUserId] == true, onClick = { onOpen(c.conversationId) }) }
+            items(visibleList, key = { it.conversationId }) { c ->
+                SwipeableConversationRow(
+                    conversation = c,
+                    online = presence[c.otherUserId] == true,
+                    isArchived = showArchived,
+                    onClick = { onOpen(c.conversationId) },
+                    onArchiveToggle = { setArchived(c.conversationId, !showArchived) },
+                )
+            }
         }
     }
 }
@@ -1362,6 +1421,56 @@ private fun GroupMessageBubble(
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
         )
+    }
+}
+
+// Real swipe actions (2026-08-05) -- closes docs/DESIGN_REFERENCES.md Talk
+// recommendation #4's remaining swipe-gesture half (archive itself closed above, in
+// DirectMessagesList/setArchived). Real KakaoTalk supports swipe in both directions
+// (favorite/pin one way, archive/leave the other); scoped honestly to a single
+// swipe-to-archive action here, matching this app's own real archive feature -- pin
+// already has its own long-press-menu entry point on individual messages, and
+// itunda's Talk has no per-conversation "favorite" concept to wire a second swipe to.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeableConversationRow(
+    conversation: ConversationSummaryDto,
+    online: Boolean,
+    isArchived: Boolean,
+    onClick: () -> Unit,
+    onArchiveToggle: () -> Unit,
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onArchiveToggle()
+                true
+            } else {
+                false
+            }
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
+                    .background(if (isArchived) Ids.colors.brand else Ids.colors.danger)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    if (isArchived) Icons.Outlined.Unarchive else Icons.Outlined.Archive,
+                    contentDescription = if (isArchived) "Unarchive" else "Archive",
+                    tint = Color.White,
+                )
+            }
+        },
+    ) {
+        ConversationRow(conversation, online = online, onClick = onClick)
     }
 }
 

@@ -47,6 +47,7 @@ data class ConversationSummary(
     val unreadCount: Long,
     val quiet: Boolean,
     val pinnedMessageId: String?,
+    val archived: Boolean,
 )
 data class TalkContact(val userId: String, val name: String)
 
@@ -428,8 +429,14 @@ class MessagingService(
     // (grouped in-app to "first per conversationId", see
     // MessageRepository.findByConversationIdInOrderBySentAtDesc's own doc comment for
     // the real bound this relies on), and one batched GROUP BY for unread counts.
-    fun listConversations(userId: String, pageable: Pageable): Page<ConversationSummary> {
-        val page = conversationRepository.findByParticipant(userId, pageable)
+    // Real recoverable archive (2026-08-05) -- closes docs/DESIGN_REFERENCES.md Talk
+    // recommendation #4's own archive half (swipe gesture is a client-only concern,
+    // wired separately per platform). `archived` toggles which real DB-level query
+    // below runs; defaults to the non-archived list, matching every existing caller's
+    // expectation of "my active conversations" with zero behavior change for them.
+    fun listConversations(userId: String, pageable: Pageable, archived: Boolean = false): Page<ConversationSummary> {
+        val page = if (archived) conversationRepository.findByParticipantArchived(userId, pageable)
+        else conversationRepository.findByParticipantNotArchived(userId, pageable)
         val conversations = page.content
         if (conversations.isEmpty()) return PageImpl(emptyList(), pageable, page.totalElements)
 
@@ -444,12 +451,13 @@ class MessagingService(
             .mapValues { (_, messages) -> messages.first() }
         val unreadCountByConversationId = messageRepository.countUnreadByConversationIds(conversationIds, userId)
             .associate { it.conversationId to it.unreadCount }
-        val quietConversationIds = conversationPreferenceRepository.findByUserIdAndConversationIdIn(userId, conversationIds)
-            .filter { it.quiet }.map { it.conversationId }.toSet()
+        val preferencesByConversationId = conversationPreferenceRepository.findByUserIdAndConversationIdIn(userId, conversationIds)
+            .associateBy { it.conversationId }
 
         val summaries = conversations.map { conversation ->
             val otherUserId = otherUserIdByConversationId.getValue(conversation.id)
             val otherUser = otherUsersById[otherUserId]
+            val preference = preferencesByConversationId[conversation.id]
             ConversationSummary(
                 conversationId = conversation.id,
                 otherUserId = otherUserId,
@@ -457,10 +465,38 @@ class MessagingService(
                 lastMessageAt = conversation.lastMessageAt,
                 lastMessagePreview = lastMessageByConversationId[conversation.id]?.let { if (it.deletedAt == null) it.body else "This message was deleted" },
                 unreadCount = unreadCountByConversationId[conversation.id] ?: 0L,
-                quiet = conversation.id in quietConversationIds,
+                quiet = preference?.quiet ?: false,
                 pinnedMessageId = conversation.pinnedMessageId,
+                archived = preference?.archived ?: false,
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)
+    }
+
+    // Same private-to-one-participant model as setConversationQuiet above -- see
+    // ConversationPreference.archived's own doc comment for the full reasoning.
+    @Transactional
+    fun setConversationArchived(userId: String, conversationId: String, archived: Boolean) {
+        requireParticipant(userId, conversationId)
+        val preference = conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)
+        if (preference == null) {
+            if (archived) conversationPreferenceRepository.save(
+                rw.itunda.core.domain.ConversationPreference(
+                    id = "conversation_preference_${UUID.randomUUID()}",
+                    conversationId = conversationId,
+                    userId = userId,
+                    archived = true,
+                ),
+            )
+        } else {
+            preference.archived = archived
+            preference.updatedAt = Instant.now()
+            conversationPreferenceRepository.save(preference)
+        }
+    }
+
+    fun isConversationArchived(userId: String, conversationId: String): Boolean {
+        requireParticipant(userId, conversationId)
+        return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.archived ?: false
     }
 }

@@ -25,6 +25,27 @@ interface ConversationRepository : JpaRepository<Conversation, String> {
     )
     fun findByParticipant(@Param("userId") userId: String, pageable: Pageable): Page<Conversation>
 
+    // Real recoverable archive filtering, done at the DB level (not the post-hoc
+    // in-app filtering `quiet` uses) so pagination stays correct -- filtering an
+    // already-paged result in Kotlin would return short pages whenever any row on
+    // that page was archived. `archived = false` (the common case, "not explicitly
+    // archived by me") only excludes rows this user actually archived; a user with no
+    // ConversationPreference row at all still sees the conversation, matching quiet's
+    // own "no row = default false" semantics.
+    @Query(
+        "SELECT c FROM Conversation c WHERE (c.participantAId = :userId OR c.participantBId = :userId) " +
+            "AND c.id NOT IN (SELECT p.conversationId FROM ConversationPreference p WHERE p.userId = :userId AND p.archived = true) " +
+            "ORDER BY c.lastMessageAt DESC",
+    )
+    fun findByParticipantNotArchived(@Param("userId") userId: String, pageable: Pageable): Page<Conversation>
+
+    @Query(
+        "SELECT c FROM Conversation c WHERE (c.participantAId = :userId OR c.participantBId = :userId) " +
+            "AND c.id IN (SELECT p.conversationId FROM ConversationPreference p WHERE p.userId = :userId AND p.archived = true) " +
+            "ORDER BY c.lastMessageAt DESC",
+    )
+    fun findByParticipantArchived(@Param("userId") userId: String, pageable: Pageable): Page<Conversation>
+
     // Real presence push (2026-07-19) -- who to notify when this user comes online/goes
     // offline: every real 1:1 conversation partner. Deliberately unbounded (not
     // paginated like the conversation list above): this only runs once per real
