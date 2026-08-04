@@ -77,15 +77,25 @@ they close in itunda's current implementation.
    in `MapsScreen.kt`'s sheet as two real horizontal-scroll sections in the true empty state.
    *Target: `MapsScreen.kt` — default state when `selectedPlace == null && activeCategory == null`*
 
-3. **[sourced, Kakao Map -- flagged 2026-08-04]** Elevate the place-detail card's action row and
-   image. itunda's selected-place card still shows only a name, a star toggle, and a single
-   "Directions" button. **This recommendation's own source is Kakao Map's redesign, not Naver's** --
-   during a Naver-specific pass, a fresh, more targeted search confirmed real Naver Map place-detail
-   sheets do show richer info (주소/연락처/영업시간/메뉴판/사진/주차 -- address/contact/hours/menu/
-   photos/parking), but no primary Naver source with precise action-row/hero-image layout specifics
-   was found (only a general feature-list description). Real gap either way, but don't cite this
-   entry as "confirmed Naver" until a primary Naver source backs the specific layout, not just the
-   general feature list.
+3. **[sourced, Kakao Map -- flagged 2026-08-04; address part implemented same day]** Elevate the
+   place-detail card's action row and image. itunda's selected-place card still shows only a name, a
+   star toggle, and a single "Directions" button. **This recommendation's own source is Kakao Map's
+   redesign, not Naver's** -- during a Naver-specific pass, a fresh, more targeted search confirmed
+   real Naver Map place-detail sheets do show richer info (주소/연락처/영업시간/메뉴판/사진/주차 --
+   address/contact/hours/menu/photos/parking), but no primary Naver source with precise
+   action-row/hero-image layout specifics was found (only a general feature-list description). The
+   action-row/hero-image part is real but still open (needs primary Naver sourcing before building
+   Kakao's specific layout as if it were Naver's). The address part shipped 2026-08-04:
+   **correcting an earlier same-day misdiagnosis** -- this session's own backend restarts had been
+   omitting `NOMINATIM_BASE_URL`, so itunda's self-hosted Nominatim (which genuinely IS configured
+   and populated with real Rwanda OSM data, confirmed once restarted correctly -- e.g. "Miracle
+   Pharmacy, KN 81 Street, Nyarugenge...") was silently falling back to its documented "unconfigured
+   → empty, never fabricated" behavior the whole time, which had been read as a real data-coverage
+   gap. Once corrected, confirmed `displayName` already carries the real full address, just as one
+   run-on string. `splitPlaceName` (MapsScreen.kt) splits it on Nominatim's own convention (segment
+   0 = specific place name, the rest = real address hierarchy) into a bold name + muted address
+   line, matching real Naver card layout -- no new backend field, pure presentation of data already
+   present.
    *Target: `MapsScreen.kt` selected-place card*
 
 4. **[sourced] Implemented.** Group bookmarks into named, colored lists instead of one flat list.

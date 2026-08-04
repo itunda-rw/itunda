@@ -154,6 +154,21 @@ private const val RWANDA_CENTER_LNG = 30.0619
 // color picker, matching this app's own design-system palette.
 private const val DEFAULT_BOOKMARK_FOLDER = "Saved places"
 private val BOOKMARK_COLOR_PALETTE = listOf("#F5A623", "#3182F6", "#8B5CF6", "#E53935", "#22B07D", "#4E5968")
+
+// Real Naver Map place-card layout (2026-08-04) -- confirmed live against itunda's own
+// self-hosted Nominatim (previously misdiagnosed as "no real Rwanda POI data" while this
+// screen's own backend restart was missing NOMINATIM_BASE_URL; re-verified with it
+// actually configured and it returns rich real results, e.g. "Miracle Pharmacy, KN 81
+// Street, Nyarugenge, Nyarugenge District, City of Kigali, Rwanda"). Real Naver place
+// cards show a bold name with a muted address line below, not one long run-on string --
+// itunda's own `displayName` already carries the full real address, just unsplit. Splits
+// on the first comma only (Nominatim's own convention: segment 0 is always the specific
+// place/building name, everything after is the real address hierarchy) -- no new backend
+// field, no new data, just real presentation of what's already there.
+private fun splitPlaceName(displayName: String): Pair<String, String?> {
+    val comma = displayName.indexOf(',')
+    return if (comma < 0) displayName to null else displayName.substring(0, comma).trim() to displayName.substring(comma + 1).trim()
+}
 // Both driven by BuildConfig now (2026-07-21), not hardcoded to a private-cloud address
 // directly -- see app/build.gradle.kts' TILES_BASE_URL/GLYPHS_BASE_URL doc comment for
 // why a physical device on the public HTTPS endpoint got a permanently blank map
@@ -1236,7 +1251,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         .clickable { selectPlace(PlaceSearchResultDto(place.displayName, place.latitude, place.longitude)) }
                                         .padding(10.dp),
                                 ) {
-                                    Text(place.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                    Text(splitPlaceName(place.displayName).first, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                                     Text("%.1f km".format(place.distanceKm), fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 2.dp))
                                 }
                             }
@@ -1262,7 +1277,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         .clickable { selectPlace(PlaceSearchResultDto(place.displayName, place.latitude, place.longitude)) }
                                         .padding(10.dp),
                                 ) {
-                                    Text(place.displayName, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                    Text(splitPlaceName(place.displayName).first, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                                     Text("★ saved by ${place.saveCount}", fontSize = 11.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(top = 2.dp))
                                 }
                             }
@@ -1297,10 +1312,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             Text("No real places found for that search.", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(14.dp))
                         } else {
                             results.forEach { place ->
-                                Text(
-                                    place.displayName,
-                                    fontSize = 13.sp,
-                                    color = Ids.colors.textPrimary,
+                                val (name, address) = splitPlaceName(place.displayName)
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -1312,7 +1325,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             }
                                         }
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
-                                )
+                                ) {
+                                    Text(name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
+                                    if (address != null) {
+                                        Text(address, fontSize = 11.sp, color = Ids.colors.textSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
+                                    }
+                                }
                             }
                         }
                     }
@@ -1529,14 +1547,19 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     ) {
                         val place = selectedPlace
                         if (place != null) {
+                            val (placeName, placeAddress) = splitPlaceName(place.displayName)
                             Row(verticalAlignment = Alignment.Top) {
-                                Text(
-                                    place.displayName,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = Ids.colors.textPrimary,
-                                    modifier = Modifier.weight(1f),
-                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        placeName,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Ids.colors.textPrimary,
+                                    )
+                                    if (placeAddress != null) {
+                                        Text(placeAddress, fontSize = 12.sp, color = Ids.colors.textSecondary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                                    }
+                                }
                                 // Real "share this place" (2026-07-22) -- ported from
                                 // bank-mfe's own real Web Share/clipboard action. Plain
                                 // name+coordinate text via Android's native share sheet,
@@ -1862,10 +1885,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     Text("No real matches found nearby for $label.", color = Ids.colors.textSecondary, fontSize = 13.sp)
                                 } else {
                                     categoryResults!!.forEach { nearby ->
-                                        Text(
-                                            "${if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") "Itunda agent · " else ""}${nearby.displayName} · ${"%.1f".format(nearby.distanceKm)} km",
-                                            fontSize = 13.sp,
-                                            color = Ids.colors.textPrimary,
+                                        val (nearbyName, nearbyAddress) = splitPlaceName(nearby.displayName)
+                                        Column(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clickable {
@@ -1876,7 +1897,22 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                     savingToFolder = null
                                                 }
                                                 .padding(vertical = 6.dp),
-                                        )
+                                        ) {
+                                            Text(
+                                                "${if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") "Itunda agent · " else ""}$nearbyName",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Ids.colors.textPrimary,
+                                            )
+                                            Text(
+                                                listOfNotNull(nearbyAddress, "${"%.1f".format(nearby.distanceKm)} km").joinToString(" · "),
+                                                fontSize = 11.sp,
+                                                color = Ids.colors.textSecondary,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                                modifier = Modifier.padding(top = 1.dp),
+                                            )
+                                        }
                                     }
                                 }
                             } else {
