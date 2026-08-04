@@ -350,10 +350,19 @@ they close in itunda's current implementation.
    aggregation of media/files/links shared in a conversation. Directly relevant to itunda's
    Hood-to-Talk handoff flows (listing photos, offer/gift bubbles).
 
-6. **[sourced]** Add a real attach ("+") menu to the composer. Both thread composers are just a
-   text field + send button (plus a gift icon on `ChatThreadView`, `~1016-1027`) — no photo, file,
-   or sticker send at all. Kakao's emoticon picker alone is core, monetized product surface (~1/3
-   of 2020 revenue), not a nice-to-have.
+6. **[sourced] Implemented 2026-08-04.** Add a real attach ("+") menu to the composer. Both thread
+   composers were just a text field + send button (plus separate always-visible gift/emoticon/
+   voucher icons on `ChatThreadView`) — no photo, file, or sticker send at all. Kakao's emoticon
+   picker alone is core, monetized product surface (~1/3 of 2020 revenue), not a nice-to-have.
+   **Real finding on inspection**: both backend services already validated/persisted a real
+   `imageUrl` (enforced to be a genuine `/api/v1/uploads/` file) -- neither Android request DTO
+   carried the field, neither response DTO read it back, no UI could pick or send one. Reuses the
+   exact real upload flow `MarketplaceScreen`/`PropertyScreen` already established. Consolidates
+   `ChatThreadView`'s 3 separate always-visible icons (🎁/😊/🎟️) plus the new 📷 into one real
+   Kakao-style "+" menu; `GroupThreadView`'s single 😊 button gets the same treatment. Both bubbles
+   now render `imageUrl` via `AsyncImage`. Live-verified end-to-end for both 1:1 and group threads
+   against the real dev backend (upload -> send -> real GET reflects it -> real static fetch
+   returns 200), test messages cleaned up afterward.
 
 7. **[implemented, backend; pin UI closed 2026-08-04]** @mention support in group chats is real
    (`GroupMessagingService.parseMentions`, 2026-07-25): `@FirstName` tokens resolve against real
