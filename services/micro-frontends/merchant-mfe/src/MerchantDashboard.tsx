@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, CircleDollarSign, CreditCard, HandCoins, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, UtensilsCrossed, Users } from 'lucide-react';
+import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, UtensilsCrossed, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import RegisterScreen from './RegisterScreen';
 import AdsScreen from './screens/AdsScreen';
 import BillingScreen from './screens/BillingScreen';
+import BookingScreen from './screens/BookingScreen';
 import BusinessAccountScreen from './screens/BusinessAccountScreen';
 import CollectScreen from './screens/CollectScreen';
 import CouponsScreen from './screens/CouponsScreen';
@@ -17,7 +18,7 @@ import SettingsScreen from './screens/SettingsScreen';
 import VendorCashAdvanceScreen from './screens/VendorCashAdvanceScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'pos' | 'eats' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
+type Tab = 'collect' | 'pos' | 'eats' | 'booking' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
   { id: 'collect', label: 'Collect', icon: QrCode },
@@ -27,6 +28,10 @@ const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
   // restaurant orders sees an honest empty state, not a hidden tab -- there's no
   // cheap way to know in advance whether a given merchant is a restaurant.
   { id: 'eats', label: 'Eats orders', icon: UtensilsCrossed },
+  // Real local-business appointment booking, owner side -- see lib/booking.ts's own
+  // doc comment. Already real on Android/iOS MerchantApp since 2026-07-25; found
+  // missing here via a fresh backend-endpoint sweep.
+  { id: 'booking', label: 'Bookings', icon: CalendarClock },
   { id: 'reports', label: 'Reports', icon: CircleDollarSign },
   { id: 'reviews', label: 'Reviews', icon: Star },
   { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -147,6 +152,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         {tab === 'collect' && <CollectScreen />}
         {tab === 'pos' && <PosScreen />}
         {tab === 'eats' && <EatsOrdersScreen />}
+        {tab === 'booking' && <BookingScreen />}
         {tab === 'reports' && <ReportsScreen />}
         {tab === 'reviews' && <ReviewsScreen merchant={merchant} />}
         {tab === 'billing' && <BillingScreen />}
