@@ -77,11 +77,16 @@ they close in itunda's current implementation.
    in `MapsScreen.kt`'s sheet as two real horizontal-scroll sections in the true empty state.
    *Target: `MapsScreen.kt` — default state when `selectedPlace == null && activeCategory == null`*
 
-3. **[sourced]** Elevate the place-detail card's action row and image. itunda's selected-place
-   Card (lines 583–656) shows only a name, a star toggle, and a single "Directions" button.
-   Kakao Map's real redesign deliberately surfaces a full action-button row (reserve/delivery/
-   bookmark/call/directions) plus a hero image up front so actions don't require a sub-page.
-   *Target: `MapScreen.kt:583-656`*
+3. **[sourced, Kakao Map -- flagged 2026-08-04]** Elevate the place-detail card's action row and
+   image. itunda's selected-place card still shows only a name, a star toggle, and a single
+   "Directions" button. **This recommendation's own source is Kakao Map's redesign, not Naver's** --
+   during a Naver-specific pass, a fresh, more targeted search confirmed real Naver Map place-detail
+   sheets do show richer info (주소/연락처/영업시간/메뉴판/사진/주차 -- address/contact/hours/menu/
+   photos/parking), but no primary Naver source with precise action-row/hero-image layout specifics
+   was found (only a general feature-list description). Real gap either way, but don't cite this
+   entry as "confirmed Naver" until a primary Naver source backs the specific layout, not just the
+   general feature list.
+   *Target: `MapsScreen.kt` selected-place card*
 
 4. **[sourced] Implemented.** Group bookmarks into named, colored lists instead of one flat list.
    Both Kakao Map (그룹 + per-group color, shareable) and Naver Map (named list + color +
@@ -98,12 +103,16 @@ they close in itunda's current implementation.
    with a genuinely unauthenticated curl call (no token at all).
    *Target: `MapsScreen.kt` plus backend `MapBookmarkDto`/`AddMapBookmarkRequest`, which needed a list/group + color field*
 
-5. **[partially-sourced]** Give turn-by-turn its own presentation instead of an inline
-   expand/collapse text block (`showSteps` toggle, lines 605–629). Kakao treats routing as its own
-   dedicated presentation with per-route summaries (duration/fare/transfers for transit;
-   distance/duration/calories for walking). Note: itunda's OSRM-backed route already draws a real
-   road-following line, so this gap is purely presentational, not a routing-data quality issue.
-   *Target: `MapScreen.kt:605-629`*
+5. **[partially-sourced, Kakao Map -- corrected 2026-08-04]** Give turn-by-turn its own
+   presentation instead of an inline expand/collapse text block (`showSteps` toggle). Kakao treats
+   routing as its own dedicated presentation with per-route summaries. **A fresh, Naver-specific
+   search found this does NOT hold for Naver**: real 네이버 지도 directions explicitly keep the map
+   route and the detailed text-based turn-by-turn visible together "on one screen at once"
+   (이용가이드/사용법 guide sites), closer to itunda's existing inline-toggle approach than to
+   Kakao's separate-presentation pattern. Building a Kakao-style separate screen here would now
+   actively contradict real Naver behavior -- not implemented, and shouldn't be without a stronger,
+   Naver-specific primary source.
+   *Target: `MapsScreen.kt` (`showSteps` toggle) -- not currently recommended for a Naver-parity pass*
 
 6. **[inferred] Implemented.** Move search from submit-then-list toward autocomplete with a
    recent-searches zero state. itunda's search was tap-"Search"-then-flat-list with no live
@@ -114,10 +123,12 @@ they close in itunda's current implementation.
    real recent-searches zero state.**
    *Target: `MapsScreen.kt` search field and results list*
 
-7. **[partially-sourced]** Category chips (lines 513–537) already structurally match Kakao's
-   pattern reasonably well — this is a genuine partial match, not an urgent gap. The one
-   documented difference: Kakao's chips are multi-select toggles paired with a separate detail
-   popup; `searchNearbyCategory()` (line 290) is strictly single-select today.
+7. **[partially-sourced, Kakao Map -- flagged 2026-08-04]** Category chips already structurally
+   match Kakao's pattern reasonably well — this is a genuine partial match, not an urgent gap. The
+   one documented difference: Kakao's chips are multi-select toggles paired with a separate detail
+   popup; `searchNearbyCategory()` is strictly single-select today. This item is Kakao-sourced, not
+   Naver -- lowest priority of the three Kakao-attributed items in this section (3/5/7) given it was
+   already described as a non-urgent partial match even before that correction.
 
 ### Unresolved / worth a follow-up
 
