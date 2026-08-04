@@ -10,10 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -155,12 +154,14 @@ private fun CashInCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (St
             IdsTextField(value = account, onValueChange = { account = it }, label = "Customer account number", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Receipt number", modifier = Modifier.fillMaxWidth())
-            Button(
+            IdsButton(
+                text = if (busy) "Working…" else "Accept cash-in",
+                enabled = !busy,
                 onClick = {
                     val value = amount.toBigDecimalOrNull()
                     if (account.isBlank() || receipt.isBlank() || value == null || value <= java.math.BigDecimal.ZERO) {
                         onError("Enter a real account number, receipt number, and a positive amount.")
-                        return@Button
+                        return@IdsButton
                     }
                     busy = true
                     scope.launch {
@@ -175,8 +176,7 @@ private fun CashInCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (St
                         }
                     }
                 },
-                enabled = !busy,
-            ) { Text(if (busy) "Working…" else "Accept cash-in") }
+            )
         }
     }
 }
@@ -197,12 +197,14 @@ private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (S
             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Receipt number", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = code, onValueChange = { code = it }, label = "Customer's withdrawal code", modifier = Modifier.fillMaxWidth())
-            Button(
+            IdsButton(
+                text = if (busy) "Working…" else "Pay cash-out",
+                enabled = !busy,
                 onClick = {
                     val value = amount.toBigDecimalOrNull()
                     if (account.isBlank() || receipt.isBlank() || code.isBlank() || value == null || value <= java.math.BigDecimal.ZERO) {
                         onError("Enter a real account number, receipt number, withdrawal code, and a positive amount.")
-                        return@Button
+                        return@IdsButton
                     }
                     busy = true
                     scope.launch {
@@ -217,8 +219,7 @@ private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (S
                         }
                     }
                 },
-                enabled = !busy,
-            ) { Text(if (busy) "Working…" else "Pay cash-out") }
+            )
         }
     }
 }
@@ -233,12 +234,14 @@ private fun TillCountCard(onSubmitted: (java.math.BigDecimal, String) -> Unit, o
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Submit today's till count", style = MaterialTheme.typography.titleMedium)
             IdsTextField(value = counted, onValueChange = { counted = it }, label = "Counted cash (RWF)", modifier = Modifier.fillMaxWidth())
-            Button(
+            IdsButton(
+                text = if (busy) "Working…" else "Submit count",
+                enabled = !busy,
                 onClick = {
                     val value = counted.toBigDecimalOrNull()
                     if (value == null || value < java.math.BigDecimal.ZERO) {
                         onError("Enter a real counted-cash amount.")
-                        return@Button
+                        return@IdsButton
                     }
                     busy = true
                     scope.launch {
@@ -253,8 +256,7 @@ private fun TillCountCard(onSubmitted: (java.math.BigDecimal, String) -> Unit, o
                         }
                     }
                 },
-                enabled = !busy,
-            ) { Text(if (busy) "Working…" else "Submit count") }
+            )
         }
     }
 }

@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonVariant
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -83,8 +83,10 @@ fun CertificateScreen(onBack: () -> Unit) {
                             Text("Serial ${current.serialNumber}", style = MaterialTheme.typography.bodySmall)
                             Text("Expires ${current.expiresAt}", style = MaterialTheme.typography.bodySmall)
                             Spacer(Modifier.height(12.dp))
-                            Button(
+                            IdsButton(
+                                text = if (busy) "Revoking…" else "Revoke certificate",
                                 enabled = !busy,
+                                variant = IdsButtonVariant.Tinted,
                                 onClick = {
                                     busy = true
                                     scope.launch {
@@ -97,7 +99,7 @@ fun CertificateScreen(onBack: () -> Unit) {
                                         } finally { busy = false }
                                     }
                                 },
-                            ) { Text(if (busy) "Revoking…" else "Revoke certificate") }
+                            )
                         } else {
                             if (current != null) {
                                 Text(
@@ -106,7 +108,8 @@ fun CertificateScreen(onBack: () -> Unit) {
                                 )
                                 Spacer(Modifier.height(8.dp))
                             }
-                            Button(
+                            IdsButton(
+                                text = if (busy) "Issuing…" else "Issue a certificate",
                                 enabled = !busy,
                                 onClick = {
                                     busy = true
@@ -127,7 +130,7 @@ fun CertificateScreen(onBack: () -> Unit) {
                                         } finally { busy = false }
                                     }
                                 },
-                            ) { Text(if (busy) "Issuing…" else "Issue a certificate") }
+                            )
                         }
                     }
                 }
@@ -183,7 +186,8 @@ private fun VerifyCertificateCard() {
             Spacer(Modifier.height(12.dp))
             IdsTextField(value = serialNumber, onValueChange = { serialNumber = it; statusResult = null; verifyResult = null; error = null }, label = "Serial number", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button(
+            IdsButton(
+                text = if (busy) "Checking…" else "Check status",
                 enabled = !busy && serialNumber.isNotBlank(),
                 onClick = {
                     busy = true
@@ -198,7 +202,7 @@ private fun VerifyCertificateCard() {
                         } finally { busy = false }
                     }
                 },
-            ) { Text(if (busy) "Checking…" else "Check status") }
+            )
             statusResult?.let { cert ->
                 Spacer(Modifier.height(8.dp))
                 Text("Status: ${cert.status}", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
@@ -212,7 +216,8 @@ private fun VerifyCertificateCard() {
             Spacer(Modifier.height(8.dp))
             IdsTextField(value = signature, onValueChange = { signature = it; verifyResult = null }, label = "Signature (base64)", modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
-            Button(
+            IdsButton(
+                text = if (busy) "Verifying…" else "Verify signature",
                 enabled = !busy && serialNumber.isNotBlank() && payload.isNotBlank() && signature.isNotBlank(),
                 onClick = {
                     busy = true
@@ -228,7 +233,7 @@ private fun VerifyCertificateCard() {
                         } finally { busy = false }
                     }
                 },
-            ) { Text(if (busy) "Verifying…" else "Verify signature") }
+            )
             verifyResult?.let { result ->
                 Spacer(Modifier.height(8.dp))
                 Text(
