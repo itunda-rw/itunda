@@ -8998,7 +8998,13 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
 // defining KakaoTalk capability the original 1:1-only Messages tab didn't cover, added
 // at the user's direct request. See GroupMessagingService.kt's own doc comment.
 function MessagesView({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
-  const [mode, setMode] = useState<'DIRECT' | 'GROUPS'>('DIRECT');
+  const [mode, setMode] = useState<'DIRECT' | 'GROUPS' | 'FRIENDS'>('DIRECT');
+  // Real Kakao-style Friends directory (item 237) -- see FriendsList's own doc
+  // comment. Tapping a friend hands its real conversation id off to DirectMessagesList
+  // through the exact same initialConversationId mechanism CommunityView's own
+  // "join meetup" hand-off below already established, rather than duplicating
+  // ConversationThread's own render logic inside FriendsList.
+  const [friendJumpConversationId, setFriendJumpConversationId] = useState<string | null>(null);
 
   // Real "join meetup" hand-off from CommunityView (2026-07-24): a real
   // GroupConversation id, not a 1:1 conversation id, needs the Groups tab
@@ -9017,7 +9023,7 @@ function MessagesView({ initialConversationId, onConsumedInitial }: { initialCon
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['DIRECT', 'GROUPS'] as const).map((v) => (
+        {(['DIRECT', 'GROUPS', 'FRIENDS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setMode(v)}
@@ -9027,15 +9033,103 @@ function MessagesView({ initialConversationId, onConsumedInitial }: { initialCon
               backgroundColor: mode === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'DIRECT' ? 'Direct' : 'Groups'}
+            {v === 'DIRECT' ? 'Direct' : v === 'GROUPS' ? 'Groups' : 'Friends'}
           </button>
         ))}
       </div>
       {mode === 'DIRECT' ? (
-        <DirectMessagesList initialConversationId={initialConversationId} onConsumedInitial={onConsumedInitial} />
-      ) : (
+        <DirectMessagesList
+          initialConversationId={friendJumpConversationId ?? initialConversationId}
+          onConsumedInitial={() => { setFriendJumpConversationId(null); onConsumedInitial?.(); }}
+        />
+      ) : mode === 'GROUPS' ? (
         <GroupsList initialConversationId={initialConversationId} onConsumedInitial={onConsumedInitial} />
+      ) : (
+        <FriendsList onOpenConversation={(id) => { setFriendJumpConversationId(id); setMode('DIRECT'); }} />
       )}
+    </div>
+  );
+}
+
+// Real Kakao Friends-tab equivalent (item 237, sourced -- Kakao's Sept 2025 attempt
+// to bury this tab caused a rating collapse and was reverted within 3 months, per
+// this doc's own Talk section recommendation #1). itunda's Talk only ever let a user
+// switch between chat-*history* views (Direct/Groups); there was no way to browse
+// contacts who are on itunda but you haven't messaged yet -- "New chat" only worked
+// as a hand-typed-phone-number or inline quick-pick composer, not a real browsable
+// directory. The backend infra (`GET /messages/contacts`, `GET /messages/presence`)
+// was already fully real and already used inline in the New-chat/add-group-member
+// composers on all 3 platforms -- this is a client-only addition, no new endpoint.
+function FriendsList({ onOpenConversation }: { onOpenConversation: (conversationId: string) => void }) {
+  const [contacts, setContacts] = useState<TalkContact[] | null>(null);
+  const [presence, setPresence] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [startingId, setStartingId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchTalkContacts()
+      .then((c) => {
+        setContacts(c);
+        if (c.length > 0) fetchPresence(c.map((x) => x.userId)).then(setPresence).catch(() => {});
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your friends.'));
+  };
+  useEffect(load, []);
+
+  const handleTap = async (contact: TalkContact) => {
+    setStartingId(contact.userId);
+    setError(null);
+    try {
+      const conversation = await startConversationWithUser(contact.userId);
+      onOpenConversation(conversation.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not start this chat.');
+    } finally {
+      setStartingId(null);
+    }
+  };
+
+  if (error) return <ErrorCard message={error} onRetry={load} />;
+  if (contacts === null) return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+  if (contacts.length === 0) {
+    return (
+      <div className="toss-card">
+        <EmptyState message="No friends yet -- save someone's contact and they'll show up here once they're on itunda." />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {contacts.map((c) => (
+        <button
+          key={c.userId}
+          onClick={() => handleTap(c)}
+          disabled={startingId === c.userId}
+          className="toss-card"
+          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', width: '100%', textAlign: 'left', background: 'var(--toss-white)', border: 'none', cursor: 'pointer' }}
+        >
+          <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Users size={20} color="var(--toss-blue)" />
+            </div>
+            {presence[c.userId] && (
+              <span
+                style={{
+                  position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', borderRadius: '6px',
+                  backgroundColor: 'var(--toss-green)', border: '2px solid var(--toss-white)',
+                }}
+              />
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{c.name}</p>
+            {presence[c.userId] && <p style={{ fontSize: '12px', color: 'var(--toss-green)', fontWeight: 700 }}>Active now</p>}
+          </div>
+          {startingId === c.userId && <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>…</span>}
+        </button>
+      ))}
     </div>
   );
 }
