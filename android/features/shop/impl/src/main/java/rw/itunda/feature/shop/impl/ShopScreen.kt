@@ -102,6 +102,7 @@ import rw.itunda.core.network.MerchantBookingReviewDto
 import rw.itunda.core.network.SubmitBookingReviewRequest
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.CreateAffiliateLinkRequest
+import rw.itunda.core.network.DecideOrderReturnRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ORDER_RETURN_REASON_CODES
 import rw.itunda.core.network.OrderDto
@@ -125,6 +126,7 @@ import rw.itunda.core.network.RequestOrderReturnRequest
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.StaticQrPayRequest
 import rw.itunda.core.network.SubmitProductReviewRequest
+import rw.itunda.core.network.UpdateOrderStatusRequest
 import rw.itunda.core.network.isDeviceNotVerifiedError
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -532,6 +534,13 @@ fun CommerceShopContent(
                 }
             }
         }
+        // Real merchant-side Commerce order fulfillment queue (item 234) -- see
+        // ApiService.getMerchantOrders's own doc comment. Shown above every sub-tab,
+        // same placement as bank-mfe's own MerchantOrdersView/MerchantReturnQueueView
+        // (self-hides for a buyer-only account -- MERCHANT_NOT_FOUND is a real, expected,
+        // silent case, not an error).
+        item { MerchantOrdersView() }
+        item { MerchantReturnQueueView() }
         if (view == CommerceView.ORDERS) {
             item { MyCommerceOrdersView() }
             item { MyBookingsView() }
@@ -1964,6 +1973,198 @@ private fun MyProductSubscriptionsView() {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real merchant-side Commerce order fulfillment queue (item 234) -- found via a
+// sibling-consistency audit against bank-mfe's own MerchantOrdersView, which has had
+// this since before this session: a real itunda user who also runs a merchant
+// storefront could manage their store's orders on bank-mfe but had zero client
+// anywhere on Android. Android port, straight mirror of bank-mfe's own component.
+private val COMMERCE_MERCHANT_STATUS_CHAIN = listOf("PLACED", "PACKED", "SHIPPED", "DELIVERED")
+
+@Composable
+private fun MerchantOrdersView() {
+    var orders by remember { mutableStateOf<List<OrderDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busyOrderId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMerchantOrders()
+                if (res.success) orders = res.orders
+                error = null
+            } catch (e: HttpException) {
+                // A real, expected error for any account that hasn't registered as a
+                // merchant -- stays silent rather than alarming the common case of a
+                // buyer-only account, matching bank-mfe's own MerchantOrdersView.
+                if (rw.itunda.core.network.apiErrorCode(e) == "MERCHANT_NOT_FOUND") {
+                    orders = emptyList()
+                } else {
+                    error = superAppErrorMessage(e)
+                }
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            load()
+            delay(4000)
+        }
+    }
+
+    fun advance(order: OrderDto) {
+        val idx = COMMERCE_MERCHANT_STATUS_CHAIN.indexOf(order.status)
+        val next = COMMERCE_MERCHANT_STATUS_CHAIN.getOrNull(idx + 1) ?: return
+        busyOrderId = order.id
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.updateOrderStatus(order.id, UpdateOrderStatusRequest(next))
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busyOrderId = null
+            }
+        }
+    }
+
+    val list = orders
+    if (error != null) {
+        ErrorCard(error!!, onRetry = ::load)
+        return
+    }
+    if (list == null) {
+        SkeletonBlock()
+        return
+    }
+    if (list.isEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 20.dp)) {
+        Text("Orders for your store", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        list.forEach { o ->
+            val idx = COMMERCE_MERCHANT_STATUS_CHAIN.indexOf(o.status)
+            val next = COMMERCE_MERCHANT_STATUS_CHAIN.getOrNull(idx + 1)
+            CommerceOrderRow(o) {
+                if (next != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (busyOrderId == o.id) Ids.colors.textTertiary else Ids.colors.brand)
+                            .clickable(enabled = busyOrderId != o.id) { advance(o) }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            if (busyOrderId == o.id) "Updating…" else "Mark ${(COMMERCE_STATUS_LABEL[next] ?: next).lowercase()}",
+                            color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MerchantReturnQueueView() {
+    var requests by remember { mutableStateOf<List<OrderReturnRequestDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busyId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMerchantReturnQueue()
+                if (res.success) requests = res.returnRequests
+                error = null
+            } catch (e: HttpException) {
+                if (rw.itunda.core.network.apiErrorCode(e) == "MERCHANT_NOT_FOUND") {
+                    requests = emptyList()
+                } else {
+                    error = superAppErrorMessage(e)
+                }
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            load()
+            delay(8000)
+        }
+    }
+
+    fun decide(id: String, approve: Boolean) {
+        busyId = id
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.decideOrderReturn(id, DecideOrderReturnRequest(approve))
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busyId = null
+            }
+        }
+    }
+
+    val list = requests
+    if (error != null) {
+        ErrorCard(error!!, onRetry = ::load)
+        return
+    }
+    if (list == null) {
+        SkeletonBlock()
+        return
+    }
+    val open = list.filter { it.status == "REQUESTED" }
+    if (open.isEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 20.dp)) {
+        Text("Return & exchange requests", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        open.forEach { r ->
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (r.type == "RETURN") "Return requested" else "Exchange requested", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(r.reasonCode.replace("_", " ").lowercase(), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                    r.reasonNote?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 13.sp) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (busyId == r.id) Ids.colors.textTertiary else Ids.colors.brand)
+                                .clickable(enabled = busyId != r.id) { decide(r.id, true) }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (busyId == r.id) "…" else "Approve", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Ids.colors.surface)
+                                .clickable(enabled = busyId != r.id) { decide(r.id, false) }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text("Reject", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                     }
                 }
             }

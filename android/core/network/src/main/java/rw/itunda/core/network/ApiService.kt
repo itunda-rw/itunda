@@ -1374,6 +1374,7 @@ data class OrderReturnRequestDto(
 )
 data class OrderReturnRequestResponse(val success: Boolean, val returnRequest: OrderReturnRequestDto)
 data class OrderReturnRequestsResponse(val success: Boolean, val returnRequests: List<OrderReturnRequestDto>)
+data class DecideOrderReturnRequest(val approve: Boolean)
 
 // Real post-delivery product reviews (2026-07-20) -- see ProductReviewService's own doc
 // comment, mirroring Eats' SubmitEatsReviewRequest/EatsReviewDto pattern above but keyed
@@ -2985,6 +2986,25 @@ interface ApiService {
     @GET("api/v1/orders/{id}")
     suspend fun getOrder(@Path("id") orderId: String): OrderDetailResponse
 
+    // Real merchant-side Commerce order fulfillment queue (item 234) -- found via a
+    // sibling-consistency audit against bank-mfe's own MerchantOrdersView/
+    // MerchantReturnQueueView, which have had this since before this session: a real
+    // itunda user who also runs a merchant storefront could manage their store's
+    // orders on bank-mfe but had zero client anywhere on Android or iOS. Mirrors
+    // bank-mfe's own COMMERCE_STATUS_CHAIN (PLACED -> PACKED -> SHIPPED -> DELIVERED)
+    // exactly.
+    @GET("api/v1/orders/merchant-orders")
+    suspend fun getMerchantOrders(): OrdersResponse
+
+    @POST("api/v1/orders/{orderId}/status")
+    suspend fun updateOrderStatus(@Path("orderId") orderId: String, @Body request: UpdateOrderStatusRequest): OrderDetailResponse
+
+    @GET("api/v1/orders/returns/merchant-queue")
+    suspend fun getMerchantReturnQueue(): OrderReturnRequestsResponse
+
+    @POST("api/v1/orders/returns/{returnRequestId}/decide")
+    suspend fun decideOrderReturn(@Path("returnRequestId") returnRequestId: String, @Body request: DecideOrderReturnRequest): OrderReturnRequestResponse
+
     // Real live rider-location tracking for Commerce orders (item 230) -- found via a
     // defined-but-uncalled-endpoint sweep: mirrors getEatsRiderLocation exactly (same
     // RiderLocationDto shape, same real "available: false" while genuinely nothing to
@@ -3014,10 +3034,7 @@ interface ApiService {
     // Real Coupang-style post-delivery Return & Exchange requests (item 166/174) -- see
     // OrderReturnService's own doc comment. A real 7-day window from delivery; an
     // approved RETURN triggers a real refund via reversed ledger legs, an approved
-    // EXCHANGE moves no money. Merchant-side approve/reject queue has no Android client
-    // anywhere yet (Shop has no merchant order-management screen at all on this
-    // platform, native merchantapp or main app) -- a real, separate, not-yet-started
-    // gap; this is the buyer-side client only.
+    // EXCHANGE moves no money. Merchant-side approve/reject queue closed item 234 above.
     @POST("api/v1/orders/{orderId}/return")
     suspend fun requestOrderReturn(@Path("orderId") orderId: String, @Body request: RequestOrderReturnRequest): OrderReturnRequestResponse
 
