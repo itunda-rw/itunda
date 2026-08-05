@@ -159,6 +159,15 @@ interface AuthApi {
     @POST("api/v1/notifications/device-tokens")
     suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): SuccessResponse
 
+    // Real push unregister-on-logout (item 232) -- found via a defined-but-uncalled-
+    // endpoint sweep, see backend DeviceTokenController.unregister's own doc comment.
+    // bank-mfe shipped this first (2026-08-05); this is the Android port. Explicit
+    // Authorization header, same discipline as `logout` above -- called from
+    // SessionManager.logout() before tokenStore.clearSession(), so the interceptor
+    // would otherwise have nothing to attach.
+    @DELETE("api/v1/notifications/device-tokens/{token}")
+    suspend fun unregisterDeviceToken(@Header("Authorization") bearerAccessToken: String, @Path("token") token: String): SuccessResponse
+
     // Real email/phone verification (item 169/178) -- see AuthService.requestEmailVerification/
     // requestPhoneVerification's own doc comments: a real code is delivered via a real
     // in-app Notification + push, no real SMS/email gateway exists. bank-mfe (item 169)

@@ -78,6 +78,13 @@ object SessionManager {
                 // clear below. A user who taps "log out" needs it to work locally
                 // regardless of network state.
             }
+            try {
+                val deviceStore = NetworkClient.currentDeviceStore()
+                NetworkClient.authApi.unregisterDeviceToken("Bearer $accessToken", deviceStore.getOrCreateDeviceId())
+            } catch (_: Exception) {
+                // Real push unregister-on-logout (item 232) -- best-effort, see
+                // ApiService.unregisterDeviceToken's own doc comment.
+            }
         }
         tokenStore.clearSession()
         _sessionState.value = SessionState.LoggedOut
