@@ -541,6 +541,10 @@ data class MessageDto(
     // real forwarded message's genuine provenance; no Android DTO ever read them back.
     val forwardedFromMessageId: String? = null,
     val forwardedFromType: String? = null,
+    // Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
+    // recommendation #3's own account. A real, read-time-computed count of direct
+    // replies to this message (0 for a message no one has replied to).
+    val replyCount: Long = 0,
 )
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
@@ -626,6 +630,8 @@ data class GroupMessageDto(
     // .getMessages's own doc comment. Counts real members whose lastReadAt is still
     // before this message's sentAt; decrements live as members open the thread.
     val unreadCount: Long = 0,
+    // Real Thread support (2026-08-05) -- see MessageDto.replyCount's own doc comment.
+    val replyCount: Long = 0,
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
@@ -2212,6 +2218,11 @@ interface ApiService {
     @DELETE("api/v1/messages/conversations/{id}/messages/{messageId}")
     suspend fun deleteMessage(@Path("id") conversationId: String, @Path("messageId") messageId: String): SuccessResponse
 
+    // Real Thread support (2026-08-05) -- see MessageDto.replyCount's own doc comment.
+    // Root message first, then every direct reply oldest-first.
+    @GET("api/v1/messages/conversations/{id}/messages/{messageId}/thread")
+    suspend fun getThread(@Path("id") conversationId: String, @Path("messageId") messageId: String): MessagesResponse
+
     // Real message forwarding (2026-08-04) -- see ForwardMessageRequest's own doc
     // comment: MessageForwardService (backend, 2026-07-25) already fully supported
     // forwarding any 1:1 or group message to any 1:1 or group destination, with zero
@@ -2282,6 +2293,11 @@ interface ApiService {
 
     @DELETE("api/v1/messages/groups/{id}/messages/{messageId}")
     suspend fun deleteGroupMessage(@Path("id") groupId: String, @Path("messageId") messageId: String): SuccessResponse
+
+    // Real Thread support (2026-08-05) -- see getThread's own doc comment; identical
+    // shape for group chat.
+    @GET("api/v1/messages/groups/{id}/messages/{messageId}/thread")
+    suspend fun getGroupThread(@Path("id") groupId: String, @Path("messageId") messageId: String): GroupMessagesResponse
 
     // Real group-chat pin (2026-08-04) -- see GroupThreadView's own doc comment: the
     // real backend (GroupMessagingController, 2026-07-26) had no Retrofit client method

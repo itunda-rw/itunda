@@ -406,10 +406,23 @@ they close in itunda's current implementation.
    message correctly showed `replyCount: 2` after two real replies, the thread endpoint returned
    root+both replies in the correct oldest-first order, and a real non-participant's thread fetch
    correctly 404'd (not revealing the conversation exists) rather than leaking anything. Test data
-   cleaned up after. **Honestly scoped**: Android/iOS clients not yet built this pass -- a named,
-   deliberately deferred follow-up, matching this project's own established "ship web first"
-   precedent (Rideshare's scheduled bookings/driver ratings/multi-stop all shipped the same way).
-   *Target for the remaining work: `TalkScreen.kt`/`TalkScreen.swift` thread UI*
+   cleaned up after. **Android client added the same day**: `ApiService.kt` gained `replyCount` on
+   both `MessageDto`/`GroupMessageDto` and `getThread`/`getGroupThread`; `TalkScreen.kt` gained a
+   real "N replies →" affordance on `MessageBubble`/`GroupMessageBubble` (same visual convention
+   bank-mfe established) opening a new `RepliesThreadView`/`GroupRepliesThreadView` -- named
+   "Replies" rather than reusing "Thread" specifically to avoid colliding with this file's own
+   pre-existing `ChatThreadView`/`GroupThreadView` naming (the whole conversation screen, a
+   different real concept). A full clean `:app:compileDebugKotlin` (434/434 tasks re-executed)
+   compiled zero-error. **Verification caveat, disclosed honestly**: on-device visual confirmation
+   on the review emulator was attempted but blocked by a genuine emulator System UI hang (a
+   resource-exhaustion issue after several hours of continuous uptime in the same session, not
+   caused by this change -- the underlying app screen rendered correctly with real data behind the
+   stuck system dialog) -- this pass relied on the full clean compile plus the already
+   curl-verified backend contract, not a live screenshot, unlike this session's usual bar for
+   Android UI changes. **iOS client remains a named, deliberately deferred follow-up**, matching
+   this project's own established "ship web first, native follows" precedent (Rideshare's scheduled
+   bookings/driver ratings/multi-stop all shipped the same way).
+   *Target for the remaining work: `TalkScreen.swift` thread UI*
 
 4. **[implemented 2026-08-05]** Talk has private, durable quiet-room controls and
    suppresses notifications for the participant who enables one. Recoverable

@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -102,6 +103,8 @@ import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.components.chatMessageTime
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddGroupMemberRequest
+import rw.itunda.core.network.MessageResponse
+import rw.itunda.core.network.GroupMessageResponse
 import rw.itunda.core.network.SetGroupDescriptionRequest
 import rw.itunda.core.network.SetGroupPhotoUrlRequest
 import rw.itunda.core.network.AttachSplitBillReceiptRequest
@@ -657,6 +660,9 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     // conversation's own already-loaded `messages` list (filtered to real `imageUrl !=
     // null` entries) -- no new backend endpoint, since the data already exists in memory.
     var showMediaGallery by remember { mutableStateOf(false) }
+    // Real Thread support (2026-08-05) -- see RepliesThreadView's own doc comment; same
+    // real sub-conversation concept for group chat.
+    var openThreadFor by remember { mutableStateOf<GroupMessageDto?>(null) }
     // Real message forwarding (2026-08-04) -- see ForwardDestinationDialog's own doc
     // comment.
     var forwardingMessageId by remember { mutableStateOf<String?>(null) }
@@ -791,6 +797,16 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
             MediaGalleryView(imageUrls = (messages ?: emptyList()).mapNotNull { it.imageUrl }.reversed(), onBack = { showMediaGallery = false })
             return@Column
         }
+        openThreadFor?.let { root ->
+            GroupRepliesThreadView(
+                rootMessage = root,
+                currentUserId = currentUserId,
+                fetchThreadMessages = { NetworkClient.apiService.getGroupThread(group.groupId, root.id).messages },
+                onSend = { body -> NetworkClient.apiService.sendGroupMessage(group.groupId, SendGroupMessageRequest(body, root.id)) },
+                onBack = { openThreadFor = null; coroutineScope.launch { refresh() } },
+            )
+            return@Column
+        }
         if (showSplitBills) {
             GroupSplitBillsView(groupConversationId = group.groupId, members = members, currentUserId = currentUserId, onBack = { showSplitBills = false })
             return@Column
@@ -850,6 +866,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                             }
                         },
                         onReply = { replyingTo = it },
+                        onOpenThread = { openThreadFor = it },
                         onDelete = { messageId -> coroutineScope.launch {
                             try { NetworkClient.apiService.deleteGroupMessage(group.groupId, messageId); refresh() }
                             catch (_: Exception) { error = "Couldn't delete this message." }
@@ -1362,7 +1379,7 @@ private fun GroupManageMembersView(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GroupMessageBubble(
-    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {}, onPin: (GroupMessageDto) -> Unit = {}, onForward: (GroupMessageDto) -> Unit = {}, emoticonImageUrl: String? = null,
+    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {}, onOpenThread: (GroupMessageDto) -> Unit = {}, onPin: (GroupMessageDto) -> Unit = {}, onForward: (GroupMessageDto) -> Unit = {}, emoticonImageUrl: String? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
@@ -1427,6 +1444,18 @@ private fun GroupMessageBubble(
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
         )
+        // Real Thread support (2026-08-05) -- see MessageBubble's own identical
+        // affordance.
+        if (message.replyCount > 0) {
+            Text(
+                "${message.replyCount} ${if (message.replyCount == 1L) "reply" else "replies"} →",
+                color = Ids.colors.brand,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).clickable { onOpenThread(message) },
+                textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
+            )
+        }
     }
 }
 
@@ -1598,6 +1627,11 @@ private fun ChatThreadView(
     // Real per-thread shared-media gallery (2026-08-04) -- see GroupThreadView's own
     // doc comment for the full sourced account.
     var showMediaGallery by remember { mutableStateOf(false) }
+    // Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
+    // recommendation #3's own account. A message with real replies opens its own
+    // sub-conversation view here, not just the inline "replying to" tag replyingTo above
+    // already provides.
+    var openThreadFor by remember { mutableStateOf<MessageDto?>(null) }
     // Real attach ("+") menu + photo send (2026-08-04) -- see SendMessageRequest's own
     // doc comment. Consolidates the previously-separate always-visible 🎁/😊/🎟️ icons
     // (plus the new 📷) into one real Kakao-style "+" menu -- References table: "'+'
@@ -1757,6 +1791,16 @@ private fun ChatThreadView(
             MediaGalleryView(imageUrls = (messages ?: emptyList()).mapNotNull { it.imageUrl }.reversed(), onBack = { showMediaGallery = false })
             return@Column
         }
+        openThreadFor?.let { root ->
+            RepliesThreadView(
+                rootMessage = root,
+                currentUserId = currentUserId,
+                fetchThreadMessages = { NetworkClient.apiService.getThread(conversation.conversationId, root.id).messages },
+                onSend = { body -> NetworkClient.apiService.sendMessage(conversation.conversationId, SendMessageRequest(body, root.id)) },
+                onBack = { openThreadFor = null; coroutineScope.launch { refresh() } },
+            )
+            return@Column
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { showMediaGallery = true }) { Text("Photos", color = Ids.colors.textSecondary) }
             TextButton(
@@ -1845,6 +1889,7 @@ private fun ChatThreadView(
                             }
                         },
                         onReply = { replyingTo = it },
+                        onOpenThread = { openThreadFor = it },
                         onDelete = { messageId -> coroutineScope.launch {
                             try { NetworkClient.apiService.deleteMessage(conversation.conversationId, messageId); refresh() }
                             catch (_: Exception) { error = "Couldn't delete this message." }
@@ -2163,6 +2208,159 @@ private fun ChatThreadView(
             ) {
                 Icon(Icons.Outlined.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
             }
+        }
+    }
+}
+
+// Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
+// recommendation #3's own account and MessagingController.getThread's backend doc
+// comment for the full sourced Kakao account. A real sub-conversation view: the root
+// message, every direct reply oldest-first, and a composer that replies straight into
+// this same thread. Named "Replies" rather than reusing "Thread" to avoid colliding
+// with this file's own existing ChatThreadView/GroupThreadView naming (those are the
+// whole conversation screen, a different real concept).
+@Composable
+private fun RepliesThreadView(
+    rootMessage: MessageDto,
+    currentUserId: String?,
+    fetchThreadMessages: suspend () -> List<MessageDto>,
+    onSend: suspend (String) -> MessageResponse,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    var messages by remember { mutableStateOf<List<MessageDto>?>(null) }
+    var draft by remember { mutableStateOf("") }
+    var sending by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try { messages = fetchThreadMessages() } catch (_: Exception) { error = "Could not load this thread." }
+        }
+    }
+    LaunchedEffect(rootMessage.id) { load() }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
+        BackTopBar("Thread", onBack)
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val msgs = messages
+            if (msgs == null) {
+                item { SkeletonBlock(height = 72.dp) }
+            } else {
+                itemsIndexed(msgs, key = { _, m -> m.id }) { index, m ->
+                    val isMine = m.senderId == currentUserId
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        if (index == 0) {
+                            Text("Original message", color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(if (isMine) Ids.colors.brand else Ids.colors.surfaceSoft).padding(horizontal = 14.dp, vertical = 10.dp),
+                            ) {
+                                Text(if (m.deletedAt == null) m.body else "This message was deleted", color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+                            }
+                        }
+                        Text(
+                            chatMessageTime(m.sentAt), color = Ids.colors.textSecondary, fontSize = 10.sp,
+                            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                            textAlign = if (isMine) TextAlign.End else TextAlign.Start,
+                        )
+                    }
+                }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            IdsTextField(value = draft, onValueChange = { draft = it }, label = "Reply in thread", modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(8.dp))
+            IdsButton(
+                text = if (sending) "…" else "Send",
+                enabled = !sending && draft.isNotBlank(),
+                size = IdsButtonSize.Medium,
+                onClick = {
+                    val body = draft.trim()
+                    if (body.isEmpty()) return@IdsButton
+                    sending = true
+                    coroutineScope.launch {
+                        try { onSend(body); draft = ""; load() } catch (_: Exception) { error = "Could not send this reply." } finally { sending = false }
+                    }
+                },
+            )
+        }
+    }
+}
+
+// Real Thread support (2026-08-05) -- see RepliesThreadView's own doc comment; identical
+// shape for group chat.
+@Composable
+private fun GroupRepliesThreadView(
+    rootMessage: GroupMessageDto,
+    currentUserId: String?,
+    fetchThreadMessages: suspend () -> List<GroupMessageDto>,
+    onSend: suspend (String) -> GroupMessageResponse,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    var messages by remember { mutableStateOf<List<GroupMessageDto>?>(null) }
+    var draft by remember { mutableStateOf("") }
+    var sending by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try { messages = fetchThreadMessages() } catch (_: Exception) { error = "Could not load this thread." }
+        }
+    }
+    LaunchedEffect(rootMessage.id) { load() }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
+        BackTopBar("Thread", onBack)
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val msgs = messages
+            if (msgs == null) {
+                item { SkeletonBlock(height = 72.dp) }
+            } else {
+                itemsIndexed(msgs, key = { _, m -> m.id }) { index, m ->
+                    val isMine = m.senderId == currentUserId
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        if (index == 0) {
+                            Text("Original message", color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(if (isMine) Ids.colors.brand else Ids.colors.surfaceSoft).padding(horizontal = 14.dp, vertical = 10.dp),
+                            ) {
+                                Text(if (m.deletedAt == null) m.body else "This message was deleted", color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+                            }
+                        }
+                        Text(
+                            chatMessageTime(m.sentAt), color = Ids.colors.textSecondary, fontSize = 10.sp,
+                            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                            textAlign = if (isMine) TextAlign.End else TextAlign.Start,
+                        )
+                    }
+                }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            IdsTextField(value = draft, onValueChange = { draft = it }, label = "Reply in thread", modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(8.dp))
+            IdsButton(
+                text = if (sending) "…" else "Send",
+                enabled = !sending && draft.isNotBlank(),
+                size = IdsButtonSize.Medium,
+                onClick = {
+                    val body = draft.trim()
+                    if (body.isEmpty()) return@IdsButton
+                    sending = true
+                    coroutineScope.launch {
+                        try { onSend(body); draft = ""; load() } catch (_: Exception) { error = "Could not send this reply." } finally { sending = false }
+                    }
+                },
+            )
         }
     }
 }
@@ -2829,11 +3027,10 @@ private fun EmoticonStoreDialog(onDismiss: () -> Unit) {
 // UX mismatch, not a missing-capability one: real KakaoTalk reveals this exact toolkit
 // only on long-press, keeping the bubble itself clean. Copy is new (real
 // LocalClipboardManager, zero backend needed) -- the one item from Kakao's real toolkit
-// itunda had no equivalent for at all. Forward (to up to 10 destinations) and Thread
-// (expanding a reply into its own sub-conversation) are real, sourced Kakao features but
-// need new backend concepts itunda doesn't have yet (a forward-to-conversation endpoint,
-// a thread/sub-conversation model) -- not built this pass, left as a real, scoped
-// follow-up rather than a half-built approximation.
+// itunda had no equivalent for at all. Forward (to up to 10 destinations, closed
+// 2026-08-04) and Thread (expanding a reply into its own sub-conversation, closed
+// 2026-08-05) both shipped -- see MessagingController.getThread's own doc comment on
+// the backend for the full sourced account of the last one.
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
@@ -2843,6 +3040,7 @@ private fun MessageBubble(
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
     onExtendVoucher: (String) -> Unit = {},
     onReply: (MessageDto) -> Unit = {},
+    onOpenThread: (MessageDto) -> Unit = {},
     onDelete: (String) -> Unit = {},
     onPin: (MessageDto) -> Unit = {},
     onForward: (MessageDto) -> Unit = {},
@@ -2916,6 +3114,19 @@ private fun MessageBubble(
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
             textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
         )
+        // Real Thread support (2026-08-05) -- a real "N replies" affordance opening its
+        // own sub-conversation view, matching Kakao's confirmed real reply-thread
+        // pattern (docs/DESIGN_REFERENCES.md Talk section recommendation #3).
+        if (message.replyCount > 0) {
+            Text(
+                "${message.replyCount} ${if (message.replyCount == 1L) "reply" else "replies"} →",
+                color = Ids.colors.brand,
+                fontSize = 11.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp).clickable { onOpenThread(message) },
+                textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
+            )
+        }
     }
     if (reportOpen) AlertDialog(
         onDismissRequest = { reportOpen = false },
