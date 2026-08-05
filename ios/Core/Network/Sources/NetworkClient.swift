@@ -4530,6 +4530,16 @@ extension NetworkClient {
 
     public func getOrder(_ orderId: String) async throws -> OrderDetailResponse { try await get("api/v1/orders/\(orderId)") }
 
+    /// Real live rider-location tracking for Commerce orders (item 230) -- found via a
+    /// defined-but-uncalled-endpoint sweep: mirrors getEatsRiderLocation exactly (same
+    /// RiderLocationDto shape), but had zero client callers on any platform until now.
+    /// bank-mfe/Android shipped this first (2026-08-05); this is the iOS port. Honest v1
+    /// scope-down: OrderDto has no delivery-coordinate fields, so this is a single rider
+    /// marker, not a route.
+    public func getOrderRiderLocation(_ orderId: String) async throws -> EatsRiderLocationResponse {
+        try await get("api/v1/orders/\(orderId)/rider-location")
+    }
+
     /// Real cancellation + refund (2026-07-18) -- buyer or seller, PLACED orders only.
     /// See rw.itunda.commerce.OrderService.cancelOrder's own doc comment.
     public func cancelOrder(_ orderId: String) async throws -> OrderDetailResponse {

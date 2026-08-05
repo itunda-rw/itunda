@@ -1514,6 +1514,8 @@ private struct MyCommerceOrdersView: View {
                                             .background(Color.red).cornerRadius(12)
                                     }
                                     .disabled(cancellingId == order.id)
+                                } else if order.status == "SHIPPED" {
+                                    LiveTrackingToggle(orderId: order.id)
                                 } else if order.status == "DELIVERED" {
                                     VStack(alignment: .leading, spacing: 8) {
                                         OrderItemReviews(order: order)
@@ -1556,6 +1558,28 @@ private struct MyCommerceOrdersView: View {
             error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+/// Real live rider-location tracking for Commerce orders (item 230) -- see
+/// SimpleLiveRiderMiniMap's own doc comment. bank-mfe/Android shipped this first
+/// (2026-08-05); this is the iOS port.
+private struct LiveTrackingToggle: View {
+    let orderId: String
+    @State private var tracking = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: { tracking.toggle() }) {
+                Text(tracking ? "Hide live tracking" : "🛵 Track your rider live")
+                    .font(.subheadline).bold().foregroundColor(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 10)
+                    .background(IDS.Colors.brand).cornerRadius(12)
+            }
+            if tracking {
+                SimpleLiveRiderMiniMap(orderId: orderId)
+            }
         }
     }
 }
