@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Toss Bank 자동이체 (auto-transfer) -- see backend AutoTransfer.kt's own doc
 // comment. Recurring (WEEKLY/MONTHLY), genuinely distinct from ScheduledTransfer's own
@@ -28,15 +29,19 @@ export interface AutoTransfer {
 export const fetchMyAutoTransfers = () =>
   apiFetch<{ success: boolean; autoTransfers: AutoTransfer[] }>('/api/v1/p2p/auto-transfers').then((r) => r.autoTransfers);
 
-// No Idempotency-Key here -- AutoTransferController.create doesn't declare one (it
-// only schedules future recurring executions, doesn't move money immediately, unlike
-// ScheduledTransfer/MerchantBilling's own create endpoints); matching the real backend
-// exactly rather than sending a header that implies protection that doesn't exist.
+// Real idempotency fix (item 235, found via a periodic Idempotency-Key coverage
+// audit) -- corrects this file's own earlier reasoning that no key was needed here
+// because create "doesn't move money immediately." That's true but not the actual
+// risk: a retry created a second active recurring-transfer row to the same
+// recipient, which the scheduler would then execute independently -- a real
+// duplicate charge every period going forward, not just once. See
+// AutoTransferController.create's own doc comment for the full account.
 export const createAutoTransfer = (
   recipient: string, amount: number, frequency: AutoTransferFrequency, dayOfWeek: number | null, dayOfMonth: number | null, description: string,
 ) =>
   apiFetch<{ success: boolean; autoTransfer: AutoTransfer }>('/api/v1/p2p/auto-transfers', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ recipient, amount, frequency, dayOfWeek, dayOfMonth, description }),
   }).then((r) => r.autoTransfer);
 
