@@ -1338,7 +1338,7 @@ private struct MyEatsOrdersView: View {
             } else if orders == nil {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if orders!.isEmpty {
-                EmptyStateView("No orders yet.")
+                EmptyStateView("No orders yet — order from a nearby restaurant and it'll show up here.")
             } else {
                 VStack(spacing: 10) {
                     ForEach(orders!) { order in

@@ -92,7 +92,7 @@ struct CardScreenView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Recent card activity").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                 if transactions.isEmpty {
-                                    EmptyStateView("No purchases yet.")
+                                    EmptyStateView("No card purchases yet — once you use your card, they'll show up here.")
                                 } else {
                                     ForEach(transactions) { t in
                                         HStack {

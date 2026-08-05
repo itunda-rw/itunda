@@ -325,7 +325,7 @@ private struct DirectMessagesList: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             } else if visibleList!.isEmpty {
-                EmptyStateView(showArchived ? "No archived chats." : "No conversations yet.")
+                EmptyStateView(showArchived ? "You haven't archived any chats." : "No conversations yet — start one from Friends, or say hi to someone you already know.")
                     .padding(.horizontal, IDS.Layout.screenHorizontal)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -553,7 +553,7 @@ private struct GroupsList: View {
                 } else if groups == nil {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
                 } else if groups!.isEmpty {
-                    EmptyStateView("No groups yet.")
+                    EmptyStateView("No groups yet — start one to chat with more than one person at a time.")
                 } else {
                     ForEach(groups!) { group in
                         Button(action: { onOpen(group) }) {
