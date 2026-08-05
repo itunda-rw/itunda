@@ -70,6 +70,10 @@ final class SessionManager: ObservableObject {
             // SessionManager.kt's Android twin: a local "log out" tap must clear the
             // on-device session regardless of whether the network call succeeds.
             try? await NetworkClient.shared.logout(accessToken: accessToken, request: LogoutRequest(refreshToken: refreshToken))
+            // Real push unregister-on-logout (item 232) -- best-effort, see
+            // NetworkClient.unregisterDeviceToken's own doc comment. Must run before
+            // store.clearSession() below, while the keychain token it reads is still valid.
+            try? await NetworkClient.shared.unregisterDeviceToken(DeviceStore.shared.getOrCreateDeviceId())
         }
         store.clearSession()
         sessionState = .loggedOut

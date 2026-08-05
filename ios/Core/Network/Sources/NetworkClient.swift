@@ -2027,6 +2027,16 @@ extension NetworkClient {
     public func registerDeviceToken(_ request: RegisterDeviceTokenRequest) async throws -> SuccessResponse {
         try await authenticatedPost("api/v1/notifications/device-tokens", body: request)
     }
+
+    /// Real push unregister-on-logout (item 232) -- found via a defined-but-uncalled-
+    /// endpoint sweep, see backend DeviceTokenController.unregister's own doc comment.
+    /// bank-mfe/Android shipped this first (2026-08-05); this is the iOS port. Called
+    /// from SessionManager.logout() before store.clearSession() -- authenticatedDelete
+    /// reads the still-valid keychain token at call time, same ordering Android's
+    /// explicit-header version needed for the same reason.
+    public func unregisterDeviceToken(_ token: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/notifications/device-tokens/\(token)")
+    }
 }
 
 extension NetworkClient {
