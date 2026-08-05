@@ -370,6 +370,43 @@ struct BusinessLedgerEntryDto: Decodable, Identifiable {
 struct BusinessTransactionsResponse: Decodable { let success: Bool; let transactions: [BusinessLedgerEntryDto] }
 struct MoveBusinessMoneyRequest: Encodable { let amount: Double }
 
+// Real Isoko ("market" in Kinyarwanda) Vendor Cash Advance -- see the backend's
+// VendorCashAdvanceService.kt doc comment for the full sourced account. Genuinely
+// distinct from every other lending product in this codebase: repayment is
+// auto-collected as a variable % of this merchant's own real itunda-routed daily
+// settlement inflow (QR/card collections), never a fixed installment the merchant
+// initiates. Honest v1 limitation: a vendor's off-platform cash sales are invisible
+// to both underwriting and collection -- surfaced directly in this screen's own copy.
+// Mirrors merchant-mfe's lib/vendorCashAdvance.ts / Android's VendorCashAdvanceDto exactly.
+struct VendorCashAdvanceDto: Decodable, Identifiable {
+    let id: String
+    let merchantId: String
+    let principalAmount: Double
+    let feeAmount: Double
+    let totalOwed: Double
+    let remainingOwed: Double
+    let collectionRatePercent: Double
+    let status: String
+    let requestedAt: String
+    let disbursedAt: String?
+    let repaidAt: String?
+    let lastCollectionAt: String?
+}
+struct ApplyForVendorCashAdvanceRequest: Encodable { let merchantId: String }
+struct RepayVendorCashAdvanceEarlyRequest: Encodable { let amount: Double }
+struct VendorCashAdvanceResponse: Decodable { let success: Bool; let advance: VendorCashAdvanceDto }
+struct VendorCashAdvanceNullableResponse: Decodable { let success: Bool; let advance: VendorCashAdvanceDto? }
+struct VendorCashAdvanceOfferResponse: Decodable {
+    let success: Bool
+    let eligible: Bool
+    let reason: String?
+    let offerAmount: Double?
+    let feeAmount: Double?
+    let collectionRatePercent: Double?
+    let averageDailySettlement: Double?
+    let tradingDays: Int?
+}
+
 // Real 배민오더-style table/QR in-store ordering, restaurant side (item 164) -- see
 // DineInOrderController.kt on the backend. Android's native merchantapp already has
 // this (DineInScreen.kt); this is the iOS port. Trimmed to the fields this app's UI
@@ -554,6 +591,27 @@ final class MerchantNetworkClient {
     func getBusinessAccount() async throws -> BusinessWalletResponse { try await get("api/v1/merchant/business-account") }
 
     func getBusinessTransactions() async throws -> BusinessTransactionsResponse { try await get("api/v1/merchant/business-account/transactions") }
+
+    // Real Isoko ("market" in Kinyarwanda) Vendor Cash Advance -- see
+    // VendorCashAdvanceDto's own doc comment. merchant-mfe/Android already have this;
+    // this is the first iOS MerchantApp client, found while confirming that gap on
+    // this platform specifically (2026-08-05). No Idempotency-Key on apply (row
+    // creation only, money only moves at disburse); disburse/repay-early both need one.
+    func getVendorCashAdvanceOffer(merchantId: String) async throws -> VendorCashAdvanceOfferResponse {
+        try await get("api/v1/vendor-advance/offer", query: [URLQueryItem(name: "merchantId", value: merchantId)])
+    }
+    func applyForVendorCashAdvance(merchantId: String) async throws -> VendorCashAdvanceResponse {
+        try await post("api/v1/vendor-advance/apply", body: ApplyForVendorCashAdvanceRequest(merchantId: merchantId))
+    }
+    func disburseVendorCashAdvance(_ advanceId: String) async throws -> VendorCashAdvanceResponse {
+        try await postWithHeader("api/v1/vendor-advance/\(advanceId)/disburse", body: EmptyBody(), header: ("Idempotency-Key", UUID().uuidString))
+    }
+    func getMyVendorCashAdvance(merchantId: String) async throws -> VendorCashAdvanceNullableResponse {
+        try await get("api/v1/vendor-advance/me", query: [URLQueryItem(name: "merchantId", value: merchantId)])
+    }
+    func repayVendorCashAdvanceEarly(_ advanceId: String, amount: Double) async throws -> VendorCashAdvanceResponse {
+        try await postWithHeader("api/v1/vendor-advance/\(advanceId)/repay-early", body: RepayVendorCashAdvanceEarlyRequest(amount: amount), header: ("Idempotency-Key", UUID().uuidString))
+    }
 
     func getDineInOrders() async throws -> DineInOrdersResponse { try await get("api/v1/eats/dine-in/orders/restaurant-orders") }
 
