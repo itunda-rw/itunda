@@ -9,7 +9,7 @@ import CoreNetwork
 /// account, including the honest "poll-based delivery, no live transport yet" scope
 /// this screen matches exactly (a 4s poll while a thread is open, same interval
 /// bank-mfe/Android already use).
-private enum TalkView { case direct, groups }
+private enum TalkView { case direct, groups, friends }
 
 // Real group chat (2026-07-18) -- itunda's own KakaoTalk-style group messaging, ported
 // to iOS from bank-mfe's own Direct/Groups toggle (the "single most defining KakaoTalk
@@ -85,12 +85,23 @@ struct TalkScreen: View {
             Picker("", selection: $view) {
                 Text("Direct").tag(TalkView.direct)
                 Text("Groups").tag(TalkView.groups)
+                Text("Friends").tag(TalkView.friends)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, 8)
 
-            if view == .direct {
+            if view == .friends {
+                FriendsList(onStarted: { conversationId in
+                    Task {
+                        await loadConversations()
+                        if let match = conversations?.first(where: { $0.conversationId == conversationId }) {
+                            openConversation = match
+                        }
+                        view = .direct
+                    }
+                })
+            } else if view == .direct {
                 DirectMessagesList(
                     conversations: conversations,
                     archivedConversations: archivedConversations,
@@ -385,6 +396,107 @@ private struct DirectMessagesList: View {
             startError = TalkScreen.errorMessage(statusCode)
         } catch {
             startError = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+/// Real Kakao Friends-tab equivalent (item 237, sourced -- Kakao's Sept 2025 attempt
+/// to bury this tab caused a rating collapse and was reverted within 3 months, per
+/// docs/DESIGN_REFERENCES.md's Talk section recommendation #1). Talk only ever let a
+/// user switch between chat-*history* views (Direct/Groups) -- no way to browse
+/// contacts who are on itunda but you haven't messaged yet. The backend infra
+/// (getTalkContacts/getPresence) was already fully real and already used inline in
+/// the New-chat/add-member composers -- this is a client-only addition, no new
+/// endpoint. bank-mfe/Android shipped this first (2026-08-06); this is the iOS port.
+private struct FriendsList: View {
+    let onStarted: (String) -> Void
+
+    @State private var contacts: [TalkContactDto]?
+    @State private var presence: [String: Bool] = [:]
+    @State private var error: String?
+    @State private var startingId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if contacts == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if contacts!.isEmpty {
+                EmptyStateView("No friends yet -- save someone's contact and they'll show up here once they're on itunda.")
+            } else {
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(contacts!) { contact in
+                            Button(action: { Task { await startChat(contact) } }) {
+                                HStack(spacing: 16) {
+                                    ZStack(alignment: .bottomTrailing) {
+                                        Circle().fill(IDS.Colors.brand.opacity(0.12)).frame(width: 44, height: 44)
+                                            .overlay(Image(systemName: "person").foregroundColor(IDS.Colors.brand))
+                                        if presence[contact.userId] == true {
+                                            Circle().fill(IDS.Colors.success).frame(width: 12, height: 12)
+                                                .overlay(Circle().stroke(IDS.Colors.card, lineWidth: 2))
+                                        }
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(contact.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                        if presence[contact.userId] == true {
+                                            Text("Active now").font(.caption).bold().foregroundColor(IDS.Colors.success)
+                                        }
+                                    }
+                                    Spacer()
+                                    if startingId == contact.userId {
+                                        Text("…").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                }
+                                .padding(16)
+                                .background(IDS.Colors.card)
+                                .cornerRadius(IDS.Layout.cardCornerRadius)
+                            }
+                            .disabled(startingId == contact.userId)
+                        }
+                    }
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                    .padding(.top, 12)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        error = nil
+        do {
+            let list = try await NetworkClient.shared.getTalkContacts().contacts
+            contacts = list
+            if !list.isEmpty {
+                presence = (try? await NetworkClient.shared.getPresence(userIds: list.map { $0.userId }).presence) ?? [:]
+            }
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func startChat(_ contact: TalkContactDto) async {
+        startingId = contact.userId
+        error = nil
+        defer { startingId = nil }
+        do {
+            let res = try await NetworkClient.shared.startConversation(otherUserId: contact.userId)
+            onStarted(res.conversation.id)
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 }
