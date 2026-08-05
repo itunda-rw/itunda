@@ -79,9 +79,16 @@ export const enrollInPlan = (planId: string) =>
     body: JSON.stringify({ planId }),
   }).then((r) => r.policy);
 
+// Real idempotency fix (item 236, found via a periodic Idempotency-Key coverage
+// audit) -- corrects this endpoint's own earlier backend reasoning that no key was
+// needed because filing a claim "isn't money-moving." A duplicate submission created
+// two separate claim rows that could each be independently approved by an admin
+// working through the queue -- a real double payout for one real incident. See
+// backend InsuranceController.submitClaim's own doc comment for the full account.
 export const submitClaim = (policyId: string, description: string, amount: number) =>
   apiFetch<{ success: boolean; claim: InsuranceClaim }>('/api/v1/insurance/claims', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ policyId, description, amount }),
   }).then((r) => r.claim);
 
