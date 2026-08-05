@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Photo
+import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.AlertDialog
@@ -168,7 +169,7 @@ import java.util.UUID
 
 // ============================== TALK (Messaging) ==============================
 
-private enum class TalkView { DIRECT, GROUPS }
+private enum class TalkView { DIRECT, GROUPS, FRIENDS }
 
 // Real group chat (2026-07-18) -- itunda's own KakaoTalk-style group messaging, ported
 // to Android from bank-mfe's own Direct/Groups toggle (the "single most defining
@@ -281,12 +282,20 @@ fun TalkTab(
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         TabHeader("Talk")
         IdsSegmentedControl(
-            options = listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups"),
+            options = listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups", TalkView.FRIENDS to "Friends"),
             selected = view,
             onSelect = { view = it },
             modifier = Modifier.padding(bottom = Ids.layout.cardGap),
         )
-        if (view == TalkView.DIRECT) {
+        if (view == TalkView.FRIENDS) {
+            FriendsView(
+                onStarted = { conversationId ->
+                    loadConversations()
+                    openConversationId = conversationId
+                    view = TalkView.DIRECT
+                },
+            )
+        } else if (view == TalkView.DIRECT) {
             DirectMessagesList(
                 conversations = conversations,
                 archivedConversations = archivedConversations,
@@ -468,6 +477,111 @@ private fun DirectMessagesList(
                     onClick = { onOpen(c.conversationId) },
                     onArchiveToggle = { setArchived(c.conversationId, !showArchived) },
                 )
+            }
+        }
+    }
+}
+
+// Real Kakao Friends-tab equivalent (item 237, sourced -- Kakao's Sept 2025 attempt
+// to bury this tab caused a rating collapse and was reverted within 3 months, per
+// docs/DESIGN_REFERENCES.md's Talk section recommendation #1). Talk only ever let a
+// user switch between chat-*history* views (Direct/Groups) -- no way to browse
+// contacts who are on itunda but you haven't messaged yet. The backend infra
+// (getTalkContacts/getPresence) was already fully real and already used inline in the
+// New-chat/add-member composers -- this is a client-only addition, no new endpoint.
+// bank-mfe shipped this first (2026-08-06); this is the Android port.
+@Composable
+private fun FriendsView(onStarted: (String) -> Unit) {
+    var contacts by remember { mutableStateOf<List<TalkContactDto>?>(null) }
+    var presence by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var startingId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getTalkContacts()
+                val list = if (res.success) res.contacts else emptyList()
+                contacts = list
+                error = null
+                if (list.isNotEmpty()) {
+                    try {
+                        val presenceRes = NetworkClient.apiService.getPresence(list.map { it.userId })
+                        if (presenceRes.success) presence = presenceRes.presence
+                    } catch (_: Exception) {
+                        // Real, non-critical -- only backs the online-status dot.
+                    }
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    fun startChat(contact: TalkContactDto) {
+        startingId = contact.userId
+        error = null
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.startConversation(StartConversationRequest(otherUserId = contact.userId))
+                if (res.success) onStarted(res.conversation.id)
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                startingId = null
+            }
+        }
+    }
+
+    val list = contacts
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        list == null -> SkeletonBlock()
+        list.isEmpty() -> EmptyState("No friends yet -- save someone's contact and they'll show up here once they're on itunda.", icon = Icons.Outlined.PersonOutline)
+        else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(list, key = { it.userId }) { contact ->
+                Card(
+                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+                    colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+                    modifier = Modifier.fillMaxWidth().clickable(enabled = startingId != contact.userId) { startChat(contact) },
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp).fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier.size(44.dp).clip(RoundedCornerShape(22.dp)).background(Ids.colors.brand.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center,
+                            ) { Icon(Icons.Outlined.PersonOutline, contentDescription = null, tint = Ids.colors.brand) }
+                            if (presence[contact.userId] == true) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .size(12.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Ids.colors.success),
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(contact.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            if (presence[contact.userId] == true) {
+                                Text("Active now", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                        if (startingId == contact.userId) {
+                            Text("…", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        }
+                    }
+                }
             }
         }
     }
