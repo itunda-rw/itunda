@@ -902,6 +902,14 @@ which both already had it. Closed 2026-08-05 -- straight port of Android's own
 `VendorCashAdvanceScreen.kt` as iOS's new `VendorCashAdvanceTab`, same real business logic and copy
 verbatim, wired into `MerchantHomeScreen`'s tab picker as "Cash advance".
 
+**Merchant-side Commerce order fulfillment queue closed 2026-08-05 (item 234)**: found via a
+sibling-consistency audit -- bank-mfe's own `MerchantOrdersView`/`MerchantReturnQueueView` have
+been real since before this session (a real itunda user who also runs a merchant storefront can
+advance their store's Commerce orders through PLACED → PACKED → SHIPPED → DELIVERED and
+approve/reject Return & Exchange requests), but had zero client anywhere on Android or iOS -- not
+the main consumer apps, not either native merchant app. Straight ports on both, same
+`MERCHANT_NOT_FOUND`/404-stays-silent discipline for buyer-only accounts as the source component.
+
 ### Unresolved / worth a follow-up
 
 - Naver Smart Store's exact detail-page tab structure (상세정보/리뷰/Q&A/Story) wasn't confirmed
