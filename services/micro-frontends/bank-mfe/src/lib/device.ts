@@ -68,3 +68,20 @@ export const registerDeviceToken = () =>
     method: 'POST',
     body: JSON.stringify({ platform: 'WEB', token: getOrCreateDeviceId() }),
   });
+
+// Real push unregister-on-logout (item 232, found via a defined-but-uncalled-endpoint
+// sweep): DeviceTokenController.unregister is real (and even had a real @Transactional
+// bug fixed live during this feature's own original verification, per its own doc
+// comment) but had zero client callers anywhere -- a device stayed registered forever
+// after logout, so whoever logs in next on the same browser would keep receiving push
+// meant for the previous account until they happened to re-register. Fire-and-forget,
+// same discipline as registerDeviceToken above: a failed unregister shouldn't block
+// logout itself.
+// accessToken is captured and passed explicitly by logout() (api.ts) rather than read
+// automatically by apiFetch, since by the time this fire-and-forget dynamic import
+// resolves, logout() has already synchronously cleared the stored token.
+export const unregisterDeviceToken = (accessToken: string | null) =>
+  apiFetch<{ success: boolean }>(`/api/v1/notifications/device-tokens/${encodeURIComponent(getOrCreateDeviceId())}`, {
+    method: 'DELETE',
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  }).catch(() => {});

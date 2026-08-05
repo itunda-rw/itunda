@@ -45,6 +45,13 @@ export function getToken(): string | null {
 export const SESSION_EXPIRED_EVENT = 'itunda-bank-session-expired';
 
 export function logout(): void {
+  // Real push unregister-on-logout (item 232) -- see device.ts's own doc comment on
+  // unregisterDeviceToken. Best-effort/fire-and-forget, same discipline as login's own
+  // registerDeviceToken call. The token is captured *before* it's cleared below and
+  // passed through explicitly -- by the time this dynamic import resolves and actually
+  // fires the request, the synchronous removeItem calls below have already run.
+  const tokenBeforeClear = getToken();
+  import('./device').then(({ unregisterDeviceToken }) => unregisterDeviceToken(tokenBeforeClear)).catch(() => {});
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(USER_KEY);
