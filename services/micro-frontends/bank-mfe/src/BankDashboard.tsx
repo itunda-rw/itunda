@@ -546,7 +546,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
       </div>
 
       {transactions.length === 0 ? (
-        <EmptyState message="No transactions yet." />
+        <EmptyState message="No transactions yet — once you send, receive, or spend, it'll all show up here." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <AnimatePresence>
@@ -4951,7 +4951,7 @@ function NotificationsCard() {
         )}
       </div>
       {notifications.length === 0 ? (
-        <EmptyState message="No notifications" />
+        <EmptyState message="You're all caught up — new activity will show up here." />
       ) : (
         notifications.slice(0, 10).map((n) => (
           <div
@@ -5420,7 +5420,7 @@ function FamilyLinkCard() {
                   {overview.recentTransactions.slice(0, 5).map((t) => (
                     <p key={t.id}>{t.description} · {t.amount.toLocaleString()} RWF</p>
                   ))}
-                  {overview.recentTransactions.length === 0 && <EmptyState message="No transactions yet." />}
+                  {overview.recentTransactions.length === 0 && <EmptyState message="Nothing here yet — your activity will show up as you use itunda." />}
                 </div>
               )}
             </div>
@@ -5907,7 +5907,7 @@ function ShoppingView() {
       </p>
       {merchants.length === 0 ? (
         <div className="toss-card">
-          <EmptyState message="No merchants registered yet." />
+          <EmptyState message="No stores here yet — check back soon as more merchants join itunda." />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -7002,7 +7002,7 @@ function GiftVoucherComposerPanel({
           </form>
           {results !== null && (
             results.length === 0 ? (
-              <EmptyState message="No products found." />
+              <EmptyState message="Nothing matched that search — try a different word or browse by category." />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '160px', overflowY: 'auto' }}>
                 {results.map((p) => (
@@ -8499,7 +8499,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
       )}
       {visibleConversations.length === 0 ? (
         <div className="toss-card">
-          <EmptyState message={showArchived ? 'No archived chats.' : 'No conversations yet.'} />
+          <EmptyState message={showArchived ? "You haven't archived any chats." : "No conversations yet — start one from Friends, or say hi to someone you already know."} />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -8956,7 +8956,7 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
       <NewGroupCard onCreated={(id) => { load(); setOpenGroupId(id); }} />
       {groups.length === 0 ? (
         <div className="toss-card">
-          <EmptyState message="No groups yet." />
+          <EmptyState message="No groups yet — start one to chat with more than one person at a time." />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -13132,7 +13132,7 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder:
     );
   }
   if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-  if (orders.length === 0) return <EmptyState message="No orders yet." />;
+  if (orders.length === 0) return <EmptyState message="No orders yet — order from a nearby restaurant and it'll show up here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -15491,7 +15491,7 @@ function BusView() {
                         {manifestError && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{manifestError}</p>}
                         {!manifestError && tripBookings === null && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading…</p>}
                         {tripBookings !== null && tripBookings.length === 0 && (
-                          <EmptyState message="No bookings yet." />
+                          <EmptyState message="No one's booked a seat yet — share your route to fill it up." />
                         )}
                         {tripBookings !== null && tripBookings.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -17788,7 +17788,7 @@ function MyCommerceOrdersView() {
     );
   }
   if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
-  if (orders.length === 0) return <EmptyState message="No orders yet." />;
+  if (orders.length === 0) return <EmptyState message="No orders yet — browse a merchant's shop and your first order will show up here." />;
 
   return (
     <div>
@@ -18393,7 +18393,7 @@ function DevicesView() {
         Devices that have signed in to your account. A device must be verified before it can send money.
       </p>
       {devices.length === 0 ? (
-        <EmptyState message="No devices recorded yet." />
+        <EmptyState message="No other devices yet — this is the only one signed in right now." />
       ) : (
         devices.map((d) => (
           <div key={d.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -18606,7 +18606,7 @@ function CardView() {
       <div className="toss-card">
         <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Recent card activity</p>
         {transactions.length === 0 ? (
-          <EmptyState message="No purchases yet." />
+          <EmptyState message="No card purchases yet — once you use your card, they'll show up here." />
         ) : (
           transactions.map((t) => (
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
