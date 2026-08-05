@@ -510,21 +510,30 @@ they close in itunda's current implementation.
 
 8. **[implemented]** Per-message timestamps now appear in direct and group threads across all clients.
 
+9. **[sourced] Implemented 2026-08-06.** Give Talk a real Friends directory, not just a Direct/Groups
+   chat-*history* toggle -- KakaoTalk's Friends tab is so structurally central that Kakao's own Sept
+   2025 attempt to bury it caused a rating collapse, reverted within 3 months. Found on a research
+   pass mining this doc's own remaining open items: the backend infra (`GET /messages/contacts`
+   cross-references saved contacts against real registered itunda users by phone number, `GET
+   /messages/presence` for real online status) was already fully real and already used inline in
+   the New-chat/add-group-member composers on all 3 platforms -- a client-only addition, no new
+   endpoint. New `FriendsList`/`FriendsView` component: a real browsable contact list with live
+   "Active now" presence dots, tapping a friend starts/opens their real 1:1 conversation via the
+   same `startConversationWithUser` the New-chat composer already used. Wired in as a third
+   Direct/Groups/Friends option on all 3 platforms.
+   *Shipped: `MessagesView`'s `FriendsList` (bank-mfe), `TalkTab`'s `FriendsView` (Android),
+   `TalkScreen`'s `FriendsList` (iOS)*
+
+10. **[sourced] Already implemented -- doc was stale.** The old recommendation here asked for "a
+    per-message read-receipt countdown," reasoning that itunda only tracked `unreadCount` at the
+    conversation-list level with no per-message read signal inside an open thread. Re-checked
+    2026-08-06 while researching Talk's remaining gaps: `Message.readAt` is a real per-message
+    field on the backend, and all 3 clients already show Kakao's own "1" indicator next to a sent
+    message (`isMine && message.readAt == null`), removed the instant the recipient reads it --
+    this is exactly the real per-message read-receipt the old entry asked for. No action needed;
+    this entry just hadn't been updated when the feature shipped.
+
 <!-- Historical pre-implementation audit retained below for source provenance.
-1. **[sourced]** Give Talk a real Friends/contacts directory, not just a Direct/Groups
-   chat-*history* toggle. `TalkTab` (`SuperAppTabs.kt:~200-312`) only switches between two
-   chat-history lists — no way to browse contacts you haven't messaged, no favorites, no
-   online-status directory. KakaoTalk's Friends tab is so structurally central that Kakao's own
-   Sept 2025 attempt to bury it caused a rating collapse and was reverted within 3 months. itunda's
-   "New chat" only accepts a hand-typed phone number today.
-   *Target: `SuperAppTabs.kt` `TalkTab`/`TalkView`/`DirectMessagesList` (~200-389); mirror in `ios/App/Sources/TalkScreen.swift` and bank-mfe*
-
-2. **[sourced]** Add a per-message read-receipt countdown — Kakao's most iconic feature. itunda
-   only tracks `unreadCount` at the conversation-list level; inside an open thread there's no
-   per-message read signal at all. Needs backend support (per-recipient message-read tracking, not
-   just conversation-level `unreadCount`) plus the UI badge.
-   *Target: `MessageBubble`/`GroupMessageBubble` in `SuperAppTabs.kt` for UI; backend messaging service for the read-state model*
-
 3. **[sourced] Implemented on Android, 2026-08-04; iOS capabilities closed 2026-08-05; bank-mfe
    partial.** Long-press message menu: reply/forward/pin/delete, plus Copy for plain-text messages
    (`GroupMessageBubble`/`MessageBubble` in `TalkScreen.kt`, `combinedClickable(onLongClick = ...)`
