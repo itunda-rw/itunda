@@ -157,7 +157,7 @@ import {
   captureReferralCodeFromUrl, createAffiliateLink, fetchMyAffiliateCommissions, fetchMyAffiliateLinks, getStoredReferralCode,
   type AffiliateCommission, type AffiliateLink,
 } from './lib/affiliate';
-import { cancelBooking, createBooking, fetchAvailableSlots, fetchMyBookings, submitBookingReview, type BookingSlot, type MerchantBooking } from './lib/booking';
+import { cancelBooking, createBooking, fetchAvailableSlots, fetchCouponsForCustomer, fetchMerchantReviews, fetchMyBookings, submitBookingReview, type BookingSlot, type MerchantBooking, type MerchantBookingReview, type MerchantCoupon } from './lib/booking';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
@@ -16439,6 +16439,68 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
   );
 }
 
+// Real pre-booking browsing (item 231) -- see lib/booking.ts's own doc comment for the
+// full sourced account. Two genuinely distinct real backend endpoints combined into one
+// section since both only matter at the moment a buyer is deciding whether to book:
+// this merchant's real review history/rating, and which of this merchant's real
+// coupons the buyer is eligible for (regularsOnly-gated ones are already filtered out
+// server-side by getCouponsForCustomer, not client-side).
+function MerchantBookingInfoSection({ merchantId }: { merchantId: string }) {
+  const [reviews, setReviews] = useState<MerchantBookingReview[] | null>(null);
+  const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
+  const [coupons, setCoupons] = useState<MerchantCoupon[] | null>(null);
+
+  useEffect(() => {
+    fetchMerchantReviews(merchantId)
+      .then((r) => {
+        setReviews(r.reviews);
+        setRating(r.rating);
+      })
+      .catch(() => {
+        setReviews([]);
+        setRating(null);
+      });
+    fetchCouponsForCustomer(merchantId).then(setCoupons).catch(() => setCoupons([]));
+  }, [merchantId]);
+
+  if ((reviews === null || reviews.length === 0) && (coupons === null || coupons.length === 0)) return null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {coupons !== null && coupons.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700 }}>Coupons for you</p>
+          {coupons.map((c) => (
+            <div key={c.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--toss-blue-50, #EAF2FF)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 700 }}>{c.title}</p>
+                {c.description && <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{c.description}</p>}
+              </div>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+                {c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+      {reviews !== null && reviews.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700 }}>
+            Reviews{rating?.average != null && ` · ⭐ ${rating.average.toFixed(1)} (${rating.count})`}
+          </p>
+          {reviews.slice(0, 3).map((r) => (
+            <div key={r.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--toss-grey-100)' }}>
+              <p style={{ fontSize: '12px', fontWeight: 700 }}>{'⭐'.repeat(r.rating)} · {r.serviceName}</p>
+              {r.comment && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>{r.comment}</p>}
+              {r.ownerReply && <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>↳ {r.ownerReply}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Real Coupang-style pre-purchase product Q&A (상품문의) (2026-07-26) -- see
 // ProductInquiryService's own doc comment on the backend. Genuinely distinct from
 // ProductRatingBadge's reviews above: no order/purchase required at all, so this is
@@ -17095,6 +17157,7 @@ function ProductDetailView({
         )}
         <PriceTiersDisplay productId={product.id} regularPrice={product.price} />
         <BookingWidget merchantId={merchant.merchantId} product={product} />
+        {product.durationMinutes != null && <MerchantBookingInfoSection merchantId={merchant.merchantId} />}
         <ProductInquirySection productId={product.id} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', paddingTop: '4px', borderTop: '1px solid var(--toss-grey-100)' }}>
           <button onClick={() => onSetQty(merchant, product, Math.max(0, qty - 1))} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>−</button>

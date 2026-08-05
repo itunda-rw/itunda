@@ -74,3 +74,30 @@ export const submitBookingReview = (bookingId: string, rating: number, comment?:
 
 export const fetchMyBookingReviews = () =>
   apiFetch<{ success: boolean; reviews: MerchantBookingReview[] }>('/api/v1/merchant/reviews/my-reviews?size=50').then((r) => r.reviews);
+
+// Real pre-booking browsing (item 231, found via a defined-but-uncalled-endpoint
+// sweep): getMerchantReviews/getCouponsForCustomer are both real, fully-authorized
+// backend endpoints (the owner-side half of coupons has been on merchant-mfe since
+// 2026-07-xx) but had zero client callers anywhere -- a buyer choosing whether to book
+// with a merchant could never see that merchant's real review history/rating, or
+// which of that merchant's real coupons they're eligible for, before requesting a slot.
+export const fetchMerchantReviews = (merchantId: string) =>
+  apiFetch<{ success: boolean; reviews: MerchantBookingReview[]; rating: { average: number | null; count: number } }>(
+    `/api/v1/merchant/${merchantId}/reviews?size=20`,
+  );
+
+export interface MerchantCoupon {
+  id: string;
+  merchantId: string;
+  title: string;
+  description: string | null;
+  discountType: 'PERCENT' | 'FIXED_AMOUNT';
+  discountValue: number;
+  regularsOnly: boolean;
+  active: boolean;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export const fetchCouponsForCustomer = (merchantId: string) =>
+  apiFetch<{ success: boolean; coupons: MerchantCoupon[] }>(`/api/v1/merchant/${merchantId}/coupons`).then((r) => r.coupons);
