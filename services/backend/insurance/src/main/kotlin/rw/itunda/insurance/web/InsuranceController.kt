@@ -98,12 +98,24 @@ class InsuranceController(
     }
 
     // Real claims filing (2026-07-13) -- see docs/TOSS_PARITY_MATRIX.md's Insurance row.
-    // No Idempotency-Key: filing a claim isn't money-moving (only the ADMIN decide step,
-    // in InsuranceClaimsAdminController, actually pays anything out).
+    // Real idempotency fix (item 236, found via a periodic Idempotency-Key coverage
+    // audit) -- corrects this endpoint's own earlier reasoning that no key was needed
+    // because "filing a claim isn't money-moving." That's true of THIS request, but
+    // decideClaim's own guard only stops the SAME claim row from being decided twice
+    // -- it does nothing to stop two separate duplicate claim rows (created by a
+    // retried/double-tapped submitClaim) from each being independently approved by an
+    // admin working through the queue, a real double payout for one real incident.
     @PostMapping("/claims")
-    fun submitClaim(@RequestBody request: SubmitClaimRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
-        val claim = insuranceService.submitClaim(currentUser.userId, request.policyId, request.description, request.amount)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "claim" to claim))
+    fun submitClaim(
+        @RequestBody request: SubmitClaimRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/insurance/claims", idempotencyKey, request) {
+            val claim = insuranceService.submitClaim(currentUser.userId, request.policyId, request.description, request.amount)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "claim" to claim)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/claims")
