@@ -3160,6 +3160,8 @@ public struct MerchantBookingReviewDto: Decodable, Identifiable {
 }
 public struct MerchantBookingReviewResponse: Decodable { public let success: Bool; public let review: MerchantBookingReviewDto }
 public struct MerchantBookingReviewsResponse: Decodable { public let success: Bool; public let reviews: [MerchantBookingReviewDto] }
+public struct MerchantBookingRatingDto: Decodable { public let average: Double?; public let count: Int }
+public struct MerchantReviewsWithRatingResponse: Decodable { public let success: Bool; public let reviews: [MerchantBookingReviewDto]; public let rating: MerchantBookingRatingDto }
 
 // Real cross-merchant product search (item 138) -- see backend
 // MerchantProductRepository.search's own doc comment. Mirrors bank-mfe's
@@ -3268,6 +3270,7 @@ public struct MerchantCouponViewDto: Decodable, Identifiable {
     public let alreadyRedeemed: Bool
     public var id: String { coupon.id }
 }
+public struct MerchantCouponsForCustomerResponse: Decodable { public let success: Bool; public let coupons: [MerchantCouponPreviewDto] }
 public struct PaymentIntentPreviewResponse: Decodable {
     public let success: Bool
     public let merchantId: String
@@ -4451,6 +4454,18 @@ extension NetworkClient {
     }
     public func getMyBookingReviews() async throws -> MerchantBookingReviewsResponse {
         try await get("api/v1/merchant/reviews/my-reviews", query: [URLQueryItem(name: "size", value: "50")])
+    }
+
+    // Real pre-booking browsing (item 231) -- found via a defined-but-uncalled-endpoint
+    // sweep, both real fully-authorized backend endpoints with zero client callers
+    // anywhere until now. bank-mfe/Android shipped this first (2026-08-05); this is the
+    // iOS port. Reuses MerchantCouponPreviewDto (already exact-shape-identical, from the
+    // payment-preview feature) rather than declaring a duplicate DTO.
+    public func getMerchantReviews(merchantId: String) async throws -> MerchantReviewsWithRatingResponse {
+        try await get("api/v1/merchant/\(merchantId)/reviews", query: [URLQueryItem(name: "size", value: "20")])
+    }
+    public func getCouponsForCustomer(merchantId: String) async throws -> MerchantCouponsForCustomerResponse {
+        try await get("api/v1/merchant/\(merchantId)/coupons")
     }
 
     // Real cross-merchant product search (item 138) -- see ProductSearchResultDto's

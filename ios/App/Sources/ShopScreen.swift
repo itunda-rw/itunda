@@ -1771,6 +1771,8 @@ private struct BookingFlowView: View {
                     Text("\(service.name) · \(service.durationMinutes ?? 0) min · \(Int(service.price)) RWF")
                         .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
 
+                    MerchantBookingInfoSection(merchantId: merchant.merchantId)
+
                     Text("Choose a date").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -1867,6 +1869,75 @@ private struct BookingFlowView: View {
             self.error = "Could not request this booking."
         }
         submitting = false
+    }
+}
+
+/// Real pre-booking browsing (item 231) -- found via a defined-but-uncalled-endpoint
+/// sweep, see NetworkClient.getMerchantReviews/getCouponsForCustomer's own doc
+/// comments. bank-mfe/Android shipped this first (2026-08-05); this is the iOS port.
+private struct MerchantBookingInfoSection: View {
+    let merchantId: String
+    @State private var reviews: [MerchantBookingReviewDto]?
+    @State private var rating: MerchantBookingRatingDto?
+    @State private var coupons: [MerchantCouponPreviewDto]?
+
+    var body: some View {
+        Group {
+            if !(coupons ?? []).isEmpty || !(reviews ?? []).isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let coupons, !coupons.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Coupons for you").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            ForEach(coupons, id: \.id) { c in
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(c.title).font(.subheadline).bold()
+                                        if let d = c.description { Text(d).font(.caption).foregroundColor(IDS.Colors.textSecondary) }
+                                    }
+                                    Spacer()
+                                    Text(c.discountType == "PERCENT" ? "\(Int(c.discountValue))% off" : "\(Int(c.discountValue)) RWF off")
+                                        .font(.subheadline).bold().foregroundColor(IDS.Colors.brand)
+                                }
+                                .padding(12)
+                                .background(IDS.Colors.brand.opacity(0.08))
+                                .cornerRadius(10)
+                            }
+                        }
+                    }
+                    if let reviews, !reviews.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Reviews" + (rating?.average.map { " · ⭐ \(String(format: "%.1f", $0)) (\(rating?.count ?? 0))" } ?? ""))
+                                .font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            ForEach(reviews.prefix(3), id: \.id) { r in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(String(repeating: "⭐", count: r.rating)) · \(r.serviceName)").font(.caption).bold()
+                                    if let c = r.comment { Text(c).font(.caption).foregroundColor(IDS.Colors.textSecondary) }
+                                    if let reply = r.ownerReply { Text("↳ \(reply)").font(.caption2).foregroundColor(IDS.Colors.textTertiary) }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                                .background(IDS.Colors.card)
+                                .cornerRadius(10)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .task(id: merchantId) {
+            do {
+                let res = try await NetworkClient.shared.getMerchantReviews(merchantId: merchantId)
+                reviews = res.reviews
+                rating = res.rating
+            } catch {
+                reviews = []
+            }
+            do {
+                coupons = try await NetworkClient.shared.getCouponsForCustomer(merchantId: merchantId).coupons
+            } catch {
+                coupons = []
+            }
+        }
     }
 }
 
