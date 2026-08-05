@@ -887,10 +887,13 @@ getCollectionHistory` returns only the same summary fields (`remainingOwed`, `la
 `totalOwed`, `status`) already present on the main advance object every client already fetches --
 there's no separate per-collection ledger entity behind it, so a "history" screen would show
 nothing new. `RideController.getDriverReviews` (a driver's written reviews, distinct from the
-already-shown aggregate `rating`) is a real gap but not a cleanly scoped one yet: no client on any
-platform currently shows a passenger *which* driver they're matched with beyond the trip itself
-(no driver-profile view exists to browse into), so building a reviews list has no real entry point
-until that's built first -- a larger, separate, not-yet-started follow-up.
+already-shown aggregate `rating`) closed 2026-08-05 (item 233) -- turned out smaller in scope than
+first thought: `RideTrip.driverId` was already available client-side the whole time (used for
+post-trip review submission), so no new driver-profile view was actually needed, just a
+`DriverRatingSection` shown on the already-existing active-trip card once a driver is assigned.
+Honest v1: `RideDriver` has no name/vehicle field on the backend at all, so this shows the driver's
+real rating + written reviews only (expand-on-tap), never a fabricated name. Built on bank-mfe,
+Android, and iOS.
 
 While checking `getCollectionHistory`'s callers, found a genuine full platform-parity gap rather
 than a sub-feature: iOS MerchantApp had **zero** client for the entire Isoko Vendor Cash Advance
