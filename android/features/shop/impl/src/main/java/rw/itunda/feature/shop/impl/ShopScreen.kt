@@ -82,6 +82,7 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.components.SearchAndCategoryChips
+import rw.itunda.core.designsystem.components.SimpleLiveRiderMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
@@ -1972,6 +1973,8 @@ private fun MyCommerceOrdersView() {
                                     fontSize = 13.sp,
                                 )
                             }
+                        } else if (o.status == "SHIPPED") {
+                            LiveTrackingToggle(o.id)
                         } else if (o.status == "DELIVERED") {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OrderItemReviews(o)
@@ -1981,6 +1984,28 @@ private fun MyCommerceOrdersView() {
                     }
                 }
             }
+        }
+    }
+}
+
+// Real live rider-location tracking for Commerce orders (item 230) -- see
+// SimpleLiveRiderMiniMap's own doc comment. bank-mfe shipped this first
+// (SimpleLiveRiderMap.tsx, 2026-08-05); this is the Android port.
+@Composable
+private fun LiveTrackingToggle(orderId: String) {
+    var tracking by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Ids.colors.brand)
+                .clickable { tracking = !tracking }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text(if (tracking) "Hide live tracking" else "🛵 Track your rider live", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        }
+        if (tracking) {
+            SimpleLiveRiderMiniMap(orderId)
         }
     }
 }

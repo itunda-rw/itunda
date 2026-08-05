@@ -2962,6 +2962,16 @@ interface ApiService {
     @GET("api/v1/orders/{id}")
     suspend fun getOrder(@Path("id") orderId: String): OrderDetailResponse
 
+    // Real live rider-location tracking for Commerce orders (item 230) -- found via a
+    // defined-but-uncalled-endpoint sweep: mirrors getEatsRiderLocation exactly (same
+    // RiderLocationDto shape, same real "available: false" while genuinely nothing to
+    // show), but had zero client callers on any platform until now. bank-mfe shipped
+    // this first (SimpleLiveRiderMap.tsx, 2026-08-05); this is the Android port. Honest
+    // v1 scope-down: Commerce's OrderDto has no delivery-coordinate fields, so this is a
+    // single rider marker, not a route.
+    @GET("api/v1/orders/{orderId}/rider-location")
+    suspend fun getOrderRiderLocation(@Path("orderId") orderId: String): EatsRiderLocationResponse
+
     // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link program (item 229) --
     // see AffiliateLinkDto's own doc comment.
     @POST("api/v1/affiliate/links")

@@ -260,3 +260,122 @@ fun LiveRiderMiniMap(orderId: String, fromLat: Double, fromLng: Double, toLat: D
         lastUpdatedAt?.let { Text("🛵 Rider location updated ${timeAgoLabel(it)}", fontSize = 12.sp, color = Ids.colors.textSecondary) }
     }
 }
+
+private val SIMPLE_MINI_STYLE_JSON: String
+    get() {
+        val tilesUrl = "${MapConfig.tilesBaseUrl}/rwanda/{z}/{x}/{y}.mvt"
+        return """
+{
+  "version": 8,
+  "sources": {
+    "rwanda": { "type": "vector", "tiles": ["$tilesUrl"], "minzoom": 0, "maxzoom": 14 },
+    "rider": { "type": "geojson", "data": { "type": "FeatureCollection", "features": [] } }
+  },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#f2efe9" } },
+    { "id": "landcover", "type": "fill", "source": "rwanda", "source-layer": "landcover",
+      "paint": { "fill-color": "#d8e8c8", "fill-opacity": 0.6 } },
+    { "id": "water", "type": "fill", "source": "rwanda", "source-layer": "water",
+      "paint": { "fill-color": "#a8d0e6" } },
+    { "id": "transportation-minor", "type": "line", "source": "rwanda", "source-layer": "transportation",
+      "filter": ["!", ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary"], true, false]],
+      "paint": { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 16, 3] } },
+    { "id": "transportation-major", "type": "line", "source": "rwanda", "source-layer": "transportation",
+      "filter": ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary"], true, false],
+      "paint": { "line-color": "#f5c96b", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1, 16, 5] } }
+  ]
+}
+""".trimIndent()
+    }
+
+/**
+ * Real live rider-location tracking for Commerce orders (item 230) -- found via a
+ * defined-but-uncalled-endpoint sweep, see ApiService.getOrderRiderLocation's own doc
+ * comment. A deliberately simpler sibling of LiveRiderMiniMap above: no route line, no
+ * fixed from/to endpoints, since Commerce's OrderDto carries no delivery coordinates to
+ * draw a route toward -- just the rider's own live position, re-centered as it updates.
+ * Straight port of bank-mfe's SimpleLiveRiderMap.tsx (shipped first, 2026-08-05).
+ */
+@Composable
+fun SimpleLiveRiderMiniMap(orderId: String) {
+    val context = LocalContext.current
+    LaunchedEffect(Unit) { MapLibre.getInstance(context) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var available by remember { mutableStateOf<Boolean?>(null) }
+    var lastUpdatedAt by remember { mutableStateOf<String?>(null) }
+
+    val mapView = remember { MapView(context) }
+    var styleReady by remember { mutableStateOf(false) }
+    var centered by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_CREATE -> mapView.onCreate(null)
+                Lifecycle.Event.ON_START -> mapView.onStart()
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        mapView.onCreate(null)
+        mapView.getMapAsync { map ->
+            map.uiSettings.setAllGesturesEnabled(false)
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(-1.9441, 30.0619), 12.0))
+            map.setStyle(Style.Builder().fromJson(SIMPLE_MINI_STYLE_JSON)) { style ->
+                style.addImage(RIDER_ICON_ID, createEmojiBitmap(context.resources.displayMetrics.density, "🛵"))
+                style.addLayer(
+                    SymbolLayer(RIDER_LAYER_ID, RIDER_SOURCE_ID).withProperties(iconImage(RIDER_ICON_ID), iconAllowOverlap(true)),
+                )
+                styleReady = true
+            }
+        }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            mapView.onPause()
+            mapView.onStop()
+            mapView.onDestroy()
+        }
+    }
+
+    LaunchedEffect(orderId, styleReady) {
+        if (!styleReady) return@LaunchedEffect
+        while (true) {
+            try {
+                val res = NetworkClient.apiService.getOrderRiderLocation(orderId)
+                available = res.available
+                error = null
+                val loc = res.location
+                if (loc != null) {
+                    lastUpdatedAt = loc.updatedAt
+                    mapView.getMapAsync { map ->
+                        val style = map.style ?: return@getMapAsync
+                        (style.getSourceAs<GeoJsonSource>(RIDER_SOURCE_ID))
+                            ?.setGeoJson(FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(loc.longitude, loc.latitude))))
+                        if (!centered) {
+                            centered = true
+                            map.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 14.0))
+                        }
+                    }
+                }
+            } catch (e: HttpException) {
+                error = "Could not load your rider's location."
+            } catch (_: Exception) {
+                error = "Could not load your rider's location."
+            }
+            delay(5000)
+        }
+    }
+
+    Column {
+        AndroidView(factory = { mapView }, modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)))
+        error?.let { Text(it, fontSize = 12.sp, color = Ids.colors.danger) }
+        if (available == false) {
+            Text("Waiting for your rider's real location…", fontSize = 12.sp, color = Ids.colors.textSecondary)
+        }
+        lastUpdatedAt?.let { Text("🛵 Rider location updated ${timeAgoLabel(it)}", fontSize = 12.sp, color = Ids.colors.textSecondary) }
+    }
+}
