@@ -1656,7 +1656,7 @@ private fun MyEatsOrdersView(
         } else if (orders == null) {
             SkeletonBlock()
         } else if (orders!!.isEmpty()) {
-            EmptyState("No orders yet.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
+            EmptyState("No orders yet — order from a nearby restaurant and it'll show up here.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 orders!!.forEach { o ->

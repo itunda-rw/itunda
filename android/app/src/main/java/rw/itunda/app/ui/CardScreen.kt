@@ -252,7 +252,7 @@ fun CardScreen(onBack: () -> Unit) {
                             Text("Recent card activity", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                         if (transactions.isEmpty()) {
-                            item { EmptyState("No purchases yet.") }
+                            item { EmptyState("No card purchases yet — once you use your card, they'll show up here.") }
                         } else {
                             items(transactions) { t ->
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

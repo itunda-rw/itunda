@@ -464,7 +464,7 @@ private fun DirectMessagesList(
         } else if (visibleList.isEmpty()) {
             item {
                 EmptyState(
-                    if (showArchived) "No archived chats." else "No conversations yet.",
+                    if (showArchived) "You haven't archived any chats." else "No conversations yet — start one from Friends, or say hi to someone you already know.",
                     icon = Icons.Outlined.ChatBubbleOutline,
                 )
             }
@@ -662,7 +662,7 @@ private fun GroupsList(
         } else if (groups == null) {
             item { SkeletonBlock() }
         } else if (groups.isEmpty()) {
-            item { EmptyState("No groups yet.", icon = Icons.Outlined.ChatBubbleOutline) }
+            item { EmptyState("No groups yet — start one to chat with more than one person at a time.", icon = Icons.Outlined.ChatBubbleOutline) }
         } else {
             items(groups, key = { it.groupId }) { g -> GroupRow(g, onClick = { onOpen(g.groupId) }) }
         }
