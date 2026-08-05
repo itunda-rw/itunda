@@ -392,7 +392,7 @@ class PropertyListingServiceTest : BehaviorSpec({
             val expectedPage = PageImpl(listOf(mockk<PropertyListing>()))
             every { userRepository.findById("user_1") } returns Optional.of(caller)
             every {
-                propertyListingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(PropertyListingStatus.AVAILABLE, "Kimironko", any())
+                propertyListingRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(PropertyListingStatus.AVAILABLE, listOf("Kimironko"), any())
             } returns expectedPage
 
             val page = service.myNeighborhood("user_1", PageRequest.of(0, 20))

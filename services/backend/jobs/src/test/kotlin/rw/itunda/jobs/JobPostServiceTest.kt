@@ -324,7 +324,7 @@ class JobPostServiceTest : BehaviorSpec({
             val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")
             val expectedPage = PageImpl(listOf(mockk<JobPost>()))
             every { userRepository.findById("user_1") } returns Optional.of(caller)
-            every { jobPostRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(JobPostStatus.OPEN, "Kimironko", any()) } returns expectedPage
+            every { jobPostRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(JobPostStatus.OPEN, listOf("Kimironko"), any()) } returns expectedPage
 
             val page = service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
 

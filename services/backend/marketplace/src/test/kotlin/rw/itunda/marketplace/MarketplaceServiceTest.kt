@@ -516,7 +516,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")
             val expectedPage = PageImpl(listOf(mockk<Listing>()))
             every { userRepository.findById("user_1") } returns Optional.of(caller)
-            every { listingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(ListingStatus.ACTIVE, "Kimironko", any()) } returns expectedPage
+            every { listingRepository.findByStatusAndNeighborhoodInOrderByCreatedAtDesc(ListingStatus.ACTIVE, listOf("Kimironko"), any()) } returns expectedPage
 
             val page = service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
 
@@ -530,7 +530,7 @@ class MarketplaceServiceTest : BehaviorSpec({
             val expectedPage = PageImpl(listOf(mockk<Listing>()))
             every { userRepository.findById("user_1") } returns Optional.of(caller)
             every {
-                listingRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(ListingStatus.ACTIVE, "Kimironko", "furniture", any())
+                listingRepository.findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(ListingStatus.ACTIVE, listOf("Kimironko"), "furniture", any())
             } returns expectedPage
 
             val page = service.myNeighborhood("user_1", "furniture", PageRequest.of(0, 20))
