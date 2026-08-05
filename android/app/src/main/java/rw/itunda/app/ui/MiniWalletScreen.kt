@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,6 +44,7 @@ import rw.itunda.core.network.superAppErrorMessage
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.components.BackTopBar
 import java.io.IOException
+import java.util.UUID
 
 // Real KakaoBank mini-style capped starter wallet (rw.itunda.wallet.MiniWalletService,
 // 2026-07-28) -- first mobile client for this feature (item 100), a direct port of
@@ -128,7 +128,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.depositMiniWallet(DepositMiniWalletRequest(parsedAmount))
+                NetworkClient.apiService.depositMiniWallet(UUID.randomUUID().toString(), DepositMiniWalletRequest(parsedAmount))
                 amount = ""
                 load()
             } catch (e: HttpException) {

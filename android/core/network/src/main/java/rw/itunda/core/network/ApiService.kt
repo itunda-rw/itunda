@@ -3430,7 +3430,7 @@ interface ApiService {
     suspend fun openMiniWallet(): OpenMiniWalletResponse
 
     @POST("api/v1/wallet/mini/deposit")
-    suspend fun depositMiniWallet(@Body request: DepositMiniWalletRequest): DepositMiniWalletResponse
+    suspend fun depositMiniWallet(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositMiniWalletRequest): DepositMiniWalletResponse
 
     // Real Kakao T-style ride-hailing (rw.itunda.rideshare, real since 2026-07-26) --
     // first Android client for this feature (item 109, found via a fresh matrix scan:

@@ -1476,15 +1476,21 @@ extension NetworkClient {
     // Real KakaoBank mini-style capped starter wallet (rw.itunda.wallet.
     // MiniWalletService, 2026-07-28) -- first iOS client for this feature (item 101),
     // mirroring bank-mfe's lib/miniWallet.ts and Android's ApiService.kt equivalents.
-    // Neither endpoint carries an Idempotency-Key (MiniWalletController.kt declares
-    // none), so this uses its own dedicated request path rather than authenticatedPost's
-    // idempotency-gated one, decoding the real ApiError.code directly on a 422 instead.
+    // open() carries no Idempotency-Key (a second call naturally just returns the same
+    // real, already-open wallet, no duplicate side effect), so it keeps its own
+    // dedicated request path, decoding the real ApiError.code directly on a 422 for the
+    // birth-date/age-eligibility cases neither authenticatedPost nor deposit's own error
+    // surface needs. deposit() moved to authenticatedPost's idempotency-gated path
+    // 2026-08-05 (real bug found live via a repo-wide idempotency-coverage audit):
+    // MiniWalletController.kt's own deposit endpoint posted a real wallet-to-wallet
+    // ledger transaction on every call with no Idempotency-Key requirement -- a
+    // network-timeout retry of the exact same deposit would move the same money twice.
     public func openMiniWallet() async throws -> OpenMiniWalletResponse {
         try await postMiniWallet("api/v1/wallet/mini/open", body: EmptyBody())
     }
 
     public func depositMiniWallet(amount: Double) async throws -> DepositMiniWalletResponse {
-        try await postMiniWallet("api/v1/wallet/mini/deposit", body: DepositMiniWalletRequest(amount: amount))
+        try await authenticatedPost("api/v1/wallet/mini/deposit", body: DepositMiniWalletRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first iOS client for
