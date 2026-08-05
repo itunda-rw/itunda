@@ -47,6 +47,7 @@ import rw.itunda.core.network.RideDriverDto
 import rw.itunda.core.network.RideDriverRatingResponse
 import rw.itunda.core.network.RideStopRequestDto
 import rw.itunda.core.network.RideTripDto
+import rw.itunda.core.network.RideTripReviewDto
 import rw.itunda.core.network.RideTripStopDto
 import rw.itunda.core.network.SetRideDriverAvailabilityRequest
 import rw.itunda.core.network.SubmitRideReviewRequest
@@ -243,6 +244,7 @@ private fun RidePassengerContent() {
             item { Text("Your ride", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             item {
                 RideTripCard(activeTrip, stops = activeTripStops) {
+                    activeTrip.driverId?.let { DriverRatingSection(it) }
                     if (activeTrip.status != "IN_PROGRESS") {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.danger)
@@ -626,6 +628,61 @@ private fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = null
             action?.let {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
                 it()
+            }
+        }
+    }
+}
+
+// Real "meet your driver" rating + reviews during an active trip (item 233) -- found
+// via the uncalled-endpoint sweep, see ApiService.getRideDriverReviews's own doc
+// comment. bank-mfe shipped this first (2026-08-05); this is the Android port. Honest
+// v1: RideDriverDto has no name/vehicle field on the backend at all, so this shows the
+// driver's real rating + written reviews only, never a name that doesn't exist.
+@Composable
+private fun DriverRatingSection(driverId: String) {
+    var rating by remember { mutableStateOf<RideDriverRatingResponse?>(null) }
+    var reviews by remember { mutableStateOf<List<RideTripReviewDto>?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(driverId) {
+        try { rating = NetworkClient.apiService.getRideDriverRating(driverId) } catch (_: Exception) {}
+    }
+
+    val r = rating
+    if (r == null || r.count == 0L) return
+
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        Text(
+            "★ %.1f".format(r.average ?: 0.0) + " (${r.count} rating${if (r.count == 1L) "" else "s"}) ${if (expanded) "▲" else "▼"}",
+            color = androidx.compose.ui.graphics.Color(0xFFFFC107), fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            modifier = Modifier.clickable {
+                expanded = !expanded
+                if (expanded && reviews == null) {
+                    coroutineScope.launch {
+                        try { reviews = NetworkClient.apiService.getRideDriverReviews(driverId).reviews } catch (_: Exception) { reviews = emptyList() }
+                    }
+                }
+            },
+        )
+        if (expanded) {
+            val list = reviews
+            if (list == null) {
+                Text("Loading reviews…", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            } else if (list.isEmpty()) {
+                Text("No written reviews yet.", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+            } else {
+                Column(modifier = Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    list.forEach { review ->
+                        Column(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                                .background(Ids.colors.surface).padding(horizontal = 10.dp, vertical = 8.dp),
+                        ) {
+                            Text("⭐".repeat(review.rating), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            review.comment?.let { Text(it, color = TossText, fontSize = 12.sp) }
+                        }
+                    }
+                }
             }
         }
     }

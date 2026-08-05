@@ -3539,6 +3539,13 @@ interface ApiService {
     @GET("api/v1/rides/drivers/{driverId}/rating")
     suspend fun getRideDriverRating(@Path("driverId") driverId: String): RideDriverRatingResponse
 
+    // Real "meet your driver" rating + reviews during an active trip (item 233) --
+    // found via the uncalled-endpoint sweep, see bank-mfe's lib/rideshare.ts own doc
+    // comment on fetchDriverReviews for the full sourced account. bank-mfe shipped
+    // this first (2026-08-05); this is the Android port.
+    @GET("api/v1/rides/drivers/{driverId}/reviews")
+    suspend fun getRideDriverReviews(@Path("driverId") driverId: String, @Query("size") size: Int = 10): RideDriverReviewsResponse
+
     // Real Kakao T 대리운전 (designated driver, item 221) -- first Android client for
     // this feature. bank-mfe already has this; mirrors lib/designatedDriver.ts exactly.
     @POST("api/v1/designated-driver/drivers/register")
@@ -4149,6 +4156,7 @@ data class RideTripReviewDto(
 )
 data class RideTripReviewResponse(val success: Boolean, val review: RideTripReviewDto)
 data class RideDriverRatingResponse(val success: Boolean, val average: Double?, val count: Long)
+data class RideDriverReviewsResponse(val success: Boolean, val reviews: List<RideTripReviewDto>)
 
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
 // bank-mfe's lib/vehicleInspection.ts exactly.
