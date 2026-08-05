@@ -3360,8 +3360,8 @@ public struct OrdersResponse: Decodable { public let success: Bool; public let o
 
 // Real Coupang-style post-delivery Return & Exchange requests (item 166/175) -- see
 // OrderReturnService's own doc comment. bank-mfe (item 166) and Android buyer side
-// (item 174) already have this; this is the iOS port, buyer side only (no Shop
-// merchant order-management screen exists on iOS at all, same gap as Android).
+// (item 174) already have this; this is the iOS port, buyer side only. Merchant-side
+// approve/reject queue closed on Android/iOS together as item 234 below.
 public let orderReturnReasonCodes = ["DEFECTIVE", "WRONG_ITEM", "NOT_AS_DESCRIBED", "NO_LONGER_NEEDED", "SIZE_FIT", "OTHER"]
 public struct RequestOrderReturnRequest: Encodable { public let type: String; public let reasonCode: String; public let reasonNote: String? }
 public struct OrderReturnRequestDto: Decodable, Identifiable {
@@ -3379,6 +3379,8 @@ public struct OrderReturnRequestDto: Decodable, Identifiable {
 }
 public struct OrderReturnRequestResponse: Decodable { public let success: Bool; public let returnRequest: OrderReturnRequestDto }
 public struct OrderReturnRequestsResponse: Decodable { public let success: Bool; public let returnRequests: [OrderReturnRequestDto] }
+public struct UpdateOrderStatusRequest: Encodable { public let status: String }
+public struct DecideOrderReturnRequest: Encodable { public let approve: Bool }
 
 // Real post-delivery product reviews (2026-07-20) -- see ProductReviewService's own doc
 // comment, mirroring SubmitEatsReviewRequest/EatsReviewDto below but keyed to one order
@@ -4591,6 +4593,26 @@ extension NetworkClient {
 
     public func getMyReturnRequests() async throws -> OrderReturnRequestsResponse {
         try await get("api/v1/orders/returns/my-requests")
+    }
+
+    /// Real merchant-side Commerce order fulfillment queue (item 234) -- found via a
+    /// sibling-consistency audit against bank-mfe's own MerchantOrdersView/
+    /// MerchantReturnQueueView, which have had this since before this session, and
+    /// Android's own port (this same series, 2026-08-05). A real itunda user who also
+    /// runs a merchant storefront could manage their store's orders on bank-mfe/Android
+    /// but had zero client anywhere on iOS.
+    public func getMerchantOrders() async throws -> OrdersResponse { try await get("api/v1/orders/merchant-orders") }
+
+    public func updateOrderStatus(_ orderId: String, status: String) async throws -> OrderDetailResponse {
+        try await authenticatedPost("api/v1/orders/\(orderId)/status", body: UpdateOrderStatusRequest(status: status))
+    }
+
+    public func getMerchantReturnQueue() async throws -> OrderReturnRequestsResponse {
+        try await get("api/v1/orders/returns/merchant-queue")
+    }
+
+    public func decideOrderReturn(_ returnRequestId: String, approve: Bool) async throws -> OrderReturnRequestResponse {
+        try await authenticatedPost("api/v1/orders/returns/\(returnRequestId)/decide", body: DecideOrderReturnRequest(approve: approve))
     }
 
     public func getProductRating(_ productId: String) async throws -> ProductRatingResponse {
