@@ -145,3 +145,16 @@ export const submitRideReview = (tripId: string, rating: number, comment?: strin
 export const fetchDriverRating = (driverId: string) =>
   apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/rides/drivers/${driverId}/rating`)
     .then((r) => ({ average: r.average, count: r.count }));
+
+// Real driver written-review browsing during an active trip (item 233) -- found while
+// triaging the uncalled-endpoint sweep: RideController.getDriverReviews was real
+// (distinct from the aggregate rating above, already shown to the driver's own
+// dashboard) but had zero client callers on any platform, because no passenger-facing
+// surface ever showed *which* driver they were matched with. `RideTrip.driverId` was
+// already available client-side the whole time (used for post-trip review submission)
+// -- this just reads it during the active trip too. Honest v1: `RideDriver` has no
+// name/vehicle field on the backend at all, so this shows the driver's real rating +
+// reviews only, never a name that doesn't exist in the data model.
+export const fetchDriverReviews = (driverId: string) =>
+  apiFetch<{ success: boolean; reviews: RideTripReview[] }>(`/api/v1/rides/drivers/${driverId}/reviews?size=10`)
+    .then((r) => r.reviews);

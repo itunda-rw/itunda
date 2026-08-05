@@ -181,9 +181,9 @@ import {
 } from './lib/autoTransfers';
 import {
   acceptRideTrip, arriveAtRideStop, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
-  fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchTripStops, registerAsDriver, requestRideTrip, setDriverAvailability,
+  fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchTripStops, registerAsDriver, requestRideTrip, setDriverAvailability,
   startRideTrip, submitRideReview, updateDriverLocation,
-  type RideDriver, type RideDriverRating, type RideTrip, type RideTripStop,
+  type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop,
 } from './lib/rideshare';
 import {
   acceptDesignatedDriverTrip, cancelDesignatedDriverTrip, completeDesignatedDriverTrip, fetchAvailableDesignatedDriverTrips,
@@ -13796,6 +13796,51 @@ function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?: React.
   );
 }
 
+// Real "meet your driver" rating + reviews during an active trip (item 233) -- see
+// lib/rideshare.ts's own doc comment on fetchDriverReviews for the full sourced
+// account. Honest v1: no driver name/vehicle shown, since RideDriver carries neither.
+function DriverRatingSection({ driverId }: { driverId: string }) {
+  const [rating, setRating] = useState<RideDriverRating | null>(null);
+  const [reviews, setReviews] = useState<RideTripReview[] | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    fetchDriverRating(driverId).then(setRating).catch(() => {});
+  }, [driverId]);
+
+  if (!rating || rating.count === 0) return null;
+
+  return (
+    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--toss-grey-100)' }}>
+      <button
+        onClick={() => {
+          setExpanded((e) => !e);
+          if (!expanded && reviews === null) fetchDriverReviews(driverId).then(setReviews).catch(() => setReviews([]));
+        }}
+        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: '#FFC107' }}
+      >
+        ★ {rating.average?.toFixed(1)} <span style={{ color: 'var(--toss-grey-500)', fontWeight: 400 }}>({rating.count} rating{rating.count === 1 ? '' : 's'}) {expanded ? '▲' : '▼'}</span>
+      </button>
+      {expanded && (
+        reviews === null ? (
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '6px' }}>Loading reviews…</p>
+        ) : reviews.length === 0 ? (
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '6px' }}>No written reviews yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+            {reviews.map((r) => (
+              <div key={r.id} style={{ padding: '8px 10px', borderRadius: '8px', background: 'var(--toss-grey-100)' }}>
+                <p style={{ fontSize: '11px', fontWeight: 700 }}>{'⭐'.repeat(r.rating)}</p>
+                {r.comment && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>{r.comment}</p>}
+              </div>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 // Real Kakao T-style post-trip driver rating (item 213) -- one real review per real
 // trip, rating the driver who completed it. See lib/rideshare.ts's own doc comment.
 function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted: () => void }) {
@@ -14061,10 +14106,15 @@ function RidesView() {
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your ride</h4>
               <RideTripCard
                 trip={activeTrip} stops={activeTripStops}
-                action={activeTrip.status !== 'IN_PROGRESS' && (
-                  <button className="toss-btn toss-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
-                    {busyTripId === activeTrip.id ? 'Cancelling…' : 'Cancel ride'}
-                  </button>
+                action={(
+                  <>
+                    {activeTrip.driverId && <DriverRatingSection driverId={activeTrip.driverId} />}
+                    {activeTrip.status !== 'IN_PROGRESS' && (
+                      <button className="toss-btn toss-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
+                        {busyTripId === activeTrip.id ? 'Cancelling…' : 'Cancel ride'}
+                      </button>
+                    )}
+                  </>
                 )}
               />
             </div>
