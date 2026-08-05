@@ -2083,17 +2083,21 @@ extension NetworkClient {
     }
 
     // Real Toss Bank 자동이체 (auto-transfer) equivalent (2026-07-24 port) -- see
-    // AutoTransferDto's own doc comment above. No idempotency key on create/pause/resume/
-    // cancel (unlike sendDirect/confirmTransfer): these mutate a schedule row, not a wallet
-    // balance directly, matching AutoTransferController's own real endpoints exactly (none
-    // of the five read an Idempotency-Key header).
+    // AutoTransferDto's own doc comment above. pause/resume/cancel mutate an existing
+    // row by id and stay idempotent without a key. create is different (item 235,
+    // found via a periodic Idempotency-Key coverage audit, corrects this file's own
+    // earlier reasoning above): a retry created a second active recurring-transfer
+    // row to the same recipient, which the scheduler then executes independently -- a
+    // real duplicate charge every period going forward. See backend
+    // AutoTransferController.create's own doc comment for the full account.
     public func createAutoTransfer(
         recipient: String, amount: Double, frequency: AutoTransferFrequency,
         dayOfWeek: Int?, dayOfMonth: Int?, description: String
     ) async throws -> AutoTransferResponse {
         try await authenticatedPost(
             "api/v1/p2p/auto-transfers",
-            body: CreateAutoTransferRequest(recipient: recipient, amount: amount, frequency: frequency, dayOfWeek: dayOfWeek, dayOfMonth: dayOfMonth, description: description)
+            body: CreateAutoTransferRequest(recipient: recipient, amount: amount, frequency: frequency, dayOfWeek: dayOfWeek, dayOfMonth: dayOfMonth, description: description),
+            idempotencyKey: UUID().uuidString
         )
     }
 
