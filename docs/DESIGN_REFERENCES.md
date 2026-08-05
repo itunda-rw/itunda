@@ -242,6 +242,18 @@ they close in itunda's current implementation.
    rider-location tracking (item 182) wires `RouteMiniMap` into the delivery-in-progress order view
    with the real restaurant/delivery coordinates.**
    *Target: `SuperAppTabs.kt:3519-3527`, `4330` (`EatsOrderRow`), pair with `RouteMiniMap`*
+   **Commerce (Shop) sibling closed 2026-08-05 (item 230):** found via a
+   defined-but-uncalled-endpoint sweep — `OrderController.getRiderLocation` (Commerce backend, real
+   since 2026-07-26) mirrors `EatsOrderService.getRiderLocation` exactly (same `RiderLocationDto`
+   shape, same buyer/seller/rider authorization) but had zero client callers on any platform. Shipped
+   as `SimpleLiveRiderMap`/`SimpleLiveRiderMiniMap` on bank-mfe, Android, and iOS — an honest v1
+   scope-down from the Eats version above: Commerce's `Order`/`OrderDto` carries no delivery-coordinate
+   fields (only free-text `deliveryAddress`), so there's no "to" endpoint to draw a route toward. This
+   shows the rider's own live position only (single marker, no route line, no from/to pins), a
+   "Track your rider live" toggle shown once an order is `SHIPPED`.
+   *Targets: `lib/commerce.ts`/`SimpleLiveRiderMap.tsx` (bank-mfe); `ApiService.kt:getOrderRiderLocation`,
+   `LiveRiderMiniMap.kt:SimpleLiveRiderMiniMap` (Android); `NetworkClient.swift:getOrderRiderLocation`,
+   `SimpleLiveRiderMiniMap.swift` (iOS) — all wired into their respective Commerce order-list views.*
 
 5. **[sourced] Owner reply implemented; photo implemented 2026-08-04.** Review model has no photo
    field and no owner reply. `SubmitEatsReviewRequest` (`~4063`) is numeric stars + optional text
