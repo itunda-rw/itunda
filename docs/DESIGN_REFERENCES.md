@@ -419,10 +419,23 @@ they close in itunda's current implementation.
    caused by this change -- the underlying app screen rendered correctly with real data behind the
    stuck system dialog) -- this pass relied on the full clean compile plus the already
    curl-verified backend contract, not a live screenshot, unlike this session's usual bar for
-   Android UI changes. **iOS client remains a named, deliberately deferred follow-up**, matching
-   this project's own established "ship web first, native follows" precedent (Rideshare's scheduled
-   bookings/driver ratings/multi-stop all shipped the same way).
-   *Target for the remaining work: `TalkScreen.swift` thread UI*
+   Android UI changes. **iOS client added the same day, closing this recommendation's client-UI
+   thread on all 3 platforms + backend.** `NetworkClient.swift` gained `replyCount` on both
+   `MessageDto`/`GroupMessageDto` and `getThread`/`getGroupThread`. **Real bug found live while
+   wiring this in, fixed the same day**: `MessageDto.replyToMessageId` was declared as a stored
+   property but never actually decoded -- the custom `init(from:)`/`CodingKeys` never mentioned it,
+   so it silently read back `nil` on every real 1:1 message regardless of what the backend sent
+   (unlike Android's own `MessageDto`, which decoded it correctly, and unlike iOS's own
+   `GroupMessageDto`, which also decoded it correctly -- a real, narrow 1:1-only regression, not a
+   platform-wide one). `TalkScreen.swift` gained a real "N replies →" affordance on
+   `MessageBubble`/`GroupMessageBubble` opening a new `RepliesThreadView`/`GroupRepliesThreadView`
+   `.sheet(item:)`, matching the naming discipline the Android port already established (avoiding
+   this file's own pre-existing `ChatThreadScreen`/`GroupThreadScreen` naming). Verified via
+   `swiftc -parse` across both changed files (syntax-only, no type-checking) -- a full
+   `xcodebuild` was attempted but blocked by a pre-existing, unrelated environment issue (missing
+   CocoaPods for the React Native brownfield modules, present before this change and not something
+   this pass caused or attempted to fix), so this iOS change carries the same lower-confidence,
+   syntax-verified-only caveat this session's other iOS work already discloses.
 
 4. **[implemented 2026-08-05]** Talk has private, durable quiet-room controls and
    suppresses notifications for the participant who enables one. Recoverable

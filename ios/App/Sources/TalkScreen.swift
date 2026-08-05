@@ -576,6 +576,8 @@ private struct GroupThreadScreen: View {
     @State private var updatingPin = false
     // Real Forward -- see ForwardPickerView's own doc comment.
     @State private var forwarding: GroupMessageDto?
+    // Real Thread support (2026-08-05) -- see RepliesThreadView's own doc comment.
+    @State private var openThreadFor: GroupMessageDto?
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
@@ -675,6 +677,7 @@ private struct GroupThreadScreen: View {
                                     currentUserId: currentUserId,
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
                                     onReply: { replyingTo = $0 },
+                                    onOpenThread: { openThreadFor = $0 },
                                     onDelete: { messageId in Task { await deleteGroupMessage(messageId) } },
                                     onPin: { pinned in Task { await pinMessage(pinned) } },
                                     onForward: { forwarding = $0 },
@@ -874,6 +877,16 @@ private struct GroupThreadScreen: View {
                 onDismiss: { forwarding = nil }
             )
         }
+        // Real Thread support (2026-08-05) -- see RepliesThreadView's own doc comment.
+        .sheet(item: $openThreadFor) { root in
+            GroupRepliesThreadView(
+                rootMessage: root,
+                currentUserId: currentUserId,
+                fetchThreadMessages: { try await NetworkClient.shared.getGroupThread(groupId: group.groupId, messageId: root.id).messages },
+                onSend: { body in try await NetworkClient.shared.sendGroupMessage(groupId: group.groupId, body: body, replyToMessageId: root.id) },
+                onDismiss: { openThreadFor = nil; Task { await refresh() } }
+            )
+        }
     }
 
     private func refresh() async {
@@ -987,6 +1000,7 @@ private struct GroupMessageBubble: View {
     let currentUserId: String?
     let onToggleReaction: (String) -> Void
     let onReply: (GroupMessageDto) -> Void
+    let onOpenThread: (GroupMessageDto) -> Void
     let onDelete: (String) -> Void
     let onPin: (GroupMessageDto) -> Void
     let onForward: (GroupMessageDto) -> Void
@@ -1048,6 +1062,12 @@ private struct GroupMessageBubble: View {
             Text(chatMessageTime(message.sentAt))
                 .font(.caption2)
                 .foregroundColor(IDS.Colors.textSecondary)
+            // Real Thread support (2026-08-05) -- see MessageBubble's own identical
+            // affordance (docs/DESIGN_REFERENCES.md Talk section recommendation #3).
+            if message.replyCount > 0 {
+                Button("\(message.replyCount) \(message.replyCount == 1 ? "reply" : "replies") →") { onOpenThread(message) }
+                    .font(.caption2).fontWeight(.bold).foregroundColor(IDS.Colors.brand)
+            }
         }
     }
 }
@@ -1411,6 +1431,8 @@ private struct ChatThreadScreen: View {
     @State private var updatingPin = false
     // Real Forward -- see ForwardPickerView's own doc comment.
     @State private var forwarding: MessageDto?
+    // Real Thread support (2026-08-05) -- see RepliesThreadView's own doc comment.
+    @State private var openThreadFor: MessageDto?
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
@@ -1544,6 +1566,7 @@ private struct ChatThreadScreen: View {
                                     onClaimGift: giftHandler,
                                     onExtendVoucher: extendVoucherHandler,
                                     onReply: { replyingTo = $0 },
+                                    onOpenThread: { openThreadFor = $0 },
                                     onDelete: { messageId in Task { await deleteMessage(messageId) } },
                                     onPin: { pinned in Task { await pinMessage(pinned) } },
                                     onForward: { forwarding = $0 },
@@ -1795,6 +1818,16 @@ private struct ChatThreadScreen: View {
                     (try? await NetworkClient.shared.forwardDirectMessage(messageId: message.id, destinationType: destinationType, destinationId: destinationId).success) ?? false
                 },
                 onDismiss: { forwarding = nil }
+            )
+        }
+        // Real Thread support (2026-08-05) -- see RepliesThreadView's own doc comment.
+        .sheet(item: $openThreadFor) { root in
+            RepliesThreadView(
+                rootMessage: root,
+                currentUserId: currentUserId,
+                fetchThreadMessages: { try await NetworkClient.shared.getThread(conversationId: conversation.conversationId, messageId: root.id).messages },
+                onSend: { body in try await NetworkClient.shared.sendMessage(conversationId: conversation.conversationId, body: body, replyToMessageId: root.id) },
+                onDismiss: { openThreadFor = nil; Task { await refresh() } }
             )
         }
     }
@@ -2603,6 +2636,7 @@ private struct MessageBubble: View {
     let onClaimGift: (String) -> Void
     var onExtendVoucher: (String) -> Void = { _ in }
     let onReply: (MessageDto) -> Void
+    var onOpenThread: (MessageDto) -> Void = { _ in }
     let onDelete: (String) -> Void
     let onPin: (MessageDto) -> Void
     let onForward: (MessageDto) -> Void
@@ -2664,6 +2698,12 @@ private struct MessageBubble: View {
                 Button("Report message") { reportOpen = true }
                     .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             }
+            // Real Thread support (2026-08-05) -- see GroupMessageBubble's own identical
+            // affordance (docs/DESIGN_REFERENCES.md Talk section recommendation #3).
+            if message.replyCount > 0 {
+                Button("\(message.replyCount) \(message.replyCount == 1 ? "reply" : "replies") →") { onOpenThread(message) }
+                    .font(.caption2).fontWeight(.bold).foregroundColor(IDS.Colors.brand)
+            }
         }
         .alert("Report message", isPresented: $reportOpen) {
             IdsTextField("Reason", text: $reportReason)
@@ -2673,6 +2713,179 @@ private struct MessageBubble: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Explain why this selected message should be reviewed.") }
+    }
+}
+
+// Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
+// recommendation #3's own account and MessagingController.getThread's backend doc
+// comment for the full sourced Kakao account. A real sub-conversation view: the root
+// message, every direct reply oldest-first, and a composer that replies straight into
+// this same thread. Named "Replies" rather than reusing "Thread" to avoid colliding
+// with this file's own pre-existing ChatThreadScreen/GroupThreadScreen naming (the
+// whole conversation screen, a different real concept).
+private struct RepliesThreadView: View {
+    let rootMessage: MessageDto
+    let currentUserId: String?
+    let fetchThreadMessages: () async throws -> [MessageDto]
+    let onSend: (String) async throws -> MessageResponse
+    let onDismiss: () -> Void
+
+    @State private var messages: [MessageDto]?
+    @State private var draft = ""
+    @State private var sending = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationView {
+            VStack {
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        if let messages {
+                            ForEach(Array(messages.enumerated()), id: \.element.id) { index, m in
+                                let isMine = m.senderId == currentUserId
+                                VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
+                                    if index == 0 {
+                                        Text("Original message").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                    HStack {
+                                        if isMine { Spacer() }
+                                        Text(m.deletedAt == nil ? m.body : "This message was deleted")
+                                            .font(.subheadline)
+                                            .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+                                            .padding(.horizontal, 14).padding(.vertical, 10)
+                                            .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                                            .cornerRadius(16)
+                                        if !isMine { Spacer() }
+                                    }
+                                    Text(chatMessageTime(m.sentAt)).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: isMine ? .trailing : .leading)
+                            }
+                        } else {
+                            ProgressView().padding(.top, 20)
+                        }
+                    }
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                }
+                HStack {
+                    IdsTextField("Reply in thread", text: $draft)
+                    Button(sending ? "…" : "Send") { Task { await send() } }
+                        .disabled(sending || draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                .padding(.bottom, 8)
+            }
+            .navigationTitle("Thread")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Close", action: onDismiss) }
+            }
+            .task { await load() }
+        }
+    }
+
+    private func load() async {
+        do { messages = try await fetchThreadMessages() } catch { self.error = "Could not load this thread." }
+    }
+
+    private func send() async {
+        let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty else { return }
+        sending = true
+        defer { sending = false }
+        do {
+            _ = try await onSend(body)
+            draft = ""
+            await load()
+        } catch {
+            self.error = "Could not send this reply."
+        }
+    }
+}
+
+// Real Thread support (2026-08-05) -- see RepliesThreadView's own doc comment; identical
+// shape for group chat.
+private struct GroupRepliesThreadView: View {
+    let rootMessage: GroupMessageDto
+    let currentUserId: String?
+    let fetchThreadMessages: () async throws -> [GroupMessageDto]
+    let onSend: (String) async throws -> GroupMessageResponse
+    let onDismiss: () -> Void
+
+    @State private var messages: [GroupMessageDto]?
+    @State private var draft = ""
+    @State private var sending = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationView {
+            VStack {
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        if let messages {
+                            ForEach(Array(messages.enumerated()), id: \.element.id) { index, m in
+                                let isMine = m.senderId == currentUserId
+                                VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
+                                    if index == 0 {
+                                        Text("Original message").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                    HStack {
+                                        if isMine { Spacer() }
+                                        Text(m.deletedAt == nil ? m.body : "This message was deleted")
+                                            .font(.subheadline)
+                                            .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+                                            .padding(.horizontal, 14).padding(.vertical, 10)
+                                            .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                                            .cornerRadius(16)
+                                        if !isMine { Spacer() }
+                                    }
+                                    Text(chatMessageTime(m.sentAt)).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: isMine ? .trailing : .leading)
+                            }
+                        } else {
+                            ProgressView().padding(.top, 20)
+                        }
+                    }
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                }
+                HStack {
+                    IdsTextField("Reply in thread", text: $draft)
+                    Button(sending ? "…" : "Send") { Task { await send() } }
+                        .disabled(sending || draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                .padding(.bottom, 8)
+            }
+            .navigationTitle("Thread")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Close", action: onDismiss) }
+            }
+            .task { await load() }
+        }
+    }
+
+    private func load() async {
+        do { messages = try await fetchThreadMessages() } catch { self.error = "Could not load this thread." }
+    }
+
+    private func send() async {
+        let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty else { return }
+        sending = true
+        defer { sending = false }
+        do {
+            _ = try await onSend(body)
+            draft = ""
+            await load()
+        } catch {
+            self.error = "Could not send this reply."
+        }
     }
 }
 

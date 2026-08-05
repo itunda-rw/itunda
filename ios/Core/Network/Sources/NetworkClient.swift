@@ -2171,8 +2171,17 @@ public struct MessageDto: Decodable, Identifiable {
     public let sentAt: String
     public let readAt: String?
     public let deletedAt: String?
-    public let replyToMessageId: String? = nil
+    // Real fix, found live 2026-08-05 while adding Thread support: this field was
+    // declared but never actually decoded -- CodingKeys/init(from:) below never
+    // mentioned it, so it silently read back as nil on every real message regardless
+    // of what the backend sent, unlike Android's own MessageDto (which decodes it
+    // correctly). Real reply context was invisibly broken on iOS this whole time.
+    public let replyToMessageId: String?
     public let reactions: [ReactionGroupDto]
+    // Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
+    // recommendation #3's own account. A real, read-time-computed count of direct
+    // replies to this message (0 for a message no one has replied to).
+    public let replyCount: Int
     // Real KakaoTalk Emoticon Store (item 136) -- see EmoticonPackDto's own doc
     // comment. Only ever set on a message actually created via the real
     // /api/v1/emoticons/.../send endpoints.
@@ -2198,7 +2207,9 @@ public struct MessageDto: Decodable, Identifiable {
         self.sentAt = sentAt
         self.readAt = readAt
         self.deletedAt = nil
+        self.replyToMessageId = nil
         self.reactions = reactions
+        self.replyCount = 0
         self.emoticonId = nil
         self.imageUrl = nil
         self.forwardedFromMessageId = nil
@@ -2212,10 +2223,10 @@ public struct MessageDto: Decodable, Identifiable {
     // message the instant its reaction changed, until the next 4s poll refresh. This
     // preserves every field and only replaces reactions.
     public func withReactions(_ reactions: [ReactionGroupDto]) -> MessageDto {
-        MessageDto(id: id, conversationId: conversationId, senderId: senderId, body: body, sentAt: sentAt, readAt: readAt, deletedAt: deletedAt, reactions: reactions, emoticonId: emoticonId, imageUrl: imageUrl, forwardedFromMessageId: forwardedFromMessageId, forwardedFromType: forwardedFromType)
+        MessageDto(id: id, conversationId: conversationId, senderId: senderId, body: body, sentAt: sentAt, readAt: readAt, deletedAt: deletedAt, replyToMessageId: replyToMessageId, reactions: reactions, replyCount: replyCount, emoticonId: emoticonId, imageUrl: imageUrl, forwardedFromMessageId: forwardedFromMessageId, forwardedFromType: forwardedFromType)
     }
 
-    private init(id: String, conversationId: String, senderId: String, body: String, sentAt: String, readAt: String?, deletedAt: String?, reactions: [ReactionGroupDto], emoticonId: String?, imageUrl: String?, forwardedFromMessageId: String?, forwardedFromType: String?) {
+    private init(id: String, conversationId: String, senderId: String, body: String, sentAt: String, readAt: String?, deletedAt: String?, replyToMessageId: String?, reactions: [ReactionGroupDto], replyCount: Int, emoticonId: String?, imageUrl: String?, forwardedFromMessageId: String?, forwardedFromType: String?) {
         self.id = id
         self.conversationId = conversationId
         self.senderId = senderId
@@ -2223,7 +2234,9 @@ public struct MessageDto: Decodable, Identifiable {
         self.sentAt = sentAt
         self.readAt = readAt
         self.deletedAt = deletedAt
+        self.replyToMessageId = replyToMessageId
         self.reactions = reactions
+        self.replyCount = replyCount
         self.emoticonId = emoticonId
         self.imageUrl = imageUrl
         self.forwardedFromMessageId = forwardedFromMessageId
@@ -2242,14 +2255,16 @@ public struct MessageDto: Decodable, Identifiable {
         sentAt = try container.decode(String.self, forKey: .sentAt)
         readAt = try container.decodeIfPresent(String.self, forKey: .readAt)
         deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
+        replyToMessageId = try container.decodeIfPresent(String.self, forKey: .replyToMessageId)
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
+        replyCount = try container.decodeIfPresent(Int.self, forKey: .replyCount) ?? 0
         emoticonId = try container.decodeIfPresent(String.self, forKey: .emoticonId)
         imageUrl = try container.decodeIfPresent(String.self, forKey: .imageUrl)
         forwardedFromMessageId = try container.decodeIfPresent(String.self, forKey: .forwardedFromMessageId)
         forwardedFromType = try container.decodeIfPresent(String.self, forKey: .forwardedFromType)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, reactions, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType }
+    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, replyToMessageId, reactions, replyCount, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType }
 }
 
 // Real WebSocket push envelopes (2026-07-18) -- see
@@ -2375,6 +2390,8 @@ public struct GroupMessageDto: Decodable, Identifiable {
     // whose lastReadAt is still before this message's sentAt; decrements live as
     // members open the thread.
     public let unreadCount: Int
+    // Real Thread support (2026-08-05) -- see MessageDto.replyCount's own doc comment.
+    public let replyCount: Int
 
     // Explicit memberwise init -- see MessageDto's own identical note on why this is
     // needed once a custom init(from:) is present.
@@ -2392,15 +2409,16 @@ public struct GroupMessageDto: Decodable, Identifiable {
         self.forwardedFromMessageId = nil
         self.forwardedFromType = nil
         self.unreadCount = 0
+        self.replyCount = 0
     }
 
     // Real fix -- see MessageDto's own identical withReactions doc comment; same bug,
     // same fix, for the group side (also would have dropped the new unreadCount).
     public func withReactions(_ reactions: [ReactionGroupDto]) -> GroupMessageDto {
-        GroupMessageDto(id: id, groupConversationId: groupConversationId, senderId: senderId, body: body, sentAt: sentAt, deletedAt: deletedAt, replyToMessageId: replyToMessageId, reactions: reactions, emoticonId: emoticonId, imageUrl: imageUrl, forwardedFromMessageId: forwardedFromMessageId, forwardedFromType: forwardedFromType, unreadCount: unreadCount)
+        GroupMessageDto(id: id, groupConversationId: groupConversationId, senderId: senderId, body: body, sentAt: sentAt, deletedAt: deletedAt, replyToMessageId: replyToMessageId, reactions: reactions, emoticonId: emoticonId, imageUrl: imageUrl, forwardedFromMessageId: forwardedFromMessageId, forwardedFromType: forwardedFromType, unreadCount: unreadCount, replyCount: replyCount)
     }
 
-    private init(id: String, groupConversationId: String, senderId: String, body: String, sentAt: String, deletedAt: String?, replyToMessageId: String?, reactions: [ReactionGroupDto], emoticonId: String?, imageUrl: String?, forwardedFromMessageId: String?, forwardedFromType: String?, unreadCount: Int) {
+    private init(id: String, groupConversationId: String, senderId: String, body: String, sentAt: String, deletedAt: String?, replyToMessageId: String?, reactions: [ReactionGroupDto], emoticonId: String?, imageUrl: String?, forwardedFromMessageId: String?, forwardedFromType: String?, unreadCount: Int, replyCount: Int) {
         self.id = id
         self.groupConversationId = groupConversationId
         self.senderId = senderId
@@ -2414,6 +2432,7 @@ public struct GroupMessageDto: Decodable, Identifiable {
         self.forwardedFromMessageId = forwardedFromMessageId
         self.forwardedFromType = forwardedFromType
         self.unreadCount = unreadCount
+        self.replyCount = replyCount
     }
 
     // Same real-time-push-omits-reactions handling as MessageDto's own custom decode.
@@ -2432,9 +2451,10 @@ public struct GroupMessageDto: Decodable, Identifiable {
         forwardedFromMessageId = try container.decodeIfPresent(String.self, forKey: .forwardedFromMessageId)
         forwardedFromType = try container.decodeIfPresent(String.self, forKey: .forwardedFromType)
         unreadCount = try container.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
+        replyCount = try container.decodeIfPresent(Int.self, forKey: .replyCount) ?? 0
     }
 
-    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType, unreadCount }
+    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId, imageUrl, forwardedFromMessageId, forwardedFromType, unreadCount, replyCount }
 }
 public struct GroupResponse: Decodable { public let success: Bool; public let group: GroupSummaryDto }
 public struct GroupsResponse: Decodable { public let success: Bool; public let groups: [GroupSummaryDto] }
@@ -3658,6 +3678,12 @@ extension NetworkClient {
         try await get("api/v1/messages/conversations/\(conversationId)/messages")
     }
 
+    // Real Thread support (2026-08-05) -- see MessageDto.replyCount's own doc comment.
+    // Root message first, then every direct reply oldest-first.
+    public func getThread(conversationId: String, messageId: String) async throws -> MessagesResponse {
+        try await get("api/v1/messages/conversations/\(conversationId)/messages/\(messageId)/thread")
+    }
+
     public func searchMessages(conversationId: String, query: String) async throws -> MessagesResponse {
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
         return try await get("api/v1/messages/conversations/\(conversationId)/messages/search?query=\(encoded)")
@@ -3733,6 +3759,12 @@ extension NetworkClient {
 
     public func getGroupMessages(groupId: String) async throws -> GroupMessagesResponse {
         try await get("api/v1/messages/groups/\(groupId)/messages")
+    }
+
+    // Real Thread support (2026-08-05) -- see getThread's own doc comment; identical
+    // shape for group chat.
+    public func getGroupThread(groupId: String, messageId: String) async throws -> GroupMessagesResponse {
+        try await get("api/v1/messages/groups/\(groupId)/messages/\(messageId)/thread")
     }
 
     public func sendGroupMessage(groupId: String, body: String, replyToMessageId: String? = nil, imageUrl: String? = nil) async throws -> GroupMessageResponse {
