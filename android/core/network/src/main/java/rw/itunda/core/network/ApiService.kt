@@ -2124,8 +2124,13 @@ interface ApiService {
     @POST("api/v1/p2p/pay/{requestId}")
     suspend fun payP2pRequest(@Path("requestId") requestId: String, @Header("Idempotency-Key") idempotencyKey: String): PayP2pRequestResponse
 
+    // Real idempotency fix (item 235, found via a periodic Idempotency-Key coverage
+    // audit) -- a retry created a second active recurring-transfer row to the same
+    // recipient, which the scheduler then executes independently: a real duplicate
+    // charge every period going forward. See backend AutoTransferController.create's
+    // own doc comment for the full account.
     @POST("api/v1/p2p/auto-transfers")
-    suspend fun createAutoTransfer(@Body request: CreateAutoTransferRequest): AutoTransferResponse
+    suspend fun createAutoTransfer(@Header("Idempotency-Key") idempotencyKey: String, @Body request: CreateAutoTransferRequest): AutoTransferResponse
 
     @GET("api/v1/p2p/auto-transfers")
     suspend fun getMyAutoTransfers(): AutoTransfersListResponse

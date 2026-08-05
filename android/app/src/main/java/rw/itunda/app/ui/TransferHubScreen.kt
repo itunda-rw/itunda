@@ -303,6 +303,7 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
         scope.launch {
             try {
                 NetworkClient.apiService.createAutoTransfer(
+                    java.util.UUID.randomUUID().toString(),
                     CreateAutoTransferRequest(
                         recipient = recipient.trim(),
                         amount = java.math.BigDecimal.valueOf(amountValue),
