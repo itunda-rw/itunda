@@ -853,6 +853,23 @@ they close in itunda's current implementation.
    *Shipped: `MerchantProduct.durationMinutes`, `MerchantBookingService`, `POST /api/v1/merchant/bookings`,
    Shop's "Book" flow (date strip + real backend-computed slot grid), merchant app's Bookings tab
    (weekly availability editor + confirm/decline/complete queue)*
+   **Reviews/coupons half closed 2026-08-05 (item 231):** found via a defined-but-uncalled-endpoint
+   sweep -- `MerchantBookingReviewController.getMerchantReviews` and `MerchantCouponController.
+   getCouponsForCustomer` were both real, fully-authorized backend endpoints (Karrot's own
+   "coupons/loyalty on top" and Naver Smart Place's "owner-side review replies" halves,
+   `regularsOnly` loyalty-gating already enforced server-side) but had zero client callers on any
+   platform -- a buyer choosing whether to book with a merchant could never see that merchant's
+   real review history/rating or their own real coupon eligibility before requesting a slot. Shipped
+   as `MerchantBookingInfoSection` on bank-mfe, Android, and iOS, shown above the date picker in
+   each platform's booking flow.
+
+Cross-platform note: two candidates flagged by the same sweep were checked and confirmed *not*
+real gaps, not built: `GET /{merchantId}/booking-availability` (raw weekly windows) is genuinely
+superseded by `/{merchantId}/booking-slots` (real backend-computed concrete slots), which all 3
+platforms already call; a plain `GET /gifts/{id}`/`GET /gift-vouchers/{id}` single-item detail
+fetch has no natural entry point anywhere (no push notification or deep link resolves to a single
+gift/voucher, and every real UI flow already works off the list/conversation endpoints) -- building
+a detail screen with nothing that navigates into it would be speculative UI, not a real gap.
 
 ### Unresolved / worth a follow-up
 
