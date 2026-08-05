@@ -73,6 +73,24 @@ export const placeOrder = (merchantId: string, items: { productId: string; quant
 export const fetchOrderDetail = (orderId: string) =>
   apiFetch<{ success: boolean; order: CommerceOrder; items: CommerceOrderItem[] }>(`/api/v1/orders/${orderId}`);
 
+// Real live rider-location tracking (2026-08-05) -- found via a defined-but-uncalled-
+// endpoint sweep: OrderService.getRiderLocation (backend, 2026-07-26) mirrors
+// EatsOrderService.getRiderLocation exactly (same DTO shape, same buyer/seller/rider
+// authorization, same real "null while genuinely nothing to show" semantics), and
+// Eats' own equivalent has had a real LiveRiderMap client since 2026-07-20 -- this one
+// had zero client anywhere on any platform until now. Honest v1 scope-down from Eats'
+// own richer version: Commerce's own `Order` entity has no delivery-coordinate fields
+// (only a free-text deliveryAddress), so there's no real "to" endpoint to draw a route
+// toward -- this shows the rider's own live position only, not a route line.
+export interface OrderRiderLocation {
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+}
+
+export const fetchOrderRiderLocation = (orderId: string) =>
+  apiFetch<{ success: boolean; available: boolean; location: OrderRiderLocation | null }>(`/api/v1/orders/${orderId}/rider-location`);
+
 export const fetchMyOrders = () =>
   apiFetch<{ success: boolean; orders: CommerceOrder[] }>('/api/v1/orders/my-orders').then((r) => r.orders);
 

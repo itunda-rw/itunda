@@ -149,7 +149,7 @@ import {
 } from './lib/eats';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
-  fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail, fetchPriceTiers,
+  fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail, fetchOrderRiderLocation, fetchPriceTiers,
   fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview,
   type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type PriceTier, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
@@ -161,6 +161,7 @@ import { cancelBooking, createBooking, fetchAvailableSlots, fetchMyBookings, sub
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
+import SimpleLiveRiderMap from './SimpleLiveRiderMap';
 import { searchPlaces, type PlaceSearchResult } from './lib/maps';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
 import { checkScamStatus, reportScam, type ScamCheckResult } from './lib/scamReports';
@@ -16234,6 +16235,10 @@ const COMMERCE_STATUS_LABEL: Record<CommerceOrderStatus, string> = {
 const COMMERCE_STATUS_CHAIN: CommerceOrderStatus[] = ['PLACED', 'PACKED', 'SHIPPED', 'DELIVERED'];
 
 function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: React.ReactNode }) {
+  // Real live rider-location tracking (2026-08-05) -- see lib/commerce.ts's own
+  // fetchOrderRiderLocation doc comment. Only ever real once a rider is actually en
+  // route, matching OrderService.getRiderLocation's own real SHIPPED-only gate exactly.
+  const [showLiveTracking, setShowLiveTracking] = useState(false);
   return (
     <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -16243,6 +16248,12 @@ function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: R
         </div>
         <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
       </div>
+      {order.status === 'SHIPPED' && (
+        <button className="toss-btn toss-btn-primary" onClick={() => setShowLiveTracking((v) => !v)}>
+          {showLiveTracking ? 'Hide live tracking' : '🛵 Track your rider live'}
+        </button>
+      )}
+      {showLiveTracking && <SimpleLiveRiderMap orderId={order.id} fetchLocation={fetchOrderRiderLocation} />}
       {action}
     </div>
   );
