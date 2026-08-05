@@ -892,6 +892,13 @@ platform currently shows a passenger *which* driver they're matched with beyond 
 (no driver-profile view exists to browse into), so building a reviews list has no real entry point
 until that's built first -- a larger, separate, not-yet-started follow-up.
 
+While checking `getCollectionHistory`'s callers, found a genuine full platform-parity gap rather
+than a sub-feature: iOS MerchantApp had **zero** client for the entire Isoko Vendor Cash Advance
+feature (offer/apply/disburse/repay-early), unlike merchant-mfe and Android's native merchantapp,
+which both already had it. Closed 2026-08-05 -- straight port of Android's own
+`VendorCashAdvanceScreen.kt` as iOS's new `VendorCashAdvanceTab`, same real business logic and copy
+verbatim, wired into `MerchantHomeScreen`'s tab picker as "Cash advance".
+
 ### Unresolved / worth a follow-up
 
 - Naver Smart Store's exact detail-page tab structure (상세정보/리뷰/Q&A/Story) wasn't confirmed
