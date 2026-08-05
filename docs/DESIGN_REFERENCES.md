@@ -1230,11 +1230,11 @@ backend) so every recommendation below cites a real file, not a hypothetical.
    passport-based self-service for 14+) is real and sourced, but porting it is a multi-session
    effort, not a single closable gap — flagged as a real opportunity, not a next action.
 
-7. **[inferred, itunda-internal]** Build a real registration UI for bank-mfe. Unrelated to Toss
-   research directly, but a glaring itunda-internal inconsistency found during this pass — the web
-   client has no sign-up page at all, unlike Android/iOS.
-   *Target: new `services/micro-frontends/bank-mfe/src/RegisterPage.tsx`, mirroring `LoginScreen.kt`/
-   `.swift`'s existing field set*
+7. **[inferred, itunda-internal] Implemented 2026-07-xx -- doc was stale.** Build a real
+   registration UI for bank-mfe. Re-checked 2026-08-06 while researching this section's remaining
+   items: `lib/api.ts`'s real `register()` function (phone/name/password, real device binding on
+   the same request, same auto-trust reasoning `LoginScreen.kt`/`.swift` already use) has existed
+   for a while -- this entry just hadn't been updated when it shipped.
 
 ### "One thing, one page" — a deeper look
 
@@ -1375,17 +1375,23 @@ reasonably well).
 
 ### Recommendations (ranked)
 
-1. **[sourced, cross-verified against 6/6 ecosystems]** Build a real shared empty/error-state
-   component, now informed by six independent real precedents rather than one. Concretely: an
-   icon-in-a-soft-circle + title + **warmer, more specific subtitle copy** (closer to Baemin's
-   documented conversational register than itunda's current flat phrasing, without inventing a
-   fictional mascot character itunda has no in-house illustrator to actually draw). This is still
-   the highest-leverage, lowest-risk recommendation in this whole document: no backend change, no
-   new dependency, closes an identical gap on every surface, and is now the *one* place all six
-   researched ecosystems agree on the same underlying principle.
-   *Target: one shared `EmptyState` composable/View/component per platform, replacing the bare
-   `Text(...)` empty-state calls across `SuperAppTabs.kt`/feature modules, `HoodScreen.swift`/iOS
-   equivalents, and `BankDashboard.tsx`/`insurance_mini_app`*
+1. **[sourced, cross-verified against 6/6 ecosystems] Structure implemented; copy partially closed
+   2026-08-06 (item 238).** Build a real shared empty/error-state component: an icon-in-a-soft-circle
+   + title + **warmer, more specific subtitle copy** (closer to Baemin's documented conversational
+   register than itunda's original flat phrasing, without inventing a fictional mascot character
+   itunda has no in-house illustrator to actually draw). The structural half (`EmptyState`
+   composable/View/component, icon-in-circle layout) was already real on all 3 platforms. The copy
+   half was still flat everywhere ("No orders yet.", "No notifications") until now -- rewrote the
+   ~15 highest-traffic call sites a typical daily user actually hits (wallet transactions, home
+   overview, Talk conversations/groups, notifications, Eats/Shop order history, carpool bookings,
+   Marketplace search, Shop's merchant directory, card purchases, trusted devices) on all 3
+   platforms; each rewrite says what's missing AND what will make it show up. **Honest partial
+   scope**: ~165 total `EmptyState` call sites exist across bank-mfe alone -- the remaining ones
+   (mostly lower-traffic admin/niche-feature screens) are a deliberately deferred follow-up, not a
+   silent gap.
+   *Shipped: `EmptyState`/`EmptyStateView` call-site copy in `BankDashboard.tsx`, `TalkScreen.kt`/
+   `ShopScreen.kt`/`EatsScreen.kt`/`CardScreen.kt` (Android), `TalkScreen.swift`/`ShopScreen.swift`/
+   `EatsScreen.swift`/`CardScreenView.swift` (iOS)*
 
 2. **[sourced] Implemented on all 3 platforms, 2026-08-05.** Apply the same treatment to
    itunda's error states — Toss's documented friction-softening reasoning plus Baemin's
