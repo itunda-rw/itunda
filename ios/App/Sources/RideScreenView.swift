@@ -125,13 +125,18 @@ private struct RidePassengerContent: View {
                 if let active = activeTrip {
                     Text("Your ride").bold().foregroundColor(IDS.Colors.textPrimary)
                     RideTripCard(trip: active, stops: activeTripStops) {
-                        if active.status != "IN_PROGRESS" {
-                            Button(action: { Task { await cancelTrip(active.id) } }) {
-                                Text(busyTripId == active.id ? "Cancelling…" : "Cancel ride").bold().foregroundColor(.white)
-                                    .frame(maxWidth: .infinity).padding(.vertical, 12)
-                                    .background(Color.red).cornerRadius(10)
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let driverId = active.driverId {
+                                DriverRatingSection(driverId: driverId)
                             }
-                            .disabled(busyTripId == active.id)
+                            if active.status != "IN_PROGRESS" {
+                                Button(action: { Task { await cancelTrip(active.id) } }) {
+                                    Text(busyTripId == active.id ? "Cancelling…" : "Cancel ride").bold().foregroundColor(.white)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                        .background(Color.red).cornerRadius(10)
+                                }
+                                .disabled(busyTripId == active.id)
+                            }
                         }
                     }
                 } else {
@@ -517,6 +522,61 @@ private struct RideDriverContent: View {
             self.error = "Could not mark this stop arrived."
         }
         busyTripId = nil
+    }
+}
+
+/// Real "meet your driver" rating + reviews during an active trip (item 233) -- found
+/// via the uncalled-endpoint sweep, see NetworkClient.getRideDriverReviews's own doc
+/// comment. bank-mfe/Android shipped this first (2026-08-05); this is the iOS port.
+/// Honest v1: no driver name/vehicle field exists on the backend, so this shows the
+/// driver's real rating + written reviews only, never a fabricated name.
+private struct DriverRatingSection: View {
+    let driverId: String
+    @State private var rating: RideDriverRatingResponse?
+    @State private var reviews: [RideTripReviewDto]?
+    @State private var expanded = false
+
+    var body: some View {
+        Group {
+            if let rating, rating.count > 0 {
+                VStack(alignment: .leading, spacing: 6) {
+                    Button(action: {
+                        expanded.toggle()
+                        if expanded && reviews == nil {
+                            Task {
+                                reviews = (try? await NetworkClient.shared.getRideDriverReviews(driverId: driverId).reviews) ?? []
+                            }
+                        }
+                    }) {
+                        Text("★ \(String(format: "%.1f", rating.average ?? 0)) (\(rating.count) rating\(rating.count == 1 ? "" : "s")) \(expanded ? "▲" : "▼")")
+                            .font(.caption).bold().foregroundColor(Color(red: 1, green: 0.76, blue: 0.03))
+                    }
+                    if expanded {
+                        if let reviews {
+                            if reviews.isEmpty {
+                                Text("No written reviews yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            } else {
+                                ForEach(reviews, id: \.id) { review in
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(String(repeating: "⭐", count: review.rating)).font(.caption2).bold()
+                                        if let comment = review.comment { Text(comment).font(.caption).foregroundColor(IDS.Colors.textPrimary) }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(8)
+                                    .background(IDS.Colors.card)
+                                    .cornerRadius(8)
+                                }
+                            }
+                        } else {
+                            Text("Loading reviews…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                    }
+                }
+            }
+        }
+        .task(id: driverId) {
+            rating = try? await NetworkClient.shared.getRideDriverRating(driverId: driverId)
+        }
     }
 }
 

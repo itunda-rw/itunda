@@ -648,6 +648,7 @@ public struct RideTripReviewDto: Decodable {
 }
 public struct RideTripReviewResponse: Decodable { public let success: Bool; public let review: RideTripReviewDto }
 public struct RideDriverRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
+public struct RideDriverReviewsResponse: Decodable { public let success: Bool; public let reviews: [RideTripReviewDto] }
 
 // Real Kakao T 대리운전 (designated driver, item 221) -- a professional driver comes to
 // the customer's location and drives the CUSTOMER'S OWN CAR home for them, distinct
@@ -1143,6 +1144,14 @@ extension NetworkClient {
     }
 
     public func getRideDriverRating(driverId: String) async throws -> RideDriverRatingResponse { try await get("api/v1/rides/drivers/\(driverId)/rating") }
+
+    /// Real "meet your driver" rating + reviews during an active trip (item 233) --
+    /// found via the uncalled-endpoint sweep, see bank-mfe's lib/rideshare.ts own doc
+    /// comment on fetchDriverReviews for the full sourced account. bank-mfe/Android
+    /// shipped this first (2026-08-05); this is the iOS port.
+    public func getRideDriverReviews(driverId: String) async throws -> RideDriverReviewsResponse {
+        try await get("api/v1/rides/drivers/\(driverId)/reviews", query: [URLQueryItem(name: "size", value: "10")])
+    }
 
     // Real Kakao T 대리운전 (designated driver, item 221) -- first iOS client for this
     // feature. bank-mfe/Android already have this; mirrors ApiService.kt exactly.
