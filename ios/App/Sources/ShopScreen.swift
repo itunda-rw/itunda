@@ -497,9 +497,11 @@ private struct CommerceShopContent: View {
                                                 ProductImageThumb(imageUrl: v.productImageUrl, side: 96)
                                                 Text(v.productName).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
                                                 Text("\(Int(v.deal.dealPrice)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                                                Text(formatTimeDealCountdown(v.deal.endsAt)).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
-                                                Text("\(v.deal.remainingQuantity) left")
-                                                    .font(.caption2).foregroundColor(v.deal.remainingQuantity <= 3 ? .red : IDS.Colors.textSecondary)
+                                                // Real Coupang badge system (2026-08-05) -- see IdsBadge's own doc
+                                                // comment. Matches Android ShopScreen.kt's own identical StatusBadge
+                                                // treatment (this was plain Text on iOS until now).
+                                                IdsBadge(formatTimeDealCountdown(v.deal.endsAt), filled: false, tint: IDS.Colors.brand)
+                                                IdsBadge("\(v.deal.remainingQuantity) left", tint: IDS.Colors.danger)
                                             }
                                             .frame(width: 120, alignment: .leading)
                                             .padding(10)

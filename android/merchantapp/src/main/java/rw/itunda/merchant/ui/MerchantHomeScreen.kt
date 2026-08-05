@@ -20,6 +20,8 @@ import androidx.compose.material.icons.outlined.RateReview
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.StatusBadge
+import rw.itunda.core.designsystem.theme.Ids
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -58,7 +60,17 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
         ) {
             Column {
                 Text("Itunda Merchant", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(merchant.businessName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(merchant.businessName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Real Coupang badge system (2026-08-05) -- see
+                    // docs/DESIGN_REFERENCES.md Section 9's own account. A real, named
+                    // verification tier next to the business name, not buried in a
+                    // settings screen -- this field existed on the DTO but was never
+                    // rendered anywhere in this app at all before now.
+                    if (merchant.kybVerified) {
+                        StatusBadge("✓ Verified", tint = Ids.colors.brand)
+                    }
+                }
             }
             IconButton(onClick = { NetworkClient.currentTokenStore().clearSession(); onLogout() }) {
                 Icon(Icons.Filled.ExitToApp, contentDescription = "Log out")

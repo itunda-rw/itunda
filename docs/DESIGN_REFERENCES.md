@@ -1332,11 +1332,25 @@ reasonably well).
    itunda currently has no stated position on it at all (every string found is functionally
    correct but personality-neutral).
 
-4. **[sourced]** Per-surface badge/urgency-tag visual language, modeled on Coupang's real two-tier
-   badge precedent (a badge tied to a *named, real* benefit tier, not a decorative label) —
-   directly applicable to itunda's own real Time Deal feature (shipped this session) and its
-   merchant-verification (`kybVerified`)/membership-day flags, which currently render as plain
-   text rather than a consistent badge component.
+4. **[sourced] Implemented 2026-08-05.** Per-surface badge/urgency-tag visual language, modeled
+   on Coupang's real two-tier badge precedent (a badge tied to a *named, real* benefit tier, not a
+   decorative label). **Real finding on inspection**: Android's Time Deal countdown/remaining-
+   quantity already used a real shared `StatusBadge` component (`core/designsystem/components/
+   HoodShared.kt`) -- a sibling-platform inconsistency, not a platform-wide gap. iOS and bank-mfe
+   still rendered plain `Text`/`<p>`. Ported the same shape: `IdsBadge` (`Core/DesignSystem/
+   Sources/Components/Components.swift`) for iOS, `Badge` (new `Badge.tsx`, independently in both
+   bank-mfe and merchant-mfe per this repo's own per-micro-frontend component convention) for web.
+   Applied to Time Deal on iOS `ShopScreen.swift` and bank-mfe. **`kybVerified` was a real,
+   deeper gap**: never rendered anywhere in the Android or iOS merchant apps at all (not even as
+   plain text) -- only merchant-mfe showed it, as plain colored text. Added a real "✓ Verified"
+   badge next to the business name in `MerchantHomeScreen.kt`/`MerchantHomeScreen.swift`'s own
+   header (Android/iOS) and replaced merchant-mfe's plain text with the new `Badge`. "Membership-
+   day flags" turned out already correct on inspection -- bank-mfe's Membership Day banner is a
+   real highlighted card (emoji + bold heading + tinted background/border), not plain text; no fix
+   needed there. Verified: Android full clean recompile (`:app:compileDebugKotlin` +
+   `:merchantapp:compileDebugKotlin`) zero-error; bank-mfe/merchant-mfe `tsc -b && vite build`
+   both clean; iOS `swiftc -parse` clean (same syntax-only caveat as this session's other iOS
+   work).
 
 5. **[partially-sourced]** Consider itunda's own equivalent of a Tossface-style rule set for any
    future custom iconography/emoji work — a real, reusable checklist (uniform sizing, one palette,

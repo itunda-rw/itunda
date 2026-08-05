@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
+import { Badge } from './Badge';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
@@ -18038,10 +18039,11 @@ function ShopView() {
                   price={v.deal.dealPrice} originalPrice={v.deal.originalPrice}
                   discountPercent={Math.round((1 - v.deal.dealPrice / v.deal.originalPrice) * 100)}
                 />
-                <p style={{ fontSize: '11px', color: 'var(--toss-blue)', fontWeight: 700 }}>{formatDealCountdown(v.deal.endsAt)}</p>
-                <p style={{ fontSize: '11px', color: v.deal.remainingQuantity <= 3 ? '#E53935' : 'var(--toss-grey-500)' }}>
-                  {v.deal.remainingQuantity} left
-                </p>
+                {/* Real Coupang badge system (2026-08-05) -- see Badge.tsx's own doc
+                    comment. Matches Android ShopScreen.kt's own identical StatusBadge
+                    treatment (this was plain <p> text on bank-mfe until now). */}
+                <Badge text={formatDealCountdown(v.deal.endsAt)} filled={false} tint="var(--toss-blue)" />
+                <Badge text={`${v.deal.remainingQuantity} left`} tint="var(--toss-red)" />
               </button>
             ))}
           </div>

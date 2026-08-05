@@ -159,6 +159,32 @@ public struct IdsTextField: View {
     }
 }
 
+// Real Coupang badge system (2026-08-05) -- see docs/DESIGN_REFERENCES.md Section 9's
+// own account: a two-tier delivery badge tied to a real, named benefit tier, not a
+// decorative label. Ports Android's own IdsBadge/StatusBadge (core/designsystem/
+// components/HoodShared.kt) to iOS -- itunda's own real Time Deal countdown/remaining-
+// quantity already used this shape on Android; iOS/web still rendered plain text.
+public struct IdsBadge: View {
+    let text: String
+    var filled: Bool = true
+    var tint: Color = IDS.Colors.brand
+
+    public init(_ text: String, filled: Bool = true, tint: Color = IDS.Colors.brand) {
+        self.text = text
+        self.filled = filled
+        self.tint = tint
+    }
+
+    public var body: some View {
+        Text(text)
+            .font(.caption2).fontWeight(.bold)
+            .foregroundColor(filled ? .white : tint)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(filled ? tint : tint.opacity(0.12))
+            .cornerRadius(6)
+    }
+}
+
 public struct IdsListRow: View {
     let title: String
     let subtitle: String?

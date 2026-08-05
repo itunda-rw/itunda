@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
@@ -661,7 +662,7 @@ function KybCard({ merchant }: { merchant: Merchant }) {
       </div>
 
       {merchant.kybVerified ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-green)', fontWeight: 600 }}>Verified</p>
+        <Badge text="✓ Verified" tint="var(--toss-green)" />
       ) : pending ? (
         <div>
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', marginBottom: '4px' }}>We're reviewing your business details.</p>

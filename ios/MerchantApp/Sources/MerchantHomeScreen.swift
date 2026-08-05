@@ -14,7 +14,17 @@ struct MerchantHomeScreen: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text("Itunda Merchant").font(.title2).bold()
-                    Text(merchant.businessName).font(.caption).foregroundColor(.secondary)
+                    HStack(spacing: 6) {
+                        Text(merchant.businessName).font(.caption).foregroundColor(.secondary)
+                        // Real Coupang badge system (2026-08-05) -- see IdsBadge's own
+                        // doc comment. A real, named benefit/verification tier next to
+                        // the business name, not buried in a settings screen -- this
+                        // field existed on the DTO but was never rendered anywhere in
+                        // the iOS merchant app at all before now.
+                        if merchant.kybVerified {
+                            IdsBadge("✓ Verified", tint: IDS.Colors.brand)
+                        }
+                    }
                 }
                 Spacer()
                 Button(action: { MerchantKeychainTokenStore.shared.clearSession(); onLogout() }) {
