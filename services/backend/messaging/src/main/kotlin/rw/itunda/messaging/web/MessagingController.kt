@@ -102,10 +102,13 @@ class MessagingController(
         // query per message -- see MessagingService.getReactionSummaries's own doc
         // comment.
         val reactionsByMessageId = messagingService.getReactionSummaries(page.content.map { it.id })
+        // Real Thread support (2026-08-05) -- same batch-fetch discipline as reactions.
+        val replyCountsByMessageId = messagingService.getReplyCounts(page.content.map { it.id })
         val messages = page.content.map { m ->
             mapOf(
                 "id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
                 "sentAt" to m.sentAt, "readAt" to m.readAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                "replyCount" to (replyCountsByMessageId[m.id] ?: 0L),
                 // Real, pre-existing gap fixed 2026-07-26, found while live-verifying
                 // the new Emoticon Store send path: imageUrl/forwardedFromMessageId/
                 // forwardedFromType were real fields on Message (composer photo send
@@ -118,6 +121,30 @@ class MessagingController(
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
+    }
+
+    // Real Thread support (2026-08-05) -- closes docs/DESIGN_REFERENCES.md Talk section
+    // recommendation #3's remaining gap: Kakao's confirmed 2025 toolkit includes a real
+    // reply-expands-into-its-own-sub-conversation view, not just an inline "replying to"
+    // tag. Root message first, then every direct reply oldest-first -- the same shape a
+    // dedicated thread screen renders directly.
+    @GetMapping("/conversations/{conversationId}/messages/{messageId}/thread")
+    fun getThread(
+        @PathVariable conversationId: String,
+        @PathVariable messageId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val thread = messagingService.getThread(currentUser.userId, conversationId, messageId)
+        val reactions = messagingService.getReactionSummaries(thread.map { it.id })
+        val messages = thread.map { m ->
+            mapOf(
+                "id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
+                "sentAt" to m.sentAt, "readAt" to m.readAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactions[m.id] ?: emptyList()),
+                "imageUrl" to m.imageUrl, "emoticonId" to m.emoticonId,
+                "forwardedFromMessageId" to m.forwardedFromMessageId, "forwardedFromType" to m.forwardedFromType,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "messages" to messages))
     }
 
     @GetMapping("/conversations/{conversationId}/messages/search")

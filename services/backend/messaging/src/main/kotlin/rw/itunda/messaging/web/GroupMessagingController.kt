@@ -100,11 +100,14 @@ class GroupMessagingController(
         // Real Kakao-style per-message read-receipt countdown (2026-07-26) -- see
         // GroupMessagingService.getUnreadCounts's own doc comment.
         val unreadCountByMessageId = groupMessagingService.getUnreadCounts(groupId, page.content)
+        // Real Thread support (2026-08-05) -- same batch-fetch discipline as reactions.
+        val replyCountsByMessageId = groupMessagingService.getReplyCounts(page.content.map { it.id })
         val messages = page.content.map { m ->
             mapOf(
                 "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
                 "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
                 "unreadCount" to (unreadCountByMessageId[m.id] ?: 0),
+                "replyCount" to (replyCountsByMessageId[m.id] ?: 0L),
                 // Real, pre-existing gap fixed 2026-07-26 -- see MessagingController
                 // .getMessages's own identical fix for the full account; same real
                 // fields (composer photo send, forwarding, @mentions, now emoticons)
@@ -115,6 +118,28 @@ class GroupMessagingController(
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
+    }
+
+    // Real Thread support (2026-08-05) -- see MessagingController.getThread's own doc
+    // comment for the full sourced account; identical shape for group chat.
+    @GetMapping("/{groupId}/messages/{messageId}/thread")
+    fun getThread(
+        @PathVariable groupId: String,
+        @PathVariable messageId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val thread = groupMessagingService.getThread(currentUser.userId, groupId, messageId)
+        val reactions = groupMessagingService.getReactionSummaries(thread.map { it.id })
+        val messages = thread.map { m ->
+            mapOf(
+                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
+                "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactions[m.id] ?: emptyList()),
+                "imageUrl" to m.imageUrl, "emoticonId" to m.emoticonId,
+                "forwardedFromMessageId" to m.forwardedFromMessageId, "forwardedFromType" to m.forwardedFromType,
+                "mentionedUserIds" to m.mentionedUserIds,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "messages" to messages))
     }
 
     // Real emoji reactions (2026-07-19) -- see GroupMessagingService.toggleReaction's

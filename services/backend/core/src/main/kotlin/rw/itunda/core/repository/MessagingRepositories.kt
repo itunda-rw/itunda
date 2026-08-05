@@ -72,6 +72,19 @@ interface ConversationUnreadCount {
     val unreadCount: Long
 }
 
+// Real Thread support (2026-08-05) -- closes docs/DESIGN_REFERENCES.md Talk section
+// recommendation #3's remaining "Thread (reply expanding into its own sub-conversation)"
+// gap: Kakao's confirmed 2025 toolkit is Copy/Reply/Forward/Pin/Delete/@mention, and
+// itunda already has real Reply (a message's own replyToMessageId), just rendered as an
+// inline "replying to" tag in the flat timeline, never a real expandable thread view.
+// Same batch-projection shape as ConversationUnreadCount, one row per root message that
+// has at least one reply -- backs a "N replies" affordance on the main timeline without
+// an N+1 query per message.
+interface MessageReplyCount {
+    val rootMessageId: String
+    val replyCount: Long
+}
+
 interface MessageRepository : JpaRepository<Message, String> {
     fun findByConversationIdOrderBySentAtDesc(conversationId: String, pageable: Pageable): Page<Message>
 
@@ -112,6 +125,14 @@ interface MessageRepository : JpaRepository<Message, String> {
         @Param("conversationIds") conversationIds: List<String>,
         @Param("userId") userId: String,
     ): List<ConversationUnreadCount>
+
+    fun findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(replyToMessageId: String): List<Message>
+
+    @Query(
+        "SELECT m.replyToMessageId AS rootMessageId, COUNT(m) AS replyCount FROM Message m " +
+            "WHERE m.replyToMessageId IN :messageIds AND m.deletedAt IS NULL GROUP BY m.replyToMessageId",
+    )
+    fun countRepliesByMessageIds(@Param("messageIds") messageIds: List<String>): List<MessageReplyCount>
 }
 
 interface MessageReactionRepository : JpaRepository<MessageReaction, String> {

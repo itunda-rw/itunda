@@ -52,6 +52,11 @@ export interface Message {
   // (2026-08-04) to bank-mfe. Set only on a message sent with a real uploaded photo
   // (POST /api/v1/uploads -> imageUrl passed to sendMessage), never client-asserted.
   imageUrl?: string | null;
+  // Real Thread support (2026-08-05) -- closes docs/DESIGN_REFERENCES.md Talk section
+  // recommendation #3's remaining gap: Kakao's confirmed 2025 toolkit includes a real
+  // reply-expands-into-its-own-sub-conversation view. A real, read-time-computed count
+  // of direct replies to this message (0 for a message no one has replied to).
+  replyCount?: number;
 }
 
 export const fetchConversations = (archived = false) =>
@@ -87,6 +92,12 @@ export const fetchMessages = (conversationId: string) =>
 
 export const searchConversationMessages = (conversationId: string, query: string) =>
   apiFetch<{ success: boolean; messages: Message[] }>(`/api/v1/messages/conversations/${conversationId}/messages/search?query=${encodeURIComponent(query)}`)
+    .then((r) => r.messages);
+
+// Real Thread support (2026-08-05) -- root message first, then every direct reply
+// oldest-first, matching a real thread screen's own natural render order.
+export const fetchThread = (conversationId: string, messageId: string) =>
+  apiFetch<{ success: boolean; messages: Message[] }>(`/api/v1/messages/conversations/${conversationId}/messages/${messageId}/thread`)
     .then((r) => r.messages);
 
 export const sendMessage = (conversationId: string, body: string, replyToMessageId?: string, imageUrl?: string) =>
@@ -198,6 +209,8 @@ export interface GroupMessage {
   emoticonId?: string | null;
   // Real photo message -- see Message.imageUrl's own doc comment.
   imageUrl?: string | null;
+  // Real Thread support (2026-08-05) -- see Message.replyCount's own doc comment.
+  replyCount?: number;
 }
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
@@ -216,6 +229,11 @@ export const fetchGroupMessages = (groupId: string) =>
   apiFetch<{ success: boolean; messages: GroupMessage[] }>(`/api/v1/messages/groups/${groupId}/messages`).then(
     (r) => [...r.messages].reverse(),
   );
+
+// Real Thread support (2026-08-05) -- see fetchThread's own doc comment.
+export const fetchGroupThread = (groupId: string, messageId: string) =>
+  apiFetch<{ success: boolean; messages: GroupMessage[] }>(`/api/v1/messages/groups/${groupId}/messages/${messageId}/thread`)
+    .then((r) => r.messages);
 
 export const sendGroupMessage = (groupId: string, body: string, replyToMessageId?: string, imageUrl?: string) =>
   apiFetch<{ success: boolean; message: GroupMessage }>(`/api/v1/messages/groups/${groupId}/messages`, {

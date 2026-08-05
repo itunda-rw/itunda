@@ -450,6 +450,21 @@ class GroupMessagingService(
             .mapValues { (_, reactions) -> groupReactions(reactions.map { it.emoji to it.userId }) }
     }
 
+    // Real Thread support (2026-08-05) -- see MessageReplyCount's own doc comment
+    // (rw.itunda.core.repository) for the full sourced account; identical shape here.
+    fun getReplyCounts(groupMessageIds: List<String>): Map<String, Long> {
+        if (groupMessageIds.isEmpty()) return emptyMap()
+        return groupMessageRepository.countRepliesByMessageIds(groupMessageIds).associate { it.rootMessageId to it.replyCount }
+    }
+
+    fun getThread(userId: String, groupId: String, rootMessageId: String): List<GroupMessage> {
+        requireMember(userId, groupId)
+        val root = groupMessageRepository.findById(rootMessageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+        if (root.groupConversationId != groupId) throw GroupMessageNotFoundException("Message not found")
+        val replies = groupMessageRepository.findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(rootMessageId)
+        return listOf(root) + replies
+    }
+
     private fun groupReactions(emojiAndUserIds: List<Pair<String, String>>): List<ReactionGroup> =
         emojiAndUserIds.groupBy({ it.first }, { it.second }).map { (emoji, userIds) -> ReactionGroup(emoji, userIds) }
 

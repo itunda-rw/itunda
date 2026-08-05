@@ -388,10 +388,28 @@ they close in itunda's current implementation.
    `ChatThreadScreen` already had. Live-verified against the real dev backend: pinned a real group
    message (`GET` reflected it), unpinned (`GET` returned null), forwarded a group message into a
    1:1 conversation and a 1:1 message into a group, both directions returning a real
-   `forwardedFromMessageId`/`forwardedFromType` on the created message. **Thread (reply expanding
-   into its own sub-conversation) remains genuinely unbuilt** -- this one does need a new backend
-   concept (a thread/sub-conversation model) itunda doesn't have.
-   *Target for the remaining work: a real thread/sub-conversation model, likely its own migration*
+   `forwardedFromMessageId`/`forwardedFromType` on the created message. **Thread closed on backend +
+   bank-mfe 2026-08-05**, real correction to the note below: `replyToMessageId` already existed on
+   both `Message`/`GroupMessage` (real Reply already worked), so this needed no new migration at
+   all -- only a real way to VIEW replies as a sub-conversation rather than an inline "replying to"
+   tag. Added `MessageRepository`/`GroupMessageRepository.findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc`
+   plus a batch `countRepliesByMessageIds` projection (same discipline `getReactionSummaries` already
+   established: one query per page, not one COUNT per message), a real
+   `GET .../messages/{id}/thread` endpoint on both `MessagingController`/`GroupMessagingController`
+   returning the root message + every direct reply oldest-first, and a `replyCount` field on every
+   message in the main timeline. `:messaging:test` and the full `./gradlew test` sweep across all
+   40+ backend modules both green. **bank-mfe UI wired the same day**: a message with
+   `replyCount > 0` gets a real "N replies →" affordance opening a new `ThreadModal` (generic over
+   `Message`/`GroupMessage`, reused for both 1:1 and group) -- a real sub-conversation view with its
+   own composer that replies straight into the thread via the same `replyToMessageId` mechanism.
+   Live-verified end-to-end against the real dev backend with two real seeded accounts: a root
+   message correctly showed `replyCount: 2` after two real replies, the thread endpoint returned
+   root+both replies in the correct oldest-first order, and a real non-participant's thread fetch
+   correctly 404'd (not revealing the conversation exists) rather than leaking anything. Test data
+   cleaned up after. **Honestly scoped**: Android/iOS clients not yet built this pass -- a named,
+   deliberately deferred follow-up, matching this project's own established "ship web first"
+   precedent (Rideshare's scheduled bookings/driver ratings/multi-stop all shipped the same way).
+   *Target for the remaining work: `TalkScreen.kt`/`TalkScreen.swift` thread UI*
 
 4. **[implemented 2026-08-05]** Talk has private, durable quiet-room controls and
    suppresses notifications for the participant who enables one. Recoverable

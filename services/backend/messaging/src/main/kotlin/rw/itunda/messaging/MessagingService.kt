@@ -393,6 +393,25 @@ class MessagingService(
             .mapValues { (_, reactions) -> groupReactions(reactions.map { it.emoji to it.userId }) }
     }
 
+    // Real Thread support (2026-08-05) -- see MessageReplyCount's own doc comment for
+    // the full sourced account. Same batch shape as getReactionSummaries: one query for
+    // a whole page of messages rather than one COUNT per message.
+    fun getReplyCounts(messageIds: List<String>): Map<String, Long> {
+        if (messageIds.isEmpty()) return emptyMap()
+        return messageRepository.countRepliesByMessageIds(messageIds).associate { it.rootMessageId to it.replyCount }
+    }
+
+    /** The root message plus every direct reply to it, oldest first -- a real
+     * sub-conversation view, not just the inline "replying to" tag the flat timeline
+     * already had. Participant-gated the same way as every other conversation read. */
+    fun getThread(userId: String, conversationId: String, rootMessageId: String): List<Message> {
+        requireParticipant(userId, conversationId)
+        val root = messageRepository.findById(rootMessageId).orElseThrow { MessageNotFoundException("Message not found") }
+        if (root.conversationId != conversationId) throw MessageNotFoundException("Message not found")
+        val replies = messageRepository.findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(rootMessageId)
+        return listOf(root) + replies
+    }
+
     /** Search stays strictly inside one conversation after the normal participant check. */
     fun searchMessages(userId: String, conversationId: String, query: String, pageable: Pageable): Page<Message> {
         requireParticipant(userId, conversationId)

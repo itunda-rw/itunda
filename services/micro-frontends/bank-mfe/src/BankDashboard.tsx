@@ -95,7 +95,7 @@ import {
   type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
 } from './lib/stocks';
 import {
-  addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage,
+  addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroupThread, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage, fetchThread,
   blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationArchived, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
@@ -7051,6 +7051,11 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [updatingPin, setUpdatingPin] = useState(false);
   // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
   const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  // Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
+  // recommendation #3's own account: Kakao's confirmed 2025 toolkit includes a real
+  // reply-expands-into-its-own-sub-conversation view, closing the last gap in that
+  // recommendation (Copy/Reply/Forward/Pin/Delete/@mention were all already real).
+  const [threadRootMessage, setThreadRootMessage] = useState<Message | null>(null);
   const [sending, setSending] = useState(false);
   const [giftComposerOpen, setGiftComposerOpen] = useState(false);
   const [giftAmount, setGiftAmount] = useState('');
@@ -7536,12 +7541,33 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                   Report message
                 </button>
               )}
+              {/* Real Thread support (2026-08-05) -- a message with at least one direct
+                  reply gets a real "N replies" affordance opening its own sub-conversation
+                  view, matching Kakao's confirmed real reply-thread pattern. */}
+              {!!m.replyCount && (
+                <button
+                  type="button"
+                  onClick={() => setThreadRootMessage(m)}
+                  style={{ border: 'none', background: 'none', color: 'var(--toss-blue)', fontSize: '11px', fontWeight: 600, padding: '4px 0' }}
+                >
+                  {m.replyCount} {m.replyCount === 1 ? 'reply' : 'replies'} →
+                </button>
+              )}
             </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
       {forwardingMessage && <ForwardPickerModal onForward={handleForward} onClose={() => setForwardingMessage(null)} />}
+      {threadRootMessage && (
+        <ThreadModal
+          rootMessage={threadRootMessage}
+          currentUserId={currentUser?.id}
+          fetchThreadMessages={() => fetchThread(conversation.conversationId, threadRootMessage.id)}
+          onSend={(body) => sendMessage(conversation.conversationId, body, threadRootMessage.id)}
+          onClose={() => { setThreadRootMessage(null); load(); }}
+        />
+      )}
 
       {otherTyping && (
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
@@ -7747,6 +7773,8 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
   // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
   const [forwardingMessage, setForwardingMessage] = useState<GroupMessage | null>(null);
+  // Real Thread support (2026-08-05) -- see ConversationThread's own identical state.
+  const [threadRootMessage, setThreadRootMessage] = useState<GroupMessage | null>(null);
   // Real group-chat pin (2026-07-26) -- see GroupMessagingService.setPinnedMessage's
   // own doc comment; mirrors ConversationThread's own identical 1:1 state.
   const [pinnedMessage, setPinnedMessage] = useState<GroupMessage | null>(null);
@@ -8089,12 +8117,32 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                     disappears at 0, exactly matching real KakaoTalk. */}
                 {isMine && m.unreadCount > 0 ? `${m.unreadCount} · ` : ''}{chatMessageTime(m.sentAt)}
               </span>
+              {/* Real Thread support (2026-08-05) -- see ConversationThread's own
+                  identical affordance. */}
+              {!!m.replyCount && (
+                <button
+                  type="button"
+                  onClick={() => setThreadRootMessage(m)}
+                  style={{ border: 'none', background: 'none', color: 'var(--toss-blue)', fontSize: '11px', fontWeight: 600, padding: '4px 0' }}
+                >
+                  {m.replyCount} {m.replyCount === 1 ? 'reply' : 'replies'} →
+                </button>
+              )}
             </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
       {forwardingMessage && <ForwardPickerModal onForward={handleForward} onClose={() => setForwardingMessage(null)} />}
+      {threadRootMessage && (
+        <ThreadModal
+          rootMessage={threadRootMessage}
+          currentUserId={currentUser?.id}
+          fetchThreadMessages={() => fetchGroupThread(group.groupId, threadRootMessage.id)}
+          onSend={(body) => sendGroupMessage(group.groupId, body, threadRootMessage.id)}
+          onClose={() => { setThreadRootMessage(null); load(); }}
+        />
+      )}
 
       {Object.keys(typingUserIds).length > 0 && (
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
@@ -8251,6 +8299,104 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
         <button type="button" className="toss-btn toss-btn-secondary" style={{ width: '100%', marginTop: '12px' }} onClick={onClose}>
           Cancel
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
+// recommendation #3's own account. A real sub-conversation view: the root message,
+// every direct reply oldest-first, and a composer that replies straight into this same
+// thread (never the flat top-level timeline). Generic over Message/GroupMessage since
+// both share the same id/senderId/body/sentAt/deletedAt/reactions shape this view needs.
+function ThreadModal<T extends { id: string; senderId: string; body: string; sentAt: string; deletedAt?: string | null; reactions: ReactionGroup[] }>({
+  rootMessage,
+  currentUserId,
+  fetchThreadMessages,
+  onSend,
+  onClose,
+}: {
+  rootMessage: T;
+  currentUserId: string | undefined;
+  fetchThreadMessages: () => Promise<T[]>;
+  onSend: (body: string) => Promise<unknown>;
+  onClose: () => void;
+}) {
+  const [messages, setMessages] = useState<T[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const load = () => {
+    fetchThreadMessages()
+      .then(setMessages)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this thread.'));
+  };
+
+  useEffect(() => { load(); }, [rootMessage.id]);
+
+  const handleSend = async () => {
+    const body = draft.trim();
+    if (!body) return;
+    setSending(true);
+    try {
+      await onSend(body);
+      setDraft('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this reply.');
+    } finally { setSending(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }} onClick={onClose}>
+      <div
+        className="toss-card"
+        style={{ width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', borderRadius: '16px 16px 0 0', margin: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <p style={{ fontSize: '15px', fontWeight: 700 }}>Thread</p>
+          <button type="button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', color: 'var(--toss-grey-500)' }}>×</button>
+        </div>
+        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginBottom: '8px' }}>{error}</p>}
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}>
+          {messages === null ? (
+            <div className="toss-card skeleton" style={{ height: '80px' }} />
+          ) : (
+            messages.map((m, i) => {
+              const isMine = m.senderId === currentUserId;
+              return (
+                <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+                  {i === 0 && <span style={{ fontSize: '10px', color: 'var(--toss-grey-400)', marginBottom: '2px' }}>Original message</span>}
+                  <div
+                    style={{
+                      maxWidth: '75%', padding: '10px 14px', borderRadius: '16px', fontSize: '14px',
+                      backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                      color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                    }}
+                  >
+                    {m.deletedAt ? 'This message was deleted' : m.body}
+                  </div>
+                  <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>{chatMessageTime(m.sentAt)}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+          <input
+            className="toss-input"
+            style={{ flex: 1 }}
+            placeholder="Reply in thread…"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
+          />
+          <button type="button" className="toss-btn toss-btn-primary" style={{ padding: '10px 16px' }} onClick={handleSend} disabled={sending || !draft.trim()}>
+            {sending ? '…' : 'Send'}
+          </button>
+        </div>
       </div>
     </div>
   );

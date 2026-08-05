@@ -72,6 +72,16 @@ interface GroupMessageRepository : JpaRepository<GroupMessage, String> {
         @Param("userId") userId: String,
         @Param("lastReadAt") lastReadAt: java.time.Instant?,
     ): Long
+
+    // Real Thread support (2026-08-05) -- see MessageRepository.MessageReplyCount's own
+    // doc comment for the full account; identical shape here for group chat.
+    fun findByReplyToMessageIdAndDeletedAtIsNullOrderBySentAtAsc(replyToMessageId: String): List<GroupMessage>
+
+    @Query(
+        "SELECT m.replyToMessageId AS rootMessageId, COUNT(m) AS replyCount FROM GroupMessage m " +
+            "WHERE m.replyToMessageId IN :messageIds AND m.deletedAt IS NULL GROUP BY m.replyToMessageId",
+    )
+    fun countRepliesByMessageIds(@Param("messageIds") messageIds: List<String>): List<MessageReplyCount>
 }
 
 interface GroupMessageReactionRepository : JpaRepository<GroupMessageReaction, String> {
