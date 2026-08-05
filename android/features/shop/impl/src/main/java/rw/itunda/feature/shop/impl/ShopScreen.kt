@@ -97,6 +97,8 @@ import rw.itunda.core.network.ProductSubscriptionDto
 import rw.itunda.core.network.ProductSearchResultDto
 import rw.itunda.core.network.FavoriteProductDto
 import rw.itunda.core.network.MerchantBookingDto
+import rw.itunda.core.network.MerchantBookingRatingDto
+import rw.itunda.core.network.MerchantBookingReviewDto
 import rw.itunda.core.network.SubmitBookingReviewRequest
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.CreateAffiliateLinkRequest
@@ -1281,6 +1283,7 @@ private fun MerchantBookingFlowView(
             "${service.name} · ${service.durationMinutes} min · %,.0f RWF".format(service.price),
             color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
         )
+        MerchantBookingInfoSection(merchant.merchantId)
         Text("Choose a date", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 8.dp),
@@ -1367,6 +1370,73 @@ private fun MerchantBookingFlowView(
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) { Text(if (submitting) "Requesting…" else "Request booking", color = Color.White, fontWeight = FontWeight.Bold) }
+    }
+}
+
+// Real pre-booking browsing (item 231) -- found via a defined-but-uncalled-endpoint
+// sweep, see ApiService.getMerchantReviews/getCouponsForCustomer's own doc comments.
+// bank-mfe shipped this first (2026-08-05); this is the Android port.
+@Composable
+private fun MerchantBookingInfoSection(merchantId: String) {
+    var reviews by remember { mutableStateOf<List<MerchantBookingReviewDto>?>(null) }
+    var rating by remember { mutableStateOf<MerchantBookingRatingDto?>(null) }
+    var coupons by remember { mutableStateOf<List<MerchantCouponPreviewDto>?>(null) }
+
+    LaunchedEffect(merchantId) {
+        try {
+            val res = NetworkClient.apiService.getMerchantReviews(merchantId)
+            if (res.success) {
+                reviews = res.reviews
+                rating = res.rating
+            }
+        } catch (e: Exception) {
+            reviews = emptyList()
+        }
+        try {
+            val res = NetworkClient.apiService.getCouponsForCustomer(merchantId)
+            if (res.success) coupons = res.coupons
+        } catch (e: Exception) {
+            coupons = emptyList()
+        }
+    }
+
+    val couponList = coupons
+    val reviewList = reviews
+    if (couponList.isNullOrEmpty() && reviewList.isNullOrEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+        if (!couponList.isNullOrEmpty()) {
+            Text("Coupons for you", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            couponList.forEach { c ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand.copy(alpha = 0.08f)).padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(c.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        c.description?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 11.sp) }
+                    }
+                    Text(
+                        if (c.discountType == "PERCENT") "${c.discountValue}% off" else "%,.0f RWF off".format(c.discountValue),
+                        color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    )
+                }
+            }
+        }
+        if (!reviewList.isNullOrEmpty()) {
+            Text(
+                "Reviews" + (rating?.average?.let { " · ⭐ %.1f (%d)".format(it, rating?.count ?: 0) } ?: ""),
+                color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+            )
+            reviewList.take(3).forEach { r ->
+                Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surface).padding(12.dp)) {
+                    Text("${"⭐".repeat(r.rating)} · ${r.serviceName}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    r.comment?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 12.sp) }
+                    r.ownerReply?.let { Text("↳ $it", color = Ids.colors.textTertiary, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp)) }
+                }
+            }
+        }
     }
 }
 

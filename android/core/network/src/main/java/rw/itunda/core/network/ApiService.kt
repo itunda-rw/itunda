@@ -1196,6 +1196,8 @@ data class MerchantBookingReviewDto(
 )
 data class MerchantBookingReviewResponse(val success: Boolean, val review: MerchantBookingReviewDto)
 data class MerchantBookingReviewsResponse(val success: Boolean, val reviews: List<MerchantBookingReviewDto>)
+data class MerchantBookingRatingDto(val average: Double?, val count: Long)
+data class MerchantReviewsWithRatingResponse(val success: Boolean, val reviews: List<MerchantBookingReviewDto>, val rating: MerchantBookingRatingDto)
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
 
@@ -1271,6 +1273,7 @@ data class MerchantCouponPreviewDto(
     val active: Boolean, val expiresAt: String?, val createdAt: String,
 )
 data class MerchantCouponViewDto(val coupon: MerchantCouponPreviewDto, val eligible: Boolean, val alreadyRedeemed: Boolean)
+data class MerchantCouponsForCustomerResponse(val success: Boolean, val coupons: List<MerchantCouponPreviewDto>)
 data class PaymentIntentPreviewResponse(
     val success: Boolean, val merchantId: String, val businessName: String,
     val amount: java.math.BigDecimal, val description: String?, val coupons: List<MerchantCouponViewDto>,
@@ -2917,6 +2920,17 @@ interface ApiService {
 
     @GET("api/v1/merchant/reviews/my-reviews")
     suspend fun getMyBookingReviews(@Query("size") size: Int = 50): MerchantBookingReviewsResponse
+
+    // Real pre-booking browsing (item 231) -- found via a defined-but-uncalled-endpoint
+    // sweep: both real, fully-authorized backend endpoints, but had zero client callers
+    // anywhere. bank-mfe shipped this first (2026-08-05); this is the Android port. Reuses
+    // MerchantCouponPreviewDto (already exact-shape-identical, from the payment-preview
+    // feature) rather than declaring a duplicate DTO.
+    @GET("api/v1/merchant/{merchantId}/reviews")
+    suspend fun getMerchantReviews(@Path("merchantId") merchantId: String, @Query("size") size: Int = 20): MerchantReviewsWithRatingResponse
+
+    @GET("api/v1/merchant/{merchantId}/coupons")
+    suspend fun getCouponsForCustomer(@Path("merchantId") merchantId: String): MerchantCouponsForCustomerResponse
 
     // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
     // (this app has no scanner), mirrors bank-mfe's lib/shopping.ts collectPayment/
