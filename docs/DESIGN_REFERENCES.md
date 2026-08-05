@@ -871,6 +871,27 @@ fetch has no natural entry point anywhere (no push notification or deep link res
 gift/voucher, and every real UI flow already works off the list/conversation endpoints) -- building
 a detail screen with nothing that navigates into it would be speculative UI, not a real gap.
 
+A third candidate from the same sweep, `DELETE /notifications/device-tokens/{token}`, closed as a
+real bug fix (item 232) rather than a UI feature: `DeviceTokenController.unregister` existed (with
+a real `@Transactional` fix already applied from its own original verification) but had zero
+callers anywhere, so a device stayed push-registered forever after logout -- whoever logged into
+the same browser/app next would keep receiving push meant for the previous account. Now called from
+`logout()`/`SessionManager.logout()` on all 3 platforms, before the local token is cleared (the
+access token has to be captured/ordered carefully on each platform -- see the commit for bank-mfe's
+real fire-and-forget dynamic-import race and its fix). Live-verified end-to-end against the real
+backend on bank-mfe: registered a token, unregistered it, confirmed the row was gone via direct SQL.
+
+Two further candidates from the same original sweep were checked and are real backend endpoints
+that don't actually return itemized data worth a client for: `VendorCashAdvanceController.
+getCollectionHistory` returns only the same summary fields (`remainingOwed`, `lastCollectionAt`,
+`totalOwed`, `status`) already present on the main advance object every client already fetches --
+there's no separate per-collection ledger entity behind it, so a "history" screen would show
+nothing new. `RideController.getDriverReviews` (a driver's written reviews, distinct from the
+already-shown aggregate `rating`) is a real gap but not a cleanly scoped one yet: no client on any
+platform currently shows a passenger *which* driver they're matched with beyond the trip itself
+(no driver-profile view exists to browse into), so building a reviews list has no real entry point
+until that's built first -- a larger, separate, not-yet-started follow-up.
+
 ### Unresolved / worth a follow-up
 
 - Naver Smart Store's exact detail-page tab structure (상세정보/리뷰/Q&A/Story) wasn't confirmed
