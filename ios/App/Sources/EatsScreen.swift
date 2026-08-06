@@ -631,7 +631,7 @@ private struct RestaurantRatingBadge: View {
                     if open {
                         if let reviews {
                             if reviews.isEmpty {
-                                EmptyStateView("No written reviews yet.")
+                                EmptyStateView("No written reviews yet — be the first to share how it went.")
                             } else {
                                 ForEach(reviews, id: \.id) { r in
                                     let stars = String(repeating: "★", count: r.restaurantRating) + String(repeating: "☆", count: 5 - r.restaurantRating)
@@ -794,7 +794,7 @@ private struct RestaurantMenuView: View {
                 VStack(spacing: 10) {
                     if let menu {
                         if menu.isEmpty {
-                            EmptyStateView("No menu items yet.")
+                            EmptyStateView("This restaurant hasn't added menu items yet — check back soon.")
                         }
                         ForEach(menu) { item in
                             menuItemCard(item)

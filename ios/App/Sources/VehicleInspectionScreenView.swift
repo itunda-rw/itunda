@@ -93,7 +93,7 @@ private struct InspectionBuyerContent: View {
                 .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
 
                 if myBookings.isEmpty {
-                    EmptyStateView("No inspections booked yet.")
+                    EmptyStateView("No inspections booked yet — book one to get a real used car checked before you buy.")
                 } else {
                     ForEach(myBookings, id: \.id) { b in
                         VStack(alignment: .leading, spacing: 4) {
@@ -228,7 +228,7 @@ private struct InspectionMechanicContent: View {
                     Text(error).font(.footnote).foregroundColor(.red)
                 }
                 if bookings.isEmpty {
-                    EmptyStateView("No inspection bookings yet.")
+                    EmptyStateView("No bookings yet — they'll show up here once a buyer books an inspection.")
                 } else {
                     ForEach(bookings, id: \.id) { b in
                         VStack(alignment: .leading, spacing: 6) {

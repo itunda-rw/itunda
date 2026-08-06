@@ -756,7 +756,7 @@ private struct MerchantDetailView: View {
                 }
                 if let products {
                     if products.isEmpty {
-                        EmptyStateView("No products yet.")
+                        EmptyStateView("This store hasn't added products yet — check back soon.")
                     } else {
                         // Real 2-column image-led grid (2026-07-21), replacing the
                         // previous single-column text-only row -- closes
