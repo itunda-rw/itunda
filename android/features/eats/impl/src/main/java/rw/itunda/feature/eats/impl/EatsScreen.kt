@@ -945,7 +945,7 @@ private fun RestaurantRatingBadge(restaurantId: String) {
                 if (list == null) {
                     Text("Loading reviews…", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 } else if (list.isEmpty()) {
-                    EmptyState("No written reviews yet.", icon = Icons.Outlined.RateReview)
+                    EmptyState("No written reviews yet — be the first to share how it went.", icon = Icons.Outlined.RateReview)
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 4.dp)) {
                         list.forEach { rv ->
@@ -1134,7 +1134,7 @@ private fun RestaurantMenuView(
             if (menu == null) {
                 item { SkeletonBlock(height = 72.dp) }
             } else if (menu.isEmpty()) {
-                item { EmptyState("No menu items yet.", icon = Icons.Outlined.RestaurantMenu) }
+                item { EmptyState("This restaurant hasn't added menu items yet — check back soon.", icon = Icons.Outlined.RestaurantMenu) }
             } else {
                 items(menu, key = { it.id }) { p ->
                     val hasOptions = p.optionGroups.isNotEmpty()

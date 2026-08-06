@@ -962,7 +962,7 @@ private fun MerchantDetailView(
         if (products == null) {
             SkeletonBlock(height = 72.dp)
         } else if (products.isEmpty()) {
-            EmptyState("No products yet.", icon = Icons.Outlined.ShoppingBag)
+            EmptyState("This store hasn't added products yet — check back soon.", icon = Icons.Outlined.ShoppingBag)
         } else {
             // Real 2-column image-led grid (2026-07-21), replacing the previous
             // single-column text-only row -- closes docs/DESIGN_REFERENCES.md Section 5
@@ -1322,7 +1322,7 @@ private fun MerchantBookingFlowView(
             if (slotList == null) {
                 SkeletonBlock()
             } else if (slotList.isEmpty()) {
-                EmptyState("No open times on this date.", icon = Icons.Outlined.Storefront)
+                EmptyState("No open times on this date — try another day.", icon = Icons.Outlined.Storefront)
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -2609,7 +2609,7 @@ private fun ProductRatingBadge(productId: String) {
                 if (list == null) {
                     Text("Loading reviews…", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 } else if (list.isEmpty()) {
-                    EmptyState("No written reviews yet.", icon = Icons.Outlined.RateReview)
+                    EmptyState("No written reviews yet — be the first to share how it went.", icon = Icons.Outlined.RateReview)
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 4.dp)) {
                         list.forEach { rv ->

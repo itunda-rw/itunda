@@ -202,7 +202,7 @@ private fun InspectionBuyerContent() {
         if (bookings == null) {
             item { Text("Loading…", fontSize = 13.sp, color = TossSecondary, modifier = Modifier.padding(8.dp)) }
         } else if (bookings.isEmpty()) {
-            item { EmptyState("No inspections booked yet.") }
+            item { EmptyState("No inspections booked yet — book one to get a real used car checked before you buy.") }
         } else {
             items(bookings, key = { it.id }) { b ->
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {
@@ -360,7 +360,7 @@ private fun InspectionMechanicContent() {
         error?.let { item { Text(it, color = Color(0xFFE53935), fontSize = 13.sp) } }
         val list = bookings
         if (list.isNullOrEmpty()) {
-            item { EmptyState("No inspection bookings yet.") }
+            item { EmptyState("No bookings yet — they'll show up here once a buyer books an inspection.") }
         } else {
             items(list, key = { it.id }) { b ->
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {
