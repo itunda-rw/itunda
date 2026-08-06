@@ -1381,14 +1381,20 @@ reasonably well).
    register than itunda's original flat phrasing, without inventing a fictional mascot character
    itunda has no in-house illustrator to actually draw). The structural half (`EmptyState`
    composable/View/component, icon-in-circle layout) was already real on all 3 platforms. The copy
-   half was still flat everywhere ("No orders yet.", "No notifications") until now -- rewrote ~30
-   call sites across two rounds on all 3 platforms: round 1 covered the highest-traffic daily
+   half was still flat everywhere ("No orders yet.", "No notifications") until now -- rewrote ~40
+   call sites across three rounds on all 3 platforms: round 1 covered the highest-traffic daily
    surfaces (wallet transactions, home overview, Talk conversations/groups, notifications, Eats/Shop
    order history, carpool bookings, Marketplace search, Shop's merchant directory, card purchases,
    trusted devices); round 2 covered auto-transfers, scheduled transfers, savings goals, spending
    breakdown, saved contacts, family members, vehicles, merchant subscriptions, and the Float
-   marketplace (agent cash-float listings/requests). Each rewrite says what's missing AND what will
-   make it show up. **Real bug caught while porting round 2**: bank-mfe's own "No requests received/
+   marketplace (agent cash-float listings/requests); round 3 covered vehicle inspections (buyer +
+   mechanic queue, distinct copy for each real-world role), Community sessions, split bills,
+   Eats/dine-in table orders, restaurant/store menus and catalogs, product/restaurant written
+   reviews, and the booking time-slot picker. Each rewrite says what's missing AND what will make it
+   show up. Round 3 also surfaced two smaller, real, honest gaps left as-is rather than
+   over-engineered: Commerce product reviews and the booking time-slot picker have no `EmptyState`
+   call on iOS at all yet (a distinct, smaller platform-parity gap, not chased down this round).
+   **Real bug caught while porting round 2**: bank-mfe's own "No requests received/
    sent yet"/"No listings posted yet" turned out to be inside `FloatMarketplaceSection` (agent
    cash-float trading), not the P2P payment-request feature the first draft assumed -- corrected
    before porting to Android/iOS, a reminder to verify the surrounding function/screen name before
