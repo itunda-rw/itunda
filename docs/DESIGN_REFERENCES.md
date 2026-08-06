@@ -1092,12 +1092,14 @@ other tabs, even though the underlying idea (e.g. "bottom sheet") sounds generic
   doc's own history (Section 5's item 6, cited in this entry's own last sentence) without this
   cross-consistency note being updated to match.
 
-- **Product/listing card "quick action without opening detail"** (add-to-cart + wishlist on Shop
-  cards; save/heart on Hood listing cards). The underlying interaction — act on an item from the
-  list without navigating away — is the same mechanic Coupang applies to Shop and Karrot applies
-  to Hood listings independently. The visual card can and should look different per surface
-  (grocery/product card vs. secondhand-listing card), but the *tap targets and feedback pattern*
-  (inline quantity stepper / heart toggle with toast) should be one shared interaction contract.
+- **Product/listing card "quick action without opening detail". Implemented -- doc was stale,
+  corrected 2026-08-07.** Re-checked while auditing this section: Shop's product grid cards
+  already have both a real inline quantity stepper and a real shared `WishlistButton` directly on
+  the card (not buried behind a detail-page visit) -- the card's own code comment even cites this
+  exact doc section by name. Hood listing cards independently reuse the identical `WishlistButton`
+  component (see this same file's Marketplace/RealEstate/Jobs `ListingCard`s). One shared
+  interaction contract across both surfaces, exactly as recommended; this note just hadn't been
+  updated to match.
 
 ### Should stay surface-specific — do not generalize into a shared component
 
