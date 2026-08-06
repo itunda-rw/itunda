@@ -3775,7 +3775,7 @@ function AgentOperatorView() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Recent activity</h3>
-        {activity.length === 0 && <EmptyState message="No cash movements yet today." />}
+        {activity.length === 0 && <EmptyState message="No cash movements yet today — your cash-in/cash-out activity will show up here." />}
         {activity.map((a) => (
           <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{a.type === 'CASH_IN' ? '↓ Cash in' : '↑ Cash out'} · {a.receiptNumber}</span>
@@ -8273,7 +8273,7 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
         {conversations === null || groups === null ? (
           <div className="toss-card skeleton" style={{ height: '100px' }} />
         ) : conversations.length === 0 && groups.length === 0 ? (
-          <EmptyState message="No conversations or groups to forward to yet." />
+          <EmptyState message="No conversations to forward to yet — start a chat first." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {conversations.map((c) => (
@@ -13682,7 +13682,7 @@ function DeliverView() {
           {available === null ? (
             <div className="toss-card skeleton" style={{ height: '100px' }} />
           ) : available.length === 0 ? (
-            <EmptyState message="No deliveries waiting right now." />
+            <EmptyState message="No deliveries waiting right now — stay online and you'll be notified." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {available.map((o) => (
@@ -14358,7 +14358,7 @@ function RidesView() {
                   {availableTrips === null ? (
                     <div className="toss-card skeleton" style={{ height: '100px' }} />
                   ) : availableTrips.length === 0 ? (
-                    <EmptyState message="No trip requests waiting right now." />
+                    <EmptyState message="No trip requests waiting right now — stay online and you'll be notified." />
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {availableTrips.map((t) => (
@@ -14918,7 +14918,7 @@ function BikeShareView() {
               {nearbyBikes === null ? (
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
               ) : nearbyBikes.length === 0 ? (
-                <EmptyState message="No bikes nearby right now." />
+                <EmptyState message="No bikes nearby right now — try a different area or check back soon." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {nearbyBikes.map((bike) => (
@@ -15156,7 +15156,7 @@ function ParkingView() {
               {nearbySpots === null ? (
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
               ) : nearbySpots.length === 0 ? (
-                <EmptyState message="No parking nearby right now." />
+                <EmptyState message="No parking nearby right now — try a different area or check back soon." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {nearbySpots.map((spot) => (
