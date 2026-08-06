@@ -1084,11 +1084,13 @@ other tabs, even though the underlying idea (e.g. "bottom sheet") sounds generic
   rendering, the expiry-refund plumbing — with Gift and Split-bill as two instances of it, not two
   independently-built features.
 
-- **Search-with-filter-chips pattern.** Eats already has category chips + search input built;
-  Shop's own browse UI is missing the identical pattern despite the backend already supporting it.
-  This should be one shared "merchant/product browse header" component (search field + horizontal
-  chip row) used by both Eats and Shop, not reimplemented per tab — the recommendation in Section 5
-  is explicitly to reuse Eats' existing pattern rather than invent a new one for Shop.
+- **Search-with-filter-chips pattern. Implemented -- doc was stale, corrected 2026-08-07.**
+  Re-checked while auditing this section: bank-mfe's own `SearchAndCategoryChips` is a real single
+  shared component (search field + horizontal chip row) used by both `OrderFoodView` (Eats) and
+  `ShopView` (Shop) -- not two independently-built implementations. This entry's own "Shop is
+  missing it" claim was true when written but the gap had already been closed elsewhere in this
+  doc's own history (Section 5's item 6, cited in this entry's own last sentence) without this
+  cross-consistency note being updated to match.
 
 - **Product/listing card "quick action without opening detail"** (add-to-cart + wishlist on Shop
   cards; save/heart on Hood listing cards). The underlying interaction — act on an item from the
