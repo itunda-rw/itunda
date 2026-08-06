@@ -1381,14 +1381,20 @@ reasonably well).
    register than itunda's original flat phrasing, without inventing a fictional mascot character
    itunda has no in-house illustrator to actually draw). The structural half (`EmptyState`
    composable/View/component, icon-in-circle layout) was already real on all 3 platforms. The copy
-   half was still flat everywhere ("No orders yet.", "No notifications") until now -- rewrote the
-   ~15 highest-traffic call sites a typical daily user actually hits (wallet transactions, home
-   overview, Talk conversations/groups, notifications, Eats/Shop order history, carpool bookings,
-   Marketplace search, Shop's merchant directory, card purchases, trusted devices) on all 3
-   platforms; each rewrite says what's missing AND what will make it show up. **Honest partial
-   scope**: ~165 total `EmptyState` call sites exist across bank-mfe alone -- the remaining ones
-   (mostly lower-traffic admin/niche-feature screens) are a deliberately deferred follow-up, not a
-   silent gap.
+   half was still flat everywhere ("No orders yet.", "No notifications") until now -- rewrote ~30
+   call sites across two rounds on all 3 platforms: round 1 covered the highest-traffic daily
+   surfaces (wallet transactions, home overview, Talk conversations/groups, notifications, Eats/Shop
+   order history, carpool bookings, Marketplace search, Shop's merchant directory, card purchases,
+   trusted devices); round 2 covered auto-transfers, scheduled transfers, savings goals, spending
+   breakdown, saved contacts, family members, vehicles, merchant subscriptions, and the Float
+   marketplace (agent cash-float listings/requests). Each rewrite says what's missing AND what will
+   make it show up. **Real bug caught while porting round 2**: bank-mfe's own "No requests received/
+   sent yet"/"No listings posted yet" turned out to be inside `FloatMarketplaceSection` (agent
+   cash-float trading), not the P2P payment-request feature the first draft assumed -- corrected
+   before porting to Android/iOS, a reminder to verify the surrounding function/screen name before
+   trusting a string's apparent meaning. **Honest partial scope**: ~165 total `EmptyState` call
+   sites exist across bank-mfe alone -- the remaining ones (mostly lower-traffic admin/niche-feature
+   screens) are a deliberately deferred follow-up, not a silent gap.
    *Shipped: `EmptyState`/`EmptyStateView` call-site copy in `BankDashboard.tsx`, `TalkScreen.kt`/
    `ShopScreen.kt`/`EatsScreen.kt`/`CardScreen.kt` (Android), `TalkScreen.swift`/`ShopScreen.swift`/
    `EatsScreen.swift`/`CardScreenView.swift` (iOS)*
