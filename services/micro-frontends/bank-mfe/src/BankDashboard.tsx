@@ -8721,7 +8721,7 @@ function GroupSplitBillsView({
       )}
       {splitBills === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
       {splitBills !== null && splitBills.length === 0 && (
-        <EmptyState message="No split bills in this group yet." />
+        <EmptyState message="No split bills in this group yet — split one to divide a shared expense evenly." />
       )}
       {splitBills?.map(({ splitBill, participants }) => {
         const myShare = participants.find((p) => p.userId === currentUserId);
@@ -10198,7 +10198,7 @@ function VehicleInspectionsView() {
           {myBookings === null ? (
             <div className="toss-card skeleton" style={{ height: '100px' }} />
           ) : myBookings.length === 0 ? (
-            <EmptyState message="No inspections booked yet." />
+            <EmptyState message="No inspections booked yet — book one to get a real used car checked before you buy." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {myBookings.map((b) => (
@@ -10251,7 +10251,7 @@ function VehicleInspectionsView() {
           {mechanicBookings === null ? (
             <div className="toss-card skeleton" style={{ height: '100px' }} />
           ) : mechanicBookings.length === 0 ? (
-            <EmptyState message="No inspection bookings yet." />
+            <EmptyState message="No bookings yet — they'll show up here once a buyer books an inspection." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {mechanicBookings.map((b) => (
@@ -10528,7 +10528,7 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Sessions</h3>
       {sessions === null && <div className="toss-card skeleton" style={{ height: '60px' }} />}
       {sessions !== null && sessions.length === 0 && (
-        <EmptyState message="No sessions scheduled yet." />
+        <EmptyState message="No sessions scheduled yet — start one to meet up with neighbors." />
       )}
       {sessions !== null && sessions.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
@@ -12484,7 +12484,7 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
           {reviews === null ? (
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
           ) : reviews.length === 0 ? (
-            <EmptyState message="No written reviews yet." />
+            <EmptyState message="No written reviews yet — be the first to share how it went." />
           ) : (
             reviews.map((r) => (
               <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
@@ -12993,7 +12993,7 @@ function MenuView({
         <RestaurantRatingBadge restaurantId={restaurant.merchantId} />
       </div>
       {menu.products.length === 0 ? (
-        <EmptyState message="No menu items yet." />
+        <EmptyState message="This restaurant hasn't added menu items yet — check back soon." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cartCount > 0 ? '80px' : 0 }}>
           {menu.products.map((item) => {
@@ -16048,7 +16048,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{menu.businessName}</h3>
       </div>
       {menu.products.length === 0 ? (
-        <EmptyState message="No menu items yet." />
+        <EmptyState message="This restaurant hasn't added menu items yet — check back soon." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cartCount > 0 ? '80px' : 0 }}>
           {menu.products.map((item) => {
@@ -16193,7 +16193,7 @@ function DineInCustomerView() {
       ) : orders === null ? (
         <div className="toss-card skeleton" style={{ height: '160px' }} />
       ) : orders.length === 0 ? (
-        <EmptyState message="No table orders yet." />
+        <EmptyState message="No table orders yet — they'll show up here as diners order from their table." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {orders.map((o) => <DineInOrderCard key={o.id} order={o} />)}
@@ -16441,7 +16441,7 @@ function ProductRatingBadge({ productId }: { productId: string }) {
           {reviews === null ? (
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
           ) : reviews.length === 0 ? (
-            <EmptyState message="No written reviews yet." />
+            <EmptyState message="No written reviews yet — be the first to share how it went." />
           ) : (
             reviews.map((r) => (
               <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
@@ -16562,7 +16562,7 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
       {error && <p style={{ fontSize: '12px', color: '#E53935' }}>{error}</p>}
       {date && slots !== null && (
         slots.length === 0 ? (
-          <EmptyState message="No open times on this date." />
+          <EmptyState message="No open times on this date — try another day." />
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {slots.map((slot) => (
@@ -17473,7 +17473,7 @@ function ProductCatalogView({
         </div>
       )}
       {catalog.products.length === 0 ? (
-        <EmptyState message="No products yet." />
+        <EmptyState message="This store hasn't added products yet — check back soon." />
       ) : (
         // Real 2-column image-led grid (2026-07-21), replacing the previous
         // single-column text-only row -- closes docs/DESIGN_REFERENCES.md Section 5
