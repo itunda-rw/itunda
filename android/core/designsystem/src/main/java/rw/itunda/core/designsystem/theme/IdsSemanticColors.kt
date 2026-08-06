@@ -68,7 +68,16 @@ val IdsLightSemanticColors = IdsSemanticColors(
     divider = Color(0xFFE5E8EB),
     chip = Color(0xFFF2F4F6),
     pressed = Color(0xFFEAF2FF),
-    success = Color(0xFF04C065),
+    // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) -- the
+    // original 0xFF04C065 measured 2.40:1 against white, failing even the lenient
+    // 3.0:1 AA-large/UI threshold, let alone 4.5:1 AA-normal-text -- any light-mode
+    // "amount increased"/"payment received" text or icon in this color was under
+    // WCAG minimums everywhere it appeared, not just in some contexts. Darkened to
+    // 0xFF05804A (measured 5.01:1 against white), same hue family, comfortably
+    // clearing AA-normal-text. Dark mode's own success (below) already solved this
+    // the same way -- chosen brighter specifically for contrast -- this just applies
+    // the identical reasoning to light mode.
+    success = Color(0xFF05804A),
     successTint = Color(0xFFF5FAFF),
     warning = Color(0xFFFFA000),
     warningTint = Color(0xFFFFF4D6),
