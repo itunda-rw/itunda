@@ -1420,12 +1420,16 @@ reasonably well).
    unreachable backend port on the review emulator); iOS/bank-mfe verified via
    swiftc -parse / `yarn build` only, not visually.
 
-3. **[sourced]** Write itunda a short, real copy-voice guideline (5-10 concrete before/after
-   examples, not an abstract tone document) before or alongside item 1 — Baemin's own real
-   evidence (a documented, named "배민다움" voice) is the strongest single proof point in this
-   research that copy register is a legitimate, separate design lever from iconography, and
-   itunda currently has no stated position on it at all (every string found is functionally
-   correct but personality-neutral).
+3. **[sourced] Implemented 2026-08-06.** Write itunda a short, real copy-voice guideline (5-10
+   concrete before/after examples, not an abstract tone document) before or alongside item 1 --
+   Baemin's own real evidence (a documented, named "배민다움" voice) is the strongest single proof
+   point in this research that copy register is a legitimate, separate design lever from
+   iconography. Written from item 1's own three shipped rounds rather than in a vacuum: three
+   rules (say what's missing *and* what fixes it; be specific to the real surface, never a
+   generic template; when the cause is someone else's, say so honestly), each demonstrated with a
+   real before/after already shipped, plus the real Float-marketplace mixup from round 2 as a
+   documented cautionary example.
+   *Shipped: `docs/COPY_VOICE.md`*
 
 4. **[sourced] Implemented 2026-08-05.** Per-surface badge/urgency-tag visual language, modeled
    on Coupang's real two-tier badge precedent (a badge tied to a *named, real* benefit tier, not a
