@@ -105,7 +105,7 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
                 }
                 item { Text("Recent activity", style = MaterialTheme.typography.titleMedium) }
                 if (activity.isEmpty()) {
-                    item { EmptyState("No cash movements yet today.") }
+                    item { EmptyState("No cash movements yet today — your cash-in/cash-out activity will show up here.") }
                 }
                 items(activity, key = { it.id }) { a ->
                     Card(Modifier.fillMaxWidth()) {
