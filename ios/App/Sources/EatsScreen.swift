@@ -1682,7 +1682,7 @@ private struct DeliverContent: View {
                     if available == nil {
                         SkeletonBlock(height: 80)
                     } else if available!.isEmpty {
-                        EmptyStateView("No deliveries waiting right now.")
+                        EmptyStateView("No deliveries waiting right now — stay online and you'll be notified.")
                     } else {
                         ForEach(available!) { order in
                             EatsOrderRow(order: order) {
