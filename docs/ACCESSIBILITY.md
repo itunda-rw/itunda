@@ -27,7 +27,7 @@ objects (WCAG 1.4.11).
 | textSecondary `#4e5968` on card `#ffffff` | 7.11:1 | PASS | PASS |
 | textTertiary `#8b95a1` on card `#ffffff` | 3.04:1 | FAIL | PASS (marginal) |
 | brand blue `#3182f6` on white | 3.71:1 | FAIL | PASS |
-| **success green `#04c065` on white** | **2.40:1** | **FAIL** | **FAIL** |
+| ~~success green `#04c065` on white~~ → `#05804a` on white (fixed, item 240) | 5.01:1 | PASS | PASS |
 | danger red `#f04452` on white | 3.71:1 | FAIL | PASS |
 | white text on brand blue button | 3.71:1 | FAIL | PASS |
 
@@ -53,11 +53,21 @@ objects (WCAG 1.4.11).
    large-text/UI on a white card (3.04:1, and only marginally). `textTertiary` is
    currently used for de-emphasized captions/timestamps — real WCAG failure risk
    wherever it sits directly on `background` rather than a `card`/`surface`.
-2. **`success` (green) on white fails contrast at every threshold in light mode**
-   (2.40:1, below even 3.0:1). The dark-mode green (`#20d394`, chosen brighter for
-   exactly this reason) passes everywhere. This is a real, previously undocumented
-   light-mode-only defect — any light-mode "amount increased" / "payment received"
-   text or icon rendered directly in green-on-white is likely under WCAG minimums.
+2. **FIXED (item 240, 2026-08-07).** `success` (green) on white failed contrast at
+   every threshold in light mode (`#04c065`, 2.40:1, below even 3.0:1). Darkened to
+   `#05804a` (5.01:1, comfortably clears AA-normal-text 4.5:1), same hue family, same
+   fix already used for dark mode's own `#20d394`. Applied to the real single source
+   of truth (`packages/design-tokens/tokens.css` `--toss-green`) and its two mirrors
+   (Android `IdsSemanticColors.kt` `IdsLightSemanticColors.success`, iOS `IDS.swift`
+   `IDS.Colors.success` — the latter previously didn't exist at all; real screens used
+   SwiftUI's raw system `Color.green` directly, `#34c759`, which measured even worse
+   at 2.22:1). iOS call sites swapped from `Color.green` to `IDS.Colors.success`:
+   `BikeRentalScreenView.swift`, `ParkingScreenView.swift`, `InvestScreenView.swift`,
+   `TalkScreen.swift`. Two more real duplicate hardcoded `#04C065` text colors found
+   via repo-wide grep and fixed the same way: `packages/saronite/mini-apps/
+   reward-tasks/pages/index.tsx` (`rewardAmount`) and `.../insurance_mini_app/pages/
+   index.tsx` (`policyStatus`) — both real text-on-white-card usages, same failure
+   mode. Dark mode's `#20d394` (9.12:1) was already passing and left unchanged.
 3. **Brand blue, danger red, and white-on-blue-button all fail AA-normal-text (4.5:1)
    but pass AA-large/UI (3.0:1) in light mode.** This is fine for buttons and icons
    (UI-component threshold applies) but means these colors must not be used for
