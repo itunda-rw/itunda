@@ -33,7 +33,16 @@
   --toss-blue-active: #1b64da;
   --toss-blue-light: #f5faff;
   --toss-red: #f04452;
-  --toss-green: #04c065;
+  /* Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) -- the
+     original #04c065 measured 2.40:1 against white, failing even the lenient
+     3.0:1 AA-large/UI threshold, let alone 4.5:1 AA-normal-text -- any light-mode
+     "amount increased"/"payment received" text or icon in this color was under
+     WCAG minimums everywhere it appeared. Darkened to #05804a (5.01:1 against
+     white), same hue family, comfortably clearing AA-normal-text. Matches the
+     identical fix applied the same day to Android's IdsSemanticColors.kt and
+     iOS's IDS.swift. Dark mode's own --toss-green (below) already passes at
+     9+:1 and is unchanged. */
+  --toss-green: #05804a;
 
   --toss-grey-100: #f2f4f6;
   --toss-grey-200: #e5e8eb;

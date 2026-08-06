@@ -379,7 +379,12 @@ const styles = StyleSheet.create({
   // ios/.../IdsTheme.swift, packages/design-tokens/tokens.css all agree), the exact
   // class of drift design-tokens.css's own header comment already documented fixing
   // once for bank-mfe's green -- found again here via a repo-wide color audit.
-  rewardAmount: { fontSize: 14, fontWeight: '700', color: '#04C065', marginRight: 12 },
+  // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2): that
+  // #04C065 itself measures 2.40:1 against white, failing even the lenient 3.0:1
+  // AA-large/UI threshold for this text. Darkened to #05804A (5.01:1), matching
+  // the same fix applied to packages/design-tokens/tokens.css --toss-green and
+  // the Android/iOS semantic `success` token.
+  rewardAmount: { fontSize: 14, fontWeight: '700', color: '#05804A', marginRight: 12 },
   claimButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   claimButtonDone: { backgroundColor: '#E5E8EB' },
   claimButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
