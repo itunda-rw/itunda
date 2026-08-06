@@ -77,7 +77,7 @@ struct VehicleValuationScreenView: View {
                     }
 
                     if vehicles.isEmpty {
-                        EmptyStateView("No vehicles added yet.")
+                        EmptyStateView("No vehicles added yet — add one to track its value and get real offers.")
                     } else {
                         ForEach(vehicles) { v in
                             VStack(alignment: .leading, spacing: 6) {

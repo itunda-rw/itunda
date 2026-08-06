@@ -156,7 +156,7 @@ struct FloatMarketplaceScreenView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("My listings").bold()
             if myListings.isEmpty {
-                EmptyStateView("No listings posted yet.")
+                EmptyStateView("No float listings yet — post one to let nearby agents claim your spare cash.")
             }
             ForEach(myListings) { l in
                 HStack {
@@ -176,7 +176,7 @@ struct FloatMarketplaceScreenView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Requests against my listings").bold()
             if incomingRequests.isEmpty {
-                EmptyStateView("No requests received yet.")
+                EmptyStateView("No requests yet — they'll show up here once another agent claims from your listing.")
             }
             ForEach(incomingRequests) { r in
                 HStack {
@@ -197,7 +197,7 @@ struct FloatMarketplaceScreenView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("My requests").bold()
             if myRequests.isEmpty {
-                EmptyStateView("No requests sent yet.")
+                EmptyStateView("No requests yet — claim from a nearby listing above and it'll show up here.")
             }
             ForEach(myRequests) { r in
                 HStack {

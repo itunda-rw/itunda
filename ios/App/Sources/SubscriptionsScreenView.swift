@@ -74,7 +74,7 @@ struct SubscriptionsScreenView: View {
                         }
                         if let billingSubs {
                             if billingSubs.isEmpty {
-                                EmptyStateView("No merchant subscriptions yet.")
+                                EmptyStateView("No merchant subscriptions yet — plans you subscribe to will show up here.")
                             } else {
                                 ForEach(billingSubs) { sub in
                                     MerchantBillingSubscriptionRow(subscription: sub, onChanged: { Task { await loadBilling() } })

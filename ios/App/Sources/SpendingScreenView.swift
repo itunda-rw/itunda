@@ -41,7 +41,7 @@ struct SpendingScreenView: View {
                         .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
 
                         if insight.categories.isEmpty {
-                            EmptyStateView("No spending recorded yet.")
+                            EmptyStateView("No spending recorded yet — your breakdown will show up here once you use your wallet.")
                         } else {
                             let maxAmount = max(insight.categories.map(\.amount).max() ?? 1, 1)
                             VStack(alignment: .leading, spacing: 12) {
