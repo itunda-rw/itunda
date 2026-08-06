@@ -499,7 +499,7 @@ private struct Sparkline: View {
             HStack(alignment: .bottom, spacing: 2) {
                 ForEach(Array(values.enumerated()), id: \.offset) { _, v in
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(positive ? Color.green : Color.red)
+                        .fill(positive ? IDS.Colors.success : Color.red)
                         .frame(height: max(4, geo.size.height * CGFloat((v - minV) / range)))
                 }
             }

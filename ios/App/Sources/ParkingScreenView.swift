@@ -241,7 +241,7 @@ private struct ParkingMineContent: View {
                                     Text(spot.available ? "Available" : "Unavailable").font(.caption).bold()
                                         .foregroundColor(spot.available ? .white : IDS.Colors.textPrimary)
                                         .padding(.horizontal, 14).padding(.vertical, 10)
-                                        .background(spot.available ? Color.green : Color(.tertiarySystemBackground)).cornerRadius(10)
+                                        .background(spot.available ? IDS.Colors.success : Color(.tertiarySystemBackground)).cornerRadius(10)
                                 }
                                 .disabled(busySpotId == spot.id)
                             }

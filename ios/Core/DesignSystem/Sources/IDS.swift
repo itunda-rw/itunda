@@ -101,6 +101,17 @@ public struct IDS {
         public static let textSecondary = Color(light: 0x4E5968, dark: 0x989EAA)
         public static let textTertiary = Color(light: 0x8B95A1, dark: 0x575C66)
         public static let textBrand = brand
+        // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) --
+        // iOS had no shared success/green token at all (only successTint, the pale
+        // background wash below); real screens used SwiftUI's system `Color.green`
+        // directly, which measures 2.22:1 against white -- worse than the light-mode
+        // itunda green token this same fix corrects on Android/web (2.40:1), both
+        // failing even the lenient 3.0:1 AA-large/UI threshold. Same values as
+        // Android's IdsSemanticColors.success / web's --toss-green: light 0x05804A
+        // (5.01:1 against white), dark 0x20D394 (already passes at 9+:1, matching
+        // dark mode's own existing pattern of choosing a brighter shade for exactly
+        // this reason).
+        public static let success = Color(light: 0x05804A, dark: 0x20D394)
         public static let successTint = Color(light: 0xF5FAFF, dark: 0x10321F)
         public static let warningTint = Color(light: 0xFFF4D6, dark: 0x3A2E10)
         public static let dangerTint = Color(light: 0xFFECEB, dark: 0x3A1418)

@@ -1197,7 +1197,7 @@ private struct ConversationRow: View {
                 }
                 .frame(width: 44, height: 44)
                 if online {
-                    Circle().fill(Color.green)
+                    Circle().fill(IDS.Colors.success)
                         .frame(width: 12, height: 12)
                         .overlay(Circle().stroke(IDS.Colors.card, lineWidth: 2))
                 }
