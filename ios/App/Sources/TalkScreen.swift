@@ -320,7 +320,7 @@ private struct DirectMessagesList: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             } else if visibleList == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                SkeletonBlock(height: 120)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -428,7 +428,7 @@ private struct FriendsList: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
             } else if contacts == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                SkeletonBlock(height: 120)
             } else if contacts!.isEmpty {
                 EmptyStateView("No friends yet -- save someone's contact and they'll show up here once they're on itunda.")
             } else {
@@ -551,7 +551,7 @@ private struct GroupsList: View {
                     .background(IDS.Colors.card)
                     .cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if groups == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                    SkeletonBlock(height: 120)
                 } else if groups!.isEmpty {
                     EmptyStateView("No groups yet — start one to chat with more than one person at a time.")
                 } else {

@@ -185,6 +185,44 @@ public struct IdsBadge: View {
     }
 }
 
+// Real shared shimmer skeleton loading state (item 239) -- closes
+// docs/DESIGN_REFERENCES.md Section 7's cross-platform-consistency note: bank-mfe
+// (a real `.skeleton` CSS shimmer class) and Android (`SkeletonBlock`,
+// `core/designsystem`'s `HoodShared.kt`) both already had a real animated shaped
+// placeholder for loading states; iOS had no shared equivalent at all and fell back to
+// a plain `ProgressView()` spinner everywhere -- a real cross-platform inconsistency in
+// the loading-state visual language, not a missing capability (iOS always showed
+// *something* while loading, just not the same shaped-placeholder shape as the other
+// two platforms). Same animated left-to-right gradient sweep as bank-mfe/Android's own.
+public struct SkeletonBlock: View {
+    let height: CGFloat
+    @State private var animating = false
+
+    public init(height: CGFloat = 120) {
+        self.height = height
+    }
+
+    public var body: some View {
+        RoundedRectangle(cornerRadius: IDS.Layout.cardCornerRadius)
+            .fill(IDS.Colors.chipBackground)
+            .overlay(
+                LinearGradient(
+                    colors: [IDS.Colors.chipBackground, IDS.Colors.card, IDS.Colors.chipBackground],
+                    startPoint: animating ? .trailing : .leading,
+                    endPoint: animating ? UnitPoint(x: 2, y: 0.5) : UnitPoint(x: -1, y: 0.5)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: IDS.Layout.cardCornerRadius))
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: height)
+            .onAppear {
+                withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
+                    animating = true
+                }
+            }
+    }
+}
+
 public struct IdsListRow: View {
     let title: String
     let subtitle: String?

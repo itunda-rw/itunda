@@ -2001,7 +2001,7 @@ private struct CommunityPostDetailView: View {
 
                     Text("Comments").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                     if comments == nil {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 60)
+                        SkeletonBlock(height: 60)
                     } else if comments!.isEmpty {
                         Text("No comments yet -- be the first to reply.").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
                     } else {
@@ -2095,7 +2095,7 @@ private struct MeetupSessionsSection: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sessions").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             if sessions == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 40)
+                SkeletonBlock(height: 40)
             } else if sessions!.isEmpty {
                 Text("No sessions scheduled yet.").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             } else {

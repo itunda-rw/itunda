@@ -65,7 +65,7 @@ struct AutoTopUpScreenView: View {
                     }
 
                     if walletId == nil || linkedAccounts == nil || !settingLoaded {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                        SkeletonBlock(height: 120)
                     } else if let accounts = linkedAccounts, !accounts.contains(where: { $0.status == "LINKED" }) {
                         Text("Link an external account first -- see My > Linked accounts.")
                             .font(.subheadline).foregroundColor(IDS.Colors.textSecondary)

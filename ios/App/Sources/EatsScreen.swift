@@ -416,7 +416,7 @@ private struct OrderFoodContent: View {
                         .background(IDS.Colors.card)
                         .cornerRadius(IDS.Layout.cardCornerRadius)
                     } else if restaurants == nil {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                        SkeletonBlock(height: 120)
                     } else if restaurants!.isEmpty {
                         Text(selectedCategory != nil || !searchInput.trimmingCharacters(in: .whitespaces).isEmpty ? "No restaurants match your search." : "No restaurants registered yet.")
                             .foregroundColor(IDS.Colors.textSecondary)
@@ -1336,7 +1336,7 @@ private struct MyEatsOrdersView: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
             } else if orders == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                SkeletonBlock(height: 120)
             } else if orders!.isEmpty {
                 EmptyStateView("No orders yet — order from a nearby restaurant and it'll show up here.")
             } else {
@@ -1421,7 +1421,7 @@ private struct MyDineInOrdersView: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
             } else if orders == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 80)
+                SkeletonBlock(height: 80)
             } else if orders!.isEmpty {
                 EmptyView()
             } else {
@@ -1517,7 +1517,7 @@ private struct FavoriteRestaurantsView: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
             } else if favorites == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                SkeletonBlock(height: 120)
             } else if favorites!.isEmpty {
                 EmptyStateView("No favorite restaurants yet. Tap the heart on a restaurant to save it here.")
             } else {
@@ -1587,7 +1587,7 @@ private struct DeliverContent: View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
                 if !loadedRider {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                    SkeletonBlock(height: 120)
                 } else if rider == nil {
                     riderOnboarding
                 } else {
@@ -1680,7 +1680,7 @@ private struct DeliverContent: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Available deliveries").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                     if available == nil {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 80)
+                        SkeletonBlock(height: 80)
                     } else if available!.isEmpty {
                         EmptyStateView("No deliveries waiting right now.")
                     } else {

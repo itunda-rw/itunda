@@ -540,7 +540,7 @@ private struct CommerceShopContent: View {
                             .background(IDS.Colors.card)
                             .cornerRadius(IDS.Layout.cardCornerRadius)
                         } else if merchants == nil {
-                            ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                            SkeletonBlock(height: 120)
                         } else if merchants!.isEmpty {
                             Text(selectedCategory != nil || !searchInput.trimmingCharacters(in: .whitespaces).isEmpty ? "No merchants match your search." : "No stores registered yet.")
                                 .foregroundColor(IDS.Colors.textSecondary)
@@ -1329,7 +1329,7 @@ private struct ProductWishlistView: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
             } else if favorites == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                SkeletonBlock(height: 120)
             } else if favorites!.isEmpty {
                 EmptyStateView("No saved products yet -- tap ♡ on any product to save it here.")
                     .foregroundColor(IDS.Colors.textSecondary)
@@ -1407,7 +1407,7 @@ private struct MyProductSubscriptionsView: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
             } else if subscriptions == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                SkeletonBlock(height: 120)
             } else if subscriptions!.isEmpty {
                 EmptyStateView("No recurring deliveries yet -- subscribe from any product's detail page.")
                     .foregroundColor(IDS.Colors.textSecondary)
@@ -1660,7 +1660,7 @@ private struct MyCommerceOrdersView: View {
                     .background(IDS.Colors.card)
                     .cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if orders == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                    SkeletonBlock(height: 120)
                 } else if orders!.isEmpty {
                     EmptyStateView("No orders yet — browse a merchant's shop and your first order will show up here.")
                 } else {
