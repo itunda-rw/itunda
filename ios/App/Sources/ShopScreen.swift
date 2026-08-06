@@ -1955,7 +1955,7 @@ private struct BookingFlowView: View {
                     Text("Choose a time").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                     if let slots {
                         if slots.isEmpty {
-                            Text("No open times on this date.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                            EmptyStateView("No open times on this date — try another day.")
                         } else {
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                 ForEach(slots, id: \.startTime) { slot in
@@ -2295,7 +2295,7 @@ private struct ProductRatingBadge: View {
                     if open {
                         if let reviews {
                             if reviews.isEmpty {
-                                Text("No written reviews yet.").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                Text("No written reviews yet — be the first to share how it went.").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                             } else {
                                 ForEach(reviews, id: \.id) { r in
                                     let stars = String(repeating: "★", count: r.rating) + String(repeating: "☆", count: 5 - r.rating)
