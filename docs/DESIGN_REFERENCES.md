@@ -1076,13 +1076,16 @@ other tabs, even though the underlying idea (e.g. "bottom sheet") sounds generic
   is close to what exists today — bank-mfe wishlist, Android Eats favorites, Community likes are
   all separate).
 
-- **Chat-embedded financial action pattern ("+" menu → Gift / future Split-bill / future
-  transfer).** Both Gift (shipped) and the recommended Split-bill feature (Section 6) share the
-  same structural idea: a financial action initiated from inside a Talk thread, rendered as an
-  inline chat bubble, with an explicit-claim (not auto-credit) step. These should share one
-  "chat-embedded money action" shell — the composer's attach affordance, the escrow/claim bubble
-  rendering, the expiry-refund plumbing — with Gift and Split-bill as two instances of it, not two
-  independently-built features.
+- **Chat-embedded financial action pattern ("+" menu → Gift / Split-bill / future transfer).
+  Factual correction 2026-08-07: Split-bill already shipped, but not in this shape.** Gift is a
+  real inline chat bubble with an explicit-claim step, exactly the pattern this bullet describes.
+  Split-bill (`GroupSplitBillsView`) is also real and shipped, but as a separate full-screen
+  takeover reached by leaving the chat thread (`showSplitBills` swaps the whole view, `onBack`
+  returns to the thread) -- not an inline bubble in the message stream. A real, still-open
+  architectural inconsistency, not a missing feature: converting Split-bill's already-shipped,
+  working full-screen flow into inline chat bubbles would be a genuine redesign with real
+  regression risk to a tested feature, not a quick fix -- left as a named, deliberately deferred
+  recommendation rather than attempted this pass.
 
 - **Search-with-filter-chips pattern. Implemented -- doc was stale, corrected 2026-08-07.**
   Re-checked while auditing this section: bank-mfe's own `SearchAndCategoryChips` is a real single
