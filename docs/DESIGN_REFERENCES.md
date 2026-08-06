@@ -1056,10 +1056,17 @@ other tabs, even though the underlying idea (e.g. "bottom sheet") sounds generic
   Maps' custom-extension pattern converge on — and reusing it across Maps and any future
   Eats/Shop detail sheets avoids three independent, slightly-different sheet implementations.
 
-- **Skeleton/placeholder loading state.** The "Loading…" text-row problem was flagged specifically
-  in Hood (5+ call sites) but is visibly the same anti-pattern anywhere itunda shows a bare loading
-  string instead of a shaped placeholder. A single `ContentPlaceholder`/`Skeleton` composable
-  (Seed Design's named pattern) belongs in itunda's shared IDS layer, not rebuilt per-tab.
+- **Skeleton/placeholder loading state. Implemented 2026-08-06 (item 239).** The "Loading…"
+  text-row problem was flagged specifically in Hood but is visibly the same anti-pattern anywhere
+  itunda shows a bare loading string instead of a shaped placeholder. **Real finding on
+  inspection**: bank-mfe (a real `.skeleton` CSS shimmer class) and Android (`SkeletonBlock`,
+  `core/designsystem`'s `HoodShared.kt`) already had this real animated shaped placeholder --
+  iOS was the actual gap, falling back to a plain `ProgressView()` spinner everywhere instead.
+  New `SkeletonBlock` in `Core/DesignSystem/Components.swift`, same animated gradient-sweep shape
+  as the other two platforms; swapped all 16 real `ProgressView().frame(maxWidth: .infinity,
+  minHeight: N)` full-list-loading call sites across Talk/Eats/Shop/Hood/AutoTopUp (inline button
+  spinners deliberately left as `ProgressView`, matching Android's own convention of reserving
+  `SkeletonBlock` for list/section-level loading only).
 
 - **Wishlist/heart affordance + toast-confirmed add/remove.** This pattern is independently
   recommended for Hood listings and Shopping products, and already exists for Community posts and
