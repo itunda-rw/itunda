@@ -136,7 +136,7 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
                         if (subs == null) {
                             Text("Loading…", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         } else if (subs.isEmpty()) {
-                            EmptyState("No merchant subscriptions yet.")
+                            EmptyState("No merchant subscriptions yet — plans you subscribe to will show up here.")
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 subs.forEach { sub -> MerchantBillingSubscriptionRow(subscription = sub, onChanged = ::loadBilling) }

@@ -87,7 +87,7 @@ fun SpendingScreen(onBack: () -> Unit) {
                     }
                 }
                 if (current.categories.isEmpty()) {
-                    item { EmptyState("No spending recorded yet.") }
+                    item { EmptyState("No spending recorded yet — your breakdown will show up here once you use your wallet.") }
                 } else {
                     item { Text("By category", style = MaterialTheme.typography.titleMedium) }
                     val maxAmount = current.categories.maxOf { it.amount }.let { if (it > BigDecimal.ZERO) it else BigDecimal.ONE }

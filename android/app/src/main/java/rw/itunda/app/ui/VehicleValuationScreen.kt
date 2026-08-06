@@ -203,7 +203,7 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
             if (list == null) {
                 item { Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             } else if (list.isEmpty()) {
-                item { EmptyState("No vehicles added yet.") }
+                item { EmptyState("No vehicles added yet — add one to track its value and get real offers.") }
             } else {
                 items(list, key = { it.id }) { v ->
                     val valuation = valuations[v.id]

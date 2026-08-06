@@ -148,7 +148,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
 
             item { Text("My listings", style = MaterialTheme.typography.titleMedium) }
             if (myListings.isEmpty()) {
-                item { EmptyState("No listings posted yet.") }
+                item { EmptyState("No float listings yet — post one to let nearby agents claim your spare cash.") }
             }
             items(myListings, key = { it.id }) { l ->
                 Card(Modifier.fillMaxWidth()) {
@@ -181,7 +181,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
 
             item { Text("Requests against my listings", style = MaterialTheme.typography.titleMedium) }
             if (incomingRequests.isEmpty()) {
-                item { EmptyState("No requests received yet.") }
+                item { EmptyState("No requests yet — they'll show up here once another agent claims from your listing.") }
             }
             items(incomingRequests, key = { it.id }) { r ->
                 Card(Modifier.fillMaxWidth()) {
@@ -235,7 +235,7 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
 
             item { Text("My requests", style = MaterialTheme.typography.titleMedium) }
             if (myRequests.isEmpty()) {
-                item { EmptyState("No requests sent yet.") }
+                item { EmptyState("No requests yet — claim from a nearby listing above and it'll show up here.") }
             }
             items(myRequests, key = { it.id }) { r ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
