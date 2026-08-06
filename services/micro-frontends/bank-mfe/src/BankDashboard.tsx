@@ -3953,7 +3953,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
-        {myListings.length === 0 && <EmptyState message="No listings posted yet — post something you're selling and it'll show up here." />}
+        {myListings.length === 0 && <EmptyState message="No float listings yet — post one to let nearby agents claim your spare cash." />}
         {myListings.map((l) => (
           <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
             <span>{l.amount.toLocaleString()} RWF offered · {l.claimedAmount.toLocaleString()} claimed · {l.status}</span>
@@ -3964,7 +3964,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Requests against my listings</h3>
-        {incomingRequests.length === 0 && <EmptyState message="No payment requests yet — when someone asks you to pay them, it'll show up here." />}
+        {incomingRequests.length === 0 && <EmptyState message="No requests yet — they'll show up here once another agent claims from your listing." />}
         {incomingRequests.map((r) => (
           <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
             <span>{r.amount.toLocaleString()} RWF · {r.status}</span>
@@ -3980,7 +3980,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My requests</h3>
-        {myRequests.length === 0 && <EmptyState message="No payment requests yet — ask a friend to pay you and it'll show up here." />}
+        {myRequests.length === 0 && <EmptyState message="No requests yet — claim from a nearby listing above and it'll show up here." />}
         {myRequests.map((r) => (
           <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{r.amount.toLocaleString()} RWF</span>
