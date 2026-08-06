@@ -486,7 +486,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         </div>
       )}
       {contacts.length === 0 && !showAddContact && (
-        <EmptyState message="No saved contacts yet." />
+        <EmptyState message="No saved contacts yet — add one to send money faster next time." />
       )}
       {contacts.map((c) => (
         <button
@@ -912,7 +912,7 @@ function ScheduledTransfersCard() {
       {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {pending.length === 0 && past.length === 0 && (
-        <EmptyState message="No scheduled transfers yet." />
+        <EmptyState message="No scheduled transfers yet — schedule one to send money on a future date." />
       )}
 
       {[...pending, ...past.slice(0, 3)].map((t) => (
@@ -1066,7 +1066,7 @@ function AutoTransfersCard() {
       {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {active.length === 0 && cancelled.length === 0 && (
-        <EmptyState message="No auto-transfers set up yet." />
+        <EmptyState message="No auto-transfers set up yet — set one up to send money on a schedule automatically." />
       )}
 
       {[...active, ...cancelled.slice(0, 2)].map((t) => (
@@ -1797,7 +1797,7 @@ function LoansView() {
             </div>
           )}
           {offers === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> :
-           offers.length === 0 ? <EmptyState message="No offers from this lender right now." /> :
+           offers.length === 0 ? <EmptyState message="No offers right now — check back later or explore another lender." /> :
            offers.map((offer) => (
             <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
           ))}
@@ -3953,7 +3953,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
-        {myListings.length === 0 && <EmptyState message="No listings posted yet." />}
+        {myListings.length === 0 && <EmptyState message="No listings posted yet — post something you're selling and it'll show up here." />}
         {myListings.map((l) => (
           <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
             <span>{l.amount.toLocaleString()} RWF offered · {l.claimedAmount.toLocaleString()} claimed · {l.status}</span>
@@ -3964,7 +3964,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Requests against my listings</h3>
-        {incomingRequests.length === 0 && <EmptyState message="No requests received yet." />}
+        {incomingRequests.length === 0 && <EmptyState message="No payment requests yet — when someone asks you to pay them, it'll show up here." />}
         {incomingRequests.map((r) => (
           <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
             <span>{r.amount.toLocaleString()} RWF · {r.status}</span>
@@ -3980,7 +3980,7 @@ function FloatMarketplaceSection() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My requests</h3>
-        {myRequests.length === 0 && <EmptyState message="No requests sent yet." />}
+        {myRequests.length === 0 && <EmptyState message="No payment requests yet — ask a friend to pay you and it'll show up here." />}
         {myRequests.map((r) => (
           <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{r.amount.toLocaleString()} RWF</span>
@@ -4262,7 +4262,7 @@ function SpendingInsightView() {
       <div className="toss-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>By category</h3>
         {categories.length === 0 ? (
-          <EmptyState message="No spending recorded yet." />
+          <EmptyState message="No spending recorded yet — your breakdown will show up here once you use your wallet." />
         ) : (
           categories.map((c) => (
             <div key={c.name} style={{ padding: '8px 0' }}>
@@ -4451,7 +4451,7 @@ function SubscriptionsView() {
         {billingSubs === null && !billingError ? (
           <div className="toss-card skeleton" style={{ height: '80px' }} />
         ) : billingSubs && billingSubs.length === 0 ? (
-          <EmptyState message="No merchant subscriptions yet." />
+          <EmptyState message="No merchant subscriptions yet — plans you subscribe to will show up here." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {billingSubs?.map((sub) => (
@@ -5240,7 +5240,7 @@ function MyVehiclesCard() {
 
       {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
 
-      {(vehicles ?? []).length === 0 && <EmptyState message="No vehicles added yet." />}
+      {(vehicles ?? []).length === 0 && <EmptyState message="No vehicles added yet — add one to track its value and get real offers." />}
 
       {(vehicles ?? []).map((v) => {
         const valuation = valuations[v.id];
@@ -5442,7 +5442,7 @@ function FamilyLinkCard() {
         </div>
       )}
 
-      {!hasAnything && <EmptyState message="No family members linked yet." />}
+      {!hasAnything && <EmptyState message="No family members linked yet — invite one to manage their spending together." />}
     </div>
   );
 }
@@ -11246,7 +11246,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
           {showApplicants && (
             applications === null ? <div className="toss-card skeleton" style={{ height: '60px' }} /> :
             applications.filter((a) => a.status === 'PENDING').length === 0 ? (
-              <EmptyState message="No applications yet" />
+              <EmptyState message="No applications yet — apply to a job post and it'll show up here." />
             ) : (
               applications.filter((a) => a.status === 'PENDING').map((app) => (
                 <div key={app.id} style={{ backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -15385,7 +15385,7 @@ function BusView() {
           {trips === null ? (
             <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
           ) : trips.length === 0 ? (
-            <EmptyState message="No upcoming trips found." />
+            <EmptyState message="No upcoming trips — request a ride and it'll show up here." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {trips.map((trip) => (
@@ -20080,7 +20080,7 @@ function SavingsView() {
       {goals === null ? (
         <div className="toss-card skeleton" style={{ height: '100px' }} />
       ) : goals.length === 0 ? (
-        <EmptyState message="No savings goals yet." />
+        <EmptyState message="No savings goals yet — set one to start putting money aside for something specific." />
       ) : (
         goals.map((g) => <GoalCard key={g.id} goal={g} onChanged={load} />)
       )}
