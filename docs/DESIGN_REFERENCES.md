@@ -1631,11 +1631,18 @@ don't translate to itunda's English copy, so scoped out; the universally-applica
    dismissible-only-via-partner-CTA popup? This session's own accessibility/copy-voice sweeps
    already prove the "grep every X, read context, triage real-vs-false-positive" methodology
    works at this scale -- the same technique applies directly here.
-4. **[sourced, not yet done]** Run a CTA-label-clarity pass: grep every button whose visible text
-   is a generic verb ("Confirm", "Submit", "OK", "Continue", "Next") with no object, and check
-   whether the surrounding screen already makes the outcome obvious (fine) or whether the label
-   should name the actual action ("Send 5,000 RWF" beats "Confirm" on a transfer screen, matching
-   both "Clear Action" and this section's CTA-labeling rule).
+4. **[sourced] Done same day.** Ran the CTA-label-clarity pass: grepped every generic-verb
+   button ("Confirm"/"Submit"/"Continue") across every web micro-frontend plus Android/iOS.
+   Found and fixed 7 real instances: bank-mfe's transfer-confirm modal ("Confirm" →
+   "Send {amount} RWF"), Mini Account eligibility form ("Continue" → "Check eligibility"),
+   property ownership-doc upload ("Submit" → "Submit for review" — starts a real
+   human-reviewer process, not an instant action); merchant-mfe's KYB TIN form ("Submit" →
+   "Submit for verification"); ops-mfe's agent till-funding row ("Confirm" → "Fund till");
+   Android/iOS's identical MiniWalletScreen "Continue" → "Check eligibility". Left alone:
+   `VerificationRow`'s OTP-confirm "Confirm" (item 245's own auto-confirm widget) — its
+   surrounding context (code input directly under "Email/Phone not verified") already makes
+   the outcome obvious, matching this rule's own stated exception. `:app:compileDebugKotlin`
+   clean, `swiftc -parse` clean, all 3 web packages `tsc -b` + `vite build` clean.
 5. **[sourced, real opportunity, larger scope]** The interaction decision framework (measurable
    metric or clearer functional feedback, not aesthetic preference) is a real, adoptable review
    question for any future itunda animation/motion work — itunda has no equivalent stated
