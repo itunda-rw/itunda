@@ -4041,6 +4041,10 @@ function UssdSettingsView() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // Real "Minimum Input" simplicity addition (item 244, docs/DESIGN_REFERENCES.md §11/§12):
+  // a local UI-only affordance, not a security control -- especially useful here since a
+  // mismatched PIN only surfaces as an error after submitting both fields.
+  const [pinVisible, setPinVisible] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -4081,13 +4085,23 @@ function UssdSettingsView() {
           this project doesn't have yet -- the same honest limitation as our ID-verification integration.
         </p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ position: 'relative' }}>
+            <input
+              type={pinVisible ? 'text' : 'password'} inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)}
+              placeholder="New USSD PIN (4-6 digits)" maxLength={6}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '12px 40px 12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            />
+            <button
+              type="button"
+              onClick={() => setPinVisible((v) => !v)}
+              aria-label={pinVisible ? 'Hide PIN' : 'Show PIN'}
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--toss-grey-500)' }}
+            >
+              {pinVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           <input
-            type="password" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)}
-            placeholder="New USSD PIN (4-6 digits)" maxLength={6}
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
-          />
-          <input
-            type="password" inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)}
+            type={pinVisible ? 'text' : 'password'} inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)}
             placeholder="Confirm PIN" maxLength={6}
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
           />
