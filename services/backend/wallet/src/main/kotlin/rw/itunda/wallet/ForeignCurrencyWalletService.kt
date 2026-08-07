@@ -14,6 +14,7 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.CurrencyConversionRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.UUID
@@ -55,6 +56,7 @@ class ForeignCurrencyWalletService(
     private val ledgerService: LedgerService,
     private val rateClient: ForeignCurrencyRateClient,
     private val currencyConversionRepository: CurrencyConversionRepository,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
     companion object {
         val SUPPORTED_CURRENCIES = setOf("USD", "EUR", "GBP")
@@ -70,8 +72,6 @@ class ForeignCurrencyWalletService(
     private fun getMainWallet(userId: String) =
         walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
             ?: throw WalletNotFoundException("No main wallet found for this account")
-
-    private fun generateAccountNumber(): String = (2026400000L + (Math.random() * 900000).toLong()).toString()
 
     @Transactional
     fun openWallet(userId: String, currency: String): Wallet {
@@ -95,7 +95,7 @@ class ForeignCurrencyWalletService(
         }
         return walletRepository.save(
             Wallet(
-                id = "wallet_${UUID.randomUUID()}", userId = userId, accountNumber = generateAccountNumber(),
+                id = "wallet_${UUID.randomUUID()}", userId = userId, accountNumber = accountNumberGenerator.generate(2026400000L),
                 accountName = "$code Account", type = WalletType.FOREIGN_CURRENCY,
                 balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO, currency = code,
             ),

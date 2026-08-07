@@ -14,6 +14,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -63,6 +64,7 @@ class MiniWalletService(
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
     private val userRepository: UserRepository,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
     companion object {
         val MAX_BALANCE: BigDecimal = BigDecimal("500000")
@@ -72,10 +74,6 @@ class MiniWalletService(
         const val MAX_AGE: Int = 18
         private val RWANDA_ZONE: ZoneId = ZoneId.of("Africa/Kigali")
     }
-
-    // No collision-avoidance loop, same accepted-risk precedent
-    // AuthService.generateAccountNumber already establishes for this codebase.
-    private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()
 
     /** Idempotent -- opening an already-open Mini wallet just returns the existing one,
      * same "the end state is what the caller actually wants" discipline
@@ -114,7 +112,7 @@ class MiniWalletService(
 
         return walletRepository.save(
             Wallet(
-                id = "wallet_${UUID.randomUUID()}", userId = userId, accountNumber = generateAccountNumber(),
+                id = "wallet_${UUID.randomUUID()}", userId = userId, accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "Mini Account", type = WalletType.MINI,
                 balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO, currency = mainWallet.currency,
             ),

@@ -12,6 +12,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -54,6 +55,7 @@ class MerchantBusinessAccountService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val ledgerEntryRepository: LedgerEntryRepository,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
     companion object {
         private const val TRANSACTION_HISTORY_LIMIT = 50
@@ -63,8 +65,6 @@ class MerchantBusinessAccountService(
         merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw MerchantNotFoundException("This account is not registered as a merchant")
 
-    private fun generateAccountNumber(): String = (2026500000L + (Math.random() * 900000).toLong()).toString()
-
     @Transactional
     fun openBusinessAccount(ownerUserId: String): Wallet {
         requireMerchant(ownerUserId)
@@ -73,7 +73,7 @@ class MerchantBusinessAccountService(
         }
         return walletRepository.save(
             Wallet(
-                id = "wallet_${UUID.randomUUID()}", userId = ownerUserId, accountNumber = generateAccountNumber(),
+                id = "wallet_${UUID.randomUUID()}", userId = ownerUserId, accountNumber = accountNumberGenerator.generate(2026500000L),
                 accountName = "Business Account", type = WalletType.BUSINESS,
                 balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
             ),

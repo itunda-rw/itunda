@@ -19,6 +19,7 @@ import rw.itunda.core.repository.IkiminaMemberRepository
 import rw.itunda.core.repository.IkiminaRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -48,7 +49,8 @@ class IkiminaServiceTest : BehaviorSpec({
         userRepository: UserRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = IkiminaService(ikiminaRepository, ikiminaMemberRepository, ikiminaContributionRepository, walletRepository, userRepository, ledgerService, rateLimiter)
+        accountNumberGenerator: AccountNumberGenerator = mockk(relaxed = true),
+    ) = IkiminaService(ikiminaRepository, ikiminaMemberRepository, ikiminaContributionRepository, walletRepository, userRepository, ledgerService, rateLimiter, accountNumberGenerator)
 
     Given("an organizer with a real wallet creating a new ikimina") {
         val ikiminaRepository = mockk<IkiminaRepository>()

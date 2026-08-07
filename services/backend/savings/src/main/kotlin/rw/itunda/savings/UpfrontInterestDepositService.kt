@@ -14,6 +14,7 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.UpfrontInterestDepositRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -46,10 +47,9 @@ class UpfrontInterestDepositService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
     private val log = LoggerFactory.getLogger(UpfrontInterestDepositService::class.java)
-
-    private fun generateAccountNumber(): String = (2026300000L + (Math.random() * 900000).toLong()).toString()
 
     /** Real gross interest for the full 12-month term, paid in one shot -- the real
      * distinguishing mechanic, unlike every other product here's accrue-then-claim shape. */
@@ -70,7 +70,7 @@ class UpfrontInterestDepositService(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}",
                 userId = userId,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2026300000L),
                 accountName = "12-Month Deposit",
                 type = WalletType.UPFRONT_DEPOSIT,
                 balance = BigDecimal.ZERO,

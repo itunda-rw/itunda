@@ -16,6 +16,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.ZoneId
@@ -40,7 +41,7 @@ class MiniWalletServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val userRepository = mockk<UserRepository>()
-        val service = MiniWalletService(walletRepository, transactionRepository, ledgerService, userRepository)
+        val service = MiniWalletService(walletRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true))
 
         When("they don't already have one") {
             every { walletRepository.findByUserIdAndType("user_1", WalletType.MINI) } returns null
@@ -121,7 +122,7 @@ class MiniWalletServiceTest : BehaviorSpec({
             Then("it throws MiniWalletBirthDateRequiredException before ever checking for a MAIN wallet") {
                 val walletRepository = mockk<WalletRepository>()
                 val userRepository = mockk<UserRepository>()
-                val service = MiniWalletService(walletRepository, mockk(), mockk(), userRepository)
+                val service = MiniWalletService(walletRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true))
                 every { walletRepository.findByUserIdAndType("user_no_birth_date", WalletType.MINI) } returns null
                 every { userRepository.findById("user_no_birth_date") } returns Optional.of(user("user_no_birth_date", null))
                 try {
@@ -137,7 +138,7 @@ class MiniWalletServiceTest : BehaviorSpec({
             Then("it throws MiniWalletAgeIneligibleException") {
                 val walletRepository = mockk<WalletRepository>()
                 val userRepository = mockk<UserRepository>()
-                val service = MiniWalletService(walletRepository, mockk(), mockk(), userRepository)
+                val service = MiniWalletService(walletRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true))
                 every { walletRepository.findByUserIdAndType("user_too_young", WalletType.MINI) } returns null
                 every { userRepository.findById("user_too_young") } returns Optional.of(user("user_too_young", LocalDate.now(rwandaZone).minusYears(6)))
                 try {
@@ -153,7 +154,7 @@ class MiniWalletServiceTest : BehaviorSpec({
             Then("it throws MiniWalletAgeIneligibleException") {
                 val walletRepository = mockk<WalletRepository>()
                 val userRepository = mockk<UserRepository>()
-                val service = MiniWalletService(walletRepository, mockk(), mockk(), userRepository)
+                val service = MiniWalletService(walletRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true))
                 every { walletRepository.findByUserIdAndType("user_too_old", WalletType.MINI) } returns null
                 every { userRepository.findById("user_too_old") } returns Optional.of(user("user_too_old", LocalDate.now(rwandaZone).minusYears(19)))
                 try {
@@ -169,7 +170,7 @@ class MiniWalletServiceTest : BehaviorSpec({
             Then("it real-opens the Mini wallet -- the boundary age is inclusive, not excluded") {
                 val walletRepository = mockk<WalletRepository>()
                 val userRepository = mockk<UserRepository>()
-                val service = MiniWalletService(walletRepository, mockk(), mockk(), userRepository)
+                val service = MiniWalletService(walletRepository, mockk(), mockk(), userRepository, mockk<AccountNumberGenerator>(relaxed = true))
                 every { walletRepository.findByUserIdAndType("user_minimum_age", WalletType.MINI) } returns null
                 every { userRepository.findById("user_minimum_age") } returns Optional.of(user("user_minimum_age", LocalDate.now(rwandaZone).minusYears(7)))
                 every { walletRepository.findByUserIdAndType("user_minimum_age", WalletType.MAIN) } returns wallet("wallet_main", "user_minimum_age", WalletType.MAIN, "10000")
@@ -187,7 +188,7 @@ class MiniWalletServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val userRepository = mockk<UserRepository>()
-        val service = MiniWalletService(walletRepository, transactionRepository, ledgerService, userRepository)
+        val service = MiniWalletService(walletRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true))
 
         val mainWallet = wallet("wallet_main", "user_1", WalletType.MAIN, "1000000")
         val miniWallet = wallet("wallet_mini", "user_1", WalletType.MINI, "0")
@@ -254,7 +255,7 @@ class MiniWalletServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val userRepository = mockk<UserRepository>()
-        val service = MiniWalletService(walletRepository, transactionRepository, ledgerService, userRepository)
+        val service = MiniWalletService(walletRepository, transactionRepository, ledgerService, userRepository, mockk<AccountNumberGenerator>(relaxed = true))
 
         every { walletRepository.findByUserIdAndType("user_3", WalletType.MAIN) } returns wallet("wallet_main", "user_3", WalletType.MAIN, "10000")
         every { walletRepository.findByUserIdAndType("user_3", WalletType.MINI) } returns null

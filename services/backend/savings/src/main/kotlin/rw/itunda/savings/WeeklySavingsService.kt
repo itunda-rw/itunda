@@ -16,6 +16,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.repository.WeeklySavingsInstallmentRepository
 import rw.itunda.core.repository.WeeklySavingsPlanRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -55,10 +56,9 @@ class WeeklySavingsService(
     private val installmentRepository: WeeklySavingsInstallmentRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
     private val log = LoggerFactory.getLogger(WeeklySavingsService::class.java)
-
-    private fun generateAccountNumber(): String = (2025200000L + (Math.random() * 900000).toLong()).toString()
 
     // Real KakaoBank step-up presets (10/20/30/50/100%). The exact cadence the step
     // applies on (every 4 installments) is itunda's own scoping choice -- the sourced
@@ -92,7 +92,7 @@ class WeeklySavingsService(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}",
                 userId = userId,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2025200000L),
                 accountName = "$name (26-Week Savings)",
                 type = WalletType.WEEKLY_SAVINGS,
                 balance = BigDecimal.ZERO,

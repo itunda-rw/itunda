@@ -18,6 +18,7 @@ import rw.itunda.core.repository.IkiminaMemberRepository
 import rw.itunda.core.repository.IkiminaRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
 import java.util.UUID
@@ -66,9 +67,8 @@ class IkiminaService(
     private val userRepository: UserRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
-    private fun generateAccountNumber(): String = (2024200000L + (Math.random() * 900000).toLong()).toString()
-
     @Transactional
     fun createIkimina(organizerId: String, name: String, contributionAmount: BigDecimal, cycleFrequencyDays: Int, memberCap: Int): Ikimina {
         rateLimiter.checkLimit("ikimina:create:$organizerId", limit = 10, window = Duration.ofHours(1))
@@ -82,7 +82,7 @@ class IkiminaService(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}",
                 userId = organizerId,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2024200000L),
                 accountName = "$name (Ikimina)",
                 type = WalletType.GROUP,
                 balance = BigDecimal.ZERO,

@@ -20,6 +20,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.repository.WeeklySavingsInstallmentRepository
 import rw.itunda.core.repository.WeeklySavingsPlanRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -55,7 +56,8 @@ class WeeklySavingsServiceTest : BehaviorSpec({
         installmentRepository: WeeklySavingsInstallmentRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = WeeklySavingsService(walletRepository, planRepository, installmentRepository, ledgerService, rateLimiter)
+        accountNumberGenerator: AccountNumberGenerator = mockk(relaxed = true),
+    ) = WeeklySavingsService(walletRepository, planRepository, installmentRepository, ledgerService, rateLimiter, accountNumberGenerator)
 
     Given("the real escalating weekly amount schedule") {
         val svc = service()

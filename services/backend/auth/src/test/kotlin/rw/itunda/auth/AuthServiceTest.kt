@@ -27,6 +27,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PhoneVerificationTokenRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -74,10 +75,11 @@ class AuthServiceTest : BehaviorSpec({
         // pipeline itself, just registration/login/profile behavior.
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
         val service = AuthService(
             userRepository, walletRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
             emailVerificationTokenRepository, phoneVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
-            pushNotificationService, realtimeMessagePublisher,
+            pushNotificationService, realtimeMessagePublisher, accountNumberGenerator,
         )
 
         When("registering a brand-new phone number") {

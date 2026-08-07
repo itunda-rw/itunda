@@ -23,6 +23,7 @@ import rw.itunda.core.repository.GroupAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -66,8 +67,8 @@ class GroupAccountService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val pushNotificationService: PushNotificationService,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
-    private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()
     private fun currentCycleMonth(): String = YearMonth.now().toString()
 
     @Transactional
@@ -82,7 +83,7 @@ class GroupAccountService(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}",
                 userId = ownerId,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "$name (Group Account)",
                 type = WalletType.GROUP,
                 balance = BigDecimal.ZERO,

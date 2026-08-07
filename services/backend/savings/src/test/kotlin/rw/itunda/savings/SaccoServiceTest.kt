@@ -24,6 +24,7 @@ import rw.itunda.core.repository.SaccoDividendPayoutRepository
 import rw.itunda.core.repository.SaccoShareholdingRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -53,7 +54,8 @@ class SaccoServiceTest : BehaviorSpec({
         userRepository: UserRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = SaccoService(shareholdingRepository, distributionRepository, payoutRepository, walletRepository, userRepository, ledgerService, rateLimiter)
+        accountNumberGenerator: AccountNumberGenerator = mockk(relaxed = true),
+    ) = SaccoService(shareholdingRepository, distributionRepository, payoutRepository, walletRepository, userRepository, ledgerService, rateLimiter, accountNumberGenerator)
 
     Given("a real user with a wallet buying SACCO shares for the first time") {
         val shareholdingRepository = mockk<SaccoShareholdingRepository>()

@@ -17,6 +17,7 @@ import rw.itunda.core.repository.SaccoDividendPayoutRepository
 import rw.itunda.core.repository.SaccoShareholdingRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -56,6 +57,7 @@ class SaccoService(
     private val userRepository: UserRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
     companion object {
         // Reuses SavingsService's own real 7.5% annual savings-goal rate as the SACCO's
@@ -65,8 +67,6 @@ class SaccoService(
         val ANNUAL_DIVIDEND_RATE: BigDecimal = BigDecimal("0.075")
     }
 
-    private fun generateAccountNumber(): String = (2024300000L + (Math.random() * 900000).toLong()).toString()
-
     @Transactional
     fun getOrCreatePoolWallet(): Wallet =
         walletRepository.findByUserIdAndType(SACCO_POOL_USER_ID, WalletType.GROUP)
@@ -74,7 +74,7 @@ class SaccoService(
                 Wallet(
                     id = "wallet_${UUID.randomUUID()}",
                     userId = SACCO_POOL_USER_ID,
-                    accountNumber = generateAccountNumber(),
+                    accountNumber = accountNumberGenerator.generate(2024300000L),
                     accountName = "itunda SACCO pool",
                     type = WalletType.GROUP,
                     balance = BigDecimal.ZERO,

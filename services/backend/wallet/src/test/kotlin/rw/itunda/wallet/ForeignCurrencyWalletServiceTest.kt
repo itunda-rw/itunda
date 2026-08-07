@@ -13,6 +13,7 @@ import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.CurrencyConversionRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -32,7 +33,8 @@ class ForeignCurrencyWalletServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateClient = mockk<ForeignCurrencyRateClient>()
         val currencyConversionRepository = mockk<CurrencyConversionRepository>()
-        val service = ForeignCurrencyWalletService(walletRepository, ledgerService, rateClient, currencyConversionRepository)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val service = ForeignCurrencyWalletService(walletRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator)
 
         val mainWallet = wallet("wallet_main", "user_1", WalletType.MAIN)
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns mainWallet
@@ -75,7 +77,8 @@ class ForeignCurrencyWalletServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateClient = mockk<ForeignCurrencyRateClient>()
         val currencyConversionRepository = mockk<CurrencyConversionRepository>()
-        val service = ForeignCurrencyWalletService(walletRepository, ledgerService, rateClient, currencyConversionRepository)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val service = ForeignCurrencyWalletService(walletRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator)
 
         val mainWallet = wallet("wallet_main", "user_1", WalletType.MAIN)
         val existingUsd = wallet("wallet_usd", "user_1", WalletType.FOREIGN_CURRENCY, "USD")
@@ -100,7 +103,8 @@ class ForeignCurrencyWalletServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateClient = mockk<ForeignCurrencyRateClient>()
         val currencyConversionRepository = mockk<CurrencyConversionRepository>()
-        val service = ForeignCurrencyWalletService(walletRepository, ledgerService, rateClient, currencyConversionRepository)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val service = ForeignCurrencyWalletService(walletRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator)
 
         every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns null
 
@@ -122,7 +126,8 @@ class ForeignCurrencyWalletServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateClient = mockk<ForeignCurrencyRateClient>()
         val currencyConversionRepository = mockk<CurrencyConversionRepository>()
-        val service = ForeignCurrencyWalletService(walletRepository, ledgerService, rateClient, currencyConversionRepository)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        val service = ForeignCurrencyWalletService(walletRepository, ledgerService, rateClient, currencyConversionRepository, accountNumberGenerator)
 
         val mainWallet = wallet("wallet_main", "user_1", WalletType.MAIN)
         val usdWallet = wallet("wallet_usd", "user_1", WalletType.FOREIGN_CURRENCY, "USD")

@@ -24,6 +24,7 @@ import rw.itunda.core.repository.GroupAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -52,9 +53,10 @@ class GroupAccountServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
         val service = GroupAccountService(
             groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
-            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService,
+            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
         )
 
         When("an owner creates a new group account") {
@@ -90,9 +92,10 @@ class GroupAccountServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
         val service = GroupAccountService(
             groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
-            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService,
+            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService, accountNumberGenerator,
         )
 
         val account = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1")

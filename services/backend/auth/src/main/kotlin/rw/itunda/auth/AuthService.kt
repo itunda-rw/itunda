@@ -23,6 +23,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PhoneVerificationTokenRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -53,6 +54,7 @@ class AuthService(
     private val deviceService: DeviceService,
     private val pushNotificationService: PushNotificationService,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
+    private val accountNumberGenerator: AccountNumberGenerator,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
     private val logger = LoggerFactory.getLogger(AuthService::class.java)
@@ -96,7 +98,7 @@ class AuthService(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}",
                 userId = user.id,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "${user.firstName}'s Main Account",
                 type = WalletType.MAIN,
                 balance = BigDecimal.ZERO,
@@ -110,7 +112,7 @@ class AuthService(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}",
                 userId = user.id,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "${user.firstName}'s Savings Account",
                 type = WalletType.SAVINGS,
                 balance = BigDecimal.ZERO,
@@ -149,7 +151,7 @@ class AuthService(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}",
                 userId = user.id,
-                accountNumber = generateAccountNumber(),
+                accountNumber = accountNumberGenerator.generate(2024100000L),
                 accountName = "${user.firstName}'s Investment Account",
                 type = WalletType.INVESTMENT,
                 balance = BigDecimal.ZERO,
@@ -476,8 +478,6 @@ class AuthService(
         accessToken = jwtService.issueAccessToken(user.id, user.phoneNumber, user.role, deviceId),
         refreshToken = jwtService.issueRefreshToken(user.id, deviceId),
     )
-
-    private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()
 
     // No collision-avoidance loop, same accepted-risk precedent as generateAccountNumber
     // above -- a UUID-derived 6-char code has a negligible real collision chance, and the
