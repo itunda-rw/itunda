@@ -1570,3 +1570,85 @@ warm instead of generic and flat.** Concretely:
 - Push-notification copy (a real, separate surface with its own real precedent in Baemin's
   research) wasn't audited this pass — itunda's notification copy across Android/iOS wasn't
   reviewed for this same specific/generic distinction.
+
+---
+
+## 11. Simplicity & convenience — Toss's own product principles, applied app-wide
+
+**Added 2026-08-07** (item 244/245), at explicit user request to do deep research on why Toss
+is known for simplicity specifically, then apply it broadly across itunda rather than to one
+feature. Section 8 already named Toss's 6 official product principles and deep-dived 2 of them
+("One Thing", "Easy to Answer") — this section deep-dives the remaining 4 and adds a genuinely
+new, highly concrete source (the Apps-in-Toss developer UX/dark-pattern guide) that wasn't found
+in any earlier research pass.
+
+### References
+
+| Topic | Source | Pattern |
+|---|---|---|
+| Toss product principles (official, full text) | toss.im/tossfeed/article/tossproductprinciples | **Clear Action**: "Is the required action to achieve the desired result obvious at a glance? Without reading a word, users should know exactly what to do next." **No More Loading**: "Have we completely removed waiting for users? ... Pull all levers to eliminate delays -- whether by redesigning flows, improving policies, or adopting new technology." **Minimum Features**: "More features in a product mean more complexity, slower updates, and more bugs. Adding a new feature often brings more cost than value, and should be a last resort." **Value First**: "It's our job to show users that our product is worth their time and money. By clearly communicating its benefits before asking them to act, we guide users seamlessly to complete the task at hand." |
+| Four ways to eliminate unnecessary clicks | toss.tech/article/4-ways-for-minimum-input | Four real, named, shipped techniques: (1) omit the CTA button entirely for single-selection input, (2) omit the CTA for fixed-digit-length fields (ID numbers, phone numbers, OTP codes) -- the field submits itself once full, (3) pre-select the correct keyboard type (numeric for verification codes) rather than defaulting to text, (4) auto-focus the input on page load so the keyboard appears without an extra tap |
+| When to add an interaction/animation | toss.tech/article/interaction | Real decision framework, not aesthetic preference: an interaction only ships if it moves a *measurable* metric (conversion, drop-off, task completion) or gives clearer functional feedback about what's happening/available -- not because it "looks better." Named a real failure case: a full sidebar, ID-recognition screen, and card-issuance-flow animation set were all built and *rejected* despite positively-perceived UX, because none moved a metric. Named a real success case: a loan-approval loading screen showing the real product in real time raised engagement. |
+| Apps-in-Toss dark-pattern-prevention policy | developers-apps-in-toss.toss.im/design/consumer-ux-guide | Real, enforced (not aspirational) submission-review rules: no bottom sheet/ad/notification-prompt blocking the very first screen a user sees; no bottom sheet blocking backward navigation; no UI structure where the only way forward is the partner's preferred CTA (an escape/other option must always exist); no full-screen ads appearing unexpectedly mid-task; CTA button labels must state the specific outcome, never repeat the screen's own heading or use a generic label |
+| Apps-in-Toss UX writing rules | developers-apps-in-toss.toss.im/design/consumer-ux-guide | Positive framing preferred over negative ("이 혜택을 받을 수 있어요" [you can get this benefit] over "이 혜택이 없어요" [this benefit doesn't exist]); dialog dismiss buttons use "닫기" (Close) not "취소" (Cancel) -- the label names the actual resulting action, not a generic verb |
+
+### itunda's current state (verified, not assumed)
+
+Audited against the concretely-checkable rules above (the Korean-grammar-specific writing rules
+don't translate to itunda's English copy, so scoped out; the universally-applicable ones did):
+
+- **Fixed-length-field CTA elimination (rule #2 above): real, confirmed violation, now fixed.**
+  `VerificationRow` (Android `ItundaAppScreen.kt`, iOS `BenefitsShopAllScreens.swift`, web
+  `BankDashboard.tsx`) required typing a real, fixed 6-digit OTP (`AuthService.kt`'s own doc
+  comment confirms the fixed length) *and* a separate manual "Confirm" tap -- exactly the
+  anti-pattern this research names. See item 245 below.
+- **Keyboard-type pre-selection (rule #3): same screen, same violation, now fixed.** The code
+  field defaulted to a text keyboard on all 3 platforms instead of numeric.
+- **Auto-focus (rule #4): fixed on web only.** Android's `IdsTextField` and no SwiftUI
+  `@FocusState` wiring exists anywhere in this codebase for this field -- adding it means a
+  shared-component API change (`IdsTextField` has no focus-requester parameter at all today),
+  a real risk to every other call site if done without dedicated verification time. Flagged as
+  a real, scoped-out opportunity below, not silently skipped.
+- **Dark-pattern check (entry bottom sheets / exit-blocking popups / forced-only CTAs): spot-checked, not exhaustive.** No systematic sweep was run this pass (would require reading every modal/bottom-sheet mount condition across ~40+ call sites); a full sweep is a real, valuable follow-up, not yet done.
+- **CTA label clarity (buttons must state outcome, not repeat the heading): not audited this pass.** A real candidate for the next simplicity-focused round -- cross-reference every generic "Confirm"/"Submit"/"OK" button label against what it actually does.
+
+### Recommendations (ranked)
+
+1. **[sourced, implemented same day, item 245]** Auto-confirm the verification-code field the
+   instant a valid 6-digit value is entered, keeping the Confirm button as a manual fallback
+   (not removing it outright, since this is a security-sensitive identity-verification step,
+   not an ordinary form) -- exactly Toss's own researched, shipped pattern. Fixed on all 3
+   platforms. Added numeric-keyboard hints alongside it (rule #3, same research).
+2. **[sourced, real gap, not yet closed]** Add real focus-management support to `IdsTextField`
+   (Android) and wire `@FocusState` for the equivalent iOS field, so the verification-code field
+   (and any future fixed-length-entry field) can auto-focus on mount the way web's now does.
+   Deliberately not done in the same pass as recommendation 1 -- `IdsTextField` is a shared
+   component with many call sites, and a focus-requester API addition deserves its own
+   dedicated verification pass, not a rushed addition alongside an unrelated fix.
+3. **[sourced, not yet done]** Run a real, systematic dark-pattern sweep against the Apps-in-Toss
+   rules above: does any itunda modal/bottom sheet appear automatically on screen entry without
+   a user action triggering it? Does any back-press/back-button attempt get blocked by a
+   dismissible-only-via-partner-CTA popup? This session's own accessibility/copy-voice sweeps
+   already prove the "grep every X, read context, triage real-vs-false-positive" methodology
+   works at this scale -- the same technique applies directly here.
+4. **[sourced, not yet done]** Run a CTA-label-clarity pass: grep every button whose visible text
+   is a generic verb ("Confirm", "Submit", "OK", "Continue", "Next") with no object, and check
+   whether the surrounding screen already makes the outcome obvious (fine) or whether the label
+   should name the actual action ("Send 5,000 RWF" beats "Confirm" on a transfer screen, matching
+   both "Clear Action" and this section's CTA-labeling rule).
+5. **[sourced, real opportunity, larger scope]** The interaction decision framework (measurable
+   metric or clearer functional feedback, not aesthetic preference) is a real, adoptable review
+   question for any future itunda animation/motion work — itunda has no equivalent stated
+   principle today (Section 9's motion research covers *when* animation softens friction
+   emotionally, a related but distinct question from *whether* a specific animation is worth
+   building at all).
+
+### Unresolved / worth a follow-up
+
+- The Korean-specific UX-writing grammar rules (honorific-dropping, "됐어요" vs "되어요", etc.)
+  don't transfer to itunda's English copy at all — noted for completeness, not applicability.
+- "Minimum Policy" (a named sub-principle under Minimum Features, per secondary search results)
+  and "Minimum Input" as officially-named categories weren't found at a single canonical source
+  URL the way the 6 headline principles were — the specific article content was reconstructed
+  from the "4 ways to eliminate clicks" piece and search-result summaries, not one definitive
+  page. Flagged as lower-confidence than the rest of this section.
