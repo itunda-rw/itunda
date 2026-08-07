@@ -2168,3 +2168,70 @@ stopped there without researching it. This section closes that gap.
   intro/logistics post as of this search, with promised session-content follow-ups not yet live.
 - Whether toss.tech/article/monitoring-traffic is actually the TMC25 "주식모으기" session's real
   content, or separate-but-topically-adjacent Toss engineering writing, is unconfirmed.
+
+## 16. Simplicity — third deep-dive pass (2026-08-08): design-system rigidity, and web's missing IdsButton
+
+**Added 2026-08-08**, user's own one-word directive: "simplicity" — a clear instruction to keep
+mining this specific conference series further. Sections 11/14 already covered a first and
+second pass; this is a third, going after the large majority of Simplicity21/23/24/25's ~67 total
+sessions that had never been individually researched (only the handful that happened to surface
+via earlier search were covered).
+
+### References
+
+| Topic | Source | Finding |
+|---|---|---|
+| Design-system rigidity | toss.tech/article/rethinking-design-system, toss.tech/article/toss-design-system-guide, toss.tech/article/toss-design-system | The real fix behind Simplicity25's "아무도 쓰지 않는 디자인 시스템" (nobody uses the design system) — previously only the problem statement was known. Root cause: the system was too rigid for real problems, so teams detached Figma components and forked the npm package rather than filing feedback. Toss's own framing: "the role of a design system is to help teams solve product problems, not to police them." Fix: a hybrid API — a simple flat API for the common case, plus a compound/composable API for customization, both on one shared internal primitive. "Removing reasons to escape the system is more effective than adding guardrails." Process changes: components usable in Figma *before* dev work finished (previously blocked designers), shipped as versioned system releases. Measured results from the companion articles: documentation-governance rules (linear reading order, worst-case-first, accessibility as a structural standard) cut doc time from 1 week/component to 3 components/day; a real component redesign driven by actual usage data (not assumption) multiplied designer output 3–5x |
+| Simplicity23 format | third-party recap | Ran as audio-only/podcast format specifically to "increase focus," ~10,000 pre-registered after a 2-year gap. Real session titles confirmed to exist, all individually video-gated, content not recoverable despite direct fetch attempts: "토스뱅크만의 차별화된 경험을 찾아서," "Untangled Knots: 3,250개의 요구사항을 해결한 1개의 제품," "사장님에게 익숙한 불편함 깨부수기" (merchant pain points), "30대 디자이너가 10대 전용 카드를 만든다면?" |
+| Logo-rebranding process | Velog recap | A real, low-pressure `#오늘의로고` Slack channel accelerated iteration by removing formal-presentation pressure; team escaped tunnel vision by researching outside fintech (games, film). Internal team-process insight, not a product feature |
+
+### itunda's current state (checked, not assumed) — a real, confirmed cross-platform gap, now partly closed
+
+- **Android already applied this exact lesson, from the exact same source, over two weeks before
+  this pass even started researching it.** `android/core/designsystem/.../IdsButton.kt`'s own doc
+  comment already cites `toss.tech/article/rethinking-design-system` directly (dated 2026-07-21)
+  after the identical local-fork drift happened there — `ItundaAppScreen.kt` had three separate
+  local button composables that never touched the shared file, one of them hardcoding a color
+  literal that happened to match a real token at the time, with nothing keeping the two in sync.
+- **Web never got the equivalent — confirmed, not assumed.** `find services/micro-frontends
+  -iname "*Button*.tsx"` returned nothing: no shared button component exists on any of the 4 web
+  apps (bank-mfe/merchant-mfe/ops-mfe/kyc-mfe). Every button is a raw
+  `<button className="toss-btn ...">` — **415+ occurrences in `BankDashboard.tsx` alone** — so
+  real accessibility/disabled-state/`type="button"` behavior gets hand-duplicated (or silently
+  skipped) at every call site independently, the exact CSS-only, sub-component version of the
+  same root problem Toss's article diagnoses (itunda's case is arguably a rung earlier: Toss had
+  a real component people escaped; web here never built the component in the first place).
+- **Real, live symptom found while investigating**: `.toss-btn-danger`'s background color was
+  still hardcoded `#E53935` in the raw CSS files of bank-mfe/ops-mfe/merchant-mfe (plus
+  `kyc-mfe/KycDashboard.css`, a 4th web app this session's earlier 271-occurrence `#E53935` sweep
+  never covered since that sweep only searched `.tsx` files) — the same drift-from-token bug
+  class, in a place the earlier fix's own search scope missed. Fixed same day (4 files).
+- **Fixed same day, flagship proof, not a full migration**: new `IdsButton.tsx` (bank-mfe) ports
+  Android's real Filled/Tinted/size API exactly (same flat props shape, not Compound/slot),
+  migrated onto the two highest-stakes real money-moving buttons (the P2P/bank transfer "Send X
+  RWF" confirm and the merchant "Pay" confirm) as the proof this works end-to-end. The other
+  400+ call sites across all 4 web apps are honestly NOT migrated — a real, large, incremental
+  follow-up (comparable in shape to the CodePush/OTA gap named in Section 15: sized honestly,
+  not rushed), not silently declared done.
+
+### Recommendations (ranked)
+
+1. **[sourced, done same day]** `IdsButton.tsx` built + 2 flagship money-moving call sites
+   migrated in bank-mfe. See above.
+2. **[sourced, done same day]** 4 more `#E53935` instances fixed in CSS files the earlier sweep
+   missed.
+3. **[sourced, real, large-scope, not attempted this pass]** Migrate the remaining 400+
+   `toss-btn` call sites in bank-mfe, plus the same pattern in merchant-mfe/ops-mfe/kyc-mfe, onto
+   `IdsButton` (promoting it to a shared location once more than one app needs it, matching this
+   codebase's own "promote to shared only once real duplication appears" precedent from
+   `packages/design-tokens`). A real, bounded, mechanical migration — worth doing incrementally,
+   not as one large rewrite.
+4. **[sourced, informational only]** Simplicity23's format/session-title findings and the
+   logo-rebranding process insight — no direct itunda action, recorded for completeness.
+
+### Unresolved / worth a follow-up
+- Simplicity24's remaining 8 of 11 session titles (only the 3 track names — "Wise Whys," "Noise
+  to Melody," "Beyond Frames" — found anywhere) and Simplicity21's 19 individual session titles
+  beyond the 4 day-themes already known: not recovered this pass, time-boxed out rather than a
+  confirmed dead end — worth a fourth pass specifically chasing session lists first, content
+  second, if "keep searching" continues to pay off at this rate.
