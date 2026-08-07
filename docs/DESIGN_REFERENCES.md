@@ -1773,6 +1773,16 @@ itunda already has a genuinely close match to this whole philosophy, not a gap n
    already implements Toss's core "friction proportional to risk" pattern correctly (browse
    freely, gate only money movement) — recorded here as a validated existing strength, per this
    document's own established practice of noting genuine matches, not just gaps.
+5. **[sourced, implemented same day]** Show/hide password toggle on every login/register field,
+   app-wide — the correct kind of "security and simplicity together" work this whole section is
+   about: a real UX improvement (cuts mistyped-password retries, especially costly at
+   registration where a silent typo locks a new account behind a password the user doesn't
+   actually know) that trades away zero real security, since the value never leaves the field
+   either way. Added to all 3 web login/register pages (bank-mfe, merchant-mfe, ops-mfe) and
+   both native shared `IdsTextField` components (Android's new `isPassword` param; iOS's
+   existing `isSecure` param, extended in place with no call-site changes needed at all) — the
+   iOS fix alone propagated to all 4 real native login screens (App, MerchantApp, AgentApp,
+   RiderApp) automatically, since none of them have a local duplicate `IdsTextField`.
 
 4. **[sourced] Resolved same day — a real, validated match, not a gap.** Checked whether
    itunda's fraud detection runs on every transfer in real time (Toss's FDS pattern) or only
