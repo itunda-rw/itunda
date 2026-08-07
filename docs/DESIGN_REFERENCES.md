@@ -1882,21 +1882,69 @@ were already researched and implemented in a prior session (see `DeviceService.k
 2. **[sourced, already true, confirmed not asserted]** `IdempotencyService.kt` already matches
    Toss Payments' real published spec — no action, recorded here as a validated match per this
    document's own established practice.
-3. **Not independently actionable from this research pass**: SLASH21/22's Kubernetes-safety,
-   100%-test-coverage, and Toss Bank data-design-philosophy sessions, and SLASH24's Hadoop/DW/
-   ClickHouse/Feature-Store/eBPF/K8s-cost-optimization sessions, are all real but either
-   PDF-locked (not extractable via web research tooling) or solve a scale problem (millions of
-   users, real distributed data infra) itunda doesn't have yet. Listed so a future session doesn't
-   re-search the same dead ends without a different extraction method (e.g. downloading and
-   parsing the PDFs directly, not attempted here).
+3. **Not independently actionable from this research pass**: SLASH24's Hadoop/DW/ClickHouse/
+   Feature-Store/eBPF/K8s-cost-optimization sessions solve a scale problem (millions of users,
+   real distributed data infra) itunda doesn't have yet. Listed so a future session doesn't
+   re-search the same dead end.
+
+### Deep-dive follow-up (2026-08-07, second pass) — user explicitly asked to keep searching past the PDF wall
+
+The first pass above stopped at SLASH21/22's PDF-only session pages. A second pass found real
+content anyway via third-party Korean tech-blog recaps of the same named sessions (Velog, Medium,
+personal engineering blogs) — the sourcing is one hop removed from Toss's own primary page, but
+the technical content itself is real, specific, and independently checkable against itunda's code.
+
+| Topic | Source | Finding |
+|---|---|---|
+| Toss Bank account-number/schema design | SLASH21, Jo Han-ki "토스뱅크의 데이터 설계사상", via parkmuhyeun.github.io's seminar-notes recap | Three real table-integration strategies chosen per case (OneToOne/super-sub, Plus Type, Single Type — small volume favors integration, large volume favors splitting to avoid frequent `ALTER TABLE`); real account-number design (8 digits + 3-digit type code + check digit = 100M addressable, capacity-planned against ~27 years of projected volume); Oracle sequences preferred over UUID for ID generation except where strict zero-gap ordering is required |
+| React Native OTA productivity | SLASH22, "미친 생산성을 위한 React Native", via ktseo41.github.io | Real CodePush usage — JS bundles update **without app-store resubmission** ("200 CodePush updates over 3 months"); hybrid architecture (native views only for performance-critical graphics, everything else JS); parallel rollout alongside the existing native app, not a rewrite |
+| 100% test coverage | SLASH21, Lee Eung-jun (Toss Bank), via velog.io/@heka1024 | Real Kotlin gotcha: the Elvis operator (`?:`) generates a bytecode branch coverage tools can't reach, permanently capping measured coverage — their fix was converting to explicit `if/else` for accurately-measured high-risk logic, a deliberate readability-for-measurability tradeoff. House rules: "tests must be fast," "a coverage regression fails the build," paired with the honest caveat "bugs can exist even at 100% coverage" |
+| React component architecture | SLASH22, Han Jae-yeop "Effective Component", via apeltop.github.io | Separate data/business logic into custom hooks vs. mixing into presentation components; caution against reflexive over-decomposition. Solid, fairly generic modern-React practice, not uniquely Toss-specific |
+
+#### itunda's current state (checked, not assumed)
+
+- **Account-number collision safety: real gap, found and fixed same day.** itunda had 9
+  independent `generateAccountNumber()` copies (`AuthService`, `GroupAccountService`,
+  `IkiminaService`, `SaccoService`, `WeeklySavingsService`, `UpfrontInterestDepositService`,
+  `ForeignCurrencyWalletService`, `MiniWalletService`, `MerchantBusinessAccountService`), every
+  one `Math.random()`-based with zero check against the real `UNIQUE(account_number)` constraint
+  on `wallets` (`V1__init_schema.sql`) — three of them shared the exact same numeric range. A
+  collision would have surfaced as a raw, unhandled `DataIntegrityViolationException`, not a
+  graceful retry (`MiniWalletService`'s own prior comment named this as a knowingly-accepted
+  risk). **Fixed**: a new shared `AccountNumberGenerator` (`:core`) checks
+  `WalletRepository.findByAccountNumber` before handing a number out, retrying up to 10 times —
+  preserves each service's own deliberate account-type-prefix encoding (itunda's own real
+  equivalent of Toss Bank's type-code scheme), just makes the number within that range actually
+  collision-checked. All 9 call sites migrated.
+- **CodePush/OTA updates: real, larger-scope gap, correctly not rushed.** itunda's own mini-app
+  host (`packages/saronite`) already has a real runtime-bundle-loading mechanism — but only for
+  the `partner-demo` proof-of-concept bundle (served from a real `bundleUrl` at runtime,
+  explicitly built to prove the loader against something never compiled into the app). itunda's
+  actual *production* mini-apps (`pay-bills`, live end-to-end per `docs/TOSS_PARITY_MATRIX.md`)
+  register via plain `AppRegistry.registerComponent`, compiled directly into the host-app's own
+  Metro build — meaning a JS-only change to a real production mini-app currently requires a full
+  native app rebuild and store resubmission, unlike Toss's real CodePush-powered instant updates.
+  **Sized honestly as its own project** (bundle hosting, version negotiation, native-side
+  download/cache/fallback/rollback logic — comparable in scope to item 246's device-verification
+  feature), not attempted this pass.
+- **Elvis-operator coverage gotcha: real, applicable risk, no gate exists yet to trigger it.**
+  itunda's Kotlin backend uses `?:` heavily (`FraudRuleEngine.kt`, `DeviceService.kt`, etc.) and
+  has a real, working Kotest/MockK suite across 40+ modules, but — not verified this pass —
+  likely no enforced coverage gate in CI. Flagged so that if itunda ever adds one, this exact
+  false-negative-coverage trap is already known rather than rediscovered.
 
 ### Unresolved / worth a follow-up
-- SLASH21/22 session detail pages are landing pages with a PDF download link, not embedded text
-  — real technical depth for those years is genuinely inaccessible to plain-HTTP web research.
+- SLASH21/22 primary session pages are still PDF-only — the second pass's third-party recaps are
+  real and specific, but one hop removed from Toss's own primary source; direct PDF
+  download+parsing was not attempted.
 - SLASH24 session 27's actual migration *mechanism* (dual-write? shadow traffic? staged cutover?)
   is unconfirmed — `toss.tech/article/32211` redirects to a page exposing only the abstract, not
   the full article body. The *philosophy* (no big-bang rewrite) is solidly sourced; the mechanism
   is not.
+- Kim Hyung-rok's Kubernetes-safety/admission-webhook session (SLASH21) is a confirmed dead end
+  even after 3 additional targeted queries plus a Velog category-archive fetch — only
+  title/speaker metadata found anywhere outside the PDF. Not worth re-attempting without a
+  different extraction method.
 
 ## 14. Simplicity — Toss's design conference, 21/23/24/25 — accessibility as the actionable thread
 
@@ -2008,9 +2056,55 @@ about that limit and focuses on the real, sourced, code-level content that *was*
    aggregator, not a toss.tech primary source — do not cite with the same confidence as the rest
    of this section until corroborated directly.
 
+### Deep-dive follow-up (2026-08-07, second pass) — user explicitly asked to keep searching past the gates
+
+The first pass above stopped at several video/interactive-gated sessions. A second pass found
+real, substantive content anyway via a different Toss channel entirely: their real toss.tech
+**"접근성 업무일지" (Accessibility Work Log) series** — a set of standalone articles the first
+pass never found existed as a series, only encountering one entry of it in isolation.
+
+| Topic | Source | Finding |
+|---|---|---|
+| Reading order for screen readers | toss.tech/article/voiceover_usability | Real user-testing finding: screen-reader users listen at 2x speed and skip ahead, same as sighted users scanning visually. When a button's role is announced *last* ("Accumulated interest 2,253 won, 5,931,424 won, button"), a user who skips ahead never learns it's interactive. Toss tried 3 fixes (splitting list items — too many focus stops; per-component-type sounds; stating role *before* content) and landed on: don't unilaterally override OS reading-order defaults, advocate for system-level user choice instead — iOS 18.4 later shipped exactly that control, cited as validation |
+| Face-auth audio feedback | toss.tech/article/accessibility_face | Real fix for a fraud-check face-auth flow visually impaired users couldn't complete without sighted help: progress sounds during recognition, a distinct completion tone, toast errors that auto-advance without requiring a located button, a removed "retry" button that broke posture, staged permission explanations, and a personalized "you're using a screen reader" acknowledgment users found reassuring. Stated principle: auditory UX means converting *all* visually-meaningful feedback to sound, not just reading text aloud |
+| Chatbot screen-reader fixes | toss.tech/article/38743, "Birth of a chatbot heard through the ears" | Four real fixes: (1) sending a message must move screen-reader focus, not just the visual scroll position; (2) sequence `scrollIntoView` then `focus({preventScroll:true})` after a delay, or a naive `.focus()` causes jarring scroll-jumps; (3) invisible screen-reader-only guidance text below button-containing messages sighted users can see but screen-reader users can't otherwise tell exist; (4) `aria-live="polite"` + a sound cue for visual-only state changes (typing, message sent) |
+| "A Whole New Onboarding" resolved | brunch.co.kr/@kellypoly/106 (2025 conference review) | The session isn't about user onboarding at all — real title "인터랙션으로 첫 인상 만들기" (Creating First Impressions Through Interaction, 박연주): solved a business problem (international investor demos blocked by localization) via dark-mode-as-menu/light-mode-as-detail, splash animations, gradient CTA motion. Informational only — investor-demo tooling, not end-user product UX |
+| AI dark-pattern-copy detector | Same Brunch review, Simplicity25 "AI시대에 라이터로 살아남기" (오천석) | Built an AI system that flags dark-pattern copy before it ships, trained against real Toss copy after an early version read as too mechanical (conflicting with Toss's "humanized writing" stance) |
+
+#### itunda's current state (checked, not assumed) — chatbot screen-reader checklist against itunda's real Talk feature
+
+- **Live-region announcements: real gap, found and fixed same day.** Confirmed via
+  `grep -r "aria-live" bank-mfe/src` returning zero results before the fix — itunda's real Talk
+  feature (`ConversationThread`/`GroupThread` in `BankDashboard.tsx`) had a real WebSocket-pushed
+  new-message handler and a real typing indicator, both entirely visual-only, exactly the gap
+  article #3 describes. **Fixed**: a visually-hidden `aria-live="polite"` region (new `.sr-only`
+  utility class) announces a message pushed from the other participant (never the current user's
+  own sent message), plus `aria-live="polite"` added directly to the existing typing-indicator
+  text, in both the 1:1 and group chat views.
+- **Screen-reader-only button-guidance text: checked, lower-confidence gap than expected.**
+  itunda's message-attached actions (`GiftBubble`'s "Open gift", Reply/Copy/Forward/Delete/Pin)
+  already use real semantic `<button>` elements inside the same message container, not the
+  ambiguous custom-interactive-element pattern the Toss bot article's fix addressed — real
+  `<button>`s already get announced with their role natively by screen readers. Not implemented;
+  flagged as lower-confidence without a specific reproduced gap to point at.
+- **Face-auth audio feedback and reading-order-before-content: real, sourced, but NOT implemented
+  this pass — genuinely uncertain without live device testing.** `NIDABiometricAuth`
+  (Android/iOS) wraps the OS-native `BiometricPrompt`/`LAContext`, not a custom in-app camera UI
+  the way Toss's own face-auth flow apparently is — the OS itself already provides a substantial
+  amount of the accessibility behavior a custom camera view would need built from scratch, so
+  this finding may transfer less directly than it first appears. Similarly, whether itunda's own
+  money-amount rows (`IdsListRow` et al.) announce role before or after content is a real,
+  checkable question, but confirming the *actual* TalkBack/VoiceOver announcement order requires
+  live on-device testing this project has had recurring difficulty with this session (see
+  emulator ANR notes elsewhere). Implementing a blind fix without being able to verify it actually
+  changes the announced order risks a confidently-wrong change — left honestly unresolved rather
+  than guessed at.
+
 ### Unresolved / worth a follow-up
-- Simplicity21's actual per-session before/after metrics, Simplicity23's "A Whole New Onboarding"
-  session content, Simplicity25's actual "3 insights" from the visually-impaired-user research
-  session, and the actual methodology behind "경험을 수치화하는 방법" were all behind
-  interactive/video-gated pages that plain web-fetch tooling rendered as navigation shells only —
-  genuinely inaccessible via this research method, not fabricated or guessed around.
+- Simplicity21's actual per-session before/after metrics and Simplicity25's "경험을 수치화하는
+  방법" (quantifying qualitative UX) methodology remain genuinely gated even after a second pass
+  with five independent query angles — every source only repeats the same one-line teaser, no
+  method ever surfaces. Not worth further search time without a different tool (e.g. actually
+  watching the video).
+- Face-auth audio feedback and reading-order-before-content (above) need real device testing to
+  verify before implementing, not just reading the code.
