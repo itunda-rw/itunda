@@ -156,8 +156,10 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
               placeholder="Reference"
               style={{ width: '120px', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
             />
+            {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Confirm"
+                doesn't say what happens -- this row funds the agent's till. */}
             <button className="toss-btn toss-btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={busy !== null || !amount || !reference} onClick={fund}>
-              {busy === 'fund' ? '…' : 'Confirm'}
+              {busy === 'fund' ? '…' : 'Fund till'}
             </button>
             <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={busy !== null} onClick={() => setFunding(false)}>
               Cancel

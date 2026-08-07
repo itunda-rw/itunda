@@ -690,8 +690,11 @@ function KybCard({ merchant }: { merchant: Merchant }) {
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
             />
           </label>
+          {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Submit"
+              doesn't say what happens -- this starts a real verification process (see the
+              autoCheckLabel/"team member will take a look" copy above), not an instant action. */}
           <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ height: '46px' }}>
-            {submitting ? 'Submitting…' : 'Submit'}
+            {submitting ? 'Submitting…' : 'Submit for verification'}
           </button>
         </form>
       )}

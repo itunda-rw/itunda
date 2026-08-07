@@ -49,7 +49,10 @@ struct MiniWalletScreenView: View {
                         Text("Enter your birth date to check eligibility.")
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                         IdsTextField("Birth date (YYYY-MM-DD)", text: $birthDate)
-                        MiniWalletActionButton(title: busy ? "Checking…" : "Continue", disabled: busy, action: submitBirthDateAndOpen)
+                        // Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11),
+                        // matching the identical same-day fix on Android/web: "Continue" doesn't
+                        // say what happens -- the text above already names the real outcome.
+                        MiniWalletActionButton(title: busy ? "Checking…" : "Check eligibility", disabled: busy, action: submitBirthDateAndOpen)
                     case .open:
                         VStack(alignment: .leading, spacing: 4) {
                             Text("\(formatMoney(wallet?.balance ?? 0)) RWF").font(.title).bold().foregroundColor(IDS.Colors.textPrimary)

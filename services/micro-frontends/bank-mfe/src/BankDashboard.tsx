@@ -441,8 +441,12 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
           <>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
+              {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): a
+                  bare "Confirm" doesn't state the outcome -- Toss's own dark-pattern-
+                  prevention rules require CTA labels to name the specific action, not a
+                  generic verb, matching the "Clear Action" principle. */}
               <button type="button" className="toss-btn toss-btn-primary" style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
-                {busy ? 'Sending…' : 'Confirm'}
+                {busy ? 'Sending…' : `Send ${Number(amount).toLocaleString()} RWF`}
               </button>
             </div>
             {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
@@ -802,7 +806,10 @@ function MiniWalletCard() {
             type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Continue'}</button>
+          {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Continue"
+              doesn't say what happens next -- the paragraph above already names the real
+              outcome ("check eligibility"), so the button says it too. */}
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Check eligibility'}</button>
         </form>
       )}
 
@@ -12014,8 +12021,11 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
               <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submittingOwnership} onClick={() => { setShowOwnershipForm(false); setOwnershipDocUrl(''); }}>
                 Cancel
               </button>
+              {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Submit"
+                  doesn't say what happens -- this starts a real human-reviewer process (see
+                  this block's own doc comment above), not an instant action. */}
               <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submittingOwnership || uploadingOwnershipDoc || !ownershipDocUrl.trim()} onClick={handleSubmitOwnership}>
-                {submittingOwnership ? 'Submitting…' : 'Submit'}
+                {submittingOwnership ? 'Submitting…' : 'Submit for review'}
               </button>
             </div>
           </div>

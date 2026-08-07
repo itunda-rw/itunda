@@ -167,7 +167,11 @@ fun MiniWalletScreen(onBack: () -> Unit) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Enter your birth date to check eligibility.", color = TossSecondary, fontSize = 13.sp)
                         IdsTextField(value = birthDate, onValueChange = { birthDate = it }, label = "Birth date (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
-                        MiniWalletActionButton(if (busy) "Checking…" else "Continue", enabled = !busy) { submitBirthDateAndOpen() }
+                        // Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11),
+                        // matching the identical fix on web's own MiniWalletCard the same day:
+                        // "Continue" doesn't say what happens -- the text above already names
+                        // the real outcome.
+                        MiniWalletActionButton(if (busy) "Checking…" else "Check eligibility", enabled = !busy) { submitBirthDateAndOpen() }
                     }
                 }
                 MiniWalletMode.OPEN -> {
