@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreNetwork
+import CoreIdentity
 
 /// Real device binding step-up dialog (2026-07-21 port) -- shown wherever a
 /// money-moving call real-403s with DEVICE_NOT_VERIFIED. Re-proves password
@@ -112,6 +113,42 @@ struct DeviceStepUpHost: View {
                 },
                 onCancel: onDismiss
             )
+            .task(id: visible) {
+                await tryBiometricStepUp()
+            }
+        }
+    }
+
+    // Real biometric-first step-up (item 246): if this device already registered a
+    // Secure Enclave key (Settings > Security > "Verify this device with biometrics"),
+    // try that path automatically as soon as this dialog appears -- a challenge +
+    // hardware-bound signature, no password retyping. Any failure (declined,
+    // unavailable, no key) falls through silently to the password field already
+    // rendered above, never blocking the user on a biometric-only path.
+    @MainActor
+    private func tryBiometricStepUp() async {
+        guard DeviceKeyManager.shared.hasKey() else { return }
+        busy = true
+        do {
+            let challengeResponse = try await NetworkClient.shared.issueDeviceChallenge()
+            guard let challengeData = Data(base64Encoded: challengeResponse.challenge) else {
+                busy = false
+                return
+            }
+            let signatureBase64: String? = await withCheckedContinuation { continuation in
+                DeviceKeyManager.shared.signChallenge(challengeData, reason: "Verify this device to continue") { signature, _ in
+                    continuation.resume(returning: signature)
+                }
+            }
+            guard let signatureBase64 else {
+                busy = false
+                return
+            }
+            _ = try await NetworkClient.shared.verifyDeviceSignature(signature: signatureBase64)
+            busy = false
+            await onVerified()
+        } catch {
+            busy = false
         }
     }
 }

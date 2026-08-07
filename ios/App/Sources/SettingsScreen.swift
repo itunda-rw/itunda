@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreNetwork
+import CoreIdentity
 
 /// Real account settings screen, matching Android's SettingsScreen.kt exactly
 /// (2026-07-12): "내 정보" (real name/phone from /api/v1/auth/profile), a real
@@ -17,6 +18,15 @@ struct SettingsScreen: View {
     @StateObject private var viewModel = SettingsViewModel()
     let onDone: () -> Void
     @State private var appLockEnabled = KeychainTokenStore.shared.isAppLockEnabled()
+    // Real Secure-Enclave-signed-challenge device verification (item 246) -- see
+    // DeviceKeyManager's own doc comment. Mirrors Android's SettingsScreen.kt toggle
+    // exactly: same password bar as the existing verifyDevice flow, since registering a
+    // key is exactly as strong a trust decision.
+    @State private var hasDeviceKey = DeviceKeyManager.shared.hasKey()
+    @State private var showKeyPasswordPrompt = false
+    @State private var keyPassword = ""
+    @State private var keyRegisterError: String?
+    @State private var keyRegistering = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -123,6 +133,30 @@ struct SettingsScreen: View {
                         .onChange(of: appLockEnabled) { newValue in
                             KeychainTokenStore.shared.setAppLockEnabled(newValue)
                         }
+
+                        Toggle(isOn: Binding(
+                            get: { hasDeviceKey },
+                            set: { newValue in
+                                if newValue {
+                                    keyRegisterError = nil
+                                    showKeyPasswordPrompt = true
+                                } else {
+                                    DeviceKeyManager.shared.removeKey()
+                                    hasDeviceKey = false
+                                }
+                            }
+                        )) {
+                            HStack(spacing: 14) {
+                                Image(systemName: "faceid")
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.gray.opacity(0.15))
+                                    .clipShape(Circle())
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Verify this device with biometrics").font(.system(size: 16, weight: .semibold))
+                                    Text("Skip retyping your password for step-up verification").font(.system(size: 13)).foregroundColor(.secondary)
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -139,5 +173,39 @@ struct SettingsScreen: View {
             }
         }
         .task { await viewModel.load() }
+        .alert("Confirm your password", isPresented: $showKeyPasswordPrompt) {
+            SecureField("Password", text: $keyPassword)
+            Button("Cancel", role: .cancel) {
+                keyPassword = ""
+                keyRegisterError = nil
+            }
+            Button(keyRegistering ? "Verifying…" : "Confirm") {
+                Task { await registerDeviceKey() }
+            }
+            .disabled(keyPassword.isEmpty || keyRegistering)
+        } message: {
+            Text(keyRegisterError ?? "Enter your password once to enable biometric device verification.")
+        }
+    }
+
+    private func registerDeviceKey() async {
+        keyRegistering = true
+        defer { keyRegistering = false }
+        do {
+            let publicKey = try DeviceKeyManager.shared.generateKeyPair()
+            _ = try await NetworkClient.shared.registerDeviceKey(publicKey: publicKey, password: keyPassword)
+            hasDeviceKey = true
+            keyPassword = ""
+        } catch let NetworkError.httpError(statusCode) {
+            // Don't leave an unregistered key sitting in the Secure Enclave -- hasDeviceKey
+            // must keep meaning "the server also has this key".
+            DeviceKeyManager.shared.removeKey()
+            keyRegisterError = statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."
+            showKeyPasswordPrompt = true
+        } catch {
+            DeviceKeyManager.shared.removeKey()
+            keyRegisterError = "Couldn't reach itunda. Check your connection and try again."
+            showKeyPasswordPrompt = true
+        }
     }
 }

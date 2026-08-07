@@ -2008,6 +2008,15 @@ public struct VerifyDeviceRequest: Encodable { public let password: String }
 public struct VerifyDeviceResponse: Decodable { public let success: Bool; public let device: TrustedDeviceDto }
 public struct RevokeDeviceResponse: Decodable { public let success: Bool }
 
+// Real Keystore/Secure-Enclave-signed-challenge device verification (item 246) -- see
+// AuthController.kt's own doc comments on the backend for the exact contract. Same
+// password re-proof as VerifyDeviceRequest above, plus a hardware-backed key generated
+// by DeviceKeyManager -- makes every FUTURE step-up a biometric prompt instead of
+// retyping a password.
+public struct RegisterDeviceKeyRequest: Encodable { public let publicKey: String; public let password: String }
+public struct DeviceChallengeResponse: Decodable { public let success: Bool; public let challenge: String }
+public struct VerifyDeviceSignatureRequest: Encodable { public let signature: String }
+
 // Real push device-token registration (item 121) -- see backend DeviceToken.kt's own
 // doc comment: PushNotificationService.sendToUser silently no-ops for every real user
 // because no client anywhere ever registered a token. Mirrors bank-mfe's
@@ -2031,6 +2040,18 @@ extension NetworkClient {
 
     public func revokeDevice(deviceId: String) async throws -> RevokeDeviceResponse {
         try await authenticatedDelete("api/v1/auth/devices/\(deviceId)")
+    }
+
+    public func registerDeviceKey(publicKey: String, password: String) async throws -> VerifyDeviceResponse {
+        try await authenticatedPost("api/v1/auth/devices/register-key", body: RegisterDeviceKeyRequest(publicKey: publicKey, password: password))
+    }
+
+    public func issueDeviceChallenge() async throws -> DeviceChallengeResponse {
+        try await authenticatedPost("api/v1/auth/devices/challenge", body: EmptyBody())
+    }
+
+    public func verifyDeviceSignature(signature: String) async throws -> VerifyDeviceResponse {
+        try await authenticatedPost("api/v1/auth/devices/verify-signature", body: VerifyDeviceSignatureRequest(signature: signature))
     }
 
     public func registerDeviceToken(_ request: RegisterDeviceTokenRequest) async throws -> SuccessResponse {
