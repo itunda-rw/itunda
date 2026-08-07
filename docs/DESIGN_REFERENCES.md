@@ -1699,3 +1699,90 @@ don't translate to itunda's English copy, so scoped out; the universally-applica
   URL the way the 6 headline principles were — the specific article content was reconstructed
   from the "4 ways to eliminate clicks" piece and search-result summaries, not one definitive
   page. Flagged as lower-confidence than the rest of this section.
+
+---
+
+## 12. Security *and* simplicity together — how Toss does both, not one at the cost of the other
+
+**Added 2026-08-07**, at explicit user request: research specifically how Toss achieves real
+security without the friction-heavy tradeoffs common elsewhere (the user's own framing: "toss
+archived security and simplicity at the same time unlike apple which focuses security and leave
+out simplicity"), then cross-check itunda's own real security code against it.
+
+### References
+
+| Topic | Source | Pattern |
+|---|---|---|
+| Toss's own stated position | support.toss.im/security | Explicit, quotable: *"간편함과 안전은 더 이상 양립 불가능한 말이 아닙니다"* ("convenience and safety are no longer mutually exclusive words") — not an implicit design choice but a stated philosophy, credited to "전담 인력과 자체 기술" (dedicated personnel and proprietary technology, i.e. real investment, not a shortcut) |
+| Real-time, invisible fraud detection (FDS) | support.toss.im/security; docs.tosspayments.com/resources/glossary/fds; multiple Korean fintech-press summaries | A proprietary, supervised-learning ML system performs real-time fraud-score inference on **every single transfer**, 24/7, with zero user-facing friction unless a transaction is actually flagged — blocked ~310,000 fraudulent transactions in 2022 alone (roughly one every 2 minutes). Security work happens entirely in the background; the user only ever sees it when it actually catches something |
+| Pre-transaction recipient screening | support.toss.im/security | A real, police-partnered fraud-account lookup runs automatically before a transfer completes, "usable without additional setup" (자동, no separate opt-in step) — security as a default behavior, not an extra step the user must remember to take |
+| New-device notification, not silent block | search-result summaries of support.toss.im FAQ (직접 fetch returned empty — JS-rendered page) | A new device can still log in and browse; Toss sends an immediate "logged in from a new device" alert rather than blocking access outright — friction is proportional to actual risk (browsing is low-risk, moving money is not), not applied uniformly |
+| Passwordless-first credential (already documented, Section 8) | toss.im/tossfeed/article/toss-overseas-identity-verification | 6-digit PIN or Face ID as the real login credential, not a conventional alphanumeric password — security through a faster, harder-to-phish factor, not a longer one |
+
+### itunda's current state (verified against real code, not assumed)
+
+itunda already has a genuinely close match to this whole philosophy, not a gap needing invention:
+
+- **`DeviceService.kt`** (`services/backend/auth/src/main/kotlin/rw/itunda/auth/`) already
+  implements the exact same shape: `recordLoginDevice` runs on every login with zero user-facing
+  friction, fires a real push notification the instant an unrecognized device signs in
+  (`sendNewDevicePushAfterCommit`, same urgency `FraudReviewService`'s confirmed-fraud alert
+  already uses), and — critically — **does not block the login itself**. The new device can sign
+  in and look around immediately; only money-moving calls are gated behind `DeviceVerificationFilter`
+  until the device proves itself. This is a real, working match to Toss's own "friction
+  proportional to risk" pattern, not browsing-blocked-by-default.
+- Self-service device management (`getMyDevices`/`revokeDevice`) already exists, matching Toss's
+  own security-settings self-service pattern.
+- **A real gap, correctly not shortcut-fixed**: device *verification* (`verifyDevice`) requires
+  typing a password on all 3 platforms — no biometric alternative, even though itunda's own
+  `NIDABiometricAuth` primitive already exists and is used for the *transaction*-confirm gate
+  (a different, lower-stakes check: proving "it's still you pressing send" on an already-
+  authenticated session, not proving device trust to the server). Checked whether to wire
+  biometric into device verification too, and did not: `NIDABiometricAuth`'s own doc comment
+  already honestly documents why not — it's a **local-only** biometric check ("Not implemented:
+  binding this prompt to a CryptoObject and the server-side ... verification call ... Local
+  biometric success only, honestly labeled above"). A local biometric success can't itself prove
+  anything to the server; Toss's own real architecture for this (토스인증서, Toss Certificate)
+  is a genuine public-key-cryptography system — a Keystore-bound private key that *signs* a
+  server challenge, not just a local gate. Building the itunda equivalent safely means new
+  server-side infrastructure (public-key registration + challenge-response verification), not a
+  client-only UI change. Implementing a shortcut version (treating local biometric success alone
+  as sufficient to mark a device server-trusted) would be a real security regression — exactly
+  the "fake success" pattern `NIDABiometricAuth`'s own header comment already documents finding
+  and fixing once in this exact file's history. **Correctly left undone, not silently skipped.**
+- **A real, small, safe win, found and fixed same day**: the device step-up dialog's password
+  field (the *sole* meaningful action on that entire screen) had no auto-focus anywhere —
+  Android's `DeviceStepUpDialog`, iOS's `DeviceStepUpView`, and both web copies (bank-mfe,
+  merchant-mfe). Fixed on all 4, matching Section 11's own already-established `delay(80)`
+  timing-fix convention. This is the correct kind of security+simplicity work — a real UX
+  improvement to an existing, sound security flow, not a shortcut around it.
+
+### Recommendations (ranked)
+
+1. **[sourced, implemented same day]** Auto-focus the device step-up password field — done, see
+   above.
+2. **[sourced, real opportunity, larger scope, not a quick fix]** Build real Keystore-signed-
+   challenge device verification (itunda's own equivalent of 토스인증서), replacing password
+   re-entry with a cryptographically real biometric-backed proof the server can actually verify.
+   Requires: a server-side public-key registration endpoint, a challenge-issuance endpoint, and
+   Android Keystore/iOS Secure Enclave key-generation-and-signing on the client — a genuine new
+   security feature spanning backend + all 3 clients, not a UI change. Flagged as the single
+   highest-value next step in this whole security-simplicity thread, sized honestly as multi-
+   session work.
+3. **[sourced, itunda already matches, validated not invented]** itunda's `DeviceService.kt`
+   already implements Toss's core "friction proportional to risk" pattern correctly (browse
+   freely, gate only money movement) — recorded here as a validated existing strength, per this
+   document's own established practice of noting genuine matches, not just gaps.
+
+### Unresolved / worth a follow-up
+
+- Whether itunda's `FraudReviewService`/scam-detection work (`ScamReportService.kt`, cited
+  elsewhere in this document) runs on every transfer in real time the way Toss's FDS does, or
+  only on explicitly-reported accounts, wasn't verified this pass — a real, valuable next
+  research question given how central real-time invisible monitoring is to Toss's own stated
+  approach.
+- The direct fetch of Toss's own "new device login" FAQ page returned empty (JS-rendered
+  support widget, not fetchable via a plain HTTP GET) — the notification-not-block conclusion
+  above rests on search-result summaries, not a direct primary-source read. Lower confidence
+  than the rest of this section; worth a follow-up fetch via a different method if this becomes
+  load-bearing for a future decision.
