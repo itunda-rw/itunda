@@ -22,10 +22,10 @@ objects (WCAG 1.4.11).
 |---|---|---|---|
 | textPrimary `#191f28` on background `#f2f4f6` | 15.02:1 | PASS | PASS |
 | textSecondary `#4e5968` on background `#f2f4f6` | 6.45:1 | PASS | PASS |
-| **textTertiary `#8b95a1` on background `#f2f4f6`** | **2.76:1** | **FAIL** | **FAIL** |
+| ~~textTertiary `#8b95a1` on background `#f2f4f6`~~ → `#636e7c` (fixed, item 241) | 4.70:1 | PASS | PASS |
 | textPrimary `#191f28` on card `#ffffff` | 16.56:1 | PASS | PASS |
 | textSecondary `#4e5968` on card `#ffffff` | 7.11:1 | PASS | PASS |
-| textTertiary `#8b95a1` on card `#ffffff` | 3.04:1 | FAIL | PASS (marginal) |
+| ~~textTertiary `#8b95a1` on card `#ffffff`~~ → `#636e7c` (fixed, item 241) | 5.18:1 | PASS | PASS |
 | brand blue `#3182f6` on white | 3.71:1 | FAIL | PASS |
 | ~~success green `#04c065` on white~~ → `#05804a` on white (fixed, item 240) | 5.01:1 | PASS | PASS |
 | danger red `#f04452` on white | 3.71:1 | FAIL | PASS |
@@ -33,26 +33,46 @@ objects (WCAG 1.4.11).
 
 ### Dark theme
 
+Note: the background/surface hex values below (`#000000`/`#17181d`) predate the
+2026-07-21 real-dark-palette correction (see `packages/design-tokens/tokens.css`'s
+own header) and no longer match the live tokens (now `#17171c`/`#202027`) --
+re-verified for `textTertiary` only, as part of fixing it (item 241); the rest of
+this table has not been re-audited against the current values.
+
 | Pair | Ratio | AA normal (4.5) | AA large/UI (3.0) |
 |---|---|---|---|
 | textPrimary `#ffffff` on background `#000000` | 21.00:1 | PASS | PASS |
 | textSecondary `#989eaa` on background `#000000` | 7.81:1 | PASS | PASS |
-| textTertiary `#575c66` on background `#000000` | 3.13:1 | FAIL | PASS |
+| ~~textTertiary `#575c66` on background~~ → `#848a96` on real background `#17171c` (fixed, item 241) | 5.15:1 | PASS | PASS |
 | textPrimary `#ffffff` on surface `#17181d` | 17.72:1 | PASS | PASS |
 | textSecondary `#989eaa` on surface `#17181d` | 6.59:1 | PASS | PASS |
-| **textTertiary `#575c66` on surface `#17181d`** | **2.64:1** | **FAIL** | **FAIL** |
+| ~~textTertiary `#575c66` on surface~~ → `#848a96` on real card `#202027` (fixed, item 241) | 4.67:1 | PASS | PASS |
 | brand blue `#4c8fff` on surface | 5.64:1 | PASS | PASS |
 | success green `#20d394` on surface | 9.12:1 | PASS | PASS |
 | danger red `#ff6b7a` on surface | 6.44:1 | PASS | PASS |
 
 ### Findings
 
-1. **`textTertiary` fails AA-normal-text contrast in both themes**, and fails even the
-   lenient large-text/UI threshold on the true-black dark background and on the
-   grey-100 light background (2.76:1 / 2.64:1, both below 3.0:1). It only clears
-   large-text/UI on a white card (3.04:1, and only marginally). `textTertiary` is
-   currently used for de-emphasized captions/timestamps — real WCAG failure risk
-   wherever it sits directly on `background` rather than a `card`/`surface`.
+1. **FIXED (item 241, 2026-08-07).** `textTertiary` failed AA-normal-text contrast in
+   both themes, and even the lenient large-text/UI threshold on the light-mode
+   `background` and (re-verified against real current dark tokens) the dark-mode
+   `background`/`card` (2.76:1 light-bg, 3.04:1 light-card, 2.66:1 dark-bg, 2.41:1
+   dark-card). Since this token renders small caption/timestamp text at 493 real web
+   call sites alone, it needed 4.5:1 everywhere it appears, not just the 3.0:1
+   UI-component threshold. Light `#8b95a1` → `#636e7c` (4.70:1 / 5.18:1); dark
+   `#575c66` → `#848a96` (5.15:1 / 4.67:1) — both the minimal step toward
+   `textSecondary`'s own hue that clears 4.5:1 on both real backgrounds in each
+   theme. Applied to `packages/design-tokens/tokens.css` `--toss-grey-500` (the
+   real single source of truth, 493 consumers, all confirmed text/icon colors, none
+   structural — verified via repo-wide grep before touching it) and its two mirrors
+   (Android `IdsSemanticColors.kt`, iOS `IDS.swift`). The raw `Gray500`/`gray500`
+   primitives used for non-text roles elsewhere were deliberately left untouched —
+   iOS's is machine-generated from `tokens.json` and marked do-not-hand-edit. Found
+   and fixed one real, separate bug along the way: `MapScreenView.swift` used that
+   raw non-theme-reactive `IdsPalette.gray500` primitive directly for caption text
+   (3 call sites) instead of the theme-reactive semantic token — swapped to
+   `IDS.Colors.textTertiary`, which also fixes its dark-mode adaptivity, not just
+   its contrast.
 2. **FIXED (item 240, 2026-08-07).** `success` (green) on white failed contrast at
    every threshold in light mode (`#04c065`, 2.40:1, below even 3.0:1). Darkened to
    `#05804a` (5.01:1, comfortably clears AA-normal-text 4.5:1), same hue family, same
@@ -73,12 +93,8 @@ objects (WCAG 1.4.11).
    (UI-component threshold applies) but means these colors must not be used for
    small/normal-weight body text in light mode — only for button labels (which are
    typically bold/large enough) or icons/borders.
-4. Not yet fixed: doing so requires either brightening `--toss-grey-500` (has a
-   downstream ripple through every consumer of `TdsSemanticColors.textTertiary` /
-   `IDS.Colors.textTertiary` / `--toss-grey-500` across Android/iOS/web, so it's a
-   deliberate design-system decision, not a one-line patch) or restricting where
-   `textTertiary`/light-mode `success` are allowed to render. Left open rather than
-   patched blind.
+4. Both open items above (findings #1 and #2) are now fixed as of 2026-08-07 — see
+   items 240/241. No open color-contrast findings remain in this section.
 
 ## 2. Icon-only interactive elements without an accessible name
 
