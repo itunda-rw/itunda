@@ -19,7 +19,7 @@ struct BusScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
                 Spacer()
                 Text("Bus").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()

@@ -30,7 +30,7 @@ struct CardScreenView: View {
             HStack {
                 Button(action: onBack) {
                     Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary)
-                }
+                }.accessibilityLabel("Back")
                 Spacer()
                 Text("Card").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()

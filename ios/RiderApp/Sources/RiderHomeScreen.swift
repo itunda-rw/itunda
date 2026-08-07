@@ -98,7 +98,7 @@ struct RiderHomeScreen: View {
                 .disabled(togglingAvailability || rider == nil)
                 Button(action: { RiderKeychainTokenStore.shared.clearSession(); onLogout() }) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
-                }
+                }.accessibilityLabel("Log out")
             }
             .padding(16)
 

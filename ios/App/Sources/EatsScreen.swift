@@ -471,6 +471,7 @@ private struct OrderFoodContent: View {
                                     Image(systemName: favoriteIds.contains(restaurant.merchantId) ? "heart.fill" : "heart")
                                         .foregroundColor(favoriteIds.contains(restaurant.merchantId) ? .red : IDS.Colors.textSecondary)
                                 }
+                                .accessibilityLabel(favoriteIds.contains(restaurant.merchantId) ? "Remove from favorites" : "Add to favorites")
                                 .buttonStyle(.plain)
                                 .disabled(favoritingId == restaurant.merchantId)
                             }
@@ -567,6 +568,7 @@ private struct StarRatingRow: View {
                     Image(systemName: n <= value ? "star.fill" : "star")
                         .foregroundColor(n <= value ? .yellow : IDS.Colors.textTertiary)
                 }
+                .accessibilityLabel("Rate \(n) star\(n == 1 ? "" : "s")")
             }
         }
     }
@@ -930,6 +932,10 @@ private struct RestaurantMenuView: View {
             }
             .frame(width: 30, height: 30)
         }
+        // Every real call site passes either "plus" or "minus" -- see this function's own
+        // call sites -- so the label can be derived directly from the symbol instead of
+        // threading a separate label param through every caller.
+        .accessibilityLabel(symbol == "plus" ? "Increase quantity" : "Decrease quantity")
     }
 }
 
@@ -1539,7 +1545,7 @@ private struct FavoriteRestaurantsView: View {
                         Spacer()
                         Button(action: { Task { await remove(favorite.restaurantId) } }) {
                             Image(systemName: "heart.fill").foregroundColor(.red)
-                        }
+                        }.accessibilityLabel("Remove from favorites")
                         .buttonStyle(.plain)
                         .disabled(removingId == favorite.restaurantId)
                     }

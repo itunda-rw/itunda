@@ -23,7 +23,7 @@ struct IkiminaScreenView: View {
             HStack {
                 Button(action: { selectedId != nil ? (selectedId = nil) : onBack() }) {
                     Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary)
-                }
+                }.accessibilityLabel("Back")
                 Spacer()
                 Text("Ikimina").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()

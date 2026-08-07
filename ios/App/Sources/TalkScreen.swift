@@ -885,7 +885,7 @@ private struct GroupThreadScreen: View {
                         .frame(width: 44, height: 44)
                         .background(draft.isEmpty || sending ? IDS.Colors.textTertiary : IDS.Colors.brand)
                         .clipShape(Circle())
-                }
+                }.accessibilityLabel("Send")
                 .disabled(draft.isEmpty || sending)
             }
             .padding(IDS.Layout.screenHorizontal)
@@ -1836,7 +1836,7 @@ private struct ChatThreadScreen: View {
                         .frame(width: 44, height: 44)
                         .background(draft.isEmpty || sending ? IDS.Colors.textTertiary : IDS.Colors.brand)
                         .clipShape(Circle())
-                }
+                }.accessibilityLabel("Send")
                 .disabled(draft.isEmpty || sending)
             }
             .padding(IDS.Layout.screenHorizontal)

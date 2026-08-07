@@ -24,7 +24,7 @@ struct OverviewScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
                 Spacer()
                 Text("My assets").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
@@ -154,7 +154,7 @@ struct LoansScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
                 Spacer()
                 Text("Loans").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
@@ -550,7 +550,7 @@ struct CertificateScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
                 Spacer()
                 Text("Itunda Certificate").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
@@ -729,7 +729,7 @@ struct IdentityScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
                 Spacer()
                 Text("Verify your identity").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
@@ -824,7 +824,7 @@ struct SupportScreenView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
                 Spacer()
                 Text("Support").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()

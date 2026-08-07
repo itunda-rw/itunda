@@ -1827,3 +1827,154 @@ itunda already has a genuinely close match to this whole philosophy, not a gap n
   above rests on search-result summaries, not a direct primary-source read. Lower confidence
   than the rest of this section; worth a follow-up fetch via a different method if this becomes
   load-bearing for a future decision.
+
+## 13. SLASH — Toss's engineering conference, 21/22/24 (no SLASH25 exists)
+
+**Added 2026-08-07**, at explicit user request ("toss solve a lot of problems and they shared
+solutions through simplicity 21,22,23,24,25, and slash 21,22,23,24,25... let's improve itunda").
+SLASH is Toss's annual *developer* conference (toss.im/slash-NN, toss.tech), distinct from
+Simplicity (Section 14), which is design-focused. Confirmed via direct search: **no SLASH25
+exists** — the real 2025 event is "Toss Makers Conference 25" (TMC25, a differently-branded
+event, not researched here). SLASH23's Gateway/Passport architecture and rate-limiting content
+were already researched and implemented in a prior session (see `DeviceService.kt`/
+`RateLimiter.kt`'s own doc comments, and Section 12 above) — not re-covered here.
+
+### References
+
+| Topic | Source | Pattern |
+|---|---|---|
+| SLASH21 tech stack (2021) | toss.im/slash-21 | Active-Active datacenter, Kubernetes + Istio, API Gateway, Kafka, Redis Cluster, ELK/Thanos/Grafana — session-level technical depth was PDF-only and not extractable by web research tooling |
+| SLASH22 (2022, "No User, No Technology") | toss.im/slash-22 | 24 speakers, 22 sessions split across dev-productivity/UX (Day 1) and server/data (Day 2) — same PDF-only extraction limit |
+| Strangler Fig migration, not big-bang rewrite | toss.im/slash-24/sessions/27, toss.tech/article/32211 | Toss Bank explicitly rejected the traditional "차세대" (next-gen) waterfall big-bang system rewrite — real service-failure risk, inflexible mid-project — in favor of incremental legacy replacement (Strangler Fig Pattern) that preserves maintainability without a risky cutover |
+| Compensating-transaction currency exchange | toss.im/slash-24/sessions/24 (Lee Shin-dong, Toss Bank) | Won/foreign-currency accounts are separate microservices/DBs post-MSA-split; cross-service atomicity via **Orchestration SAGA** (chosen over 2PC — kills availability at their volume — and Choreography — no central state for exchange-limit checks). Withdraw-before-deposit ordering (deliberate — deposit-first would let other transactions withdraw funds mid-exchange). **On 5xx/timeout, never assume failure — re-query actual account state before compensating.** Kafka delayed-topic retry scheduler with expanding backoff (30s→1min). Two append-only tables (request snapshot + insert-only state-transition log) distinguishing "failed at withdrawal" from "succeeded at withdrawal, failed at deposit, cancelled." Cited scale: 1M accounts in 3 months, ₩52 trillion processed |
+| Idempotency-Key spec | docs.tosspayments.com/reference/using-api/authorization | 300-char max key, `INVALID_IDEMPOTENCY_KEY` on overflow, 15-day validity, same-key-same-body replay returns the original response verbatim, in-flight duplicate returns `409 IDEMPOTENT_REQUEST_PROCESSING`, key scoped by endpoint+method |
+
+### itunda's current state (verified against real code, not assumed)
+
+- **Already an exact, confirmed match, nothing to build**: `services/backend/core/.../idempotency/IdempotencyService.kt` already implements the Toss Payments Idempotency-Key spec precisely — `MAX_IDEMPOTENCY_KEY_LENGTH = 300`, `IDEMPOTENCY_RETENTION = Duration.ofDays(15)`, `ClaimOutcome.InProgress`/`Conflict`/`Replay` states, per-route `scopedKey`. The file's own doc comment already cites this exact spec as its model — this section just confirms the match is real, not new work.
+- **SAGA/compensating-transaction pattern: correctly not applicable yet, not a gap.**
+  `services/backend/wallet/.../ForeignCurrencyWalletService.kt`'s `convert()` writes every ledger
+  leg (source debit, FX-clearing legs, dest credit) in one local `@Transactional` method — a real
+  single-database ACID transaction, not a distributed operation the way Toss Bank's won/foreign-
+  currency split is (separate microservices, separate databases). Importing SAGA complexity now
+  would be over-engineering a problem itunda doesn't have. **This is the correct pattern to reach
+  for if and when currency conversion is ever split into separate services — not before.**
+- **The "re-query real state before compensating on ambiguous failure" principle has no real
+  object to apply to yet, for the same reason**: `services/backend/core/.../provider/ProviderConnector.kt`
+  is an honestly-labeled synchronous, deterministic, in-process *simulation* of rail/PSP calls
+  (`attemptOnce`, no real network call) — there is no real network boundary today where an itunda
+  response could actually be ambiguous. Flagged below as a forward-looking design note for when a
+  real external PSP/mobile-money rail replaces the simulation (a standing, currently-blocked item
+  — see the project's own "demo, don't declare blocked" discipline).
+- **Strangler Fig validates existing working style, not a new practice to adopt**: every itunda
+  feature this whole multi-session thread (device verification, maps, design system, this
+  research itself) has been built as incremental, independently-shippable, independently-verified
+  slices — never a big-bang rewrite. Worth citing as an explicit sourced precedent for a practice
+  that was already happening implicitly.
+
+### Recommendations (ranked)
+
+1. **[sourced, documentation-only — the correct action here]** Keep the SAGA/compensating-
+   transaction pattern (SLASH24 session 24) as the named design to reach for *later*, with its
+   concrete trigger condition (a real external PSP/rail replacing `ProviderConnector`'s
+   simulation) — this pre-empts a future session reaching for 2PC or a naive
+   retry-on-timeout-assumes-failure approach by mistake when that day comes.
+2. **[sourced, already true, confirmed not asserted]** `IdempotencyService.kt` already matches
+   Toss Payments' real published spec — no action, recorded here as a validated match per this
+   document's own established practice.
+3. **Not independently actionable from this research pass**: SLASH21/22's Kubernetes-safety,
+   100%-test-coverage, and Toss Bank data-design-philosophy sessions, and SLASH24's Hadoop/DW/
+   ClickHouse/Feature-Store/eBPF/K8s-cost-optimization sessions, are all real but either
+   PDF-locked (not extractable via web research tooling) or solve a scale problem (millions of
+   users, real distributed data infra) itunda doesn't have yet. Listed so a future session doesn't
+   re-search the same dead ends without a different extraction method (e.g. downloading and
+   parsing the PDFs directly, not attempted here).
+
+### Unresolved / worth a follow-up
+- SLASH21/22 session detail pages are landing pages with a PDF download link, not embedded text
+  — real technical depth for those years is genuinely inaccessible to plain-HTTP web research.
+- SLASH24 session 27's actual migration *mechanism* (dual-write? shadow traffic? staged cutover?)
+  is unconfirmed — `toss.tech/article/32211` redirects to a page exposing only the abstract, not
+  the full article body. The *philosophy* (no big-bang rewrite) is solidly sourced; the mechanism
+  is not.
+
+## 14. Simplicity — Toss's design conference, 21/23/24/25 — accessibility as the actionable thread
+
+**Added 2026-08-07**, same user request as Section 13. Simplicity is Toss's annual *design*
+conference (toss.im/simplicity-NN), running since 2021 (skipped 2022). Most session video/detail
+content is interactive/gated and not extractable via plain web fetch — this section is honest
+about that limit and focuses on the real, sourced, code-level content that *was* extractable.
+
+### References
+
+| Topic | Source | Pattern |
+|---|---|---|
+| Simplicity21 (2021) | blog.toss.im/article/toss-simplicity21 | Iterating repeatedly on one core flow (간편송금 redesign) over adding scope; in-house font built specifically for small-mobile-size legibility, justified by a concrete UX complaint, not aesthetics |
+| Simplicity23 (2023, podcast format) | toss.tech/article/simplicity23 | Deliberately process-oriented, not a highlight reel — organizer quote: *"문제를 해결하며 겪었던 지난하고 힘든 과정 자체를 담았거든요"* (we captured the hard process itself, not just outcomes) |
+| Metric-vs-ethics tension | Simplicity24, "지표가 좋으면 UX도 좋은걸까?" (Lee Young-jin) | Direct framework for when a quantitative conversion metric and qualitative/ethical UX quality conflict — a real, named dark-pattern-detection lens |
+| Move copy ownership to the role that owns correctness | Simplicity24, "사용자의 실수, 디자이너가 어떻게 해결할까?" (Han Ji-yu) | Standardized consent modules (표준동의모듈) were error-prone because *developers* hand-implemented legal/consent copy; fix was a WYSIWYG tool that moved the actual editing control from developer to PO — raised adoption. Insight generalizes: "move the point of control to the role that owns correctness, not the role that owns the code" |
+| Design-system discipline at scale without per-screen design | Simplicity24, "디자이너 없이 사용성을 지킬 수 있을까?" (Ha Seung-ju) | Toss Payments' 400+-screen legacy merchant admin stayed usable via systematized design-system patterns, not bespoke per-screen design passes |
+| Automation still needs a human-override point | Simplicity24, "100% 자동화, 정말 좋은걸까?" (Han Se-hee) | A fraud-response automation case arguing full automation isn't unconditionally good — implies a designed-in review point, not just faster auto-decisions |
+| **Ally — Toss's real accessibility scanner** | toss.im/tossfeed/article/ally | Self-built tool that scans app code in one click for missing alt-text/labels; **post-adoption, developers self-catch and fix ~100 a11y errors/hour**, replacing manual expert-consultant audits |
+| **A11y Fundamentals — Toss's own developer ruleset** | toss.tech/article/A11y_Fundamentals | Four concrete code-level rules: (1) no interactive-inside-interactive nesting, no bare `onClick` on non-semantic elements — use real semantic elements; (2) every interactive element needs a real role/label/alt, duplicates need distinguishing descriptions; (3) predictable behavior — real keyboard support (Enter-to-submit, Tab order), inputs inside real `<form>` tags; (4) never convey information by color/icon/layout alone — always pair with text. Explicit stated payoff: this also makes tests robust (`ByRole` queries instead of brittle CSS selectors) |
+| Visually-impaired-user research | Simplicity25 ("우리가 몰랐던 시각 장애인의 UX"), designcompass.org/2025/04/28/toss-simplicity | Real session exists; the actual "3 insights" were not extractable (interactive/gated page) — noted honestly as a research gap, not fabricated |
+| Design-system non-adoption is an org problem, not a component problem | Simplicity25 ("아무도 쓰지 않는 디자인 시스템") | Direct quote: *"새로운 컴포넌트를 배포했는데, 왜 아무도 안 쓰지? 컴포넌트를 넘어서, 일하는 방식 자체를 바꿔보기로 했어요"* (we shipped new components and nobody used them; decided to change the way of working, not just ship more components) |
+| Toss's real UX research methods | toss.tech/article/uxresearch-method, toss.tech/article/1st_ux_research | IDI/FGI/UT/Diary Study for data collection, Affinity Diagram + Persona for analysis; one researcher owns a research agenda end-to-end |
+| 8 writing principles | secondary aggregator, not a toss.tech primary source — **[lower confidence]** | Predictable Hint, Weed Cutting, Remove Empty Sentences, Focus on Key Message, Easy to Speak, Universal Words, Find Hidden Emotion — treat as unconfirmed until corroborated by a primary source |
+
+### itunda's current state (verified against real code, not assumed)
+
+- itunda already has real, code-level accessibility work from prior sessions — WCAG 2.5.8
+  24×24pt touch targets, `contentDescription`/`accessibilityLabel`/`aria-label` coverage checks,
+  a dark-mode diagnosis fix, empty/error-state components — but **all of it was manual, one-off
+  audits**, never a repeatable, automated check. This is exactly the gap Toss's own Ally tool and
+  A11y Fundamentals doc describe solving: turning "an expert manually reviews screens" into
+  "developers self-catch errors as they write code."
+- No real user base exists to run IDI/FGI/UT/Diary Study against, or to validate a "quantify
+  qualitative UX" metric the way Simplicity25's "경험을 수치화하는 방법" session gestures at
+  (methodology itself wasn't extractable anyway). **Correctly deferred as a future process, not
+  faked now** — the one honest substitute available today is a developer's own manual VoiceOver/
+  TalkBack walkthrough of real money-moving flows, explicitly weaker than real user research and
+  labeled as such, matching this project's own established practice of not overclaiming a
+  shortcut (`NIDABiometricAuth`'s own honest "not implemented" comments are the precedent).
+- Legal/consent copy: not yet audited against the "who owns correctness" lens this session —
+  flagged below as a real, checkable-now action.
+- ops-mfe (12+ admin queue tabs, growing) and merchant-mfe's admin surfaces: not yet checked
+  against "design-system discipline without per-screen design review" — itunda's own prior
+  "looks unstyled" audit already found consumer-facing drift once; admin surfaces are exactly the
+  kind of area that scales past what a manual design pass covers, per the Toss Payments merchant-
+  admin case study.
+
+### Recommendations (ranked)
+
+1. **[sourced, HIGH VALUE, code-shippable now, no real users needed — implemented same day]**
+   Build an itunda equivalent of Ally/A11y Fundamentals as a real repo-wide lint check, not a doc:
+   flag icon-only interactive elements missing an accessible label/description/alt text, and
+   `onClick`/`.clickable()`/`onTapGesture` attached to non-semantic containers instead of a real
+   button, across all 3 platforms. Turns a category of bug this project has already found and
+   fixed by hand multiple times (iOS touch-target gaps, a dead-tap bug in bank-mfe's
+   `QuickActions`) into something caught automatically going forward. See below for what shipped.
+2. **[sourced, MEDIUM VALUE, code-shippable now]** Audit itunda's own legal/consent/KYC copy for
+   the Simplicity24 "사용자의 실수" failure mode: copy hand-typed per-platform by an engineer
+   instead of sourced from one canonical, non-engineer-auditable location.
+3. **[sourced, MEDIUM VALUE, code-shippable now]** ops-mfe/merchant-mfe design-system-discipline
+   spot-check, framed by "디자이너 없이 사용성을 지킬 수 있을까" — confirm admin surfaces are
+   built from shared `Ids*` primitives consistently, not one-off styling.
+4. **[sourced, MEDIUM VALUE, validation only]** Confirm `FraudRuleEngine`'s flag-don't-block
+   design (already itunda's real, deliberate, documented choice) still has a real human-review
+   surface for every money-moving feature added since — the Simplicity24 "100% 자동화" session
+   validates this existing choice rather than contradicting it.
+5. **[sourced, correctly deferred, not a gap]** Screen-reader user research and "quantify
+   qualitative UX" — both require a real user base itunda doesn't have. Adopt as a documented
+   future practice; the honest present-day substitute is a manual VoiceOver/TalkBack self-audit,
+   labeled as weaker than real research.
+6. **[lower-confidence, not yet actioned]** The 8 UX-writing principles came from a secondary
+   aggregator, not a toss.tech primary source — do not cite with the same confidence as the rest
+   of this section until corroborated directly.
+
+### Unresolved / worth a follow-up
+- Simplicity21's actual per-session before/after metrics, Simplicity23's "A Whole New Onboarding"
+  session content, Simplicity25's actual "3 insights" from the visually-impaired-user research
+  session, and the actual methodology behind "경험을 수치화하는 방법" were all behind
+  interactive/video-gated pages that plain web-fetch tooling rendered as navigation shells only —
+  genuinely inaccessible via this research method, not fabricated or guessed around.

@@ -631,7 +631,7 @@ struct MyTabView: View {
         ScrollView {
             VStack(spacing: IDS.Layout.sectionSpacing) {
                 HStack {
-                    Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                    Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
                     Spacer()
                     Text("My").font(IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2)).foregroundColor(IDS.Colors.textPrimary)
                     Spacer()

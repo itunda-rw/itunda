@@ -333,7 +333,7 @@ struct MapScreenView: View {
                             if !query.trimmingCharacters(in: .whitespaces).isEmpty {
                                 Button(action: { query = ""; searchResults = nil }) {
                                     Image(systemName: "xmark.circle.fill").foregroundColor(IdsPalette.gray400)
-                                }
+                                }.accessibilityLabel("Clear")
                             }
                         }
                         .padding(.vertical, 10).padding(.horizontal, 14)
@@ -439,12 +439,12 @@ struct MapScreenView: View {
                             Button(action: { mapController.zoomIn() }) {
                                 Image(systemName: "plus").foregroundColor(IdsPalette.gray900)
                                     .frame(width: 44, height: 44)
-                            }
+                            }.accessibilityLabel("Zoom in")
                             Divider().frame(width: 44)
                             Button(action: { mapController.zoomOut() }) {
                                 Image(systemName: "minus").foregroundColor(IdsPalette.gray900)
                                     .frame(width: 44, height: 44)
-                            }
+                            }.accessibilityLabel("Zoom out")
                         }
                         .background(IdsPalette.white)
                         .cornerRadius(14)
@@ -457,7 +457,7 @@ struct MapScreenView: View {
                                 .background(IdsPalette.white)
                                 .clipShape(Circle())
                                 .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
-                        }
+                        }.accessibilityLabel("Center on my location")
 
                         // Real distance-measurement (ruler) tool toggle (2026-07-23) --
                         // Naver/Kakao Maps' own real "measure distance" action, ported

@@ -25,7 +25,7 @@ struct MiniWalletScreenView: View {
             HStack {
                 Button(action: onBack) {
                     Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary)
-                }
+                }.accessibilityLabel("Back")
                 Spacer()
                 Text("Mini account").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()

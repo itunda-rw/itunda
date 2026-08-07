@@ -794,12 +794,13 @@ private struct MerchantDetailView: View {
                                                     .foregroundColor(favoriteProductIds.contains(product.id) ? .red : .white)
                                                     .padding(4)
                                             }
+                                            .accessibilityLabel(favoriteProductIds.contains(product.id) ? "Remove from favorites" : "Add to favorites")
                                             .disabled(favoritingProductId == product.id)
                                             Button(action: { shareProduct(product.id) }) {
                                                 Image(systemName: "square.and.arrow.up")
                                                     .foregroundColor(.white)
                                                     .padding(4)
-                                            }
+                                            }.accessibilityLabel("Share")
                                             .disabled(sharingProductId == product.id)
                                         }
                                     }
@@ -866,6 +867,10 @@ private struct MerchantDetailView: View {
             }
             .frame(width: 30, height: 30)
         }
+        // Every real call site passes either "plus" or "minus" -- see this function's own
+        // call sites -- so the label can be derived directly from the symbol instead of
+        // threading a separate label param through every caller.
+        .accessibilityLabel(symbol == "plus" ? "Increase quantity" : "Decrease quantity")
     }
 }
 
@@ -1047,6 +1052,7 @@ private struct ProductDetailView: View {
                                 .foregroundColor(favorited ? .red : IDS.Colors.textSecondary)
                                 .padding(8)
                         }
+                        .accessibilityLabel(favorited ? "Remove from favorites" : "Add to favorites")
                         .disabled(favoriteBusy)
                     }
                     Spacer().frame(height: 16)
@@ -1101,6 +1107,10 @@ private struct ProductDetailView: View {
             }
             .frame(width: 30, height: 30)
         }
+        // Every real call site passes either "plus" or "minus" -- see this function's own
+        // call sites -- so the label can be derived directly from the symbol instead of
+        // threading a separate label param through every caller.
+        .accessibilityLabel(symbol == "plus" ? "Increase quantity" : "Decrease quantity")
     }
 }
 
@@ -2122,6 +2132,7 @@ private struct StarRatingRow: View {
                     Image(systemName: n <= value ? "star.fill" : "star")
                         .foregroundColor(n <= value ? .yellow : IDS.Colors.textTertiary)
                 }
+                .accessibilityLabel("Rate \(n) star\(n == 1 ? "" : "s")")
             }
         }
     }

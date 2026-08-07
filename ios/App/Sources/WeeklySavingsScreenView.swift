@@ -24,14 +24,14 @@ struct WeeklySavingsScreenView: View {
             HStack {
                 Button(action: { selectedPlanId != nil ? (selectedPlanId = nil) : onBack() }) {
                     Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary)
-                }
+                }.accessibilityLabel("Back")
                 Spacer()
                 Text("26-Week Savings").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
                 if selectedPlanId == nil {
                     Button(action: { showCreate = true }) {
                         Image(systemName: "plus").foregroundColor(IDS.Colors.textPrimary)
-                    }
+                    }.accessibilityLabel("Add")
                 } else {
                     Color.clear.frame(width: 20)
                 }

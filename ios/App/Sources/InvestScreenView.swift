@@ -22,7 +22,7 @@ struct InvestScreenView: View {
             HStack {
                 Button(action: { selectedStock != nil ? (selectedStock = nil) : onBack() }) {
                     Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary)
-                }
+                }.accessibilityLabel("Back")
                 Spacer()
                 Text("Invest").font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
@@ -376,6 +376,7 @@ private struct StockDetailContent: View {
                         Image(systemName: watching ? "star.fill" : "star")
                             .foregroundColor(watching ? .yellow : IDS.Colors.textSecondary)
                     }
+                    .accessibilityLabel(watching ? "Remove from watchlist" : "Add to watchlist")
                 }
                 Text(stock.name).font(.title3).bold().foregroundColor(IDS.Colors.textPrimary)
                 Text("\(formatMoney(stock.price)) RWF").font(.largeTitle).bold().foregroundColor(IDS.Colors.textPrimary)

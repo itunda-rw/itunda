@@ -30,7 +30,7 @@ struct CommerceDeliveryDetailScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Button(action: onBack) { Image(systemName: "chevron.left") }
+                Button(action: onBack) { Image(systemName: "chevron.left") }.accessibilityLabel("Back")
                 Text("Package delivery").font(.headline)
                 Spacer()
             }

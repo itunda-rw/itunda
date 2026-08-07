@@ -29,7 +29,7 @@ struct MerchantHomeScreen: View {
                 Spacer()
                 Button(action: { MerchantKeychainTokenStore.shared.clearSession(); onLogout() }) {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
-                }
+                }.accessibilityLabel("Log out")
             }
             .padding(16)
 

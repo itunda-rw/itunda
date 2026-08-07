@@ -202,6 +202,8 @@ private struct CashOperationScreen: View {
                         Button(action: { payoutChecked.toggle() }) {
                             Image(systemName: payoutChecked ? "checkmark.square.fill" : "square")
                         }
+                        .accessibilityLabel("Confirm code and cash counted")
+                        .accessibilityValue(payoutChecked ? "Checked" : "Not checked")
                         .disabled(busy)
                         Text("I checked the code and counted the cash. Do not hand over cash until Itunda confirms.")
                             .font(.footnote)
