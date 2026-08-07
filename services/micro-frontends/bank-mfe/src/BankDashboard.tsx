@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
@@ -8719,15 +8719,23 @@ function GroupSplitBillsView({
               />
             </label>
           ))}
-          <label
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', cursor: 'pointer' }}
-            onClick={(e) => { e.preventDefault(); setLadderMode((v) => !v); }}
+          {/* Real a11y fix (item 244, web accessibility sweep): this was a plain
+              <label> with an onClick and no associated form control -- a bare
+              <label> isn't in the tab order and isn't activatable via
+              Enter/Space, so keyboard-only and screen-reader users had no way to
+              reach this real toggle at all. A <button> is the correct element:
+              real keyboard focus/operability, no visual change needed beyond
+              resetting the browser's default button chrome. */}
+          <button
+            type="button"
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: '13px', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left', font: 'inherit', color: 'inherit' }}
+            onClick={() => setLadderMode((v) => !v)}
           >
             🎲 Ladder game (randomized split)
             <span style={{ fontSize: '12px', color: ladderMode ? 'var(--toss-blue)' : 'var(--toss-grey-500)', fontWeight: 700 }}>
               {ladderMode ? 'On' : 'Off'}
             </span>
-          </label>
+          </button>
           {ladderMode && (
             <div style={{ display: 'flex', gap: '8px' }}>
               {[1, 2, 3].map((level) => (
@@ -13854,6 +13862,15 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
 }) {
   const [query, setQuery] = useState(value?.displayName ?? '');
   const [results, setResults] = useState<PlaceSearchResult[] | null>(null);
+  // Real a11y fix (item 244, web accessibility sweep -- docs/ACCESSIBILITY.md had
+  // never covered the web micro-frontends at all before this pass): the <label>
+  // above used to be a plain sibling of <input>, with no htmlFor/id association at
+  // all -- unlike every other form field in this codebase (LoginPage/RegisterPage/
+  // merchant-mfe screens), which wrap the input as the label's own descendant.
+  // Neither clicking the label nor a screen reader's field name worked here. This
+  // component is real, live UI used 5 times across ride/rental pickup+dropoff
+  // fields (BankDashboard.tsx), not dead code.
+  const inputId = useId();
 
   useEffect(() => {
     if (!query || query === value?.displayName) { setResults(null); return; }
@@ -13866,8 +13883,9 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
 
   return (
     <div style={{ position: 'relative', marginBottom: '12px' }}>
-      <label style={{ fontSize: '12px', color: 'var(--toss-grey-500)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
+      <label htmlFor={inputId} style={{ fontSize: '12px', color: 'var(--toss-grey-500)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
       <input
+        id={inputId}
         type="text" value={query} placeholder={placeholder}
         onChange={(e) => setQuery(e.target.value)}
         style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
