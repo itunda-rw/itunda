@@ -215,7 +215,11 @@ fun BusinessAccountTab() {
         item { Text("Business transactions", fontWeight = FontWeight.Bold) }
         val txns = transactions
         if (txns.isNullOrEmpty()) {
-            item { EmptyState("No business transactions yet.", icon = Icons.Outlined.ReceiptLong) }
+            // Real copy-voice fix (item 244, round 7 of the empty-state pass -- native
+            // MerchantApp had the same bare strings web's merchant-mfe just had, never
+            // reached by the mobile-app copy-voice rounds either): auto-recorded, not
+            // user-initiated setup, matching WalletTransactionsView's own precedent.
+            item { EmptyState("No business transactions yet — once you send or receive money, it'll show up here.", icon = Icons.Outlined.ReceiptLong) }
         } else {
             items(txns, key = { it.id }) { entry ->
                 Card(modifier = Modifier.fillMaxWidth()) {
@@ -408,7 +412,9 @@ private fun ApiIntegrationCard() {
             if (list == null) {
                 Text("Loading…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else if (list.isEmpty()) {
-                EmptyState("No webhook deliveries yet.", icon = Icons.Outlined.ReceiptLong)
+                // Real copy-voice fix (item 244, round 7 of the empty-state pass):
+                // event-driven, not something to set up further here.
+                EmptyState("No webhook deliveries yet — deliveries will show up here once an event triggers your webhook.", icon = Icons.Outlined.ReceiptLong)
             } else {
                 list.take(20).forEach { d ->
                     Row(

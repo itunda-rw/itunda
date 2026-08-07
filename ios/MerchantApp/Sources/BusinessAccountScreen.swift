@@ -77,7 +77,10 @@ struct BusinessAccountTab: View {
 
                 Text("Business transactions").font(.headline)
                 if transactions.isEmpty {
-                    Text("No business transactions yet.").font(.footnote).foregroundColor(.secondary)
+                    // Real copy-voice fix (item 244, round 7 of the empty-state pass --
+                    // native MerchantApp had the same bare strings web's merchant-mfe
+                    // just had): auto-recorded, not user-initiated setup.
+                    Text("No business transactions yet — once you send or receive money, it'll show up here.").font(.footnote).foregroundColor(.secondary)
                 } else {
                     ForEach(transactions) { entry in
                         HStack {
@@ -339,7 +342,9 @@ private struct ApiIntegrationCard: View {
             }
             if let deliveries {
                 if deliveries.isEmpty {
-                    Text("No webhook deliveries yet.").font(.footnote).foregroundColor(.secondary)
+                    // Real copy-voice fix (item 244, round 7): event-driven, not
+                    // something to set up further here.
+                    Text("No webhook deliveries yet — deliveries will show up here once an event triggers your webhook.").font(.footnote).foregroundColor(.secondary)
                 } else {
                     ForEach(deliveries.prefix(20)) { d in
                         HStack {

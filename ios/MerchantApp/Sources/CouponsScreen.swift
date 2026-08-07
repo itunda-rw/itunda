@@ -24,7 +24,10 @@ struct CouponsTab: View {
                     }
                     if let coupons {
                         if coupons.isEmpty {
-                            Text("No coupons yet.").font(.footnote).foregroundColor(.secondary)
+                            // Real copy-voice fix (item 244, round 7): points back to
+                            // the real CreateCouponCard form above, matching Android's
+                            // already-shipped wording exactly.
+                            Text("No coupons yet — create one above to give repeat customers a reason to come back.").font(.footnote).foregroundColor(.secondary)
                         } else {
                             ForEach(coupons) { coupon in
                                 CouponRow(coupon: coupon, onChanged: { Task { await load() } })

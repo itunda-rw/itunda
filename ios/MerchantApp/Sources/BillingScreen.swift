@@ -23,7 +23,10 @@ struct BillingTab: View {
                     }
                     if let plans {
                         if plans.isEmpty {
-                            Text("No billing plans yet.").font(.footnote).foregroundColor(.secondary)
+                            // Real copy-voice fix (item 244, round 7): points back to
+                            // the real CreatePlanCard form above, matching Android's
+                            // already-shipped wording exactly.
+                            Text("No billing plans yet — create one above for recurring charges.").font(.footnote).foregroundColor(.secondary)
                         } else {
                             ForEach(plans) { plan in
                                 PlanRow(plan: plan, onChanged: { Task { await load() } })

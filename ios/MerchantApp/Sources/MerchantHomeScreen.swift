@@ -235,7 +235,10 @@ private struct ReviewsTab: View {
             if let restaurantReviews, let productReviews {
                 if restaurantReviews.isEmpty && productReviews.isEmpty {
                     Spacer()
-                    Text("No reviews yet.").foregroundColor(.secondary)
+                    // Real copy-voice fix (item 244, round 7): honest about whose gap
+                    // this is -- reviews only appear once customers leave them after a
+                    // booking or purchase.
+                    Text("No reviews yet — reviews will show up here once customers leave them after a booking or purchase.").foregroundColor(.secondary)
                     Spacer()
                 } else {
                     ScrollView {
