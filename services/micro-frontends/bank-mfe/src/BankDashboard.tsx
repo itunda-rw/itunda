@@ -507,10 +507,19 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   );
 }
 
-function QuickActions() {
+// Real dead-tap fix (item 244): both cards used to render with whileTap's tap-down
+// animation and cursor: 'pointer' unconditionally -- a UI signal both are tappable
+// -- with zero onClick wired to either. "Cards" has a real destination (CardView,
+// already reachable from the tab bar, just not from here) and is now wired to it.
+// "Scan to Pay" genuinely has nowhere to go: this app has no camera QR scanner
+// anywhere (see RequestMoneyCard's own doc comment -- manual code entry is the real,
+// deliberate substitute), so rather than fake a destination, its tap affordance is
+// removed instead -- honest about its current non-functional state, matching this
+// session's own "don't fake it" precedent (SuperAppTabs.kt's unwired Search icon).
+function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
   const actions = [
-    { title: 'Scan to Pay', icon: <ScanFace size={24} color="var(--toss-blue)" />, bg: 'var(--toss-blue-light)' },
-    { title: 'Cards', icon: <WalletIcon size={24} color="#8A2BE2" />, bg: 'rgba(138, 43, 226, 0.1)' },
+    { title: 'Scan to Pay', icon: <ScanFace size={24} color="var(--toss-blue)" />, bg: 'var(--toss-blue-light)', onClick: undefined as (() => void) | undefined },
+    { title: 'Cards', icon: <WalletIcon size={24} color="#8A2BE2" />, bg: 'rgba(138, 43, 226, 0.1)', onClick: onCardsClick },
   ];
 
   return (
@@ -518,9 +527,13 @@ function QuickActions() {
       {actions.map((action, i) => (
         <motion.div
           key={i}
-          whileTap={{ scale: 0.96 }}
+          whileTap={action.onClick ? { scale: 0.96 } : undefined}
           className="toss-card"
-          style={{ flex: 1, padding: '20px', margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px', cursor: 'pointer' }}
+          onClick={action.onClick}
+          role={action.onClick ? 'button' : undefined}
+          tabIndex={action.onClick ? 0 : undefined}
+          onKeyDown={action.onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); action.onClick!(); } } : undefined}
+          style={{ flex: 1, padding: '20px', margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px', cursor: action.onClick ? 'pointer' : 'default' }}
         >
           <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: action.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {action.icon}
@@ -590,7 +603,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
   );
 }
 
-function HomeView() {
+function HomeView({ onNavigateToCard }: { onNavigateToCard: () => void }) {
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [unusuallyLargeIds, setUnusuallyLargeIds] = useState<Set<string>>(new Set());
@@ -641,7 +654,7 @@ function HomeView() {
           }}
         />
       )}
-      <QuickActions />
+      <QuickActions onCardsClick={onNavigateToCard} />
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <ScheduledTransfersCard />
       <AutoTransfersCard />
@@ -20297,7 +20310,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         ))}
       </div>
 
-      {tab === 'HOME' && <HomeView />}
+      {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} />}
       {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
