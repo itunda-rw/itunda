@@ -1774,13 +1774,23 @@ itunda already has a genuinely close match to this whole philosophy, not a gap n
    freely, gate only money movement) — recorded here as a validated existing strength, per this
    document's own established practice of noting genuine matches, not just gaps.
 
-### Unresolved / worth a follow-up
+4. **[sourced] Resolved same day — a real, validated match, not a gap.** Checked whether
+   itunda's fraud detection runs on every transfer in real time (Toss's FDS pattern) or only
+   reactively on reported accounts. It's the former: `FraudRuleEngine.evaluate()`
+   (`services/backend/core/src/main/kotlin/rw/itunda/core/fraud/FraudRuleEngine.kt`) is called
+   from every real money-moving flow — confirmed via its own doc comment's real caller list:
+   `P2pService` (send + payment requests), `WalletService` (currency conversion), `OrderService`/
+   `EatsOrderService`/`DineInOrderService` (checkout), `MerchantService` (in-person collection),
+   `PayrollService` (payroll). Three real heuristics (high-value, velocity, new-recipient)
+   evaluate in real time on every transaction and only ever *flag* for human review
+   (`FraudReviewService.decide`) — never block outright, the same deliberate, documented choice
+   ("a freshly-built heuristic engine with no track record... is a worse failure mode as a hard
+   block... than as a flag a human reviews after the fact") as Toss's own FDS being review-
+   oriented rather than an instant auto-decline. Not ML-based like Toss's real system (itunda's
+   own rules are simple thresholds, honestly so), but the *architectural pattern* — real-time,
+   on every transaction, invisible unless actually flagged, non-blocking — is a genuine match.
 
-- Whether itunda's `FraudReviewService`/scam-detection work (`ScamReportService.kt`, cited
-  elsewhere in this document) runs on every transfer in real time the way Toss's FDS does, or
-  only on explicitly-reported accounts, wasn't verified this pass — a real, valuable next
-  research question given how central real-time invisible monitoring is to Toss's own stated
-  approach.
+### Unresolved / worth a follow-up
 - The direct fetch of Toss's own "new device login" FAQ page returned empty (JS-rendered
   support widget, not fetchable via a plain HTTP GET) — the notification-not-block conclusion
   above rests on search-result summaries, not a direct primary-source read. Lower confidence
