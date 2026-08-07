@@ -2136,15 +2136,24 @@ stopped there without researching it. This section closes that gap.
   The TMC25 finding above is a real, sourced, directly-relevant design question: would a
   lottery-style bonus layered on the existing guaranteed tiers better match Toss's own validated
   result?
-- **Deliberately NOT implemented without a real product decision.** A lottery-style/variable-
-  ratio payout is the same reinforcement mechanism a slot machine uses — it's a genuinely
-  different ethical category from "reward the user more, unconditionally," and sits in real
-  tension with this whole document's own established dark-pattern-prevention discipline (Section
-  11: no manufactured urgency, no manipulative reward loops). Toss's own case study frames it as
-  "found the intersection, didn't sacrifice UX for business" — but that's Toss's own judgment
-  call on their own product, not evidence the same mechanic is automatically the right choice for
-  itunda. This is a real, sourced input worth having, not a decision to make unilaterally by
-  writing code — flagged here for a real product conversation, not implemented.
+- **Asked the user directly rather than deciding unilaterally — explicit answer: build it "toss
+  style" (item 248, shipped 2026-08-08).** A lottery-style/variable-ratio payout is the same
+  reinforcement mechanism a slot machine uses — a genuinely different ethical category from
+  "reward the user more, unconditionally," and in real tension with this whole document's own
+  dark-pattern-prevention discipline (Section 11). Built with the two properties that keep this a
+  bonus rather than that dark pattern: **additive-only** (`StepRewardTier.rewardAmount`, the
+  guaranteed reward, is completely unaffected by the lottery draw — the bonus can only ever add
+  money on top, never replace or reduce what a user was already earning) and **disclosed odds**
+  (`StepRewardTier.lotteryOdds` is a real, stated public constant, returned by both
+  `/rewards/steps` and `/rewards/steps/today` and shown in the UI *before* a user wins anything —
+  never a hidden mechanic only discovered by winning). `SecureRandom`-backed (not
+  `Math.random()`, the exact bug class this same research thread already found and fixed once
+  in `AccountNumberGenerator`), a separate clearly-labeled ledger transaction from the guaranteed
+  reward, and shown as a distinct line in every real client (bank-mfe, the native `reward-tasks`
+  mini-app via both the Android and iOS bridges) rather than folded into one number. Verified via
+  `:rewards:test` (11 tests including deterministic win/lose paths via an injected `Random`), a
+  full backend test sweep, `npm run typecheck` across the whole `saronite` workspace, and
+  `:app:compileDebugKotlin`/`swiftc -parse` for the two native bridges.
 - High-traffic-without-scaling techniques (RedLock, cache stratification, Kafka-backed async
   writes) aren't yet applicable — itunda is single-node at real current scale (confirmed via this
   session's own fresh `docs/TOSS_PARITY_MATRIX.md` scan). The **API-consolidation** technique
