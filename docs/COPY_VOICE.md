@@ -59,13 +59,27 @@ sent yet" and "No listings posted yet" were first rewritten as if they were
 P2P payment-request copy ("when someone asks you to pay them…"). They
 actually live inside `FloatMarketplaceSection` — agent cash-float trading —
 a completely different feature that happens to share generic-sounding
-function/variable names. The real P2P payment-request screen
-(`RequestMoneyCard`) doesn't even show an empty state; it self-hides when
-there's nothing to show. Caught while porting to Android, where the
-surrounding code made the real domain obvious, and fixed on all 3 platforms
-before it shipped further. **Always confirm the surrounding function/screen
-name before trusting what a string appears to mean** — a flat "no X yet"
-string carries no context of its own.
+function/variable names. bank-mfe's own `RequestMoneyCard` (an embedded
+home-screen widget, `requests.length > 0 &&` with no `EmptyState` fallback)
+genuinely does self-hide when there's nothing to show. Caught while porting
+to Android, where the surrounding code made the real domain obvious, and
+fixed on all 3 platforms before it shipped further. **Always confirm the
+surrounding function/screen name before trusting what a string appears to
+mean** — a flat "no X yet" string carries no context of its own.
+
+**Correction, item 244 round 9, 2026-08-07**: the line above ("the real P2P
+payment-request screen doesn't even show an empty state") over-generalized
+from web's specific `RequestMoneyCard` (an embedded card, not a full
+screen) to the whole feature. Android's `RequestMoneyScreen.kt` and iOS's
+`RequestMoneyScreen.swift` are each platform's own separate, fuller
+dedicated screen for this same feature (not an embedded card), and both
+genuinely do show a real "My requests" empty state — a real, deliberate
+per-platform UX difference (embedded self-hiding card on web's home
+screen vs. a full screen with explicit empty-state guidance on
+Android/iOS), not a contradiction of the original finding. iOS's version
+was still bare ("No requests yet.") until this round; matched to
+Android's own already-correct "No requests yet — ask someone to pay you
+above."
 
 ### 3. When the cause is someone else's, say so honestly — don't imply the reader broke something
 
@@ -128,6 +142,43 @@ where none does. Caught a real bug while doing this: several edits placed a
 real parse error `vite build` caught (`tsc -b` alone didn't), fixed by
 converting to `//` line comments before shipping.
 
-~140 lower-traffic `EmptyState` call sites (mostly admin/niche-feature
-screens) still remain a deliberately deferred follow-up, not a silent gap —
-apply these same three rules to them as they're picked up.
+**Round 7 (item 244, 2026-08-07, 8 call sites, native MerchantApp):** round 6
+was explicitly scoped web-only — checked whether the native MerchantApp
+(`android/merchantapp`, `ios/MerchantApp`, a separate app from the consumer
+itunda app, easy for every prior round to have missed since it's a distinct
+codebase) had the same bare strings merchant-mfe just had. Found 2 on
+Android (`BusinessAccountScreen.kt`'s transactions/webhook-deliveries lists)
+and 6 on iOS (the same two, plus `BillingScreen.swift`, `CatalogScreen.swift`,
+`CouponsScreen.swift`, and `MerchantHomeScreen.swift`'s combined restaurant+
+product reviews) — iOS had the most stale copy since Android's own
+`CatalogScreen.kt`/`CouponsScreen.kt`/`BillingScreen.kt`/`PosScreen.kt` had
+already been fixed in an earlier, unrecorded pass. Matched Android's exact
+wording on iOS wherever the two platforms have the identical screen, so they
+now say the same thing for the same real affordance.
+
+**Round 8 (item 244, 2026-08-07, 2 call sites × 2 platforms):** checked the
+two other native satellite apps (`android`/`ios` `AgentApp`, `RiderApp` —
+distinct codebases from both the consumer app and MerchantApp) for the same
+pattern round 7 fixed in MerchantApp. Found `AgentHomeScreen`'s "No store
+transactions recorded yet." (matched to the identical wording already
+shipped in the main app's `AgentOperatorScreenView.swift`) and
+`RiderHomeScreen`'s two-tab empty state — the AVAILABLE tab is genuinely
+passive (new deliveries just appear, nothing to fix, so it only got a soft
+"check back soon" addition) while the MINE tab got a real fix ("switch to
+Available to claim your first one").
+
+**Round 9 (item 244, 2026-08-07, 2 call sites, iOS-only):** a final
+broad grep across every platform surfaced the ~150-site deferred backlog
+(confirmed still correctly deferred, see below) plus 2 real, quick,
+high-value cross-platform-consistency items: `SubscriptionsScreenView.swift`
+had the exact bare string already fixed on web (round 6) and Android (an
+earlier unrecorded pass); `RequestMoneyScreen.swift` had a bare "No requests
+yet." where Android's identical screen already had real copy. Also produced
+a real correction to this doc's own "real mistake" writeup above — see that
+section.
+
+~148 lower-traffic `EmptyState` call sites (mostly admin/niche-feature
+screens, e.g. `StudentLoanScreen`/`VupLoanScreen`/`HarvestAdvanceScreen`/
+`BusScreen`/`FamilyLinkScreen` and their iOS/web equivalents) still remain
+a deliberately deferred follow-up, not a silent gap — apply these same
+three rules to them as they're picked up.
