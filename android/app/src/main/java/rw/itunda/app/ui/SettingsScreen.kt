@@ -15,10 +15,13 @@ import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -31,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.network.NetworkClient
@@ -38,6 +42,7 @@ import rw.itunda.core.network.NotificationDto
 import rw.itunda.core.network.ThemeMode
 import rw.itunda.core.network.ThemePreference
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.identity.DeviceKeyManager
 import rw.itunda.core.identity.NIDABiometricAuth
 
 /**
@@ -147,6 +152,102 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                             colors = SwitchDefaults.colors(checkedTrackColor = Ids.colors.brand),
                         )
                     }
+
+                    // Real Keystore-signed-challenge device verification (item 246) --
+                    // see DeviceKeyManager's own doc comment. A hardware-backed key,
+                    // gated behind this same password re-entry cost (registerDeviceKey
+                    // enforces it server-side too, never trusting a client-only check),
+                    // that turns every FUTURE device step-up (TransferFlow.kt's
+                    // DeviceStepUpDialog) into a fingerprint/face prompt instead.
+                    val deviceKeyManager = remember { DeviceKeyManager() }
+                    var hasDeviceKey by remember { mutableStateOf(deviceKeyManager.hasKey()) }
+                    var showKeyPasswordPrompt by remember { mutableStateOf(false) }
+                    var keyRegisterError by remember { mutableStateOf<String?>(null) }
+                    var keyRegistering by remember { mutableStateOf(false) }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Outlined.Fingerprint, contentDescription = null, tint = Ids.colors.textPrimary)
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Verify this device with biometrics", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Skip retyping your password for step-up verification", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                        }
+                        Switch(
+                            checked = hasDeviceKey,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    keyRegisterError = null
+                                    showKeyPasswordPrompt = true
+                                } else {
+                                    deviceKeyManager.removeKey()
+                                    hasDeviceKey = false
+                                }
+                            },
+                            colors = SwitchDefaults.colors(checkedTrackColor = Ids.colors.brand),
+                        )
+                    }
+
+                    if (showKeyPasswordPrompt) {
+                        var password by remember { mutableStateOf("") }
+                        AlertDialog(
+                            onDismissRequest = { showKeyPasswordPrompt = false; keyRegisterError = null },
+                            title = { Text("Confirm your password") },
+                            text = {
+                                Column {
+                                    Text(
+                                        "Enter your password once to enable biometric device verification.",
+                                        color = Ids.colors.textTertiary,
+                                        fontSize = 13.sp,
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    OutlinedTextField(
+                                        value = password,
+                                        onValueChange = { password = it },
+                                        visualTransformation = PasswordVisualTransformation(),
+                                        singleLine = true,
+                                        label = { Text("Password") },
+                                    )
+                                    keyRegisterError?.let {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(it, color = Ids.colors.danger, fontSize = 12.sp)
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    enabled = password.isNotBlank() && !keyRegistering,
+                                    onClick = {
+                                        keyRegistering = true
+                                        val publicKey = deviceKeyManager.generateKeyPair()
+                                        viewModel.registerDeviceKey(publicKey, password) { success, error ->
+                                            keyRegistering = false
+                                            if (success) {
+                                                hasDeviceKey = true
+                                                showKeyPasswordPrompt = false
+                                            } else {
+                                                // Don't leave an unregistered key sitting in the Keystore --
+                                                // hasDeviceKey must keep meaning "the server also has this key".
+                                                deviceKeyManager.removeKey()
+                                                keyRegisterError = error
+                                            }
+                                        }
+                                    },
+                                ) { Text(if (keyRegistering) "Verifying…" else "Confirm") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showKeyPasswordPrompt = false; keyRegisterError = null }) { Text("Cancel") }
+                            },
+                        )
+                    }
+
                     androidx.compose.material3.Divider(color = Ids.colors.divider)
                     Spacer(modifier = Modifier.height(16.dp))
                 }

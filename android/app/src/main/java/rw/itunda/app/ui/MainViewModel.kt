@@ -451,6 +451,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { revokeDevice(deviceId) }
     }
 
+    // Real Keystore-signed-challenge device verification, client half (item 246) -- see
+    // DeviceKeyManager's own doc comment. Same password bar as verifyDevice/revokeDevice
+    // above (this is exactly as strong a trust decision, so it must cost exactly as
+    // much): generates the hardware-backed key locally, then registers its public half
+    // server-side in the same call that proves the password.
+    fun registerDeviceKey(publicKeyBase64: String, password: String, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                NetworkClient.authApi.registerDeviceKey(
+                    rw.itunda.core.network.RegisterDeviceKeyRequest(publicKeyBase64, password),
+                )
+                fetchDevices()
+                onResult(true, null)
+            } catch (e: retrofit2.HttpException) {
+                onResult(false, if (e.code() == 400) "Incorrect password." else "Something went wrong. Please try again.")
+            } catch (_: IOException) {
+                onResult(false, "Couldn't reach itunda. Check your connection and try again.")
+            }
+        }
+    }
+
     private fun backendErrorMessage(e: retrofit2.HttpException): String = when (e.code()) {
         422 -> "Insufficient funds for this amount."
         404 -> "That account or goal couldn't be found."

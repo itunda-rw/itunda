@@ -1,16 +1,22 @@
 package rw.itunda.app.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.core.identity.DeviceKeyManager
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.VerifyDeviceRequest
+import rw.itunda.core.network.VerifyDeviceSignatureRequest
 import java.io.IOException
+import java.util.Base64
 
 /**
  * Real device binding step-up, factored out 2026-07-21 after the third copy of this
@@ -37,6 +43,44 @@ fun DeviceStepUpHost(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val activity = LocalContext.current as FragmentActivity
+    val deviceKeyManager = remember { DeviceKeyManager() }
+
+    // Real biometric-first step-up (item 246): if this device already registered a
+    // Keystore key (Settings > Security > "Verify this device with biometrics"), try
+    // that path automatically as soon as this dialog opens -- a challenge + hardware-
+    // bound signature, no password retyping. Any failure (declined, unavailable, no
+    // key) falls through silently to the password field already rendered below, never
+    // blocking the user on a biometric-only path.
+    LaunchedEffect(visible) {
+        if (!deviceKeyManager.hasKey()) return@LaunchedEffect
+        busy = true
+        try {
+            val challenge = NetworkClient.authApi.issueDeviceChallenge().challenge
+            deviceKeyManager.signChallenge(
+                activity = activity,
+                challenge = Base64.getDecoder().decode(challenge),
+                reason = "Verify this device to continue",
+            ) { signatureBase64, _ ->
+                if (signatureBase64 == null) {
+                    busy = false
+                    return@signChallenge
+                }
+                scope.launch {
+                    try {
+                        NetworkClient.authApi.verifyDeviceSignature(VerifyDeviceSignatureRequest(signatureBase64))
+                        busy = false
+                        onVerified()
+                    } catch (_: Exception) {
+                        busy = false
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            busy = false
+        }
+    }
+
     rw.itunda.feature.payments.impl.DeviceStepUpDialog(
         busy = busy,
         error = error,
