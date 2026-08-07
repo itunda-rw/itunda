@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { ApiError, login } from './lib/api';
 
 export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () => void; onCreateAccount: () => void }) {
@@ -7,6 +7,12 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real "Minimum Input" simplicity addition (item 244, docs/DESIGN_REFERENCES.md §11):
+  // a show/hide toggle reduces mistyped-password retries on itunda's single highest-
+  // traffic screen -- a local UI-only affordance, not a security control (the value
+  // never leaves this field either way), so it doesn't trade any real security for the
+  // convenience, matching Section 12's own "security and simplicity together" framing.
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,18 +71,30 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{
-              padding: '12px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--toss-grey-200)',
-              fontSize: '15px',
-            }}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '12px 40px 12px 14px',
+                borderRadius: '10px',
+                border: '1px solid var(--toss-grey-200)',
+                fontSize: '15px',
+                boxSizing: 'border-box',
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--toss-grey-500)' }}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
         </label>
 
         {error && (

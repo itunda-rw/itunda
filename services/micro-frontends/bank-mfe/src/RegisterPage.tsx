@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { ApiError, register } from './lib/api';
 
 // Real sign-up page (2026-08-04) -- closes docs/DESIGN_REFERENCES.md Section 8
@@ -19,6 +19,12 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
   const [showReferralField, setShowReferralField] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real "Minimum Input" simplicity addition (item 244, docs/DESIGN_REFERENCES.md §11),
+  // matching the identical same-day fix on LoginPage.tsx: a local UI-only affordance,
+  // not a security control. Especially valuable here -- a mistyped password at
+  // registration silently locks the account behind a typo neither the user nor
+  // itunda can recover.
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,18 +114,30 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Password</span>
+          <div style={{ position: 'relative' }}>
           <input
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             style={{
-              padding: '12px 14px',
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '12px 40px 12px 14px',
               borderRadius: '10px',
               border: '1px solid var(--toss-grey-200)',
               fontSize: '15px',
             }}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--toss-grey-500)' }}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+          </div>
         </label>
 
         {showReferralField ? (

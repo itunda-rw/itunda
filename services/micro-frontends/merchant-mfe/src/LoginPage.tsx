@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Store } from 'lucide-react';
+import { Eye, EyeOff, Store } from 'lucide-react';
 import { ApiError, login } from './lib/api';
 
 export default function LoginPage({ onLogin }: { onLogin: () => void }) {
@@ -7,6 +7,10 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real "Minimum Input" simplicity addition (item 244, docs/DESIGN_REFERENCES.md §11),
+  // matching the identical same-day fix on bank-mfe's LoginPage.tsx: a local UI-only
+  // affordance, not a security control.
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,18 +67,30 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Password</span>
+          <div style={{ position: 'relative' }}>
           <input
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             style={{
-              padding: '12px 14px',
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '12px 40px 12px 14px',
               borderRadius: '10px',
               border: '1px solid var(--toss-grey-200)',
               fontSize: '15px',
             }}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--toss-grey-500)' }}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+          </div>
         </label>
 
         {error && (
