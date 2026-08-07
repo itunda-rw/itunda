@@ -11,6 +11,10 @@ import CoreNetwork
 struct DeviceStepUpView: View {
     @State private var password = ""
     @FocusState private var passwordFocused: Bool
+    // Real "Minimum Input" simplicity addition (docs/DESIGN_REFERENCES.md §11/§12), matching
+    // the identical same-day fix on the shared IdsTextField's own isSecure toggle: a local
+    // UI-only affordance, not a security control.
+    @State private var passwordVisible = false
     let busy: Bool
     let error: String?
     let onVerify: (String) -> Void
@@ -26,12 +30,25 @@ struct DeviceStepUpView: View {
             // Real "Minimum Input" simplicity fix (docs/DESIGN_REFERENCES.md §11, rule #4),
             // matching the identical same-day fix on Android's DeviceStepUpDialog: this
             // password field is the sole meaningful action on the entire dialog.
-            SecureField("Password", text: $password)
-                .padding(12)
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(10)
+            HStack {
+                Group {
+                    if passwordVisible {
+                        TextField("Password", text: $password)
+                    } else {
+                        SecureField("Password", text: $password)
+                    }
+                }
                 .focused($passwordFocused)
-                .onAppear { passwordFocused = true }
+                Button(action: { passwordVisible.toggle() }) {
+                    Image(systemName: passwordVisible ? "eye.slash" : "eye")
+                        .foregroundColor(.secondary)
+                }
+                .accessibilityLabel(passwordVisible ? "Hide password" : "Show password")
+            }
+            .padding(12)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(10)
+            .onAppear { passwordFocused = true }
             if let error {
                 Text(error).font(.system(size: 12)).foregroundColor(.red)
             }

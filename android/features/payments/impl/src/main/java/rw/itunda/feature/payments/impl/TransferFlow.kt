@@ -12,8 +12,11 @@ import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import rw.itunda.core.designsystem.components.EmptyState
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -384,6 +387,10 @@ fun DeviceStepUpDialog(
         delay(80)
         focusRequester.requestFocus()
     }
+    // Real "Minimum Input" simplicity addition (docs/DESIGN_REFERENCES.md §11/§12), matching
+    // the identical same-day fix on the shared IdsTextField's own isPassword mode: a local
+    // UI-only affordance, not a security control.
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("🔒 Verify this device", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
@@ -395,19 +402,36 @@ fun DeviceStepUpDialog(
                     fontSize = 13.sp,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                BasicTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
-                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp))
-                        .padding(12.dp)
-                        .focusRequester(focusRequester)
-                        .semantics { contentDescription = "Password" }
-                )
+                        .background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp)),
+                    contentAlignment = androidx.compose.ui.Alignment.CenterEnd,
+                ) {
+                    BasicTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
+                        visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp, horizontal = 12.dp)
+                            .padding(end = 36.dp)
+                            .focusRequester(focusRequester)
+                            .semantics { contentDescription = "Password" }
+                    )
+                    IconButton(
+                        onClick = { passwordVisible = !passwordVisible },
+                        modifier = Modifier.padding(end = 4.dp),
+                    ) {
+                        Icon(
+                            if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            tint = Ids.colors.textTertiary,
+                        )
+                    }
+                }
                 if (error != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(error, color = Ids.colors.danger, fontSize = 12.sp)
