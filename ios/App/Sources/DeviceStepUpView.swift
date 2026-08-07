@@ -10,6 +10,7 @@ import CoreNetwork
 /// same copy, same shape (password field, Cancel/Verify).
 struct DeviceStepUpView: View {
     @State private var password = ""
+    @FocusState private var passwordFocused: Bool
     let busy: Bool
     let error: String?
     let onVerify: (String) -> Void
@@ -22,10 +23,15 @@ struct DeviceStepUpView: View {
             Text("This is a new device for your account. Re-enter your password to allow it to send money, then try again.")
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
+            // Real "Minimum Input" simplicity fix (docs/DESIGN_REFERENCES.md §11, rule #4),
+            // matching the identical same-day fix on Android's DeviceStepUpDialog: this
+            // password field is the sole meaningful action on the entire dialog.
             SecureField("Password", text: $password)
                 .padding(12)
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(10)
+                .focused($passwordFocused)
+                .onAppear { passwordFocused = true }
             if let error {
                 Text(error).font(.system(size: 12)).foregroundColor(.red)
             }

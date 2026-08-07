@@ -20,6 +20,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -28,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import rw.itunda.core.designsystem.theme.Ids
 import java.text.NumberFormat
 import java.util.Locale
@@ -370,6 +373,17 @@ fun DeviceStepUpDialog(
     onCancel: () -> Unit,
 ) {
     var password by rememberSaveable { mutableStateOf("") }
+    // Real "Minimum Input" simplicity fix (docs/DESIGN_REFERENCES.md §11, rule #4): this
+    // password field is the sole meaningful action on the entire dialog -- exactly the
+    // "obvious, sole next action on its screen" case that criterion asks for. Matches the
+    // same delay(80) timing fix LoginScreen.kt's own rememberAutoFocus documents ("requesting
+    // focus in the same frame a composable enters can silently no-op if the node hasn't
+    // attached yet").
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(80)
+        focusRequester.requestFocus()
+    }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("🔒 Verify this device", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
@@ -391,6 +405,7 @@ fun DeviceStepUpDialog(
                         .fillMaxWidth()
                         .background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp))
                         .padding(12.dp)
+                        .focusRequester(focusRequester)
                         .semantics { contentDescription = "Password" }
                 )
                 if (error != null) {

@@ -32,8 +32,11 @@ export function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () =>
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
         This is a new device for your account. Re-enter your password to allow it to move money, then try again.
       </p>
+      {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11, rule
+          #4), matching the identical same-day fix on bank-mfe's DeviceStepUpPrompt. */}
       <input
         type="password"
+        autoFocus
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder="Password"
