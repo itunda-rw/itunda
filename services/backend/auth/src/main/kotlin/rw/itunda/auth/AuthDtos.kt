@@ -76,3 +76,14 @@ data class SetBirthDateRequest(val birthDate: LocalDate)
 // Real device binding (2026-07-20) -- see TrustedDevice's own doc comment. Re-proves
 // password ownership on the caller's own current device (resolved from their JWT).
 data class VerifyDeviceRequest(val password: String)
+
+// Real Keystore/Secure-Enclave-signed-challenge device verification (item 246) -- see
+// TrustedDevice.publicKey's own doc comment and DeviceService.registerDeviceKey. Password
+// is required here too (not just a valid JWT): registering a key is exactly as strong a
+// trust decision as VerifyDeviceRequest above, so it must clear the same bar -- a stolen
+// JWT alone must never be enough to plant an attacker-controlled key.
+data class RegisterDeviceKeyRequest(val publicKey: String, val password: String)
+
+data class DeviceChallengeResponse(val challenge: String)
+
+data class VerifyDeviceSignatureRequest(val signature: String)

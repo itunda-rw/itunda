@@ -161,6 +161,44 @@ class AuthController(private val authService: AuthService, private val deviceSer
         return ResponseEntity.ok(mapOf("success" to true))
     }
 
+    // Real Keystore/Secure-Enclave-signed-challenge device verification (item 246) --
+    // see TrustedDevice.publicKey's own doc comment and DeviceService.registerDeviceKey.
+    // Same password re-proof as /devices/verify, plus a client-generated hardware-backed
+    // key -- a one-time cost that makes every FUTURE step-up a biometric prompt instead
+    // of retyping a password. Always the CURRENT device (currentUser.deviceId), never a
+    // client-supplied one.
+    @PostMapping("/devices/register-key")
+    fun registerDeviceKey(
+        @RequestBody request: RegisterDeviceKeyRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "device" to deviceService.registerDeviceKey(currentUser.userId, currentUser.deviceId, request.publicKey, request.password),
+            ),
+        )
+
+    // A fresh single-use nonce for the current device to sign -- the first half of the
+    // biometric step-up path /devices/verify-signature completes.
+    @PostMapping("/devices/challenge")
+    fun issueDeviceChallenge(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "challenge" to deviceService.issueChallenge(currentUser.userId, currentUser.deviceId)))
+
+    // Verifies a signature over the challenge above against this device's registered
+    // key -- the cheap, password-free step-up a biometric prompt drives once a key exists.
+    @PostMapping("/devices/verify-signature")
+    fun verifyDeviceSignature(
+        @RequestBody request: VerifyDeviceSignatureRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "device" to deviceService.verifyDeviceBySignature(currentUser.userId, currentUser.deviceId, request.signature),
+            ),
+        )
+
     @ExceptionHandler(DeviceNotFoundException::class)
     fun handleDeviceNotFound(ex: DeviceNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("DEVICE_NOT_FOUND", ex.message ?: "Not found"))
