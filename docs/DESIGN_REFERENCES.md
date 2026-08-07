@@ -2111,3 +2111,51 @@ pass never found existed as a series, only encountering one entry of it in isola
   watching the video).
 - Face-auth audio feedback and reading-order-before-content (above) need real device testing to
   verify before implementing, not just reading the code.
+
+## 15. Toss Makers Conference 25 (TMC25) — real, distinct from SLASH/Simplicity, not yet researched until now
+
+**Added 2026-08-07.** Earlier SLASH research correctly identified that no "SLASH25" exists and
+that 2025's real event is "Toss Makers Conference 25" (TMC25) — a differently-branded event — but
+stopped there without researching it. This section closes that gap.
+
+### References
+
+| Topic | Source | Finding |
+|---|---|---|
+| What TMC25 is | toss.im/tossfeed/article/tmc25 | Real, public, in-person, July 23–25 2025 at COEX Grand Ballroom. 102 sessions, 126 speakers, 3 tracks (Product Day / Design Day / Engineering Day) — the first conference unifying all Toss "maker" roles, previously split across SLASH (dev) and Simplicity (design). 5 Toss entities participated. Reported attendance varies by source (~2,000–4,500 selected from 10,000–12,000+ applicants; ~90% post-event "would attend again") |
+| Pedometer reward-design experiment | toss.tech/article/42221, Lee Hyun-jung | Real A/B-style finding: Toss tested fixed cash rewards, gift cards, and **lottery-style unpredictable payouts** (100M-won pedometer lottery draws) for a step-count reward feature — the lottery variant sustained engagement better than fixed rewards, with no churn and increased overall platform activity. Stated framework: find the real intersection between business and user experience, don't sacrifice either |
+| High-traffic handling without scaling | toss.tech/article/monitoring-traffic (found searching for the TMC25 "주식모으기" session; likely adjacent content, not confirmed to be the literal talk) | Real techniques from a Toss live-shopping service at hundreds-of-thousands-concurrent scale: cache stratification (shared data to local caches + Redis Pub/Sub invalidation), RedLock + atomic Redis INCREMENT for first-come-first-served caps with async Kafka writes, and **merging 3 separate API calls into 1 endpoint cut peak traffic 50%** |
+
+### itunda's current state (checked, not assumed) — and a real tension worth naming explicitly
+
+- **`StepRewardService.kt`** (`services/backend/rewards`) is itunda's own real, already-shipped
+  pedometer-reward feature, its own doc comment already citing Toss's real step-tier structure
+  (1,000/5,000/10,000 steps) as the model — but using flat, fixed, guaranteed RWF rewards per
+  tier (its own doc comment notes Toss's real KRW point values weren't sourced during that
+  earlier research, so itunda's numbers are its own honest adaptation, not fabricated Toss data).
+  The TMC25 finding above is a real, sourced, directly-relevant design question: would a
+  lottery-style bonus layered on the existing guaranteed tiers better match Toss's own validated
+  result?
+- **Deliberately NOT implemented without a real product decision.** A lottery-style/variable-
+  ratio payout is the same reinforcement mechanism a slot machine uses — it's a genuinely
+  different ethical category from "reward the user more, unconditionally," and sits in real
+  tension with this whole document's own established dark-pattern-prevention discipline (Section
+  11: no manufactured urgency, no manipulative reward loops). Toss's own case study frames it as
+  "found the intersection, didn't sacrifice UX for business" — but that's Toss's own judgment
+  call on their own product, not evidence the same mechanic is automatically the right choice for
+  itunda. This is a real, sourced input worth having, not a decision to make unilaterally by
+  writing code — flagged here for a real product conversation, not implemented.
+- High-traffic-without-scaling techniques (RedLock, cache stratification, Kafka-backed async
+  writes) aren't yet applicable — itunda is single-node at real current scale (confirmed via this
+  session's own fresh `docs/TOSS_PARITY_MATRIX.md` scan). The **API-consolidation** technique
+  (fewer round-trips per screen) is cheap and evergreen regardless of scale, but no specific
+  chatty-multi-call itunda screen was identified this pass — worth a future targeted check, not
+  a blind refactor.
+
+### Unresolved / worth a follow-up
+- The PM/PO "flow not features" session (a third TMC25 "most popular" session named in Korean
+  press alongside the two above) had no recoverable content beyond its title — no attendee blog
+  with real session-by-session detail was found; one promising Brunch review only published its
+  intro/logistics post as of this search, with promised session-content follow-ups not yet live.
+- Whether toss.tech/article/monitoring-traffic is actually the TMC25 "주식모으기" session's real
+  content, or separate-but-topically-adjacent Toss engineering writing, is unconfirmed.
