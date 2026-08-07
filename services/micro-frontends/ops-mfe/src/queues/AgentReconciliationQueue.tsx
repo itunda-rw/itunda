@@ -106,9 +106,9 @@ function ReconciliationReportView() {
     <div>
       <QueueHeader title="Reconciliation report" count={report?.reconciliations.length ?? null} onReload={load} refreshing={refreshing}>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }} />
+          <input type="date" aria-label="From date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }} />
           <span style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>to</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }} />
+          <input type="date" aria-label="To date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }} />
         </div>
       </QueueHeader>
       {error && <QueueError message={error} onRetry={load} />}

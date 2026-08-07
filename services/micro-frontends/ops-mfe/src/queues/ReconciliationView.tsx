@@ -167,6 +167,7 @@ export default function ReconciliationView() {
           <SideToggle side={side} onChange={setSide} />
           <input
             type="date"
+            aria-label="Reconciliation date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}

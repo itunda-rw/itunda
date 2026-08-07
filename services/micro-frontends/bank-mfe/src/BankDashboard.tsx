@@ -4956,7 +4956,10 @@ function NotificationsCard() {
         notifications.slice(0, 10).map((n) => (
           <div
             key={n.id}
+            role="button"
+            tabIndex={0}
             onClick={() => !n.isRead && handleRead(n.id)}
+            onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !n.isRead) { e.preventDefault(); handleRead(n.id); } }}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -6202,7 +6205,10 @@ function StocksView() {
     return (
       <div
         key={stock.id}
+        role="button"
+        tabIndex={0}
         onClick={() => setSelectedStock(stock)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedStock(stock); } }}
         className="toss-card"
         style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', cursor: 'pointer' }}
       >
@@ -10478,7 +10484,14 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }} onClick={onOpen}>
+    <div
+      className="toss-card"
+      style={{ display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{categoryLabel}</span>
         {isMine && (
