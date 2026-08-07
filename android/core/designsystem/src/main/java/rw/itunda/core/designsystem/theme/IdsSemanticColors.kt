@@ -62,7 +62,15 @@ val IdsLightSemanticColors = IdsSemanticColors(
     surfaceSoft = Color(0xFFF2F4F6),
     textPrimary = Color(0xFF191F28),
     textSecondary = Color(0xFF4E5968),
-    textTertiary = Color(0xFF8B95A1),
+    // Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1) -- the
+    // original 0xFF8B95A1 measured 2.76:1 against background and only 3.04:1 against
+    // a white card, both failing 4.5:1 AA-normal-text (the applicable threshold since
+    // this renders small caption/timestamp text). Darkened to 0xFF636E7C (4.70:1 /
+    // 5.18:1), the minimal step toward textSecondary's own hue that clears 4.5:1 on
+    // both real backgrounds. Matches the identical fix applied the same day to web's
+    // --toss-grey-500 and iOS's IDS.Colors.textTertiary. IdsColors.Gray500/Grey500,
+    // the raw primitive used for non-text roles, is deliberately left untouched.
+    textTertiary = Color(0xFF636E7C),
     brand = Color(0xFF3182F6),
     textBrand = Color(0xFF3182F6),
     divider = Color(0xFFE5E8EB),
@@ -94,7 +102,13 @@ val IdsDarkSemanticColors = IdsSemanticColors(
     surfaceSoft = Color(0xFF2C2C35),
     textPrimary = Color(0xFFFFFFFF),
     textSecondary = Color(0xFF989EAA),
-    textTertiary = Color(0xFF575C66),
+    // Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1), computed
+    // against this struct's own real background (0xFF17171C)/surface (0xFF202027) --
+    // the accessibility audit's stored dark-theme ratios predate the 2026-07-21 true-
+    // dark correction and are stale. Original 0xFF575C66 measured 2.66:1 / 2.41:1, both
+    // far below 4.5:1. Lightened to 0xFF848A96 (5.15:1 / 4.67:1). Matches the same-day
+    // fix on web/iOS.
+    textTertiary = Color(0xFF848A96),
     brand = Color(0xFF3485FA),
     textBrand = Color(0xFF3485FA),
     divider = Color(0xFF3C3C47),
