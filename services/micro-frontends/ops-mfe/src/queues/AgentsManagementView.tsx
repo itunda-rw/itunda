@@ -296,7 +296,9 @@ export default function AgentsManagementView() {
       <RegisterAgentForm onRegistered={reload} />
       {error && <QueueError message={error} onRetry={reload} />}
       {!error && items === null && <QueueSkeleton />}
-      {!error && items !== null && items.length === 0 && <QueueEmpty label="No agents registered yet." />}
+      {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): points
+          back to the real registration form right above. */}
+      {!error && items !== null && items.length === 0 && <QueueEmpty label="No agents registered yet — use the form above to register your first one." />}
       {!error && items !== null && items.length > 0 && (
         <div className="toss-card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>

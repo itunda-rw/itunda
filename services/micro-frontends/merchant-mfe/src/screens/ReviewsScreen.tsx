@@ -51,7 +51,10 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
 
       {reviews !== null && reviews.length === 0 && (
         <div className="toss-card">
-          <EmptyState message="No booking reviews yet." />
+          {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
+              about whose gap this is, same reasoning as this screen's own summary
+              paragraph above. */}
+          <EmptyState message="No booking reviews yet — reviews will show up here once customers leave them after a booking." />
         </div>
       )}
 
@@ -106,7 +109,10 @@ function ProductReviewsSection() {
       )}
       {reviews !== null && reviews.length === 0 && (
         <div className="toss-card">
-          <EmptyState message="No product reviews yet." />
+          {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
+              about whose gap this is -- reviews only appear once customers leave
+              them after a purchase. */}
+          <EmptyState message="No product reviews yet — reviews will show up here once customers leave them after a purchase." />
         </div>
       )}
       {reviews?.map((review) => (

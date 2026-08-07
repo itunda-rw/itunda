@@ -242,8 +242,10 @@ function ApiIntegrationCard() {
       )}
       {deliveries === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
-      ) : deliveries.length === 0 ? (
-        <EmptyState message="No webhook deliveries yet." />
+      ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
+      // that this is event-driven, not something to set up further here.
+      deliveries.length === 0 ? (
+        <EmptyState message="No webhook deliveries yet — deliveries will show up here once an event triggers your webhook." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {deliveries.slice(0, 20).map((d) => (
@@ -313,8 +315,10 @@ function DevicesCard() {
       )}
       {devices === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
-      ) : devices.length === 0 ? (
-        <EmptyState message="No devices recorded yet." />
+      ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
+      // that this is auto-recorded on sign-in, not a setup step to take here.
+      devices.length === 0 ? (
+        <EmptyState message="No devices recorded yet — devices will show up here once you sign in." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {devices.map((d) => (

@@ -84,8 +84,11 @@ export default function BusinessAccountScreen() {
 
       <div className="toss-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Business transactions</h3>
-        {transactions.length === 0 ? (
-          <EmptyState message="No business transactions yet." />
+        {// Real copy-voice fix (item 244, round 6 of the empty-state pass): matches
+        // the same pattern as WalletTransactionsView's own already-shipped fix --
+        // transactions are auto-recorded, not user-initiated setup.
+        transactions.length === 0 ? (
+          <EmptyState message="No business transactions yet — once you send or receive money, it'll show up here." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {transactions.map((entry) => (

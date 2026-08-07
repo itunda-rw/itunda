@@ -3934,7 +3934,9 @@ function FloatMarketplaceSection() {
         <button className="toss-btn toss-btn-secondary" disabled={locating} onClick={handleFindNearby} style={{ marginBottom: '8px' }}>
           {locating ? 'Finding…' : 'Find nearby listings'}
         </button>
-        {nearby.length === 0 && <EmptyState message="No nearby listings loaded yet." />}
+        {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): points
+            back to the real "Find nearby listings" button right above. */}
+        {nearby.length === 0 && <EmptyState message='No nearby listings loaded yet — tap "Find nearby listings" above to search.' />}
         {nearby.map((n) => (
           <div key={n.listing.id} style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -4417,8 +4419,12 @@ function SubscriptionsView() {
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{total.toLocaleString()} RWF</h2>
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Detected from your own real payment history, not a linked-card feed.</p>
       </div>
-      {subscriptions.length === 0 ? (
-        <EmptyState message="No recurring payments detected yet." />
+      {// Real copy-voice fix (item 244, round 6 of the empty-state pass): this is
+      // auto-detected from real payment history (see the real-data note above), not
+      // a user-initiated setup step -- copy says so honestly instead of implying a
+      // missing action.
+      subscriptions.length === 0 ? (
+        <EmptyState message="No recurring payments detected yet — once a payment repeats a few times, it'll show up here." />
       ) : (
         subscriptions.map((s) => (
           <div key={`${s.displayName}-${s.cadence}`} className="toss-card" style={{ padding: '16px' }}>
@@ -15689,7 +15695,10 @@ function KnowledgeView() {
       {questions === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
       ) : questions.length === 0 ? (
-        <EmptyState message="No questions yet." />
+        // Real copy-voice fix (item 244, round 6 of the empty-state pass): specific
+        // to which subtab is showing -- BROWSE has the real "Ask a question" form
+        // right above, MINE doesn't (it needs to point back to BROWSE instead).
+        <EmptyState message={subTab === 'BROWSE' ? 'No questions yet — ask one above.' : "You haven't asked anything yet — switch to Browse to ask your first question."} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {questions.map((q) => (

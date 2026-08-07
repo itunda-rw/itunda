@@ -556,7 +556,10 @@ function CatalogView() {
         <div className="toss-card">Loading…</div>
       ) : products.length === 0 ? (
         <div className="toss-card">
-          <EmptyState message="No products yet." />
+          {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): points
+              to the real Catalog tab, which has the actual add-product form -- this
+              REGISTER-mode checkout view has no add mechanism of its own. */}
+          <EmptyState message='No products yet — switch to Catalog above to add your first one.' />
         </div>
       ) : (
         <div className="toss-card" style={{ padding: 0, overflow: 'hidden' }}>

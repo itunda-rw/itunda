@@ -33,8 +33,10 @@ export default function CouponsScreen() {
         )}
         {coupons === null ? (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
-        ) : coupons.length === 0 ? (
-          <EmptyState message="No coupons yet." />
+        ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): points
+        // back to the real CreateCouponCard form right above.
+        coupons.length === 0 ? (
+          <EmptyState message="No coupons yet — use the form above to create your first one." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {coupons.map((coupon) => (

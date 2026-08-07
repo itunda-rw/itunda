@@ -33,8 +33,10 @@ export default function BillingScreen() {
         )}
         {plans === null ? (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
-        ) : plans.length === 0 ? (
-          <EmptyState message="No billing plans yet." />
+        ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): points
+        // back to the real CreatePlanCard form right above.
+        plans.length === 0 ? (
+          <EmptyState message="No billing plans yet — use the form above to create your first one." />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {plans.map((plan) => (
