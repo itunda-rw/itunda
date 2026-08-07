@@ -149,10 +149,10 @@ const styles = StyleSheet.create({
   },
   rowLeft: { flex: 1 },
   provider: { fontSize: 15, fontWeight: '700', color: '#191F28' },
-  due: { fontSize: 12, color: '#8B95A1', marginTop: 2 },
+  due: { fontSize: 12, color: '#636E7C', marginTop: 2 },
   amount: { fontSize: 15, fontWeight: '700', color: '#191F28', marginRight: 12 },
   payButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   payButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
-  closeButtonText: { color: '#8B95A1', fontWeight: '600' },
+  closeButtonText: { color: '#636E7C', fontWeight: '600' },
 });

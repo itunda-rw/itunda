@@ -80,5 +80,5 @@ const styles = StyleSheet.create({
   actionButtonText: { color: '#FFFFFF', fontWeight: '700' },
   result: { marginTop: 8, fontSize: 13, color: '#191F28' },
   closeButton: { paddingVertical: 14, alignItems: 'center' },
-  closeButtonText: { color: '#8B95A1', fontWeight: '600' },
+  closeButtonText: { color: '#636E7C', fontWeight: '600' },
 });

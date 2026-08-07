@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   stepsPanel: { marginBottom: 16 },
   stepsCount: { fontSize: 26, fontWeight: '900', color: '#191F28', marginTop: 4 },
   taskTitle: { fontSize: 15, fontWeight: '700', color: '#191F28' },
-  subtitle: { fontSize: 12, color: '#8B95A1', marginTop: 2 },
+  subtitle: { fontSize: 12, color: '#636E7C', marginTop: 2 },
   // Real fix (2026-07-13): #31CE66 was a one-off green that didn't match itunda's
   // own already-established Toss green500 (#04C065 -- android/.../IdsColors.kt,
   // ios/.../IdsTheme.swift, packages/design-tokens/tokens.css all agree), the exact
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   claimButtonDone: { backgroundColor: '#E5E8EB' },
   claimButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
-  closeButtonText: { color: '#8B95A1', fontWeight: '600' },
+  closeButtonText: { color: '#636E7C', fontWeight: '600' },
   panel: {
     marginTop: 12,
     paddingTop: 12,
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   },
   panelLabel: { fontSize: 12, fontWeight: '700', color: '#4E5968' },
   panelLabelSpaced: { marginTop: 12 },
-  panelHint: { fontSize: 12, color: '#8B95A1', marginTop: 4 },
+  panelHint: { fontSize: 12, color: '#636E7C', marginTop: 4 },
   referralCode: { fontSize: 20, fontWeight: '900', color: '#191F28', marginTop: 4, letterSpacing: 1 },
   panelButton: {
     marginTop: 8,

@@ -195,7 +195,17 @@ const CATEGORY_ICONS: Record<string, string> = {
 // control, not only newly-added elements.
 const MAP_CARD_TEXT = '#191F28';
 const MAP_CARD_TEXT_SECONDARY = '#4E5968';
-const MAP_CARD_TEXT_TERTIARY = '#8B95A1';
+// Real WCAG AA contrast fix (item 244, web accessibility sweep): this was a
+// hardcoded, independent copy of --toss-grey-500's OLD, pre-fix value -- the
+// exact drift class packages/design-tokens/tokens.css's own header comment
+// already warns about (a file keeping its own literal copy instead of the
+// shared token, so it silently misses future fixes). #8B95A1 measured 2.76:1
+// against this map card's background / 3.04:1 against white, both failing
+// 4.5:1 AA-normal-text -- real, live text on 11 real call sites (Recent
+// searches, saved-place captions, route-step distances, etc.), not decorative.
+// Updated to match the same #636E7C already applied to --toss-grey-500 /
+// Android's IdsSemanticColors.textTertiary / iOS's IDS.Colors.textTertiary.
+const MAP_CARD_TEXT_TERTIARY = '#636E7C';
 const MAP_CARD_DIVIDER = '#D1D6DB';
 
 /**

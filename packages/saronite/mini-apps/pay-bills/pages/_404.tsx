@@ -32,5 +32,5 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F4F6' },
   title: { fontSize: 17, fontWeight: '700', color: '#191F28', marginBottom: 16 },
   closeButton: { paddingVertical: 14, paddingHorizontal: 20 },
-  closeButtonText: { color: '#8B95A1', fontWeight: '600' },
+  closeButtonText: { color: '#636E7C', fontWeight: '600' },
 });

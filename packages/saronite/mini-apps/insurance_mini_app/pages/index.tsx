@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 15, color: '#4E5968' },
   error: { color: '#F04452' },
   spacer: { flex: 1 },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#8B95A1', marginBottom: 8, marginTop: 4 },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#636E7C', marginBottom: 8, marginTop: 4 },
   myPoliciesSection: { marginBottom: 16 },
   policyCard: {
     backgroundColor: '#FFFFFF',
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   // applied to packages/design-tokens/tokens.css --toss-green and the Android/iOS
   // semantic `success` token.
   policyStatus: { fontSize: 12, color: '#05804A', fontWeight: '700', textTransform: 'capitalize' },
-  claimStatusPending: { color: '#8B95A1' },
+  claimStatusPending: { color: '#636E7C' },
   claimStatusRejected: { color: '#F04452' },
   fundSection: { marginTop: 10, gap: 8 },
   fundForm: { gap: 8 },
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   fundButtonSecondaryText: { color: '#4E5968', fontWeight: '700', fontSize: 13 },
-  fundProgressLabel: { fontSize: 11, color: '#8B95A1' },
+  fundProgressLabel: { fontSize: 11, color: '#636E7C' },
   fundProgressTrack: {
     height: 6,
     borderRadius: 3,
@@ -669,11 +669,11 @@ const styles = StyleSheet.create({
   rowLeft: { flex: 1 },
   cropCard: { flex: 1 },
   planName: { fontSize: 15, fontWeight: '700', color: '#191F28' },
-  provider: { fontSize: 12, color: '#8B95A1', marginTop: 2 },
+  provider: { fontSize: 12, color: '#636E7C', marginTop: 2 },
   premium: { fontSize: 13, color: '#4E5968', marginTop: 4, fontWeight: '600' },
   enrollButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   enrollButtonDone: { backgroundColor: '#E5E8EB' },
   enrollButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
-  closeButtonText: { color: '#8B95A1', fontWeight: '600' },
+  closeButtonText: { color: '#636E7C', fontWeight: '600' },
 });
