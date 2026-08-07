@@ -1437,6 +1437,9 @@ export default function MapView() {
                                 {BOOKMARK_COLOR_PALETTE.map((c) => (
                                   <button
                                     key={c}
+                                    type="button"
+                                    aria-label={`Color ${c}`}
+                                    aria-pressed={moveFolderColorInput === c}
                                     onClick={() => setMoveFolderColorInput(c)}
                                     style={{
                                       width: '22px', height: '22px', borderRadius: '50%', backgroundColor: c,

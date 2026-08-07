@@ -190,11 +190,11 @@ function RegisterView() {
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => changeQuantity(line.product.id, -1)} style={{ color: 'var(--toss-grey-500)' }}>
+                    <button type="button" aria-label={`Decrease quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, -1)} style={{ color: 'var(--toss-grey-500)' }}>
                       <Minus size={14} />
                     </button>
                     <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '16px', textAlign: 'center' }}>{line.quantity}</span>
-                    <button onClick={() => changeQuantity(line.product.id, 1)} style={{ color: 'var(--toss-grey-500)' }}>
+                    <button type="button" aria-label={`Increase quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, 1)} style={{ color: 'var(--toss-grey-500)' }}>
                       <Plus size={14} />
                     </button>
                   </div>

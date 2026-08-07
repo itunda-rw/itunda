@@ -6810,6 +6810,7 @@ function EmoticonPickerPanel({
                 <button
                   key={e.id}
                   type="button"
+                  aria-label="Send sticker"
                   onClick={() => onSend(e.id)}
                   style={{ border: 'none', background: 'none', padding: '4px', cursor: 'pointer' }}
                 >
@@ -6881,7 +6882,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
       <div className="toss-card" style={{ width: '90%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: '16px', fontWeight: 700 }}>🛍 Emoticon Store</p>
-          <button type="button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '16px' }}>×</button>
+          <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '16px' }}>×</button>
         </div>
         {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
         {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
@@ -7681,7 +7682,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         />
       )}
 
-      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
+      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
       <input
         ref={photoInputRef}
         type="file"
@@ -7735,7 +7736,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           placeholder="Message"
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
+        <button type="submit" aria-label="Send message" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
           <Send size={16} />
         </button>
       </form>
@@ -8192,7 +8193,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       )}
       {emoticonStoreOpen && <EmoticonStoreModal onClose={() => setEmoticonStoreOpen(false)} />}
 
-      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
+      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
       <MentionSuggestions draft={draft} members={members} currentUserId={currentUser?.id} onPick={(name) => setDraft((d) => applyMention(d, name))} />
       <input
         ref={photoInputRef}
@@ -8238,7 +8239,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           placeholder="Message"
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
+        <button type="submit" aria-label="Send message" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
           <Send size={16} />
         </button>
       </form>
@@ -8390,7 +8391,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <p style={{ fontSize: '15px', fontWeight: 700 }}>Thread</p>
-          <button type="button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', color: 'var(--toss-grey-500)' }}>×</button>
+          <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', color: 'var(--toss-grey-500)' }}>×</button>
         </div>
         {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginBottom: '8px' }}>{error}</p>}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}>
