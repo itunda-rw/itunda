@@ -53,7 +53,11 @@ struct RequestMoneyScreenView: View {
                     Text("My requests").font(.headline)
                     if let requests {
                         if requests.isEmpty {
-                            EmptyStateView("No requests yet.")
+                            // Real copy-voice fix (item 244, round 9): matches Android's
+                            // own already-correct RequestMoneyScreen.kt wording exactly
+                            // -- this screen does NOT self-hide when empty, correcting a
+                            // stale claim in docs/COPY_VOICE.md's rule-2 mistake writeup.
+                            EmptyStateView("No requests yet — ask someone to pay you above.")
                         } else {
                             ForEach(requests) { req in
                                 HStack {

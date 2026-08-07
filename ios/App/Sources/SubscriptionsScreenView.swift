@@ -41,7 +41,10 @@ struct SubscriptionsScreenView: View {
                         .background(Color(.secondarySystemBackground)).cornerRadius(IDS.Layout.cardCornerRadius)
 
                         if detected.isEmpty {
-                            EmptyStateView("No recurring payments detected yet.")
+                            // Real copy-voice fix (item 244, round 9): matches web's
+                            // identical fix from round 6 (BankDashboard.tsx) exactly --
+                            // auto-detected, not a user-initiated setup step.
+                            EmptyStateView("No recurring payments detected yet — once a payment repeats a few times, it'll show up here.")
                         } else {
                             ForEach(detected, id: \.displayName) { s in
                                 HStack(alignment: .top) {
