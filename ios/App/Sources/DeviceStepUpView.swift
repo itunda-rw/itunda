@@ -39,9 +39,13 @@ struct DeviceStepUpView: View {
                     }
                 }
                 .focused($passwordFocused)
+                // Real touch-target-size fix (WCAG 2.5.8, this session's own established
+                // convention): a bare Image(systemName:) inside a Button has no automatic
+                // minimum tap area on iOS.
                 Button(action: { passwordVisible.toggle() }) {
                     Image(systemName: passwordVisible ? "eye.slash" : "eye")
                         .foregroundColor(.secondary)
+                        .frame(width: 24, height: 24)
                 }
                 .accessibilityLabel(passwordVisible ? "Hide password" : "Show password")
             }

@@ -162,9 +162,14 @@ public struct IdsTextField: View {
                 }
                 .focused($isFocused)
                 if isSecure {
+                    // Real touch-target-size fix (WCAG 2.5.8, this session's own already-
+                    // established convention): a bare Image(systemName:) inside a Button has
+                    // no automatic minimum tap area on iOS, unlike Android's IconButton --
+                    // explicit frame required.
                     Button(action: { passwordVisible.toggle() }) {
                         Image(systemName: passwordVisible ? "eye.slash" : "eye")
                             .foregroundColor(IDS.Colors.textTertiary)
+                            .frame(width: 24, height: 24)
                     }
                     .accessibilityLabel(passwordVisible ? "Hide password" : "Show password")
                 }
