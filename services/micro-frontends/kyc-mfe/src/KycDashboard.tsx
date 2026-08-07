@@ -131,8 +131,18 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
 
             {error && <p className="kyc-error" role="alert">{error}</p>}
 
+            {/* Real a11y fix (item 244, web accessibility sweep): these two fields
+                relied entirely on placeholder text for their identity -- not a
+                substitute for a real label (WCAG 3.3.2), and placeholder disappears
+                the moment someone starts typing, for every user, not just screen
+                reader users. This is itunda's real KYC identity-document submission
+                flow, not a low-stakes screen. aria-label added (matching this
+                minimalist single-column wizard's existing visual design, which has
+                no room shown for a persistent visible caption above each field) so
+                the field's name survives even after typing starts. */}
             <input
               autoFocus
+              aria-label={documentType === 'NATIONAL_ID' ? '16-digit Rwandan ID number' : 'Passport number'}
               value={documentNumber}
               onChange={(e) => setDocumentNumber(e.target.value)}
               placeholder={documentType === 'NATIONAL_ID' ? '16-digit Rwandan ID number' : 'Passport number'}
@@ -141,6 +151,7 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
               required
             />
             <input
+              aria-label="Document reference (scan/photo reference)"
               value={documentReference}
               onChange={(e) => setDocumentReference(e.target.value)}
               placeholder="Document reference (scan/photo reference)"
