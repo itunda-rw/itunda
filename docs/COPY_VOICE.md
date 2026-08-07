@@ -114,6 +114,20 @@ to no merchant having joined (rule 3), matching the earlier `RestaurantMenuView`
 `ProductCatalogView` precedent exactly. Also caught merchant-mfe's
 `ReviewsScreen.tsx` "No reviews yet." in the same honest-attribution pattern.
 
-~150 lower-traffic `EmptyState` call sites (mostly admin/niche-feature
+**Round 6 (item 244, 2026-08-07, 11 call sites, web-only):** independently
+verified round 5's own sweep for completeness rather than assuming it was
+exhaustive — found 11 more real, live bare strings round 5 didn't reach
+(scoped to Hood features + Eats/Shop): bank-mfe's Float-marketplace "nearby
+listings," recurring-payment detection, and Knowledge Q&A screens; ops-mfe's
+agent registration list; merchant-mfe's booking/product reviews, POS
+product catalog, billing plans, coupons, business transactions, webhook
+deliveries, and devices. Each points back to a real, visible affordance
+where one exists, or honestly attributes system/other-party-driven state
+where none does. Caught a real bug while doing this: several edits placed a
+`{/* JSX comment */}` directly inside a ternary's parenthesized branch — a
+real parse error `vite build` caught (`tsc -b` alone didn't), fixed by
+converting to `//` line comments before shipping.
+
+~140 lower-traffic `EmptyState` call sites (mostly admin/niche-feature
 screens) still remain a deliberately deferred follow-up, not a silent gap —
 apply these same three rules to them as they're picked up.
