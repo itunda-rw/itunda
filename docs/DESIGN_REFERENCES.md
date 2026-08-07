@@ -1619,12 +1619,15 @@ don't translate to itunda's English copy, so scoped out; the universally-applica
    (not removing it outright, since this is a security-sensitive identity-verification step,
    not an ordinary form) -- exactly Toss's own researched, shipped pattern. Fixed on all 3
    platforms. Added numeric-keyboard hints alongside it (rule #3, same research).
-2. **[sourced, real gap, not yet closed]** Add real focus-management support to `IdsTextField`
-   (Android) and wire `@FocusState` for the equivalent iOS field, so the verification-code field
-   (and any future fixed-length-entry field) can auto-focus on mount the way web's now does.
-   Deliberately not done in the same pass as recommendation 1 -- `IdsTextField` is a shared
-   component with many call sites, and a focus-requester API addition deserves its own
-   dedicated verification pass, not a rushed addition alongside an unrelated fix.
+2. **[sourced] Done same day.** Added real focus-management support to `IdsTextField` on both
+   Android (`autoFocus: Boolean = false` param, `FocusRequester` + `LaunchedEffect(Unit) {
+   requestFocus() }`, gated behind the new param so all ~35 existing call sites keep their
+   current behavior unchanged -- verified via a clean compile of `:app`, `:core:designsystem`,
+   `:merchantapp`, `:riderapp`, `:agentapp`) and iOS's shared `IdsTextField` component
+   (`autoFocus: Bool = false`, `@FocusState` + `.onAppear`). Wired both to the verification-code
+   field item 245 already fixed, matching web's autoFocus. iOS's `VerificationRow` (in
+   `BenefitsShopAllScreens.swift`) uses a raw `TextField`, not the shared component, so it got
+   its own local `@FocusState` + `.onAppear` instead of the new shared param.
 3. **[sourced] Done same day -- clean result, not a skipped check.** Ran the systematic
    dark-pattern sweep against all 3 checkable Apps-in-Toss rules, across all 3 platforms:
    - **Auto-shown-on-entry** (a modal/sheet visible without a real user action triggering
