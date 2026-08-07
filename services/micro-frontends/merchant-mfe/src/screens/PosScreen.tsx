@@ -775,7 +775,7 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
                 placeholder="+RWF" style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
               />
               {choices.length > 2 && (
-                <button type="button" onClick={() => removeChoiceRow(i)} style={{ color: 'var(--toss-grey-500)' }} aria-label="Remove choice">
+                <button type="button" onClick={() => removeChoiceRow(i)} style={{ color: 'var(--toss-grey-500)', padding: '5px' }} aria-label="Remove choice">
                   <Minus size={14} />
                 </button>
               )}
@@ -895,7 +895,7 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
                 placeholder="Unit price (RWF)"
                 style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
               />
-              <button type="button" onClick={() => removeTierRow(i)} style={{ color: 'var(--toss-grey-500)' }} aria-label="Remove tier">
+              <button type="button" onClick={() => removeTierRow(i)} style={{ color: 'var(--toss-grey-500)', padding: '5px' }} aria-label="Remove tier">
                 <Minus size={14} />
               </button>
             </div>

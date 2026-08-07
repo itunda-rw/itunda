@@ -6034,10 +6034,10 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   return (
     <div className="toss-card" style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-        <button onClick={onClose} style={{ color: 'var(--toss-grey-500)', display: 'flex' }} aria-label="Back">
+        <button onClick={onClose} style={{ color: 'var(--toss-grey-500)', display: 'flex', padding: '4px' }} aria-label="Back">
           <ArrowLeft size={18} />
         </button>
-        <button onClick={handleToggleWatch} disabled={watchBusy} style={{ color: watching ? '#FFC107' : 'var(--toss-grey-300)', display: 'flex' }} aria-label="Toggle watch">
+        <button onClick={handleToggleWatch} disabled={watchBusy} style={{ color: watching ? '#FFC107' : 'var(--toss-grey-300)', display: 'flex', padding: '4px' }} aria-label="Toggle watch">
           <Star size={20} fill={watching ? '#FFC107' : 'none'} />
         </button>
       </div>
@@ -6528,7 +6528,7 @@ function MessageReactions({
         <button
           onClick={() => setPickerOpen((v) => !v)}
           aria-label="Add reaction"
-          style={{ display: 'flex', padding: '2px 6px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', color: 'var(--toss-grey-500)' }}
+          style={{ display: 'flex', padding: '6px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', color: 'var(--toss-grey-500)' }}
         >
           <SmilePlus size={14} />
         </button>
@@ -7461,7 +7461,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to conversations">
           <ArrowLeft size={20} />
         </button>
         <div>
@@ -8063,7 +8063,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
+          <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to conversations">
             <ArrowLeft size={20} />
           </button>
           <div>
@@ -8072,13 +8072,13 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           </div>
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Shared photos">
+          <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Shared photos">
             <ImageIcon size={20} />
           </button>
-          <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Manage members">
+          <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Manage members">
             <Users size={20} />
           </button>
-          <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Split a bill">
+          <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Split a bill">
             <Receipt size={20} />
           </button>
         </div>
@@ -8698,7 +8698,7 @@ function GroupSplitBillsView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to group">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to group">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Split bills</h3>
@@ -8916,7 +8916,7 @@ function GroupManageMembersView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to group">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to group">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Manage members</h3>
@@ -12974,7 +12974,7 @@ function MenuView({
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to menu">
+          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to menu">
             <ArrowLeft size={20} />
           </button>
           <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Checkout</h3>
@@ -13042,7 +13042,7 @@ function MenuView({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to restaurants">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to restaurants">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{menu.businessName}</h3>
@@ -16066,7 +16066,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to menu">
+          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to menu">
             <ArrowLeft size={20} />
           </button>
           <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Checkout</h3>
@@ -16110,7 +16110,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to restaurants">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to restaurants">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{menu.businessName}</h3>
@@ -17347,7 +17347,7 @@ function ProductDetailView({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to catalog">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to catalog">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{merchant.businessName}</h3>
@@ -17512,7 +17512,7 @@ function ProductCatalogView({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to merchants">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to merchants">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700, flex: 1 }}>{catalog.businessName}</h3>
@@ -17743,7 +17743,7 @@ function MultiCartView({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to shop">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to shop">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Your cart</h3>
@@ -20242,7 +20242,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         <h2 style={{ color: 'var(--toss-grey-900)', margin: 0, fontSize: '24px', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {user && <span style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{user.firstName}</span>}
-          <button onClick={handleLogout} style={{ color: 'var(--toss-grey-500)', display: 'flex' }} aria-label="Sign out">
+          <button onClick={handleLogout} style={{ color: 'var(--toss-grey-500)', display: 'flex', padding: '4px' }} aria-label="Sign out">
             <LogOut size={18} />
           </button>
         </div>
