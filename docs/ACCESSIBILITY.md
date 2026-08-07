@@ -392,7 +392,18 @@ neither click-to-focus nor a screen reader's field name worked. Fixed with
 `useId()` wiring `htmlFor`/`id`. Found one related, different-class bug in the same
 pass: a bill-split "Ladder game" toggle was a bare `<label onClick=...>` with no
 associated control at all — not in the tab order, not activatable via Enter/Space.
-Changed to a real `<button type="button">`.
+Changed to a real `<button type="button">`. A follow-up check of `ops-mfe`'s own
+`<label>`-without-`htmlFor` hits confirmed those match the same correct wrapping
+pattern — no bug. `kyc-mfe`, `pay-checkout`, and `host-app` have no `<label>` at
+all; checking why surfaced a third, more consequential real bug: `kyc-mfe`'s real
+KYC identity-document submission form (`KycDashboard.tsx`) had its document-number
+and document-reference fields relying entirely on `placeholder` text for their
+name — not a substitute for a real label (WCAG 3.3.2), and it disappears the
+moment anyone starts typing, for every user, not just screen-reader users. This is
+itunda's real identity-verification submission flow, not a low-stakes form. Fixed
+with `aria-label` (this minimalist single-column wizard has no room shown in its
+CSS for a persistent visible caption per field, so `aria-label` is the fix that
+doesn't require a visual redesign).
 
 **Icon-only interactive elements without an accessible name** — the same category
 as Android/iOS §2 above, applied to web for the first time. Repo-wide sweep of
