@@ -1619,6 +1619,15 @@ don't translate to itunda's English copy, so scoped out; the universally-applica
    (not removing it outright, since this is a security-sensitive identity-verification step,
    not an ordinary form) -- exactly Toss's own researched, shipped pattern. Fixed on all 3
    platforms. Added numeric-keyboard hints alongside it (rule #3, same research).
+   **Deliberately not extended further, checked and confirmed same day**: bank-mfe's other
+   code-entry fields (P2P "Pay a request code", agent "Customer's withdrawal code", merchant
+   "Payment code") all either have no confirmed fixed length (unlike the OTP's
+   backend-guaranteed always-6-digits) or directly trigger real money movement with no
+   separate preview/confirm step in the common case (`PayByCodeCard`'s own `handleSubmit`
+   calls `payDirect()` immediately whenever no coupon applies) -- auto-submitting any of these
+   on code-length-reached would risk firing a real payment before the user intends to. The
+   explicit tap on these fields is a deliberate safety gate, not removable friction; applying
+   rule #2 here would have been a misapplication of the research, not a genuine simplification.
 2. **[sourced] Done same day.** Added real focus-management support to `IdsTextField` on both
    Android (`autoFocus: Boolean = false` param, `FocusRequester` + `LaunchedEffect(Unit) {
    requestFocus() }`, gated behind the new param so all ~35 existing call sites keep their
