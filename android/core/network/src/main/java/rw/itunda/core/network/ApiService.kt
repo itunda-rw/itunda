@@ -4538,6 +4538,21 @@ fun apiErrorCode(e: retrofit2.HttpException): String? = try {
     null
 }
 
+// Same pattern as apiErrorCode above, for the `message` field of core.web.ApiError --
+// found missing 2026-08-08 (Toss Simplicity21 "adding innovation upon innovation"
+// research pass, checking whether P2P transfer's own mature/assumed-solid error
+// handling actually was): bank-mfe's ApiError already parses and shows this real
+// backend text (lib/api.ts), but MainViewModel.backendErrorMessage's status-code-only
+// switch meant a wallet-frozen/family-spend-limit/self-payment/rate-limit decline all
+// fell through to a generic "Something went wrong" on Android (and iOS, mirrored) --
+// distinct backend errors the sender could otherwise never tell apart.
+fun apiErrorMessage(e: retrofit2.HttpException): String? = try {
+    val body = e.response()?.errorBody()?.string() ?: return null
+    com.google.gson.JsonParser.parseString(body).asJsonObject.get("message")?.asString
+} catch (_: Exception) {
+    null
+}
+
 // Network Client Singleton
 object NetworkClient {
     // Was hardcoded to "http://10.0.2.2:8080/" -- the emulator-only loopback alias, at

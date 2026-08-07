@@ -180,6 +180,8 @@ private struct PayRequestCard: View {
             onPaid()
         } catch NetworkError.deviceNotVerified {
             needsDeviceVerification = true
+        } catch let NetworkError.httpErrorWithMessage(_, message) {
+            self.error = message ?? "Could not pay this request."
         } catch {
             self.error = "Could not pay this request."
         }

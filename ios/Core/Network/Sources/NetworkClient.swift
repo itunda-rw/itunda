@@ -351,6 +351,19 @@ public enum NetworkError: Error {
     // deviceNotVerified/miniWallet* above. Thrown only from getAgentTill's own
     // dedicated request method below, which decodes the real ApiError.code on a 403.
     case agentOperatorNotAuthorized
+    // Real gap found 2026-08-08 (Toss Simplicity21 "adding innovation upon innovation"
+    // research pass, auditing whether P2P transfer's mature/assumed-solid error handling
+    // actually was): self-payment/wallet-frozen/family-spend-limit/rate-limit declines
+    // all fell through to httpError's bare status code, so TransferViewModel showed a
+    // generic "Something went wrong" for all of them even though the backend already
+    // sends specific text per decline reason -- bank-mfe's ApiError already surfaced
+    // that real text (Android had the identical gap, fixed same day via
+    // apiErrorMessage). Purely additive, same rationale as the cases above; thrown only
+    // from postP2p below (sendDirect/payP2pRequest), not from the shared
+    // authenticatedPost every other endpoint uses -- widening httpError itself would be
+    // exactly the "broader networking-layer change" TalkScreen.swift's own errorMessage
+    // doc comment already named and deliberately deferred.
+    case httpErrorWithMessage(statusCode: Int, message: String?)
 }
 
 /// Real login/session flow (2026-07-11) -- this app previously had no networking
@@ -1809,9 +1822,41 @@ extension NetworkClient {
         }
         return try decoder.decode(Response.self, from: data)
     }
+
+    // Dedicated request path for sendDirect/payP2pRequest only -- see
+    // NetworkError.httpErrorWithMessage's own doc comment for why this doesn't reuse
+    // authenticatedPost. Mirrors postMiniWallet's own precedent (a dedicated function
+    // scoped to the one flow that needs to decode extra fields) rather than widening a
+    // shared helper every other endpoint also calls.
+    fileprivate func postP2p<Body: Encodable, Response: Decodable>(
+        _ path: String,
+        body: Body,
+        idempotencyKey: String
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 403,
+               let errorBody = try? decoder.decode(ApiErrorBody.self, from: data),
+               errorBody.code == "DEVICE_NOT_VERIFIED" {
+                throw NetworkError.deviceNotVerified
+            }
+            let message = try? decoder.decode(ApiErrorBody.self, from: data).message
+            throw NetworkError.httpErrorWithMessage(statusCode: httpResponse.statusCode, message: message ?? nil)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
 }
 
-private struct ApiErrorBody: Decodable { let code: String? }
+private struct ApiErrorBody: Decodable { let code: String?; let message: String? }
 
 // Mirrors services/backend/wallet's WalletController.kt/TransferQuote.kt and
 // services/backend/savings's SavingsController.kt exactly (2026-07-12) -- wires
@@ -2086,7 +2131,7 @@ extension NetworkClient {
     // comment for why this replaces quoteTransfer/confirmTransfer above in
     // TransferViewModel.sendTransfer.
     public func sendDirect(recipient: String, amount: Double) async throws -> SendDirectP2pResponse {
-        try await authenticatedPost(
+        try await postP2p(
             "api/v1/p2p/send",
             body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: ""),
             idempotencyKey: UUID().uuidString
@@ -2100,7 +2145,7 @@ extension NetworkClient {
     public func getMyP2pRequests() async throws -> GetP2pRequestsResponse { try await get("api/v1/p2p/requests") }
 
     public func payP2pRequest(requestId: String) async throws -> PayP2pRequestResponse {
-        try await authenticatedPost("api/v1/p2p/pay/\(requestId)", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+        try await postP2p("api/v1/p2p/pay/\(requestId)", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     // Real Toss Bank 자동이체 (auto-transfer) equivalent (2026-07-24 port) -- see

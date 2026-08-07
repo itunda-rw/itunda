@@ -447,7 +447,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
           <span style={{ fontWeight: 700 }}>Amount: {Number(amount).toLocaleString()} RWF</span>
         </div>
         {scamCheck?.warn && (
-          <div style={{ backgroundColor: '#FDECEA', border: '1px solid var(--toss-red)', borderRadius: '8px', padding: '10px 12px' }}>
+          <div style={{ backgroundColor: 'var(--toss-red-light)', border: '1px solid var(--toss-red)', borderRadius: '8px', padding: '10px 12px' }}>
             <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-red)' }}>Caution needed before this transfer</p>
             <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '2px' }}>
               This recipient has been reported by {scamCheck.reportCount} other itunda users. Double-check before sending.
@@ -14095,7 +14095,7 @@ function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?: React.
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
           color: trip.status === 'CANCELLED' ? 'var(--toss-red)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
-          backgroundColor: trip.status === 'CANCELLED' ? '#FDECEA' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
+          backgroundColor: trip.status === 'CANCELLED' ? 'var(--toss-red-light)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
         }}>
           {trip.status === 'REQUESTED' && trip.scheduledFor ? 'Scheduled' : RIDE_STATUS_LABEL[trip.status]}
         </span>
@@ -14641,7 +14641,7 @@ function DesignatedDriverTripCard({ trip, action }: { trip: DesignatedDriverTrip
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
           color: trip.status === 'CANCELLED' ? 'var(--toss-red)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
-          backgroundColor: trip.status === 'CANCELLED' ? '#FDECEA' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
+          backgroundColor: trip.status === 'CANCELLED' ? 'var(--toss-red-light)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
         }}>
           {DESIGNATED_DRIVER_STATUS_LABEL[trip.status]}
         </span>

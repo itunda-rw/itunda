@@ -2282,8 +2282,9 @@ real bug, not a design nitpick:
    link `onClick`, iOS `OverviewLoansCreditScoreScreens.swift`'s `link()`.
 3. Verified: backend `:overview:compileKotlin`/`:overview:test` (existing `LinkedAccountServiceTest`
    suite, service logic itself unchanged) green; bank-mfe `tsc -b` green; Android
-   `:app:compileDebugKotlin` green. iOS reviewed by hand against the existing pattern (no local Swift
-   toolchain in this environment).
+   `:app:compileDebugKotlin` green. iOS reviewed by hand against the existing pattern. **Correction,
+   Section 18**: a local Swift toolchain (`swift`/`swiftc`/`xcodebuild`) is actually present in this
+   environment — assumed absent here without checking; the sixth pass verified this and used it.
 
 ### Recommendations (ranked)
 
@@ -2318,3 +2319,98 @@ real bug, not a design nitpick:
   (account-link form doesn't pre-fill the user's own known phone number for MoMo providers; no
   review/confirm step before submit) are real but smaller UX gaps, not bugs — left as documented,
   not fixed, to keep this pass focused on the correctness issue.
+
+## 18. Simplicity — sixth deep-dive pass (2026-08-08): full session-list recovery, and a real cross-platform error-message gap in P2P transfer
+
+**Added 2026-08-08**, a third bare "simplicity" directive. Followed Section 17's own recommended
+next step: try the direct-listing-page-fetch method (proven on Simplicity21/24) against
+Simplicity23/25's listing pages too, and fill in Simplicity21's remaining sessions.
+
+### References
+
+| Topic | Source | Finding |
+|---|---|---|
+| Simplicity23 — all 21 sessions | toss.im/simplicity-23 (direct fetch, worked first try) | Full 5-track list recovered (previously only 4 of 21 titles known via third-party recap). Most itunda-relevant: **#20 "완성 없는 이야기, 가입 과정 개선"** (An Unfinished Story: Improving the Signup Process) — checked against itunda's own onboarding/KYC flow, see below |
+| Simplicity21 — 13 more sessions, 18 of ~19 total | toss.im/simplicity-21/sessions/{day}-{n} (same pattern Section 17 used) | Confirmed day boundaries (day 1: 4 sessions, day 2: 5, day 3: 4, day 4: 5). Highest-relevance new titles: **2-3 "혁신에 혁신 더하기"** (adding innovation upon innovation) — keeping the *already-mature, already-shipped* money-transfer feature from stagnating, the closest topical match of this whole thread to an itunda flagship feature, checked below; 2-2 (credit-card application friction), 2-4 (new loan experience, addressing user hesitation), 4-2 (making the start of investing simple), 4-5 (making insurance intuitive), 1-4 (merchant revenue-ledger dashboard) — all real, concrete leads, only titles recovered, not yet checked against itunda's equivalent features |
+| Simplicity25 listing page | toss.im/simplicity-25, toss.im/simplicity25 | Both real 404s, unlike 21/23/24 — genuinely not recoverable via this method this pass (slug may differ, untried) |
+
+### itunda's current state (checked, not assumed) — one flow deep-audited, real gap found
+
+Six new concrete leads came out of this pass (signup/KYC, transfer, credit-card application, loans,
+investing, insurance). Rather than shallow-check all six, deep-audited the one flagged as the
+closest topical match to an itunda flagship feature: **P2P/bank transfer** (`P2pService.sendDirect`),
+the single most mature, most-used money-moving flow in the app — exactly the kind of "assumed
+solid because it's old" code this thread has repeatedly found real drift in before (account
+numbers, design tokens, account linking).
+
+- **Silent-failure risk: genuinely clean.** Every real decline path (recipient-not-found,
+  insufficient-funds, rate-limit, self-payment, wallet-frozen, family-spend-limit, idempotency
+  conflict) throws a real, distinct exception mapped to a real HTTP error — no account-linking-shaped
+  bug here. `IdempotencyService.replayOrExecute` releases the claim and rethrows on any exception,
+  never persists a fabricated success. One honest caveat named, not a bug: `FraudRuleEngine.evaluate`
+  is called but its result is discarded by design (documented as "review-only, never blocking") — a
+  transfer that trips HIGH_VALUE/VELOCITY/NEW_RECIPIENT completes with zero visible signal to the
+  sender. Real, but a deliberate existing design decision, not a regression to fix here.
+- **Idempotency-Key: clean, consistent on all 3 clients.** No gap.
+- **Real cross-platform inconsistency found**: web (`bank-mfe/lib/api.ts`) already parses and shows
+  the backend's real `ApiError.message` for every decline reason. Android's `MainViewModel.
+  backendErrorMessage` and iOS's `TransferViewModel.errorMessage` are hand-mirrored implementations
+  that switched on HTTP status code alone with 4 cases (422/404/409/502), silently collapsing
+  self-payment (400), wallet-frozen (403), family-spend-limit (403), and rate-limit (429) into one
+  generic "Something went wrong" — so a rate-limited sender or a spend-limit-capped family member saw
+  specific, real text on web and a meaningless fallback on Android/iOS.
+- **One real, minor token gap**: `BankDashboard.tsx`'s scam-warning tint box hardcoded `#FDECEA`
+  directly (plus 2 more instances styling cancelled-ride badges) — no danger-tint semantic existed on
+  web at all, while Android already had one (`IdsColors.dangerTint`, `IdsSemanticColors.kt`).
+
+### Fixed same day
+
+1. Android: added `apiErrorMessage(e)` (`core/network/ApiService.kt`, alongside the existing
+   `apiErrorCode`/`isDeviceNotVerifiedError` helpers) to decode the real `ApiError.message` field;
+   `MainViewModel.backendErrorMessage` now prefers it, falling back to the per-status defaults only
+   when the body doesn't parse. This also improved `depositToSavingsGoal`/`claimInterest`'s error
+   text as a side effect, since they share the same private function.
+2. iOS: added a new, purely additive `NetworkError.httpErrorWithMessage(statusCode:message:)` case
+   and a dedicated `postP2p` request function (mirroring the existing `postMiniWallet` precedent —
+   duplicate the small request-building path for the one flow that needs extra decoding, rather than
+   widening the shared `authenticatedPost` every other endpoint also throws through, which 60+ call
+   sites pattern-match on and which `TalkScreen.swift`'s own doc comment already named as a
+   deliberately-deferred "broader networking-layer change"). `sendDirect`/`payP2pRequest` now go
+   through `postP2p`; `TransferViewModel.sendTransfer` and `RequestMoneyScreen.pay()` both updated to
+   surface the real message when present.
+3. Web: added `--toss-red-light` to `packages/design-tokens/tokens.css` (light `#ffeceb` / dark
+   `#3a1418`, matching Android's real `dangerTint` values exactly), replacing all 3 hardcoded
+   `#FDECEA` occurrences in `BankDashboard.tsx`.
+4. Verified: `:overview` unaffected (no backend changes this pass); Android `:app:compileDebugKotlin`
+   green; bank-mfe `tsc -b` green; iOS — **actually build-verified this time**, not just reviewed by
+   hand: `xcodebuild -scheme CoreNetwork` (contains `NetworkClient.swift`) built clean standalone,
+   and `xcodebuild -scheme ItundaApp` reached and compiled `TransferViewModel.swift`/
+   `RequestMoneyScreen.swift`/`NetworkClient.swift` with zero errors attributed to any of them — the
+   scheme's overall build failure is pre-existing, unrelated CocoaPods module-resolution gaps
+   (MapLibre/BrickModule/React not linked in this environment). See the correction on Section 17's
+   own "Verified" line: a Swift toolchain is present here, and this pass used it.
+
+### Recommendations (ranked)
+
+1. **[sourced, real, done same day]** Cross-platform transfer-error-message gap — fixed, see above.
+2. **[sourced, real, done same day]** Missing web danger-tint token — fixed, see above.
+3. **[sourced, real, informational leads, not yet checked]** 5 more leads from this pass — signup/KYC
+   (Simplicity23 #20), credit-card application (21 2-2), loans (21 2-4), investing (21 4-2), insurance
+   (21 4-5), merchant revenue dashboard (21 1-4) — each a title-only lead against a real itunda
+   feature, same shape as the transfer/account-linking leads that already paid off twice this thread.
+   Worth the same deep-audit treatment a future pass, one at a time, not six-at-once.
+4. **[sourced, informational only]** The other ~30 Simplicity21/23 session titles now recovered —
+   B2B/internal-tooling/branding/research-methodology, no itunda action implied.
+
+### Unresolved / worth a follow-up
+- The 5 leads named in Recommendation 3 — real, sourced, not yet checked.
+- Simplicity25's listing page: genuine 404 on both slug variants tried — worth a different guess at
+  the URL slug, or accepting this one may not be recoverable this way.
+- Simplicity24's 10 of 11 session *contents* and Simplicity21 2-1's content: still video-gated,
+  unrecovered after 6 passes total.
+- **Now-corrected environment fact for future passes**: this environment DOES have a working Swift
+  toolchain (`swift`/`swiftc`/`xcodebuild`, real Xcode at `/Applications/Xcode.app`) and a real
+  `Itunda.xcodeproj` with per-module schemes (`CoreNetwork`, `CoreDesignSystem`, etc.) that build
+  standalone even when the full `ItundaApp` scheme can't link due to missing CocoaPods deps — build
+  the smallest scheme that contains the touched file instead of assuming iOS changes can only be
+  reviewed by hand.

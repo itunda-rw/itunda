@@ -472,13 +472,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun backendErrorMessage(e: retrofit2.HttpException): String = when (e.code()) {
-        422 -> "Insufficient funds for this amount."
-        404 -> "That account or goal couldn't be found."
-        409 -> "This request is already being processed."
-        502 -> "The payment provider declined this transaction."
-        else -> "Something went wrong. Please try again."
-    }
+    // Real gap found 2026-08-08 (Toss Simplicity21 research): this used to switch on
+    // HTTP status code alone, a 4-case map that fell through to a generic message for
+    // every other real decline (self-payment, wallet-frozen, family spend limit, rate
+    // limit) even though the backend already sends specific text for each -- bank-mfe's
+    // ApiError already showed that real text, this didn't. Now prefers the real backend
+    // message (rw.itunda.core.network.apiErrorMessage) and only falls back to a
+    // per-status default when the body genuinely didn't parse.
+    private fun backendErrorMessage(e: retrofit2.HttpException): String =
+        rw.itunda.core.network.apiErrorMessage(e) ?: when (e.code()) {
+            422 -> "Insufficient funds for this amount."
+            404 -> "That account or goal couldn't be found."
+            409 -> "This request is already being processed."
+            502 -> "The payment provider declined this transaction."
+            else -> "Something went wrong. Please try again."
+        }
 
     /**
      * Real phone-vs-account-number disambiguation for the numeric-keypad recipient

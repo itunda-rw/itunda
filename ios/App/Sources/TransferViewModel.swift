@@ -38,8 +38,8 @@ final class TransferViewModel: ObservableObject {
             return .success(response.message)
         } catch NetworkError.deviceNotVerified {
             return .deviceNotVerified
-        } catch let NetworkError.httpError(statusCode) {
-            return .failure(Self.errorMessage(statusCode))
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            return .failure(message ?? Self.errorMessage(statusCode))
         } catch {
             return .failure("Couldn't reach itunda. Check your connection and try again.")
         }
