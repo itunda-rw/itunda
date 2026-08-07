@@ -112,11 +112,20 @@ class GroupAccountController(
     @ExceptionHandler(GroupAccountNotFoundException::class)
     fun handleNotFound(ex: GroupAccountNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROUP_ACCOUNT_NOT_FOUND", ex.message ?: "Not found"))
 
+    // Real fix (IDOR audit, docs/DESIGN_REFERENCES.md-adjacent sweep): these used to
+    // real-403, unlike every other real resource-ownership check in this codebase
+    // (e.g. GiftVoucherService.getVoucher's own doc comment: "a stranger gets a real
+    // 404, same IDOR discipline"). GroupAccountService.withdraw/inviteMember/setDues/
+    // requestDues only ever check account.ownerId -- never group MEMBERSHIP first --
+    // so a complete stranger (never a member) hitting any of those with someone else's
+    // real groupAccountId could distinguish "exists, not yours" (403) from "doesn't
+    // exist" (404), a real existence-oracle this codebase's own established convention
+    // exists specifically to avoid.
     @ExceptionHandler(GroupAccountNotOwnerException::class)
-    fun handleNotOwner(ex: GroupAccountNotOwnerException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("GROUP_ACCOUNT_NOT_OWNER", ex.message ?: "Forbidden"))
+    fun handleNotOwner(ex: GroupAccountNotOwnerException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROUP_ACCOUNT_NOT_OWNER", ex.message ?: "Not found"))
 
     @ExceptionHandler(GroupAccountNotMemberException::class)
-    fun handleNotMember(ex: GroupAccountNotMemberException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("GROUP_ACCOUNT_NOT_MEMBER", ex.message ?: "Forbidden"))
+    fun handleNotMember(ex: GroupAccountNotMemberException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GROUP_ACCOUNT_NOT_MEMBER", ex.message ?: "Not found"))
 
     @ExceptionHandler(GroupAccountRecipientNotFoundException::class)
     fun handleRecipientNotFound(ex: GroupAccountRecipientNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RECIPIENT_NOT_FOUND", ex.message ?: "Not found"))
