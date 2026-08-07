@@ -375,16 +375,60 @@ every tab — the pattern (tap the real tab bar, assert accessibility-tree
 position matches visual position) is proven and directly reusable for any
 future screen.
 
+## 7. Web micro-frontends (item 244, 2026-08-07 — first audit, previously zero coverage)
+
+Every section above (1-6) covered only Android and iOS. `services/micro-frontends/`
+(bank-mfe, merchant-mfe, ops-mfe, kyc-mfe, pay-checkout, host-app) — real, live,
+user-facing web surfaces — had never been accessibility-audited at all until this
+pass. Two sweeps, both real bugs found and fixed, not a clean-bill-of-health report:
+
+**Form labels.** `<label>` without `htmlFor`/`id` isn't automatically a bug — the
+dominant, correct pattern across this codebase (`LoginPage.tsx`, `RegisterPage.tsx`,
+most `merchant-mfe/screens/*.tsx`) wraps the `<input>` as the label's own descendant,
+which needs no `htmlFor` at all. Found one real exception: `PlaceSearchInput`
+(`bank-mfe/BankDashboard.tsx`, used 5× for ride/rental pickup+dropoff fields) had its
+`<label>` as a plain *sibling* of `<input>`, with no association of either kind —
+neither click-to-focus nor a screen reader's field name worked. Fixed with
+`useId()` wiring `htmlFor`/`id`. Found one related, different-class bug in the same
+pass: a bill-split "Ladder game" toggle was a bare `<label onClick=...>` with no
+associated control at all — not in the tab order, not activatable via Enter/Space.
+Changed to a real `<button type="button">`.
+
+**Icon-only interactive elements without an accessible name** — the same category
+as Android/iOS §2 above, applied to web for the first time. Repo-wide sweep of
+every `<button>` (707 across `services/micro-frontends/*/src/`, only 37
+pre-existing `aria-label` uses) found 10 real violations, all fixed with a
+descriptive `aria-label` (using real per-item data for the label wherever
+available, e.g. `` `Decrease quantity of ${line.product.name}` ``, rather than a
+generic string): `BankDashboard.tsx`'s emoticon-store sticker picker, both 1:1/
+group chat Send buttons, both cancel-reply "×" buttons, both modal-close "×"
+buttons; `MapView.tsx`'s bookmark-folder color-swatch picker (also missing
+`type="button"` — a real bug risk inside a form, and now carries `aria-pressed`
+for the selected swatch); `merchant-mfe/PosScreen.tsx`'s cart quantity +/-
+buttons. `ops-mfe`, `kyc-mfe`, `pay-checkout`, and `host-app` had no genuine
+icon-only violations in this pass.
+
+Verified: `bank-mfe` and `merchant-mfe` both `tsc -b` + `vite build` clean on
+every change. **Not yet audited on web:** color contrast (the token-level fixes in
+§1 above apply automatically since every micro-frontend imports the same
+`packages/design-tokens/tokens.css`, but no independent web-specific contrast pass
+has been run), touch target size, Dynamic Type/OS text-zoom equivalent, and focus
+order — this section closes the two gap categories actually swept, not the whole
+web surface.
+
 ## Status
 
 Corresponds to the `docs/TOSS_RWANDA_ALIGNMENT.md` gap-list item "Add accessibility
 checks for touch targets, contrast, form labels, and focus" — contrast and
-content-description/label checks are done (2 real color-contrast defects documented
-above, left open pending a design-system-level fix; all content-description/label
+content-description/label checks are done on Android/iOS (the 2 color-contrast
+defects documented in §1 are now fixed, item 240/241; all content-description/label
 bugs found were fixed), touch-target sizing is checked and the one real gap found
 (Android's `TopIconButton`) is fixed, form labels are audited and both bugs found
 are fixed, Dynamic Type/font scaling is audited and all 19 real bugs found (all on
 iOS) are fixed, focus order is now real, live-verified on both platforms across
 all 5 tabs (XCUITest on iOS — 6/6 passing; `androidx.compose.ui.test` on
 Android — 6/6 passing). Every item in the original gap list now has real,
-non-speculative, full-coverage verification behind it on both platforms.
+non-speculative, full-coverage verification behind it on Android and iOS. Web
+micro-frontends got their first-ever pass in §7 (form labels + icon-only buttons,
+10+2 real bugs found and fixed) — contrast/touch-target/Dynamic-Type/focus-order
+on web remain open, unaudited categories, not verified-clean ones.
