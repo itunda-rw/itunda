@@ -783,7 +783,7 @@ private struct GroupThreadScreen: View {
                             if messages.isEmpty {
                                 Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                             }
-                            ForEach(messages) { message in
+                            ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                                 GroupMessageBubble(
                                     message: message, isMine: message.senderId == currentUserId, senderName: name(for: message.senderId),
                                     currentUserId: currentUserId,
@@ -794,6 +794,7 @@ private struct GroupThreadScreen: View {
                                     onPin: { pinned in Task { await pinMessage(pinned) } },
                                     onForward: { forwarding = $0 },
                                     emoticonImageUrl: message.emoticonId.flatMap { emoticonImageById[$0] },
+                                    showTimestamp: shouldShowChatTimestamp(messages, index, senderId: { $0.senderId }, sentAt: { $0.sentAt }),
                                 )
                                 .id(message.id)
                             }
@@ -1117,6 +1118,7 @@ private struct GroupMessageBubble: View {
     let onPin: (GroupMessageDto) -> Void
     let onForward: (GroupMessageDto) -> Void
     var emoticonImageUrl: String?
+    var showTimestamp: Bool = true
 
     var body: some View {
         VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
@@ -1171,9 +1173,11 @@ private struct GroupMessageBubble: View {
             if message.forwardedFromMessageId != nil {
                 Text("↪ Forwarded").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             }
-            Text(chatMessageTime(message.sentAt))
-                .font(.caption2)
-                .foregroundColor(IDS.Colors.textSecondary)
+            if showTimestamp {
+                Text(chatMessageTime(message.sentAt))
+                    .font(.caption2)
+                    .foregroundColor(IDS.Colors.textSecondary)
+            }
             // Real Thread support (2026-08-05) -- see MessageBubble's own identical
             // affordance (docs/DESIGN_REFERENCES.md Talk section recommendation #3).
             if message.replyCount > 0 {
@@ -1661,7 +1665,7 @@ private struct ChatThreadScreen: View {
                             if messages.isEmpty {
                                 Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                             }
-                            ForEach(messages) { message in
+                            ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
                                 let reactionHandler: (String) -> Void = { emoji in Task { await toggleReaction(message.id, emoji) } }
                                 let offerHandler: (String, String, Double?) -> Void = { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } }
                                 let giftHandler: (String) -> Void = { giftId in Task { await claimGift(giftId) } }
@@ -1683,6 +1687,10 @@ private struct ChatThreadScreen: View {
                                     onPin: { pinned in Task { await pinMessage(pinned) } },
                                     onForward: { forwarding = $0 },
                                     onReportMessage: reportHandler,
+                                    // Never collapsed when showing search hits -- adjacent
+                                    // results aren't temporally adjacent in the real
+                                    // conversation, so each needs its own timestamp.
+                                    showTimestamp: searchResults != nil || shouldShowChatTimestamp(messages, index, senderId: { $0.senderId }, sentAt: { $0.sentAt }),
                                 )
                                 .id(message.id)
                             }
@@ -2735,6 +2743,43 @@ private func chatMessageTime(_ sentAt: String) -> String {
     return formatter.string(from: date)
 }
 
+/// Real Kakao/Toss/iMessage-style collapsed-per-run timestamp convention
+/// (docs/DESIGN_REFERENCES.md Talk section, recommendation #8's "remaining polish
+/// gap": "each message shows its own timestamp, not grouped by consecutive-run"),
+/// ported from the same-day Android fix (HoodShared.kt's shouldShowChatTimestamp).
+/// A message shows its timestamp only when it's the last in a consecutive run from
+/// the same sender within the same local minute. Compares full local date+minute,
+/// not chatMessageTime's "h:mm a" clock-face string alone -- that would
+/// false-positive "same run" for two messages sent at the same clock time on
+/// different days, a real risk in a search-results list where adjacent entries
+/// aren't temporally adjacent in the real conversation.
+private func shouldShowChatTimestamp<T>(_ messages: [T], _ index: Int, senderId: (T) -> String, sentAt: (T) -> String) -> Bool {
+    guard index < messages.count - 1 else { return true }
+    let current = messages[index]
+    let next = messages[index + 1]
+    if senderId(current) != senderId(next) { return true }
+    func minuteKey(_ isoTimestamp: String) -> String? {
+        guard let date = ISO8601DateFormatter(withFractionalSeconds: true).date(from: isoTimestamp)
+            ?? ISO8601DateFormatter().date(from: isoTimestamp) else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: date)
+    }
+    guard let currentKey = minuteKey(sentAt(current)), let nextKey = minuteKey(sentAt(next)) else { return true }
+    return currentKey != nextKey
+}
+
+/// Builds MessageBubble's trailing status line without a dangling "1 · " separator
+/// when the timestamp itself is collapsed (showTimestamp == false) -- the unread
+/// marker still needs to show on every unread message, independent of whether this
+/// particular message is the one that renders the run's timestamp.
+private func messageStatusText(isMine: Bool, unread: Bool, showTimestamp: Bool, sentAt: String) -> String? {
+    var parts: [String] = []
+    if isMine && unread { parts.append("1") }
+    if showTimestamp { parts.append(chatMessageTime(sentAt)) }
+    return parts.isEmpty ? nil : parts.joined(separator: " · ")
+}
+
 private struct MessageBubble: View {
     let message: MessageDto
     let isMine: Bool
@@ -2753,6 +2798,7 @@ private struct MessageBubble: View {
     let onPin: (MessageDto) -> Void
     let onForward: (MessageDto) -> Void
     let onReportMessage: (String, String) -> Void
+    var showTimestamp: Bool = true
     @State private var reportOpen = false
     @State private var reportReason = ""
 
@@ -2803,9 +2849,11 @@ private struct MessageBubble: View {
             if message.forwardedFromMessageId != nil {
                 Text("↪ Forwarded").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             }
-            Text("\(isMine && message.readAt == nil ? "1 · " : "")\(chatMessageTime(message.sentAt))")
-                .font(.caption2)
-                .foregroundColor(IDS.Colors.textSecondary)
+            if let statusText = messageStatusText(isMine: isMine, unread: message.readAt == nil, showTimestamp: showTimestamp, sentAt: message.sentAt) {
+                Text(statusText)
+                    .font(.caption2)
+                    .foregroundColor(IDS.Colors.textSecondary)
+            }
             if !isMine {
                 Button("Report message") { reportOpen = true }
                     .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
