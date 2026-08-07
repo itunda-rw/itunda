@@ -24,6 +24,7 @@ import rw.itunda.rewards.RewardsService
 import rw.itunda.rewards.RewardsUserNotFoundException
 import rw.itunda.rewards.InvalidStepCountException
 import rw.itunda.rewards.StepRewardService
+import rw.itunda.rewards.StepRewardTier
 
 data class ClaimRewardRequest(val taskId: String)
 data class ReportStepsRequest(val steps: Int)
@@ -95,6 +96,14 @@ class RewardsController(
                 "newlyEarnedTiers" to result.newlyEarned.map { it.stepsRequired },
                 "newlyEarnedAmount" to result.newlyEarned.sumOf { it.rewardAmount },
                 "totalEarnedToday" to result.totalEarnedToday,
+                // Real lottery-style bonus (item 248) -- always present, whether or not
+                // anything was won this call, alongside the real, stated tier odds below,
+                // so a client can show the mechanic honestly rather than only surfacing
+                // it the moment someone happens to win.
+                "lotteryBonusWonTiers" to result.lotteryBonusWon.map { it.stepsRequired },
+                "lotteryBonusWonAmount" to result.lotteryBonusWon.sumOf { it.lotteryBonusAmount },
+                "lotteryBonusTotal" to result.lotteryBonusTotal,
+                "tiers" to tierInfo(),
             ),
         )
     }
@@ -102,7 +111,19 @@ class RewardsController(
     @GetMapping("/steps/today")
     fun getTodaySteps(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val reward = stepRewardService.getToday(currentUser.userId)
-        return ResponseEntity.ok(mapOf("success" to true, "steps" to (reward?.steps ?: 0)))
+        return ResponseEntity.ok(mapOf("success" to true, "steps" to (reward?.steps ?: 0), "tiers" to tierInfo()))
+    }
+
+    // Real, stated odds (item 248) -- the whole point of building this "toss style"
+    // rather than as a hidden mechanic: a client can show "5% chance of +100 RWF" up
+    // front, not just the outcome after the fact.
+    private fun tierInfo() = StepRewardTier.entries.map {
+        mapOf(
+            "stepsRequired" to it.stepsRequired,
+            "rewardAmount" to it.rewardAmount,
+            "lotteryOdds" to it.lotteryOdds,
+            "lotteryBonusAmount" to it.lotteryBonusAmount,
+        )
     }
 
     @ExceptionHandler(InvalidStepCountException::class)

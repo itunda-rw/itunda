@@ -170,6 +170,79 @@ class StepRewardServiceTest : BehaviorSpec({
         }
     }
 
+    // Real lottery-style bonus (item 248) -- see StepRewardService's own doc comment for
+    // the full sourced account (Toss Makers Conference 25) and why this is
+    // additive-only, real-odds-disclosed. `random` is injected as a mock so both the
+    // win and lose path can be asserted deterministically, rather than at the mercy of
+    // real SecureRandom output.
+    Given("a real user newly crossing a tier, and the real lottery draw wins") {
+        val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val random = mockk<java.util.Random>()
+        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
+        val today = LocalDate.of(2026, 7, 27)
+
+        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_3", "2026-07-27") } returns null
+        every { walletRepository.findByUserIdAndType("user_3", WalletType.MAIN) } returns wallet("user_3")
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
+        every { dailyStepRewardRepository.save(any()) } answers { firstArg() }
+        // Below TIER_1000's real 5% odds -- a real win.
+        every { random.nextDouble() } returns 0.01
+
+        When("reporting 1200 steps") {
+            val result = service.reportSteps("user_3", 1200, today)
+
+            Then("the guaranteed reward AND the real lottery bonus both credit, as two separate ledger legs") {
+                result.newlyEarned shouldBe listOf(StepRewardTier.TIER_1000)
+                result.lotteryBonusWon shouldBe listOf(StepRewardTier.TIER_1000)
+                result.lotteryBonusTotal shouldBe StepRewardTier.TIER_1000.lotteryBonusAmount
+                result.reward.lotteryWonTier1000 shouldBe true
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(
+                        "RWF",
+                        listOf(
+                            LedgerLeg("rewards_expense", LedgerAccountType.REWARDS_EXPENSE, LedgerDirection.DEBIT, StepRewardTier.TIER_1000.lotteryBonusAmount, "Step lottery bonus - 1000 steps"),
+                            LedgerLeg("wallet_user_3", LedgerAccountType.WALLET, LedgerDirection.CREDIT, StepRewardTier.TIER_1000.lotteryBonusAmount, "Step lottery bonus - 1000 steps"),
+                        ),
+                    )
+                }
+                // Two separate real ledger postings: the guaranteed reward and the bonus.
+                verify(exactly = 2) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real user newly crossing a tier, and the real lottery draw doesn't win") {
+        val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val random = mockk<java.util.Random>()
+        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
+        val today = LocalDate.of(2026, 7, 27)
+
+        every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_4", "2026-07-27") } returns null
+        every { walletRepository.findByUserIdAndType("user_4", WalletType.MAIN) } returns wallet("user_4")
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
+        every { dailyStepRewardRepository.save(any()) } answers { firstArg() }
+        // Above TIER_1000's real 5% odds -- a real loss.
+        every { random.nextDouble() } returns 0.99
+
+        When("reporting 1200 steps") {
+            val result = service.reportSteps("user_4", 1200, today)
+
+            Then("the guaranteed reward still credits in full -- the lottery losing never reduces it") {
+                result.newlyEarned shouldBe listOf(StepRewardTier.TIER_1000)
+                result.totalEarnedToday shouldBe StepRewardTier.TIER_1000.rewardAmount
+                result.lotteryBonusWon shouldBe emptyList()
+                result.lotteryBonusTotal shouldBe BigDecimal.ZERO
+                result.reward.lotteryWonTier1000 shouldBe false
+                // Only the one guaranteed-reward ledger posting -- no bonus leg at all.
+                verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
     Given("a real user with no real MAIN wallet, somehow crossing a tier") {
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val walletRepository = mockk<WalletRepository>()

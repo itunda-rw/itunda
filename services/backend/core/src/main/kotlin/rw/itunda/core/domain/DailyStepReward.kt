@@ -34,6 +34,10 @@ import java.time.Instant
  * auto-credited the moment `reportSteps` sees the real threshold crossed for the first
  * time -- no separate manual "claim" tap, matching Toss's own real "짠! 포인트 받았어요"
  * (ding! you got points) automatic UX.
+ *
+ * `lotteryWonTierN` (item 248, added 2026-08-08) tracks a real, stated-odds bonus draw
+ * layered on top of the guaranteed reward above -- see StepRewardService's own doc
+ * comment for the full sourced account and why this is additive-only.
  */
 @Entity
 @Table(name = "daily_step_rewards")
@@ -59,6 +63,21 @@ class DailyStepReward(
 
     @Column(name = "claimed_tier_10000", nullable = false)
     var claimedTier10000: Boolean = false,
+
+    // Real lottery-style bonus (item 248) -- see StepRewardService's own doc comment for
+    // the full sourced account (Toss Makers Conference 25) and the explicit reasoning
+    // for why this is additive-only, never a replacement for the guaranteed
+    // claimedTierN rewards above. One flag per tier, same one-time-per-day shape
+    // claimedTierN already has -- the draw runs exactly once, at the same moment that
+    // tier is first claimed.
+    @Column(name = "lottery_won_tier_1000", nullable = false)
+    var lotteryWonTier1000: Boolean = false,
+
+    @Column(name = "lottery_won_tier_5000", nullable = false)
+    var lotteryWonTier5000: Boolean = false,
+
+    @Column(name = "lottery_won_tier_10000", nullable = false)
+    var lotteryWonTier10000: Boolean = false,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
