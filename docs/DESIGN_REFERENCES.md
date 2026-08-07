@@ -1637,6 +1637,16 @@ don't translate to itunda's English copy, so scoped out; the universally-applica
    field item 245 already fixed, matching web's autoFocus. iOS's `VerificationRow` (in
    `BenefitsShopAllScreens.swift`) uses a raw `TextField`, not the shared component, so it got
    its own local `@FocusState` + `.onAppear` instead of the new shared param.
+   **Extended, same day**: auto-focus applied to the first field on itunda's actual
+   highest-traffic screen -- login -- which had none anywhere on web (`bank-mfe`/
+   `merchant-mfe`/`ops-mfe`'s `LoginPage.tsx`, plus `RegisterPage.tsx`/`RegisterScreen.tsx`)
+   and on iOS (`LoginScreen.swift` had zero prior focus handling at all). Found and fixed a
+   real latent bug in this recommendation's own Android addition while doing so: `LoginScreen.kt`
+   already had a working `rememberAutoFocus` helper with a documented real fix ("requesting
+   focus in the same frame a composable enters can silently no-op if the node hasn't attached
+   yet" -- wait one frame first); the new `IdsTextField.autoFocus` used a bare
+   `LaunchedEffect(Unit)` with no delay, reintroducing that exact bug. Fixed with the same
+   `delay(80)` pattern before it shipped further.
 3. **[sourced] Done same day -- clean result, not a skipped check.** Ran the systematic
    dark-pattern sweep against all 3 checkable Apps-in-Toss rules, across all 3 platforms:
    - **Auto-shown-on-entry** (a modal/sheet visible without a real user action triggering
