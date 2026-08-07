@@ -79,7 +79,11 @@ fun AgentHomeScreen(onLogout: () -> Unit) {
         }
         if (showingActivity) {
             item { Text(if (loading) "Refreshing…" else "Today’s activity", style = MaterialTheme.typography.titleMedium) }
-            if (!loading && activity.isEmpty()) item { Text("No store transactions recorded yet.", style = MaterialTheme.typography.bodyMedium) }
+            // Real copy-voice fix (item 244, round 8 of the empty-state pass -- another
+            // native app round 6/7 didn't reach): auto-recorded, not user-initiated
+            // setup, matching the identical wording already used in the main app's own
+            // AgentOperatorScreenView.swift.
+            if (!loading && activity.isEmpty()) item { Text("No store transactions recorded yet — your cash-in/cash-out activity will show up here.", style = MaterialTheme.typography.bodyMedium) }
             items(activity.take(5)) { entry -> ActivityCard(entry) }
         }
     }

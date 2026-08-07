@@ -307,8 +307,11 @@ fun RiderHomeScreen(
                 eatsList.orEmpty().map { RiderDelivery.Eats(it) } + commerceList.orEmpty().map { RiderDelivery.Commerce(it) }
             if (combined.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    // Real copy-voice fix (item 244, round 8 of the empty-state pass):
+                    // AVAILABLE is genuinely passive (new deliveries just appear), MINE
+                    // has a real fix -- switch to Available and claim one.
                     Text(
-                        if (tab == HomeTab.AVAILABLE) "No open deliveries right now." else "No deliveries yet.",
+                        if (tab == HomeTab.AVAILABLE) "No open deliveries right now — check back soon, new ones appear automatically." else "You haven't claimed any deliveries yet — switch to Available to claim your first one.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

@@ -69,7 +69,9 @@ struct AgentHomeScreen: View {
                 if showingActivity {
                     Text(loading ? "Refreshing…" : "Today's activity").font(.headline)
                     if !loading && activity.isEmpty {
-                        Text("No store transactions recorded yet.").foregroundColor(.secondary)
+                        // Real copy-voice fix (item 244, round 8), matching Android's
+                        // same-day fix and the main app's AgentOperatorScreenView.swift.
+                        Text("No store transactions recorded yet — your cash-in/cash-out activity will show up here.").foregroundColor(.secondary)
                     }
                     ForEach(activity.prefix(5)) { entry in
                         ActivityCard(entry: entry)
