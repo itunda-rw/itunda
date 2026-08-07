@@ -44,7 +44,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -363,11 +362,16 @@ private fun PasswordStep(
             if (isRegisterMode) "Create a password" else "Enter your password",
             if (isRegisterMode) "Use at least 8 characters." else null,
         )
+        // Real "Minimum Input" simplicity fix (docs/DESIGN_REFERENCES.md §11/§12): switched
+        // to IdsTextField's new isPassword mode (show/hide toggle) instead of an always-
+        // masked PasswordVisualTransformation -- especially valuable in isRegisterMode,
+        // where a silent typo here locks the new account behind a password the user
+        // doesn't actually know.
         IdsTextField(
             value = password,
             onValueChange = onPasswordChange,
             label = "Password",
-            visualTransformation = PasswordVisualTransformation(),
+            isPassword = true,
             keyboardType = KeyboardType.Password,
             isError = errorMessage != null,
             errorText = errorMessage,

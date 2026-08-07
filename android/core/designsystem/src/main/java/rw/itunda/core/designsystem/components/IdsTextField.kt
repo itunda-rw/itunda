@@ -5,17 +5,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -65,8 +74,18 @@ fun IdsTextField(
     // field that's the obvious, sole next action on its screen (e.g. a just-sent
     // verification code) should opt in.
     autoFocus: Boolean = false,
+    // Real "Minimum Input" simplicity addition (docs/DESIGN_REFERENCES.md §11/§12): a
+    // show/hide toggle cuts mistyped-password retries -- a local, client-only UI
+    // affordance (the value never leaves this field either way), not a security
+    // control, matching §12's own "security and simplicity together" framing. When
+    // true, this component manages its own visualTransformation and renders the
+    // toggle as the trailing icon itself, overriding any caller-supplied
+    // visualTransformation/trailingIcon (no existing call site sets both this and
+    // either of those together).
+    isPassword: Boolean = false,
 ) {
     val focusRequester = remember { FocusRequester() }
+    var passwordVisible by remember { mutableStateOf(false) }
     Column(modifier = modifier) {
         TextField(
             value = value,
@@ -75,9 +94,25 @@ fun IdsTextField(
             placeholder = placeholder?.let { { Text(it, style = IdsTypography.Body1, color = Ids.colors.textTertiary) } },
             singleLine = singleLine,
             isError = isError,
-            visualTransformation = visualTransformation,
+            visualTransformation = if (isPassword) {
+                if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
+            } else {
+                visualTransformation
+            },
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            trailingIcon = trailingIcon,
+            trailingIcon = if (isPassword) {
+                {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            tint = Ids.colors.textTertiary,
+                        )
+                    }
+                }
+            } else {
+                trailingIcon
+            },
             textStyle = IdsTypography.Body1,
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),

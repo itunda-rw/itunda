@@ -131,6 +131,12 @@ public struct IdsTextField: View {
     var autoFocus: Bool = false
 
     @FocusState private var isFocused: Bool
+    // Real "Minimum Input" simplicity addition (docs/DESIGN_REFERENCES.md §11/§12): a
+    // show/hide toggle cuts mistyped-password retries -- a local, client-only UI
+    // affordance (the value never leaves this field either way), not a security
+    // control, matching §12's own "security and simplicity together" framing. Only
+    // meaningful when isSecure is true; ignored otherwise.
+    @State private var passwordVisible = false
 
     public init(_ label: String, text: Binding<String>, isSecure: Bool = false, keyboardType: UIKeyboardType = .default, autoFocus: Bool = false) {
         self.label = label
@@ -145,17 +151,26 @@ public struct IdsTextField: View {
             Text(label)
                 .font(IdsTypeScale.body2)
                 .foregroundColor(isFocused ? IDS.Colors.brand : IDS.Colors.textSecondary)
-            Group {
+            HStack(spacing: 8) {
+                Group {
+                    if isSecure && !passwordVisible {
+                        SecureField(label, text: $text)
+                    } else {
+                        TextField(label, text: $text)
+                            .keyboardType(keyboardType)
+                    }
+                }
+                .focused($isFocused)
                 if isSecure {
-                    SecureField(label, text: $text)
-                } else {
-                    TextField(label, text: $text)
-                        .keyboardType(keyboardType)
+                    Button(action: { passwordVisible.toggle() }) {
+                        Image(systemName: passwordVisible ? "eye.slash" : "eye")
+                            .foregroundColor(IDS.Colors.textTertiary)
+                    }
+                    .accessibilityLabel(passwordVisible ? "Hide password" : "Show password")
                 }
             }
             .font(IdsTypeScale.subtitle1)
             .foregroundColor(IDS.Colors.textPrimary)
-            .focused($isFocused)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(isFocused ? IDS.Colors.card : IDS.Colors.chipBackground)
