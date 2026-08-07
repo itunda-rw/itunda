@@ -156,6 +156,22 @@ build-verified throughout). The `AgreementWidget`/`PaymentMethodWidget` item abo
 is the one real accessibility question this document leaves open that the
 now-available simulator could resolve but hasn't yet.
 
+**Re-audited against current Android code (item 242, 2026-08-07):** this section's
+original sweep only covered the 2026-07-11 `ItundaAppScreen.kt`, which has since
+been split across `:app` and 8 feature modules with a much larger surface. A fresh
+repo-wide grep of every `contentDescription = null` (43 occurrences, 15 files)
+found 42 correctly decorative (each paired with adjacent visible `Text()` in the
+same clickable container/row, matching this section's own established triage
+rule) and one genuine bug: `SuperAppTabs.kt`'s Hood-tab neighborhood-switcher
+location-pin icon had its own independent `.clickable`, separate from the
+neighborhood-name `Text()`'s own separate `.clickable` right next to it — making
+the icon a distinct, unlabeled clickable accessibility node (TalkBack would
+announce a bare "Button") and leaving a real tap dead-zone between icon and text.
+Fixed by wrapping icon+text in one shared inner `Row` with a single `.clickable`,
+scoped narrowly to just those two (the outer `Row` also holds the unrelated
+Search/Notifications/Menu icons as later siblings, so the fix couldn't just move
+onto the whole outer row).
+
 ## 3. Touch target size
 
 Platform minimums: Android/Material Design recommends 48dp; Apple HIG requires

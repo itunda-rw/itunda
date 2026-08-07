@@ -316,22 +316,40 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
                 // Real fix, 2026-08-03 -- see showNeighborhoodPrompt's own doc comment:
                 // this is now the real, verified way to open the neighborhood
                 // switcher, not a chip buried in a filter row.
-                Icon(
-                    Icons.Outlined.LocationOn, contentDescription = null,
-                    modifier = Modifier.size(20.dp).clickable { showNeighborhoodPrompt = true }, tint = Ids.colors.textPrimary,
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    // Real dual-neighborhood display (2026-08-04) -- Karrot's own real
-                    // primary/secondary neighborhood pair, shown together once both are set.
-                    listOfNotNull(neighborhoodName, secondNeighborhoodName).joinToString(" · ").ifBlank { "Set your neighborhood" },
-                    color = Ids.colors.textPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                // Real WCAG AA fix, item 242 (docs/ACCESSIBILITY.md's original §2 icon-
+                // only-interactive-element finding, re-found here in newer code): the
+                // icon and the text below used to carry two separate, independent
+                // .clickable modifiers, making this icon its own distinct, unlabeled
+                // (contentDescription = null) clickable accessibility node -- TalkBack
+                // would announce it as a bare, unnamed "Button" -- and left a real tap
+                // dead-zone between icon and text where neither clickable region
+                // covered. Wrapped icon+text in their own Row with one shared
+                // .clickable (scoped narrowly to just these two -- the outer Row also
+                // holds the unrelated Search/Notifications/Menu icons as later
+                // siblings, so the single clickable couldn't just move onto it) so the
+                // icon merges into one accessible node named by the visible text, and
+                // the gap between them is now part of the same continuous tap target.
+                Row(
                     modifier = Modifier.weight(1f).clickable { showNeighborhoodPrompt = true },
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.LocationOn, contentDescription = null,
+                        modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        // Real dual-neighborhood display (2026-08-04) -- Karrot's own real
+                        // primary/secondary neighborhood pair, shown together once both are set.
+                        listOfNotNull(neighborhoodName, secondNeighborhoodName).joinToString(" · ").ifBlank { "Set your neighborhood" },
+                        color = Ids.colors.textPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
                 if (neighborhoodVerificationCount > 0) {
                     Text(
                         "confirmed ${neighborhoodVerificationCount}×",
