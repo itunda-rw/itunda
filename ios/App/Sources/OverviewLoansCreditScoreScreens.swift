@@ -121,9 +121,17 @@ struct OverviewScreenView: View {
         busy = true; error = nil
         defer { busy = false }
         do {
-            _ = try await NetworkClient.shared.linkAccount(provider: provider, externalAccountNumber: accountNumber)
+            let linked = try await NetworkClient.shared.linkAccount(provider: provider, externalAccountNumber: accountNumber).linkedAccount
+            let submittedProvider = provider
             provider = ""; accountNumber = ""; showLinkForm = false
             await refresh()
+            // Real gap found via Toss Simplicity21 research (2026-08-08): a declined
+            // provider verification is still a 200 response (the account is saved as
+            // VERIFICATION_FAILED so it shows up in the list above) -- without this check
+            // the form just closed as if the link had worked.
+            if linked.status == "VERIFICATION_FAILED" {
+                self.error = linked.failureReason ?? "Could not verify that \(submittedProvider) account. It wasn't linked."
+            }
         } catch { self.error = "Could not link that account." }
     }
 

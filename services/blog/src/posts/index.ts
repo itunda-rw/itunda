@@ -14,6 +14,7 @@ import { theLinterThatLiedToItselfFirst } from './the-linter-that-lied-to-itself
 import { threeFlowsTheFraudEngineNeverSaw } from './three-flows-the-fraud-engine-never-saw';
 import { theRiskWeAlreadyKnewAbout } from './the-risk-we-already-knew-about';
 import { theFixWeAlreadyHad } from './the-fix-we-already-had';
+import { theFormThatClosedOnALie } from './the-form-that-closed-on-a-lie';
 
 export interface Post {
   slug: string;
@@ -25,7 +26,7 @@ export interface Post {
   content: string;
 }
 
-export const posts: Post[] = [theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
+export const posts: Post[] = [theFormThatClosedOnALie, theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 

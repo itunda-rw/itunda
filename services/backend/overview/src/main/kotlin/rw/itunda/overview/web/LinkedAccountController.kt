@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.domain.LinkedAccountStatus
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.overview.LinkedAccountAlreadyUnlinkedException
@@ -33,7 +34,15 @@ class LinkedAccountController(private val linkedAccountService: LinkedAccountSer
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val account = linkedAccountService.link(currentUser.userId, request.provider, request.externalAccountNumber)
-        return ResponseEntity.ok(mapOf("success" to true, "linkedAccount" to account))
+        // Real gap found via Toss Simplicity21 research (2026-08-08): the request always
+        // succeeded at the HTTP level even when provider verification was declined (the
+        // account is still saved, as VERIFICATION_FAILED, so it shows up in history) -- but
+        // `success: true` regardless of that meant every client (web/Android/iOS) treated a
+        // declined link identically to a real one: cleared the form and showed nothing wrong.
+        // `success` now reflects whether verification actually passed, not just that the row
+        // was written, so a declined attempt is distinguishable without changing the HTTP status.
+        val verified = account.status == LinkedAccountStatus.LINKED
+        return ResponseEntity.ok(mapOf("success" to verified, "linkedAccount" to account))
     }
 
     @GetMapping("/linked")

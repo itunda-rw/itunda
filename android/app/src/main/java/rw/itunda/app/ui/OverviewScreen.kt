@@ -149,9 +149,17 @@ fun OverviewScreen(onBack: () -> Unit) {
                                     busy = true
                                     scope.launch {
                                         try {
-                                            NetworkClient.apiService.linkAccount(LinkAccountRequest(providerText, accountNumberText))
+                                            val linked = NetworkClient.apiService.linkAccount(LinkAccountRequest(providerText, accountNumberText)).linkedAccount
+                                            val submittedProvider = providerText
                                             providerText = ""; accountNumberText = ""; showLinkForm = false
                                             refresh()
+                                            // Real gap found via Toss Simplicity21 research (2026-08-08): a declined
+                                            // provider verification is still a 200 response (the account is saved as
+                                            // VERIFICATION_FAILED so it shows up in history below) -- without this
+                                            // check the form just closed as if the link had worked.
+                                            if (linked.status == "VERIFICATION_FAILED") {
+                                                error = linked.failureReason ?: "Could not verify that $submittedProvider account. It wasn't linked."
+                                            }
                                         } catch (_: Exception) {
                                             error = "Could not link that account."
                                         } finally { busy = false }

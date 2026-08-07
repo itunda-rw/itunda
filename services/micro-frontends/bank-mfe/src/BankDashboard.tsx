@@ -1615,9 +1615,16 @@ function OverviewView() {
     setBusy(true);
     setError(null);
     try {
-      await linkAccount(provider, accountNumber);
+      const linked = await linkAccount(provider, accountNumber);
       setProvider(''); setAccountNumber(''); setShowLinkForm(false);
       refresh();
+      // Real gap found via Toss Simplicity21 research (2026-08-08): a declined provider
+      // verification is still a 200 response (the account is saved as VERIFICATION_FAILED
+      // so it shows up in history) -- without this check the form just closed as if the
+      // link had worked, and the only trace was the status text buried in the list below.
+      if (linked.status === 'VERIFICATION_FAILED') {
+        setError(linked.failureReason ?? `Could not verify that ${provider} account. It wasn't linked.`);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not link that account.');
     } finally {

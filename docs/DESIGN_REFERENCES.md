@@ -2235,3 +2235,74 @@ via earlier search were covered).
   beyond the 4 day-themes already known: not recovered this pass, time-boxed out rather than a
   confirmed dead end — worth a fourth pass specifically chasing session lists first, content
   second, if "keep searching" continues to pay off at this rate.
+
+## 17. Simplicity — fourth deep-dive pass (2026-08-08): full session-list recovery, and a real silent-failure bug in account linking
+
+**Added 2026-08-08**, a second one-word "simplicity" directive, same day as Section 16. Followed
+Section 16's own recommended next step: chase session *lists* first (not content), using new
+discovery angles instead of repeating exhausted ones.
+
+### References
+
+| Topic | Source | Finding |
+|---|---|---|
+| Simplicity24 — all 11 sessions | toss.im/simplicity-24 (direct fetch of the listing page succeeded this pass, unlike prior attempts) | Full session/speaker/topic-tag list recovered for the first time (previously only 3 track names). Most itunda-relevant new title: "디자이너 없이 사용성을 지킬 수 있을까?" (can usability survive without a designer?) — Payments legacy-admin tooling at scale. Content still individually video-gated; a plausible-looking toss.tech article (`payments-legacy-1`) was checked and confirmed NOT the same content, not cited |
+| Simplicity21 — 5 of ~19 sessions | toss.im/simplicity-21/sessions/{day}-{n} (a URL pattern that renders server-side text directly, unlike Simplicity24/25's gated detail pages) | Recovered for the first time: 1-1 (genuine-benefit vs. misleading-promotion UX), 1-2 (internal tooling culture), **2-1 "신은 디테일에 있다": a real bank-account-linking flow redesign, explicitly eliminating friction in the connection process** — directly checked against itunda's own equivalent, see below — 2-5 (redesigning a heavily-used home screen without breaking it for millions of existing users), 3-1 (homepage-as-brand-space), **4-1: Toss Payments' acquisition and full overhaul of a legacy 20-year-old PG company's system** (itunda has a real, structurally comparable PG integration surface — `RnpPaymentGateway.kt`/`PaymentGatewayPort` — flagged as a lead for a future pass, content still gated, not yet checked) |
+| Discovery-method note | — | Festa/Onoffmix event-aggregator search: dead end, nothing indexed. Wayback Machine: tool-blocked in this environment, not a content-availability finding. LinkedIn "speaking at Simplicity" posts: found, but no session content beyond what the listing page already gives directly. **What actually worked**: direct-fetching the real listing pages themselves, not searching — worth trying the same approach on Simplicity23/25's listing pages before falling back to search in a future pass |
+
+### itunda's current state (checked, not assumed) — a real, confirmed, shipped bug
+
+Session 2-1's title alone (bank-linking friction) was enough to prompt actually walking itunda's
+own equivalent feature end-to-end, rather than waiting on the still-gated Toss content. Found a
+real bug, not a design nitpick:
+
+- `LinkedAccountService.link()` (`services/backend/overview/.../LinkedAccountService.kt:53-64`)
+  catches a declined provider verification and saves the account with
+  `status = VERIFICATION_FAILED` — by design, so a failed attempt still shows up in history — but
+  never throws. `LinkedAccountController.link()` returned `success: true` unconditionally
+  regardless of that status, so the HTTP response looked identical whether verification passed or
+  was declined.
+- All three real clients (bank-mfe `BankDashboard.tsx`, Android `OverviewScreen.kt`, iOS
+  `OverviewLoansCreditScoreScreens.swift`) awaited the call, saw no thrown error, and unconditionally
+  cleared the form and closed it — a declined link looked exactly like a successful one. The DTO on
+  every client already carried `status`/`failureReason` fields; nothing was reading them. The only
+  trace of the failure was a status string buried in the linked-accounts list afterward, easy to miss.
+- This is the same shape of gap Simplicity21's own "Detail" session names directly: friction (here,
+  a misleading non-signal) sitting in a connection/linking flow that nobody had walked end-to-end
+  since it shipped.
+
+### Fixed same day
+
+1. `LinkedAccountController.link()` now returns `success = (account.status == LINKED)` instead of a
+   hardcoded `true` — the HTTP status stays 200 (the request itself succeeded, the row was written),
+   but the payload now honestly reflects whether verification passed.
+2. All three clients now check the returned account's `status` after a successful call and surface a
+   real, distinct error (`failureReason` when the backend supplied one) instead of silently treating
+   any 200 response as success: `BankDashboard.tsx`'s `handleLink`, Android `OverviewScreen.kt`'s
+   link `onClick`, iOS `OverviewLoansCreditScoreScreens.swift`'s `link()`.
+3. Verified: backend `:overview:compileKotlin`/`:overview:test` (existing `LinkedAccountServiceTest`
+   suite, service logic itself unchanged) green; bank-mfe `tsc -b` green; Android
+   `:app:compileDebugKotlin` green. iOS reviewed by hand against the existing pattern (no local Swift
+   toolchain in this environment).
+
+### Recommendations (ranked)
+
+1. **[sourced, real, done same day]** Silent-failure account-link bug across all 3 clients — fixed,
+   see above.
+2. **[sourced, real, informational lead, not yet checked]** Simplicity21 session 4-1 (legacy PG
+   overhaul) against itunda's `RnpPaymentGateway.kt`/`PaymentGatewayPort` — worth a focused look in a
+   future pass once the session's actual content (not just the title) is recoverable.
+3. **[sourced, informational only]** Simplicity24's remaining 10 of 11 session contents (titles now
+   known, video-gated content is not) and Simplicity21's remaining ~14 of 19 — genuinely unrecovered
+   after four passes using every discovery angle tried so far.
+
+### Unresolved / worth a follow-up
+- Simplicity21 2-1's actual redesign content (what exactly was eliminated from the linking flow) is
+  still gated — itunda's own version was checked directly instead, which is arguably more valuable
+  than the source material at this point.
+- Simplicity23/25's listing pages haven't been tried with the direct-fetch method that worked for
+  Simplicity21/24 this pass — likely the highest-yield next step if a fifth pass happens.
+- The pre-fill and no-confirmation-step friction points the earlier investigation also surfaced
+  (account-link form doesn't pre-fill the user's own known phone number for MoMo providers; no
+  review/confirm step before submit) are real but smaller UX gaps, not bugs — left as documented,
+  not fixed, to keep this pass focused on the correctness issue.
