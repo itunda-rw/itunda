@@ -162,7 +162,7 @@
 
 .kyc-error {
   font-size: 13px;
-  color: #E53935;
+  color: var(--toss-red);
   margin: 0 0 12px 0;
 }
 

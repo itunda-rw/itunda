@@ -95,7 +95,7 @@ button:active {
    silently falling back to unstyled default button chrome (no color rule ever
    existed for this class, even though it was already in use). */
 .toss-btn-danger {
-  background-color: #E53935;
+  background-color: var(--toss-red);
   color: var(--toss-white);
 }
 
