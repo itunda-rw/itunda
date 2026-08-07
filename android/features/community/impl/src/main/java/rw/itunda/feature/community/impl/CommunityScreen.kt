@@ -288,11 +288,14 @@ fun CommunityContent(
         } else if (posts!!.isEmpty() && (view != CommunityView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
+                    // Real copy-voice fix (item 244, round 5 of the empty-state pass --
+                    // docs/COPY_VOICE.md's rules): say what's missing AND what fixes it,
+                    // per this screen's own real "+ Write a post" button above in MINE.
                     when (view) {
-                        CommunityView.BROWSE -> "No posts yet."
-                        CommunityView.NEARBY -> "No posts near you yet."
-                        CommunityView.NEIGHBORHOOD -> "No posts in your neighborhood yet."
-                        CommunityView.MINE -> "You haven't posted anything yet."
+                        CommunityView.BROWSE -> "No posts yet — be the first to share something with your neighbors."
+                        CommunityView.NEARBY -> "No posts near you yet — try Browse to see posts from everywhere."
+                        CommunityView.NEIGHBORHOOD -> "No posts in your neighborhood yet — try Browse to see posts from everywhere."
+                        CommunityView.MINE -> "You haven't posted anything yet — tap \"+ Write a post\" above to share your first one."
                     },
                     color = Ids.colors.textSecondary, fontSize = 14.sp,
                 )

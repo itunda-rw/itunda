@@ -809,7 +809,12 @@ private fun OrderFoodContent(
             } else if (restaurants!!.isEmpty()) {
                 item {
                     EmptyState(
-                        if (selectedCategory != null || searchInput.isNotBlank()) "No restaurants match your search." else "No restaurants registered yet.",
+                        // Real copy-voice fix (item 244, round 5 of the empty-state pass):
+                        // the "registered yet" case is honest about whose gap this is --
+                        // no restaurant has joined yet, not something the reader is missing
+                        // a step on, matching docs/COPY_VOICE.md's "when the cause is
+                        // someone else's, say so honestly" rule.
+                        if (selectedCategory != null || searchInput.isNotBlank()) "No restaurants match your search — try a different category or search term." else "No restaurants registered yet — check back once restaurants in your area join itunda Eats.",
                         icon = Icons.Outlined.Restaurant,
                     )
                 }

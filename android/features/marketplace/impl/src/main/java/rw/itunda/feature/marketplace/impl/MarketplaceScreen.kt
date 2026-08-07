@@ -484,13 +484,19 @@ fun MarketplaceContent(
         } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 EmptyState(
+                    // Real copy-voice fix (item 244, round 5 of the empty-state pass --
+                    // docs/COPY_VOICE.md's rules, never applied to Marketplace/Community/
+                    // Jobs/Property on any platform until now): say what's missing AND
+                    // what fixes it, per this screen's own real, visible affordance
+                    // ("+ List an item" above, in the MINE view) rather than a bare
+                    // absence report.
                     when (view) {
-                        HoodView.BROWSE -> "No listings yet."
-                        HoodView.NEARBY -> "No listings near you yet."
-                        HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet."
-                        HoodView.MINE -> "You haven't listed anything yet."
-                        HoodView.PURCHASES -> "No purchases recorded yet."
-                        HoodView.WISHLIST -> "No saved listings yet."
+                        HoodView.BROWSE -> "No listings yet — be the first to list something for sale."
+                        HoodView.NEARBY -> "No listings near you yet — try Browse to see listings from everywhere."
+                        HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet — try Browse to see listings from everywhere."
+                        HoodView.MINE -> "You haven't listed anything yet — tap \"+ List an item\" above to list your first one."
+                        HoodView.PURCHASES -> "No purchases recorded yet — items you buy will show up here."
+                        HoodView.WISHLIST -> "No saved listings yet — tap ♡ on any listing to save it here."
                         HoodView.ALERTS -> "" // unreachable -- ALERTS is intercepted earlier
                     },
                     icon = Icons.Outlined.ShoppingBag,

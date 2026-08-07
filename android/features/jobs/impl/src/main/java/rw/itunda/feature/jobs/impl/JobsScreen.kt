@@ -291,12 +291,15 @@ fun JobsContent(
         } else if (posts!!.isEmpty() && (view != JobsView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
+                    // Real copy-voice fix (item 244, round 5 of the empty-state pass --
+                    // docs/COPY_VOICE.md's rules): say what's missing AND what fixes it,
+                    // per this screen's own real "+ Post a job" button above in MINE.
                     when (view) {
-                        JobsView.BROWSE -> "No jobs posted yet."
-                        JobsView.NEARBY -> "No jobs near you yet."
-                        JobsView.NEIGHBORHOOD -> "No jobs in your neighborhood yet."
-                        JobsView.MINE -> "You haven't posted any jobs yet."
-                        JobsView.WORKED -> "No completed jobs recorded yet."
+                        JobsView.BROWSE -> "No jobs posted yet — check back soon, or post one yourself."
+                        JobsView.NEARBY -> "No jobs near you yet — try Browse to see jobs from everywhere."
+                        JobsView.NEIGHBORHOOD -> "No jobs in your neighborhood yet — try Browse to see jobs from everywhere."
+                        JobsView.MINE -> "You haven't posted any jobs yet — tap \"+ Post a job\" above to post your first one."
+                        JobsView.WORKED -> "No completed jobs recorded yet — jobs you complete will show up here."
                         JobsView.SAVED -> ""
                         JobsView.APPLICATIONS -> ""
                     },

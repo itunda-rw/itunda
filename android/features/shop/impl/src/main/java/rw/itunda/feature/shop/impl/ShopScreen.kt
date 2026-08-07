@@ -743,7 +743,12 @@ fun CommerceShopContent(
             } else if (merchants!!.isEmpty()) {
                 item {
                     EmptyState(
-                        if (selectedCategory != null || searchInput.isNotBlank()) "No merchants match your search." else "No stores registered yet.",
+                        // Real copy-voice fix (item 244, round 5 of the empty-state pass):
+                        // "registered yet" is honest about whose gap this is -- no store
+                        // has joined yet, not something the reader is missing a step on,
+                        // matching docs/COPY_VOICE.md's "when the cause is someone else's,
+                        // say so honestly" rule.
+                        if (selectedCategory != null || searchInput.isNotBlank()) "No merchants match your search — try a different category or search term." else "No stores registered yet — check back once merchants in your area join itunda Shop.",
                         icon = Icons.Outlined.Storefront,
                     )
                 }

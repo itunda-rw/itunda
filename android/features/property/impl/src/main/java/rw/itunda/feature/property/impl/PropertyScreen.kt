@@ -314,12 +314,15 @@ fun PropertyContent(
         } else if (listings!!.isEmpty() && (view != PropertyView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
+                    // Real copy-voice fix (item 244, round 5 of the empty-state pass --
+                    // docs/COPY_VOICE.md's rules): say what's missing AND what fixes it,
+                    // per this screen's own real "+ List a property" button above in MINE.
                     when (view) {
-                        PropertyView.BROWSE -> "No properties listed yet."
-                        PropertyView.NEARBY -> "No properties near you yet."
-                        PropertyView.NEIGHBORHOOD -> "No properties in your neighborhood yet."
-                        PropertyView.MINE -> "You haven't listed any properties yet."
-                        PropertyView.ACQUIRED -> "No properties acquired yet."
+                        PropertyView.BROWSE -> "No properties listed yet — check back soon, or list your own."
+                        PropertyView.NEARBY -> "No properties near you yet — try Browse to see properties from everywhere."
+                        PropertyView.NEIGHBORHOOD -> "No properties in your neighborhood yet — try Browse to see properties from everywhere."
+                        PropertyView.MINE -> "You haven't listed any properties yet — tap \"+ List a property\" above to list your first one."
+                        PropertyView.ACQUIRED -> "No properties acquired yet — properties you acquire will show up here."
                         PropertyView.SAVED -> ""
                         PropertyView.VALUATION -> ""
                     },
