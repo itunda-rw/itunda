@@ -42,7 +42,17 @@ data class FraudPolicySnapshot(
  * checkout and Payroll) were wired the same session, this comment just never got updated.
  * Real current callers: P2pService (send + payment requests), WalletService (currency
  * conversion), OrderService/EatsOrderService/DineInOrderService (checkout),
- * MerchantService (in-person collection), PayrollService (salary disbursement).
+ * MerchantService (in-person collection), PayrollService (salary disbursement),
+ * GiftService (money gift), GiftVoucherService (merchant-redeemable gift voucher),
+ * SplitBillService (settle-up payback) -- the last 3 added same day
+ * (docs/DESIGN_REFERENCES.md §14 recommendation #4) after a validation pass found they
+ * were real money-to-a-named-recipient flows, the exact shape this engine's
+ * new-recipient/velocity rules exist to catch, that had simply never been wired in.
+ * Not yet covered, honestly noted rather than silently skipped: marketplace-seller
+ * payments, bill-provider payments, and ride/driver payouts -- a different actor
+ * category (paying a business/service-provider, not a peer chosen by phone number/
+ * contact), lower-confidence fit for these specific heuristics, left as a real,
+ * named follow-up rather than assumed out of scope.
  */
 @Service
 class FraudRuleEngine(

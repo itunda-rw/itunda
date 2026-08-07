@@ -1984,10 +1984,22 @@ about that limit and focuses on the real, sourced, code-level content that *was*
    `MAP_CARD_TEXT_TERTIARY` (item 244) — an independent hardcoded copy silently misses whatever
    future fix the real token gets — just at 271x the scale. All replaced with `var(--toss-red)`;
    verified via `yarn tsc --noEmit`, a real `vite build` of all 3 apps, and `yarn lint`.
-4. **[sourced, MEDIUM VALUE, validation only]** Confirm `FraudRuleEngine`'s flag-don't-block
-   design (already itunda's real, deliberate, documented choice) still has a real human-review
-   surface for every money-moving feature added since — the Simplicity24 "100% 자동화" session
-   validates this existing choice rather than contradicting it.
+4. **[sourced, done same day — validation found a real, fixable gap]** Confirmed
+   `FraudRuleEngine`'s flag-don't-block design (already itunda's real, deliberate, documented
+   choice) still has a real human-review surface — it does, unchanged — but the validation also
+   checked whether every real money-to-a-named-recipient flow added since actually calls it, and
+   found 3 that didn't: **`GiftService.sendGift`/`sendGiftInConversation`**, **`GiftVoucherService.
+   purchaseVoucher`**, and **`SplitBillService.payShare`** — all real transfers to a specific
+   `recipientId` resolved by phone number or existing relationship, the exact shape the engine's
+   new-recipient/velocity rules exist to catch, that had simply never been wired in. Fixed by
+   adding the same `fraudRuleEngine.evaluate(...)`-before-save call `P2pService` already uses,
+   including its documented evaluate-before-save ordering (evaluating after would let a
+   transaction match itself as prior history and permanently mask `NEW_RECIPIENT`).
+   `FraudRuleEngine`'s own doc comment updated to keep its caller list accurate, including an
+   honest note on what's still NOT covered (marketplace-seller/bill-provider/ride-driver
+   payments — a different actor category, lower-confidence fit, named as a real follow-up rather
+   than silently skipped). Verified via `:gift:test`/`:splitbill:test` (existing suites, updated
+   for the new constructor param) and `:app:compileKotlin`.
 5. **[sourced, correctly deferred, not a gap]** Screen-reader user research and "quantify
    qualitative UX" — both require a real user base itunda doesn't have. Adopt as a documented
    future practice; the honest present-day substitute is a manual VoiceOver/TalkBack self-audit,

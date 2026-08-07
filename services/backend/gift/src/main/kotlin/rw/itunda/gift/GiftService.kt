@@ -12,6 +12,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -51,6 +52,7 @@ class GiftService(
     private val ledgerService: LedgerService,
     private val messagingService: MessagingService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     /** Send a gift to a phone number, starting/reusing a 1:1 conversation -- the entry
      * point for a client that doesn't already have a conversation open (e.g. a
@@ -122,6 +124,16 @@ class GiftService(
             description = "Gift sent",
             completedAt = Instant.now(),
         )
+        // Real fraud coverage (item 247 follow-up, docs/DESIGN_REFERENCES.md §14
+        // recommendation #4): a real gap found while validating FraudRuleEngine's
+        // documented caller list still covers every money-to-another-party flow --
+        // sending a gift moves real money to a recipient by phone number, the exact
+        // shape P2pService.sendDirect's own fraud check exists for, but this hold
+        // transaction was being created and saved without ever calling it. Evaluated
+        // before save, same ordering P2pService's own inline comment already documents
+        // the reasoning for: evaluating after would let this transaction match itself
+        // as prior history and permanently mask NEW_RECIPIENT.
+        fraudRuleEngine.evaluate(senderUserId, recipientUserId, amount, holdTransaction.id)
         transactionRepository.save(holdTransaction)
 
         val trimmedNote = note?.trim()?.take(200)

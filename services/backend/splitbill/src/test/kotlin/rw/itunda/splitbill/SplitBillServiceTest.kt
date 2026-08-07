@@ -15,6 +15,7 @@ import rw.itunda.core.domain.SplitBillParticipantStatus
 import rw.itunda.core.domain.SplitBillStatus
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -36,7 +37,7 @@ class SplitBillServiceTest : BehaviorSpec({
     )
 
     Given("evenSplitWithRoundingAbsorption in isolation") {
-        val service = SplitBillService(mockk(), mockk(), mockk(), mockk(), mockk(), mockk(), mockk(relaxed = true))
+        val service = SplitBillService(mockk(), mockk(), mockk(), mockk(), mockk(), mockk(), mockk(relaxed = true), mockk(relaxed = true))
 
         Then("a cleanly divisible total splits evenly with no remainder") {
             val shares = service.evenSplitWithRoundingAbsorption(BigDecimal("3000"), 3)
@@ -62,9 +63,10 @@ class SplitBillServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
             splitBillRepository, splitBillParticipantRepository, walletRepository,
-            transactionRepository, ledgerService, groupMessagingService, rateLimiter,
+            transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 
         val group = GroupConversation(id = "group_1", name = "Dinner squad", createdBy = "user_organizer")
@@ -156,9 +158,10 @@ class SplitBillServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
             splitBillRepository, splitBillParticipantRepository, walletRepository,
-            transactionRepository, ledgerService, groupMessagingService, rateLimiter,
+            transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 
         val splitBill = SplitBill(
@@ -256,9 +259,10 @@ class SplitBillServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
             splitBillRepository, splitBillParticipantRepository, walletRepository,
-            transactionRepository, ledgerService, groupMessagingService, rateLimiter,
+            transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 
         val splitBill = SplitBill(
@@ -322,9 +326,10 @@ class SplitBillServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = SplitBillService(
             splitBillRepository, splitBillParticipantRepository, walletRepository,
-            transactionRepository, ledgerService, groupMessagingService, rateLimiter,
+            transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
         )
 
         val splitBill = SplitBill(
@@ -424,7 +429,8 @@ class SplitBillServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
 
         val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
         val participant = SplitBillParticipant(id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"))
@@ -452,7 +458,8 @@ class SplitBillServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
 
         val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
         val participant = SplitBillParticipant(
@@ -480,7 +487,8 @@ class SplitBillServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine)
 
         val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
         val paidParticipant = SplitBillParticipant(id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"), status = SplitBillParticipantStatus.PAID)

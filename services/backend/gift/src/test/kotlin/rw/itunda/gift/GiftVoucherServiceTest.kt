@@ -19,6 +19,7 @@ import rw.itunda.core.domain.GiftVoucherStatus
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -53,9 +54,10 @@ class GiftVoucherServiceTest : BehaviorSpec({
         ledgerService: LedgerService = mockk(),
         messagingService: MessagingService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
+        fraudRuleEngine: FraudRuleEngine = mockk(relaxed = true),
     ) = GiftVoucherService(
         giftVoucherRepository, merchantRepository, merchantProductRepository, walletRepository,
-        userRepository, transactionRepository, ledgerService, messagingService, rateLimiter,
+        userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine,
     )
 
     Given("a real purchaser buying a real product-tied gift voucher for a real recipient") {

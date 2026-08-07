@@ -12,6 +12,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -61,6 +62,7 @@ class GiftVoucherService(
     private val ledgerService: LedgerService,
     private val messagingService: MessagingService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of the published range, charged at
@@ -131,6 +133,12 @@ class GiftVoucherService(
             description = "Gift voucher purchased -- ${merchant.businessName}",
             completedAt = Instant.now(),
         )
+        // Real fraud coverage (item 247 follow-up, docs/DESIGN_REFERENCES.md §14
+        // recommendation #4) -- same real gap and same fix as GiftService.sendGift:
+        // this moves real money to a recipient by phone number, evaluated before save
+        // so this transaction can't match itself as prior history and mask
+        // NEW_RECIPIENT (see P2pService's own inline comment for the full reasoning).
+        fraudRuleEngine.evaluate(purchaserUserId, recipientUser.id, amount, holdTransaction.id)
         transactionRepository.save(holdTransaction)
 
         val conversation = messagingService.startOrGetConversation(purchaserUserId, recipientUser.id)

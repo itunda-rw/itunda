@@ -15,6 +15,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -69,6 +70,7 @@ class SplitBillService(
     private val ledgerService: LedgerService,
     private val groupMessagingService: GroupMessagingService,
     private val rateLimiter: RateLimiter,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     private val log = LoggerFactory.getLogger(SplitBillService::class.java)
 
@@ -366,6 +368,12 @@ class SplitBillService(
             channel = "SPLITBILL",
             completedAt = Instant.now(),
         )
+        // Real fraud coverage (item 247 follow-up, docs/DESIGN_REFERENCES.md §14
+        // recommendation #4) -- same real gap and same fix as GiftService.sendGift:
+        // real money to a real recipient, evaluated before save so this transaction
+        // can't match itself as prior history and mask NEW_RECIPIENT (see P2pService's
+        // own inline comment for the full reasoning).
+        fraudRuleEngine.evaluate(payerUserId, splitBill.organizerId, participant.shareAmount, transaction.id)
         transactionRepository.save(transaction)
 
         participant.status = SplitBillParticipantStatus.PAID

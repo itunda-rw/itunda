@@ -14,6 +14,7 @@ import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -43,7 +44,8 @@ class GiftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
 
         val recipient = user("user_recipient", "+250788000002")
         val conversation = Conversation(id = "conversation_1", participantAId = "user_recipient", participantBId = "user_sender")
@@ -140,7 +142,8 @@ class GiftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
 
         // Real canonical-pair ordering (MessagingService.canonicalPair): participantAId
         // is whichever id sorts first -- "user_a" here, regardless of who is sender.
@@ -213,7 +216,8 @@ class GiftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
 
         val pendingGift = Gift(
             id = "gift_1", senderId = "user_sender", recipientId = "user_recipient", conversationId = "conversation_1",
@@ -303,7 +307,8 @@ class GiftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val messagingService = mockk<MessagingService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = GiftService(giftRepository, walletRepository, userRepository, transactionRepository, ledgerService, messagingService, rateLimiter, fraudRuleEngine)
 
         val expiredGift = Gift(
             id = "gift_4", senderId = "user_sender", recipientId = "user_recipient", conversationId = "conversation_1",
