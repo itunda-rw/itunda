@@ -96,8 +96,24 @@ reader think *they're* missing a step when they aren't.
 
 ## Where this has shipped so far
 
-Three rounds, ~40 call sites across bank-mfe/Android/iOS — see
+Four rounds, ~40 call sites across bank-mfe/Android/iOS — see
 `docs/DESIGN_REFERENCES.md` Section 9 recommendation #1 for the full,
-per-round accounting. ~150 lower-traffic `EmptyState` call sites remain a
-deliberately deferred follow-up (mostly admin/niche-feature screens), not a
-silent gap — apply these same three rules to them as they're picked up.
+per-round accounting.
+
+**Round 5 (item 244, 2026-08-07, ~19 call sites × 3 platforms ≈ 57 strings):**
+found while auditing web accessibility and discovering the same bare strings
+existed on Android/iOS too, not just web — Marketplace/Community/Jobs/
+Property (`MarketplaceScreen.kt`/`CommunityScreen.kt`/`JobsScreen.kt`/
+`PropertyScreen.kt` on Android, `HoodScreen.swift` on iOS, `BankDashboard.tsx`
+on web) had never gotten the rounds-1-4 treatment at all — every BROWSE/
+NEARBY/NEIGHBORHOOD/MINE/PURCHASES/WORKED/ACQUIRED state was still a bare
+"No X yet." Rewrote each to reference its own screen's real, visible "+ ..."
+add button by its exact text (rule 1), and fixed Eats/Shop's "No
+restaurants/stores/merchants registered yet." to honestly attribute the gap
+to no merchant having joined (rule 3), matching the earlier `RestaurantMenuView`/
+`ProductCatalogView` precedent exactly. Also caught merchant-mfe's
+`ReviewsScreen.tsx` "No reviews yet." in the same honest-attribution pattern.
+
+~150 lower-traffic `EmptyState` call sites (mostly admin/niche-feature
+screens) still remain a deliberately deferred follow-up, not a silent gap —
+apply these same three rules to them as they're picked up.
