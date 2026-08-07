@@ -6467,6 +6467,28 @@ function chatMessageTime(sentAt: string) {
   return timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+// Real Kakao/Toss/iMessage-style collapsed-per-run timestamp convention
+// (docs/DESIGN_REFERENCES.md Talk section, recommendation #8's "remaining polish
+// gap": "each message shows its own timestamp, not grouped by consecutive-run"),
+// ported from the same-day Android/iOS fix (HoodShared.kt's/TalkScreen.swift's
+// shouldShowChatTimestamp). A message shows its timestamp only when it's the last
+// in a consecutive run from the same sender within the same local minute. Compares
+// full local date+minute, not chatMessageTime's clock-face string alone -- that
+// would false-positive "same run" for two messages sent at the same clock time on
+// different days, a real risk in a search-results list where adjacent entries
+// aren't temporally adjacent in the real conversation.
+function shouldShowChatTimestamp<T extends { senderId: string; sentAt: string }>(messages: T[], index: number) {
+  if (index === messages.length - 1) return true;
+  const current = messages[index];
+  const next = messages[index + 1];
+  if (current.senderId !== next.senderId) return true;
+  const currentDate = new Date(current.sentAt);
+  const nextDate = new Date(next.sentAt);
+  if (Number.isNaN(currentDate.getTime()) || Number.isNaN(nextDate.getTime())) return true;
+  const minuteKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}-${d.getMinutes()}`;
+  return minuteKey(currentDate) !== minuteKey(nextDate);
+}
+
 // Real emoji reactions (2026-07-19) -- shared between 1:1 and group threads, which
 // differ only in which toggle call they make. Tapping an existing reaction badge
 // toggles the current user's own reaction for that emoji (the fast, one-tap path real
@@ -7485,11 +7507,15 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             Say hello — no messages yet.
           </p>
         )}
-        {(searchResults ?? messages)?.map((m) => {
+        {(searchResults ?? messages)?.map((m, index, list) => {
           const isMine = m.senderId === currentUser?.id;
           const offer = offersByMessageId[m.id];
           const gift = giftsByMessageId[m.id];
           const voucher = vouchersByMessageId[m.id];
+          // Never collapsed when showing search hits -- adjacent results aren't
+          // temporally adjacent in the real conversation, so each needs its own
+          // explicit timestamp.
+          const showTimestamp = searchResults != null || shouldShowChatTimestamp(list, index);
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
               {/* Real message forwarding (2026-07-25) -- a genuine provenance label,
@@ -7530,9 +7556,11 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 isMine={isMine}
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
-              <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
-                {isMine && !m.readAt ? '1 · ' : ''}{chatMessageTime(m.sentAt)}
-              </span>
+              {(showTimestamp || (isMine && !m.readAt)) && (
+                <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                  {[isMine && !m.readAt ? '1' : null, showTimestamp ? chatMessageTime(m.sentAt) : null].filter(Boolean).join(' · ')}
+                </span>
+              )}
               <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
               <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>
               {!m.deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
@@ -8067,8 +8095,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
             Say hello — no messages yet.
           </p>
         )}
-        {messages?.map((m) => {
+        {messages?.map((m, index, list) => {
           const isMine = m.senderId === currentUser?.id;
+          const showTimestamp = shouldShowChatTimestamp(list, index);
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
               {!isMine && (
@@ -8112,13 +8141,15 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
               {!(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
               {isMine && !(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
               <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
-              <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
-                {/* Real Kakao-style read-receipt countdown -- see
-                    GroupMessagingService.getUnreadCounts's own doc comment. Only shown
-                    on my own messages, same convention 1:1's own "1" indicator uses;
-                    disappears at 0, exactly matching real KakaoTalk. */}
-                {isMine && m.unreadCount > 0 ? `${m.unreadCount} · ` : ''}{chatMessageTime(m.sentAt)}
-              </span>
+              {(showTimestamp || (isMine && m.unreadCount > 0)) && (
+                <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                  {/* Real Kakao-style read-receipt countdown -- see
+                      GroupMessagingService.getUnreadCounts's own doc comment. Only shown
+                      on my own messages, same convention 1:1's own "1" indicator uses;
+                      disappears at 0, exactly matching real KakaoTalk. */}
+                  {[isMine && m.unreadCount > 0 ? `${m.unreadCount}` : null, showTimestamp ? chatMessageTime(m.sentAt) : null].filter(Boolean).join(' · ')}
+                </span>
+              )}
               {/* Real Thread support (2026-08-05) -- see ConversationThread's own
                   identical affordance. */}
               {!!m.replyCount && (
