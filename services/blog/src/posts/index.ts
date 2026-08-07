@@ -9,6 +9,7 @@ import { oneReportThreeClients } from './one-report-three-clients';
 import { aRealDebitCardWithNoCardNetwork } from './a-real-debit-card-with-no-card-network';
 import { securityAndSimplicityTogether } from './security-and-simplicity-together';
 import { theAuditWeSaidWeFinished } from './the-audit-we-said-we-finished';
+import { theKeyThatCantLeaveThePhone } from './the-key-that-cant-leave-the-phone';
 
 export interface Post {
   slug: string;
@@ -20,7 +21,7 @@ export interface Post {
   content: string;
 }
 
-export const posts: Post[] = [securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
+export const posts: Post[] = [theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 

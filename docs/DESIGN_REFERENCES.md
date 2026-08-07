@@ -1761,14 +1761,25 @@ itunda already has a genuinely close match to this whole philosophy, not a gap n
 
 1. **[sourced, implemented same day]** Auto-focus the device step-up password field — done, see
    above.
-2. **[sourced, real opportunity, larger scope, not a quick fix]** Build real Keystore-signed-
-   challenge device verification (itunda's own equivalent of 토스인증서), replacing password
-   re-entry with a cryptographically real biometric-backed proof the server can actually verify.
-   Requires: a server-side public-key registration endpoint, a challenge-issuance endpoint, and
-   Android Keystore/iOS Secure Enclave key-generation-and-signing on the client — a genuine new
-   security feature spanning backend + all 3 clients, not a UI change. Flagged as the single
-   highest-value next step in this whole security-simplicity thread, sized honestly as multi-
-   session work.
+2. **[sourced, implemented same day — item 246]** Build real Keystore-signed-challenge device
+   verification (itunda's own equivalent of 토스인증서), replacing password re-entry with a
+   cryptographically real biometric-backed proof the server can actually verify. **Done**:
+   backend (`DeviceService.registerDeviceKey`/`issueChallenge`/`verifyDeviceBySignature`,
+   `AuthController`'s `/devices/register-key`, `/devices/challenge`, `/devices/verify-signature`,
+   `TrustedDevice.publicKey`, `V100__trusted_device_public_key.sql`) — registering a key requires
+   the same password proof as the original `verifyDevice` (a stolen JWT alone must never be
+   enough to plant an attacker-controlled key), so registration marks the device trusted
+   immediately; the value of the key is making every *subsequent* step-up a signature instead.
+   Single-use Redis-backed challenges (~2min TTL) consumed via an atomic Lua script, mirroring
+   `RateLimiter`'s own idiom, to close the race where two concurrent verify attempts could both
+   observe an unconsumed challenge. Wire format: raw uncompressed P-256 point (0x04 || X || Y,
+   65 bytes) — the native output of both Android Keystore's `ECPublicKey.w` and iOS's
+   `SecKeyCopyExternalRepresentation`, so neither client needs a DER/X.509 conversion step.
+   Android (`DeviceKeyManager.kt`, Keystore + `BiometricPrompt`/`CryptoObject`) and iOS
+   (`DeviceKeyManager.swift`, Secure Enclave + `LAContext`/`SecKeyCreateSignature`) both ship an
+   opt-in Settings > Security toggle gated behind the same password bar, and both wire
+   `DeviceStepUpHost`/`DeviceStepUpDialog` to try the biometric signature first, falling silently
+   back to the existing password field when no key is registered or biometric auth is declined.
 3. **[sourced, itunda already matches, validated not invented]** itunda's `DeviceService.kt`
    already implements Toss's core "friction proportional to risk" pattern correctly (browse
    freely, gate only money movement) — recorded here as a validated existing strength, per this
