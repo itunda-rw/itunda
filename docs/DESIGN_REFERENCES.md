@@ -583,12 +583,23 @@ they close in itunda's current implementation.
    (`BankDashboard.tsx`) ported the identical logic the next turn, closing this row on every
    platform.
 
-8. **[partially-sourced] Implemented on all 3 platforms.** Per-message timestamps
-   (`chatMessageTime`) exist in both bubble types on Android, iOS, and bank-mfe -- found already
-   real while auditing this row 2026-08-05; this entry had gone stale, not the code. The exact
-   collapsed-per-run convention originally proposed here was never built (each message shows its
-   own timestamp, not grouped by consecutive-run), a real, honest, remaining polish gap, but the
-   core capability this row asked for is closed everywhere.
+8. **[partially-sourced] Implemented on all 3 platforms, including the collapsed-per-run
+   convention (item 243, 2026-08-07).** Per-message timestamps (`chatMessageTime`) exist in both
+   bubble types on Android, iOS, and bank-mfe -- found already real while auditing this row
+   2026-08-05; this entry had gone stale, not the code. The exact collapsed-per-run convention
+   originally proposed here (each message shows its own timestamp, not grouped by
+   consecutive-run) was the one real, honest, remaining polish gap left after that audit --
+   closed same day as items 240-242 (this session's WCAG/a11y pass): a new
+   `shouldShowChatTimestamp` helper on each platform (`HoodShared.kt`, `TalkScreen.swift`,
+   `BankDashboard.tsx`) shows a message's timestamp only when it's the last in a consecutive run
+   from the same sender within the same local minute (compared by full date+minute, not just
+   clock face, to avoid false-collapsing same-clock-time-different-day messages). Deliberately
+   excluded from collapsing in the search-results list on all 3 platforms, since adjacent search
+   hits aren't temporally adjacent in the real conversation. Unread markers ("1 · " / unreadCount)
+   render independently of the timestamp collapse, so they never disappear on a message that
+   isn't its run's last. Verified: Android `:app:compileDebugKotlin` clean, iOS `swiftc -parse`
+   clean (syntax-only, same caveat as this session's other iOS work), bank-mfe `tsc -b` and
+   `vite build` both clean. No remaining gap in this row.
 
 9. **[inferred, low priority]** Consider Kakao's newer inline-dots typing indicator. itunda's
    existing text-line typing indicator ("X is typing…", 3s auto-clear) already covers the core
