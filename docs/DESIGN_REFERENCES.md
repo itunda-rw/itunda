@@ -1625,12 +1625,30 @@ don't translate to itunda's English copy, so scoped out; the universally-applica
    Deliberately not done in the same pass as recommendation 1 -- `IdsTextField` is a shared
    component with many call sites, and a focus-requester API addition deserves its own
    dedicated verification pass, not a rushed addition alongside an unrelated fix.
-3. **[sourced, not yet done]** Run a real, systematic dark-pattern sweep against the Apps-in-Toss
-   rules above: does any itunda modal/bottom sheet appear automatically on screen entry without
-   a user action triggering it? Does any back-press/back-button attempt get blocked by a
-   dismissible-only-via-partner-CTA popup? This session's own accessibility/copy-voice sweeps
-   already prove the "grep every X, read context, triage real-vs-false-positive" methodology
-   works at this scale -- the same technique applies directly here.
+3. **[sourced] Done same day -- clean result, not a skipped check.** Ran the systematic
+   dark-pattern sweep against all 3 checkable Apps-in-Toss rules, across all 3 platforms:
+   - **Auto-shown-on-entry** (a modal/sheet visible without a real user action triggering
+     it): grepped every `useState(true)`/`mutableStateOf(true)`/`@State ... = true` and every
+     mount-time effect (`useEffect(() => ..., [])`, `LaunchedEffect(Unit)`, `.onAppear`)
+     setting a show/open/modal/sheet/dialog/prompt flag true, across web, Android, and iOS.
+     Zero genuine hits. One real candidate found and ruled out on inspection:
+     `ItundaAppScreen.kt`'s `showMap = true` inside `LaunchedEffect(openMapFromDeepLink)` is a
+     real deep-link handoff (the user already took the triggering action elsewhere), not an
+     unsolicited interstitial.
+   - **Back-navigation-blocking**: grepped all 122 Android `BackHandler` call sites for any
+     that shows a dialog instead of actually navigating back -- zero hits (the ones that exist
+     unwind one step of a real multi-step Flow, matching Section 8's own documented
+     `TransferStep` precedent, not a block). Checked web for `beforeunload`/history-blocking --
+     zero hits. Checked iOS for `.interactiveDismissDisabled()` -- zero hits anywhere in the
+     app, meaning every `.sheet()` (60 across `ios/App/Sources`) keeps its default
+     swipe-to-dismiss escape route intact structurally, no need to check all 60 individually.
+   - **Forced-CTA-only dialogs** (no real escape option): checked all 4 Android `AlertDialog`s
+     individually -- all 4 have a real `dismissButton`/tap-outside `onDismissRequest`. Checked
+     all 4 web full-screen modal backdrops in bank-mfe -- all 4 have `onClick={onClose}` on the
+     backdrop itself (real click-outside-to-close).
+
+   **Conclusion: itunda has no dark patterns in any of these 3 checkable categories today** --
+   a genuinely verified negative result across every platform, not an unswept gap.
 4. **[sourced] Done same day.** Ran the CTA-label-clarity pass: grepped every generic-verb
    button ("Confirm"/"Submit"/"Continue") across every web micro-frontend plus Android/iOS.
    Found and fixed 7 real instances: bank-mfe's transfer-confirm modal ("Confirm" →
