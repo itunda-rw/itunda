@@ -421,28 +421,48 @@ icon-only violations in this pass.
 
 **Touch target size** — WCAG 2.5.8 Target Size (Minimum), a 2.2-era AA-level
 criterion (not 2.5.5's AAA-only 44×44) requiring 24×24 CSS pixels unless an
-exception applies. Not a full sweep — checked the icon-only buttons this same
-pass had already located and fixed for accessible names, since those were the
-highest-risk candidates already in hand. Found and fixed 6 real violations:
-`MapView.tsx`'s two bookmark-color-swatch pickers (22×22px → 24×24px, plus the
-missing `aria-pressed` added to the one that lacked it); `PosScreen.tsx`'s cart
-quantity +/- buttons (merchant-mfe) had zero padding at all — the clickable area
-was just the bare 14px icon, a real usability risk for a merchant tapping fast
-through checkout, not just a compliance gap — sized to 28×28px; `BankDashboard.tsx`'s
-two modal-close "×" buttons, same zero-padding problem. Deliberately left alone:
-the two chat "Cancel reply" "×" buttons, which sit inline within a flowing text
-sentence ("Replying to: ... ×") — WCAG 2.5.8's own "inline" exception covers
-targets constrained by surrounding text's line-height, and forcing padding there
-would have broken the sentence's visual flow to satisfy a rule that doesn't apply.
+exception applies. First pass fixed 6 violations among the icon-only buttons
+already in hand from the label sweep. A full follow-up sweep of all 707 buttons
+across every micro-frontend found 16 more, all icon-only with zero/near-zero
+padding: 14 in `BankDashboard.tsx` — 11 of them one exact copy-pasted style
+object (`{ display: 'flex', color: 'var(--toss-grey-700)' }`) reused across every
+screen's "Back" navigation button plus a group-chat header's 3 icons (fixed in
+one pass since the style string was byte-identical everywhere), plus the
+stock-detail back/watchlist-star toggle, main dashboard sign-out, and the chat
+emoji-reaction-picker trigger; 2 more in `merchant-mfe/PosScreen.tsx`'s
+product-option-group and price-tier row editors. All bumped to a real ≥24×24px
+clickable area via padding. Deliberately left alone: the two chat "Cancel reply"
+"×" buttons, which sit inline within a flowing text sentence ("Replying to: ...
+×") — WCAG 2.5.8's own "inline" exception covers targets constrained by
+surrounding text's line-height, and forcing padding there would have broken the
+sentence's visual flow to satisfy a rule that doesn't apply. `ops-mfe`,
+`kyc-mfe`, `pay-checkout`, and `host-app` confirmed to have zero touch-target
+violations — this category is now a genuine full sweep, not a partial one.
 
-Verified: `bank-mfe` and `merchant-mfe` both `tsc -b` + `vite build` clean on
-every change. **Not yet audited on web:** color contrast (the token-level fixes in
-§1 above apply automatically since every micro-frontend imports the same
-`packages/design-tokens/tokens.css`, but no independent web-specific contrast pass
-has been run), the remaining ~700 buttons' touch target sizes beyond the ones
-already in hand from the label sweep, Dynamic Type/OS text-zoom equivalent, and
-focus order — this section closes the gap categories actually swept, not the
-whole web surface.
+**Keyboard-inoperable click targets** — the same bug class as the "Ladder game"
+toggle above (a plain `<label onClick=...>`/`<div onClick=...>` with no
+`role="button"`/`tabIndex`, unreachable via keyboard or screen reader), swept
+across every micro-frontend. Found 3 more real instances, all in
+`BankDashboard.tsx`: the notification-list row (mark as read), the
+stock-watchlist row (open stock detail), and a community post card (open post —
+which also has a *different*, already-keyboard-accessible nested "Remove"
+button with its own `stopPropagation`, so only the card's own primary action was
+unreachable). All 3 fixed with `role="button"`, `tabIndex={0}`, and an
+`onKeyDown` handling Enter/Space (native click doesn't fire from keyboard Enter
+on a `<div>` even once it's focusable). Modal backdrops' click-outside-to-close
+and `stopPropagation` guards were correctly left alone — neither is a
+user-facing action needing its own keyboard affordance.
+
+Verified: `bank-mfe`, `merchant-mfe`, and `ops-mfe` all `tsc -b` + `vite build`
+clean on every change. **Not yet audited on web:** color contrast (the
+token-level fixes in §1 above apply automatically since every micro-frontend
+imports the same `packages/design-tokens/tokens.css`, but no independent
+web-specific contrast pass has been run), Dynamic Type/OS text-zoom equivalent,
+and focus *order* specifically (this pass fixed keyboard *reachability* for
+previously-unreachable elements, a different, narrower claim than verifying the
+resulting tab sequence actually matches visual layout the way §6's real
+XCUITest/Espresso tests did for Android/iOS) — these three categories remain
+genuinely open on web, not verified-clean.
 
 ## Status
 
