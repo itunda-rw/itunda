@@ -56,7 +56,7 @@ import {
 } from './lib/loans';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
-import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, type RewardTasksResult, type ReferralInfo } from './lib/rewards';
+import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, type RewardTasksResult, type ReferralInfo, type StepRewardTierInfo } from './lib/rewards';
 import { fetchInsurancePlans, fetchMyPolicies, enrollInPlan, submitClaim, fetchMyClaims, createPremiumFund, contributeToFund, cancelFund, fetchMyPremiumFunds, type InsurancePlan, type InsurancePolicy, type InsuranceClaim, type InsurancePremiumFund } from './lib/insurance';
 import { fetchCropIndexCatalog, enrollInCropIndexPolicy, fetchMyCropIndexPolicies, cancelCropIndexPolicy, type CropIndexCatalogEntry, type CropIndexPolicy, type WeatherIndexCropType } from './lib/weatherIndexInsurance';
 import { fetchBillProviders, fetchPendingBills, payBill, buyAirtime, type BillProvider, type PendingBill } from './lib/bills';
@@ -2992,6 +2992,9 @@ function RewardsView() {
   const [tasks, setTasks] = useState<RewardTasksResult | null>(null);
   const [referral, setReferral] = useState<ReferralInfo | null>(null);
   const [todaySteps, setTodaySteps] = useState<number | null>(null);
+  // Real lottery-style bonus (item 248, docs/DESIGN_REFERENCES.md Section 15) -- the
+  // real, stated odds per tier, shown up front rather than only surfacing after a win.
+  const [stepTiers, setStepTiers] = useState<StepRewardTierInfo[]>([]);
   const [stepsInput, setStepsInput] = useState('');
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [reportingSteps, setReportingSteps] = useState(false);
@@ -3001,7 +3004,7 @@ function RewardsView() {
   const load = () => {
     fetchRewardTasks().then(setTasks).catch(() => setTasks(null));
     fetchReferralInfo().then(setReferral).catch(() => setReferral(null));
-    fetchTodaySteps().then(setTodaySteps).catch(() => setTodaySteps(null));
+    fetchTodaySteps().then((r) => { setTodaySteps(r.steps); setStepTiers(r.tiers); }).catch(() => setTodaySteps(null));
   };
   useEffect(load, []);
 
@@ -3029,8 +3032,14 @@ function RewardsView() {
     try {
       const result = await reportSteps(steps);
       setTodaySteps(result.steps);
+      setStepTiers(result.tiers);
       setStepsInput('');
-      if (result.newlyEarnedAmount > 0) {
+      if (result.lotteryBonusWonAmount > 0) {
+        // Real lottery-style bonus win (item 248) -- always named separately from the
+        // guaranteed reward, never folded into one number, so it's clear which part was
+        // guaranteed and which was the real, disclosed-odds bonus.
+        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount} RWF — plus a lottery bonus: +${result.lotteryBonusWonAmount} RWF! 🎉`);
+      } else if (result.newlyEarnedAmount > 0) {
         setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount} RWF`);
       }
     } catch (err) {
@@ -3077,6 +3086,18 @@ function RewardsView() {
       <div className="toss-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>🚶 Walking rewards</h3>
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Today: {todaySteps ?? 0} steps</p>
+        {/* Real lottery-style bonus (item 248) -- the real, stated odds shown up front,
+            same discipline this app's own dark-pattern-prevention rules require: never a
+            mechanic a user only discovers by winning. */}
+        {stepTiers.length > 0 && (
+          <ul style={{ fontSize: '11px', color: 'var(--toss-grey-500)', margin: '6px 0 0', paddingLeft: '16px' }}>
+            {stepTiers.map((tier) => (
+              <li key={tier.stepsRequired}>
+                {tier.stepsRequired.toLocaleString()} steps: +{tier.rewardAmount} RWF guaranteed, plus a {Math.round(tier.lotteryOdds * 100)}% chance of a +{tier.lotteryBonusAmount} RWF bonus
+              </li>
+            ))}
+          </ul>
+        )}
         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
           <input
             type="number"

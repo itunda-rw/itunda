@@ -34,11 +34,30 @@ export interface ClaimRewardResult {
   newBalance: number;
 }
 
+export interface StepRewardTierInfo {
+  stepsRequired: number;
+  rewardAmount: number;
+  lotteryOdds: number;
+  lotteryBonusAmount: number;
+}
+
 export interface StepReportResult {
   steps: number;
   newlyEarnedTiers: number[];
   newlyEarnedAmount: number;
   totalEarnedToday: number;
+  // Real lottery-style bonus (item 248, docs/DESIGN_REFERENCES.md Section 15) -- always
+  // present, whether or not anything was won this call. tiers carries the real, stated
+  // odds so this can be shown honestly up front, not just the outcome after the fact.
+  lotteryBonusWonTiers: number[];
+  lotteryBonusWonAmount: number;
+  lotteryBonusTotal: number;
+  tiers: StepRewardTierInfo[];
+}
+
+export interface TodayStepsResult {
+  steps: number;
+  tiers: StepRewardTierInfo[];
 }
 
 export const fetchRewardTasks = () =>
@@ -66,4 +85,4 @@ export const reportSteps = (steps: number) =>
   }).then((r) => r);
 
 export const fetchTodaySteps = () =>
-  apiFetch<{ success: boolean; steps: number }>('/api/v1/rewards/steps/today').then((r) => r.steps);
+  apiFetch<{ success: boolean } & TodayStepsResult>('/api/v1/rewards/steps/today').then((r) => r);
