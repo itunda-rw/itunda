@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { Badge } from './Badge';
+import { IdsButton } from './IdsButton';
 import { EmptyState, ErrorCard } from './EmptyState';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
@@ -458,14 +459,14 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         ) : (
           <>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
+              <IdsButton variant="tinted" fullWidth style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</IdsButton>
               {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): a
                   bare "Confirm" doesn't state the outcome -- Toss's own dark-pattern-
                   prevention rules require CTA labels to name the specific action, not a
                   generic verb, matching the "Clear Action" principle. */}
-              <button type="button" className="toss-btn toss-btn-primary" style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
+              <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
                 {busy ? 'Sending…' : `Send ${Number(amount).toLocaleString()} RWF`}
-              </button>
+              </IdsButton>
             </div>
             {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
             <ReportScamLink identifier={recipient.trim()} />
@@ -5849,10 +5850,10 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
           </div>
           {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={handleConfirm}>
+            <IdsButton fullWidth style={{ flex: 1 }} disabled={submitting} onClick={handleConfirm}>
               {submitting ? 'Paying…' : 'Pay'}
-            </button>
-            <button className="toss-btn toss-btn-secondary" onClick={handleCancel} disabled={submitting}>Cancel</button>
+            </IdsButton>
+            <IdsButton variant="tinted" onClick={handleCancel} disabled={submitting}>Cancel</IdsButton>
           </div>
         </div>
       ) : (
