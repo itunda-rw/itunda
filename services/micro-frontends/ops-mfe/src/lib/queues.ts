@@ -395,3 +395,34 @@ export const resolveSupportTicket = (ticketId: string, resolution: 'REFUNDED' | 
     method: 'POST',
     body: JSON.stringify({ resolution, notes }),
   });
+
+// Real system overview + per-rail health (SystemController.kt on the backend) -- both
+// compute from real persisted data (today's settled transaction volume/count, active
+// consent count, real attempt-tracked rail success rate/latency via
+// ProviderHealthTracker), not mocks, but had zero caller anywhere in any client until
+// found via this fresh endpoint-coverage sweep, same pattern as MarketplaceEscrowDispute
+// above (item 125).
+export interface SystemDashboard {
+  generatedAt: string;
+  country: string;
+  currency: string;
+  operations: { todayVolume: number; todayCompletedTransactionCount: number };
+  operatingLayer: { activeConsents: number };
+}
+
+export interface PaymentRail {
+  railId: string;
+  displayName: string;
+  totalAttempts: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  avgLatencyMs: number;
+  status: 'HEALTHY' | 'INCIDENT';
+}
+
+export const fetchSystemDashboard = () =>
+  apiFetch<{ success: boolean; dashboard: SystemDashboard }>('/api/v1/system/dashboard').then((r) => r.dashboard);
+
+export const fetchPaymentRails = () =>
+  apiFetch<{ success: boolean; rails: PaymentRail[] }>('/api/v1/system/rails').then((r) => r.rails);

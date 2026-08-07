@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, CircleDollarSign, Flag, HeartPulse, Home, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren, Users } from 'lucide-react';
+import { AlertTriangle, Banknote, CircleDollarSign, Flag, Gauge, HeartPulse, Home, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
+import OverviewView from './queues/OverviewView';
 import FraudQueue from './queues/FraudQueue';
 import ComplianceQueue from './queues/ComplianceQueue';
 import IncidentsQueue from './queues/IncidentsQueue';
@@ -15,10 +16,11 @@ import PropertyOwnershipQueue from './queues/PropertyOwnershipQueue';
 import AgentsManagementView from './queues/AgentsManagementView';
 
 type Tab =
-  | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
+  | 'overview' | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
   | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
+  { id: 'overview', label: 'Overview', icon: Gauge },
   { id: 'fraud', label: 'Fraud', icon: AlertTriangle },
   { id: 'compliance', label: 'Compliance', icon: ShieldCheck },
   { id: 'incidents', label: 'Incidents', icon: Siren },
@@ -34,7 +36,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
 ];
 
 export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
-  const [tab, setTab] = useState<Tab>('fraud');
+  const [tab, setTab] = useState<Tab>('overview');
   const user = getStoredUser();
 
   const handleLogout = () => {
@@ -97,6 +99,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
       </nav>
 
       <main style={{ flex: 1, padding: '32px 40px', maxWidth: '960px' }}>
+        {tab === 'overview' && <OverviewView />}
         {tab === 'fraud' && <FraudQueue />}
         {tab === 'compliance' && <ComplianceQueue />}
         {tab === 'incidents' && <IncidentsQueue />}
