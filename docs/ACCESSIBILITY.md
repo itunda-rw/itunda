@@ -138,23 +138,36 @@ Other `Image(systemName:)` usages checked and left alone:
 - `ContentView.swift`'s `HeaderTitle`'s `bell.fill` is not wrapped in a `Button` —
   it's a static, non-interactive decorative image next to a heading, not an
   accessibility violation.
-- `AgreementWidget.swift` / `PaymentMethodWidget.swift` — icons inside `Button`s
-  that also contain `Text()` (terms checkbox, payment method rows). Not a hard
-  violation (each button has a text label), but not deeply verified for
-  SwiftUI's per-child accessibility-element merging — flagged as a follow-up, not
-  fixed. Could now actually be checked with the real simulator `ARCHITECTURE.md`
-  §3's major-correction note describes (VoiceOver can run in the iOS Simulator),
-  but wasn't re-visited in that pass — left open, no longer for lack of a
-  toolchain, just not yet done.
+- **FIXED (item 242, 2026-08-07).** `AgreementWidget.swift` / `PaymentMethodWidget.swift`
+  — icons inside `Button`s that also contain `Text()` (terms checkbox, payment
+  method rows). SwiftUI's `Button` already merges its subviews into one spoken
+  accessibility element by default, so this was never a hard "unlabeled control"
+  violation — but the checkbox/selection-indicator icons (`checkmark.square.fill`/
+  `square`, `checkmark.circle.fill`/`circle`) had no explicit accessibility
+  treatment, so their raw SF Symbol names would get folded into the combined
+  spoken label as redundant noise alongside the real text, and selected/checked
+  state was conveyed only by which icon shape was showing rather than through the
+  standard `.isSelected` accessibility trait. Fixed by marking the purely
+  decorative icons `.accessibilityHidden(true)` and adding
+  `.accessibilityAddTraits(.isSelected)` to each `Button` when checked/selected.
+  **Caveat, stated plainly:** this environment has `xcodebuild`/`xcrun` present but
+  `xcrun simctl list devices` shows zero configured simulator devices, so this was
+  resolved via documented Apple accessibility-API behavior (merge-by-default
+  `Button`, `accessibilityHidden`, `.isSelected` trait are all real, standard
+  SwiftUI APIs, not invented), not a live VoiceOver run — genuinely still open if
+  "verified live" is the bar, closed if "correct per documented platform
+  behavior" is.
 
 **Build-verification status corrected (2026-07-11):** this was written when "no
 macOS/Xcode toolchain in this environment" was believed true. It wasn't —
 `ARCHITECTURE.md` §3's major-correction note has the full account. A real
 `xcodebuild ... BUILD SUCCEEDED` now exists covering every Swift file this
 document's fixes touched (`ItundaAppScreen.kt`'s Android side was already
-build-verified throughout). The `AgreementWidget`/`PaymentMethodWidget` item above
-is the one real accessibility question this document leaves open that the
-now-available simulator could resolve but hasn't yet.
+build-verified throughout). As of 2026-08-07 this environment's `xcrun simctl
+list devices` shows zero configured simulator devices, so a live VoiceOver/
+XCUITest run isn't currently possible here — the `AgreementWidget`/
+`PaymentMethodWidget` item above was resolved via documented platform behavior
+instead (see its own note for exactly what that does and doesn't cover).
 
 **Re-audited against current Android code (item 242, 2026-08-07):** this section's
 original sweep only covered the 2026-07-11 `ItundaAppScreen.kt`, which has since

@@ -24,9 +24,17 @@ public struct AgreementWidget: View {
                 isAgreed.toggle()
             }) {
                 HStack(alignment: .top) {
+                    // Real a11y fix (item 242, docs/ACCESSIBILITY.md §2's iOS follow-up,
+                    // long left open for lack of a way to check): SwiftUI's Button already
+                    // merges its subviews into one accessibility element by default, so
+                    // this checkbox icon's own SF Symbol name ("checkmark square fill" /
+                    // "square") would otherwise get spoken as part of the combined label --
+                    // redundant noise alongside the text below. Hidden from accessibility;
+                    // checked state is now conveyed the standard way, via .isSelected below.
                     Image(systemName: isAgreed ? "checkmark.square.fill" : "square")
                         .foregroundColor(isAgreed ? .blue : .gray)
                         .font(.title3)
+                        .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("I agree to all Terms and Conditions")
@@ -40,6 +48,7 @@ public struct AgreementWidget: View {
                     Spacer()
                 }
             }
+            .accessibilityAddTraits(isAgreed ? [.isSelected] : [])
             .padding()
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(12)
