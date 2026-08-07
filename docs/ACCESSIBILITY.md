@@ -419,13 +419,30 @@ for the selected swatch); `merchant-mfe/PosScreen.tsx`'s cart quantity +/-
 buttons. `ops-mfe`, `kyc-mfe`, `pay-checkout`, and `host-app` had no genuine
 icon-only violations in this pass.
 
+**Touch target size** — WCAG 2.5.8 Target Size (Minimum), a 2.2-era AA-level
+criterion (not 2.5.5's AAA-only 44×44) requiring 24×24 CSS pixels unless an
+exception applies. Not a full sweep — checked the icon-only buttons this same
+pass had already located and fixed for accessible names, since those were the
+highest-risk candidates already in hand. Found and fixed 6 real violations:
+`MapView.tsx`'s two bookmark-color-swatch pickers (22×22px → 24×24px, plus the
+missing `aria-pressed` added to the one that lacked it); `PosScreen.tsx`'s cart
+quantity +/- buttons (merchant-mfe) had zero padding at all — the clickable area
+was just the bare 14px icon, a real usability risk for a merchant tapping fast
+through checkout, not just a compliance gap — sized to 28×28px; `BankDashboard.tsx`'s
+two modal-close "×" buttons, same zero-padding problem. Deliberately left alone:
+the two chat "Cancel reply" "×" buttons, which sit inline within a flowing text
+sentence ("Replying to: ... ×") — WCAG 2.5.8's own "inline" exception covers
+targets constrained by surrounding text's line-height, and forcing padding there
+would have broken the sentence's visual flow to satisfy a rule that doesn't apply.
+
 Verified: `bank-mfe` and `merchant-mfe` both `tsc -b` + `vite build` clean on
 every change. **Not yet audited on web:** color contrast (the token-level fixes in
 §1 above apply automatically since every micro-frontend imports the same
 `packages/design-tokens/tokens.css`, but no independent web-specific contrast pass
-has been run), touch target size, Dynamic Type/OS text-zoom equivalent, and focus
-order — this section closes the two gap categories actually swept, not the whole
-web surface.
+has been run), the remaining ~700 buttons' touch target sizes beyond the ones
+already in hand from the label sweep, Dynamic Type/OS text-zoom equivalent, and
+focus order — this section closes the gap categories actually swept, not the
+whole web surface.
 
 ## Status
 
