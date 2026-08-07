@@ -2597,7 +2597,7 @@ interface ApiService {
     // rw.itunda.community.CommunityService.finalizeGroupBuy's own doc comment. bank-mfe
     // already has this; this is the first Android client.
     @POST("api/v1/community/posts/{postId}/finalize-group-buy")
-    suspend fun finalizeGroupBuy(@Path("postId") postId: String, @Body request: FinalizeGroupBuyRequest): SuccessResponse
+    suspend fun finalizeGroupBuy(@Path("postId") postId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: FinalizeGroupBuyRequest): SuccessResponse
 
     // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
     @GET("api/v1/jobs/categories")

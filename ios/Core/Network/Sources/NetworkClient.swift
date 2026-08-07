@@ -4122,7 +4122,11 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/community/sessions/\(sessionId)/check-in", body: EmptyBody())
     }
     public func finalizeGroupBuy(_ postId: String, totalAmount: Double, description: String) async throws -> SuccessResponse {
-        try await authenticatedPost("api/v1/community/posts/\(postId)/finalize-group-buy", body: FinalizeGroupBuyRequest(totalAmount: totalAmount, description: description))
+        try await authenticatedPost(
+            "api/v1/community/posts/\(postId)/finalize-group-buy",
+            body: FinalizeGroupBuyRequest(totalAmount: totalAmount, description: description),
+            idempotencyKey: UUID().uuidString
+        )
     }
 
     // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.

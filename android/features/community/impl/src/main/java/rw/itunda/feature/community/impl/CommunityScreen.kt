@@ -817,7 +817,7 @@ private fun GroupBuyFinalizeSection(post: CommunityPostDto, currentUserId: Strin
                     error = null
                     coroutineScope.launch {
                         try {
-                            NetworkClient.apiService.finalizeGroupBuy(post.id, FinalizeGroupBuyRequest(amount, description.trim()))
+                            NetworkClient.apiService.finalizeGroupBuy(post.id, java.util.UUID.randomUUID().toString(), FinalizeGroupBuyRequest(amount, description.trim()))
                             done = true
                         } catch (e: HttpException) {
                             error = superAppErrorMessage(e)

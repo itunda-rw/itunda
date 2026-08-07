@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real 동네생활 (Danggeun/Karrot "Neighborhood Life")-style community board
 // (rw.itunda.community, 2026-07-19) -- Karrot's own second core surface alongside its
@@ -161,5 +162,6 @@ export const fetchSessionAttendance = (sessionId: string) =>
 export const finalizeGroupBuy = (postId: string, totalAmount: number, description: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/community/posts/${postId}/finalize-group-buy`, {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ totalAmount, description }),
   });

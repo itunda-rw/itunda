@@ -5,16 +5,21 @@ import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.idempotency.IdempotencyConflictException
+import rw.itunda.core.idempotency.IdempotencyInProgressException
+import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.community.CommunityMeetupJoinException
 import rw.itunda.community.CommunityNeighborhoodNotSetException
 import rw.itunda.community.CommunityPostNotFoundException
@@ -61,7 +66,7 @@ data class FinalizeGroupBuyRequest(val totalAmount: java.math.BigDecimal, val de
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/community")
-class CommunityController(private val communityService: CommunityService) {
+class CommunityController(private val communityService: CommunityService, private val idempotencyService: IdempotencyService) {
 
     @GetMapping("/categories")
     fun categories(): ResponseEntity<Map<String, Any?>> =
@@ -226,14 +231,29 @@ class CommunityController(private val communityService: CommunityService) {
 
     // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
     // CommunityService.finalizeGroupBuy's own doc comment.
+    //
+    // Real Idempotency-Key gap found and fixed (item 247 follow-up, repo-wide
+    // Idempotency-Key coverage sweep): this creates a brand-new real SplitBill with no
+    // check for "has this post already been finalized" -- a retried request (timeout,
+    // double-tap) created a second real split bill for the same group purchase, with
+    // participants who don't know to ignore the duplicate potentially paying into both.
+    // Same risk shape this codebase already fixed once for AutoTransferController.create
+    // ("a duplicate schedule row means a duplicate charge... down the line", not just an
+    // immediate one) -- SplitBillController's own createSplitBill endpoint already
+    // requires this same key for the identical underlying action; this is the second,
+    // previously-uncovered entry point to it.
     @PostMapping("/posts/{postId}/finalize-group-buy")
     fun finalizeGroupBuy(
         @PathVariable postId: String,
         @RequestBody request: FinalizeGroupBuyRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val result = communityService.finalizeGroupBuy(currentUser.userId, postId, request.totalAmount, request.description)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "splitBill" to result.splitBill, "participants" to result.participants))
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/community/posts/$postId/finalize-group-buy", idempotencyKey, request) {
+            val result = communityService.finalizeGroupBuy(currentUser.userId, postId, request.totalAmount, request.description)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "splitBill" to result.splitBill, "participants" to result.participants)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @ExceptionHandler(CommunityMeetupJoinException::class)
@@ -302,6 +322,18 @@ class CommunityController(private val communityService: CommunityService) {
     @ExceptionHandler(SplitBillDescriptionRequiredException::class)
     fun handleSplitBillDescriptionRequired(ex: SplitBillDescriptionRequiredException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("DESCRIPTION_REQUIRED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(IdempotencyConflictException::class)
+    fun handleConflict(ex: IdempotencyConflictException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(IdempotencyInProgressException::class)
+    fun handleInProgress(ex: IdempotencyInProgressException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingHeader(ex: MissingRequestHeaderException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
 
     @ExceptionHandler(SplitBillNeedsParticipantsException::class)
     fun handleSplitBillNeedsParticipants(ex: SplitBillNeedsParticipantsException) =
