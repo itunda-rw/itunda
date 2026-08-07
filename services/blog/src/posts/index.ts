@@ -11,6 +11,7 @@ import { securityAndSimplicityTogether } from './security-and-simplicity-togethe
 import { theAuditWeSaidWeFinished } from './the-audit-we-said-we-finished';
 import { theKeyThatCantLeaveThePhone } from './the-key-that-cant-leave-the-phone';
 import { theLinterThatLiedToItselfFirst } from './the-linter-that-lied-to-itself-first';
+import { threeFlowsTheFraudEngineNeverSaw } from './three-flows-the-fraud-engine-never-saw';
 
 export interface Post {
   slug: string;
@@ -22,7 +23,7 @@ export interface Post {
   content: string;
 }
 
-export const posts: Post[] = [theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
+export const posts: Post[] = [threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 
