@@ -44,9 +44,33 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real gap found 2026-08-08 (super-app mini-program research pass, comparing this
+    // bridge against WeChat's own documented Mini Program model, which restricts
+    // outbound navigation to a pre-declared domain allowlist): this took any URL string
+    // and opened it with zero scheme/domain restriction -- an https link to anywhere,
+    // or another installed app's custom scheme. Mirrors the identical fix on Android's
+    // `SaroniteBridge.kt`'s own `openURL` -- same allowlist, same rationale (today's
+    // real callers are itunda's own first-party mini-apps, but the bridge itself had no
+    // structural defense if a lower-trust mini-app is ever loaded through Saronite
+    // later). Note, honestly scoped smaller than the Android fix: Android's bridge also
+    // gates every method behind a `requireScope`/`MiniAppSecurityContext` partner-scope
+    // check that this iOS bridge has no equivalent of at all yet, on any method -- that
+    // whole partner-scoping system is a real, separate, larger gap, not something to
+    // build inside this one fix.
     @objc func openURL(_ url: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         guard let parsed = URL(string: url) else {
             reject("SARONITE_OPEN_URL_FAILED", "Invalid URL", nil)
+            return
+        }
+        let host = parsed.host?.lowercased()
+        let allowed: Bool
+        switch parsed.scheme?.lowercased() {
+        case "https": allowed = host != nil && (host == "itunda.rw" || host!.hasSuffix(".itunda.rw"))
+        case "tel", "mailto": allowed = true
+        default: allowed = false
+        }
+        guard allowed else {
+            reject("SARONITE_OPEN_URL_DENIED", "This mini-app tried to open a URL outside itunda's allowed domains: \(url)", nil)
             return
         }
         DispatchQueue.main.async {

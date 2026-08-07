@@ -20,6 +20,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -98,6 +99,7 @@ class AgentService(
     private val withdrawalAuthorizationService: AgentWithdrawalAuthorizationService,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     @Transactional
     fun register(displayName: String, dailyCashInLimit: BigDecimal, dailyCashOutLimit: BigDecimal): Agent {
@@ -321,6 +323,16 @@ class AgentService(
         }
 
         val ledger = ledgerService.postLedgerTransaction(wallet.currency, legs)
+        // Real gap found 2026-08-08 (East African mobile-money research pass, checking
+        // this module against real M-Pesa/MTN MoMo agent-network fraud patterns):
+        // agent cash-in/cash-out had zero FraudRuleEngine coverage -- the exact same
+        // missing-wiring bug already found and fixed 3 times this session in
+        // Gift/GiftVoucher/SplitBill. recipientUserId is null (an agent isn't a
+        // recurring itunda counterparty the NEW_RECIPIENT rule's shape fits), so only
+        // HIGH_VALUE/VELOCITY apply -- still real signal for the two most-cited agent-
+        // channel risks: deposit structuring (repeated/large cash-ins) and a
+        // compromised-account being rapidly drained via agent counters.
+        fraudRuleEngine.evaluate(wallet.userId, null, amount, ledger.transactionId)
         val cashIn = agentCashInRepository.save(AgentCashIn(
             id = "cashin_${UUID.randomUUID()}", agentId = agent.id, walletId = wallet.id, receiptNumber = receipt,
             ledgerTransactionId = ledger.transactionId, amount = amount, acceptedByUserId = acceptedByUserId,
@@ -404,6 +416,11 @@ class AgentService(
         }
 
         val ledger = ledgerService.postLedgerTransaction(wallet.currency, legs)
+        // Same gap, same fix as cashIn above -- see its own comment for the full
+        // account. Cash-out is the closer analogue to P2P/Gift's own "wallet owner
+        // moving money away" shape (a compromised account rapidly drained via an
+        // agent counter is the single most classic real fraud pattern here).
+        fraudRuleEngine.evaluate(wallet.userId, null, amount, ledger.transactionId)
         val cashOut = agentCashOutRepository.save(AgentCashOut(
             id = "cashout_${UUID.randomUUID()}", agentId = agent.id, walletId = wallet.id, receiptNumber = receipt,
             ledgerTransactionId = ledger.transactionId, amount = amount, paidByUserId = paidByUserId,

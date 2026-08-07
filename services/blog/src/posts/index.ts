@@ -16,6 +16,7 @@ import { theRiskWeAlreadyKnewAbout } from './the-risk-we-already-knew-about';
 import { theFixWeAlreadyHad } from './the-fix-we-already-had';
 import { theFormThatClosedOnALie } from './the-form-that-closed-on-a-lie';
 import { theMatureFeatureThatForgotWhatItWasSaying } from './the-mature-feature-that-forgot-what-it-was-saying';
+import { whatWeFoundOutsideOurOwnReference } from './what-we-found-outside-our-own-reference';
 
 export interface Post {
   slug: string;
@@ -27,7 +28,7 @@ export interface Post {
   content: string;
 }
 
-export const posts: Post[] = [theMatureFeatureThatForgotWhatItWasSaying, theFormThatClosedOnALie, theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
+export const posts: Post[] = [whatWeFoundOutsideOurOwnReference, theMatureFeatureThatForgotWhatItWasSaying, theFormThatClosedOnALie, theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 

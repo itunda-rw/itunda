@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.domain.AgentTillReconciliation
 import rw.itunda.core.domain.TillReconciliationStatus
 import rw.itunda.core.ledger.LedgerService
@@ -31,7 +32,7 @@ class AgentTillReconciliationReviewTest : BehaviorSpec({
         mockk<AgentRepository>(), mockk<AgentOperatorRepository>(), reconciliations,
         mockk<AgentCashInRepository>(), mockk<AgentCashOutRepository>(), mockk<WalletRepository>(),
         mockk<LedgerAccountRepository>(), mockk<LedgerService>(), mockk<TransactionRepository>(),
-        mockk<UserRepository>(), mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true),
+        mockk<UserRepository>(), mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true), mockk<FraudRuleEngine>(relaxed = true),
     )
 
     Given("a pending till variance") {

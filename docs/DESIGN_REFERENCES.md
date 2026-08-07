@@ -2414,3 +2414,129 @@ numbers, design tokens, account linking).
   standalone even when the full `ItundaApp` scheme can't link due to missing CocoaPods deps — build
   the smallest scheme that contains the touched file instead of assuming iOS changes can only be
   reviewed by hand.
+
+## 19. Beyond Toss — domestic and international ecosystems, first pass (2026-08-08)
+
+**Added 2026-08-08**, explicit user directive: "keep searching and learning from different
+ecosystems, 국내 and 해외, to improve itunda ecosystems" — the first time this session's research
+discipline (Sections 11-18, all Toss-specific) was deliberately pointed at other companies. Five
+parallel fork passes, each scoped to a different ecosystem cluster, chosen for relevance to
+itunda's actual shape rather than by size or fame alone: East African mobile money (the market
+itunda actually operates in), domestic Korean fintech beyond Toss, emerging-market challenger
+banks (the closest real business analogues), super-app mini-program platforms (directly comparable
+to itunda's own Saronite architecture), and Western neobanks. Same discipline as the Toss thread:
+real sourced findings only, no invented itunda file paths (a prior pass in the Toss thread
+fabricated one — see Section 17's correction — every prompt this round explicitly named that
+precedent and warned against repeating it).
+
+### References
+
+| Ecosystem | Finding | Status |
+|---|---|---|
+| East African mobile money | Agent cash-in/cash-out (`AgentService.kt`) had zero `FraudRuleEngine` coverage — same missing-wiring bug already found/fixed 3x this session elsewhere | **Fixed same day**, see below |
+| East African mobile money | itunda already has a real USSD channel (`services/backend/ussd`) delegating to `P2pService.sendDirect`, inheriting its fraud coverage — initial hypothesis (USSD gap) was wrong, checked and confirmed not a gap | No action needed |
+| Super-app mini-programs (WeChat/Alipay) | Saronite's `openURL` bridge had no domain/scheme allowlist on either platform, and — Android only — skipped the `requireScope` gate every sibling bridge method uses | **Fixed same day**, see below |
+| Western neobanks (Cash App/Block) | Real $220M CFPB+multistate fine for deflecting fraud disputes to "ask your bank" instead of investigating — checked itunda's own dispute path | **Already covered, no gap** — see below |
+| Emerging-market challenger banks (Paytm/PhonePe) | India's fintech UX for low-digital-literacy users leans heavily on regional-language support (11+ languages, >50% of new users prefer it over English) | **Real, large, confirmed gap — itunda has zero Kinyarwanda/French localization anywhere**, not fixed this pass, see below |
+| Emerging-market challenger banks (Nubank) | NuScore/nuFormer: real transaction-sequence credit scoring for thin-file users (90-day delinquency down to 6.6% while limits expanded, +1.25% AUC vs. bureau-style baseline) | Real, sourced lead — not yet checked against itunda's own credit-scoring feature |
+| Emerging-market challenger banks (BDO/GCash) | A real 2021 Philippine bank hack: OTP bypass + limits not enforced server-side, 700+ victims | Spot-checked — itunda's rate limits (`RateLimiter`) and withdrawal authorization (`AgentWithdrawalAuthorizationService`) are both real backend services already consumed server-side (confirmed via code already read this session), not client-side-only. Not exhaustively re-audited this pass. |
+| Emerging-market challenger banks (Paytm Payments Bank) | 8-year KYC/compliance erosion led to a full regulatory wind-down — a slow accumulation, not one incident | Informational — itunda is single-country/BNR-licensed, structurally different context; worth an ongoing-compliance-monitoring habit, not a specific code fix |
+| Domestic Korean (Kakao Pay) | Real ₩15B fine (April 2025) for sharing 40M users' data with a shareholder without consent | Real lead — not yet checked against itunda's own third-party data-sharing practices |
+| Domestic Korean (KakaoBank) | Sequence-based (not per-transaction) fraud detection, 18M+ daily inferences — a different architectural paradigm from itunda's current per-transaction `FraudRuleEngine` | Informational/future-direction, not a quick fix |
+| Domestic Korean (Kakao Pay) | "정산하기" group bill-split reachable directly from inside a KakaoTalk chat | Real, checkable UX-parity question — not yet checked whether itunda's SplitBill is reachable from its own Talk feature |
+| Western neobanks (N26) | BaFin "compliance debt" pattern: monitoring/KYC capacity scaling with headcount instead of transaction volume | Informational only — not directly applicable (itunda is single-jurisdiction) |
+
+### Fixed same day
+
+1. **Agent cash-in/cash-out fraud coverage** (`services/backend/agents/src/main/kotlin/rw/itunda/
+   agents/AgentService.kt`) — added `FraudRuleEngine` constructor param; `cashIn`/`cashOut` now both
+   call `fraudRuleEngine.evaluate(wallet.userId, null, amount, ledger.transactionId)` right after the
+   ledger transaction posts. `recipientUserId` is null (an agent isn't a recurring itunda
+   counterparty the NEW_RECIPIENT rule's shape fits) — HIGH_VALUE/VELOCITY still apply, real signal
+   for the two most-cited agent-channel risks: deposit structuring and a compromised account being
+   rapidly drained via an agent counter. 6 test files updated for the new constructor param (all 3
+   numbered variants in `AgentServiceTest.kt`, plus `AgentReconciliationReportTest.kt`,
+   `AgentTillFundingServiceTest.kt`, `AgentOperatorAccessTest.kt`,
+   `AgentTillReconciliationReviewTest.kt`, `AgentCashOutServiceTest.kt`). Verified:
+   `:agents:compileKotlin`/`:agents:test` green.
+2. **Saronite `openURL` domain allowlist**, both platforms — `android/app/.../miniapps/
+   SaroniteBridge.kt` and `ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift`. Restricts
+   outbound navigation to `https://itunda.rw`/`*.itunda.rw` plus `tel:`/`mailto:`, matching WeChat's
+   own documented domain-allowlist model. Android's fix also added the `requireScope(null, ...)` gate
+   every sibling bridge method already has (confirmed via `MiniAppSecurityContext`'s own doc comment,
+   which already claimed "every method except `getWalletBalance`" was gated — an oversight this file
+   didn't match). Today's real callers are itunda's own first-party mini-apps (confirmed zero mini-app
+   currently calls `openURL` with an external URL — grepped `packages/saronite`), so the practical
+   exploit surface is limited, but the bridge had no structural defense if a lower-trust mini-app is
+   ever loaded through Saronite later. Verified: Android `:app:compileDebugKotlin` green; iOS — the
+   `ItundaApp` scheme can't link this specific file (it `import React`, one of the pre-existing
+   unresolved CocoaPods dependencies named in Section 18), so the domain-matching logic was verified
+   correct via a standalone `swift` script covering 9 cases including a subdomain-spoofing attempt
+   (`itunda.rw.evil.com` correctly rejected) — not a full project build, honestly noted as a lesser
+   verification tier than Android's.
+3. **Documented, not built**: iOS's Saronite bridge has no `MiniAppSecurityContext`-equivalent
+   partner-scope gating system at all, on any method — Android's whole `requireScope` mechanism has
+   no iOS counterpart. Real, separate, larger gap; noted in the fix's own code comment rather than
+   silently expanded into this fix.
+
+### Checked and closed — no gap found
+
+- **Dispute/fraud-report path** (the Cash App/CFPB lead): itunda already has a real
+  `SupportTicket` system (`services/backend/core/.../domain/SupportTicket.kt`,
+  `services/backend/support/.../SupportController.kt`) with `PAYMENT_DISPUTE`/`ACCOUNT_TAKEOVER`
+  categories tied to a real transaction ID, a real per-category SLA (`dueBy`), automatic wallet
+  freeze on an account-takeover report, and a real refund-reversal resolution path — concurrency-safe
+  (`@Version`, a real double-refund race already found and fixed 2026-08-02 per the entity's own doc
+  comment). Confirmed reachable from all 3 real clients (`bank-mfe/src/lib/support.ts`+
+  `BankDashboard.tsx`, Android `SupportScreen.kt`, iOS `OverviewLoansCreditScoreScreens.swift`) — not
+  backend-only. This is structurally the opposite of Cash App's documented failure (deflection to
+  "ask your bank," no bounded resolution time): itunda already has a bounded SLA and a real refund
+  mechanism built in.
+- **USSD fraud coverage** (an East Africa-pass hypothesis that turned out wrong): itunda's real USSD
+  channel delegates its send-money path to the same `P2pService.sendDirect` the app uses, inheriting
+  its fraud coverage for free — not a separate, uncovered code path.
+
+### Recommendations (ranked)
+
+1. **[sourced, real, done same day]** Agent fraud-engine gap and Saronite `openURL` allowlist — both
+   fixed, see above.
+2. **[sourced, real, large, NOT fixed this pass — sized honestly]** Kinyarwanda/French localization.
+   `find` across every localization convention this repo could plausibly use (`values-rw/`,
+   `values-fr/`, any `i18n`/`localiz*` directory, any `"rw":`/`"kinyarwanda"` key) returned **zero
+   real locale infrastructure anywhere** — not bank-mfe, not Android, not iOS. Every string in the
+   whole app is hardcoded English. itunda's own explicit financial-inclusion mission, and the
+   Paytm/PhonePe research finding that >50% of new fintech users in a comparable market prefer
+   regional-language support over English, make this a real, significant gap — but full localization
+   (locale infrastructure + translating what is likely thousands of strings across 3 platforms) is a
+   multi-week-scale project, not something to rush or silently half-build in one pass. Not attempted
+   this round; recommend a dedicated future effort starting with locale *infrastructure* (a real
+   i18n framework wired into all 3 clients) before content, and prioritizing the highest-traffic
+   screens (login, wallet overview, transfer) first if translation work is itself phased.
+3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
+   scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
+   in-app transaction history as a signal, or leans on external/bureau-style data alone, given
+   Rwanda's likely-thin traditional credit-bureau coverage.
+4. **[sourced, real lead, not yet checked]** Kakao Pay's third-party data-sharing fine — worth an
+   audit of whether itunda shares user data with any partner/vendor without a specific, itunda-side
+   consent record (not just a blanket signup ToS).
+5. **[sourced, real, checkable UX-parity question, not yet checked]** Whether itunda's SplitBill flow
+   is reachable from inside its own Talk/chat feature, matching Kakao Pay's real "정산하기" pattern.
+6. **[sourced, informational, future-direction]** KakaoBank's sequence-based fraud detection as a
+   longer-term evolution of itunda's current per-transaction `FraudRuleEngine` — not a quick fix,
+   worth naming as a real architectural option for whenever this project has enough real transaction
+   volume to train against.
+7. **[sourced, informational only]** Paytm Payments Bank's compliance-erosion story and N26's
+   BaFin compliance-debt pattern — real cautionary lessons, no direct itunda code action; worth an
+   ongoing-monitoring habit more than a one-time fix.
+
+### Unresolved / worth a follow-up
+- 3 of the 5 ecosystem passes ran out of web-search budget partway through (Naver Pay/Samsung Pay
+  entirely unresearched; Wise's real ledger architecture and Revolut/N26 design-system content
+  genuinely unrecovered this round) — a future pass with a fresh search budget, one ecosystem at a
+  time rather than 5 in parallel, would likely recover more.
+- Recommendations 3-6 above: real, sourced, not yet checked against itunda's actual code.
+- **Aside, out of scope, flagged not investigated**: the mini-program research pass noticed stray git
+  worktrees at `.claude/worktrees/wf_f205a3b5-33c-{7,8,9,10,11}/`, each containing a full copy of the
+  repo (confirmed via an unrelated grep this pass turning up hits from all 5) — likely leftover from
+  an earlier `Workflow` run this session, not touched or cleaned up here since it's unrelated to this
+  work; worth the user's attention if disk space matters, not investigated further.

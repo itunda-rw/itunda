@@ -83,10 +83,39 @@ class SaroniteBrownfieldModule(
         }
     }
 
+    // Real gap found 2026-08-08 (super-app mini-program research pass, comparing this
+    // bridge against WeChat's own documented Mini Program model, which restricts
+    // outbound navigation to a pre-declared domain allowlist): this was the one bridge
+    // method with no requireScope gate at all -- every sibling method in this file
+    // checks it (see MiniAppSecurityContext's own doc comment, which already claimed
+    // "every SaroniteBrownfieldModule method except getWalletBalance" is gated, an
+    // oversight this file itself didn't match) -- and no scheme/domain restriction,
+    // so any mini-app's JS could launch an arbitrary http(s) URL, tel:, or another
+    // installed app's custom intent scheme. Today's real callers are itunda's own
+    // first-party mini-apps, so the practical exploit surface is limited, but the
+    // bridge itself had no structural defense if a lower-trust mini-app is ever loaded
+    // through Saronite later -- fixed now rather than left for whenever that happens.
     @ReactMethod
     fun openURL(url: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val parsed = try {
+            Uri.parse(url)
+        } catch (e: Exception) {
+            promise.reject("SARONITE_OPEN_URL_FAILED", e)
+            return
+        }
+        val host = parsed.host?.lowercase()
+        val allowed = when (parsed.scheme?.lowercase()) {
+            "https" -> host != null && (host == "itunda.rw" || host.endsWith(".itunda.rw"))
+            "tel", "mailto" -> true
+            else -> false
+        }
+        if (!allowed) {
+            promise.reject("SARONITE_OPEN_URL_DENIED", "This mini-app tried to open a URL outside itunda's allowed domains: $url")
+            return
+        }
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            val intent = Intent(Intent.ACTION_VIEW, parsed).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             reactApplicationContext.startActivity(intent)

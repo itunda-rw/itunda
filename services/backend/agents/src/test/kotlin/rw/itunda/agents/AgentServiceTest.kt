@@ -30,6 +30,7 @@ import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
+import rw.itunda.core.fraud.FraudRuleEngine
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -47,7 +48,8 @@ class AgentServiceTest : BehaviorSpec({
     val withdrawalAuthorizationService = mockk<AgentWithdrawalAuthorizationService>()
     val notificationRepository = mockk<NotificationRepository>()
     val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-    val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService)
+    val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+    val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine)
     val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"))
     val wallet = Wallet("wallet_1", "user_1", "2024100001", "Jean Main", WalletType.MAIN, BigDecimal("1000"), BigDecimal("1000"))
 
@@ -141,7 +143,8 @@ class AgentServiceTest : BehaviorSpec({
         val withdrawalAuthorizationService2 = mockk<AgentWithdrawalAuthorizationService>()
         val notificationRepository2 = mockk<NotificationRepository>()
         val pushNotificationService2 = mockk<PushNotificationService>(relaxed = true)
-        val service2 = AgentService(agentRepository2, operatorRepository2, tillReconciliationRepository2, cashInRepository2, cashOutRepository2, walletRepository2, ledgerAccountRepository2, ledgerService2, transactionRepository2, userRepository2, withdrawalAuthorizationService2, notificationRepository2, pushNotificationService2)
+        val fraudRuleEngine2 = mockk<FraudRuleEngine>(relaxed = true)
+        val service2 = AgentService(agentRepository2, operatorRepository2, tillReconciliationRepository2, cashInRepository2, cashOutRepository2, walletRepository2, ledgerAccountRepository2, ledgerService2, transactionRepository2, userRepository2, withdrawalAuthorizationService2, notificationRepository2, pushNotificationService2, fraudRuleEngine2)
 
         val agent2 = Agent("agent_2", "Nyamirambo Branch", "agent_cash_2", AgentStatus.ACTIVE, BigDecimal("100000"))
         val customerWallet = Wallet("wallet_customer", "user_customer", "2024100002", "Customer", WalletType.MAIN, BigDecimal("1000"), BigDecimal("1000"))
@@ -190,7 +193,8 @@ class AgentServiceTest : BehaviorSpec({
         val withdrawalAuthorizationService3 = mockk<AgentWithdrawalAuthorizationService>()
         val notificationRepository3 = mockk<NotificationRepository>()
         val pushNotificationService3 = mockk<PushNotificationService>(relaxed = true)
-        val service3 = AgentService(agentRepository3, operatorRepository3, tillReconciliationRepository3, cashInRepository3, cashOutRepository3, walletRepository3, ledgerAccountRepository3, ledgerService3, transactionRepository3, userRepository3, withdrawalAuthorizationService3, notificationRepository3, pushNotificationService3)
+        val fraudRuleEngine3 = mockk<FraudRuleEngine>(relaxed = true)
+        val service3 = AgentService(agentRepository3, operatorRepository3, tillReconciliationRepository3, cashInRepository3, cashOutRepository3, walletRepository3, ledgerAccountRepository3, ledgerService3, transactionRepository3, userRepository3, withdrawalAuthorizationService3, notificationRepository3, pushNotificationService3, fraudRuleEngine3)
 
         val agent3 = Agent("agent_3", "Kimisagara Branch", "agent_cash_3", AgentStatus.ACTIVE, BigDecimal("100000"))
         val customerWallet3 = Wallet("wallet_customer3", "user_customer3", "2024100004", "Customer", WalletType.MAIN, BigDecimal("1000"), BigDecimal("1000"))

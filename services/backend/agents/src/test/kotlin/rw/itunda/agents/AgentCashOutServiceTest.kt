@@ -29,6 +29,7 @@ import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
+import rw.itunda.core.fraud.FraudRuleEngine
 import java.math.BigDecimal
 import java.util.Optional
 
@@ -47,7 +48,8 @@ class AgentCashOutServiceTest : BehaviorSpec({
         val withdrawalAuthorizationService = mockk<AgentWithdrawalAuthorizationService>()
         val notificationRepository = mockk<NotificationRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService, fraudRuleEngine)
         val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000"))
         val wallet = Wallet("wallet_1", "user_1", "2024100001", "Jean Main", WalletType.MAIN, BigDecimal("50000"), BigDecimal("50000"))
         every { cashOutRepository.existsByReceiptNumber("KGL-W-001") } returns false
