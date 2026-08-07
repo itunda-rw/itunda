@@ -72,7 +72,18 @@ this table has not been re-audited against the current values.
    raw non-theme-reactive `IdsPalette.gray500` primitive directly for caption text
    (3 call sites) instead of the theme-reactive semantic token — swapped to
    `IDS.Colors.textTertiary`, which also fixes its dark-mode adaptivity, not just
-   its contrast.
+   its contrast. **Extended, 2026-08-07 (item 244):** independently verified this
+   fix's own claim that it "applies automatically" everywhere the token is used —
+   it doesn't reach files keeping their own hardcoded copy instead of importing
+   the token, the exact drift class `tokens.css`'s own header comment already
+   warns about. Found and fixed two more real, live instances of the OLD,
+   pre-fix `#8B95A1`: `bank-mfe/MapView.tsx`'s `MAP_CARD_TEXT_TERTIARY` constant
+   (11 real call sites) and 17 real usages across 5 saronite mini-apps
+   (reward-tasks, pay-bills, insurance_mini_app, partner-demo, wallet-balance),
+   both against the same light `#F2F4F6`/`#FFFFFF` backgrounds the original fix
+   targeted. Also checked (before assuming) `services/blog/src/styles.css`'s own
+   `#8b95a1` — correctly left alone: that page is dark-mode-only, and the same
+   hex as light-on-dark text there measures 5.48-6.4:1, comfortably passing.
 2. **FIXED (item 240, 2026-08-07).** `success` (green) on white failed contrast at
    every threshold in light mode (`#04c065`, 2.40:1, below even 3.0:1). Darkened to
    `#05804a` (5.01:1, comfortably clears AA-normal-text 4.5:1), same hue family, same
