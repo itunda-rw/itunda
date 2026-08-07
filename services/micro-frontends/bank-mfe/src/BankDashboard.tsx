@@ -7196,6 +7196,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
+  // Real screen-reader accessibility fix (docs/DESIGN_REFERENCES.md §14 -- Toss's own
+  // "Birth of a chatbot heard through the ears" article, toss.tech/article/38743):
+  // a message pushed live over the socket only ever updated the visual message list --
+  // nothing here told a screen-reader user a new message had arrived at all, since
+  // nothing on this screen was an aria-live region. Announced via a visually-hidden
+  // live region below, only for messages actually pushed from the OTHER participant
+  // (never the current user's own sent message, which they already know they typed).
+  const [liveAnnouncement, setLiveAnnouncement] = useState('');
   const currentUser = getStoredUser();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<MessagingSocketHandle | null>(null);
@@ -7484,6 +7492,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         if (prev.some((m) => m.id === payload.message.id)) return prev;
         return [...prev, payload.message];
       });
+      if (payload.message.senderId !== currentUser?.id) {
+        setLiveAnnouncement(`New message from ${conversation.otherUserName}: ${payload.message.body || 'sent an attachment'}`);
+      }
       // A pushed message might be a real offer/counter/accept/reject -- refresh the
       // offer history so it renders as an offer bubble immediately rather than waiting
       // for the next 4s poll.
@@ -7681,8 +7692,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         />
       )}
 
+      {/* Real screen-reader accessibility fix (docs/DESIGN_REFERENCES.md §14) -- this
+          state change was visual-only before; a screen-reader user got no signal the
+          other participant started typing. */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">{liveAnnouncement}</div>
       {otherTyping && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
+        <p aria-live="polite" style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
           {conversation.otherUserName} is typing…
         </p>
       )}
@@ -7893,6 +7908,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [updatingPin, setUpdatingPin] = useState(false);
   const [sending, setSending] = useState(false);
   const [typingUserIds, setTypingUserIds] = useState<Record<string, boolean>>({});
+  // Real screen-reader accessibility fix (docs/DESIGN_REFERENCES.md §14), same as
+  // ConversationThread's own identical addition above.
+  const [liveAnnouncement, setLiveAnnouncement] = useState('');
   // Real split-bill/manage-members (found 2026-07-22 fully built on the backend with
   // zero UI anywhere) -- toggles a sibling view over this same thread.
   const [showSplitBills, setShowSplitBills] = useState(false);
@@ -8001,6 +8019,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         if (prev.some((m) => m.id === payload.message.id)) return prev;
         return [...prev, payload.message];
       });
+      if (payload.message.senderId !== currentUser?.id) {
+        setLiveAnnouncement(`New message from ${nameForSender(payload.message.senderId)}: ${payload.message.body || 'sent an attachment'}`);
+      }
     });
     socketRef.current = socket;
     return () => {
@@ -8259,8 +8280,11 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         />
       )}
 
+      {/* Real screen-reader accessibility fix (docs/DESIGN_REFERENCES.md §14) -- same
+          new-message live region as ConversationThread's own identical addition. */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">{liveAnnouncement}</div>
       {Object.keys(typingUserIds).length > 0 && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
+        <p aria-live="polite" style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
           {Object.keys(typingUserIds).map(nameForSender).join(', ')} {Object.keys(typingUserIds).length === 1 ? 'is' : 'are'} typing…
         </p>
       )}

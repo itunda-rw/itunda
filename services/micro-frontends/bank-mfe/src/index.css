@@ -14,6 +14,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Real screen-reader-only utility (docs/DESIGN_REFERENCES.md §14) -- for content that
+   should reach an aria-live announcement or a screen reader's own reading order without
+   being visible on screen (e.g. Talk's new-message live region). The standard "clip"
+   pattern: display:none would remove it from the accessibility tree entirely, which
+   defeats the purpose. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 #root {
   width: 100%;
   max-width: 480px;
