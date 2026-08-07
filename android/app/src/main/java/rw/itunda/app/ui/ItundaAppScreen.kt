@@ -2358,7 +2358,11 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                 if (code.trim().length == 6 && code.trim().all { it.isDigit() } && !busy) confirm()
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.weight(1f))
+                // Real "Minimum Input" simplicity fix, closing docs/DESIGN_REFERENCES.md §11
+                // recommendation #2: IdsTextField now supports autoFocus (rule #4, same
+                // research as this screen's own auto-confirm fix), matching web's already-
+                // shipped autoFocus on this exact field.
+                IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, autoFocus = true, modifier = Modifier.weight(1f))
                 Box(
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy || code.isBlank()) Ids.colors.textTertiary else TossBlue)
                         .clickable(enabled = !busy && code.isNotBlank()) { confirm() }

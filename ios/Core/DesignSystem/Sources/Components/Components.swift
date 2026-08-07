@@ -121,14 +121,23 @@ public struct IdsTextField: View {
     @Binding var text: String
     var isSecure: Bool = false
     var keyboardType: UIKeyboardType = .default
+    // Real "No More Loading"/"Minimum Input" simplicity addition (Toss's own researched,
+    // sourced pattern -- toss.tech/article/4-ways-for-minimum-input, rule #4: "Activate
+    // focus state upon entering the page so the keyboard appears automatically" -- see
+    // docs/DESIGN_REFERENCES.md §11 recommendation #2, closing the Android-only gap left
+    // by that same-day fix). Defaults to false so every existing call site keeps its
+    // current behavior unchanged -- only a field that's the obvious, sole next action on
+    // its screen (e.g. a just-sent verification code) should opt in.
+    var autoFocus: Bool = false
 
     @FocusState private var isFocused: Bool
 
-    public init(_ label: String, text: Binding<String>, isSecure: Bool = false, keyboardType: UIKeyboardType = .default) {
+    public init(_ label: String, text: Binding<String>, isSecure: Bool = false, keyboardType: UIKeyboardType = .default, autoFocus: Bool = false) {
         self.label = label
         self._text = text
         self.isSecure = isSecure
         self.keyboardType = keyboardType
+        self.autoFocus = autoFocus
     }
 
     public var body: some View {
@@ -155,6 +164,9 @@ public struct IdsTextField: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(isFocused ? IDS.Colors.brand : Color.clear, lineWidth: 1.5)
             )
+        }
+        .onAppear {
+            if autoFocus { isFocused = true }
         }
     }
 }

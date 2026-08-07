@@ -9,7 +9,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
@@ -52,7 +56,16 @@ fun IdsTextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardType: KeyboardType = KeyboardType.Text,
     trailingIcon: (@Composable () -> Unit)? = null,
+    // Real "No More Loading"/"Minimum Input" simplicity addition (Toss's own researched,
+    // sourced pattern -- toss.tech/article/4-ways-for-minimum-input, rule #4: "Activate focus
+    // state upon entering the page so the keyboard appears automatically" -- see
+    // docs/DESIGN_REFERENCES.md §11 recommendation #2). Defaults to false so every one of
+    // this component's existing call sites keeps its current behavior unchanged -- only a
+    // field that's the obvious, sole next action on its screen (e.g. a just-sent
+    // verification code) should opt in.
+    autoFocus: Boolean = false,
 ) {
+    val focusRequester = remember { FocusRequester() }
     Column(modifier = modifier) {
         TextField(
             value = value,
@@ -66,7 +79,7 @@ fun IdsTextField(
             trailingIcon = trailingIcon,
             textStyle = IdsTypography.Body1,
             shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Ids.colors.surface,
                 unfocusedContainerColor = Ids.colors.surfaceSoft,
@@ -84,6 +97,9 @@ fun IdsTextField(
                 errorCursorColor = Ids.colors.danger,
             ),
         )
+        if (autoFocus) {
+            LaunchedEffect(Unit) { focusRequester.requestFocus() }
+        }
         if (isError && errorText != null) {
             Text(
                 text = errorText,

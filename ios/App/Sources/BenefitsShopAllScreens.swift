@@ -846,6 +846,7 @@ private struct VerificationRow: View {
     @State private var code = ""
     @State private var busy = false
     @State private var error: String?
+    @FocusState private var codeFieldFocused: Bool
 
     var body: some View {
         if kind == "email" && !hasEmail {
@@ -868,6 +869,15 @@ private struct VerificationRow: View {
                         TextField("Enter code", text: $code)
                             .padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
                             .keyboardType(.numberPad)
+                            .focused($codeFieldFocused)
+                            // Real "Minimum Input" simplicity fix, closing
+                            // docs/DESIGN_REFERENCES.md §11 recommendation #2's iOS gap
+                            // (rule #4: auto-focus so the keyboard appears without an extra
+                            // tap, matching web's already-shipped autoFocus on this exact
+                            // field). Triggered once, right when the code field first
+                            // appears (the moment "sent" flips true), not on every
+                            // recomposition.
+                            .onAppear { codeFieldFocused = true }
                             // Real "Minimum Input" simplicity fix (Toss's own researched,
                             // sourced pattern -- toss.tech/article/4-ways-for-minimum-input,
                             // rule #2: "for fixed-digit fields like ID or phone numbers, the
