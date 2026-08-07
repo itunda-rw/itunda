@@ -10038,8 +10038,12 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
           {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
             <div className="toss-card">
+              {/* Real copy-voice fix (item 244, round 5 of the empty-state pass --
+                  docs/COPY_VOICE.md's rules, ported from the same-day Android/iOS
+                  fix): say what's missing AND what fixes it, per this screen's own
+                  real "+ List an item" button above in the MINE view. */}
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {view === 'BROWSE' ? 'No listings yet.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet.' : view === 'PURCHASES' ? 'No purchases recorded yet.' : "You haven't listed anything yet."}
+                {view === 'BROWSE' ? 'No listings yet — be the first to list something for sale.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet — try Browse to see listings from everywhere.' : view === 'PURCHASES' ? 'No purchases recorded yet — items you buy will show up here.' : 'You haven\'t listed anything yet — tap "+ List an item" above to list your first one.'}
               </p>
             </div>
           )}
@@ -10929,8 +10933,11 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
       {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
       {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
         <div className="toss-card">
+          {/* Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
+              from the same-day Android/iOS fix): say what's missing AND what fixes
+              it, per this screen's own real "+ Write a post" button above in MINE. */}
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No posts yet.' : view === 'NEIGHBORHOOD' ? 'No posts in your neighborhood yet.' : "You haven't posted anything yet."}
+            {view === 'BROWSE' ? 'No posts yet — be the first to share something with your neighbors.' : view === 'NEIGHBORHOOD' ? 'No posts in your neighborhood yet — try Browse to see posts from everywhere.' : 'You haven\'t posted anything yet — tap "+ Write a post" above to share your first one.'}
           </p>
         </div>
       )}
@@ -11595,8 +11602,12 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
           {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
             <div className="toss-card">
+              {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
+                  ported from the same-day Android/iOS fix): say what's missing AND
+                  what fixes it, per this screen's own real "+ Post a job" button
+                  above in the MINE view. */}
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {view === 'BROWSE' ? 'No jobs posted yet.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet.' : view === 'WORKED' ? 'No completed jobs recorded yet.' : "You haven't posted any jobs yet."}
+                {view === 'BROWSE' ? 'No jobs posted yet — check back soon, or post one yourself.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet — try Browse to see jobs from everywhere.' : view === 'WORKED' ? 'No completed jobs recorded yet — jobs you complete will show up here.' : 'You haven\'t posted any jobs yet — tap "+ Post a job" above to post your first one.'}
               </p>
             </div>
           )}
@@ -12272,8 +12283,12 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
           {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
             <div className="toss-card">
+              {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
+                  ported from the same-day Android/iOS fix): say what's missing AND
+                  what fixes it, per this screen's own real "+ List a property"
+                  button above in the MINE view. */}
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {view === 'BROWSE' ? 'No properties listed yet.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet.' : view === 'ACQUIRED' ? 'No properties acquired yet.' : "You haven't listed any properties yet."}
+                {view === 'BROWSE' ? 'No properties listed yet — check back soon, or list your own.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet — try Browse to see properties from everywhere.' : view === 'ACQUIRED' ? 'No properties acquired yet — properties you acquire will show up here.' : 'You haven\'t listed any properties yet — tap "+ List a property" above to list your first one.'}
               </p>
             </div>
           )}
@@ -13455,8 +13470,12 @@ function OrderFoodView() {
             <div className="toss-card skeleton" style={{ height: '220px' }} />
           ) : restaurants.length === 0 ? (
             <div className="toss-card">
+              {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
+                  ported from the same-day Android/iOS fix): "registered yet" is
+                  honest about whose gap this is -- no restaurant has joined yet,
+                  not something the reader is missing a step on. */}
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {selectedCategory || debouncedSearch ? 'No restaurants match your search.' : 'No restaurants registered yet.'}
+                {selectedCategory || debouncedSearch ? 'No restaurants match your search — try a different category or search term.' : 'No restaurants registered yet — check back once restaurants in your area join itunda Eats.'}
               </p>
             </div>
           ) : (
@@ -18384,8 +18403,12 @@ function ShopView() {
         <div className="toss-card skeleton" style={{ height: '220px' }} />
       ) : merchants.length === 0 ? (
         <div className="toss-card">
+          {/* Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
+              from the same-day Android/iOS fix): "registered yet" is honest about
+              whose gap this is -- no merchant has joined yet, not something the
+              reader is missing a step on. */}
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {selectedCategory || debouncedMerchantSearch ? 'No merchants match your search.' : 'No merchants registered yet.'}
+            {selectedCategory || debouncedMerchantSearch ? 'No merchants match your search — try a different category or search term.' : 'No merchants registered yet — check back once merchants in your area join itunda Shop.'}
           </p>
         </div>
       ) : (

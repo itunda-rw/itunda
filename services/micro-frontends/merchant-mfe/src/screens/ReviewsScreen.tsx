@@ -31,8 +31,11 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
     <div style={{ maxWidth: '560px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div className="toss-card">
         <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Booking reviews</h2>
+        {/* Real copy-voice fix (item 244, round 5 of the empty-state pass): honest
+            about whose gap this is -- reviews only appear once customers leave
+            them after a booking, not something the merchant is missing a step on. */}
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-          {rating?.average != null ? `${rating.average.toFixed(1)} ★ average (${rating.count} review${rating.count === 1 ? '' : 's'})` : 'No reviews yet.'}
+          {rating?.average != null ? `${rating.average.toFixed(1)} ★ average (${rating.count} review${rating.count === 1 ? '' : 's'})` : 'No reviews yet — reviews will show up here once customers leave them after a booking.'}
         </p>
       </div>
 
