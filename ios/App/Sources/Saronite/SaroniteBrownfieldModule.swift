@@ -147,6 +147,22 @@ final class SaroniteBrownfieldModule: NSObject {
     // reportSteps/getTodaySteps for the same doc comment on why `steps` is honestly a
     // manually-entered count, not a real CMPedometer reading (no sensor integration
     // exists on either native host app yet).
+    // Real lottery-style bonus (item 248, docs/DESIGN_REFERENCES.md Section 15) --
+    // lotteryBonusWonTiers/-WonAmount/-Total and tiers (the real, stated per-tier odds)
+    // extended here so the mini-app can show the same disclosed-odds transparency
+    // Android's own identical addition already has -- this bridge previously silently
+    // dropped these fields since it only extracts what it explicitly names.
+    private func stepRewardTiers(_ root: [String: Any]) -> [[String: Any]] {
+        ((root["tiers"] as? [[String: Any]]) ?? []).map { tier in
+            [
+                "stepsRequired": (tier["stepsRequired"] as? NSNumber)?.intValue ?? 0,
+                "rewardAmount": (tier["rewardAmount"] as? NSNumber)?.doubleValue ?? 0,
+                "lotteryOdds": (tier["lotteryOdds"] as? NSNumber)?.doubleValue ?? 0,
+                "lotteryBonusAmount": (tier["lotteryBonusAmount"] as? NSNumber)?.doubleValue ?? 0,
+            ]
+        }
+    }
+
     @objc func reportSteps(_ steps: NSNumber, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/rewards/steps", method: "POST", body: ["steps": steps.intValue], resolve: resolve, reject: reject) { root in
             [
@@ -154,13 +170,20 @@ final class SaroniteBrownfieldModule: NSObject {
                 "newlyEarnedTiers": (root["newlyEarnedTiers"] as? [NSNumber])?.map { $0.intValue } ?? [],
                 "newlyEarnedAmount": (root["newlyEarnedAmount"] as? NSNumber)?.doubleValue ?? 0,
                 "totalEarnedToday": (root["totalEarnedToday"] as? NSNumber)?.doubleValue ?? 0,
+                "lotteryBonusWonTiers": (root["lotteryBonusWonTiers"] as? [NSNumber])?.map { $0.intValue } ?? [],
+                "lotteryBonusWonAmount": (root["lotteryBonusWonAmount"] as? NSNumber)?.doubleValue ?? 0,
+                "lotteryBonusTotal": (root["lotteryBonusTotal"] as? NSNumber)?.doubleValue ?? 0,
+                "tiers": self.stepRewardTiers(root),
             ]
         }
     }
 
     @objc func getTodaySteps(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/rewards/steps/today", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
-            ["steps": (root["steps"] as? NSNumber)?.intValue ?? 0]
+            [
+                "steps": (root["steps"] as? NSNumber)?.intValue ?? 0,
+                "tiers": self.stepRewardTiers(root),
+            ]
         }
     }
 

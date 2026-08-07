@@ -39,4 +39,5 @@ export type {
   ProfileResult,
   StepReportResult,
   TodayStepsResult,
+  StepRewardTierInfo,
 } from './spec/SaroniteBrownfieldModule';

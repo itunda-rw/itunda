@@ -28,10 +28,17 @@ import type { ReferralInfo, RewardTask } from '@itunda/saronite-react-native';
 // StepRewardTier.stepsRequired/rewardAmount exactly (services/backend/rewards's
 // StepRewardService.kt). Purely for display (progress bar, "next tier" copy); the
 // backend is the actual source of truth and authoritative validator/payer.
+//
+// Real lottery-style bonus (item 248, docs/DESIGN_REFERENCES.md Section 15) --
+// lotteryOdds/lotteryBonusAmount mirror StepRewardTier's own real, stated constants,
+// same "hardcoded for display, backend is authoritative" convention this file already
+// established. Disclosing the real odds here (not just after a win) is what keeps this
+// a bonus rather than the dark-pattern-style hidden mechanic this project has
+// otherwise deliberately avoided building.
 const STEP_TIERS = [
-  { steps: 1000, rewardAmount: 50 },
-  { steps: 5000, rewardAmount: 150 },
-  { steps: 10000, rewardAmount: 300 },
+  { steps: 1000, rewardAmount: 50, lotteryOdds: 0.05, lotteryBonusAmount: 100 },
+  { steps: 5000, rewardAmount: 150, lotteryOdds: 0.05, lotteryBonusAmount: 300 },
+  { steps: 10000, rewardAmount: 300, lotteryOdds: 0.05, lotteryBonusAmount: 600 },
 ];
 
 /**
@@ -200,7 +207,12 @@ function StepsPanel() {
       setSteps(result.steps);
       setInput('');
       if (result.newlyEarnedTiers.length > 0) {
-        Alert.alert('Walking reward earned', `+${result.newlyEarnedAmount.toLocaleString()} RWF for reaching ${result.newlyEarnedTiers.join(', ')} steps today`);
+        // Real lottery-style bonus (item 248) -- always named separately from the
+        // guaranteed reward, never folded into one number.
+        const bonusLine = result.lotteryBonusWonAmount > 0
+          ? `\n\nPlus a lottery bonus: +${result.lotteryBonusWonAmount.toLocaleString()} RWF! 🎉`
+          : '';
+        Alert.alert('Walking reward earned', `+${result.newlyEarnedAmount.toLocaleString()} RWF for reaching ${result.newlyEarnedTiers.join(', ')} steps today${bonusLine}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not report your steps.');
@@ -220,6 +232,13 @@ function StepsPanel() {
           ? `${(nextTier.steps - (steps ?? 0)).toLocaleString()} steps to +${nextTier.rewardAmount} RWF`
           : 'All tiers earned for today'}
       </Text>
+      {/* Real lottery-style bonus (item 248) -- the real, stated odds shown up front,
+          same disclosed-odds discipline bank-mfe's own identical addition already has. */}
+      {nextTier && (
+        <Text style={styles.panelHint}>
+          Plus a {Math.round(nextTier.lotteryOdds * 100)}% chance of a +{nextTier.lotteryBonusAmount} RWF bonus
+        </Text>
+      )}
       <View style={styles.inlineRow}>
         <TextInput
           style={styles.input}

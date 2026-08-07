@@ -63,4 +63,5 @@ export type {
   ProfileResult,
   StepReportResult,
   TodayStepsResult,
+  StepRewardTierInfo,
 } from '@itunda/saronite-brownfield-module';

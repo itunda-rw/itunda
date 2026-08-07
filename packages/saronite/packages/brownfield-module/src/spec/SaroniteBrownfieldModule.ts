@@ -268,23 +268,42 @@ export interface ReferralInfo {
   completedReferralCount: number;
 }
 
+/** Real, stated per-tier lottery odds (item 248, docs/DESIGN_REFERENCES.md Section 15)
+ * -- mirrors StepRewardTier exactly. The whole point of exposing this via the API: a
+ * client can show "5% chance of +100 RWF" up front, never a hidden mechanic only
+ * discovered by winning. */
+export interface StepRewardTierInfo {
+  stepsRequired: number;
+  rewardAmount: number;
+  lotteryOdds: number;
+  lotteryBonusAmount: number;
+}
+
 /** Real Toss 만보기 (walking rewards) -- mirrors the response of `POST /rewards/steps`
  * (services/backend/rewards's RewardsController.reportSteps /
  * StepRewardService.reportSteps). `steps` is honestly client-reported (see
  * StepRewardService's own doc comment on the backend for the sourced boundary: a real
  * sanity ceiling, not a real anti-spoofing measure). `newlyEarnedTiers` are the real
  * step thresholds (1000/5000/10000) newly crossed by THIS report, matching
- * StepRewardTier.stepsRequired exactly. */
+ * StepRewardTier.stepsRequired exactly. `lotteryBonusWonTiers`/`lotteryBonusWonAmount`
+ * (item 248) are the real, additive-only lottery-bonus tiers won by THIS report --
+ * always present (possibly empty), never folded into `newlyEarnedAmount`, so a client
+ * can show the guaranteed reward and the disclosed-odds bonus as two separate things. */
 export interface StepReportResult {
   steps: number;
   newlyEarnedTiers: number[];
   newlyEarnedAmount: number;
   totalEarnedToday: number;
+  lotteryBonusWonTiers: number[];
+  lotteryBonusWonAmount: number;
+  lotteryBonusTotal: number;
+  tiers: StepRewardTierInfo[];
 }
 
 /** Mirrors the response of `GET /rewards/steps/today`. */
 export interface TodayStepsResult {
   steps: number;
+  tiers: StepRewardTierInfo[];
 }
 
 /** Mirrors the response of `PUT /auth/profile/photo` and

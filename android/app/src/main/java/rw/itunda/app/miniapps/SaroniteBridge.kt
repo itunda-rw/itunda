@@ -10,6 +10,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.ViewManager
 import com.google.gson.JsonObject
@@ -738,6 +739,12 @@ class SaroniteBrownfieldModule(
     // Real backend shape: services/backend/rewards's RewardsController.reportSteps
     // (POST /api/v1/rewards/steps) -- newlyEarnedTiers is a real List<Int> of the step
     // thresholds (StepRewardTier.stepsRequired) crossed by THIS report.
+    //
+    // Real lottery-style bonus (item 248, docs/DESIGN_REFERENCES.md Section 15):
+    // lotteryBonusWonTiers/-WonAmount/-Total and tiers (the real, stated per-tier odds)
+    // extended here so the mini-app can show the same disclosed-odds transparency
+    // bank-mfe's own identical addition already has -- this bridge previously silently
+    // dropped these fields since it only extracts what it explicitly names.
     private fun parseStepReportResult(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val result = Arguments.createMap()
@@ -747,6 +754,12 @@ class SaroniteBrownfieldModule(
         result.putArray("newlyEarnedTiers", tiers)
         result.putDouble("newlyEarnedAmount", root.get("newlyEarnedAmount")?.asDouble ?: 0.0)
         result.putDouble("totalEarnedToday", root.get("totalEarnedToday")?.asDouble ?: 0.0)
+        val lotteryTiers = Arguments.createArray()
+        root.getAsJsonArray("lotteryBonusWonTiers")?.forEach { lotteryTiers.pushInt(it.asInt) }
+        result.putArray("lotteryBonusWonTiers", lotteryTiers)
+        result.putDouble("lotteryBonusWonAmount", root.get("lotteryBonusWonAmount")?.asDouble ?: 0.0)
+        result.putDouble("lotteryBonusTotal", root.get("lotteryBonusTotal")?.asDouble ?: 0.0)
+        result.putArray("tiers", parseStepRewardTiers(root))
         return result
     }
 
@@ -754,6 +767,23 @@ class SaroniteBrownfieldModule(
         val root = JsonParser.parseString(json).asJsonObject
         val result = Arguments.createMap()
         result.putInt("steps", root.get("steps")?.asInt ?: 0)
+        result.putArray("tiers", parseStepRewardTiers(root))
+        return result
+    }
+
+    // Real, stated odds (item 248) -- the whole point of disclosing this via the API at
+    // all: a client can show "5% chance of +100 RWF" up front, not just the outcome.
+    private fun parseStepRewardTiers(root: com.google.gson.JsonObject): WritableArray {
+        val result = Arguments.createArray()
+        root.getAsJsonArray("tiers")?.forEach { tierElement ->
+            val tier = tierElement.asJsonObject
+            val tierMap = Arguments.createMap()
+            tierMap.putInt("stepsRequired", tier.get("stepsRequired")?.asInt ?: 0)
+            tierMap.putDouble("rewardAmount", tier.get("rewardAmount")?.asDouble ?: 0.0)
+            tierMap.putDouble("lotteryOdds", tier.get("lotteryOdds")?.asDouble ?: 0.0)
+            tierMap.putDouble("lotteryBonusAmount", tier.get("lotteryBonusAmount")?.asDouble ?: 0.0)
+            result.pushMap(tierMap)
+        }
         return result
     }
 
