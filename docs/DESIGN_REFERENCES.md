@@ -1783,6 +1783,16 @@ itunda already has a genuinely close match to this whole philosophy, not a gap n
    existing `isSecure` param, extended in place with no call-site changes needed at all) — the
    iOS fix alone propagated to all 4 real native login screens (App, MerchantApp, AgentApp,
    RiderApp) automatically, since none of them have a local duplicate `IdsTextField`.
+   **Extended to full closure, same day**: the device step-up password fields (bank-mfe/
+   merchant-mfe's `DeviceStepUpPrompt`, Android's `DeviceStepUpDialog`, iOS's
+   `DeviceStepUpView`) and web's last remaining `type="password"` fields
+   (`UssdSettingsView`'s New/Confirm PIN pair — a real, deliberately web-only feature, no
+   Android/iOS equivalent to also fix). Every password-type field in the app now has this
+   toggle. Caught a real mistake while extending to Android's `TransferFlow.kt`: inline-
+   fully-qualifying `Icons.Outlined.Visibility`/`VisibilityOff` doesn't resolve, since
+   `Icons.Outlined.X` are Kotlin extension properties, not real nested class members — fixed
+   with proper imports before it shipped, matching how `IdsTextField.kt` already does it
+   correctly.
 
 4. **[sourced] Resolved same day — a real, validated match, not a gap.** Checked whether
    itunda's fraud detection runs on every transfer in real time (Toss's FDS pattern) or only
