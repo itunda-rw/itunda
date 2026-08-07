@@ -87,7 +87,7 @@ function AvailabilityEditor() {
               <button
                 onClick={() => save(windows.filter((_, j) => j !== i))}
                 disabled={saving}
-                style={{ fontSize: '13px', fontWeight: 600, color: '#E53935' }}
+                style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-red)' }}
               >
                 Remove
               </button>
@@ -123,7 +123,7 @@ function AvailabilityEditor() {
             style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
           />
         </div>
-        {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{error}</p>}
         <button type="submit" className="toss-btn toss-btn-primary" disabled={saving} style={{ width: '100%' }}>
           {saving ? 'Saving…' : 'Add window'}
         </button>

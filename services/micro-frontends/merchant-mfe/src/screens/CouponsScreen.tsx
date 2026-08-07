@@ -29,7 +29,7 @@ export default function CouponsScreen() {
           A customer applies a coupon when paying by code — it's redeemed once per customer.
         </p>
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{error}</p>
         )}
         {coupons === null ? (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
@@ -151,7 +151,7 @@ function CreateCouponCard({ onCreated }: { onCreated: () => void }) {
         Reserve for regular customers only (3+ past payments)
       </label>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
       )}
       <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
         {submitting ? 'Creating…' : 'Create coupon'}
@@ -192,7 +192,7 @@ function CouponRow({ coupon, onChanged }: { coupon: MerchantCoupon; onChanged: (
         {coupon.expiresAt ? ` · Expires ${new Date(coupon.expiresAt).toLocaleDateString()}` : ''}
       </p>
       {error && (
-        <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
       )}
       {coupon.active && (
         <button

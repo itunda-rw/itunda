@@ -102,7 +102,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       </div>
 
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">
           {error}
         </p>
       )}

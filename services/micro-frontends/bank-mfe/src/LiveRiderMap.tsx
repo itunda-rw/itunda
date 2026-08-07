@@ -76,7 +76,7 @@ export default function LiveRiderMap({
     mapRef.current = map;
 
     new maplibregl.Marker({ color: '#3182F6' }).setLngLat([fromLng, fromLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(fromLabel)).addTo(map);
-    new maplibregl.Marker({ color: '#E53935' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
+    new maplibregl.Marker({ color: 'var(--toss-red)' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
 
     getDirections(fromLat, fromLng, toLat, toLng)
       .then((result) => {
@@ -147,7 +147,7 @@ export default function LiveRiderMap({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div ref={containerRef} style={{ width: '100%', height: '200px', borderRadius: '12px', overflow: 'hidden' }} />
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {available === false && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Waiting for your rider's real location…</p>}
       {location && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>🛵 Rider location updated {timeAgo(location.updatedAt)}</p>}
     </div>

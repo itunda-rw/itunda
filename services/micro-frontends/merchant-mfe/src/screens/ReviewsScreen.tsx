@@ -41,7 +41,7 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
 
       {error && (
         <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         </div>
       )}
 
@@ -101,7 +101,7 @@ function ProductReviewsSection() {
       </div>
       {error && (
         <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         </div>
       )}
       {reviews === null && !error && (
@@ -171,7 +171,7 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
           />
           {error && (
-            <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+            <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
           )}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !reply.trim()}>
@@ -244,7 +244,7 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
           />
           {error && (
-            <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+            <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
           )}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !reply.trim()}>

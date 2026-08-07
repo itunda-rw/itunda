@@ -30,7 +30,7 @@ function IncidentCard({ incident, onResolved }: { incident: Incident; onResolved
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: isOpen ? '#E53935' : 'var(--toss-green)',
+              backgroundColor: isOpen ? 'var(--toss-red)' : 'var(--toss-green)',
               display: 'inline-block',
             }}
           />

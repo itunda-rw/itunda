@@ -53,7 +53,7 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
               {CATEGORY_LABEL[ticket.category]}
             </span>
             {ticket.category === 'ACCOUNT_TAKEOVER' && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: '#E53935' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: 'var(--toss-red)' }}>
                 <AlertOctagon size={13} /> Wallet frozen
               </span>
             )}
@@ -65,7 +65,7 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
         User {ticket.userId}
         {ticket.transactionId && ` · Transaction ${ticket.transactionId}`}
       </p>
-      <p style={{ fontSize: '13px', fontWeight: 600, color: overdue ? '#E53935' : 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '13px', fontWeight: 600, color: overdue ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
         Due {new Date(ticket.dueBy).toLocaleString()}{overdue && ' · Overdue'}
       </p>
 
@@ -80,7 +80,7 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
       )}
 
       {actionError && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
           {actionError}
         </p>
       )}

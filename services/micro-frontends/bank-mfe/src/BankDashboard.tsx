@@ -313,7 +313,7 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       </div>
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>
@@ -446,9 +446,9 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
           <span style={{ fontWeight: 700 }}>Amount: {Number(amount).toLocaleString()} RWF</span>
         </div>
         {scamCheck?.warn && (
-          <div style={{ backgroundColor: '#FDECEA', border: '1px solid #E53935', borderRadius: '8px', padding: '10px 12px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: '#E53935' }}>Caution needed before this transfer</p>
-            <p style={{ fontSize: '12px', color: '#E53935', marginTop: '2px' }}>
+          <div style={{ backgroundColor: '#FDECEA', border: '1px solid var(--toss-red)', borderRadius: '8px', padding: '10px 12px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-red)' }}>Caution needed before this transfer</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '2px' }}>
               This recipient has been reported by {scamCheck.reportCount} other itunda users. Double-check before sending.
             </p>
           </div>
@@ -467,7 +467,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
                 {busy ? 'Sending…' : `Send ${Number(amount).toLocaleString()} RWF`}
               </button>
             </div>
-            {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+            {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
             <ReportScamLink identifier={recipient.trim()} />
           </>
         )}
@@ -524,7 +524,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }}>Continue</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -605,14 +605,14 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ color: 'var(--toss-grey-500)', fontSize: '13px', fontWeight: '500' }}>{new Date(tx.createdAt).toLocaleString()}</span>
                         {isUnusual && (
-                          <span style={{ color: '#E53935', fontSize: '11px', fontWeight: '700', backgroundColor: '#FEECEE', padding: '2px 6px', borderRadius: '6px' }}>
+                          <span style={{ color: 'var(--toss-red)', fontSize: '11px', fontWeight: '700', backgroundColor: '#FEECEE', padding: '2px 6px', borderRadius: '6px' }}>
                             Unusually large
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <span style={{ fontWeight: '700', fontSize: '16px', color: isUnusual ? '#E53935' : isCredit ? 'var(--toss-blue)' : 'var(--toss-grey-900)' }}>
+                  <span style={{ fontWeight: '700', fontSize: '16px', color: isUnusual ? 'var(--toss-red)' : isCredit ? 'var(--toss-blue)' : 'var(--toss-grey-900)' }}>
                     {isCredit ? '+' : ''}{tx.amount.toLocaleString()} RWF
                   </span>
                 </motion.div>
@@ -806,7 +806,7 @@ function MiniWalletCard() {
         )}
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {!miniWallet && !needsBirthDate && (
         <div>
@@ -947,7 +947,7 @@ function ScheduledTransfersCard() {
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {pending.length === 0 && past.length === 0 && (
         <EmptyState message="No scheduled transfers yet — schedule one to send money on a future date." />
@@ -1101,7 +1101,7 @@ function AutoTransfersCard() {
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {active.length === 0 && cancelled.length === 0 && (
         <EmptyState message="No auto-transfers set up yet — set one up to send money on a schedule automatically." />
@@ -1242,7 +1242,7 @@ function RequestMoneyCard() {
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {requests !== null && requests.length > 0 && (
         <div>
@@ -1363,7 +1363,7 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {setting && !showForm && (
         <div>
@@ -1481,7 +1481,7 @@ function CertificateView() {
       )}
 
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '16px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '16px' }} role="alert">{error}</p>
       )}
 
       <VerifyCertificateCard />
@@ -1570,14 +1570,14 @@ function VerifyCertificateCard() {
       </form>
       {verifyResult && (
         <div style={{ marginTop: '10px' }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: verifyResult.signatureValid ? 'var(--toss-green)' : '#E53935' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: verifyResult.signatureValid ? 'var(--toss-green)' : 'var(--toss-red)' }}>
             {verifyResult.signatureValid ? '✓ Signature is valid' : '✗ Signature does not match'}
           </p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Certificate status: {verifyResult.certificateStatus}</p>
         </div>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -1699,7 +1699,7 @@ function OverviewView() {
           </form>
         )}
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -1804,7 +1804,7 @@ function LoansView() {
       {mode === 'VUP' && <VupLoanView />}
       {mode === 'STUDENT' && <StudentLoanView />}
       {mode === 'MOTO_OWNERSHIP' && <MotoOwnershipView />}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && refinanceResult && (
         <div className="toss-card" style={{ padding: '16px', border: '1px solid var(--toss-blue)' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
@@ -1977,7 +1977,7 @@ function OverdraftView() {
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
           A pre-approved credit limit you can draw from anytime -- pay interest only on what you actually use, up to 500,000 RWF.
         </p>
-        {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
         <input
           type="number" value={requestedLimit} onChange={(e) => setRequestedLimit(e.target.value)} placeholder="Requested limit (RWF)"
           style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', marginTop: '8px', width: '100%', boxSizing: 'border-box' }}
@@ -1996,7 +1996,7 @@ function OverdraftView() {
       <p style={{ fontSize: '13px' }}>Drawn: {account.drawnBalance.toLocaleString()} RWF of {account.creditLimit.toLocaleString()} RWF</p>
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Available to draw: {availableCredit.toLocaleString()} RWF · {account.interestRate}% annual, interest only on what's drawn</p>
       {notice && <p style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>{notice}</p>}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <input
         type="number" value={drawAmount} onChange={(e) => setDrawAmount(e.target.value)} placeholder="Draw amount (RWF)"
         style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
@@ -2090,7 +2090,7 @@ function PostpaidCreditView() {
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
           A small credit line for real purchases, interest-free if you pay within 30 days -- your limit is set automatically from your credit score, up to 300,000 RWF.
         </p>
-        {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
         <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleApply}>
           {busy ? 'Applying…' : 'Get postpaid credit'}
         </button>
@@ -2105,13 +2105,13 @@ function PostpaidCreditView() {
       <p style={{ fontSize: '13px' }}>Owed: {line.currentBalance.toLocaleString()} RWF of {line.creditLimit.toLocaleString()} RWF</p>
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Available: {availableCredit.toLocaleString()} RWF · interest-free if repaid within 30 days</p>
       {line.status === 'SUSPENDED' && (
-        <p style={{ fontSize: '12px', color: '#E53935', fontWeight: 700 }}>Suspended -- repay your overdue balance to keep spending.</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-red)', fontWeight: 700 }}>Suspended -- repay your overdue balance to keep spending.</p>
       )}
       {line.cycleDueAt && line.status === 'ACTIVE' && (
         <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Due by {new Date(line.cycleDueAt).toLocaleDateString()}</p>
       )}
       {notice && <p style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>{notice}</p>}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <input
         type="number" value={spendAmount} onChange={(e) => setSpendAmount(e.target.value)} placeholder="Spend amount (RWF)"
         disabled={line.status === 'SUSPENDED'}
@@ -2233,7 +2233,7 @@ function HarvestAdvanceView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div className="toss-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Cooperative harvest advance</h4>
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
@@ -2394,7 +2394,7 @@ function VupLoanView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div className="toss-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>VUP Financial Services</h4>
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
@@ -2440,7 +2440,7 @@ function VupLoanView() {
               <div key={loan.id} className="toss-card" style={{ padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.purpose}</p>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? '#E53935' : 'var(--toss-blue)' }}>{loan.status}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--toss-red)' : 'var(--toss-blue)' }}>{loan.status}</span>
                 </div>
                 <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
                   Outstanding: {loan.outstandingPrincipal.toLocaleString()} RWF
@@ -2573,7 +2573,7 @@ function StudentLoanView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div className="toss-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>BRD Student Loan</h4>
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
@@ -2620,7 +2620,7 @@ function StudentLoanView() {
               <div key={loan.id} className="toss-card" style={{ padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.level}</p>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? '#E53935' : 'var(--toss-blue)' }}>{loan.status}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--toss-red)' : 'var(--toss-blue)' }}>{loan.status}</span>
                 </div>
                 <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
                   Outstanding: {loan.outstandingBalance.toLocaleString()} RWF
@@ -2776,7 +2776,7 @@ function MotoOwnershipView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div className="toss-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Moto-Taxi Ownership Plan</h4>
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
@@ -2838,7 +2838,7 @@ function MotoOwnershipView() {
                           <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busyId === plan.id} onClick={() => handleContribute(plan.id)}>
                             {busyId === plan.id ? 'Saving…' : 'Contribute'}
                           </button>
-                          <button className="toss-btn toss-btn-secondary" style={{ flex: 1, color: '#E53935' }} disabled={busyId === plan.id} onClick={() => handleCancel(plan.id)}>
+                          <button className="toss-btn toss-btn-secondary" style={{ flex: 1, color: 'var(--toss-red)' }} disabled={busyId === plan.id} onClick={() => handleCancel(plan.id)}>
                             Cancel
                           </button>
                         </div>
@@ -2903,7 +2903,7 @@ function CreditScoreView() {
   }, []);
 
   if (!result) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
@@ -2958,7 +2958,7 @@ function TrustScoreView() {
   }, []);
 
   if (!result) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
@@ -3041,12 +3041,12 @@ function RewardsView() {
   };
 
   if (!tasks) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
       <div className="toss-card" style={{ padding: '24px' }}>
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Total earned</p>
@@ -3230,14 +3230,14 @@ function InsuranceView() {
   };
 
   if (!plans) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
   }
 
   const enrolledPlanIds = new Set(policies.map((p) => p.planId));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
 
       {policies.length > 0 && (
@@ -3462,7 +3462,7 @@ function CropWeatherIndexSection() {
         </p>
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
 
       {policies.length > 0 && (
@@ -3576,12 +3576,12 @@ function BillsView() {
   };
 
   if (!providers) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
 
       {pending.length > 0 && (
@@ -3754,7 +3754,7 @@ function AgentOperatorView() {
   }
 
   if (!till) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
@@ -3765,7 +3765,7 @@ function AgentOperatorView() {
       </div>
       {section === 'float' ? <FloatMarketplaceSection /> : (
       <>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
       <div className="toss-card" style={{ padding: '24px' }}>
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{till.agentName}</p>
@@ -3957,7 +3957,7 @@ function FloatMarketplaceSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
 
       <div className="toss-card">
@@ -4105,7 +4105,7 @@ function UssdSettingsView() {
             placeholder="Confirm PIN" maxLength={6}
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
           />
-          {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+          {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
           {success && <p style={{ fontSize: '13px', color: '#1E8E4F' }}>Your USSD PIN has been set.</p>}
           <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
             {submitting ? 'Saving…' : 'Set USSD PIN'}
@@ -4133,7 +4133,7 @@ function ForeignCurrencyView() {
   useEffect(load, []);
 
   if (wallets === null) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '160px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '160px' }} />;
   }
 
   const openCurrencies = new Set(wallets.map((w) => w.currency));
@@ -4195,7 +4195,7 @@ function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly 
   return (
     <div className="toss-card">
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Open an account</h3>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         {currencies.map((c) => (
           <button
@@ -4272,7 +4272,7 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
       {rate !== null && (
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Live rate: 1 {fromCurrency} ≈ {rate.toFixed(4)} {toCurrency} (before itunda's 1.5% margin)</p>
       )}
-      {error && <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
       {result && (
         <p style={{ fontSize: '13px', color: 'var(--toss-blue)', fontWeight: 700, margin: 0 }}>
           Converted {result.fromAmount.toLocaleString()} {result.fromCurrency} → {result.toAmount.toLocaleString()} {result.toCurrency}
@@ -4301,7 +4301,7 @@ function SpendingInsightView() {
   }, []);
 
   if (!categories) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
   }
 
   const maxAmount = Math.max(...categories.map((c) => c.amount), 1);
@@ -4359,14 +4359,14 @@ function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
         </button>
       </div>
       {showForm && <SetBudgetForm categories={categories} onSet={() => { setShowForm(false); load(); }} />}
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {budgets === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
       ) : budgets.length === 0 ? (
         <EmptyState message="No budgets set yet -- set a monthly limit to get alerted before you overspend." />
       ) : (
         budgets.map((b) => {
-          const barColor = b.status === 'OVER' ? '#E53935' : b.status === 'NEAR' ? '#F5A623' : 'var(--toss-blue)';
+          const barColor = b.status === 'OVER' ? 'var(--toss-red)' : b.status === 'NEAR' ? '#F5A623' : 'var(--toss-blue)';
           return (
             <div key={b.category ?? 'overall'} style={{ padding: '8px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
@@ -4376,7 +4376,7 @@ function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
               <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${Math.min(100, b.percentUsed)}%`, backgroundColor: barColor, borderRadius: '3px' }} />
               </div>
-              {b.status === 'OVER' && <p style={{ fontSize: '11px', color: '#E53935', marginTop: '2px' }}>Over budget</p>}
+              {b.status === 'OVER' && <p style={{ fontSize: '11px', color: 'var(--toss-red)', marginTop: '2px' }}>Over budget</p>}
               {b.status === 'NEAR' && <p style={{ fontSize: '11px', color: '#F5A623', marginTop: '2px' }}>Nearing your limit</p>}
             </div>
           );
@@ -4427,7 +4427,7 @@ function SetBudgetForm({ categories, onSet }: { categories: SpendingCategory[]; 
         required
         style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
       />
-      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
       <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ fontSize: '13px', padding: '8px' }}>
         {submitting ? 'Saving…' : 'Save budget'}
       </button>
@@ -4461,7 +4461,7 @@ function SubscriptionsView() {
   }, []);
 
   if (subscriptions === null) {
-    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '160px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '160px' }} />;
   }
 
   return (
@@ -4488,7 +4488,7 @@ function SubscriptionsView() {
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '14px', fontWeight: 700 }}>{s.amount.toLocaleString()} RWF</p>
                 {s.priceIncreased && s.previousAmount !== null && (
-                  <p style={{ fontSize: '11px', color: '#E53935' }}>↑ from {s.previousAmount.toLocaleString()} RWF</p>
+                  <p style={{ fontSize: '11px', color: 'var(--toss-red)' }}>↑ from {s.previousAmount.toLocaleString()} RWF</p>
                 )}
               </div>
             </div>
@@ -4505,7 +4505,7 @@ function SubscriptionsView() {
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
           Plans you've subscribed to. These charge your wallet automatically until you cancel.
         </p>
-        {billingError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{billingError}</p>}
+        {billingError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{billingError}</p>}
         {billingSubs === null && !billingError ? (
           <div className="toss-card skeleton" style={{ height: '80px' }} />
         ) : billingSubs && billingSubs.length === 0 ? (
@@ -4550,7 +4550,7 @@ function MerchantBillingSubscriptionRow({ subscription, onChanged }: { subscript
               : `Cancelled ${subscription.cancelledAt ? new Date(subscription.cancelledAt).toLocaleDateString() : ''}`}
           </p>
           {subscription.lastFailureReason && subscription.status === 'ACTIVE' && (
-            <p style={{ fontSize: '11px', color: '#E53935' }}>Last charge failed: {subscription.lastFailureReason}</p>
+            <p style={{ fontSize: '11px', color: 'var(--toss-red)' }}>Last charge failed: {subscription.lastFailureReason}</p>
           )}
         </div>
         {subscription.status === 'ACTIVE' && (
@@ -4564,7 +4564,7 @@ function MerchantBillingSubscriptionRow({ subscription, onChanged }: { subscript
           </button>
         )}
       </div>
-      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -4611,7 +4611,7 @@ function IdentityView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Verify your identity</h2>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {hasPending ? (
         <div className="toss-card" style={{ padding: '16px' }}>
           <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Submission pending review</h4>
@@ -4700,7 +4700,7 @@ function SupportView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {!showNewForm ? (
         <button className="toss-btn toss-btn-primary" onClick={() => setShowNewForm(true)}>Report an issue with a transaction</button>
       ) : (
@@ -4852,7 +4852,7 @@ function BookingReviewButton({ booking }: { booking: MerchantBooking }) {
         placeholder="How was it? (optional)"
         style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
       />
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
@@ -5082,7 +5082,7 @@ function ProfilePhotoCard() {
         <div style={{ width: '56px', height: '56px', borderRadius: '28px', backgroundColor: 'var(--toss-grey-100)', flexShrink: 0 }} />
       )}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
         <input
           type="url" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Profile photo URL"
           style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '12px' }}
@@ -5185,7 +5185,7 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
           </button>
         </form>
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '4px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -5313,7 +5313,7 @@ function MyVehiclesCard() {
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {(vehicles ?? []).length === 0 && <EmptyState message="No vehicles added yet — add one to track its value and get real offers." />}
 
@@ -5456,7 +5456,7 @@ function FamilyLinkCard() {
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {(invites ?? []).length > 0 && (
         <div style={{ marginBottom: '10px' }}>
@@ -5554,7 +5554,7 @@ function SubscribeAndSaveButton({ merchantId, productId }: { merchantId: string;
       <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSubscribe} style={{ fontSize: '12px', padding: '8px 14px' }}>
         {busy ? 'Setting up…' : 'Subscribe & save 5% (every 30 days)'}
       </button>
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '4px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -5608,7 +5608,7 @@ function MyProductSubscriptionsCard() {
   return (
     <div className="toss-card" style={{ padding: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Subscribe & save</h3>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {subscriptions.map((s) => (
         <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
           <div>
@@ -5619,7 +5619,7 @@ function MyProductSubscriptionsCard() {
                 : `${PRODUCT_SUBSCRIPTION_STATUS_LABEL[s.status]} · ${s.deliveryCount} delivered`}
             </p>
             {s.lastFailureReason && s.status === 'ACTIVE' && (
-              <p style={{ fontSize: '11px', color: '#E53935' }}>Last delivery failed: {s.lastFailureReason}</p>
+              <p style={{ fontSize: '11px', color: 'var(--toss-red)' }}>Last delivery failed: {s.lastFailureReason}</p>
             )}
           </div>
           {s.status !== 'CANCELLED' && (
@@ -5722,7 +5722,7 @@ function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null
           {busy ? '…' : enrolled ? 'Disable' : 'Enable'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -5826,7 +5826,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
               </label>
             ))}
           </div>
-          {error && <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+          {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
           <div style={{ display: 'flex', gap: '10px' }}>
             <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={handleConfirm}>
               {submitting ? 'Paying…' : 'Pay'}
@@ -5850,7 +5850,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
         </form>
       )}
       {error && !preview && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -5902,7 +5902,7 @@ function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) 
           <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>{submitting ? 'Paying…' : 'Pay'}</button>
         </div>
       </form>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -6021,7 +6021,7 @@ function Sparkline({ values, positive }: { values: number[]; positive: boolean }
           style={{
             flex: 1,
             height: `${Math.max(8, ((v - min) / range) * 100)}%`,
-            backgroundColor: positive ? 'var(--toss-green)' : '#E53935',
+            backgroundColor: positive ? 'var(--toss-green)' : 'var(--toss-red)',
             borderRadius: '2px',
             opacity: 0.3 + (0.7 * i) / values.length,
           }}
@@ -6116,7 +6116,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontWeight: 600 }}>{stock.symbol} · {stock.marketCap}</p>
       <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>{stock.name}</h3>
       <p style={{ fontSize: '26px', fontWeight: 700, marginBottom: '4px' }}>{stock.price.toLocaleString()} RWF</p>
-      <p style={{ fontSize: '14px', fontWeight: 700, color: positive ? 'var(--toss-green)' : '#E53935', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
+      <p style={{ fontSize: '14px', fontWeight: 700, color: positive ? 'var(--toss-green)' : 'var(--toss-red)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
         {positive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
         {positive ? '+' : ''}{stock.change.toLocaleString()} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%) today
       </p>
@@ -6138,7 +6138,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
               color: mode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === m ? (m === 'BUY' ? 'var(--toss-blue)' : '#E53935') : 'transparent',
+              backgroundColor: mode === m ? (m === 'BUY' ? 'var(--toss-blue)' : 'var(--toss-red)') : 'transparent',
             }}
           >
             {m === 'BUY' ? 'Buy' : 'Sell'}
@@ -6151,7 +6151,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
           placeholder="Shares" required
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className={mode === 'BUY' ? 'toss-btn toss-btn-primary' : 'toss-btn'} style={mode === 'SELL' ? { backgroundColor: '#E53935', color: 'white' } : undefined} disabled={submitting}>
+        <button type="submit" className={mode === 'BUY' ? 'toss-btn toss-btn-primary' : 'toss-btn'} style={mode === 'SELL' ? { backgroundColor: 'var(--toss-red)', color: 'white' } : undefined} disabled={submitting}>
           {submitting ? 'Working…' : mode === 'BUY' ? 'Buy' : 'Sell'}
         </button>
       </form>
@@ -6160,7 +6160,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
           <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
-        error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+        error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -6228,7 +6228,7 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
           <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
-        error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+        error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -6293,7 +6293,7 @@ function StocksView() {
         </div>
         <div style={{ textAlign: 'right' }}>
           <p style={{ fontSize: '15px', fontWeight: 700 }}>{stock.price.toLocaleString()} RWF</p>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: positive ? 'var(--toss-green)' : '#E53935', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end' }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: positive ? 'var(--toss-green)' : 'var(--toss-red)', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end' }}>
             {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {positive ? '+' : ''}{stock.changePercent.toFixed(2)}%
           </p>
@@ -6365,7 +6365,7 @@ function StocksView() {
             <div className="toss-card" style={{ marginBottom: '16px' }}>
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontWeight: 600 }}>Total value</p>
               <p style={{ fontSize: '26px', fontWeight: 700, marginBottom: '4px' }}>{portfolio.totalValue.toLocaleString()} RWF</p>
-              <p style={{ fontSize: '14px', fontWeight: 700, color: portfolio.totalReturn >= 0 ? 'var(--toss-green)' : '#E53935', marginBottom: '12px' }}>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: portfolio.totalReturn >= 0 ? 'var(--toss-green)' : 'var(--toss-red)', marginBottom: '12px' }}>
                 {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn.toLocaleString()} RWF ({portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturnPercent.toFixed(2)}%)
               </p>
               {portfolioHistory && portfolioHistory.length > 0 && (
@@ -6392,7 +6392,7 @@ function StocksView() {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{h.shares} shares @ {h.avgPrice.toLocaleString()} avg</p>
-                      <p style={{ fontSize: '12px', fontWeight: 700, color: h.return >= 0 ? 'var(--toss-green)' : '#E53935' }}>
+                      <p style={{ fontSize: '12px', fontWeight: 700, color: h.return >= 0 ? 'var(--toss-green)' : 'var(--toss-red)' }}>
                         {h.return >= 0 ? '+' : ''}{h.return.toFixed(2)}%
                       </p>
                     </div>
@@ -6467,7 +6467,7 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -6528,7 +6528,7 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -6965,7 +6965,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
               well under WCAG 2.5.8's 24x24 CSS-pixel AA minimum. */}
           <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '16px', padding: '8px', minWidth: '24px', minHeight: '24px' }}>×</button>
         </div>
-        {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
         {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
         {packs === null ? (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
@@ -7125,7 +7125,7 @@ function GiftVoucherComposerPanel({
           )}
         </>
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
           type="button"
@@ -7693,7 +7693,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </div>
       ) : (
         error && (
-          <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>
         )
       )}
 
@@ -8266,7 +8266,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       )}
 
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>
       )}
 
       {emoticonPickerOpen && (
@@ -8775,7 +8775,7 @@ function GroupSplitBillsView({
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Split bills</h3>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {!showNewForm ? (
         <button className="toss-btn toss-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
       ) : (
@@ -8993,7 +8993,7 @@ function GroupManageMembersView({
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Manage members</h3>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <h4 style={{ fontSize: '13px', fontWeight: 700 }}>Group info</h4>
       <input
         type="text" placeholder="Photo URL (blank to clear)" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)}
@@ -9403,7 +9403,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
           {submitting ? 'Listing…' : 'List it'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -9695,7 +9695,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           toLabel={listing.title}
         />
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -9746,7 +9746,7 @@ function NeighborhoodSetupPrompt({ isSecond = false, onDone }: { isSecond?: bool
       <button className="toss-btn toss-btn-primary" onClick={handleShare} disabled={busy}>
         {busy ? 'Finding your neighborhood…' : '📍 Share my location'}
       </button>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '12px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '12px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -9784,7 +9784,7 @@ function NeighborhoodSwitcherRow({
           {secondNeighborhoodName ? 'Change' : 'Add'}
         </button>
         {secondNeighborhoodName && (
-          <button style={{ fontSize: '13px', fontWeight: 600, color: '#E53935' }} onClick={handleRemove} disabled={removing}>
+          <button style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-red)' }} onClick={handleRemove} disabled={removing}>
             Remove
           </button>
         )}
@@ -9925,7 +9925,7 @@ function KeywordAlertsView() {
         <button type="submit" className="toss-btn toss-btn-primary" disabled={adding || !keyword.trim()}>{adding ? '…' : 'Add'}</button>
       </form>
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
 
       {alerts === null ? (
         <div className="toss-card skeleton" style={{ height: '80px' }} />
@@ -10319,7 +10319,7 @@ function VehicleInspectionsView() {
                 {requesting ? 'Booking…' : 'Book & pay'}
               </button>
             </div>
-            {buyerError && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{buyerError}</p>}
+            {buyerError && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{buyerError}</p>}
           </div>
 
           {myBookings === null ? (
@@ -10361,7 +10361,7 @@ function VehicleInspectionsView() {
           <button className="toss-btn toss-btn-primary" disabled={registering} onClick={handleRegister}>
             {registering ? 'Registering…' : 'Register'}
           </button>
-          {mechanicError && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{mechanicError}</p>}
+          {mechanicError && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{mechanicError}</p>}
         </div>
       ) : (
         <div>
@@ -10374,7 +10374,7 @@ function VehicleInspectionsView() {
               {mechanicProfile.available ? 'Go unavailable' : 'Go available'}
             </button>
           </div>
-          {mechanicError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{mechanicError}</p>}
+          {mechanicError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{mechanicError}</p>}
           {mechanicBookings === null ? (
             <div className="toss-card skeleton" style={{ height: '100px' }} />
           ) : mechanicBookings.length === 0 ? (
@@ -10535,7 +10535,7 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
           {submitting ? 'Posting…' : 'Post'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -10603,7 +10603,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
         </button>
       )}
       {!isMine && <HoodReportButton targetType="COMMUNITY_POST" targetId={post.id} />}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -10700,7 +10700,7 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
           </div>
         </div>
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -10758,7 +10758,7 @@ function GroupBuyFinalizeSection({ post, currentUserId }: { post: CommunityPost;
       <button className="toss-btn toss-btn-primary" disabled={submitting} onClick={handleFinalize}>
         {submitting ? 'Splitting…' : 'Request even split'}
       </button>
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -10818,7 +10818,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
   return (
     <div>
       <button className="toss-btn toss-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {!post && !error && <div className="toss-card skeleton" style={{ height: '160px' }} />}
       {post && (
         <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
@@ -11123,7 +11123,7 @@ function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; 
           {submitting ? 'Posting…' : 'Post job'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -11263,7 +11263,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
           comment. Only shown for someone else's post. */}
       {!isMine && posterTrustScore != null && <TrustBadge score={posterTrustScore} />}
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{post.description}</p>
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {/* Real optional "who did you hire?" prompt (2026-07-24) -- see backend
           JobPostService.markFilled's own doc comment. */}
       {markingFilled && (
@@ -11430,7 +11430,7 @@ function MyJobApplicationsView() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your applications.'));
   }, []);
 
-  if (error) return <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>;
+  if (error) return <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>;
   if (applications === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
   if (applications.length === 0) return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You haven't applied to any jobs yet.</p>;
 
@@ -11443,7 +11443,7 @@ function MyJobApplicationsView() {
           <span
             style={{
               display: 'inline-block', marginTop: '6px', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '8px',
-              color: application.status === 'ACCEPTED' ? 'var(--toss-blue)' : application.status === 'DECLINED' ? '#E53935' : 'var(--toss-grey-700)',
+              color: application.status === 'ACCEPTED' ? 'var(--toss-blue)' : application.status === 'DECLINED' ? 'var(--toss-red)' : 'var(--toss-grey-700)',
               backgroundColor: application.status === 'ACCEPTED' ? 'rgba(49, 130, 246, 0.1)' : application.status === 'DECLINED' ? 'rgba(229, 57, 53, 0.1)' : 'var(--toss-grey-100)',
             }}
           >
@@ -11799,7 +11799,7 @@ function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: P
           {submitting ? 'Listing…' : 'List it'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -11988,7 +11988,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
           </button>
         </div>
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {/* Real optional "who's the buyer/tenant?" prompt (2026-07-24) -- see backend
           PropertyListingService.markTaken's own doc comment. */}
       {markingTaken && (
@@ -12485,7 +12485,7 @@ function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[
           type="text" value={sizeSqm} placeholder="Size (sqm)" onChange={(e) => setSizeSqm(e.target.value)}
           style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
         />
-        {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
         <button className="toss-btn toss-btn-primary" disabled={loading} onClick={handleEstimate}>
           {loading ? 'Estimating…' : 'Estimate value'}
         </button>
@@ -12667,7 +12667,7 @@ function RestaurantReviewsManageView({ restaurantId }: { restaurantId: string })
   };
   useEffect(load, [restaurantId]);
 
-  if (error) return <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>;
+  if (error) return <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>;
   if (reviews === null) return <div className="toss-card skeleton" style={{ height: '80px' }} />;
   if (reviews.length === 0) return null;
 
@@ -12730,7 +12730,7 @@ function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; 
           Reply
         </button>
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '4px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -12811,7 +12811,7 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
           />
         </div>
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
@@ -13123,7 +13123,7 @@ function MenuView({
           <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || (fulfillmentType === 'DELIVERY' && !address.trim())}>
             {placing ? 'Placing order…' : 'Place order'}
           </button>
-          {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+          {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
         </form>
       </div>
     );
@@ -13521,7 +13521,7 @@ function OrderFoodView() {
 
       {view === 'ORDERS' ? (
         <>
-          {reorderError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{reorderError}</p>}
+          {reorderError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{reorderError}</p>}
           <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} restaurants={allRestaurants} />
         </>
       ) : view === 'FAVORITES' ? (
@@ -13601,7 +13601,7 @@ function OrderFoodView() {
                 aria-label={favoriteIds.has(r.merchantId) ? 'Remove from favorites' : 'Add to favorites'}
                 style={{ padding: '6px', flexShrink: 0 }}
               >
-                <Heart size={20} color={favoriteIds.has(r.merchantId) ? '#E53935' : 'var(--toss-grey-400)'} fill={favoriteIds.has(r.merchantId) ? '#E53935' : 'none'} />
+                <Heart size={20} color={favoriteIds.has(r.merchantId) ? 'var(--toss-red)' : 'var(--toss-grey-400)'} fill={favoriteIds.has(r.merchantId) ? 'var(--toss-red)' : 'none'} />
               </button>
             </div>
           ))}
@@ -13677,7 +13677,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
             aria-label="Remove from favorites"
             style={{ padding: '6px', flexShrink: 0 }}
           >
-            <Heart size={20} color="#E53935" fill="#E53935" />
+            <Heart size={20} color="var(--toss-red)" fill="var(--toss-red)" />
           </button>
         </div>
       ))}
@@ -13784,7 +13784,7 @@ function DeliverView() {
         <button className="toss-btn toss-btn-primary" onClick={handleRegister} disabled={registering}>
           {registering ? 'Registering…' : 'Become a rider'}
         </button>
-        {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '12px' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '12px' }} role="alert">{error}</p>}
       </div>
     );
   }
@@ -13804,7 +13804,7 @@ function DeliverView() {
         </button>
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{error}</p>}
 
       {activeDeliveries.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
@@ -14041,7 +14041,7 @@ function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?: React.
         </div>
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
-          color: trip.status === 'CANCELLED' ? '#E53935' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
+          color: trip.status === 'CANCELLED' ? 'var(--toss-red)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
           backgroundColor: trip.status === 'CANCELLED' ? '#FDECEA' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
         }}>
           {trip.status === 'REQUESTED' && trip.scheduledFor ? 'Scheduled' : RIDE_STATUS_LABEL[trip.status]}
@@ -14146,7 +14146,7 @@ function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted
           </button>
         </>
       )}
-      {error && <p style={{ fontSize: '11px', color: '#E53935', marginTop: '4px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '11px', color: 'var(--toss-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -14427,7 +14427,7 @@ function RidesView() {
             </div>
           )}
 
-          {rideError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{rideError}</p>}
+          {rideError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{rideError}</p>}
 
           {pastTrips.length > 0 && (
             <div>
@@ -14461,7 +14461,7 @@ function RidesView() {
               <button className="toss-btn toss-btn-primary" onClick={handleRegisterDriver} disabled={registeringDriver}>
                 {registeringDriver ? 'Registering…' : 'Become a driver'}
               </button>
-              {driverError && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '12px' }} role="alert">{driverError}</p>}
+              {driverError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '12px' }} role="alert">{driverError}</p>}
             </div>
           ) : (
             <div>
@@ -14480,7 +14480,7 @@ function RidesView() {
                 </button>
               </div>
 
-              {driverError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{driverError}</p>}
+              {driverError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{driverError}</p>}
 
               {activeDriverTrips.length > 0 && (
                 <div style={{ marginBottom: '20px' }}>
@@ -14587,7 +14587,7 @@ function DesignatedDriverTripCard({ trip, action }: { trip: DesignatedDriverTrip
         </div>
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
-          color: trip.status === 'CANCELLED' ? '#E53935' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
+          color: trip.status === 'CANCELLED' ? 'var(--toss-red)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
           backgroundColor: trip.status === 'CANCELLED' ? '#FDECEA' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
         }}>
           {DESIGNATED_DRIVER_STATUS_LABEL[trip.status]}
@@ -14765,7 +14765,7 @@ function DesignatedDriverView() {
 
       {subTab === 'REQUEST' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {tripError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{tripError}</p>}
+          {tripError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{tripError}</p>}
           {activeTrip ? (
             <DesignatedDriverTripCard
               trip={activeTrip}
@@ -14829,7 +14829,7 @@ function DesignatedDriverView() {
               <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
                 Any itunda user can register. License number is self-declared, not verified against a real registry.
               </p>
-              {driverError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{driverError}</p>}
+              {driverError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{driverError}</p>}
               <input
                 type="text" value={licenseNumber} placeholder="License number" onChange={(e) => setLicenseNumber(e.target.value)}
                 style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
@@ -14850,7 +14850,7 @@ function DesignatedDriverView() {
                   {driver.available ? 'Go offline' : 'Go online'}
                 </button>
               </div>
-              {driverError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{driverError}</p>}
+              {driverError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{driverError}</p>}
               {activeDriverTrips.length > 0 && (
                 <div>
                   <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Active</h4>
@@ -15050,7 +15050,7 @@ function BikeShareView() {
 
       {subTab === 'RENT' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {riderError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{riderError}</p>}
+          {riderError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{riderError}</p>}
           {justCompletedRental && (
             <div className="toss-card" style={{ textAlign: 'center', padding: '24px' }}>
               <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Rental complete</p>
@@ -15119,7 +15119,7 @@ function BikeShareView() {
 
       {subTab === 'OWN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {ownerError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{ownerError}</p>}
+          {ownerError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{ownerError}</p>}
           <div className="toss-card">
             <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Add your bike to the pool</p>
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
@@ -15288,7 +15288,7 @@ function ParkingView() {
 
       {subTab === 'RENT' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {renterError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{renterError}</p>}
+          {renterError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{renterError}</p>}
           {justCompletedSession && (
             <div className="toss-card" style={{ textAlign: 'center', padding: '24px' }}>
               <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Parking complete</p>
@@ -15357,7 +15357,7 @@ function ParkingView() {
 
       {subTab === 'OWN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {ownerError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{ownerError}</p>}
+          {ownerError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{ownerError}</p>}
           <div className="toss-card">
             <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>List your spot</p>
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
@@ -15529,7 +15529,7 @@ function BusView() {
 
       {subTab === 'RIDE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {riderError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{riderError}</p>}
+          {riderError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{riderError}</p>}
           <div className="toss-card">
             <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Search routes</p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
@@ -15597,7 +15597,7 @@ function BusView() {
 
       {subTab === 'OPERATE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {operatorError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{operatorError}</p>}
+          {operatorError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{operatorError}</p>}
           <div className="toss-card">
             <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Post a route</p>
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
@@ -15650,7 +15650,7 @@ function BusView() {
                     </button>
                     {expandedTripId === trip.id && (
                       <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--toss-grey-100)' }}>
-                        {manifestError && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{manifestError}</p>}
+                        {manifestError && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{manifestError}</p>}
                         {!manifestError && tripBookings === null && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading…</p>}
                         {tripBookings !== null && tripBookings.length === 0 && (
                           <EmptyState message="No one's booked a seat yet — share your route to fill it up." />
@@ -15760,7 +15760,7 @@ function KnowledgeView() {
         </div>
       )}
       {subTab === 'BROWSE' && <KnowledgeAskCard onAsked={load} categories={categories} />}
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {questions === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
       ) : questions.length === 0 ? (
@@ -15851,7 +15851,7 @@ function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; catego
         value={body} placeholder="Add more detail" onChange={(e) => setBody(e.target.value)} rows={3}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
       />
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !category || !title.trim() || !body.trim()}>
         {submitting ? 'Posting…' : 'Post question'}
       </button>
@@ -15910,7 +15910,7 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
   return (
     <div>
       <button className="toss-btn toss-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {!question && !error && <div className="toss-card skeleton" style={{ height: '120px' }} />}
       {question && (
         <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
@@ -16149,7 +16149,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
   if (error) {
     return (
       <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
@@ -16198,7 +16198,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
           <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !tableNumber.trim()}>
             {placing ? 'Placing order…' : 'Place order'}
           </button>
-          {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+          {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
         </form>
       </div>
     );
@@ -16342,7 +16342,7 @@ function DineInCustomerView() {
       </div>
       {view === 'BROWSE' ? (
         error ? (
-          <div className="toss-card"><p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p></div>
+          <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p></div>
         ) : restaurants === null ? (
           <div className="toss-card skeleton" style={{ height: '160px' }} />
         ) : (
@@ -16442,7 +16442,7 @@ function PlatformMembershipCard() {
   return (
     <div className="toss-card" style={{ padding: '16px', marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>itunda Plus</h3>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {isActive ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
           Free delivery active until {new Date(membership!.activeUntil).toLocaleDateString()} at every restaurant, no participation required.
@@ -16504,7 +16504,7 @@ function EatsMembershipCard() {
   return (
     <div className="toss-card" style={{ padding: '16px', marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Eats Club</h3>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {isActive ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
           Free delivery active until {new Date(membership!.activeUntil).toLocaleDateString()} at participating restaurants.
@@ -16723,8 +16723,8 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
         onChange={(e) => loadSlots(e.target.value)}
         style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
       />
-      {slotsError && <p style={{ fontSize: '12px', color: '#E53935' }}>{slotsError}</p>}
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }}>{error}</p>}
+      {slotsError && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }}>{slotsError}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }}>{error}</p>}
       {date && slots !== null && (
         slots.length === 0 ? (
           <EmptyState message="No open times on this date — try another day." />
@@ -16857,7 +16857,7 @@ function ProductInquirySection({ productId }: { productId: string }) {
           Ask
         </button>
       </form>
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {inquiries === null ? (
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading questions…</p>
       ) : inquiries.length === 0 ? (
@@ -16939,7 +16939,7 @@ function ProductReviewRow({ item }: { item: CommerceOrderItem }) {
         placeholder="How was it? (optional)"
         style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
       />
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
@@ -17026,7 +17026,7 @@ function ReturnExchangeAction({ orderId }: { orderId: string }) {
         placeholder="Details (optional)"
         style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
       />
-      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ flex: 1, padding: '8px', fontSize: '13px' }}>
           {submitting ? 'Submitting…' : 'Submit request'}
@@ -17058,7 +17058,7 @@ function MyReturnRequestsView() {
             </div>
             <span style={{
               fontSize: '12px', fontWeight: 700,
-              color: r.status === 'APPROVED' ? 'var(--toss-green)' : r.status === 'REJECTED' ? '#E53935' : 'var(--toss-blue)',
+              color: r.status === 'APPROVED' ? 'var(--toss-green)' : r.status === 'REJECTED' ? 'var(--toss-red)' : 'var(--toss-blue)',
             }}>
               {r.status === 'REQUESTED' ? 'Pending' : r.status === 'APPROVED' ? 'Approved' : 'Rejected'}
             </span>
@@ -17108,7 +17108,7 @@ function MerchantReturnQueueView() {
   if (error) {
     return (
       <div className="toss-card" style={{ marginBottom: '16px' }}>
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
       </div>
     );
   }
@@ -17170,7 +17170,7 @@ function WishlistButton({ favorited, busy, onToggle }: { favorited: boolean; bus
       onClick={onToggle}
       disabled={busy}
       aria-label={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
-      style={{ fontSize: '18px', lineHeight: 1, color: favorited ? '#E53935' : 'var(--toss-grey-300)' }}
+      style={{ fontSize: '18px', lineHeight: 1, color: favorited ? 'var(--toss-red)' : 'var(--toss-grey-300)' }}
     >
       {favorited ? '♥' : '♡'}
     </button>
@@ -17223,7 +17223,7 @@ function HoodReportButton({ targetType, targetId }: { targetType: HoodReportTarg
   return (
     <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
       {message ? (
-        <p style={{ fontSize: '11px', color: message.startsWith('Thanks') ? 'var(--toss-green)' : '#E53935' }}>{message}</p>
+        <p style={{ fontSize: '11px', color: message.startsWith('Thanks') ? 'var(--toss-green)' : 'var(--toss-red)' }}>{message}</p>
       ) : showChoices ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <button className="toss-btn toss-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Unsafe payment, contact request, or scam')}>Unsafe or scam</button>
@@ -17297,7 +17297,7 @@ function HoodReviewForm({
               style={{
                 fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
                 color: selected ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-                backgroundColor: selected ? '#E53935' : 'var(--toss-grey-100)',
+                backgroundColor: selected ? 'var(--toss-red)' : 'var(--toss-grey-100)',
               }}
             >
               {label}
@@ -17334,7 +17334,7 @@ function HoodReviewResultView({ reviews, myUserId }: { reviews: HoodReview[]; my
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>👍 {review.goodPoints.map(hoodGoodPointLabel).join(', ')}</p>
       )}
       {review.uncomfortablePoints.length > 0 && (
-        <p style={{ fontSize: '12px', color: '#E53935' }}>⚠️ {review.uncomfortablePoints.map(hoodUncomfortablePointLabel).join(', ')}</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-red)' }}>⚠️ {review.uncomfortablePoints.map(hoodUncomfortablePointLabel).join(', ')}</p>
       )}
     </div>
   );
@@ -17380,7 +17380,7 @@ function ProductPriceBlock({ price, originalPrice, discountPercent }: { price: n
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#E53935' }}>{discountPercent}%</span>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-red)' }}>{discountPercent}%</span>
           <span style={{ fontSize: '14px', fontWeight: 700 }}>{price.toLocaleString()} RWF</span>
         </div>
         <p style={{ fontSize: '11px', color: 'var(--toss-grey-400)', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()} RWF</p>
@@ -17678,7 +17678,7 @@ function ProductCatalogView({
                 <p style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.3 }}>{item.name}</p>
                 <ProductPriceBlock price={item.price} originalPrice={item.originalPrice} discountPercent={item.discountPercent} />
               </button>
-              <p style={{ minHeight: '16px', fontSize: '12px', color: item.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+              <p style={{ minHeight: '16px', fontSize: '12px', color: item.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
                 {item.stockQuantity === null || item.stockQuantity === undefined ? 'Available' : item.stockQuantity === 0 ? 'Out of stock' : `${item.stockQuantity} available`}
               </p>
               <ProductRatingBadge productId={item.id} />
@@ -17768,7 +17768,7 @@ function BillingPlanRow({ plan, subscription, onChanged }: { plan: MerchantBilli
           Next charge {new Date(subscription.nextChargeAt).toLocaleDateString()}
         </p>
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -17876,7 +17876,7 @@ function MultiCartView({
               <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
             ) : (
               <>
-                {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+                {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
                 <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
                   {placing ? 'Placing orders…' : `Place ${groups.length} order${groups.length === 1 ? '' : 's'}`}
                 </button>
@@ -17906,7 +17906,7 @@ function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutRe
             {r.success ? (
               <span style={{ color: 'var(--toss-green)' }}>{r.order!.totalAmount.toLocaleString()} RWF — placed</span>
             ) : (
-              <span style={{ color: '#E53935' }}>{r.error}</span>
+              <span style={{ color: 'var(--toss-red)' }}>{r.error}</span>
             )}
           </div>
         ))}
@@ -18101,7 +18101,7 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.businessName}</p>
               <ProductPriceBlock price={f.price} originalPrice={f.originalPrice} discountPercent={f.discountPercent} />
               {f.priceDropped && (
-                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-red, #E53935)', marginTop: '2px' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-red, var(--toss-red))', marginTop: '2px' }}>
                   🔻 Price dropped
                 </p>
               )}
@@ -18391,7 +18391,7 @@ function ShopView() {
                 <ProductImageThumb imageUrl={d.imageUrl} size={96} />
                 <p style={{ fontSize: '12px', fontWeight: 700 }}>{d.name}</p>
                 <ProductPriceBlock price={d.price} originalPrice={d.originalPrice} discountPercent={d.discountPercent} />
-                <p style={{ fontSize: '11px', color: d.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                <p style={{ fontSize: '11px', color: d.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
                   {d.stockQuantity === null || d.stockQuantity === undefined ? 'Available' : d.stockQuantity === 0 ? 'Out of stock' : `${d.stockQuantity} available`}
                 </p>
               </button>
@@ -18465,7 +18465,7 @@ function ShopView() {
                   <div>
                     <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.name}</p>
                     <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Sold by {r.merchantName}</p>
-                    <p style={{ fontSize: '11px', color: r.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                    <p style={{ fontSize: '11px', color: r.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
                       {r.stockQuantity === null || r.stockQuantity === undefined ? 'Available' : r.stockQuantity === 0 ? 'Out of stock' : `${r.stockQuantity} available`}
                     </p>
                   </div>
@@ -18570,7 +18570,7 @@ function DevicesView() {
               <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
                 {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--toss-blue)' }}>(this device)</span>}
               </p>
-              <p style={{ fontSize: '12px', color: d.trusted ? 'var(--toss-green)' : '#E53935' }}>
+              <p style={{ fontSize: '12px', color: d.trusted ? 'var(--toss-green)' : 'var(--toss-red)' }}>
                 {d.trusted ? '✓ Verified — can send money' : '⚠ Not verified — sign-in only'}
               </p>
               <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
@@ -18756,7 +18756,7 @@ function CardView() {
           itunda has no real card-network partnership yet, so this simulates a real card-present purchase — real money moves, real limits apply.
         </p>
         <form onSubmit={handleCharge} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {chargeError && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{chargeError}</p>}
+          {chargeError && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{chargeError}</p>}
           {chargeSuccess && <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>{chargeSuccess}</p>}
           <input
             placeholder="Merchant name" value={merchantName} onChange={(e) => setMerchantName(e.target.value)} required
@@ -18842,7 +18842,7 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
           </button>
         )}
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {settings?.enabled ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
           Every transfer rounds up to the nearest {settings.roundToNearest.toLocaleString()} RWF, saved into your goal.
@@ -19025,7 +19025,7 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
           </form>
         )
       )}
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '6px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '6px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -19086,7 +19086,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -19216,7 +19216,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
   if (error && !detail) {
     return (
       <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
@@ -19330,7 +19330,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -19379,7 +19379,7 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -19405,7 +19405,7 @@ function GroupAccountsSection() {
       <CreateGroupAccountForm onCreated={load} />
       {error && (
         <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         </div>
       )}
       {accounts === null ? (
@@ -19458,7 +19458,7 @@ function IkiminaSection() {
       <CreateIkiminaForm onCreated={load} />
       {error && (
         <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         </div>
       )}
       {ikiminas === null ? (
@@ -19548,7 +19548,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -19570,7 +19570,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   if (error && !detail) {
     return (
       <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
@@ -19714,7 +19714,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -19791,7 +19791,7 @@ function SaccoSection() {
             )}
           </>
         )}
-        {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{error}</p>}
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
           <input
             type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
@@ -19878,7 +19878,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   if (error && !detail) {
     return (
       <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
@@ -19932,7 +19932,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       )}
 
       {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)', marginBottom: '10px' }}>{message}</p>}
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{error}</p>}
 
       {needsDeviceVerification ? (
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => { setNeedsDeviceVerification(false); setConfirmingCancel(false); }} />
@@ -20050,7 +20050,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -20076,7 +20076,7 @@ function WeeklySavingsSection() {
       <CreateWeeklySavingsPlanForm onCreated={load} />
       {error && (
         <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         </div>
       )}
       {plans === null ? (
@@ -20132,7 +20132,7 @@ function UpfrontDepositSection() {
       <OpenUpfrontDepositForm onOpened={load} />
       {error && (
         <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         </div>
       )}
       {deposits === null ? (
@@ -20181,7 +20181,7 @@ function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
         required
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
       />
-      {error && <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
       <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
         {submitting ? 'Opening…' : 'Open deposit'}
       </button>
@@ -20216,7 +20216,7 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
         +{deposit.interestPaid.toLocaleString()} RWF interest already paid · matures {new Date(deposit.maturesAt).toLocaleDateString()}
       </p>
-      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '6px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '6px' }} role="alert">{error}</p>}
       {matured && !deposit.withdrawnAt && (
         <button className="toss-btn toss-btn-secondary" style={{ marginTop: '10px' }} disabled={withdrawing} onClick={handleWithdraw}>
           {withdrawing ? 'Withdrawing…' : 'Withdraw principal'}
@@ -20243,7 +20243,7 @@ function SavingsView() {
       <CreateGoalForm onCreated={load} />
       {error && (
         <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
         </div>
       )}
       {goals === null ? (

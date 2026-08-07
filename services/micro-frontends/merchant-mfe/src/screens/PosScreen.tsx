@@ -123,7 +123,7 @@ function RegisterView() {
   if (loadError) {
     return (
       <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">
           {loadError}
         </p>
         <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>
@@ -159,7 +159,7 @@ function RegisterView() {
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
                   {product.price.toLocaleString()} RWF
                 </p>
-                {product.stockQuantity !== null && <p style={{ fontSize: '12px', color: product.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)', marginTop: '4px' }}>{product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} available`}</p>}
+                {product.stockQuantity !== null && <p style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)', marginTop: '4px' }}>{product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} available`}</p>}
               </button>
             ))}
           </div>
@@ -304,7 +304,7 @@ function QrCheckout({ amount, description, onDone }: { amount: number; descripti
   return (
     <div style={{ textAlign: 'center' }}>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">
           {error}
         </p>
       )}
@@ -382,7 +382,7 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
         />
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
           {error}
         </p>
       )}
@@ -535,7 +535,7 @@ function CatalogView() {
           </button>
         </form>
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', margin: '12px 0 0' }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '12px 0 0' }} role="alert">
             {error}
           </p>
         )}
@@ -588,7 +588,7 @@ function CatalogView() {
                       <td style={{ padding: '10px 20px' }}>
                         <div>{product.price.toLocaleString()} RWF</div>
                         {product.originalPrice && product.discountPercent && <div style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '2px' }}><s>{product.originalPrice.toLocaleString()} RWF</s> · {product.discountPercent}% off</div>}
-                        <div style={{ fontSize: '12px', color: product.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)', marginTop: '2px' }}>
+                        <div style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)', marginTop: '2px' }}>
                           {product.stockQuantity === null ? 'Unlimited stock' : product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} in stock`}
                         </div>
                       </td>
@@ -789,7 +789,7 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
           </button>
         </div>
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
         )}
         <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ alignSelf: 'flex-start' }}>
           {submitting ? 'Adding…' : 'Add option group'}
@@ -909,7 +909,7 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
         </div>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
       )}
       {saved && !error && (
         <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: 0 }}>Saved.</p>
@@ -1040,7 +1040,7 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
         </div>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
       )}
       {activeDeals.length === 0 && (
         <button type="button" className="toss-btn toss-btn-primary" disabled={submitting} onClick={handleCreate} style={{ alignSelf: 'flex-start' }}>

@@ -59,7 +59,7 @@ function StaticQrCollect() {
   if (error) {
     return (
       <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
       </div>
     );
   }
@@ -154,7 +154,7 @@ function VoucherRedeem() {
               />
             </label>
             {error && (
-              <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+              <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
                 {error}
               </p>
             )}
@@ -249,7 +249,7 @@ function QrCollect() {
           />
         </label>
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
             {error}
           </p>
         )}
@@ -399,7 +399,7 @@ function CardCollect() {
           </label>
         </div>
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
             {error}
           </p>
         )}

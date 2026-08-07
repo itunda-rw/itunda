@@ -103,12 +103,12 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'measure-line', type: 'line', source: 'measure',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#E53935', 'line-width': 3, 'line-dasharray': [2, 1.5] },
+      paint: { 'line-color': 'var(--toss-red)', 'line-width': 3, 'line-dasharray': [2, 1.5] },
     },
     {
       id: 'measure-points', type: 'circle', source: 'measure',
       filter: ['==', ['geometry-type'], 'Point'],
-      paint: { 'circle-radius': 5, 'circle-color': '#E53935', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
+      paint: { 'circle-radius': 5, 'circle-color': 'var(--toss-red)', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
     },
     // Real text labels (2026-07-19) -- item 5, the last item on the Maps "100%"
     // roadmap. Real OSM name data already baked into the tile archive (see the
@@ -175,7 +175,7 @@ const RECENT_SEARCHES_KEY = 'itunda_map_recent_searches';
 // picker -- matches this app's own toss-* palette, not an arbitrary hex input a user
 // could fat-finger into an unreadable pin color.
 const DEFAULT_BOOKMARK_FOLDER = 'Saved places';
-const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', '#E53935', '#22B07D', '#4E5968'];
+const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', 'var(--toss-red)', '#22B07D', '#4E5968'];
 
 const CATEGORY_ICONS: Record<string, string> = {
   RESTAURANT: '🍽️', CAFE: '☕', HOSPITAL: '🏥', PHARMACY: '💊',
@@ -592,7 +592,7 @@ export default function MapView() {
     if (!map) return;
     map.flyTo({ center: [place.longitude, place.latitude], zoom: 15 });
     destinationMarkerRef.current?.remove();
-    destinationMarkerRef.current = new maplibregl.Marker({ color: '#E53935' })
+    destinationMarkerRef.current = new maplibregl.Marker({ color: 'var(--toss-red)' })
       .setLngLat([place.longitude, place.latitude])
       .setPopup(new maplibregl.Popup({ offset: 12 }).setText(place.displayName))
       .addTo(map);
@@ -980,7 +980,7 @@ export default function MapView() {
                 </button>
               ))
             ))}
-            {error && <p style={{ fontSize: '13px', color: '#E53935', padding: '8px' }} role="alert">{error}</p>}
+            {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', padding: '8px' }} role="alert">{error}</p>}
           </div>
         )}
 
@@ -1068,7 +1068,7 @@ export default function MapView() {
           aria-label={measuring ? 'Stop measuring distance' : 'Measure distance'}
           style={{
             width: '46px', height: '46px', borderRadius: '50%',
-            background: measuring ? '#E53935' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+            background: measuring ? 'var(--toss-red)' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
             fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: measuring ? '#fff' : MAP_CARD_TEXT_SECONDARY,
           }}

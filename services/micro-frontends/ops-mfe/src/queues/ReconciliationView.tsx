@@ -62,7 +62,7 @@ function OneSidedTable({ items, error, reload }: { items: ReconciliationRow[] | 
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{row.displayName}</td>
                   <td style={{ padding: '12px 16px' }}>{row.totalAttempts}</td>
                   <td style={{ padding: '12px 16px', color: 'var(--toss-green)' }}>{row.successCount}</td>
-                  <td style={{ padding: '12px 16px', color: row.failureCount > 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                  <td style={{ padding: '12px 16px', color: row.failureCount > 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
                     {row.failureCount}
                   </td>
                   <td style={{ padding: '12px 16px' }}>{(row.successRate * 100).toFixed(1)}%</td>
@@ -131,11 +131,11 @@ function TwoSidedDemoTable({
                       </span>
                     )}
                   </td>
-                  <td style={{ padding: '12px 16px', color: row.discrepancy !== 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                  <td style={{ padding: '12px 16px', color: row.discrepancy !== 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
                     {row.discrepancy > 0 ? `+${row.discrepancy}` : row.discrepancy}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{ color: row.matched ? 'var(--toss-green)' : '#E53935', fontWeight: 600 }}>
+                    <span style={{ color: row.matched ? 'var(--toss-green)' : 'var(--toss-red)', fontWeight: 600 }}>
                       {row.matched ? 'Matched' : 'Discrepancy'}
                     </span>
                   </td>

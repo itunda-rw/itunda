@@ -40,7 +40,7 @@ export default function AdsScreen() {
   if (error) {
     return (
       <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
       </div>
     );
   }
@@ -102,7 +102,7 @@ function LocationSetupCard({ onDone }: { onDone: () => void }) {
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
         A radius-targeted ad needs your business's real location to match nearby customers.
       </p>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{error}</p>}
       <button className="toss-btn toss-btn-primary" onClick={handleShare} disabled={busy}>
         {busy ? 'Getting location…' : 'Share my location'}
       </button>
@@ -190,7 +190,7 @@ function CreateOrExtendAdCard({ onCreated }: { onCreated: () => void }) {
         {selectedTier.price.toLocaleString()} RWF will be charged from your wallet. If you already have an active ad, this extends it.
       </p>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
       )}
       <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
         {submitting ? 'Starting…' : `Pay ${selectedTier.price.toLocaleString()} RWF & run ad`}

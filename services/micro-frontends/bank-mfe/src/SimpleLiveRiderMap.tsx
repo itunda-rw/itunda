@@ -109,7 +109,7 @@ export default function SimpleLiveRiderMap({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div ref={containerRef} style={{ width: '100%', height: '200px', borderRadius: '12px', overflow: 'hidden' }} />
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       {available === false && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Waiting for your rider's real location…</p>}
       {location && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>🛵 Rider location updated {timeAgo(location.updatedAt)}</p>}
     </div>

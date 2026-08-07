@@ -29,7 +29,7 @@ export default function BillingScreen() {
           A customer who subscribes is charged immediately, then again automatically every cycle until they cancel.
         </p>
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{error}</p>
         )}
         {plans === null ? (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
@@ -125,7 +125,7 @@ function CreatePlanCard({ onCreated }: { onCreated: () => void }) {
         </label>
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
       )}
       <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
         {submitting ? 'Creating…' : 'Create plan'}
@@ -164,7 +164,7 @@ function PlanRow({ plan, onChanged }: { plan: MerchantBillingPlan; onChanged: ()
         {plan.amount.toLocaleString()} RWF every {plan.intervalDays} day{plan.intervalDays === 1 ? '' : 's'}
       </p>
       {error && (
-        <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
       )}
       {plan.active && (
         <button

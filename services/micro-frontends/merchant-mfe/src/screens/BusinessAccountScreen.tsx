@@ -64,7 +64,7 @@ export default function BusinessAccountScreen() {
           Keep your business money separate from your personal wallet. Your real card/QR collections still settle
           to your personal wallet as before — move money into your business account whenever you're ready to set it aside.
         </p>
-        {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{error}</p>}
         <button className="toss-btn toss-btn-primary" onClick={handleOpen} disabled={opening}>
           {opening ? 'Opening…' : 'Open business account'}
         </button>
@@ -158,7 +158,7 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
         placeholder="Amount (RWF)"
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
       />
-      {error && <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={moving} onClick={() => move('TO_BUSINESS')}>
           To business

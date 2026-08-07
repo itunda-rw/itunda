@@ -1971,9 +1971,19 @@ about that limit and focuses on the real, sourced, code-level content that *was*
    silently-no-op default to genuinely optional on both platforms, so this whole class of bug
    (any future row added with `showChevron = true` and no real destination) can't reintroduce
    itself by accident.
-3. **[sourced, MEDIUM VALUE, code-shippable now]** ops-mfe/merchant-mfe design-system-discipline
-   spot-check, framed by "디자이너 없이 사용성을 지킬 수 있을까" — confirm admin surfaces are
-   built from shared `Ids*` primitives consistently, not one-off styling.
+3. **[sourced, done same day — bigger than expected, not admin-only]** ops-mfe/merchant-mfe
+   design-system-discipline spot-check, framed by "디자이너 없이 사용성을 지킬 수 있을까".
+   Expected a narrow admin-surface drift; found a repo-wide one instead. **271 occurrences across
+   32 files in all 3 web apps** (bank-mfe, merchant-mfe, ops-mfe — not just the admin surfaces
+   this recommendation was originally scoped to) used a hardcoded `#E53935` for danger/error
+   red instead of `packages/design-tokens/tokens.css`'s real `--toss-red` token
+   (`#f04452`, matching Android's `IdsSemanticColors.danger`/iOS's `IDS.Colors.danger` exactly) —
+   `var(--toss-red)` was used **zero** times in ops-mfe despite the shared token existing and
+   being correctly used for green/grey right alongside the hardcoded red in the same style
+   objects. Same failure class this doc already named once for `MapView.tsx`'s
+   `MAP_CARD_TEXT_TERTIARY` (item 244) — an independent hardcoded copy silently misses whatever
+   future fix the real token gets — just at 271x the scale. All replaced with `var(--toss-red)`;
+   verified via `yarn tsc --noEmit`, a real `vite build` of all 3 apps, and `yarn lint`.
 4. **[sourced, MEDIUM VALUE, validation only]** Confirm `FraudRuleEngine`'s flag-don't-block
    design (already itunda's real, deliberate, documented choice) still has a real human-review
    surface for every money-moving feature added since — the Simplicity24 "100% 자동화" session

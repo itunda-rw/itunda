@@ -113,7 +113,7 @@ export default function ReportsScreen() {
           <input type="date" value={draftTo} min={draftFrom} max={isoDate(new Date())} onChange={(event) => setDraftTo(event.target.value)} />
         </label>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ padding: '9px 14px' }}>Apply</button>
-        {validationError && <p role="alert" style={{ width: '100%', fontSize: '13px', color: '#E53935' }}>{validationError}</p>}
+        {validationError && <p role="alert" style={{ width: '100%', fontSize: '13px', color: 'var(--toss-red)' }}>{validationError}</p>}
       </form>
 
       <div className="toss-card" style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>

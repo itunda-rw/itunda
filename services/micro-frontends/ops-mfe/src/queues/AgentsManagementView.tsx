@@ -79,7 +79,7 @@ function RegisterAgentForm({ onRegistered }: { onRegistered: () => void }) {
         </button>
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
           {error}
         </p>
       )}
@@ -132,7 +132,7 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{agent.id}</p>
       </td>
       <td style={{ padding: '12px 16px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: agent.status === 'ACTIVE' ? 'var(--toss-green)' : '#E53935' }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: agent.status === 'ACTIVE' ? 'var(--toss-green)' : 'var(--toss-red)' }}>
           {agent.status}
         </span>
       </td>
@@ -189,7 +189,7 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
           </div>
         )}
         {error && (
-          <p style={{ fontSize: '12px', color: '#E53935', margin: '6px 0 0' }} role="alert">
+          <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: '6px 0 0' }} role="alert">
             {error}
           </p>
         )}
@@ -255,8 +255,8 @@ function OperatorsPanel({ agentId }: { agentId: string }) {
               {assigning ? '…' : 'Assign'}
             </button>
           </div>
-          {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }}>{error}</p>}
-          {assignError && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }}>{assignError}</p>}
+          {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }}>{error}</p>}
+          {assignError && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }}>{assignError}</p>}
           {items === null ? (
             <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading operators…</p>
           ) : items.length === 0 ? (
@@ -267,7 +267,7 @@ function OperatorsPanel({ agentId }: { agentId: string }) {
                 <div key={operator.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', backgroundColor: 'var(--toss-white)', borderRadius: '8px' }}>
                   <span style={{ fontSize: '13px' }}>{operator.userId}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: operator.isActive ? 'var(--toss-green)' : '#E53935' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: operator.isActive ? 'var(--toss-green)' : 'var(--toss-red)' }}>
                       {operator.isActive ? 'Active' : 'Inactive'}
                     </span>
                     <button

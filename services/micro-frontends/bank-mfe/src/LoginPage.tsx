@@ -98,7 +98,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
         </label>
 
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
             {error}
           </p>
         )}

@@ -59,7 +59,7 @@ function HoodReportCard({ report, onDecided }: { report: HoodReport; onDecided: 
         Reported by {report.reporterUserId} · Target {report.targetId} · {new Date(report.createdAt).toLocaleString()}
       </p>
       {actionError && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
           {actionError}
         </p>
       )}

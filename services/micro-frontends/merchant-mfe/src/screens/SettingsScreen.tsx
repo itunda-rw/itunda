@@ -52,7 +52,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
           </label>
 
           {error && (
-            <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+            <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
               {error}
             </p>
           )}
@@ -154,7 +154,7 @@ function FollowersCard() {
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: 0 }}>You need at least one follower to send a broadcast.</p>
         )}
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
         )}
         {sentCount !== null && !error && (
           <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: 0 }}>Sent to {sentCount} follower{sentCount === 1 ? '' : 's'}.</p>
@@ -212,7 +212,7 @@ function ApiIntegrationCard() {
   const statusColor: Record<WebhookDelivery['status'], string> = {
     DELIVERED: 'var(--toss-green)',
     PENDING: 'var(--toss-grey-500)',
-    EXHAUSTED: '#E53935',
+    EXHAUSTED: 'var(--toss-red)',
   };
 
   return (
@@ -232,13 +232,13 @@ function ApiIntegrationCard() {
           </p>
         )}
         {generateError && (
-          <p style={{ fontSize: '13px', color: '#E53935', marginTop: '8px' }} role="alert">{generateError}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{generateError}</p>
         )}
       </div>
 
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Recent webhook deliveries</h3>
       {deliveriesError && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{deliveriesError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{deliveriesError}</p>
       )}
       {deliveries === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
@@ -311,7 +311,7 @@ function DevicesCard() {
         Devices that have signed in to this account. A device must be verified before it can move money.
       </p>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{error}</p>
       )}
       {devices === null ? (
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
@@ -327,7 +327,7 @@ function DevicesCard() {
                 <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
                   {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--toss-blue)' }}>(this device)</span>}
                 </p>
-                <p style={{ fontSize: '12px', color: d.trusted ? 'var(--toss-green)' : '#E53935' }}>
+                <p style={{ fontSize: '12px', color: d.trusted ? 'var(--toss-green)' : 'var(--toss-red)' }}>
                   {d.trusted ? '✓ Verified — can move money' : '⚠ Not verified — sign-in only'}
                 </p>
                 <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
@@ -394,7 +394,7 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '8px 0 0' }} role="alert">
           {error}
         </p>
       )}
@@ -491,7 +491,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
           />
         </label>
         {error && (
-          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
         )}
         {saved && !error && (
           <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: 0 }}>Saved.</p>
@@ -510,7 +510,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
         </button>
       </div>
       {scheduledError && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">{scheduledError}</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '8px 0 0' }} role="alert">{scheduledError}</p>
       )}
     </div>
   );
@@ -557,7 +557,7 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
         </button>
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '8px 0 0' }} role="alert">
           {error}
         </p>
       )}
@@ -608,7 +608,7 @@ function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated:
         )}
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '8px 0 0' }} role="alert">
           {error}
         </p>
       )}
@@ -699,12 +699,12 @@ function KybCard({ merchant }: { merchant: Merchant }) {
         </form>
       )}
       {latestKyb?.status === 'REJECTED' && (
-        <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }}>
           Previous submission was rejected{latestKyb.autoVerificationDetail ? `: ${latestKyb.autoVerificationDetail}` : '.'}
         </p>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '8px 0 0' }} role="alert">
           {error}
         </p>
       )}

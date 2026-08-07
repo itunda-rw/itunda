@@ -103,7 +103,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: '12px 0 0' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '12px 0 0' }} role="alert">
           {error}
         </p>
       )}
@@ -150,7 +150,7 @@ function RosterTable({
   if (error) {
     return (
       <div className="toss-card">
-        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">
           {error}
         </p>
         <button className="toss-btn toss-btn-secondary" onClick={onReload} style={{ marginTop: '12px' }}>
@@ -182,7 +182,7 @@ function RosterTable({
         </button>
       </div>
       {runError && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: '0 20px 16px' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '0 20px 16px' }} role="alert">
           {runError}
         </p>
       )}

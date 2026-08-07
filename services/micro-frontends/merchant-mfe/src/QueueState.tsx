@@ -17,7 +17,7 @@ export function QueueError({ message, onRetry }: { message: string; onRetry: () 
       className="toss-card"
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '32px', textAlign: 'center' }}
     >
-      <AlertTriangle size={28} color="#E53935" />
+      <AlertTriangle size={28} color="var(--toss-red)" />
       <p style={{ color: 'var(--toss-grey-700)', fontSize: '14px' }}>{message}</p>
       <button className="toss-btn toss-btn-secondary" onClick={onRetry} style={{ gap: '6px', padding: '8px 16px' }}>
         <RotateCw size={14} /> Retry

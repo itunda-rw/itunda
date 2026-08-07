@@ -58,7 +58,7 @@ export function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () =>
           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       </div>
-      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>

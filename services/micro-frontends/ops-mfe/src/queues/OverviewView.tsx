@@ -37,7 +37,7 @@ function RailRow({ rail }: { rail: PaymentRail }) {
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            backgroundColor: isHealthy ? 'var(--toss-green)' : '#E53935',
+            backgroundColor: isHealthy ? 'var(--toss-green)' : 'var(--toss-red)',
             display: 'inline-block',
           }}
         />
@@ -46,7 +46,7 @@ function RailRow({ rail }: { rail: PaymentRail }) {
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
         {rail.totalAttempts} attempts · {(rail.successRate * 100).toFixed(1)}% success · {rail.avgLatencyMs}ms avg
       </p>
-      <span style={{ fontSize: '13px', fontWeight: 600, color: isHealthy ? 'var(--toss-green)' : '#E53935' }}>
+      <span style={{ fontSize: '13px', fontWeight: 600, color: isHealthy ? 'var(--toss-green)' : 'var(--toss-red)' }}>
         {isHealthy ? 'Healthy' : 'Incident'}
       </span>
     </div>

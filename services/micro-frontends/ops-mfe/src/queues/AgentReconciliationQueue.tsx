@@ -41,7 +41,7 @@ function ReconciliationCard({ reconciliation, onResolved }: { reconciliation: Ag
             Business date {reconciliation.businessDate} · Submitted by {reconciliation.submittedByUserId}
           </p>
         </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: short ? '#E53935' : 'var(--toss-green)' }}>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: short ? 'var(--toss-red)' : 'var(--toss-green)' }}>
           {short ? '' : '+'}{reconciliation.variance.toLocaleString()} RWF
         </span>
       </div>
@@ -59,7 +59,7 @@ function ReconciliationCard({ reconciliation, onResolved }: { reconciliation: Ag
       />
 
       {actionError && (
-        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
           {actionError}
         </p>
       )}
@@ -122,7 +122,7 @@ function ReconciliationReportView() {
             </div>
             <div className="toss-card" style={{ flex: 1 }}>
               <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Total variance</p>
-              <p style={{ fontSize: '20px', fontWeight: 700, color: report.totalVariance < 0 ? '#E53935' : 'var(--toss-green)' }}>
+              <p style={{ fontSize: '20px', fontWeight: 700, color: report.totalVariance < 0 ? 'var(--toss-red)' : 'var(--toss-green)' }}>
                 {report.totalVariance.toLocaleString()} RWF
               </p>
             </div>
@@ -146,7 +146,7 @@ function ReconciliationReportView() {
                       <td style={{ padding: '12px 16px' }}>{r.businessDate}</td>
                       <td style={{ padding: '12px 16px' }}>{r.expectedCash.toLocaleString()}</td>
                       <td style={{ padding: '12px 16px' }}>{r.countedCash.toLocaleString()}</td>
-                      <td style={{ padding: '12px 16px', color: r.variance !== 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                      <td style={{ padding: '12px 16px', color: r.variance !== 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
                         {r.variance > 0 ? `+${r.variance}` : r.variance}
                       </td>
                       <td style={{ padding: '12px 16px' }}>{r.status}</td>
