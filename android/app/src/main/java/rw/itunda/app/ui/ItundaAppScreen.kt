@@ -2324,30 +2324,44 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                 ) { Text(if (busy) "…" else "Send code", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
             }
         } else {
+            // Real "Minimum Input" simplicity fix (Toss's own researched, sourced pattern --
+            // toss.tech/article/4-ways-for-minimum-input, rule #2: "for fixed-digit fields like
+            // ID or phone numbers, the CTA button becomes unnecessary" -- see
+            // docs/DESIGN_REFERENCES.md §11). This code is a real, fixed 6-digit OTP
+            // (AuthService.kt's own doc comment). Auto-confirms the instant the 6th digit is
+            // typed, removing the extra tap for the common case -- the button stays visible and
+            // still works as a manual fallback (e.g. after a paste that needs re-triggering, or
+            // for anyone who prefers an explicit confirm), rather than being removed outright,
+            // since this is a security-sensitive identity-verification step.
+            fun confirm() {
+                if (busy || code.isBlank()) return
+                busy = true
+                error = null
+                coroutineScope.launch {
+                    try {
+                        if (kind == "email") {
+                            rw.itunda.core.network.NetworkClient.authApi.confirmEmailVerification(rw.itunda.core.network.ConfirmEmailVerificationRequest(code.trim()))
+                        } else {
+                            rw.itunda.core.network.NetworkClient.authApi.confirmPhoneVerification(rw.itunda.core.network.ConfirmPhoneVerificationRequest(code.trim()))
+                        }
+                        onVerified()
+                    } catch (e: retrofit2.HttpException) {
+                        error = rw.itunda.core.network.superAppErrorMessage(e)
+                    } catch (e: java.io.IOException) {
+                        error = "Couldn't reach itunda. Check your connection and try again."
+                    } finally {
+                        busy = false
+                    }
+                }
+            }
+            LaunchedEffect(code) {
+                if (code.trim().length == 6 && code.trim().all { it.isDigit() } && !busy) confirm()
+            }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", modifier = Modifier.weight(1f))
+                IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.weight(1f))
                 Box(
                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy || code.isBlank()) Ids.colors.textTertiary else TossBlue)
-                        .clickable(enabled = !busy && code.isNotBlank()) {
-                            busy = true
-                            error = null
-                            coroutineScope.launch {
-                                try {
-                                    if (kind == "email") {
-                                        rw.itunda.core.network.NetworkClient.authApi.confirmEmailVerification(rw.itunda.core.network.ConfirmEmailVerificationRequest(code.trim()))
-                                    } else {
-                                        rw.itunda.core.network.NetworkClient.authApi.confirmPhoneVerification(rw.itunda.core.network.ConfirmPhoneVerificationRequest(code.trim()))
-                                    }
-                                    onVerified()
-                                } catch (e: retrofit2.HttpException) {
-                                    error = rw.itunda.core.network.superAppErrorMessage(e)
-                                } catch (e: java.io.IOException) {
-                                    error = "Couldn't reach itunda. Check your connection and try again."
-                                } finally {
-                                    busy = false
-                                }
-                            }
-                        }
+                        .clickable(enabled = !busy && code.isNotBlank()) { confirm() }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                 ) { Text(if (busy) "…" else "Confirm", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
             }

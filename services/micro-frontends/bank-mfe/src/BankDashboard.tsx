@@ -5094,8 +5094,9 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
     }
   };
 
-  const handleConfirm = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirm = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (busy || !code.trim()) return;
     setBusy(true);
     setError(null);
     try {
@@ -5107,6 +5108,19 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
       setBusy(false);
     }
   };
+
+  // Real "Minimum Input" simplicity fix (Toss's own researched, sourced pattern --
+  // toss.tech/article/4-ways-for-minimum-input, rule #2: "for fixed-digit fields like
+  // ID or phone numbers, the CTA button becomes unnecessary" -- see
+  // docs/DESIGN_REFERENCES.md §11). This code is a real, fixed 6-digit OTP
+  // (AuthService.kt's own doc comment). Auto-confirms the instant the 6th digit is
+  // typed; the button stays visible as a manual fallback rather than being removed
+  // outright, since this is a security-sensitive identity-verification step.
+  useEffect(() => {
+    const trimmed = code.trim();
+    if (trimmed.length === 6 && /^\d{6}$/.test(trimmed) && !busy) handleConfirm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
 
   if (kind === 'email' && !hasEmail) {
     return <EmptyState message="No email address on file to verify." />;
@@ -5124,7 +5138,7 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
       ) : (
         <form onSubmit={handleConfirm} style={{ display: 'flex', gap: '8px' }}>
           <input
-            type="text" placeholder="Enter code" value={code} onChange={(e) => setCode(e.target.value)} required
+            type="text" inputMode="numeric" pattern="[0-9]*" autoFocus placeholder="Enter code" value={code} onChange={(e) => setCode(e.target.value)} required
             style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <button type="submit" className="toss-btn toss-btn-primary" disabled={busy} style={{ fontSize: '12px', padding: '8px 12px' }}>

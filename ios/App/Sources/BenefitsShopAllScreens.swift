@@ -867,6 +867,22 @@ private struct VerificationRow: View {
                     HStack(spacing: 8) {
                         TextField("Enter code", text: $code)
                             .padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                            .keyboardType(.numberPad)
+                            // Real "Minimum Input" simplicity fix (Toss's own researched,
+                            // sourced pattern -- toss.tech/article/4-ways-for-minimum-input,
+                            // rule #2: "for fixed-digit fields like ID or phone numbers, the
+                            // CTA button becomes unnecessary" -- see
+                            // docs/DESIGN_REFERENCES.md §11). This code is a real, fixed
+                            // 6-digit OTP (AuthService.kt's own doc comment). Auto-confirms
+                            // the instant the 6th digit is typed; the button stays visible as
+                            // a manual fallback rather than being removed outright, since this
+                            // is a security-sensitive identity-verification step.
+                            .onChange(of: code) { newValue in
+                                let trimmed = newValue.trimmingCharacters(in: .whitespaces)
+                                if trimmed.count == 6 && trimmed.allSatisfy({ $0.isNumber }) && !busy {
+                                    Task { await confirm() }
+                                }
+                            }
                         Button(action: { Task { await confirm() } }) {
                             Text(busy ? "…" : "Confirm").font(.caption).bold().foregroundColor(.white)
                                 .padding(.horizontal, 12).padding(.vertical, 10)
