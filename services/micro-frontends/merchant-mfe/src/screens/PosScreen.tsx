@@ -190,11 +190,17 @@ function RegisterView() {
                     </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button type="button" aria-label={`Decrease quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, -1)} style={{ color: 'var(--toss-grey-500)' }}>
+                    {/* Real touch-target-size fix (item 244, web accessibility
+                        sweep): these had no padding at all -- the clickable area
+                        was just the bare 14px icon, well under WCAG 2.5.8's 24x24
+                        CSS-pixel AA minimum. Real POS use (a merchant tapping fast
+                        through a checkout), so this is a real usability risk, not
+                        just a compliance checkbox. */}
+                    <button type="button" aria-label={`Decrease quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, -1)} style={{ color: 'var(--toss-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <Minus size={14} />
                     </button>
                     <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '16px', textAlign: 'center' }}>{line.quantity}</span>
-                    <button type="button" aria-label={`Increase quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, 1)} style={{ color: 'var(--toss-grey-500)' }}>
+                    <button type="button" aria-label={`Increase quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, 1)} style={{ color: 'var(--toss-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <Plus size={14} />
                     </button>
                   </div>

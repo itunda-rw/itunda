@@ -6882,7 +6882,10 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
       <div className="toss-card" style={{ width: '90%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: '16px', fontWeight: 700 }}>🛍 Emoticon Store</p>
-          <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '16px' }}>×</button>
+          {/* Real touch-target-size fix (item 244, web accessibility sweep):
+              no padding meant the clickable area was just the bare glyph,
+              well under WCAG 2.5.8's 24x24 CSS-pixel AA minimum. */}
+          <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '16px', padding: '8px', minWidth: '24px', minHeight: '24px' }}>×</button>
         </div>
         {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
         {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
@@ -8391,7 +8394,9 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <p style={{ fontSize: '15px', fontWeight: 700 }}>Thread</p>
-          <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', color: 'var(--toss-grey-500)' }}>×</button>
+          {/* Real touch-target-size fix (item 244, web accessibility sweep):
+              same as this file's other modal-close "x" -- see its own comment. */}
+          <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', color: 'var(--toss-grey-500)', padding: '8px', minWidth: '24px', minHeight: '24px' }}>×</button>
         </div>
         {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginBottom: '8px' }}>{error}</p>}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}>

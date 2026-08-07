@@ -1235,9 +1235,16 @@ export default function MapView() {
                         key={c}
                         type="button"
                         aria-label={`Pin color ${c}`}
+                        aria-pressed={folderColorInput === c}
                         onClick={() => setFolderColorInput(c)}
                         style={{
-                          width: '22px', height: '22px', borderRadius: '50%', backgroundColor: c,
+                          // Real touch-target-size fix (item 244, web accessibility
+                          // sweep): 22px was below WCAG 2.5.8's 24x24 CSS-pixel AA
+                          // minimum (2.2's non-AAA target-size criterion, unlike
+                          // 2.5.5 which is AAA-only) -- bumped to 24px, the smallest
+                          // size that actually clears it, keeping this dense
+                          // multi-swatch row's visual density close to its original.
+                          width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c,
                           border: folderColorInput === c ? '2px solid var(--toss-grey-900)' : '2px solid transparent',
                         }}
                       />
@@ -1442,7 +1449,10 @@ export default function MapView() {
                                     aria-pressed={moveFolderColorInput === c}
                                     onClick={() => setMoveFolderColorInput(c)}
                                     style={{
-                                      width: '22px', height: '22px', borderRadius: '50%', backgroundColor: c,
+                                      // Real touch-target-size fix (item 244, web
+                                      // accessibility sweep): matches the identical
+                                      // fix on this file's other color-swatch picker.
+                                      width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c,
                                       border: moveFolderColorInput === c ? `2px solid ${MAP_CARD_TEXT}` : '2px solid transparent',
                                     }}
                                   />
