@@ -1954,9 +1954,23 @@ about that limit and focuses on the real, sourced, code-level content that *was*
    button, across all 3 platforms. Turns a category of bug this project has already found and
    fixed by hand multiple times (iOS touch-target gaps, a dead-tap bug in bank-mfe's
    `QuickActions`) into something caught automatically going forward. See below for what shipped.
-2. **[sourced, MEDIUM VALUE, code-shippable now]** Audit itunda's own legal/consent/KYC copy for
-   the Simplicity24 "사용자의 실수" failure mode: copy hand-typed per-platform by an engineer
-   instead of sourced from one canonical, non-engineer-auditable location.
+2. **[sourced, done same day — real finding, different shape than expected]** Audited itunda's
+   legal/consent/KYC copy for the Simplicity24 "사용자의 실수" failure mode. **Found no hardcoded
+   legal copy to fix — found something more basic instead**: "Notifications", "Credit data usage
+   policy", "Privacy policy", "Terms & consent", "FAQ", "Live chat", "Call support", and
+   "Announcements" in the Android/iOS "All"/entire-menu screens all rendered a chevron and
+   consumed taps (`Modifier.clickable`/`.onTapGesture` applied unconditionally regardless of
+   whether a real destination existed) with **no backend or content behind any of them** —
+   confirmed via `SupportScreen.kt`'s own 2026-07-22 doc comment already documenting this exact
+   gap for the Support rows. The honest fix, matching this session's own established "don't
+   fabricate a shortcut" discipline (no real legal team/compliance content exists to source from,
+   so writing placeholder legal text would be worse than admitting the gap): "Notifications" now
+   opens the real Settings screen (which already has a working notifications list), and the
+   remaining 7 rows had their chevron/tap-affordance removed rather than faked — a plain label
+   instead of a lie about what tapping it does. `FlatRow.onClick`/`.action` changed from a
+   silently-no-op default to genuinely optional on both platforms, so this whole class of bug
+   (any future row added with `showChevron = true` and no real destination) can't reintroduce
+   itself by accident.
 3. **[sourced, MEDIUM VALUE, code-shippable now]** ops-mfe/merchant-mfe design-system-discipline
    spot-check, framed by "디자이너 없이 사용성을 지킬 수 있을까" — confirm admin surfaces are
    built from shared `Ids*` primitives consistently, not one-off styling.

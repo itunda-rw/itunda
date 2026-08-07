@@ -443,19 +443,32 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showLoans = true }),
                         FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                     ])
+                    // Real fix: "Notifications" now opens Settings, which already has a
+                    // real notifications list + mark-as-read (SettingsScreen.swift) --
+                    // reusing existing real infrastructure instead of leaving this row
+                    // dead. The other 3 rows have no real backend/content anywhere in
+                    // this codebase (no legal-copy source, no credit-data-usage-policy
+                    // endpoint) -- honestly left as plain labels (no chevron, no tap
+                    // affordance) rather than a fake destination.
                     FlatSection(title: "Notifications & consent", rows: [
-                        FlatRow(title: "Notifications", showChevron: true),
-                        FlatRow(title: "Credit data usage policy", showChevron: true),
-                        FlatRow(title: "Privacy policy", showChevron: true),
-                        FlatRow(title: "Terms & consent", showChevron: true),
+                        FlatRow(title: "Notifications", showChevron: true, action: onOpenSettings),
+                        FlatRow(title: "Credit data usage policy"),
+                        FlatRow(title: "Privacy policy"),
+                        FlatRow(title: "Terms & consent"),
                     ])
+                    // FAQ/Live chat/Call support/Announcements have no real backend
+                    // behind them either (confirmed via Android's SupportScreen.kt doc
+                    // comment, same real gap on this same screen's Android port) -- same
+                    // honest no-chevron treatment. The 2 rows that DO have a real
+                    // destination (transaction-ticket support, already shipped
+                    // 2026-07-22) keep theirs.
                     FlatSection(title: "Support", rows: [
-                        FlatRow(title: "FAQ", showChevron: true),
-                        FlatRow(title: "Live chat", showChevron: true),
-                        FlatRow(title: "Call support", showChevron: true),
+                        FlatRow(title: "FAQ"),
+                        FlatRow(title: "Live chat"),
+                        FlatRow(title: "Call support"),
                         FlatRow(title: "Report an issue with a transaction", showChevron: true, action: { showSupport = true }),
                         FlatRow(title: "My support tickets", showChevron: true, action: { showSupport = true }),
-                        FlatRow(title: "Announcements", showChevron: true),
+                        FlatRow(title: "Announcements"),
                     ])
                 }
             }
@@ -1129,14 +1142,24 @@ struct FlatSection: View {
                         Text(trailing)
                             .font(IDS.scaledFont(size: 15, weight: row.trailingIsLink ? .semibold : .regular, relativeTo: .subheadline))
                             .foregroundColor(row.trailingIsLink ? IDS.Colors.brand : IDS.Colors.textSecondary)
-                    } else if row.showChevron {
+                    } else if row.showChevron && row.action != nil {
                         Image(systemName: "chevron.right")
                             .foregroundColor(IDS.Colors.textTertiary)
                     }
                 }
                 .padding(.vertical, 10)
                 .contentShape(Rectangle())
+                // Real dead-tap fix (item 247 follow-up, docs/DESIGN_REFERENCES.md §14
+                // recommendation #2): the chevron/button-trait affordance below used to
+                // render for rows with no real action too (Notifications/Privacy policy/
+                // FAQ/etc. -- confirmed via Android's SupportScreen.kt doc comment that
+                // no backend exists for any of them, same real gap on this screen's
+                // Android port), matching Android's identical FlatRow bug fixed same day.
+                // `row.action?()` is already a safe no-op with no visible pressed-state
+                // in SwiftUI, so what actually misled a user was the chevron/trait, not
+                // the gesture recognizer itself -- gating those two is the real fix.
                 .onTapGesture { row.action?() }
+                .accessibilityAddTraits(row.action != nil ? [.isButton] : [])
             }
         }
     }

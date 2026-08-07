@@ -1994,21 +1994,32 @@ private fun MenuScreen(
             ))
         }
         item {
+            // Real fix: "Notifications" now opens Settings, which already has a real
+            // notifications list + mark-as-read (SettingsScreen.kt) -- reusing existing
+            // real infrastructure rather than leaving this row dead. The other 3 rows
+            // have no real backend/content anywhere in this codebase (no legal-copy
+            // source, no credit-data-usage-policy endpoint) -- honestly left as plain
+            // labels (no chevron, no clickable) rather than a fake destination, matching
+            // this project's own "don't fabricate a shortcut" discipline.
             FlatSection("Notifications & consent", listOf(
-                FlatRow("Notifications", showChevron = true),
-                FlatRow("Credit data usage policy", showChevron = true),
-                FlatRow("Privacy policy", showChevron = true),
-                FlatRow("Terms & consent", showChevron = true)
+                FlatRow("Notifications", showChevron = true, onClick = onOpenSettings),
+                FlatRow("Credit data usage policy"),
+                FlatRow("Privacy policy"),
+                FlatRow("Terms & consent")
             ))
         }
         item {
+            // FAQ/Live chat/Call support/Announcements have no real backend behind them
+            // either (confirmed via SupportScreen.kt's own doc comment) -- same honest
+            // no-chevron treatment. The 2 rows that DO have a real destination
+            // (transaction-ticket support, already shipped 2026-07-22) keep theirs.
             FlatSection("Support", listOf(
-                FlatRow("FAQ", showChevron = true),
-                FlatRow("Live chat", showChevron = true),
-                FlatRow("Call support", showChevron = true),
+                FlatRow("FAQ"),
+                FlatRow("Live chat"),
+                FlatRow("Call support"),
                 FlatRow("Report an issue with a transaction", showChevron = true, onClick = onOpenSupport),
                 FlatRow("My support tickets", showChevron = true, onClick = onOpenSupport),
-                FlatRow("Announcements", showChevron = true)
+                FlatRow("Announcements")
             ))
         }
     }
@@ -2412,7 +2423,16 @@ internal data class FlatRow(
     val icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     val iconColor: Color = AccentBlue,
     val showChevron: Boolean = false,
-    val onClick: () -> Unit = {}
+    // Real dead-tap fix (item 247 follow-up, docs/DESIGN_REFERENCES.md §14 recommendation
+    // #2 -- Simplicity24's "사용자의 실수" lesson on misleading affordances): previously
+    // defaulted to a no-op `{}`, so every row with showChevron = true but no real
+    // destination (Notifications/Privacy policy/Terms & consent/FAQ/Live chat/Call
+    // support/Announcements -- confirmed via SupportScreen.kt's own 2026-07-22 doc
+    // comment that no backend exists for any of these) still consumed the tap silently
+    // via FlatSection's unconditional .clickable() below, exactly the "looks tappable,
+    // does nothing" bug already found and fixed once this session in bank-mfe's
+    // QuickActions. Nullable now, so a row can only render as tappable when it truly is.
+    val onClick: (() -> Unit)? = null
 )
 
 /**
@@ -2439,10 +2459,11 @@ internal fun FlatSection(title: String, rows: List<FlatRow>) {
             modifier = Modifier.padding(bottom = 6.dp)
         )
         rows.forEach { row ->
+            val onClick = row.onClick
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = row.onClick)
+                    .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
                     .padding(vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -2472,7 +2493,7 @@ internal fun FlatSection(title: String, rows: List<FlatRow>) {
                         fontSize = 15.sp,
                         fontWeight = if (row.trailingIsLink) FontWeight.SemiBold else FontWeight.Normal
                     )
-                } else if (row.showChevron) {
+                } else if (row.showChevron && onClick != null) {
                     Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TossTertiary)
                 }
             }
