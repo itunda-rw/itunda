@@ -384,6 +384,30 @@ fun chatMessageTime(isoTimestamp: String): String = try {
     ""
 }
 
+/**
+ * Real Kakao/Toss/iMessage-style collapsed-per-run timestamp convention
+ * (docs/DESIGN_REFERENCES.md Talk section, recommendation #8's "remaining polish
+ * gap": "each message shows its own timestamp, not grouped by consecutive-run").
+ * A message shows its timestamp only when it's the last in a consecutive run from
+ * the same sender within the same local minute. Compares full local date+minute, not
+ * [chatMessageTime]'s "h:mm a" clock-face string -- that alone would false-positive
+ * "same run" for two messages sent at the same clock time on different days (a real
+ * risk for a chat search-results list, where adjacent entries aren't temporally
+ * adjacent in the real conversation).
+ */
+fun <T> shouldShowChatTimestamp(messages: List<T>, index: Int, senderId: (T) -> String, sentAt: (T) -> String): Boolean {
+    if (index == messages.lastIndex) return true
+    val current = messages[index]
+    val next = messages[index + 1]
+    if (senderId(current) != senderId(next)) return true
+    val minuteFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(java.time.ZoneId.systemDefault())
+    return try {
+        minuteFormatter.format(java.time.Instant.parse(sentAt(current))) != minuteFormatter.format(java.time.Instant.parse(sentAt(next)))
+    } catch (_: Exception) {
+        true
+    }
+}
+
 @Composable
 fun HoodReportAction(targetType: String, targetId: String) {
     var showChoices by remember { mutableStateOf(false) }

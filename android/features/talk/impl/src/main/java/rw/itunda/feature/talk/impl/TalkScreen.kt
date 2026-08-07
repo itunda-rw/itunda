@@ -102,6 +102,7 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.components.chatMessageTime
+import rw.itunda.core.designsystem.components.shouldShowChatTimestamp
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddGroupMemberRequest
 import rw.itunda.core.network.MessageResponse
@@ -961,7 +962,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 // Real, honest limitation: bubbles show a truncated sender id, not a
                 // real display name -- no "list group members" endpoint exists yet to
                 // resolve names client-side, matching bank-mfe's own known gap.
-                items(msgs, key = { it.id }) { m ->
+                itemsIndexed(msgs, key = { _, m -> m.id }) { index, m ->
                     val senderName = members.find { it.userId == m.senderId }?.name ?: m.senderId.take(8)
                     GroupMessageBubble(
                         m,
@@ -969,6 +970,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                         senderName = senderName,
                         currentUserId = currentUserId,
                         emoticonImageUrl = m.emoticonId?.let(emoticonImageById::get),
+                        showTimestamp = shouldShowChatTimestamp(msgs, index, { it.senderId }, { it.sentAt }),
                         onToggleReaction = { emoji ->
                             coroutineScope.launch {
                                 try {
@@ -1494,6 +1496,7 @@ private fun GroupManageMembersView(
 @Composable
 private fun GroupMessageBubble(
     message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {}, onOpenThread: (GroupMessageDto) -> Unit = {}, onPin: (GroupMessageDto) -> Unit = {}, onForward: (GroupMessageDto) -> Unit = {}, emoticonImageUrl: String? = null,
+    showTimestamp: Boolean = true,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
@@ -1551,13 +1554,19 @@ private fun GroupMessageBubble(
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
-        Text(
-            "${if (isMine && message.unreadCount > 0) "${message.unreadCount} · " else ""}${chatMessageTime(message.sentAt)}",
-            color = Ids.colors.textSecondary,
-            fontSize = 10.sp,
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-            textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
-        )
+        val statusParts = buildList {
+            if (isMine && message.unreadCount > 0) add("${message.unreadCount}")
+            if (showTimestamp) add(chatMessageTime(message.sentAt))
+        }
+        if (statusParts.isNotEmpty()) {
+            Text(
+                statusParts.joinToString(" · "),
+                color = Ids.colors.textSecondary,
+                fontSize = 10.sp,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
+            )
+        }
         // Real Thread support (2026-08-05) -- see MessageBubble's own identical
         // affordance.
         if (message.replyCount > 0) {
@@ -1983,7 +1992,7 @@ private fun ChatThreadView(
             } else if (msgs.isEmpty()) {
                 item { Text("Say hello — no messages yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             } else {
-                items(msgs, key = { it.id }) { m ->
+                itemsIndexed(msgs, key = { _, m -> m.id }) { index, m ->
                     MessageBubble(
                         m,
                         isMine = m.senderId == currentUserId,
@@ -1992,6 +2001,10 @@ private fun ChatThreadView(
                         gift = giftsByMessageId[m.id],
                         voucher = vouchersByMessageId[m.id],
                         emoticonImageUrl = m.emoticonId?.let(emoticonImageById::get),
+                        // Never collapsed when showing search hits -- adjacent results
+                        // aren't temporally adjacent in the real conversation, so each
+                        // one needs its own explicit timestamp regardless of sender/time.
+                        showTimestamp = searchResults != null || shouldShowChatTimestamp(msgs, index, { it.senderId }, { it.sentAt }),
                         onExtendVoucher = { voucherId ->
                             coroutineScope.launch {
                                 try {
@@ -3151,6 +3164,7 @@ private fun MessageBubble(
     message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
     voucher: GiftVoucherDto? = null,
     emoticonImageUrl: String? = null,
+    showTimestamp: Boolean = true,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
     onExtendVoucher: (String) -> Unit = {},
     onReply: (MessageDto) -> Unit = {},
@@ -3221,13 +3235,19 @@ private fun MessageBubble(
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
-        Text(
-            "${if (isMine && message.readAt == null) "1 · " else ""}${chatMessageTime(message.sentAt)}",
-            color = Ids.colors.textSecondary,
-            fontSize = 10.sp,
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-            textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
-        )
+        val statusParts = buildList {
+            if (isMine && message.readAt == null) add("1")
+            if (showTimestamp) add(chatMessageTime(message.sentAt))
+        }
+        if (statusParts.isNotEmpty()) {
+            Text(
+                statusParts.joinToString(" · "),
+                color = Ids.colors.textSecondary,
+                fontSize = 10.sp,
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
+            )
+        }
         // Real Thread support (2026-08-05) -- a real "N replies" affordance opening its
         // own sub-conversation view, matching Kakao's confirmed real reply-thread
         // pattern (docs/DESIGN_REFERENCES.md Talk section recommendation #3).
