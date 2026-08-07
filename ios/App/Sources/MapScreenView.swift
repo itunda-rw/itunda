@@ -400,7 +400,7 @@ struct MapScreenView: View {
                         if searchFocused && query.trimmingCharacters(in: .whitespaces).isEmpty && !recentSearches.isEmpty {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack {
-                                    Text("Recent searches").font(.caption2).bold().foregroundColor(IdsPalette.gray500)
+                                    Text("Recent searches").font(.caption2).bold().foregroundColor(IDS.Colors.textTertiary)
                                     Spacer()
                                     Button(action: { RecentMapSearchesStore.shared.clear(); recentSearches = [] }) {
                                         Text("Clear").font(.caption2).bold().foregroundColor(IdsPalette.blue500)
@@ -489,7 +489,7 @@ struct MapScreenView: View {
                             )
                             .font(.caption).bold().foregroundColor(IdsPalette.gray900)
                             if let lastMeasuredPlaceName {
-                                Text(lastMeasuredPlaceName).font(.caption2).foregroundColor(IdsPalette.gray500).lineLimit(1)
+                                Text(lastMeasuredPlaceName).font(.caption2).foregroundColor(IDS.Colors.textTertiary).lineLimit(1)
                             }
                             if !measurePoints.isEmpty {
                                 Button("Undo") { measurePoints.removeLast(); lastMeasuredPlaceName = nil }
@@ -503,7 +503,7 @@ struct MapScreenView: View {
                                     .background(IDS.Colors.brand).cornerRadius(999)
                             }
                             Button("Done") { measuring = false; mapController.isMeasuring = false; measurePoints = []; lastMeasuredPlaceName = nil }
-                                .font(.caption).bold().foregroundColor(IdsPalette.gray500)
+                                .font(.caption).bold().foregroundColor(IDS.Colors.textTertiary)
                         }
                         .padding(.horizontal, 16).padding(.vertical, 8)
                         .background(IdsPalette.white)

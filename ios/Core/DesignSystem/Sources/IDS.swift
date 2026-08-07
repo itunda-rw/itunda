@@ -99,7 +99,22 @@ public struct IDS {
         public static let divider = Color(light: 0xE5E8EB, dark: 0x3C3C47)
         public static let textPrimary = Color(light: 0x191F28, dark: 0xFFFFFF)
         public static let textSecondary = Color(light: 0x4E5968, dark: 0x989EAA)
-        public static let textTertiary = Color(light: 0x8B95A1, dark: 0x575C66)
+        // Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1) --
+        // light 0x8B95A1 measured 2.76:1 against backgroundPrimary and 3.04:1 against
+        // a white card, both failing 4.5:1 AA-normal-text (this renders small caption/
+        // timestamp text). Dark 0x575C66's audit numbers predate the 2026-07-21 true-
+        // dark correction and were stale -- against this file's real dark values
+        // (backgroundPrimary 0x17171C, card 0x202027) it actually measured 2.66:1 /
+        // 2.41:1, even worse than documented. New values (light 0x636E7C: 4.70:1 /
+        // 5.18:1; dark 0x848A96: 5.15:1 / 4.67:1) are the minimal step toward
+        // textSecondary's own hue that clears 4.5:1 on both real backgrounds in each
+        // theme. Matches the identical fix applied the same day to web's
+        // --toss-grey-500 and Android's IdsSemanticColors.textTertiary. IdsPalette's
+        // raw gray500 primitive (Theme/IdsTheme.swift, machine-generated from
+        // tokens.json) is deliberately left untouched -- see MapScreenView.swift's
+        // real, separate bug of using that primitive directly instead of this
+        // theme-reactive semantic token, fixed alongside this.
+        public static let textTertiary = Color(light: 0x636E7C, dark: 0x848A96)
         public static let textBrand = brand
         // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2) --
         // iOS had no shared success/green token at all (only successTint, the pale
