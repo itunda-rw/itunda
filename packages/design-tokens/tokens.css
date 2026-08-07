@@ -48,7 +48,18 @@
   --toss-grey-200: #e5e8eb;
   --toss-grey-300: #d1d6db;
   --toss-grey-400: #b0b8c1;
-  --toss-grey-500: #8b95a1;
+  /* Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1): the
+     original #8b95a1 measured 2.76:1 against the app background (--toss-grey-100)
+     and only 3.04:1 against white cards -- both fail 4.5:1 AA-normal-text, the
+     threshold that applies since this color renders small caption/timestamp text
+     at 493 real call sites, not just large text or UI components. Darkened to
+     #636e7c (4.70:1 against grey-100, 5.18:1 against white), computed as the
+     minimal step along this token's own hue line toward --toss-grey-700 that
+     clears 4.5:1 on both real backgrounds. Matches the identical fix applied the
+     same day to Android's IdsSemanticColors.kt textTertiary and iOS's IDS.swift
+     IDS.Colors.textTertiary. The raw Gray500/gray500 primitive scale values used
+     elsewhere for non-text roles are deliberately left untouched. */
+  --toss-grey-500: #636e7c;
   --toss-grey-600: #6b7684;
   --toss-grey-700: #4e5968;
   --toss-grey-800: #333d4b;
@@ -98,7 +109,14 @@
     --toss-grey-200: #3c3c47;
     --toss-grey-300: #454751;
     --toss-grey-400: #4e515c;
-    --toss-grey-500: #575c66;
+    /* Real WCAG AA contrast fix (item 241, docs/ACCESSIBILITY.md finding #1), computed
+       against the REAL current dark tokens above (grey-100 #17171c, white #202027) --
+       the accessibility audit's own dark-theme numbers predate the 2026-07-21 true-dark
+       correction and are stale. Original #575c66 measured 2.66:1 against grey-100 and
+       2.41:1 against card, both far below 4.5:1 AA-normal-text. Lightened to #848a96
+       (5.15:1 / 4.67:1), the minimal step toward --toss-grey-700 that clears 4.5:1 on
+       both real backgrounds. Matches the same-day fix on Android/iOS. */
+    --toss-grey-500: #848a96;
     --toss-grey-600: #787d88;
     --toss-grey-700: #989eaa;
     --toss-grey-800: #c4c9d1;
