@@ -2289,9 +2289,15 @@ real bug, not a design nitpick:
 
 1. **[sourced, real, done same day]** Silent-failure account-link bug across all 3 clients — fixed,
    see above.
-2. **[sourced, real, informational lead, not yet checked]** Simplicity21 session 4-1 (legacy PG
-   overhaul) against itunda's `RnpPaymentGateway.kt`/`PaymentGatewayPort` — worth a focused look in a
-   future pass once the session's actual content (not just the title) is recoverable.
+2. **[checked and closed, no gap]** Simplicity21 session 4-1 (legacy PG overhaul) — the research
+   pass that surfaced this lead named `RnpPaymentGateway.kt`/`PaymentGatewayPort` as itunda's
+   comparable surface; that file does not exist anywhere in the repo (`grep -rl "PaymentGatewayPort"
+   services/backend` and `find services/backend -iname "*Gateway*.kt"` both empty) — a fabricated
+   citation, caught by verifying before acting on it rather than trusting the research pass's own
+   claim. itunda's real equivalent is `services/backend/core/.../provider/ProviderConnector.kt`, one
+   shared simulated rail-connector used by every money-moving flow (transfers, bills, airtime,
+   account linking, step-reward payouts) — not a legacy system anyone is overhauling, so this
+   specific session's premise doesn't apply here. No further action.
 3. **[sourced, informational only]** Simplicity24's remaining 10 of 11 session contents (titles now
    known, video-gated content is not) and Simplicity21's remaining ~14 of 19 — genuinely unrecovered
    after four passes using every discovery angle tried so far.
@@ -2300,8 +2306,14 @@ real bug, not a design nitpick:
 - Simplicity21 2-1's actual redesign content (what exactly was eliminated from the linking flow) is
   still gated — itunda's own version was checked directly instead, which is arguably more valuable
   than the source material at this point.
+- Simplicity21 4-1's "PG overhaul" lead: checked and closed same day, see Recommendation 2 above —
+  the file the research pass cited as itunda's comparable surface doesn't exist; no real gap found.
 - Simplicity23/25's listing pages haven't been tried with the direct-fetch method that worked for
-  Simplicity21/24 this pass — likely the highest-yield next step if a fifth pass happens.
+  Simplicity21/24 this pass — likely the highest-yield next step if a sixth pass happens.
+- **Process lesson from checking this lead**: a fork-based research pass can cite a specific file
+  path with full confidence and be wrong — always `grep`/`find` a named file before acting on a
+  research finding that claims itunda-side code already exists, same discipline this project's own
+  memory system already enforces for recalled facts.
 - The pre-fill and no-confirmation-step friction points the earlier investigation also surfaced
   (account-link form doesn't pre-fill the user's own known phone number for MoMo providers; no
   review/confirm step before submit) are real but smaller UX gaps, not bugs — left as documented,
