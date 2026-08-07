@@ -1927,11 +1927,14 @@ the technical content itself is real, specific, and independently checkable agai
   **Sized honestly as its own project** (bundle hosting, version negotiation, native-side
   download/cache/fallback/rollback logic — comparable in scope to item 246's device-verification
   feature), not attempted this pass.
-- **Elvis-operator coverage gotcha: real, applicable risk, no gate exists yet to trigger it.**
-  itunda's Kotlin backend uses `?:` heavily (`FraudRuleEngine.kt`, `DeviceService.kt`, etc.) and
-  has a real, working Kotest/MockK suite across 40+ modules, but — not verified this pass —
-  likely no enforced coverage gate in CI. Flagged so that if itunda ever adds one, this exact
-  false-negative-coverage trap is already known rather than rediscovered.
+- **Elvis-operator coverage gotcha: real, applicable risk, confirmed latent — no gate exists yet
+  to trigger it.** itunda's Kotlin backend uses `?:` heavily (`FraudRuleEngine.kt`,
+  `DeviceService.kt`, etc.) and has a real, working Kotest/MockK suite across 40+ modules.
+  Verified via `grep -rl "jacoco\|kover" services/backend`: **zero results** — no coverage tool
+  is configured anywhere in the backend, so there's genuinely nothing to fix right now (adding a
+  full coverage-gate CI system would be a speculative, unrequested feature, not a bug fix).
+  Flagged so that if itunda ever adds one, this exact false-negative-coverage trap is already
+  known rather than rediscovered.
 
 ### Unresolved / worth a follow-up
 - SLASH21/22 primary session pages are still PDF-only — the second pass's third-party recaps are
