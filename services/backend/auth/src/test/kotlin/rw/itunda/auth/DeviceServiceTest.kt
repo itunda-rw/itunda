@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.Notification
@@ -37,7 +38,8 @@ class DeviceServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val redisTemplate = mockk<StringRedisTemplate>(relaxed = true)
+        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService, redisTemplate)
 
         When("recording the registration device") {
             val savedSlot = slot<TrustedDevice>()
@@ -68,8 +70,9 @@ class DeviceServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val redisTemplate = mockk<StringRedisTemplate>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
-        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService, redisTemplate)
 
         When("the device has never been seen before") {
             every { trustedDeviceRepository.findByUserIdAndDeviceId("user_2", "device_new") } returns null
@@ -110,7 +113,8 @@ class DeviceServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val redisTemplate = mockk<StringRedisTemplate>(relaxed = true)
+        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService, redisTemplate)
 
         every { trustedDeviceRepository.findByUserIdAndDeviceId("user_after_commit", "device_after_commit") } returns null
         every { trustedDeviceRepository.save(any()) } answers { firstArg() }
@@ -149,7 +153,8 @@ class DeviceServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val redisTemplate = mockk<StringRedisTemplate>(relaxed = true)
+        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService, redisTemplate)
 
         val user = User(id = "user_3", phoneNumber = "+250788000003", firstName = "Jean", lastName = "B", passwordHash = passwordEncoder.encode("real-password"), createdAt = Instant.now())
         val device = TrustedDevice(id = "trusted_device_2", userId = "user_3", deviceId = "device_pending", deviceName = null, trusted = false)
@@ -198,7 +203,8 @@ class DeviceServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService)
+        val redisTemplate = mockk<StringRedisTemplate>(relaxed = true)
+        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService, redisTemplate)
 
         When("the device is real and theirs") {
             val device = TrustedDevice(id = "trusted_device_3", userId = "user_4", deviceId = "device_old", deviceName = null, trusted = true)
