@@ -461,12 +461,16 @@ private struct MarketplaceContent: View {
                 } else if listings == nil {
                     HoodFeedSkeleton()
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
+                    // Real copy-voice fix (item 244, round 5 of the empty-state pass --
+                    // docs/COPY_VOICE.md's rules, ported from the same-day Android fix):
+                    // say what's missing AND what fixes it, per this screen's own real
+                    // "+ List an item" button above in the MINE view.
                     Text(
-                        view == .browse ? "No listings yet."
-                            : view == .nearby ? "No listings near you yet."
-                            : view == .neighborhood ? "No listings in your neighborhood yet."
-                            : view == .purchases ? "No purchases recorded yet."
-                            : "You haven't listed anything yet."
+                        view == .browse ? "No listings yet — be the first to list something for sale."
+                            : view == .nearby ? "No listings near you yet — try Browse to see listings from everywhere."
+                            : view == .neighborhood ? "No listings in your neighborhood yet — try Browse to see listings from everywhere."
+                            : view == .purchases ? "No purchases recorded yet — items you buy will show up here."
+                            : "You haven't listed anything yet — tap \"+ List an item\" above to list your first one."
                     )
                     .foregroundColor(IDS.Colors.textSecondary)
                 } else if !listings!.isEmpty {
@@ -1573,11 +1577,15 @@ private struct CommunityContent: View {
                     } else if posts == nil {
                         HoodFeedSkeleton()
                     } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
+                        // Real copy-voice fix (item 244, round 5 of the empty-state pass,
+                        // ported from the same-day Android fix): say what's missing AND
+                        // what fixes it, per this screen's own real "+ Write a post"
+                        // button above in the MINE view.
                         Text(
-                            view == .browse ? "No posts yet."
-                                : view == .nearby ? "No posts near you yet."
-                                : view == .neighborhood ? "No posts in your neighborhood yet."
-                                : "You haven't posted anything yet."
+                            view == .browse ? "No posts yet — be the first to share something with your neighbors."
+                                : view == .nearby ? "No posts near you yet — try Browse to see posts from everywhere."
+                                : view == .neighborhood ? "No posts in your neighborhood yet — try Browse to see posts from everywhere."
+                                : "You haven't posted anything yet — tap \"+ Write a post\" above to share your first one."
                         ).foregroundColor(IDS.Colors.textSecondary)
                     } else if !posts!.isEmpty {
                         // Real 같이해요 (join-together) pinned mid-feed slot
@@ -2349,11 +2357,15 @@ private struct JobsContent: View {
                 } else if posts == nil {
                     HoodFeedSkeleton()
                 } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
+                    // Real copy-voice fix (item 244, round 5 of the empty-state pass,
+                    // ported from the same-day Android fix): say what's missing AND
+                    // what fixes it, per this screen's own real "+ Post a job" button
+                    // above in the MINE view.
                     Text(
-                        view == .browse ? "No jobs posted yet."
-                            : view == .neighborhood ? "No jobs in your neighborhood yet."
-                            : view == .worked ? "No completed jobs recorded yet."
-                            : "You haven't posted any jobs yet."
+                        view == .browse ? "No jobs posted yet — check back soon, or post one yourself."
+                            : view == .neighborhood ? "No jobs in your neighborhood yet — try Browse to see jobs from everywhere."
+                            : view == .worked ? "No completed jobs recorded yet — jobs you complete will show up here."
+                            : "You haven't posted any jobs yet — tap \"+ Post a job\" above to post your first one."
                     ).foregroundColor(IDS.Colors.textSecondary)
                 } else if !posts!.isEmpty {
                     ForEach(posts!) { post in
@@ -3146,12 +3158,16 @@ private struct PropertyContent: View {
                 } else if listings == nil {
                     HoodFeedSkeleton()
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
+                    // Real copy-voice fix (item 244, round 5 of the empty-state pass,
+                    // ported from the same-day Android fix): say what's missing AND
+                    // what fixes it, per this screen's own real "+ List a property"
+                    // button above in the MINE view.
                     Text(
-                        view == .browse ? "No properties listed yet."
-                            : view == .nearby ? "No properties near you yet."
-                            : view == .neighborhood ? "No properties in your neighborhood yet."
-                            : view == .acquired ? "No properties acquired yet."
-                            : "You haven't listed any properties yet."
+                        view == .browse ? "No properties listed yet — check back soon, or list your own."
+                            : view == .nearby ? "No properties near you yet — try Browse to see properties from everywhere."
+                            : view == .neighborhood ? "No properties in your neighborhood yet — try Browse to see properties from everywhere."
+                            : view == .acquired ? "No properties acquired yet — properties you acquire will show up here."
+                            : "You haven't listed any properties yet — tap \"+ List a property\" above to list your first one."
                     ).foregroundColor(IDS.Colors.textSecondary)
                 } else if !listings!.isEmpty {
                     ForEach(listings!) { listing in

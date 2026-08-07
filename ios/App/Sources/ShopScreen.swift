@@ -542,7 +542,11 @@ private struct CommerceShopContent: View {
                         } else if merchants == nil {
                             SkeletonBlock(height: 120)
                         } else if merchants!.isEmpty {
-                            Text(selectedCategory != nil || !searchInput.trimmingCharacters(in: .whitespaces).isEmpty ? "No merchants match your search." : "No stores registered yet.")
+                            // Real copy-voice fix (item 244, round 5 of the empty-state
+                            // pass, ported from the same-day Android fix): "registered
+                            // yet" is honest about whose gap this is -- no store has
+                            // joined yet, not something the reader is missing a step on.
+                            Text(selectedCategory != nil || !searchInput.trimmingCharacters(in: .whitespaces).isEmpty ? "No merchants match your search — try a different category or search term." : "No stores registered yet — check back once merchants in your area join itunda Shop.")
                                 .foregroundColor(IDS.Colors.textSecondary)
                         } else {
                         ForEach(merchants!) { merchant in
