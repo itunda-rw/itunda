@@ -55,8 +55,11 @@ export default function RegisterPage({ onRegistered, onBackToLogin }: { onRegist
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Phone number</span>
+          {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
+              rule #4), matching the identical same-day fix on LoginPage.tsx. */}
           <input
             type="tel"
+            autoFocus
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             placeholder="+250788123456"

@@ -39,8 +39,11 @@ export default function RegisterScreen({ onRegistered }: { onRegistered: (mercha
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Business name</span>
+          {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
+              rule #4), matching the identical same-day fix on bank-mfe's LoginPage.tsx. */}
           <input
             type="text"
+            autoFocus
             value={businessName}
             onChange={(e) => setBusinessName(e.target.value)}
             placeholder="Amina's Boutique"

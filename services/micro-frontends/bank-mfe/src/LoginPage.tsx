@@ -43,8 +43,13 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Phone number</span>
+          {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
+              rule #4 -- toss.tech/article/4-ways-for-minimum-input): the very first field on
+              itunda's single highest-traffic screen had no autoFocus, an extra tap before
+              every login. */}
           <input
             type="tel"
+            autoFocus
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             placeholder="+250788123456"

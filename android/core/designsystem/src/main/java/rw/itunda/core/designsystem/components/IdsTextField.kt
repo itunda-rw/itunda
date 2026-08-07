@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTypography
 
@@ -98,7 +99,16 @@ fun IdsTextField(
             ),
         )
         if (autoFocus) {
-            LaunchedEffect(Unit) { focusRequester.requestFocus() }
+            // Real fix, found auditing this addition against LoginScreen.kt's own pre-existing
+            // rememberAutoFocus helper (which this component's autoFocus is meant to make
+            // redundant): "requesting focus in the same frame a composable enters can silently
+            // no-op if the node hasn't attached yet" -- that helper's own documented reasoning
+            // for waiting one frame first. Matched here so this component doesn't reintroduce
+            // the exact bug that helper was written to avoid.
+            LaunchedEffect(Unit) {
+                delay(80)
+                focusRequester.requestFocus()
+            }
         }
         if (isError && errorText != null) {
             Text(

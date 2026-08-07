@@ -40,13 +40,17 @@ struct LoginScreen: View {
 
                     Spacer(minLength: 24)
 
+                    // Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md
+                    // §11, rule #4), closing an iOS-only gap Android's own LoginScreen.kt
+                    // already had a real fix for (rememberAutoFocus). Auto-focuses whichever
+                    // field is first visible for the current mode.
                     if isRegisterMode {
-                        IdsTextField("First name", text: $firstName)
+                        IdsTextField("First name", text: $firstName, autoFocus: true)
                         IdsTextField("Last name", text: $lastName)
                         IdsTextField("Referral code (optional)", text: $referralCode)
                     }
 
-                    IdsTextField("Phone number", text: $phoneNumber, keyboardType: .phonePad)
+                    IdsTextField("Phone number", text: $phoneNumber, keyboardType: .phonePad, autoFocus: !isRegisterMode)
 
                     IdsTextField("Password", text: $password, isSecure: true)
 
