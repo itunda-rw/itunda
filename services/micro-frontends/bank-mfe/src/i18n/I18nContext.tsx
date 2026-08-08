@@ -4,8 +4,8 @@ import { DEFAULT_LOCALE, translations, type Locale } from './translations';
 const STORAGE_KEY = 'itunda.locale';
 
 // No external i18n library pulled in deliberately -- this workspace is Yarn PnP, and a
-// flat key-value dictionary covers itunda's real current scope (2 locales, 1 translated
-// screen so far) without the weight of a framework built for dozens of locales and
+// flat key-value dictionary covers itunda's real current scope (2 locales, 2 translated
+// screens so far) without the weight of a framework built for dozens of locales and
 // plural/gender rule tables itunda doesn't need yet. Reassess if/when real coverage
 // grows past what a plain dictionary comfortably handles.
 
@@ -16,13 +16,25 @@ function detectInitialLocale(): Locale {
   return browserLocale.toLowerCase().startsWith('rw') ? 'rw' : DEFAULT_LOCALE;
 }
 
+type TranslationParams = Record<string, string | number>;
+
 interface I18nContextValue {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: keyof (typeof translations)['en']) => string;
+  t: (key: keyof (typeof translations)['en'], params?: TranslationParams) => string;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
+
+// Real {{placeholder}} interpolation (2026-08-08, added alongside the overview.* keys
+// that need it) -- named placeholders instead of string concatenation, so a translation
+// can reorder them per-language instead of being locked into English word order.
+function interpolate(template: string, params?: TranslationParams): string {
+  if (!params) return template;
+  return template.replace(/\{\{(\w+)\}\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
+}
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(detectInitialLocale);
@@ -38,7 +50,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: keyof (typeof translations)['en']) => translations[locale][key] ?? translations[DEFAULT_LOCALE][key] ?? key,
+    (key: keyof (typeof translations)['en'], params?: TranslationParams) =>
+      interpolate(translations[locale][key] ?? translations[DEFAULT_LOCALE][key] ?? key, params),
     [locale],
   );
 

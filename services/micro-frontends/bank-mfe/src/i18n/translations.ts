@@ -33,7 +33,31 @@ type TranslationKey =
   | 'login.signingIn'
   | 'login.signIn'
   | 'login.createAccount'
-  | 'login.connectionError';
+  | 'login.connectionError'
+  // Real second slice (2026-08-08): wallet overview, itunda's own second-highest-traffic
+  // screen (the one every user lands on right after login) -- following the exact phased
+  // rollout named in docs/DESIGN_REFERENCES.md Section 19's own "real next steps" list.
+  // Several of these carry a dynamic amount/count, hence the `{{placeholder}}` support
+  // added to useI18n's `t()` alongside this -- a real, common minimal-i18n pattern
+  // (named placeholders a translator can reorder per-language), not string concatenation
+  // that would lock every locale into English word order.
+  | 'overview.netWorth'
+  | 'overview.accounts'
+  | 'overview.savings'
+  | 'overview.loans'
+  | 'overview.investments'
+  | 'overview.insurance'
+  | 'overview.linkedAccounts'
+  | 'overview.demoBalance'
+  | 'overview.unlink'
+  | 'overview.linkAccountPrompt'
+  | 'overview.providerNamePlaceholder'
+  | 'overview.accountPhonePlaceholder'
+  | 'overview.linking'
+  | 'overview.linkAccount'
+  | 'overview.loadError'
+  | 'overview.linkError'
+  | 'overview.unlinkError';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -46,6 +70,23 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'login.signIn': 'Sign in',
     'login.createAccount': 'New to itunda? Create an account',
     'login.connectionError': "Can't connect right now. Please try again in a moment.",
+    'overview.netWorth': 'Net worth',
+    'overview.accounts': 'Accounts',
+    'overview.savings': 'Savings: {{amount}} RWF across {{count}} goal(s)',
+    'overview.loans': 'Loans: {{amount}} RWF outstanding, {{count}} active',
+    'overview.investments': 'Investments: {{amount}} RWF cost basis, {{count}} holding(s)',
+    'overview.insurance': 'Insurance: {{count}} active plan(s), {{amount}} RWF/month',
+    'overview.linkedAccounts': 'Linked accounts',
+    'overview.demoBalance': 'Demo balance: {{currency}} {{amount}}',
+    'overview.unlink': 'Unlink',
+    'overview.linkAccountPrompt': 'Link a bank or mobile money account',
+    'overview.providerNamePlaceholder': 'Provider name',
+    'overview.accountPhonePlaceholder': 'Account / phone number',
+    'overview.linking': 'Linking…',
+    'overview.linkAccount': 'Link account',
+    'overview.loadError': 'Could not load your overview.',
+    'overview.linkError': 'Could not link that account.',
+    'overview.unlinkError': 'Could not unlink this account.',
   },
   rw: {
     'login.tagline': "Injira kuri konti yawe ya Itunda.",
@@ -57,5 +98,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'login.signIn': 'Injira',
     'login.createAccount': 'Uri mushya kuri itunda? Fungura konti',
     'login.connectionError': 'Ntibishoboka guhuza ubu. Ongera ugerageze mu kanya.',
+    'overview.netWorth': 'Umutungo wose',
+    'overview.accounts': 'Konti',
+    'overview.savings': "Ubwizigame: {{amount}} RWF mu migambi {{count}}",
+    'overview.loans': 'Inguzanyo: {{amount}} RWF zisigaye, {{count}} zikoreshwa',
+    'overview.investments': "Ishoramari: {{amount}} RWF yatanzwe, ibintu {{count}}",
+    'overview.insurance': "Ubwishingizi: gahunda {{count}} zikora, {{amount}} RWF ku kwezi",
+    'overview.linkedAccounts': 'Konti zihujwe',
+    'overview.demoBalance': "Amafaranga y'ikitegererezo: {{currency}} {{amount}}",
+    'overview.unlink': 'Kuraho ihuza',
+    'overview.linkAccountPrompt': 'Huza konti ya banki cyangwa Mobile Money',
+    'overview.providerNamePlaceholder': "Izina ry'ikigo",
+    'overview.accountPhonePlaceholder': 'Numero ya konti / telefoni',
+    'overview.linking': 'Guhuza…',
+    'overview.linkAccount': 'Huza konti',
+    'overview.loadError': "Ntibishoboka gushaka amakuru y'umutungo wawe.",
+    'overview.linkError': 'Ntibishoboka guhuza iyo konti.',
+    'overview.unlinkError': 'Ntibishoboka kuraho iyo konti.',
   },
 };

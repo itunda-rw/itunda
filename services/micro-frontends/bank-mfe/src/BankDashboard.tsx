@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
+import { useI18n } from './i18n/I18nContext';
 import { Badge } from './Badge';
 import { IdsButton } from './IdsButton';
 import { EmptyState, ErrorCard } from './EmptyState';
@@ -1593,6 +1594,7 @@ function VerifyCertificateCard() {
 const LINK_PROVIDERS = ['MTN Mobile Money', 'Airtel Money', 'Bank of Kigali', 'Equity Bank Rwanda'];
 
 function OverviewView() {
+  const { t } = useI18n();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -1605,7 +1607,7 @@ function OverviewView() {
     setError(null);
     Promise.all([fetchOverview(), fetchLinkedAccounts()])
       .then(([o, linked]) => { setOverview(o); setLinkedAccounts(linked); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your overview.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('overview.loadError')));
   };
 
   useEffect(refresh, []);
@@ -1626,7 +1628,7 @@ function OverviewView() {
         setError(linked.failureReason ?? `Could not verify that ${provider} account. It wasn't linked.`);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not link that account.');
+      setError(err instanceof ApiError ? err.message : t('overview.linkError'));
     } finally {
       setBusy(false);
     }
@@ -1639,7 +1641,7 @@ function OverviewView() {
       await unlinkAccount(id);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not unlink this account.');
+      setError(err instanceof ApiError ? err.message : t('overview.unlinkError'));
     } finally {
       setBusy(false);
     }
@@ -1652,11 +1654,11 @@ function OverviewView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Net worth</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{t('overview.netWorth')}</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{overview.netWorth.toLocaleString()} RWF</h2>
       </div>
       <div className="toss-card" style={{ padding: '16px' }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Accounts</h3>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>{t('overview.accounts')}</h3>
         {overview.accounts.map((a) => (
           <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{a.name} ({a.type})</span>
@@ -1665,28 +1667,28 @@ function OverviewView() {
         ))}
       </div>
       <div className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <p style={{ fontSize: '13px' }}>Savings: {overview.savings.totalSaved.toLocaleString()} RWF across {overview.savings.goalCount} goal(s)</p>
-        <p style={{ fontSize: '13px' }}>Loans: {overview.loans.totalOutstanding.toLocaleString()} RWF outstanding, {overview.loans.activeCount} active</p>
-        <p style={{ fontSize: '13px' }}>Investments: {overview.investments.totalCostBasis.toLocaleString()} RWF cost basis, {overview.investments.holdingCount} holding(s)</p>
-        <p style={{ fontSize: '13px' }}>Insurance: {overview.insurance.activePolicyCount} active plan(s), {overview.insurance.totalMonthlyPremium.toLocaleString()} RWF/month</p>
+        <p style={{ fontSize: '13px' }}>{t('overview.savings', { amount: overview.savings.totalSaved.toLocaleString(), count: overview.savings.goalCount })}</p>
+        <p style={{ fontSize: '13px' }}>{t('overview.loans', { amount: overview.loans.totalOutstanding.toLocaleString(), count: overview.loans.activeCount })}</p>
+        <p style={{ fontSize: '13px' }}>{t('overview.investments', { amount: overview.investments.totalCostBasis.toLocaleString(), count: overview.investments.holdingCount })}</p>
+        <p style={{ fontSize: '13px' }}>{t('overview.insurance', { count: overview.insurance.activePolicyCount, amount: overview.insurance.totalMonthlyPremium.toLocaleString() })}</p>
       </div>
       <div className="toss-card" style={{ padding: '16px' }}>
-        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Linked accounts</h3>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>{t('overview.linkedAccounts')}</h3>
         {linkedAccounts.map((a) => (
           <div key={a.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--toss-grey-100)' }}>
             <p style={{ fontSize: '13px', fontWeight: 700 }}>{a.provider}</p>
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{a.externalAccountNumberMasked} · {a.status}</p>
             {a.demoBalance != null && (
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Demo balance: {a.demoBalanceCurrency} {a.demoBalance.toLocaleString()}</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{t('overview.demoBalance', { currency: a.demoBalanceCurrency ?? '', amount: a.demoBalance.toLocaleString() })}</p>
             )}
             {a.status === 'LINKED' && (
-              <button className="toss-btn toss-btn-secondary" style={{ marginTop: '4px' }} disabled={busy} onClick={() => handleUnlink(a.id)}>Unlink</button>
+              <button className="toss-btn toss-btn-secondary" style={{ marginTop: '4px' }} disabled={busy} onClick={() => handleUnlink(a.id)}>{t('overview.unlink')}</button>
             )}
           </div>
         ))}
         {!showLinkForm ? (
           <button className="toss-btn toss-btn-primary" style={{ marginTop: '10px' }} onClick={() => setShowLinkForm(true)}>
-            Link a bank or mobile money account
+            {t('overview.linkAccountPrompt')}
           </button>
         ) : (
           <form onSubmit={handleLink} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
@@ -1696,14 +1698,14 @@ function OverviewView() {
               ))}
             </div>
             <input
-              type="text" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder="Provider name" required
+              type="text" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t('overview.providerNamePlaceholder')} required
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
             />
             <input
-              type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder="Account / phone number" required
+              type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder={t('overview.accountPhonePlaceholder')} required
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
             />
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Linking…' : 'Link account'}</button>
+            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('overview.linking') : t('overview.linkAccount')}</button>
           </form>
         )}
       </div>

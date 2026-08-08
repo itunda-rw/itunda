@@ -2560,9 +2560,25 @@ precedent and warned against repeating it).
    the underlying link gap) was judged out of scope for this specific fix rather than attempted as a
    risky side effect.
 
+   **Web extended the same day to a second screen: wallet overview** (`OverviewView` in
+   `BankDashboard.tsx`), the exact next step this list already named. Real net-worth/accounts/
+   savings/loans/investments/insurance/linked-accounts strings, several carrying a dynamic amount or
+   count (`"Savings: {{amount}} RWF across {{count}} goal(s)"`), which needed real interpolation
+   support added to `useI18n`'s `t()` — named `{{placeholder}}` substitution, not string
+   concatenation, specifically so a translation can reorder words per-language instead of being
+   locked into English sentence order. Verified: `tsc -b` clean, the interpolation function itself
+   checked deterministically against 6 real cases including a missing-param fallback, and every
+   call site's params hand-cross-checked against its template's placeholder names (TypeScript's
+   generic `Record` param type doesn't itself enforce that match). **Verification gap, named
+   honestly**: no live-backend render this time — `OverviewView` needs a real authenticated session
+   and real API data, which this environment's dev server can't produce without a running backend,
+   so (unlike the login screen's real headless-Chrome screenshot) this one is compile+logic-verified
+   only, not visually confirmed end-to-end.
+
    Real next steps, in order: native-speaker review of the existing `rw` strings on both platforms,
-   a real iOS simulator/on-device check of this screen (the verification gap named above), then
-   phase content outward from login into wallet-overview and transfer next, on all 3 platforms.
+   a real iOS simulator/on-device check of the login screen (the verification gap named above), a
+   real logged-in-session visual check of the new overview strings, then phase content outward into
+   Android/iOS's own overview screens and transfer next, on all 3 platforms.
 3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given
