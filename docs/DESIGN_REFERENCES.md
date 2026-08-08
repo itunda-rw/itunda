@@ -2896,7 +2896,41 @@ login.** That gap existed identically on all 3 (web/Android/iOS) going into toda
 coming out of it — found because extending the localization work to a 4th screen meant asking "where
 does a signed-in user actually go to change this" on every platform, not just the one being worked on.
 
+### Finishing web's real landing screen, not starting a 5th one (2026-08-09)
+
+Checked which tab `BankDashboard` actually defaults to (`useState<Tab>('HOME')`) rather than assuming —
+it's `HomeView`, not `OverviewView` (a separate, deeper tab with the savings/loans/investments/insurance
+summary this thread's earlier "second screen" pass actually translated). `HomeView` itself had only ever
+been *partially* localized: `AccountBalance` and the `TransferFlow` it opens were done, but the load-error
+message, `QuickActions` ("Scan to Pay"/"Cards"), `DeviceStepUpPrompt` (web's own sibling of the
+already-localized Android/iOS device step-up dialog), and `ReportScamLink` — explicitly named as a known,
+out-of-scope English gap two passes ago — were all still hardcoded English on the screen every single
+user actually sees first.
+
+Localized all four this pass, `home.*`/`quickActions.*`/`deviceStepUp.*`/`scamReport.*` keys added to
+`translations.ts` (en+rw), reusing the exact same Kinyarwanda copy already shipped for the equivalent
+Android/iOS device step-up dialog for consistency. `ReportScamLink`'s scam-reason prompt uses
+`window.prompt()`, not a form — the interpolated `{{identifier}}` question text is now translated too.
+
+**Verified live again, same tier as the strongest verification in this whole thread**: real backend
+login via `curl`, a real headless Chrome session over CDP, `itunda.locale` seeded and switched via
+`localStorage`. Confirmed via actual DOM queries (not just visual screenshots, though those were taken
+too): `QuickActions`' two labels render as `Kwishyura ukoresheje QR`/`Amakarita` in Kinyarwanda;
+`ReportScamLink` on the real transfer confirm screen (reached by actually clicking through a saved
+contact and submitting a real amount) renders `Tanga raporo kuri iyi numero`; zero console exceptions
+thrown across the whole session. Dev server run with no `--port` override (still port 5002, the Module
+Federation gotcha from the first live-verification pass), Chrome killed and dev server stopped after
+capture, nothing left running.
+
+**Deliberately not done this pass, named honestly**: `TransactionHistory`, `ScheduledTransfersCard`,
+`AutoTransfersCard`, `AutoTopUpCard`, `RequestMoneyCard`, `MiniWalletCard`, and `DiscoverSection` — the
+rest of `HomeView`'s real estate below the balance card and quick actions — are still English. Scoped
+out to keep this pass reviewable and fully live-verified rather than spreading thin across seven more
+components; each is a real, separate follow-up, not a hidden gap.
+
 ### Unresolved / worth a follow-up
+- The rest of `HomeView` named above — `TransactionHistory` is probably the highest-value next one,
+  since transaction descriptions are what a user reads most often on this screen.
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the

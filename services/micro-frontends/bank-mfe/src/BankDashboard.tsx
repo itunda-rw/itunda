@@ -267,6 +267,7 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
 // marks it trusted, matching the same real re-verification Toss requires before a
 // new device can move money. See lib/device.ts's own doc comment for the full account.
 function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; onCancel: () => void }) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -283,7 +284,7 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
       await verifyDevice(password);
       onVerified();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not verify this device.');
+      setError(err instanceof ApiError ? err.message : t('deviceStepUp.genericError'));
     } finally {
       setBusy(false);
     }
@@ -291,9 +292,9 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
 
   return (
     <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>🔒 Verify this device</p>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{t('deviceStepUp.title')}</p>
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-        This is a new device for your account. Re-enter your password to allow it to send money, then try again.
+        {t('deviceStepUp.body')}
       </p>
       {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11, rule
           #4), matching the identical same-day fix on Android/iOS's device step-up dialog:
@@ -304,14 +305,14 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
           autoFocus
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
+          placeholder={t('deviceStepUp.passwordPlaceholder')}
           required
           style={{ width: '100%', boxSizing: 'border-box', padding: '10px 40px 10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
         />
         <button
           type="button"
           onClick={() => setShowPassword((v) => !v)}
-          aria-label={showPassword ? 'Hide password' : 'Show password'}
+          aria-label={showPassword ? t('deviceStepUp.hidePassword') : t('deviceStepUp.showPassword')}
           style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--toss-grey-500)' }}
         >
           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -319,9 +320,9 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
       </div>
       {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>Cancel</button>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>{t('deviceStepUp.cancel')}</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>
-          {busy ? 'Verifying…' : 'Verify device'}
+          {busy ? t('deviceStepUp.verifying') : t('deviceStepUp.verify')}
         </button>
       </div>
     </form>
@@ -330,12 +331,16 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
 
 // Real Toss 사기계좌 조회-style report action -- see lib/scamReports.ts's own doc
 // comment.
+// Localized 2026-08-09 -- explicitly named as a known, out-of-scope English gap two
+// localization passes ago (see docs/DESIGN_REFERENCES.md Section 19, the web
+// transfer-flow pass): closing it now while finishing the rest of HomeView.
 function ReportScamLink({ identifier }: { identifier: string }) {
+  const { t } = useI18n();
   const [reporting, setReporting] = useState(false);
   const [done, setDone] = useState(false);
 
   const handleReport = async () => {
-    const reason = window.prompt(`Why are you reporting ${identifier}?`);
+    const reason = window.prompt(t('scamReport.promptQuestion', { identifier }));
     if (!reason || !reason.trim()) return;
     setReporting(true);
     try {
@@ -349,11 +354,11 @@ function ReportScamLink({ identifier }: { identifier: string }) {
     }
   };
 
-  if (done) return <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Thanks -- this number has been reported.</p>;
+  if (done) return <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{t('scamReport.thanks')}</p>;
 
   return (
     <button type="button" onClick={handleReport} disabled={reporting} style={{ fontSize: '12px', color: 'var(--toss-grey-500)', textAlign: 'left' }}>
-      {reporting ? 'Reporting…' : 'Report this number as a scam'}
+      {reporting ? t('scamReport.reporting') : t('scamReport.reportLink')}
     </button>
   );
 }
@@ -544,9 +549,10 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 // removed instead -- honest about its current non-functional state, matching this
 // session's own "don't fake it" precedent (SuperAppTabs.kt's unwired Search icon).
 function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
+  const { t } = useI18n();
   const actions = [
-    { title: 'Scan to Pay', icon: <ScanFace size={24} color="var(--toss-blue)" />, bg: 'var(--toss-blue-light)', onClick: undefined as (() => void) | undefined },
-    { title: 'Cards', icon: <WalletIcon size={24} color="#8A2BE2" />, bg: 'rgba(138, 43, 226, 0.1)', onClick: onCardsClick },
+    { title: t('quickActions.scanToPay'), icon: <ScanFace size={24} color="var(--toss-blue)" />, bg: 'var(--toss-blue-light)', onClick: undefined as (() => void) | undefined },
+    { title: t('quickActions.cards'), icon: <WalletIcon size={24} color="#8A2BE2" />, bg: 'rgba(138, 43, 226, 0.1)', onClick: onCardsClick },
   ];
 
   return (
@@ -631,6 +637,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
 }
 
 function HomeView({ onNavigateToCard }: { onNavigateToCard: () => void }) {
+  const { t } = useI18n();
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [unusuallyLargeIds, setUnusuallyLargeIds] = useState<Set<string>>(new Set());
@@ -644,7 +651,7 @@ function HomeView({ onNavigateToCard }: { onNavigateToCard: () => void }) {
         setWallet(wallets.find((w) => w.type === 'MAIN') ?? wallets[0] ?? null);
         setTransactions(txs);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your account.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('home.loadError')));
     // Real Toss Timeline-style unusual-spend flag -- fetched independently of the main
     // wallet/transactions load so a failure here never blocks the core balance view.
     fetchTransactionTimeline()

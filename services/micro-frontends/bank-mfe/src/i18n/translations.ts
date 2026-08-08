@@ -99,7 +99,29 @@ type TranslationKey =
   // invisible, the label still renders and should still be localized.
   | 'dashboard.mainAccount'
   | 'dashboard.transfer'
-  | 'dashboard.topUp';
+  | 'dashboard.topUp'
+  // Real 5th-localization-pass additions (2026-08-09) -- finishing HomeView (the
+  // actual default landing tab, not OverviewView, which is a deeper tab) rather than
+  // starting a whole new screen: found it was only partially localized (just
+  // AccountBalance + TransferFlow) while its own load-error message, quick actions,
+  // device step-up prompt, and the ReportScamLink component -- explicitly named as a
+  // known gap two passes ago -- were all still English.
+  | 'home.loadError'
+  | 'quickActions.scanToPay'
+  | 'quickActions.cards'
+  | 'deviceStepUp.title'
+  | 'deviceStepUp.body'
+  | 'deviceStepUp.passwordPlaceholder'
+  | 'deviceStepUp.showPassword'
+  | 'deviceStepUp.hidePassword'
+  | 'deviceStepUp.cancel'
+  | 'deviceStepUp.verifying'
+  | 'deviceStepUp.verify'
+  | 'deviceStepUp.genericError'
+  | 'scamReport.promptQuestion'
+  | 'scamReport.thanks'
+  | 'scamReport.reporting'
+  | 'scamReport.reportLink';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -155,6 +177,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'dashboard.mainAccount': 'Main Account',
     'dashboard.transfer': 'Transfer',
     'dashboard.topUp': 'Top up',
+    'home.loadError': 'Could not load your account.',
+    'quickActions.scanToPay': 'Scan to Pay',
+    'quickActions.cards': 'Cards',
+    'deviceStepUp.title': '🔒 Verify this device',
+    'deviceStepUp.body': 'This is a new device for your account. Re-enter your password to allow it to send money, then try again.',
+    'deviceStepUp.passwordPlaceholder': 'Password',
+    'deviceStepUp.showPassword': 'Show password',
+    'deviceStepUp.hidePassword': 'Hide password',
+    'deviceStepUp.cancel': 'Cancel',
+    'deviceStepUp.verifying': 'Verifying…',
+    'deviceStepUp.verify': 'Verify device',
+    'deviceStepUp.genericError': 'Could not verify this device.',
+    'scamReport.promptQuestion': 'Why are you reporting {{identifier}}?',
+    'scamReport.thanks': 'Thanks -- this number has been reported.',
+    'scamReport.reporting': 'Reporting…',
+    'scamReport.reportLink': 'Report this number as a scam',
   },
   rw: {
     'login.tagline': "Injira kuri konti yawe ya Itunda.",
@@ -209,5 +247,21 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'dashboard.mainAccount': 'Konti nyamukuru',
     'dashboard.transfer': 'Kohereza',
     'dashboard.topUp': 'Ongera amafaranga',
+    'home.loadError': "Ntibishoboka gushaka amakuru ya konti yawe.",
+    'quickActions.scanToPay': 'Kwishyura ukoresheje QR',
+    'quickActions.cards': 'Amakarita',
+    'deviceStepUp.title': '🔒 Emeza iyi terefoni',
+    'deviceStepUp.body': "Iyi ni terefoni nshya kuri konti yawe. Ongera wandike ijambo ry'ibanga kugira ngo wemeze ko ishobora kohereza amafaranga, hanyuma ugerageze nanone.",
+    'deviceStepUp.passwordPlaceholder': "Ijambo ry'ibanga",
+    'deviceStepUp.showPassword': "Erekana ijambo ry'ibanga",
+    'deviceStepUp.hidePassword': "Hisha ijambo ry'ibanga",
+    'deviceStepUp.cancel': 'Hagarika',
+    'deviceStepUp.verifying': 'Kwemeza…',
+    'deviceStepUp.verify': 'Emeza terefoni',
+    'deviceStepUp.genericError': 'Ntibishoboka kwemeza iyi terefoni.',
+    'scamReport.promptQuestion': 'Kuki utanga raporo kuri {{identifier}}?',
+    'scamReport.thanks': 'Murakoze -- iyi numero yatanzweho raporo.',
+    'scamReport.reporting': 'Kohereza raporo…',
+    'scamReport.reportLink': 'Tanga raporo kuri iyi numero',
   },
 };
