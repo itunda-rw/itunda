@@ -3165,6 +3165,16 @@ shelved twice before is closed everywhere: backend, web, Android, iOS. No device
 any of the 3 clients actually render or complete a real split this session; that remains the honestly-
 named ceiling on every non-web platform's work in this whole thread.
 
+**Full backend regression sweep, same day**: re-ran the complete `./gradlew test --continue` across
+every one of the ~40 backend modules after all of today's `GroupConversation`/`SplitBillService`/
+`GroupMessagingService` changes — clean, zero regressions anywhere. Also spot-checked the two new
+endpoints' own IDOR posture directly against the real running backend: asking `GET
+/split-bills/direct/{otherUserId}` about a pair of two *other* real users (neither of them the caller)
+correctly returns an empty list rather than leaking anything, and confirmed the GET itself never creates
+a hidden group as a side effect (the caller's own group count stayed unchanged) — both by construction
+(`findDirectGroupBetween` only ever matches a group where the *caller's own id* is one of the two members
+queried, so a stranger's pairing can never resolve), verified live rather than only reasoned about.
+
 ### Unresolved / worth a follow-up
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
