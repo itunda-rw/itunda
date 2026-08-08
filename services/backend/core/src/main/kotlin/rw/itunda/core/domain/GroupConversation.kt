@@ -54,6 +54,15 @@ class GroupConversation(
     @Column(length = 500)
     var description: String? = null,
 
+    // Real 1:1-chat split-bill support (2026-08-09) -- see
+    // GroupMessagingService.getOrCreateDirectSplitGroup's own doc comment. TRUE for a
+    // synthetic 2-person group created behind the scenes to back a bill split between
+    // two people talking 1:1, not a real named group -- excluded from
+    // GroupConversationRepository.findByMember so it never shows up in either person's
+    // "My Groups" list. FALSE (the default) is every real group, past and future.
+    @Column(name = "is_direct", nullable = false)
+    var isDirect: Boolean = false,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

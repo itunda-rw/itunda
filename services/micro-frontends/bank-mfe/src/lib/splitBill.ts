@@ -61,6 +61,25 @@ export const createSplitBill = (
     body: JSON.stringify({ totalAmount, description, participantUserIds, mode, ladderVarianceLevel }),
   });
 
+// Real 1:1-chat split-bill entry point (2026-08-09) -- see backend
+// SplitBillService.createDirectSplitBill's own doc comment: resolves a hidden 2-person
+// group between the caller and `otherUserId` first, so this never needs an existing
+// named group the way createSplitBill above does. Closes docs/DESIGN_REFERENCES.md
+// Section 19's "is SplitBill reachable from 1:1 Talk" gap, investigated and shelved
+// twice before.
+export const createDirectSplitBill = (
+  otherUserId: string,
+  totalAmount: number,
+  description: string,
+  mode: 'EVEN' | 'LADDER' = 'EVEN',
+  ladderVarianceLevel?: number,
+) =>
+  apiFetch<{ success: boolean } & SplitBillWithParticipants>(`/api/v1/split-bills/direct/${otherUserId}`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ totalAmount, description, mode, ladderVarianceLevel }),
+  });
+
 export const attachSplitBillReceipt = (splitBillId: string, imageUrl: string) =>
   apiFetch<{ success: boolean; splitBill: SplitBill }>(`/api/v1/split-bills/${splitBillId}/receipt`, {
     method: 'POST',
@@ -71,6 +90,15 @@ export const requestSplitBillNextRound = (splitBillId: string) =>
   apiFetch<{ success: boolean; splitBill: SplitBill }>(`/api/v1/split-bills/${splitBillId}/next-round`, {
     method: 'POST',
   }).then((r) => r.splitBill);
+
+// Real read-only counterpart to createDirectSplitBill above -- see backend
+// SplitBillService.getDirectSplitBills's own doc comment. Never creates a hidden group
+// as a side effect of viewing this tab; an empty list when the two people have never
+// split a bill before.
+export const fetchDirectSplitBills = (otherUserId: string) =>
+  apiFetch<{ success: boolean; splitBills: SplitBillWithParticipants[] }>(`/api/v1/split-bills/direct/${otherUserId}`).then(
+    (r) => r.splitBills,
+  );
 
 export const fetchSplitBillsForGroup = (groupConversationId: string) =>
   apiFetch<{ success: boolean; splitBills: SplitBillWithParticipants[] }>(

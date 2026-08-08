@@ -3062,7 +3062,66 @@ user actually lands on" are not automatically the same screen, and nothing force
 to check that assumption unless someone deliberately asks the question per platform, which this thread
 only started doing once it happened once, on web, and got curious whether it was a fluke.
 
+### The 1:1-chat split-bill gap, finally closed (2026-08-09)
+
+Picked up the oldest still-open item in this whole section: investigated twice before (2026-08-07,
+2026-08-08) and shelved both times on the same concrete blocker — a synthetic 2-person group created via
+the ordinary `createGroup` would show up in both people's real "My Groups" list, a confusing,
+generically-named group neither of them asked to create. The second investigation named two concrete
+fixes without building either: (a) a hidden/synthetic flag on `GroupConversation`, or (b) a second,
+direct-conversation-backed branch inside `SplitBill`'s own domain model. Built (a) — the smaller, less
+invasive of the two, since it needed zero changes to `SplitBillService.createSplitBill`'s own
+already-tested logic.
+
+**Backend**: `GroupConversation.isDirect` (migration `V230`, `FALSE` default for every existing group).
+`GroupConversationRepository.findByMember` now excludes `isDirect = TRUE` rows — the exact fix for the
+concrete blocker. A new `findDirectGroupBetween(userIdA, userIdB)` query (matched via `HAVING COUNT(m) =
+2`, not "contains both ids", so a real >2-member group or an oddly-joined synthetic group both correctly
+fail to match) backs `GroupMessagingService.getOrCreateDirectSplitGroup` — idempotent per pair, so a
+second split bill between the same two people reuses the existing hidden group and its settlement
+history instead of spawning a disconnected second thread. `SplitBillService.createDirectSplitBill`
+(organizer, otherUserId, amount, description, mode) is the one new real entry point: resolves the hidden
+group, then delegates to the existing, unmodified `createSplitBill` — same even-split rounding
+absorption, same ladder-mode randomization, same receipt/next-round/pay flows, zero duplicated logic. A
+read-only `getDirectSplitBills`/`findDirectGroup` counterpart lets a client show past split bills between
+two people without creating a hidden group as a side effect of merely opening the view.
+
+**New endpoints**: `POST /api/v1/split-bills/direct/{otherUserId}`, `GET /api/v1/split-bills/direct/{otherUserId}`.
+Same `Idempotency-Key` discipline every other money-adjacent creation endpoint in this codebase already
+requires.
+
+**Verified live against the real running backend, not just unit tests** (which also pass — new Kotest
+coverage in both `GroupMessagingServiceTest` and `SplitBillServiceTest`, `messaging`/`splitbill`/`core`/
+`community` modules all compile clean): restarted the long-running local dev backend to pick up
+migration `V230`, then, via real `curl` calls against two real seeded accounts —
+1. Created a real direct split bill (5,000 RWF) between them — real hidden group, real `OPEN` split bill,
+   real `PENDING` participant share.
+2. Confirmed via the real `GET /api/v1/messages/groups` endpoint that **neither person's** "My Groups"
+   list shows the hidden group — the exact failure mode that blocked this feature twice before, checked
+   from both sides of the pair, not just the organizer's.
+3. Created a second split bill between the same two people and confirmed it reused the identical
+   `groupConversationId` — real idempotent pairing, not a guess from reading the query.
+4. Confirmed `GET /direct/{otherUserId}` returns both real split bills.
+5. Confirmed a same-person self-split request real-400s with a clean `GROUP_NEEDS_MORE_MEMBERS` error,
+   not a raw 500.
+
+**Web client wired in, the only platform this pass touched**: a "Split a bill" icon in `ConversationThread`'s
+header (mirroring `GroupThread`'s identical icon) opens `DirectSplitBillsView`, the same shape as
+`GroupSplitBillsView` minus the member-picker (a 1:1 split always has exactly one other participant,
+fixed by which conversation it was opened from). Verified with a real `tsc -b && vite build`, not a live
+CDP session this round — the backend-level live verification above was judged higher-value than a UI
+click-through for a feature whose real risk was entirely in the backend's group-visibility logic, not the
+client wiring.
+
+**Android/iOS not touched this pass** — a real, named follow-up, not silently deferred: both platforms'
+own group-chat split-bill UI (`ItundaAppScreen.kt`'s Talk tab, iOS's equivalent) would need the same
+"Split a bill" entry point added to their own 1:1 conversation screens, calling the same two new
+endpoints. The backend work is 100% shared across all 3 clients already; only the per-platform UI wiring
+remains.
+
 ### Unresolved / worth a follow-up
+- The 1:1-chat split-bill feature above needs Android/iOS client wiring — backend is real and
+  live-verified, but only web can reach it right now.
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the

@@ -20,6 +20,8 @@ import rw.itunda.core.domain.SplitBillMode
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.messaging.GroupMemberNotFoundException
+import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.splitbill.SplitBillAlreadyPaidException
 import rw.itunda.splitbill.SplitBillAlreadySettledException
 import rw.itunda.splitbill.SplitBillDescriptionRequiredException
@@ -48,6 +50,16 @@ data class CreateSplitBillRequest(
     val ladderVarianceLevel: Int? = null,
 )
 
+// Real 1:1-chat split-bill request (2026-08-09) -- no participantUserIds field, unlike
+// CreateSplitBillRequest above: the other person is fixed by the {otherUserId} path
+// variable, since this endpoint is for exactly two people, not an existing group.
+data class CreateDirectSplitBillRequest(
+    val totalAmount: BigDecimal,
+    val description: String,
+    val mode: SplitBillMode = SplitBillMode.EVEN,
+    val ladderVarianceLevel: Int? = null,
+)
+
 // Real KakaoPay-style "정산하기" (settlement/split-bill), chat-embedded in an existing
 // group conversation -- see SplitBillService's own doc comment.
 @RestController
@@ -69,6 +81,45 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
             201 to mapOf("success" to true, "splitBill" to result.splitBill, "participants" to result.participants)
         }
         return ResponseEntity.status(status).body(body)
+    }
+
+    // Real 1:1-chat split-bill entry point (2026-08-09) -- see
+    // SplitBillService.createDirectSplitBill's own doc comment for the full account:
+    // resolves (or creates) a hidden 2-person group between the caller and
+    // [otherUserId] first, then runs the exact same real split-bill logic
+    // [createSplitBill] above does for a named group.
+    @PostMapping("/direct/{otherUserId}")
+    fun createDirectSplitBill(
+        @PathVariable otherUserId: String,
+        @RequestBody request: CreateDirectSplitBillRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/split-bills/direct/$otherUserId", idempotencyKey, request) {
+            val result = splitBillService.createDirectSplitBill(
+                currentUser.userId, otherUserId, request.totalAmount, request.description,
+                request.mode, request.ladderVarianceLevel,
+            )
+            201 to mapOf("success" to true, "splitBill" to result.splitBill, "participants" to result.participants)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    // Real read-only counterpart to POST /direct/{otherUserId} above -- see
+    // SplitBillService.getDirectSplitBills's own doc comment. Never creates a hidden
+    // group; an empty list when the two people have never split a bill before.
+    @GetMapping("/direct/{otherUserId}")
+    fun getDirectSplitBills(
+        @PathVariable otherUserId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val results = splitBillService.getDirectSplitBills(currentUser.userId, otherUserId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "splitBills" to results.map { mapOf("splitBill" to it.splitBill, "participants" to it.participants) },
+            ),
+        )
     }
 
     @GetMapping("/{id}")
@@ -128,6 +179,18 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real 1:1-chat split-bill handlers (2026-08-09) -- GroupMessagingService
+    // .getOrCreateDirectSplitGroup, called from createDirectSplitBill above, throws
+    // these; same status codes GroupMessagingController's own handlers already use for
+    // the identical exceptions.
+    @ExceptionHandler(GroupNeedsMoreMembersException::class)
+    fun handleGroupNeedsMoreMembers(ex: GroupNeedsMoreMembersException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_NEEDS_MORE_MEMBERS", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(GroupMemberNotFoundException::class)
+    fun handleGroupMemberNotFound(ex: GroupMemberNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MEMBER_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(SplitBillNotFoundException::class)
     fun handleNotFound(ex: SplitBillNotFoundException) =

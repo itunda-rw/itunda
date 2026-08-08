@@ -154,9 +154,9 @@ class GroupMessagingService(
         return createGroupInternal(creatorUserId, trimmedName, distinctOtherMembers)
     }
 
-    private fun createGroupInternal(creatorUserId: String, trimmedName: String, distinctOtherMembers: List<String>): GroupConversation {
+    private fun createGroupInternal(creatorUserId: String, trimmedName: String, distinctOtherMembers: List<String>, isDirect: Boolean = false): GroupConversation {
         val group = groupConversationRepository.save(
-            GroupConversation(id = "group_${UUID.randomUUID()}", name = trimmedName, createdBy = creatorUserId),
+            GroupConversation(id = "group_${UUID.randomUUID()}", name = trimmedName, createdBy = creatorUserId, isDirect = isDirect),
         )
         val now = Instant.now()
         val members = (distinctOtherMembers + creatorUserId).map { userId ->
@@ -165,6 +165,53 @@ class GroupMessagingService(
         groupConversationMemberRepository.saveAll(members)
         return group
     }
+
+    /**
+     * Real 1:1-chat split-bill support (2026-08-09, docs/DESIGN_REFERENCES.md Section
+     * 19) -- resolves (or creates) a synthetic, hidden 2-person [GroupConversation]
+     * between [userId] and [otherUserId] so `rw.itunda.splitbill.SplitBillService
+     * .createSplitBill` can back a bill split between two people talking 1:1, reusing
+     * 100% of its existing group logic unmodified rather than building a second,
+     * parallel split-bill code path for pairs.
+     *
+     * This was investigated twice before and shelved both times over the same concrete
+     * problem: a synthetic group created via the ordinary, public [createGroup] would
+     * show up in both people's real "My Groups" list -- a confusing, generically-named
+     * group neither of them asked to create. [GroupConversation.isDirect] (and
+     * [GroupConversationRepository.findByMember]'s own exclusion of it) is what actually
+     * closes that gap -- a real group row exists (SplitBillService needs one to attach
+     * to), it's just never surfaced as one.
+     *
+     * Idempotent per pair: [GroupConversationRepository.findDirectGroupBetween] reuses
+     * an existing direct group between the same two people rather than spawning a new
+     * hidden group -- and therefore a second, disconnected settlement thread -- every
+     * time they split another bill together.
+     */
+    @Transactional
+    fun getOrCreateDirectSplitGroup(userId: String, otherUserId: String): GroupConversation {
+        if (userId == otherUserId) {
+            throw GroupNeedsMoreMembersException("A group needs at least one other real member")
+        }
+        groupConversationRepository.findDirectGroupBetween(userId, otherUserId)?.let { return it }
+        val otherUser = userRepository.findById(otherUserId)
+            .orElseThrow { GroupMemberNotFoundException("No itunda account found for that user") }
+        return createGroupInternal(
+            creatorUserId = userId,
+            trimmedName = "Split with ${otherUser.firstName}",
+            distinctOtherMembers = listOf(otherUserId),
+            isDirect = true,
+        )
+    }
+
+    /**
+     * Real read-only peek at whether [userId] and [otherUserId] already have a hidden
+     * direct-split group (2026-08-09) -- unlike [getOrCreateDirectSplitGroup], never
+     * creates one. Backs a client's "show my past split bills with this person" view:
+     * opening a 1:1 conversation's split-bill tab shouldn't itself create a hidden
+     * group before any real bill exists between them.
+     */
+    fun findDirectGroup(userId: String, otherUserId: String): GroupConversation? =
+        groupConversationRepository.findDirectGroupBetween(userId, otherUserId)
 
     /** Real 404 (not 403) for a non-member -- same "don't reveal a resource exists to
      * someone who shouldn't see it" discipline `MessagingService.requireParticipant`

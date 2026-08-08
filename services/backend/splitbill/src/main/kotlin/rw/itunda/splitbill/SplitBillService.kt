@@ -182,6 +182,43 @@ class SplitBillService(
     }
 
     /**
+     * Real 1:1-chat split-bill entry point (2026-08-09, docs/DESIGN_REFERENCES.md
+     * Section 19) -- the same real [createSplitBill] underneath, just resolving
+     * [otherUserId] to a hidden 2-person group first via
+     * [rw.itunda.messaging.GroupMessagingService.getOrCreateDirectSplitGroup] instead of
+     * requiring the caller to already be inside a real named group. This is the fix for
+     * the gap investigated (and shelved) twice before: a bill between exactly two people
+     * talking 1:1 previously had nowhere to attach without either faking a named group
+     * (which showed up in both people's real "My Groups" list) or building a second,
+     * parallel split-bill code path for pairs. Neither happened -- this just gives
+     * [createSplitBill] a group id it can't get any other way for this specific case.
+     */
+    @Transactional
+    fun createDirectSplitBill(
+        organizerId: String,
+        otherUserId: String,
+        totalAmount: BigDecimal,
+        description: String,
+        mode: SplitBillMode = SplitBillMode.EVEN,
+        ladderVarianceLevel: Int? = null,
+    ): SplitBillWithParticipants {
+        val group = groupMessagingService.getOrCreateDirectSplitGroup(organizerId, otherUserId)
+        return createSplitBill(organizerId, group.id, totalAmount, description, listOf(otherUserId), mode, ladderVarianceLevel)
+    }
+
+    /**
+     * Real read-only counterpart to [createDirectSplitBill] (2026-08-09) -- lets a
+     * client show past split bills between [userId] and [otherUserId] without creating
+     * a hidden group as a side effect of just opening the view (see
+     * [rw.itunda.messaging.GroupMessagingService.findDirectGroup]'s own doc comment).
+     * An empty list, not an error, when no split bill has ever existed between them.
+     */
+    fun getDirectSplitBills(userId: String, otherUserId: String): List<SplitBillWithParticipants> {
+        val group = groupMessagingService.findDirectGroup(userId, otherUserId) ?: return emptyList()
+        return getSplitBillsForGroup(userId, group.id)
+    }
+
+    /**
      * Real KakaoPay 사다리타기 (ladder-game) randomized split -- see
      * `docs/DESIGN_REFERENCES.md` Section 6 (seoulfn.com/hankyung.com/digitaltoday.co.kr/
      * moneys.mt.co.kr/v.daum.net, cross-verified across 5 outlets): "3 adjustable

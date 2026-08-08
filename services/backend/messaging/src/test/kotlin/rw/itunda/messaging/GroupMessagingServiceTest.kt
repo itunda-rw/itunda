@@ -611,6 +611,79 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real 1:1-chat split-bill support (2026-08-09) -- see
+    // getOrCreateDirectSplitGroup's own doc comment.
+    Given("two real users splitting a bill 1:1, with no existing hidden group between them") {
+        val groupConversationRepository = mockk<GroupConversationRepository>()
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val groupMessageRepository = mockk<GroupMessageRepository>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = GroupMessagingService(
+            groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
+            userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
+            pushNotificationService,
+        )
+
+        When("resolving a direct split group for the first time") {
+            every { groupConversationRepository.findDirectGroupBetween("user_a", "user_b") } returns null
+            every { userRepository.findById("user_b") } returns Optional.of(user("user_b", "Beata"))
+            val savedSlot = slot<GroupConversation>()
+            every { groupConversationRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val group = service.getOrCreateDirectSplitGroup("user_a", "user_b")
+
+            Then("it creates a real, hidden 2-person group") {
+                group.isDirect shouldBe true
+                group.createdBy shouldBe "user_a"
+                group.name shouldBe "Split with Beata"
+                savedSlot.captured.isDirect shouldBe true
+                verify { groupConversationMemberRepository.saveAll(match<List<GroupConversationMember>> { it.size == 2 && it.map { m -> m.userId }.toSet() == setOf("user_a", "user_b") }) }
+            }
+        }
+
+        When("resolving a direct split group that already exists between the same two people") {
+            val existing = GroupConversation(id = "group_direct_1", name = "Split with Beata", createdBy = "user_a", isDirect = true)
+            every { groupConversationRepository.findDirectGroupBetween("user_a", "user_b") } returns existing
+
+            val group = service.getOrCreateDirectSplitGroup("user_a", "user_b")
+
+            Then("it reuses the existing hidden group instead of creating a second one") {
+                group.id shouldBe "group_direct_1"
+                verify(exactly = 0) { groupConversationRepository.save(any()) }
+            }
+        }
+
+        When("someone tries to resolve a direct split group with themselves") {
+            Then("it throws GroupNeedsMoreMembersException rather than creating a 1-person group") {
+                try {
+                    service.getOrCreateDirectSplitGroup("user_a", "user_a")
+                    error("expected GroupNeedsMoreMembersException")
+                } catch (e: GroupNeedsMoreMembersException) {
+                    verify(exactly = 0) { groupConversationRepository.save(any()) }
+                }
+            }
+        }
+
+        When("the other user doesn't have a real itunda account") {
+            every { groupConversationRepository.findDirectGroupBetween("user_a", "user_ghost") } returns null
+            every { userRepository.findById("user_ghost") } returns Optional.empty()
+
+            Then("it throws GroupMemberNotFoundException rather than creating a group with a fake member") {
+                try {
+                    service.getOrCreateDirectSplitGroup("user_a", "user_ghost")
+                    error("expected GroupMemberNotFoundException")
+                } catch (e: GroupMemberNotFoundException) {
+                    verify(exactly = 0) { groupConversationRepository.save(any()) }
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

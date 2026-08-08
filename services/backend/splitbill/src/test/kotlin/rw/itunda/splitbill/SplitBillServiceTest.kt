@@ -504,6 +504,49 @@ class SplitBillServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real 1:1-chat split-bill support (2026-08-09) -- see
+    // createDirectSplitBill's own doc comment.
+    Given("two real people splitting a bill 1:1, with no existing group between them") {
+        val splitBillRepository = mockk<SplitBillRepository>()
+        val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val groupMessagingService = mockk<GroupMessagingService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = SplitBillService(
+            splitBillRepository, splitBillParticipantRepository, walletRepository,
+            transactionRepository, ledgerService, groupMessagingService, rateLimiter, fraudRuleEngine,
+        )
+
+        val hiddenGroup = GroupConversation(id = "group_direct_1", name = "Split with Beata", createdBy = "user_organizer", isDirect = true)
+        val message = GroupMessage(id = "group_message_1", groupConversationId = "group_direct_1", senderId = "user_organizer", body = "split")
+
+        every { groupMessagingService.getOrCreateDirectSplitGroup("user_organizer", "user_b") } returns hiddenGroup
+        every { groupMessagingService.getGroupForMember("user_organizer", "group_direct_1") } returns hiddenGroup
+        every { groupMessagingService.getMembers("user_organizer", "group_direct_1") } returns listOf(
+            GroupMemberInfo("user_organizer", "Organizer"),
+            GroupMemberInfo("user_b", "Beata"),
+        )
+        every { groupMessagingService.sendMessage(any(), any(), any()) } returns message
+        every { splitBillRepository.save(any()) } answers { firstArg() }
+        every { splitBillParticipantRepository.saveAll<SplitBillParticipant>(any()) } answers { firstArg() }
+
+        When("the organizer splits a bill directly with the other person") {
+            val result = service.createDirectSplitBill("user_organizer", "user_b", BigDecimal("2000"), "Lunch")
+
+            Then("it resolves a real hidden group first, then runs the exact same split-bill logic a named group would") {
+                result.splitBill.groupConversationId shouldBe "group_direct_1"
+                result.splitBill.organizerId shouldBe "user_organizer"
+                result.participants.size shouldBe 1
+                result.participants.single().userId shouldBe "user_b"
+                result.participants.single().shareAmount shouldBe BigDecimal("2000.00")
+                verify(exactly = 1) { groupMessagingService.getOrCreateDirectSplitGroup("user_organizer", "user_b") }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

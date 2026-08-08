@@ -12,12 +12,31 @@ import rw.itunda.core.domain.GroupMessageReaction
 
 interface GroupConversationRepository : JpaRepository<GroupConversation, String> {
     // Real pagination from day one, same discipline the 1:1 ConversationRepository
-    // already established.
+    // already established. `g.isDirect = FALSE` (2026-08-09) excludes the synthetic
+    // 2-person groups GroupMessagingService.getOrCreateDirectSplitGroup creates to back
+    // a 1:1-chat split bill -- those aren't real groups either person asked to create,
+    // so they must never appear in "My Groups", the concrete problem that blocked this
+    // feature the first time it was investigated.
     @Query(
         "SELECT g FROM GroupConversation g JOIN GroupConversationMember m ON m.groupConversationId = g.id " +
-            "WHERE m.userId = :userId ORDER BY g.lastMessageAt DESC",
+            "WHERE m.userId = :userId AND g.isDirect = FALSE ORDER BY g.lastMessageAt DESC",
     )
     fun findByMember(@Param("userId") userId: String, pageable: Pageable): Page<GroupConversation>
+
+    // Real lookup for GroupMessagingService.getOrCreateDirectSplitGroup -- finds the
+    // existing synthetic 2-person group for this exact pair of users, if one was already
+    // created by an earlier split bill between them, so a second split doesn't spawn a
+    // second hidden group and split their settlement history across two threads.
+    // COUNT(m) = 2 (not "contains both ids") -- a real group with >2 members, or a
+    // synthetic pair-group joined by a 3rd member somehow, both correctly fail to match
+    // here rather than being silently reused for a bill meant to be strictly 1:1.
+    @Query(
+        "SELECT g FROM GroupConversation g WHERE g.isDirect = TRUE AND g.id IN (" +
+            "SELECT m.groupConversationId FROM GroupConversationMember m " +
+            "WHERE m.userId IN (:userIdA, :userIdB) " +
+            "GROUP BY m.groupConversationId HAVING COUNT(m) = 2)",
+    )
+    fun findDirectGroupBetween(@Param("userIdA") userIdA: String, @Param("userIdB") userIdB: String): GroupConversation?
 }
 
 interface GroupConversationMemberRepository : JpaRepository<GroupConversationMember, String> {
