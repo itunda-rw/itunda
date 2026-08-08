@@ -2567,11 +2567,48 @@ Checked directly against itunda's own code, no fork needed (narrow, quick verifi
   "conversation with N members" regardless of group/1:1 shape), not a same-day fix — noted as a real
   follow-up, not attempted this pass to avoid a rushed retrofit into a working, tested feature.
 
+### Naver Pay / Wise passes (2026-08-08) — one ecosystem at a time, per the prior round's own lesson
+
+Two more single-ecosystem passes, each meant to get a full, non-shared search budget. Real finding
+from this round: **the session's WebSearch budget (200/200) is shared across every fork, not
+per-fork** — both passes discovered it was already fully exhausted (a hard tool error, not a soft
+limit) before they even started, regardless of running one-at-a-time this round.
+
+- **Naver Pay**: `d2.naver.com` (Naver's real tech blog) confirmed tool-blocked at the domain
+  level, independently, twice now (both this round and the prior one) — not a content-availability
+  problem, a real fetch-tool limitation for this specific domain. What Wikipedia-tier sources gave:
+  Naver Pay's points/rewards system is diversified beyond transactions — real, payment-usable points
+  earned through Knowledge iN Q&A participation, blog/café event participation, and a charitable-
+  donation match, not just spending. **Informational lead, not yet checked**: itunda's own
+  `StepRewardService` is single-signal (steps only) — worth considering non-transaction engagement
+  signals feeding the same reward pool, if itunda wants to diversify. No incidents/breaches
+  recovered for Naver Pay specifically.
+- **Wise**: the original ask (real ledger/multi-currency architecture) is **confirmed genuinely
+  unrecoverable** through this environment's fetch tooling — `wise.com/engineering` 404s,
+  `medium.com/wise-engineering` renders as an empty JS shell (no article list, even the tagged/
+  backend filter), `docs.wise.com`'s API reference pages render as JS-shell titles only, `infoq.com/
+  wise/` 404s. Not a laziness gap — 6 distinct angles tried, all real dead ends. **What surfaced
+  instead, real and more actionable**: Wise was fined ~$2.5M by the US CFPB (2025) for advertising
+  inaccurate fees and failing to properly disclose exchange rates before a transfer. **Checked
+  directly against itunda's `ForeignCurrencyWalletService` and all 3 real clients — already solid,
+  no gap.** The backend's own `getRate()` method has a doc comment explicitly stating it exists "to
+  back a client-side quote preview before the user commits to convert," and `convert()`'s margin
+  (1.5%, `MARGIN_RATE`) is a real, transparent, disclosed spread — not hidden in a bad rate. All 3
+  clients already fetch and show the live rate before submission (`bank-mfe`'s `ConvertCurrencyCard`,
+  Android `ForeignCurrencyScreen.kt`, iOS `ForeignCurrencyScreen.swift`), each with explicit "before/
+  after itunda's 1.5% fee" copy — Android/iOS go further than web, showing a live-computed estimated
+  net-receive amount, not just the raw rate. itunda's FX disclosure practice already exceeds what
+  Wise got fined for lacking.
+
 ### Unresolved / worth a follow-up
-- The 1:1-chat split-bill gap named above — real, scoped, not yet built.
-- Naver Pay/Samsung Pay: entirely unresearched (search-budget exhaustion, prior pass). Wise's real
-  ledger architecture and Revolut/N26 design-system content: also unrecovered. A future pass should
-  go one ecosystem at a time (this round's own lesson) rather than running several in parallel.
+- The 1:1-chat split-bill gap (Section 19 main body) — real, scoped, not yet built.
+- Naver Pay's real engineering-blog depth (d2.naver.com) and Wise's real ledger architecture: both
+  now confirmed genuinely unrecoverable with this environment's current fetch tooling, not worth a
+  third attempt without a different access method. Samsung Pay: still entirely unresearched.
+- **Standing operational fact for the rest of this session**: WebSearch is now fully exhausted
+  (0/200) — further broad "keep searching" ecosystem research this session will only be able to use
+  direct `WebFetch` against specific known URLs, not query-based discovery. Code-level audits/checks
+  against itunda's own repo remain fully available and unaffected.
 - **Aside, out of scope, flagged not investigated**: the mini-program research pass noticed stray git
   worktrees at `.claude/worktrees/wf_f205a3b5-33c-{7,8,9,10,11}/`, each containing a full copy of the
   repo (confirmed via an unrelated grep this pass turning up hits from all 5) — likely leftover from
