@@ -64,7 +64,42 @@ type TranslationKey =
   // BankDashboard.tsx's own handleLink comment) -- was missed in this file's own first
   // pass over this screen. Fixed here retroactively, and on Android at the same time,
   // not left inconsistent between the two.
-  | 'overview.verificationFailed';
+  | 'overview.verificationFailed'
+  // Real third slice (2026-08-08): P2P transfer, itunda's own single highest-stakes
+  // money-moving screen -- following the same phased rollout, one screen at a time,
+  // across all 3 platforms before moving to the next.
+  | 'transfer.title'
+  | 'transfer.recipientPlaceholder'
+  | 'transfer.amountPlaceholder'
+  | 'transfer.contactsLabel'
+  | 'transfer.addContact'
+  | 'transfer.cancel'
+  | 'transfer.namePlaceholder'
+  | 'transfer.phonePlaceholder'
+  | 'transfer.saveContact'
+  | 'transfer.noContacts'
+  | 'transfer.continue'
+  | 'transfer.confirmTitle'
+  | 'transfer.toRecipient'
+  | 'transfer.amountLine'
+  | 'transfer.scamWarningTitle'
+  | 'transfer.scamWarningBody'
+  | 'transfer.sending'
+  | 'transfer.send'
+  | 'transfer.newBalance'
+  | 'transfer.done'
+  | 'transfer.saveContactError'
+  | 'transfer.sendError'
+  // The real entry point INTO the transfer flow above -- a separate component
+  // (AccountBalance, the wallet card), found while verifying the transfer screen live:
+  // translating the flow itself but leaving its own trigger button in English would
+  // have been the same "translated the destination, not the door" gap as the missing
+  // overview.verificationFailed key. "Top up" included even though it's a real,
+  // honestly-disabled non-feature (see its own title= tooltip) -- disabled doesn't mean
+  // invisible, the label still renders and should still be localized.
+  | 'dashboard.mainAccount'
+  | 'dashboard.transfer'
+  | 'dashboard.topUp';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -95,6 +130,31 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'overview.linkError': 'Could not link that account.',
     'overview.unlinkError': 'Could not unlink this account.',
     'overview.verificationFailed': "Could not verify that {{provider}} account. It wasn't linked.",
+    'transfer.title': 'Transfer',
+    'transfer.recipientPlaceholder': 'Recipient phone or account number',
+    'transfer.amountPlaceholder': 'Amount (RWF)',
+    'transfer.contactsLabel': 'Contacts',
+    'transfer.addContact': '+ Add',
+    'transfer.cancel': 'Cancel',
+    'transfer.namePlaceholder': 'Name',
+    'transfer.phonePlaceholder': 'Phone number',
+    'transfer.saveContact': 'Save contact',
+    'transfer.noContacts': 'No saved contacts yet — add one to send money faster next time.',
+    'transfer.continue': 'Continue',
+    'transfer.confirmTitle': 'Confirm transfer',
+    'transfer.toRecipient': 'To {{recipient}}',
+    'transfer.amountLine': 'Amount: {{amount}} RWF',
+    'transfer.scamWarningTitle': 'Caution needed before this transfer',
+    'transfer.scamWarningBody': 'This recipient has been reported by {{count}} other itunda users. Double-check before sending.',
+    'transfer.sending': 'Sending…',
+    'transfer.send': 'Send {{amount}} RWF',
+    'transfer.newBalance': 'New balance: {{amount}} RWF',
+    'transfer.done': 'Done',
+    'transfer.saveContactError': 'Could not save that contact.',
+    'transfer.sendError': 'Could not complete this transfer.',
+    'dashboard.mainAccount': 'Main Account',
+    'dashboard.transfer': 'Transfer',
+    'dashboard.topUp': 'Top up',
   },
   rw: {
     'login.tagline': "Injira kuri konti yawe ya Itunda.",
@@ -124,5 +184,30 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'overview.linkError': 'Ntibishoboka guhuza iyo konti.',
     'overview.unlinkError': 'Ntibishoboka kuraho iyo konti.',
     'overview.verificationFailed': 'Ntibishoboka kwemeza iyo konti ya {{provider}}. Ntiyahujwe.',
+    'transfer.title': 'Kohereza amafaranga',
+    'transfer.recipientPlaceholder': "Numero ya telefoni cyangwa konti y'uwakira",
+    'transfer.amountPlaceholder': 'Amafaranga (RWF)',
+    'transfer.contactsLabel': 'Abo wabitse',
+    'transfer.addContact': '+ Ongeraho',
+    'transfer.cancel': 'Hagarika',
+    'transfer.namePlaceholder': 'Izina',
+    'transfer.phonePlaceholder': 'Numero ya telefoni',
+    'transfer.saveContact': 'Bika uyu muntu',
+    'transfer.noContacts': 'Nta bantu wabitse. Ongeraho umwe kugira ngo wihute mu kohereza amafaranga ubutaha.',
+    'transfer.continue': 'Komeza',
+    'transfer.confirmTitle': 'Emeza kohereza amafaranga',
+    'transfer.toRecipient': 'Kuri {{recipient}}',
+    'transfer.amountLine': 'Amafaranga: {{amount}} RWF',
+    'transfer.scamWarningTitle': 'Witondere mbere yo kohereza',
+    'transfer.scamWarningBody': "Uyu muntu yatanzweho raporo n'abakoresha itunda {{count}}. Genzura neza mbere yo kohereza.",
+    'transfer.sending': 'Kohereza…',
+    'transfer.send': 'Ohereza {{amount}} RWF',
+    'transfer.newBalance': 'Amafaranga asigaye: {{amount}} RWF',
+    'transfer.done': 'Byarangiye',
+    'transfer.saveContactError': 'Ntibishoboka kubika uwo muntu.',
+    'transfer.sendError': 'Ntibishoboka kurangiza kohereza amafaranga.',
+    'dashboard.mainAccount': 'Konti nyamukuru',
+    'dashboard.transfer': 'Kohereza',
+    'dashboard.topUp': 'Ongera amafaranga',
   },
 };

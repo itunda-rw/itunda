@@ -219,6 +219,7 @@ import {
 type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
+  const { t } = useI18n();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -228,7 +229,7 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
       style={{ padding: '28px', position: 'relative', overflow: 'hidden' }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <p style={{ color: 'var(--toss-grey-700)', fontSize: '15px', fontWeight: '600' }}>{wallet?.accountName ?? 'Main Account'}</p>
+        <p style={{ color: 'var(--toss-grey-700)', fontSize: '15px', fontWeight: '600' }}>{wallet?.accountName ?? t('dashboard.mainAccount')}</p>
         <ShieldCheck size={20} color="var(--toss-green)" />
       </div>
 
@@ -238,10 +239,10 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
 
       <div style={{ display: 'flex', gap: '12px' }}>
         <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-primary" style={{ flex: 1, gap: '8px' }} onClick={onTransferClick}>
-          <ArrowUpRight size={18} /> Transfer
+          <ArrowUpRight size={18} /> {t('dashboard.transfer')}
         </motion.button>
         <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-secondary" style={{ flex: 1, gap: '8px' }} disabled title="Real mobile-money top-up needs a live MTN/Airtel/bank provider relationship this backend doesn't have yet -- see docs/TOSS_PARITY_MATRIX.md's Transfer row">
-          <Plus size={18} /> Top up
+          <Plus size={18} /> {t('dashboard.topUp')}
         </motion.button>
       </div>
     </motion.div>
@@ -357,6 +358,7 @@ function ReportScamLink({ identifier }: { identifier: string }) {
 }
 
 function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { t } = useI18n();
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [reviewing, setReviewing] = useState(false);
@@ -391,7 +393,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
       setNewContactName(''); setNewContactPhone(''); setShowAddContact(false);
       loadContacts();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save that contact.');
+      setError(err instanceof ApiError ? err.message : t('transfer.saveContactError'));
     }
   };
 
@@ -419,7 +421,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
       } else {
         // A real, honest error surfaces here as-is -- e.g. a recipient that doesn't
         // match any real itunda account real-404s rather than silently doing nothing.
-        setError(err instanceof ApiError ? err.message : 'Could not complete this transfer.');
+        setError(err instanceof ApiError ? err.message : t('transfer.sendError'));
       }
     } finally {
       setBusy(false);
@@ -432,9 +434,9 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>{result.message}</h3>
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
-          New balance: {result.newBalance.toLocaleString()} RWF
+          {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })}
         </p>
-        <button className="toss-btn toss-btn-secondary" onClick={onSuccess}>Done</button>
+        <button className="toss-btn toss-btn-secondary" onClick={onSuccess}>{t('transfer.done')}</button>
       </div>
     );
   }
@@ -442,16 +444,16 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   if (reviewing) {
     return (
       <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Confirm transfer</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('transfer.confirmTitle')}</h3>
         <div style={{ fontSize: '13px', color: 'var(--toss-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <span>To {recipient}</span>
-          <span style={{ fontWeight: 700 }}>Amount: {Number(amount).toLocaleString()} RWF</span>
+          <span>{t('transfer.toRecipient', { recipient })}</span>
+          <span style={{ fontWeight: 700 }}>{t('transfer.amountLine', { amount: Number(amount).toLocaleString() })}</span>
         </div>
         {scamCheck?.warn && (
           <div style={{ backgroundColor: 'var(--toss-red-light)', border: '1px solid var(--toss-red)', borderRadius: '8px', padding: '10px 12px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-red)' }}>Caution needed before this transfer</p>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-red)' }}>{t('transfer.scamWarningTitle')}</p>
             <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '2px' }}>
-              This recipient has been reported by {scamCheck.reportCount} other itunda users. Double-check before sending.
+              {t('transfer.scamWarningBody', { count: scamCheck.reportCount })}
             </p>
           </div>
         )}
@@ -460,13 +462,13 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         ) : (
           <>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <IdsButton variant="tinted" fullWidth style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</IdsButton>
+              <IdsButton variant="tinted" fullWidth style={{ flex: 1 }} onClick={onClose} disabled={busy}>{t('transfer.cancel')}</IdsButton>
               {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): a
                   bare "Confirm" doesn't state the outcome -- Toss's own dark-pattern-
                   prevention rules require CTA labels to name the specific action, not a
                   generic verb, matching the "Clear Action" principle. */}
               <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
-                {busy ? 'Sending…' : `Send ${Number(amount).toLocaleString()} RWF`}
+                {busy ? t('transfer.sending') : t('transfer.send', { amount: Number(amount).toLocaleString() })}
               </IdsButton>
             </div>
             {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
@@ -479,38 +481,38 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
   return (
     <form onSubmit={handleReview} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Transfer</h3>
+      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('transfer.title')}</h3>
       <input
-        type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Recipient phone or account number" required
+        type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder={t('transfer.recipientPlaceholder')} required
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
       />
       <input
-        type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)" required min="1"
+        type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t('transfer.amountPlaceholder')} required min="1"
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)' }}>Contacts</p>
+        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)' }}>{t('transfer.contactsLabel')}</p>
         <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700, background: 'none', border: 'none' }}>
-          {showAddContact ? 'Cancel' : '+ Add'}
+          {showAddContact ? t('transfer.cancel') : t('transfer.addContact')}
         </button>
       </div>
       {showAddContact && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <input
-            type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder="Name"
+            type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder={t('transfer.namePlaceholder')}
             style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <input
-            type="text" value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder="Phone number"
+            type="text" value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder={t('transfer.phonePlaceholder')}
             style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <button type="button" className="toss-btn toss-btn-secondary" disabled={!newContactName || !newContactPhone} onClick={handleAddContact}>
-            Save contact
+            {t('transfer.saveContact')}
           </button>
         </div>
       )}
       {contacts.length === 0 && !showAddContact && (
-        <EmptyState message="No saved contacts yet — add one to send money faster next time." />
+        <EmptyState message={t('transfer.noContacts')} />
       )}
       {contacts.map((c) => (
         <button
@@ -523,8 +525,8 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         </button>
       ))}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }}>Continue</button>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose}>{t('transfer.cancel')}</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }}>{t('transfer.continue')}</button>
       </div>
       {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>

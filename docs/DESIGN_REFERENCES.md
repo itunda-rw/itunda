@@ -2619,11 +2619,40 @@ precedent and warned against repeating it).
    screenshot this round either — same standing gap named in the login-screen entry above, not
    re-attempted given the `ItundaApp` scheme's pre-existing link blocker.
 
+   **Web extended to a third screen the same day: P2P transfer** (`TransferFlow` in
+   `BankDashboard.tsx`, itunda's own single highest-stakes money-moving screen) — form, scam-warning,
+   confirm/review, and result states, all real strings, several with interpolation
+   (`transfer.toRecipient`, `transfer.amountLine`, `transfer.send`, `transfer.scamWarningBody`).
+   Also caught and fixed the same "translated the destination, not the door" gap this thread keeps
+   finding: `AccountBalance` (the wallet card's own "Transfer"/"Top up" buttons that open this exact
+   flow) is a separate component and was still hardcoded English — added `dashboard.*` keys for it
+   in the same pass rather than leaving the flow's own entry point untranslated.
+
+   **This is the strongest verification tier in the whole localization thread so far — a real,
+   authenticated, live session, not a static or unauthenticated render.** The private-cloud
+   Multipass VM's investigation earlier the same day (see Section 19's "beyond ecosystems" note and
+   [[project_itunda_private_cloud]]) confirmed the local backend was still running; logged in for
+   real via `curl` against `/api/v1/auth/login` (seeded demo account), then drove a real headless
+   Chrome session over the Chrome DevTools Protocol (no Playwright/Puppeteer installed in this
+   environment, so a minimal hand-written CDP client did the job — Node 22+'s native `WebSocket` +
+   `fetch` were enough): seeded the real JWT into `localStorage`, loaded the actual dashboard, and
+   clicked through the real UI (not simulated) to the transfer form, the scam-check confirm screen,
+   and back with a real saved contact and a real interpolated amount — in both English and
+   Kinyarwanda, confirmed via real screenshots (sent to the user). One real, unrelated environment
+   fix needed along the way: the dev server has to run on its actual configured port (bank-mfe is
+   itself a Module Federation remote hardcoded to port 5002) and within the backend's CORS allowlist
+   (`localhost:5000`-`5005`) — an arbitrary `--port` override breaks both.
+
+   **Honestly named remaining gap, not fixed this pass**: `ReportScamLink` (the "Report this number
+   as a scam" link visible on the confirm screen) is a separate component this pass didn't touch —
+   still English in both locales, confirmed visible in the real Kinyarwanda screenshot.
+
    Real next steps, in order: native-speaker review of the existing `rw` strings on all 3
-   platforms, a real iOS simulator/on-device check of both localized screens and a real Android
-   emulator check of `OverviewScreen` (all named verification gaps above), a real logged-in-session
-   visual check of web's overview strings, then phase content outward into a third screen (transfer)
-   on all 3 platforms.
+   platforms, a real iOS simulator/on-device check of both localized screens (the `ItundaApp`
+   scheme's pre-existing link blocker is still unresolved), a real *physical-device* check of
+   Android's two screens (the emulator is no longer in use this session — see
+   [[feedback_emulator_for_visual_verification]]'s correction), `ReportScamLink`'s own string, then
+   phase content outward into a third screen on Android/iOS and a fourth screen on all 3 platforms.
 3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given
