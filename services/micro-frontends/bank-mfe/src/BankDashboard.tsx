@@ -579,6 +579,7 @@ function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
 }
 
 function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions: Transaction[]; unusuallyLargeIds?: Set<string> }) {
+  const { t } = useI18n();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -588,11 +589,11 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
       style={{ padding: '24px 20px' }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '0 4px' }}>
-        <h3 style={{ color: 'var(--toss-grey-900)', margin: 0, fontSize: '18px', fontWeight: '700' }}>Recent Activity</h3>
+        <h3 style={{ color: 'var(--toss-grey-900)', margin: 0, fontSize: '18px', fontWeight: '700' }}>{t('home.recentActivity')}</h3>
       </div>
 
       {transactions.length === 0 ? (
-        <EmptyState message="No transactions yet — once you send, receive, or spend, it'll all show up here." />
+        <EmptyState message={t('home.noTransactions')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <AnimatePresence>
@@ -617,7 +618,7 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
                         <span style={{ color: 'var(--toss-grey-500)', fontSize: '13px', fontWeight: '500' }}>{new Date(tx.createdAt).toLocaleString()}</span>
                         {isUnusual && (
                           <span style={{ color: 'var(--toss-red)', fontSize: '11px', fontWeight: '700', backgroundColor: '#FEECEE', padding: '2px 6px', borderRadius: '6px' }}>
-                            Unusually large
+                            {t('home.unusuallyLarge')}
                           </span>
                         )}
                       </div>

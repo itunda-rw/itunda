@@ -2928,9 +2928,29 @@ rest of `HomeView`'s real estate below the balance card and quick actions — ar
 out to keep this pass reviewable and fully live-verified rather than spreading thin across seven more
 components; each is a real, separate follow-up, not a hidden gap.
 
+### TransactionHistory, closed the same day (2026-08-09)
+
+Picked up the highest-value item named above immediately rather than letting it sit: `TransactionHistory`
+is the "Recent Activity" list — the content a signed-in user actually reads most, every time they open
+the app. Localized its heading, its empty-state message, and the "Unusually large" flag (the real Toss
+Timeline-style unusual-spend badge, see its own doc comment). Left `tx.description` itself untouched —
+that's real backend-provided transaction data, not a UI string, and translating arbitrary API content is
+a different, much bigger problem than translating this app's own fixed copy. Same for the `RWF` currency
+code, matching the established non-translation precedent for currency codes everywhere else in this
+thread.
+
+**Verified live again, same real-browser tier**: fresh backend login, real headless Chrome over CDP,
+confirmed via a direct DOM query that the actual rendered `<h3>` heading reads `Ibikorwa vya vuba`
+after switching to Kinyarwanda — not just that the translation key exists, that the live page shows it.
+Zero exceptions. Chrome and dev server stopped after capture.
+
+`ScheduledTransfersCard`, `AutoTransfersCard`, `AutoTopUpCard`, `RequestMoneyCard`, `MiniWalletCard`, and
+`DiscoverSection` remain the honestly-named open items — `HomeView` is closer to fully localized than it
+was this morning, not finished.
+
 ### Unresolved / worth a follow-up
-- The rest of `HomeView` named above — `TransactionHistory` is probably the highest-value next one,
-  since transaction descriptions are what a user reads most often on this screen.
+- The remaining `HomeView` cards named above (`ScheduledTransfersCard` through `DiscoverSection`) — none
+  started yet.
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the

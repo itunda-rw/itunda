@@ -121,7 +121,10 @@ type TranslationKey =
   | 'scamReport.promptQuestion'
   | 'scamReport.thanks'
   | 'scamReport.reporting'
-  | 'scamReport.reportLink';
+  | 'scamReport.reportLink'
+  | 'home.recentActivity'
+  | 'home.noTransactions'
+  | 'home.unusuallyLarge';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -193,6 +196,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'scamReport.thanks': 'Thanks -- this number has been reported.',
     'scamReport.reporting': 'Reporting…',
     'scamReport.reportLink': 'Report this number as a scam',
+    'home.recentActivity': 'Recent Activity',
+    'home.noTransactions': "No transactions yet — once you send, receive, or spend, it'll all show up here.",
+    'home.unusuallyLarge': 'Unusually large',
   },
   rw: {
     'login.tagline': "Injira kuri konti yawe ya Itunda.",
@@ -263,5 +269,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'scamReport.thanks': 'Murakoze -- iyi numero yatanzweho raporo.',
     'scamReport.reporting': 'Kohereza raporo…',
     'scamReport.reportLink': 'Tanga raporo kuri iyi numero',
+    'home.recentActivity': 'Ibikorwa vya vuba',
+    'home.noTransactions': "Nta bikorwa urakora. Iyo wohereje, wakiriye, cyangwa wakoresheje amafaranga, byose bizagaragara hano.",
+    'home.unusuallyLarge': 'Menshi kurusha uko bisanzwe',
   },
 };
