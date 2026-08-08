@@ -24,7 +24,7 @@ export const LOCALES: { code: Locale; label: string }[] = [
 
 export const DEFAULT_LOCALE: Locale = 'en';
 
-type TranslationKey =
+export type TranslationKey =
   | 'login.tagline'
   | 'login.phoneNumber'
   | 'login.password'
@@ -124,7 +124,111 @@ type TranslationKey =
   | 'scamReport.reportLink'
   | 'home.recentActivity'
   | 'home.noTransactions'
-  | 'home.unusuallyLarge';
+  | 'home.unusuallyLarge'
+  // Real 6th-localization-pass additions (2026-08-09) -- the remaining HomeView cards
+  // named as open follow-ups two passes ago: DiscoverSection, MiniWalletCard,
+  // ScheduledTransfersCard, AutoTransfersCard, RequestMoneyCard, AutoTopUpCard.
+  | 'discover.title'
+  | 'discover.new'
+  | 'miniWallet.title'
+  | 'miniWallet.cancel'
+  | 'miniWallet.addMoney'
+  | 'miniWallet.ageIneligible'
+  | 'miniWallet.openError'
+  | 'miniWallet.birthDateError'
+  | 'miniWallet.depositError'
+  | 'miniWallet.description'
+  | 'miniWallet.opening'
+  | 'miniWallet.open'
+  | 'miniWallet.birthDatePrompt'
+  | 'miniWallet.checking'
+  | 'miniWallet.checkEligibility'
+  | 'miniWallet.amountPlaceholder'
+  | 'miniWallet.adding'
+  | 'miniWallet.add'
+  | 'scheduledTransfers.title'
+  | 'scheduledTransfers.cancel'
+  | 'scheduledTransfers.schedule'
+  | 'scheduledTransfers.recipientPlaceholder'
+  | 'scheduledTransfers.amountPlaceholder'
+  | 'scheduledTransfers.descriptionPlaceholder'
+  | 'scheduledTransfers.scheduling'
+  | 'scheduledTransfers.scheduleButton'
+  | 'scheduledTransfers.createError'
+  | 'scheduledTransfers.cancelError'
+  | 'scheduledTransfers.noTransfers'
+  | 'scheduledTransfers.statusScheduled'
+  | 'scheduledTransfers.statusSent'
+  | 'scheduledTransfers.statusCancelled'
+  | 'scheduledTransfers.statusFailed'
+  | 'autoTransfers.title'
+  | 'autoTransfers.cancel'
+  | 'autoTransfers.setUp'
+  | 'autoTransfers.recipientPlaceholder'
+  | 'autoTransfers.amountPlaceholder'
+  | 'autoTransfers.weekly'
+  | 'autoTransfers.monthly'
+  | 'autoTransfers.dayOfMonth'
+  | 'autoTransfers.descriptionPlaceholder'
+  | 'autoTransfers.settingUp'
+  | 'autoTransfers.setUpButton'
+  | 'autoTransfers.createError'
+  | 'autoTransfers.toggleError'
+  | 'autoTransfers.cancelError'
+  | 'autoTransfers.noTransfers'
+  | 'autoTransfers.weeklyLabel'
+  | 'autoTransfers.monthlyLabel'
+  | 'autoTransfers.statusActive'
+  | 'autoTransfers.statusPaused'
+  | 'autoTransfers.statusCancelled'
+  | 'autoTransfers.pause'
+  | 'autoTransfers.resume'
+  | 'autoTransfers.cancelAction'
+  | 'weekday.monday'
+  | 'weekday.tuesday'
+  | 'weekday.wednesday'
+  | 'weekday.thursday'
+  | 'weekday.friday'
+  | 'weekday.saturday'
+  | 'weekday.sunday'
+  | 'requestMoney.title'
+  | 'requestMoney.cancel'
+  | 'requestMoney.newRequest'
+  | 'requestMoney.amountPlaceholder'
+  | 'requestMoney.whatsItFor'
+  | 'requestMoney.creating'
+  | 'requestMoney.createButton'
+  | 'requestMoney.shareCode'
+  | 'requestMoney.payCodePlaceholder'
+  | 'requestMoney.paying'
+  | 'requestMoney.pay'
+  | 'requestMoney.createError'
+  | 'requestMoney.payError'
+  | 'requestMoney.myRequests'
+  | 'requestMoney.statusPending'
+  | 'requestMoney.statusPaid'
+  | 'requestMoney.statusExpired'
+  | 'autoTopUp.title'
+  | 'autoTopUp.cancel'
+  | 'autoTopUp.edit'
+  | 'autoTopUp.setUp'
+  | 'autoTopUp.linkFirst'
+  | 'autoTopUp.selectAccount'
+  | 'autoTopUp.thresholdPlaceholder'
+  | 'autoTopUp.topUpPlaceholder'
+  | 'autoTopUp.maxPerDay'
+  | 'autoTopUp.saving'
+  | 'autoTopUp.save'
+  | 'autoTopUp.saveError'
+  | 'autoTopUp.on'
+  | 'autoTopUp.off'
+  | 'autoTopUp.summaryLine'
+  | 'autoTopUp.upToPerDay'
+  | 'autoTopUp.turnOff'
+  | 'autoTopUp.turnOn'
+  | 'autoTopUp.checking'
+  | 'autoTopUp.checkNow'
+  | 'autoTopUp.checkError';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -199,6 +303,107 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'home.recentActivity': 'Recent Activity',
     'home.noTransactions': "No transactions yet — once you send, receive, or spend, it'll all show up here.",
     'home.unusuallyLarge': 'Unusually large',
+    'discover.title': 'Discover',
+    'discover.new': 'NEW',
+    'miniWallet.title': 'Mini account',
+    'miniWallet.cancel': 'Cancel',
+    'miniWallet.addMoney': '+ Add money',
+    'miniWallet.ageIneligible': 'Mini accounts are only available for ages 7-18.',
+    'miniWallet.openError': 'Could not open a Mini account.',
+    'miniWallet.birthDateError': 'Could not save your birth date.',
+    'miniWallet.depositError': 'Could not add money to your Mini account.',
+    'miniWallet.description': 'A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF daily and 2,000,000 RWF monthly deposit limits.',
+    'miniWallet.opening': 'Opening…',
+    'miniWallet.open': 'Open a Mini account',
+    'miniWallet.birthDatePrompt': 'Enter your birth date to check eligibility.',
+    'miniWallet.checking': 'Checking…',
+    'miniWallet.checkEligibility': 'Check eligibility',
+    'miniWallet.amountPlaceholder': 'Amount (RWF)',
+    'miniWallet.adding': 'Adding…',
+    'miniWallet.add': 'Add',
+    'scheduledTransfers.title': 'Scheduled transfers',
+    'scheduledTransfers.cancel': 'Cancel',
+    'scheduledTransfers.schedule': '+ Schedule',
+    'scheduledTransfers.recipientPlaceholder': 'Phone or account number',
+    'scheduledTransfers.amountPlaceholder': 'Amount (RWF)',
+    'scheduledTransfers.descriptionPlaceholder': 'Description (optional)',
+    'scheduledTransfers.scheduling': 'Scheduling…',
+    'scheduledTransfers.scheduleButton': 'Schedule transfer',
+    'scheduledTransfers.createError': 'Could not schedule this transfer.',
+    'scheduledTransfers.cancelError': 'Could not cancel this scheduled transfer.',
+    'scheduledTransfers.noTransfers': 'No scheduled transfers yet — schedule one to send money on a future date.',
+    'scheduledTransfers.statusScheduled': 'Scheduled',
+    'scheduledTransfers.statusSent': 'Sent',
+    'scheduledTransfers.statusCancelled': 'Cancelled',
+    'scheduledTransfers.statusFailed': 'Failed',
+    'autoTransfers.title': 'Auto-transfers',
+    'autoTransfers.cancel': 'Cancel',
+    'autoTransfers.setUp': '+ Set up',
+    'autoTransfers.recipientPlaceholder': 'Phone or account number',
+    'autoTransfers.amountPlaceholder': 'Amount (RWF)',
+    'autoTransfers.weekly': 'Weekly',
+    'autoTransfers.monthly': 'Monthly',
+    'autoTransfers.dayOfMonth': 'Day {{day}} of the month',
+    'autoTransfers.descriptionPlaceholder': 'Description (optional)',
+    'autoTransfers.settingUp': 'Setting up…',
+    'autoTransfers.setUpButton': 'Set up auto-transfer',
+    'autoTransfers.createError': 'Could not set up this auto-transfer.',
+    'autoTransfers.toggleError': 'Could not update this auto-transfer.',
+    'autoTransfers.cancelError': 'Could not cancel this auto-transfer.',
+    'autoTransfers.noTransfers': 'No auto-transfers set up yet — set one up to send money on a schedule automatically.',
+    'autoTransfers.weeklyLabel': 'Weekly ({{day}})',
+    'autoTransfers.monthlyLabel': 'Monthly (day {{day}})',
+    'autoTransfers.statusActive': 'Active',
+    'autoTransfers.statusPaused': 'Paused',
+    'autoTransfers.statusCancelled': 'Cancelled',
+    'autoTransfers.pause': 'Pause',
+    'autoTransfers.resume': 'Resume',
+    'autoTransfers.cancelAction': 'Cancel',
+    'weekday.monday': 'Monday',
+    'weekday.tuesday': 'Tuesday',
+    'weekday.wednesday': 'Wednesday',
+    'weekday.thursday': 'Thursday',
+    'weekday.friday': 'Friday',
+    'weekday.saturday': 'Saturday',
+    'weekday.sunday': 'Sunday',
+    'requestMoney.title': 'Request money',
+    'requestMoney.cancel': 'Cancel',
+    'requestMoney.newRequest': '+ New request',
+    'requestMoney.amountPlaceholder': 'Amount (RWF)',
+    'requestMoney.whatsItFor': "What's it for? (optional)",
+    'requestMoney.creating': 'Creating…',
+    'requestMoney.createButton': 'Create request',
+    'requestMoney.shareCode': 'Share this code -- expires in 15 minutes',
+    'requestMoney.payCodePlaceholder': 'Pay a request code',
+    'requestMoney.paying': 'Paying…',
+    'requestMoney.pay': 'Pay',
+    'requestMoney.createError': 'Could not create this request.',
+    'requestMoney.payError': 'Could not pay this request.',
+    'requestMoney.myRequests': 'My requests',
+    'requestMoney.statusPending': 'Pending',
+    'requestMoney.statusPaid': 'Paid',
+    'requestMoney.statusExpired': 'Expired',
+    'autoTopUp.title': 'Auto top-up',
+    'autoTopUp.cancel': 'Cancel',
+    'autoTopUp.edit': 'Edit',
+    'autoTopUp.setUp': '+ Set up',
+    'autoTopUp.linkFirst': 'Link an external bank/mobile money account first to enable auto top-up.',
+    'autoTopUp.selectAccount': 'Select linked account',
+    'autoTopUp.thresholdPlaceholder': 'Top up when balance falls below (RWF)',
+    'autoTopUp.topUpPlaceholder': 'Top-up amount (RWF)',
+    'autoTopUp.maxPerDay': 'Max times per day',
+    'autoTopUp.saving': 'Saving…',
+    'autoTopUp.save': 'Save',
+    'autoTopUp.saveError': 'Could not save this setting.',
+    'autoTopUp.on': 'On',
+    'autoTopUp.off': 'Off',
+    'autoTopUp.summaryLine': '{{state}} — top up {{topUp}} RWF when balance falls below {{threshold}} RWF',
+    'autoTopUp.upToPerDay': 'Up to {{cap}}x/day · {{count}} triggered today',
+    'autoTopUp.turnOff': 'Turn off',
+    'autoTopUp.turnOn': 'Turn on',
+    'autoTopUp.checking': 'Checking…',
+    'autoTopUp.checkNow': 'Check now',
+    'autoTopUp.checkError': 'Could not check auto top-up.',
   },
   rw: {
     'login.tagline': "Injira kuri konti yawe ya Itunda.",
@@ -272,5 +477,106 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'home.recentActivity': 'Ibikorwa vya vuba',
     'home.noTransactions': "Nta bikorwa urakora. Iyo wohereje, wakiriye, cyangwa wakoresheje amafaranga, byose bizagaragara hano.",
     'home.unusuallyLarge': 'Menshi kurusha uko bisanzwe',
+    'discover.title': 'Menya',
+    'discover.new': 'GISHYA',
+    'miniWallet.title': 'Konti ntoya',
+    'miniWallet.cancel': 'Hagarika',
+    'miniWallet.addMoney': '+ Ongeraho amafaranga',
+    'miniWallet.ageIneligible': 'Konti ntoya ziboneka gusa ku myaka 7-18.',
+    'miniWallet.openError': 'Ntibishoboka gufungura konti ntoya.',
+    'miniWallet.birthDateError': 'Ntibishoboka kubika itariki y\'amavuko yawe.',
+    'miniWallet.depositError': 'Ntibishoboka kongeraho amafaranga kuri konti ntoya.',
+    'miniWallet.description': "Konti ntoya y'itangira ku myaka 7-18 -- ntirengeje 500,000 RWF, ntirengeje 300,000 RWF ku munsi cyangwa 2,000,000 RWF ku kwezi.",
+    'miniWallet.opening': 'Gufungura…',
+    'miniWallet.open': 'Fungura konti ntoya',
+    'miniWallet.birthDatePrompt': "Andika itariki y'amavuko yawe kugira ngo tumenye niba ubishoboye.",
+    'miniWallet.checking': 'Kugenzura…',
+    'miniWallet.checkEligibility': 'Genzura niba wemerewe',
+    'miniWallet.amountPlaceholder': 'Amafaranga (RWF)',
+    'miniWallet.adding': 'Kongeraho…',
+    'miniWallet.add': 'Ongeraho',
+    'scheduledTransfers.title': 'Kohereza byateganyijwe',
+    'scheduledTransfers.cancel': 'Hagarika',
+    'scheduledTransfers.schedule': '+ Tegura',
+    'scheduledTransfers.recipientPlaceholder': "Numero ya telefoni cyangwa konti",
+    'scheduledTransfers.amountPlaceholder': 'Amafaranga (RWF)',
+    'scheduledTransfers.descriptionPlaceholder': 'Ibisobanuro (si ngombwa)',
+    'scheduledTransfers.scheduling': 'Gutegura…',
+    'scheduledTransfers.scheduleButton': 'Tegura kohereza',
+    'scheduledTransfers.createError': 'Ntibishoboka gutegura iyi kohereza.',
+    'scheduledTransfers.cancelError': 'Ntibishoboka guhagarika iyi kohereza yateganyijwe.',
+    'scheduledTransfers.noTransfers': 'Nta kohereza byateganyijwe urakora. Tegura kimwe kugira ngo wohereze amafaranga ku itariki uzaza.',
+    'scheduledTransfers.statusScheduled': 'Byateganyijwe',
+    'scheduledTransfers.statusSent': 'Byoherejwe',
+    'scheduledTransfers.statusCancelled': 'Byahagaritswe',
+    'scheduledTransfers.statusFailed': 'Byanze',
+    'autoTransfers.title': 'Kohereza byikoresha',
+    'autoTransfers.cancel': 'Hagarika',
+    'autoTransfers.setUp': '+ Tunganya',
+    'autoTransfers.recipientPlaceholder': "Numero ya telefoni cyangwa konti",
+    'autoTransfers.amountPlaceholder': 'Amafaranga (RWF)',
+    'autoTransfers.weekly': 'Buri cyumweru',
+    'autoTransfers.monthly': 'Buri kwezi',
+    'autoTransfers.dayOfMonth': 'Umunsi wa {{day}} w\'ukwezi',
+    'autoTransfers.descriptionPlaceholder': 'Ibisobanuro (si ngombwa)',
+    'autoTransfers.settingUp': 'Gutunganya…',
+    'autoTransfers.setUpButton': 'Tunganya kohereza byikoresha',
+    'autoTransfers.createError': 'Ntibishoboka gutunganya iki kohereza cyikoresha.',
+    'autoTransfers.toggleError': 'Ntibishoboka kuvugurura iki kohereza cyikoresha.',
+    'autoTransfers.cancelError': 'Ntibishoboka guhagarika iki kohereza cyikoresha.',
+    'autoTransfers.noTransfers': 'Nta kohereza byikoresha utunganyije. Tunganya kimwe kugira ngo wohereze amafaranga ku gihe cyagenwe automatike.',
+    'autoTransfers.weeklyLabel': 'Buri cyumweru ({{day}})',
+    'autoTransfers.monthlyLabel': 'Buri kwezi (umunsi wa {{day}})',
+    'autoTransfers.statusActive': 'Birakora',
+    'autoTransfers.statusPaused': 'Byahagaritswe by\'agateganyo',
+    'autoTransfers.statusCancelled': 'Byahagaritswe',
+    'autoTransfers.pause': 'Hagarika by\'agateganyo',
+    'autoTransfers.resume': 'Komeza',
+    'autoTransfers.cancelAction': 'Hagarika',
+    'weekday.monday': 'Kuwa mbere',
+    'weekday.tuesday': 'Kuwa kabiri',
+    'weekday.wednesday': 'Kuwa gatatu',
+    'weekday.thursday': 'Kuwa kane',
+    'weekday.friday': 'Kuwa gatanu',
+    'weekday.saturday': 'Kuwa gatandatu',
+    'weekday.sunday': 'Ku cyumweru',
+    'requestMoney.title': 'Saba amafaranga',
+    'requestMoney.cancel': 'Hagarika',
+    'requestMoney.newRequest': '+ Icyifuzo gishya',
+    'requestMoney.amountPlaceholder': 'Amafaranga (RWF)',
+    'requestMoney.whatsItFor': 'Ni ibiki? (si ngombwa)',
+    'requestMoney.creating': 'Gukora…',
+    'requestMoney.createButton': 'Kora icyifuzo',
+    'requestMoney.shareCode': 'Sangiza uyu kode -- uzarangira mu minota 15',
+    'requestMoney.payCodePlaceholder': 'Ishyura ukoresheje kode',
+    'requestMoney.paying': 'Kwishyura…',
+    'requestMoney.pay': 'Ishyura',
+    'requestMoney.createError': 'Ntibishoboka gukora iki cyifuzo.',
+    'requestMoney.payError': 'Ntibishoboka kwishyura iki cyifuzo.',
+    'requestMoney.myRequests': 'Ibyifuzo byanjye',
+    'requestMoney.statusPending': 'Bitegerejwe',
+    'requestMoney.statusPaid': 'Byishyuwe',
+    'requestMoney.statusExpired': 'Byarangiye',
+    'autoTopUp.title': 'Kwongera amafaranga byikoresha',
+    'autoTopUp.cancel': 'Hagarika',
+    'autoTopUp.edit': 'Hindura',
+    'autoTopUp.setUp': '+ Tunganya',
+    'autoTopUp.linkFirst': 'Huza konti ya banki cyangwa Mobile Money mbere yo gukoresha iyi serivisi.',
+    'autoTopUp.selectAccount': 'Hitamo konti yahujwe',
+    'autoTopUp.thresholdPlaceholder': 'Ongera amafaranga iyo asigaye ari munsi ya (RWF)',
+    'autoTopUp.topUpPlaceholder': 'Amafaranga yo kongera (RWF)',
+    'autoTopUp.maxPerDay': 'Inshuro ntarengwa ku munsi',
+    'autoTopUp.saving': 'Kubika…',
+    'autoTopUp.save': 'Bika',
+    'autoTopUp.saveError': 'Ntibishoboka kubika iyi migenzo.',
+    'autoTopUp.on': 'Birakora',
+    'autoTopUp.off': 'Ntibikora',
+    'autoTopUp.summaryLine': '{{state}} — ongera {{topUp}} RWF iyo amafaranga asigaye ari munsi ya {{threshold}} RWF',
+    'autoTopUp.upToPerDay': 'Inshuro {{cap}}/umunsi ntarengwa · {{count}} zakozwe uyu munsi',
+    'autoTopUp.turnOff': 'Hagarika',
+    'autoTopUp.turnOn': 'Koresha',
+    'autoTopUp.checking': 'Kugenzura…',
+    'autoTopUp.checkNow': 'Genzura nonaha',
+    'autoTopUp.checkError': 'Ntibishoboka kugenzura kwongera amafaranga byikoresha.',
   },
 };

@@ -2948,9 +2948,49 @@ Zero exceptions. Chrome and dev server stopped after capture.
 `DiscoverSection` remain the honestly-named open items — `HomeView` is closer to fully localized than it
 was this morning, not finished.
 
+### HomeView fully closed out, same day (2026-08-09)
+
+Finished the remaining 6 cards in one pass rather than stretching them across more sessions:
+`DiscoverSection`, `MiniWalletCard`, `ScheduledTransfersCard`, `AutoTransfersCard`, `RequestMoneyCard`,
+`AutoTopUpCard`. Roughly 100 new translation keys (en+rw) covering every button, placeholder, error
+message, empty-state, and status label across all six — including three module-level `Record<Status,
+string>` status-label maps (`ScheduledTransfer`, `AutoTransfer`, `P2pPaymentRequest`) that had to become
+`Record<Status, TranslationKey>` instead, since a plain object literal outside a component can't call
+`useI18n()`; the lookup now resolves the key, and the actual translation happens at the call site inside
+the component. Exported `TranslationKey` from `translations.ts` for the first time (previously
+module-private) so `BankDashboard.tsx` could type these maps — same "promote once a second real
+consumer needs it" precedent this whole session has followed on both other platforms.
+
+One real, quiet bug avoided during the edit, not found live: several of these components used `.map((t)
+=> ...)` for their own transfer/request items, which would have silently shadowed the `t` translation
+function pulled in via `const { t } = useI18n()` at the top of each component -- every `t()` call inside
+that `.map()` callback would have resolved to the wrong `t` (a transfer object) instead of the
+translator, and TypeScript would have caught most but not all of those as a type error only once actual
+translated calls were added. Renamed every shadowing loop variable (`tr`, `at`, kept `r`/`d`/`a` where no
+clash existed) before wiring in any `t()` calls, rather than fixing it after chasing type errors one at
+a time.
+
+Also translated the weekday names used by `AutoTransfersCard`'s day-of-week picker (`WEEKDAY_KEYS`,
+paralleling the existing English-only `WEEKDAY_NAMES` array kept solely as React `key` props, never
+displayed) and the interpolated "Day {{day}} of the month" / "Weekly ({{day}})" / "Monthly (day
+{{day}})" strings, so the auto-transfer schedule descriptions read naturally in Kinyarwanda instead of
+having an English day name spliced into an otherwise-translated sentence.
+
+**Verified live, comprehensively this time**: real backend login, real headless Chrome over CDP.
+Confirmed via `document.body.innerText` that all 7 real card headings render in Kinyarwanda
+simultaneously on one page load (`Konti ntoya`, `Kohereza byateganyijwe`, `Kohereza byikoresha`, `Saba
+amafaranga`, `Kwongera amafaranga byikoresha`, `Menya`, `Ibikorwa vya vuba`); clicked all three
+"expand form" buttons by their translated label text and confirmed they actually opened (proves the
+buttons' own conditional-label logic reads the right key, not just that some Kinyarwanda text exists
+somewhere on the page); read every visible `input[placeholder]` and `select option` afterward and
+confirmed each one — including the interpolated day-of-month dropdown, 1 through 28 — rendered correctly.
+Zero console exceptions. Real `tsc -b && vite build` also clean. Chrome and dev server stopped after
+capture.
+
+`HomeView` — the screen a signed-in itunda user actually sees first — is now fully localized on web,
+matching the depth (if not yet the verification tier) of Android/iOS's own most-worked-on screens.
+
 ### Unresolved / worth a follow-up
-- The remaining `HomeView` cards named above (`ScheduledTransfersCard` through `DiscoverSection`) — none
-  started yet.
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the

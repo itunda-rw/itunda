@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useI18n } from './i18n/I18nContext';
-import { LOCALES } from './i18n/translations';
+import { LOCALES, type TranslationKey } from './i18n/translations';
 import { Badge } from './Badge';
 import { IdsButton } from './IdsButton';
 import { EmptyState, ErrorCard } from './EmptyState';
@@ -706,6 +706,7 @@ function HomeView({ onNavigateToCard }: { onNavigateToCard: () => void }) {
 // client anywhere else); this is the first bank-mfe/iOS client. Purely informational --
 // no click-through action or money movement, mirroring Android's own honest scope.
 function DiscoverSection() {
+  const { t } = useI18n();
   const [items, setItems] = useState<DiscoverItem[]>([]);
 
   useEffect(() => {
@@ -716,7 +717,7 @@ function DiscoverSection() {
 
   return (
     <div style={{ marginTop: '16px' }}>
-      <h3 style={{ fontSize: '19px', fontWeight: 700, marginBottom: '10px' }}>Discover</h3>
+      <h3 style={{ fontSize: '19px', fontWeight: 700, marginBottom: '10px' }}>{t('discover.title')}</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {items.map((item) => (
           <div key={item.id} className="toss-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderRadius: '20px' }}>
@@ -724,7 +725,7 @@ function DiscoverSection() {
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '16px', fontWeight: 600 }}>{item.title}</span>
-                {item.isNew && <span style={{ fontSize: '11px', fontWeight: 700, color: item.color }}>NEW</span>}
+                {item.isNew && <span style={{ fontSize: '11px', fontWeight: 700, color: item.color }}>{t('discover.new')}</span>}
               </div>
               <p style={{ fontSize: '14px', color: 'var(--toss-grey-500)' }}>{item.subtitle}</p>
             </div>
@@ -740,6 +741,7 @@ function DiscoverSection() {
 // comment. First client UI for this backend feature on any platform (item 99, found
 // with zero client anywhere despite the backend being real and live since 2026-07-28).
 function MiniWalletCard() {
+  const { t } = useI18n();
   const [miniWallet, setMiniWallet] = useState<Wallet | null | undefined>(undefined);
   const [needsBirthDate, setNeedsBirthDate] = useState(false);
   const [birthDate, setBirthDateInput] = useState('');
@@ -765,9 +767,9 @@ function MiniWalletCard() {
       if (err instanceof ApiError && err.code === 'MINI_WALLET_BIRTH_DATE_REQUIRED') {
         setNeedsBirthDate(true);
       } else if (err instanceof ApiError && err.code === 'MINI_WALLET_AGE_INELIGIBLE') {
-        setError('Mini accounts are only available for ages 7-18.');
+        setError(t('miniWallet.ageIneligible'));
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not open a Mini account.');
+        setError(err instanceof ApiError ? err.message : t('miniWallet.openError'));
       }
     } finally {
       setBusy(false);
@@ -783,7 +785,7 @@ function MiniWalletCard() {
       await setBirthDate(birthDate);
       await handleOpen();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save your birth date.');
+      setError(err instanceof ApiError ? err.message : t('miniWallet.birthDateError'));
       setBusy(false);
     }
   };
@@ -800,7 +802,7 @@ function MiniWalletCard() {
       setShowDeposit(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add money to your Mini account.');
+      setError(err instanceof ApiError ? err.message : t('miniWallet.depositError'));
     } finally {
       setBusy(false);
     }
@@ -811,10 +813,10 @@ function MiniWalletCard() {
   return (
     <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Mini account</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('miniWallet.title')}</h3>
         {miniWallet && (
           <button className="toss-btn toss-btn-secondary" onClick={() => setShowDeposit((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
-            {showDeposit ? 'Cancel' : '+ Add money'}
+            {showDeposit ? t('miniWallet.cancel') : t('miniWallet.addMoney')}
           </button>
         )}
       </div>
@@ -824,15 +826,15 @@ function MiniWalletCard() {
       {!miniWallet && !needsBirthDate && (
         <div>
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
-            A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF daily and 2,000,000 RWF monthly deposit limits.
+            {t('miniWallet.description')}
           </p>
-          <button className="toss-btn toss-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? 'Opening…' : 'Open a Mini account'}</button>
+          <button className="toss-btn toss-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('miniWallet.opening') : t('miniWallet.open')}</button>
         </div>
       )}
 
       {!miniWallet && needsBirthDate && (
         <form onSubmit={handleSetBirthDateAndOpen} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Enter your birth date to check eligibility.</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{t('miniWallet.birthDatePrompt')}</p>
           <input
             type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
@@ -840,7 +842,7 @@ function MiniWalletCard() {
           {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Continue"
               doesn't say what happens next -- the paragraph above already names the real
               outcome ("check eligibility"), so the button says it too. */}
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Check eligibility'}</button>
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('miniWallet.checking') : t('miniWallet.checkEligibility')}</button>
         </form>
       )}
 
@@ -851,10 +853,10 @@ function MiniWalletCard() {
           {showDeposit && (
             <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
               <input
-                type="number" placeholder="Amount (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+                type="number" placeholder={t('miniWallet.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
                 style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
               />
-              <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Adding…' : 'Add'}</button>
+              <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('miniWallet.adding') : t('miniWallet.add')}</button>
             </form>
           )}
         </div>
@@ -863,11 +865,11 @@ function MiniWalletCard() {
   );
 }
 
-const SCHEDULED_TRANSFER_STATUS_LABEL: Record<ScheduledTransfer['status'], string> = {
-  PENDING: 'Scheduled',
-  EXECUTED: 'Sent',
-  CANCELLED: 'Cancelled',
-  FAILED: 'Failed',
+const SCHEDULED_TRANSFER_STATUS_KEY: Record<ScheduledTransfer['status'], TranslationKey> = {
+  PENDING: 'scheduledTransfers.statusScheduled',
+  EXECUTED: 'scheduledTransfers.statusSent',
+  CANCELLED: 'scheduledTransfers.statusCancelled',
+  FAILED: 'scheduledTransfers.statusFailed',
 };
 
 // Real Toss 예약송금 (scheduled/reserved one-time transfer) -- see
@@ -875,6 +877,7 @@ const SCHEDULED_TRANSFER_STATUS_LABEL: Record<ScheduledTransfer['status'], strin
 // which itself still has no bank-mfe client anywhere -- left as its own separately
 // named, still-deferred gap; not expanded in this pass).
 function ScheduledTransfersCard() {
+  const { t } = useI18n();
   const [transfers, setTransfers] = useState<ScheduledTransfer[] | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [recipient, setRecipient] = useState('');
@@ -906,7 +909,7 @@ function ScheduledTransfersCard() {
       setShowCreate(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not schedule this transfer.');
+      setError(err instanceof ApiError ? err.message : t('scheduledTransfers.createError'));
     } finally {
       setBusy(false);
     }
@@ -919,33 +922,33 @@ function ScheduledTransfersCard() {
       await cancelScheduledTransfer(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this scheduled transfer.');
+      setError(err instanceof ApiError ? err.message : t('scheduledTransfers.cancelError'));
     } finally {
       setBusyId(null);
     }
   };
 
-  const pending = (transfers ?? []).filter((t) => t.status === 'PENDING');
-  const past = (transfers ?? []).filter((t) => t.status !== 'PENDING');
+  const pending = (transfers ?? []).filter((tr) => tr.status === 'PENDING');
+  const past = (transfers ?? []).filter((tr) => tr.status !== 'PENDING');
   const minDate = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
 
   return (
     <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Scheduled transfers</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('scheduledTransfers.title')}</h3>
         <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
-          {showCreate ? 'Cancel' : '+ Schedule'}
+          {showCreate ? t('scheduledTransfers.cancel') : t('scheduledTransfers.schedule')}
         </button>
       </div>
 
       {showCreate && (
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
-            type="text" placeholder="Phone or account number" value={recipient} onChange={(e) => setRecipient(e.target.value)} required
+            type="text" placeholder={t('scheduledTransfers.recipientPlaceholder')} value={recipient} onChange={(e) => setRecipient(e.target.value)} required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <input
-            type="number" placeholder="Amount (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+            type="number" placeholder={t('scheduledTransfers.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <input
@@ -953,28 +956,28 @@ function ScheduledTransfersCard() {
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <input
-            type="text" placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)}
+            type="text" placeholder={t('scheduledTransfers.descriptionPlaceholder')} value={description} onChange={(e) => setDescription(e.target.value)}
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Scheduling…' : 'Schedule transfer'}</button>
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('scheduledTransfers.scheduling') : t('scheduledTransfers.scheduleButton')}</button>
         </form>
       )}
 
       {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {pending.length === 0 && past.length === 0 && (
-        <EmptyState message="No scheduled transfers yet — schedule one to send money on a future date." />
+        <EmptyState message={t('scheduledTransfers.noTransfers')} />
       )}
 
-      {[...pending, ...past.slice(0, 3)].map((t) => (
-        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+      {[...pending, ...past.slice(0, 3)].map((tr) => (
+        <div key={tr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
           <div>
-            <p style={{ fontSize: '13px', fontWeight: 700 }}>{t.recipientName} · {t.amount.toLocaleString()} RWF</p>
-            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{t.scheduledDate} · {SCHEDULED_TRANSFER_STATUS_LABEL[t.status]}</p>
+            <p style={{ fontSize: '13px', fontWeight: 700 }}>{tr.recipientName} · {tr.amount.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{tr.scheduledDate} · {t(SCHEDULED_TRANSFER_STATUS_KEY[tr.status])}</p>
           </div>
-          {t.status === 'PENDING' && (
-            <button className="toss-btn toss-btn-secondary" disabled={busyId === t.id} onClick={() => handleCancel(t.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
-              {busyId === t.id ? '…' : 'Cancel'}
+          {tr.status === 'PENDING' && (
+            <button className="toss-btn toss-btn-secondary" disabled={busyId === tr.id} onClick={() => handleCancel(tr.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              {busyId === tr.id ? '…' : t('scheduledTransfers.cancel')}
             </button>
           )}
         </div>
@@ -983,15 +986,17 @@ function ScheduledTransfersCard() {
   );
 }
 
-const AUTO_TRANSFER_STATUS_LABEL: Record<AutoTransfer['status'], string> = {
-  ACTIVE: 'Active', PAUSED: 'Paused', CANCELLED: 'Cancelled',
+const AUTO_TRANSFER_STATUS_KEY: Record<AutoTransfer['status'], TranslationKey> = {
+  ACTIVE: 'autoTransfers.statusActive', PAUSED: 'autoTransfers.statusPaused', CANCELLED: 'autoTransfers.statusCancelled',
 };
 const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const WEEKDAY_KEYS: TranslationKey[] = ['weekday.monday', 'weekday.tuesday', 'weekday.wednesday', 'weekday.thursday', 'weekday.friday', 'weekday.saturday', 'weekday.sunday'];
 
 // Real Toss Bank 자동이체 (auto-transfer) -- see lib/autoTransfers.ts's own doc
 // comment. Recurring, genuinely distinct from ScheduledTransfersCard's own one-time
 // 예약송금 above. First bank-mfe client for a backend that previously had none.
 function AutoTransfersCard() {
+  const { t } = useI18n();
   const [transfers, setTransfers] = useState<AutoTransfer[] | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [recipient, setRecipient] = useState('');
@@ -1029,21 +1034,21 @@ function AutoTransfersCard() {
       setShowCreate(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not set up this auto-transfer.');
+      setError(err instanceof ApiError ? err.message : t('autoTransfers.createError'));
     } finally {
       setBusy(false);
     }
   };
 
-  const handleToggle = async (t: AutoTransfer) => {
-    setBusyId(t.id);
+  const handleToggle = async (at: AutoTransfer) => {
+    setBusyId(at.id);
     setError(null);
     try {
-      if (t.status === 'ACTIVE') await pauseAutoTransfer(t.id);
-      else await resumeAutoTransfer(t.id);
+      if (at.status === 'ACTIVE') await pauseAutoTransfer(at.id);
+      else await resumeAutoTransfer(at.id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this auto-transfer.');
+      setError(err instanceof ApiError ? err.message : t('autoTransfers.toggleError'));
     } finally {
       setBusyId(null);
     }
@@ -1056,86 +1061,86 @@ function AutoTransfersCard() {
       await cancelAutoTransfer(id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not cancel this auto-transfer.');
+      setError(err instanceof ApiError ? err.message : t('autoTransfers.cancelError'));
     } finally {
       setBusyId(null);
     }
   };
 
-  const active = (transfers ?? []).filter((t) => t.status !== 'CANCELLED');
-  const cancelled = (transfers ?? []).filter((t) => t.status === 'CANCELLED');
+  const active = (transfers ?? []).filter((at) => at.status !== 'CANCELLED');
+  const cancelled = (transfers ?? []).filter((at) => at.status === 'CANCELLED');
 
   return (
     <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Auto-transfers</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('autoTransfers.title')}</h3>
         <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
-          {showCreate ? 'Cancel' : '+ Set up'}
+          {showCreate ? t('autoTransfers.cancel') : t('autoTransfers.setUp')}
         </button>
       </div>
 
       {showCreate && (
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
-            type="text" placeholder="Phone or account number" value={recipient} onChange={(e) => setRecipient(e.target.value)} required
+            type="text" placeholder={t('autoTransfers.recipientPlaceholder')} value={recipient} onChange={(e) => setRecipient(e.target.value)} required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <input
-            type="number" placeholder="Amount (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+            type="number" placeholder={t('autoTransfers.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <select
             value={frequency} onChange={(e) => setFrequency(e.target.value as AutoTransferFrequency)}
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           >
-            <option value="WEEKLY">Weekly</option>
-            <option value="MONTHLY">Monthly</option>
+            <option value="WEEKLY">{t('autoTransfers.weekly')}</option>
+            <option value="MONTHLY">{t('autoTransfers.monthly')}</option>
           </select>
           {frequency === 'WEEKLY' ? (
             <select
               value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}
               style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
             >
-              {WEEKDAY_NAMES.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
+              {WEEKDAY_NAMES.map((name, i) => <option key={name} value={i + 1}>{t(WEEKDAY_KEYS[i])}</option>)}
             </select>
           ) : (
             <select
               value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)}
               style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
             >
-              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>Day {d} of the month</option>)}
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{t('autoTransfers.dayOfMonth', { day: d })}</option>)}
             </select>
           )}
           <input
-            type="text" placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)}
+            type="text" placeholder={t('autoTransfers.descriptionPlaceholder')} value={description} onChange={(e) => setDescription(e.target.value)}
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Setting up…' : 'Set up auto-transfer'}</button>
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('autoTransfers.settingUp') : t('autoTransfers.setUpButton')}</button>
         </form>
       )}
 
       {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {active.length === 0 && cancelled.length === 0 && (
-        <EmptyState message="No auto-transfers set up yet — set one up to send money on a schedule automatically." />
+        <EmptyState message={t('autoTransfers.noTransfers')} />
       )}
 
-      {[...active, ...cancelled.slice(0, 2)].map((t) => (
-        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+      {[...active, ...cancelled.slice(0, 2)].map((at) => (
+        <div key={at.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
           <div>
-            <p style={{ fontSize: '13px', fontWeight: 700 }}>{t.recipientName} · {t.amount.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '13px', fontWeight: 700 }}>{at.recipientName} · {at.amount.toLocaleString()} RWF</p>
             <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
-              {t.frequency === 'WEEKLY' ? `Weekly (${WEEKDAY_NAMES[(t.dayOfWeek ?? 1) - 1]})` : `Monthly (day ${t.dayOfMonth})`} · {AUTO_TRANSFER_STATUS_LABEL[t.status]}
-              {t.lastFailureReason && ` · ${t.lastFailureReason}`}
+              {at.frequency === 'WEEKLY' ? t('autoTransfers.weeklyLabel', { day: t(WEEKDAY_KEYS[(at.dayOfWeek ?? 1) - 1]) }) : t('autoTransfers.monthlyLabel', { day: at.dayOfMonth ?? 1 })} · {t(AUTO_TRANSFER_STATUS_KEY[at.status])}
+              {at.lastFailureReason && ` · ${at.lastFailureReason}`}
             </p>
           </div>
-          {t.status !== 'CANCELLED' && (
+          {at.status !== 'CANCELLED' && (
             <div style={{ display: 'flex', gap: '6px' }}>
-              <button className="toss-btn toss-btn-secondary" disabled={busyId === t.id} onClick={() => handleToggle(t)} style={{ fontSize: '12px', padding: '6px 10px' }}>
-                {busyId === t.id ? '…' : t.status === 'ACTIVE' ? 'Pause' : 'Resume'}
+              <button className="toss-btn toss-btn-secondary" disabled={busyId === at.id} onClick={() => handleToggle(at)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                {busyId === at.id ? '…' : at.status === 'ACTIVE' ? t('autoTransfers.pause') : t('autoTransfers.resume')}
               </button>
-              <button className="toss-btn toss-btn-secondary" disabled={busyId === t.id} onClick={() => handleCancel(t.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
-                Cancel
+              <button className="toss-btn toss-btn-secondary" disabled={busyId === at.id} onClick={() => handleCancel(at.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                {t('autoTransfers.cancelAction')}
               </button>
             </div>
           )}
@@ -1145,8 +1150,8 @@ function AutoTransfersCard() {
   );
 }
 
-const P2P_REQUEST_STATUS_LABEL: Record<P2pPaymentRequestStatus, string> = {
-  PENDING: 'Pending', COMPLETED: 'Paid', EXPIRED: 'Expired',
+const P2P_REQUEST_STATUS_KEY: Record<P2pPaymentRequestStatus, TranslationKey> = {
+  PENDING: 'requestMoney.statusPending', COMPLETED: 'requestMoney.statusPaid', EXPIRED: 'requestMoney.statusExpired',
 };
 
 // Real fixed-amount person-to-person payment request (item 167) -- see lib/p2p.ts's
@@ -1155,6 +1160,7 @@ const P2P_REQUEST_STATUS_LABEL: Record<P2pPaymentRequestStatus, string> = {
 // client already established -- this app has no camera QR scanner anywhere); anyone
 // who has the code can pay it directly, real wallet-to-wallet, no fee.
 function RequestMoneyCard() {
+  const { t } = useI18n();
   const [requests, setRequests] = useState<P2pPaymentRequestDto[] | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [amount, setAmount] = useState('');
@@ -1185,7 +1191,7 @@ function RequestMoneyCard() {
       setShowCreate(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this request.');
+      setError(err instanceof ApiError ? err.message : t('requestMoney.createError'));
     } finally {
       setCreating(false);
     }
@@ -1204,7 +1210,7 @@ function RequestMoneyCard() {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not pay this request.');
+        setError(err instanceof ApiError ? err.message : t('requestMoney.payError'));
       }
     } finally {
       setPaying(false);
@@ -1214,29 +1220,29 @@ function RequestMoneyCard() {
   return (
     <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Request money</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('requestMoney.title')}</h3>
         <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
-          {showCreate ? 'Cancel' : '+ New request'}
+          {showCreate ? t('requestMoney.cancel') : t('requestMoney.newRequest')}
         </button>
       </div>
 
       {showCreate && (
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
-            type="number" placeholder="Amount (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+            type="number" placeholder={t('requestMoney.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <input
-            type="text" placeholder="What's it for? (optional)" value={description} onChange={(e) => setDescription(e.target.value)}
+            type="text" placeholder={t('requestMoney.whatsItFor')} value={description} onChange={(e) => setDescription(e.target.value)}
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={creating}>{creating ? 'Creating…' : 'Create request'}</button>
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={creating}>{creating ? t('requestMoney.creating') : t('requestMoney.createButton')}</button>
         </form>
       )}
 
       {created && (
         <div style={{ padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px', marginBottom: '12px' }}>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Share this code -- expires in 15 minutes</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{t('requestMoney.shareCode')}</p>
           <p style={{ fontSize: '16px', fontWeight: 700, fontFamily: 'monospace', wordBreak: 'break-all' }}>{created.id}</p>
         </div>
       )}
@@ -1246,11 +1252,11 @@ function RequestMoneyCard() {
       ) : (
         <form onSubmit={handlePay} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <input
-            type="text" placeholder="Pay a request code" value={payCode} onChange={(e) => setPayCode(e.target.value)} required
+            type="text" placeholder={t('requestMoney.payCodePlaceholder')} value={payCode} onChange={(e) => setPayCode(e.target.value)} required
             style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
           />
           <button type="submit" className="toss-btn toss-btn-primary" disabled={paying} style={{ padding: '10px 16px', fontSize: '13px' }}>
-            {paying ? 'Paying…' : 'Pay'}
+            {paying ? t('requestMoney.paying') : t('requestMoney.pay')}
           </button>
         </form>
       )}
@@ -1259,12 +1265,12 @@ function RequestMoneyCard() {
 
       {requests !== null && requests.length > 0 && (
         <div>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '4px' }}>My requests</p>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '4px' }}>{t('requestMoney.myRequests')}</p>
           {requests.slice(0, 5).map((r) => (
             <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{r.amount.toLocaleString()} RWF{r.description ? ` · ${r.description}` : ''}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{P2P_REQUEST_STATUS_LABEL[r.status]}</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{t(P2P_REQUEST_STATUS_KEY[r.status])}</p>
               </div>
             </div>
           ))}
@@ -1277,6 +1283,7 @@ function RequestMoneyCard() {
 // Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168) -- see
 // lib/wallet.ts's own doc comment.
 function AutoTopUpCard({ walletId }: { walletId: string }) {
+  const { t } = useI18n();
   const [setting, setSetting] = useState<AutoTopUpSetting | null | undefined>(undefined);
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -1309,7 +1316,7 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
       setShowForm(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save this setting.');
+      setError(err instanceof ApiError ? err.message : t('autoTopUp.saveError'));
     } finally {
       setBusy(false);
     }
@@ -1323,7 +1330,7 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
       await configureAutoTopUp(walletId, setting.linkedAccountId, setting.thresholdAmount, setting.topUpAmount, setting.dailyTriggerCap, !setting.enabled);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this setting.');
+      setError(err instanceof ApiError ? err.message : t('autoTopUp.saveError'));
     } finally {
       setBusy(false);
     }
@@ -1337,7 +1344,7 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
       setTriggerResult(r.reason);
       load();
     } catch (err) {
-      setTriggerResult(err instanceof ApiError ? err.message : 'Could not check auto top-up.');
+      setTriggerResult(err instanceof ApiError ? err.message : t('autoTopUp.checkError'));
     } finally {
       setTriggering(false);
     }
@@ -1348,31 +1355,31 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
   return (
     <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Auto top-up</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('autoTopUp.title')}</h3>
         {linkedAccounts.length > 0 && (
           <button className="toss-btn toss-btn-secondary" onClick={() => setShowForm((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
-            {showForm ? 'Cancel' : setting ? 'Edit' : '+ Set up'}
+            {showForm ? t('autoTopUp.cancel') : setting ? t('autoTopUp.edit') : t('autoTopUp.setUp')}
           </button>
         )}
       </div>
 
       {linkedAccounts.length === 0 && !setting && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Link an external bank/mobile money account first to enable auto top-up.</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{t('autoTopUp.linkFirst')}</p>
       )}
 
       {showForm && (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <select value={linkedAccountId} onChange={(e) => setLinkedAccountId(e.target.value)} required style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
-            <option value="">Select linked account</option>
+            <option value="">{t('autoTopUp.selectAccount')}</option>
             {linkedAccounts.map((a) => <option key={a.id} value={a.id}>{a.provider} · {a.externalAccountNumberMasked}</option>)}
           </select>
-          <input type="number" placeholder="Top up when balance falls below (RWF)" value={thresholdAmount} onChange={(e) => setThresholdAmount(e.target.value)} min="0" required
+          <input type="number" placeholder={t('autoTopUp.thresholdPlaceholder')} value={thresholdAmount} onChange={(e) => setThresholdAmount(e.target.value)} min="0" required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
-          <input type="number" placeholder="Top-up amount (RWF)" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} min="1" required
+          <input type="number" placeholder={t('autoTopUp.topUpPlaceholder')} value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} min="1" required
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
-          <input type="number" placeholder="Max times per day" value={dailyTriggerCap} onChange={(e) => setDailyTriggerCap(e.target.value)} min="1"
+          <input type="number" placeholder={t('autoTopUp.maxPerDay')} value={dailyTriggerCap} onChange={(e) => setDailyTriggerCap(e.target.value)} min="1"
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('autoTopUp.saving') : t('autoTopUp.save')}</button>
         </form>
       )}
 
@@ -1381,18 +1388,18 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
       {setting && !showForm && (
         <div>
           <p style={{ fontSize: '13px' }}>
-            {setting.enabled ? 'On' : 'Off'} — top up {setting.topUpAmount.toLocaleString()} RWF when balance falls below {setting.thresholdAmount.toLocaleString()} RWF
+            {t('autoTopUp.summaryLine', { state: setting.enabled ? t('autoTopUp.on') : t('autoTopUp.off'), topUp: setting.topUpAmount.toLocaleString(), threshold: setting.thresholdAmount.toLocaleString() })}
           </p>
           <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '8px' }}>
-            Up to {setting.dailyTriggerCap}x/day · {setting.triggersToday} triggered today
+            {t('autoTopUp.upToPerDay', { cap: setting.dailyTriggerCap, count: setting.triggersToday })}
           </p>
           {triggerResult && <p style={{ fontSize: '12px', color: 'var(--toss-blue)', marginBottom: '8px' }}>{triggerResult}</p>}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleToggle} style={{ fontSize: '12px', padding: '6px 10px' }}>
-              {setting.enabled ? 'Turn off' : 'Turn on'}
+              {setting.enabled ? t('autoTopUp.turnOff') : t('autoTopUp.turnOn')}
             </button>
             <button className="toss-btn toss-btn-secondary" disabled={triggering} onClick={handleTrigger} style={{ fontSize: '12px', padding: '6px 10px' }}>
-              {triggering ? 'Checking…' : 'Check now'}
+              {triggering ? t('autoTopUp.checking') : t('autoTopUp.checkNow')}
             </button>
           </div>
         </div>
