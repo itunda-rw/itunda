@@ -2520,9 +2520,31 @@ precedent and warned against repeating it).
    the Kinyarwanda text itself is a careful, good-faith translation, **not verified by a native
    speaker** — flagged in the code's own doc comment, matching this codebase's established "demo/
    simulated, honestly labeled" discipline for anything it can't fully verify itself (same pattern as
-   `DemoExternalBalanceService`). Android and iOS still have zero locale infrastructure. Real next
-   steps, in order: native-speaker review of the existing `rw` strings, the same infrastructure on
-   Android/iOS, then phase content outward from login into wallet-overview and transfer next.
+   `DemoExternalBalanceService`).
+
+   **Android extended the same day**: `LoginScreen.kt` (Android's own equivalent highest-traffic
+   screen) now uses real `values/strings.xml` + `values-rw/strings.xml` resources — this module had
+   NO `strings.xml` at all before, every string was hardcoded directly in Kotlin. A real bug was
+   caught mid-implementation, not by the compiler: the first attempt used
+   `AppCompatDelegate.setApplicationLocales()`, the "normal" per-app language API, which silently
+   no-op'd — confirmed via an actual emulator screenshot showing the switcher still said "EN" after
+   tapping it twice, verified via `uiautomator dump` that the tap coordinates were genuinely correct.
+   Root cause: `MainActivity` extends `FragmentActivity`, not `AppCompatActivity`, so there's no
+   `AppCompatDelegate` instance attached to it to notice the locale change and recreate — a real,
+   non-obvious platform gotcha a clean `tsc`/`compileDebugKotlin`-equivalent pass would never have
+   caught. Fixed with a self-contained `Configuration`-override approach
+   (`context.createConfigurationContext`) wrapped via `CompositionLocalProvider(LocalContext
+   provides ...)` — works regardless of Activity base class, takes effect immediately on
+   recomposition, no Activity recreation needed. Persisted to `SharedPreferences` directly. Verified
+   on a real emulator: English render, tap-to-switch to Kinyarwanda, and persistence across a
+   `force-stop` + relaunch all confirmed via real screenshots (sent to the user), not just a
+   type-check. **Lesson reinforced**: this is the second time this specific research thread caught a
+   real gap only by actually running something (the first was the account-linking silent-failure
+   bug) — a clean compile is necessary but not sufficient evidence a UI change actually works.
+
+   iOS still has zero locale infrastructure. Real next steps, in order: native-speaker review of the
+   existing `rw` strings, the same infrastructure on iOS, then phase content outward from login into
+   wallet-overview and transfer next, on all 3 platforms.
 3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given

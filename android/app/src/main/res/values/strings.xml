@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Real first slice of Kinyarwanda/English localization on Android (2026-08-08). See
+  bank-mfe/src/i18n's own doc comment for the full context. This app previously had NO
+  strings.xml at all in the main :app module: every string was hardcoded directly in
+  Kotlin. LoginScreen.kt is itunda's own highest-traffic screen (see its own doc
+  comment), so it's the first real screen extracted, matching the same bounded scope
+  the web pass used. Uses Android's own real locale-resource mechanism (values-rw/) plus
+  AppCompatDelegate.setApplicationLocales for an in-app switcher independent of the
+  device's system language, rather than a hand-rolled solution like web's: Android
+  already has real, mature tooling for exactly this.
+-->
+<resources>
+    <string name="login_back">Back</string>
+    <string name="login_headline_phone_register">What\'s your phone number?</string>
+    <string name="login_headline_phone_login">Log in with your phone number</string>
+    <string name="login_subtitle_phone_register">We\'ll use this to keep your account secure.</string>
+    <string name="login_subtitle_phone_login">Enter the number you signed up with.</string>
+    <string name="login_label_phone_number">Phone number</string>
+    <string name="login_headline_name">What\'s your name?</string>
+    <string name="login_subtitle_name">This is how you\'ll appear to friends and merchants.</string>
+    <string name="login_label_first_name">First name</string>
+    <string name="login_label_last_name">Last name</string>
+    <string name="login_headline_password_register">Create a password</string>
+    <string name="login_headline_password_login">Enter your password</string>
+    <string name="login_subtitle_password_register">Use at least 8 characters.</string>
+    <string name="login_label_password">Password</string>
+    <string name="login_referral_prompt">Have a referral code?</string>
+    <string name="login_label_referral_code">Referral code</string>
+    <string name="login_button_create_account">Create account</string>
+    <string name="login_button_log_in">Log in</string>
+    <string name="login_button_next">Next</string>
+    <string name="login_switch_to_login">Already have an account? Log in</string>
+    <string name="login_switch_to_register">New to itunda? Create an account</string>
+    <string name="login_language_switcher_label">Language</string>
+</resources>

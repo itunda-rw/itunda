@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Kinyarwanda translations for LoginScreen.kt's strings. See values/strings.xml's own
+  doc comment for the full context. Same honesty note as bank-mfe's i18n/translations.ts:
+  this is a careful, good-faith translation, NOT verified by a native Kinyarwanda
+  speaker, and should get real native-speaker review before being treated as
+  production-final.
+-->
+<resources>
+    <string name="login_back">Subira inyuma</string>
+    <string name="login_headline_phone_register">Numero yawe ya telefoni ni iyihe?</string>
+    <string name="login_headline_phone_login">Injira ukoresheje numero yawe ya telefoni</string>
+    <string name="login_subtitle_phone_register">Tuzayikoresha kugira ngo turinde konti yawe.</string>
+    <string name="login_subtitle_phone_login">Andika numero wiyandikishijeho.</string>
+    <string name="login_label_phone_number">Numero ya telefoni</string>
+    <string name="login_headline_name">Amazina yawe ni ayahe?</string>
+    <string name="login_subtitle_name">Ni ko uzagaragara ku ncuti n\'abacuruzi.</string>
+    <string name="login_label_first_name">Izina rya mbere</string>
+    <string name="login_label_last_name">Izina rya nyuma</string>
+    <string name="login_headline_password_register">Shyiraho ijambo ry\'ibanga</string>
+    <string name="login_headline_password_login">Andika ijambo ry\'ibanga</string>
+    <string name="login_subtitle_password_register">Koresha inyuguti nibura 8.</string>
+    <string name="login_label_password">Ijambo ry\'ibanga</string>
+    <string name="login_referral_prompt">Ufite kode yo kwifashisha?</string>
+    <string name="login_label_referral_code">Kode yo kwifashisha</string>
+    <string name="login_button_create_account">Fungura konti</string>
+    <string name="login_button_log_in">Injira</string>
+    <string name="login_button_next">Komeza</string>
+    <string name="login_switch_to_login">Usanzwe ufite konti? Injira</string>
+    <string name="login_switch_to_register">Uri mushya kuri itunda? Fungura konti</string>
+    <string name="login_language_switcher_label">Ururimi</string>
+</resources>

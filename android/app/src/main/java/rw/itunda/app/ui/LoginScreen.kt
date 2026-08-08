@@ -1,5 +1,7 @@
 package rw.itunda.app.ui
 
+import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -29,6 +31,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,11 +45,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import rw.itunda.app.R
 import rw.itunda.core.network.AuthResult
 import rw.itunda.core.network.SessionManager
 import rw.itunda.core.designsystem.components.IdsButton
@@ -54,6 +62,31 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
+import java.util.Locale
+
+private const val LOCALE_PREFS_NAME = "itunda_locale_prefs"
+private const val LOCALE_PREFS_KEY = "app_locale"
+
+/**
+ * Real per-app language override, self-contained in Compose -- found live on the
+ * emulator (not just a clean compile) that AppCompatDelegate.setApplicationLocales,
+ * the "normal" per-app language API, silently no-ops here: MainActivity extends
+ * FragmentActivity, not AppCompatActivity, so there's no AppCompatDelegate instance
+ * attached to it to notice the change and recreate. Rather than switch the app's whole
+ * Activity base class just for this (a much bigger, riskier change), this wraps the
+ * localized content in its own Configuration-overridden Context via
+ * createConfigurationContext -- works with any Activity type, takes effect immediately
+ * on recomposition, no Activity recreation needed. Persisted to SharedPreferences
+ * directly (no AndroidX DataStore dependency yet in this module) so the choice survives
+ * a process restart, matching bank-mfe's own localStorage persistence.
+ */
+private fun readStoredLocale(context: Context): String =
+    context.getSharedPreferences(LOCALE_PREFS_NAME, Context.MODE_PRIVATE).getString(LOCALE_PREFS_KEY, null)
+        ?: if (Locale.getDefault().language == "rw") "rw" else "en"
+
+private fun storeLocale(context: Context, locale: String) {
+    context.getSharedPreferences(LOCALE_PREFS_NAME, Context.MODE_PRIVATE).edit().putString(LOCALE_PREFS_KEY, locale).apply()
+}
 
 /**
  * Real Toss-inspired step redesign, 2026-08-03 -- the previous version (still a real
@@ -81,6 +114,15 @@ import rw.itunda.core.designsystem.theme.IdsTypography
  */
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
+    val baseContext = LocalContext.current
+    var locale by remember { mutableStateOf(readStoredLocale(baseContext)) }
+    val localizedContext = remember(locale) {
+        val config = Configuration(baseContext.resources.configuration)
+        config.setLocale(Locale(locale))
+        baseContext.createConfigurationContext(config)
+    }
+
+    CompositionLocalProvider(LocalContext provides localizedContext) {
     IdsTheme {
         var isRegisterMode by remember { mutableStateOf(false) }
         var step by remember { mutableStateOf(0) }
@@ -149,7 +191,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         if (step > 0) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = stringResource(R.string.login_back),
                                 tint = Ids.colors.textPrimary,
                                 modifier = Modifier
                                     .size(40.dp)
@@ -162,7 +204,13 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     Spacer(modifier = Modifier.weight(1f))
                     StepDots(total = stepCount, current = step)
                     Spacer(modifier = Modifier.weight(1f))
-                    Spacer(modifier = Modifier.size(40.dp))
+                    LanguageSwitcher(
+                        locale = locale,
+                        onLocaleChange = { next ->
+                            locale = next
+                            storeLocale(baseContext, next)
+                        },
+                    )
                 }
 
                 Column(
@@ -198,8 +246,8 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                 currentStep == 0 -> PhoneStep(
                                     phoneNumber = phoneNumber,
                                     onPhoneNumberChange = { phoneNumber = it },
-                                    headline = if (registerMode) "What's your phone number?" else "Log in with your phone number",
-                                    subtitle = if (registerMode) "We'll use this to keep your account secure." else "Enter the number you signed up with.",
+                                    headline = stringResource(if (registerMode) R.string.login_headline_phone_register else R.string.login_headline_phone_login),
+                                    subtitle = stringResource(if (registerMode) R.string.login_subtitle_phone_register else R.string.login_subtitle_phone_login),
                                 )
                                 registerMode && currentStep == 1 -> NameStep(
                                     firstName = firstName,
@@ -238,7 +286,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     } else {
                         val isLastStep = step == stepCount - 1
                         IdsButton(
-                            text = if (isLastStep) (if (isRegisterMode) "Create account" else "Log in") else "Next",
+                            text = if (isLastStep) stringResource(if (isRegisterMode) R.string.login_button_create_account else R.string.login_button_log_in) else stringResource(R.string.login_button_next),
                             onClick = { goNext() },
                             enabled = currentStepValid,
                         )
@@ -251,7 +299,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(
-                                text = if (isRegisterMode) "Already have an account? Log in" else "New to itunda? Create an account",
+                                text = stringResource(if (isRegisterMode) R.string.login_switch_to_login else R.string.login_switch_to_register),
                                 style = IdsTypography.Body2.copy(fontWeight = FontWeight.SemiBold),
                                 color = Ids.colors.textBrand,
                             )
@@ -261,6 +309,32 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
             }
         }
     }
+    }
+}
+
+/**
+ * Real first in-app language switcher (2026-08-08) -- see values/strings.xml's and
+ * LoginScreen's own doc comments for the full context, including why this is
+ * Configuration-override-based rather than AppCompatDelegate-based (found live on the
+ * emulator that the latter silently no-ops against a FragmentActivity). Only 2 locales
+ * exist right now, so a simple toggle (shows the current selection, tap switches to the
+ * other) is the honest minimum -- matching bank-mfe's own "don't add weight this scope
+ * doesn't need yet" reasoning, not a full language picker for locales that don't exist yet.
+ */
+@Composable
+private fun LanguageSwitcher(locale: String, onLocaleChange: (String) -> Unit) {
+    val isKinyarwanda = locale == "rw"
+    val label = stringResource(R.string.login_language_switcher_label)
+    Text(
+        text = if (isKinyarwanda) "RW" else "EN",
+        style = IdsTypography.Body2.copy(fontWeight = FontWeight.SemiBold),
+        color = Ids.colors.textSecondary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onLocaleChange(if (isKinyarwanda) "en" else "rw") }
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .semantics { contentDescription = label },
+    )
 }
 
 @Composable
@@ -313,7 +387,7 @@ private fun PhoneStep(
         IdsTextField(
             value = phoneNumber,
             onValueChange = onPhoneNumberChange,
-            label = "Phone number",
+            label = stringResource(R.string.login_label_phone_number),
             keyboardType = KeyboardType.Phone,
             modifier = Modifier.focusRequester(focusRequester),
         )
@@ -329,18 +403,18 @@ private fun NameStep(
 ) {
     val focusRequester = rememberAutoFocus("name")
     Column {
-        StepHeadline("What's your name?", "This is how you'll appear to friends and merchants.")
+        StepHeadline(stringResource(R.string.login_headline_name), stringResource(R.string.login_subtitle_name))
         IdsTextField(
             value = firstName,
             onValueChange = onFirstNameChange,
-            label = "First name",
+            label = stringResource(R.string.login_label_first_name),
             modifier = Modifier.focusRequester(focusRequester),
         )
         Spacer(modifier = Modifier.height(Ids.layout.inlineGap))
         IdsTextField(
             value = lastName,
             onValueChange = onLastNameChange,
-            label = "Last name",
+            label = stringResource(R.string.login_label_last_name),
         )
     }
 }
@@ -359,8 +433,8 @@ private fun PasswordStep(
     val focusRequester = rememberAutoFocus("password")
     Column {
         StepHeadline(
-            if (isRegisterMode) "Create a password" else "Enter your password",
-            if (isRegisterMode) "Use at least 8 characters." else null,
+            stringResource(if (isRegisterMode) R.string.login_headline_password_register else R.string.login_headline_password_login),
+            if (isRegisterMode) stringResource(R.string.login_subtitle_password_register) else null,
         )
         // Real "Minimum Input" simplicity fix (docs/DESIGN_REFERENCES.md §11/§12): switched
         // to IdsTextField's new isPassword mode (show/hide toggle) instead of an always-
@@ -370,7 +444,7 @@ private fun PasswordStep(
         IdsTextField(
             value = password,
             onValueChange = onPasswordChange,
-            label = "Password",
+            label = stringResource(R.string.login_label_password),
             isPassword = true,
             keyboardType = KeyboardType.Password,
             isError = errorMessage != null,
@@ -383,12 +457,12 @@ private fun PasswordStep(
                 IdsTextField(
                     value = referralCode,
                     onValueChange = onReferralCodeChange,
-                    label = "Referral code",
+                    label = stringResource(R.string.login_label_referral_code),
                 )
             } else {
                 TextButton(onClick = onShowReferralField) {
                     Text(
-                        text = "Have a referral code?",
+                        text = stringResource(R.string.login_referral_prompt),
                         style = IdsTypography.Body2,
                         color = Ids.colors.textSecondary,
                     )
