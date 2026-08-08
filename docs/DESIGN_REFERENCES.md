@@ -2869,6 +2869,22 @@ actual runtime behavior of the fix (does the toggle in Settings now really chang
 everything else) has not been watched on a real emulator or device this round, so it's asserted from
 reading the code path, not observed. That's a real, named gap, not a silent claim of "verified."
 
+**Web has the same "unreachable after login" shape, fixed the same day.** `LoginPage.tsx`'s own
+switcher (a real `<select>`, added the very first day of this thread) only renders on the logged-out
+page — once a bank-mfe user signs in, there was no persistent way to change language without logging
+out again. Different root cause than Android's (this one was never wired anywhere post-login at all,
+not a propagation bug in an existing wire), same user-facing gap. Fixed by adding the identical
+`<select>`/`LOCALES` switcher to `BankDashboard`'s own persistent header — the "Itunda" title +
+first-name + sign-out row that renders above the tab bar on every single tab, not buried inside the
+`MyView` "My" tab specifically, so it's reachable no matter which tab a user is on. Verified with a real
+`tsc -b && vite build` (not just a syntax check) — clean, including the Module Federation bundling step
+this micro-frontend depends on.
+
+**All 3 platforms now have a reachable, persistent language switcher for logged-in users, not just at
+login.** That gap existed identically on all 3 (web/Android/iOS) going into today and is closed on all 3
+coming out of it — found because extending the localization work to a 4th screen meant asking "where
+does a signed-in user actually go to change this" on every platform, not just the one being worked on.
+
 ### Unresolved / worth a follow-up
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,

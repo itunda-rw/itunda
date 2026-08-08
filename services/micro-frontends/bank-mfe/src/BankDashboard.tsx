@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useI18n } from './i18n/I18nContext';
+import { LOCALES } from './i18n/translations';
 import { Badge } from './Badge';
 import { IdsButton } from './IdsButton';
 import { EmptyState, ErrorCard } from './EmptyState';
@@ -20333,6 +20334,14 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
   const user = getStoredUser();
+  // Real gap caught while adding Android/iOS's 4th localization screen (2026-08-08,
+  // docs/DESIGN_REFERENCES.md Section 19): LoginPage.tsx's own switcher only renders
+  // pre-login, so a signed-in user had no way to change language short of logging
+  // out -- Android had the same gap in a different shape (see
+  // the-switch-that-only-flipped-one-room.ts). This header renders on every tab, so
+  // putting it here (not buried in one tab like MyView) fixes it for the whole app in
+  // one place rather than one screen.
+  const { locale, setLocale } = useI18n();
 
   // Real 쿠팡파트너스-style affiliate link capture (item 229) -- see
   // lib/affiliate.ts's own doc comment. Best-effort, runs once per real page load.
@@ -20400,6 +20409,16 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         <h2 style={{ color: 'var(--toss-grey-900)', margin: 0, fontSize: '24px', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {user && <span style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{user.firstName}</span>}
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as 'en' | 'rw')}
+            aria-label="Language"
+            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--toss-grey-200)', color: 'var(--toss-grey-700)', background: 'var(--toss-white)' }}
+          >
+            {LOCALES.map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
           <button onClick={handleLogout} style={{ color: 'var(--toss-grey-500)', display: 'flex', padding: '4px' }} aria-label="Sign out">
             <LogOut size={18} />
           </button>

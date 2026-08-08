@@ -34,5 +34,9 @@ The part worth sitting with is what this means about everything localized before
 ## What we're not claiming
 
 We haven't watched this fixed version run. The device that would prove it — flip the switch on Settings, walk into the overview screen, see Kinyarwanda where English used to be regardless of what the phone's own system language is set to — isn't available to us in this session the way it was for the very first version of this switcher. What we have is a change that traces correctly through the code: the shared value exists, the one wrapper that matters now sits above both the logged-in and logged-out states instead of inside just one of them, and every screen's existing translation calls don't need to change at all, because they were already asking the right question — they just needed the app to finally be listening for the real answer. That's a real fix, reasoned through carefully. It is not the same claim as a screenshot of it working, and after finding a bug that looked exactly like success for four screens running, we're not going to blur that difference again.
+
+## The same question, asked of the other two platforms
+
+Finding this on one platform is a reason to ask it of the other two immediately, not eventually. The web app's own switcher turned out to have the identical user-facing hole, for a plainer reason: it was only ever placed on the logged-out page in the first place, never wired anywhere past it. No hidden propagation bug there — just a control that was never given a second home once a person signs in. Same fix in spirit: it now lives in the header that renders above every tab in the signed-in app, not just the one screen it started on. All three platforms went into today with a switcher a signed-in person couldn't actually reach, and came out of it with one they can, on every screen, not just the first one they see.
 `,
 };
