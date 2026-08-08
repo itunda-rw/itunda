@@ -1417,6 +1417,178 @@ private struct GroupSplitBillsView: View {
     }
 }
 
+// Real 1:1-chat split-bill view (2026-08-09) -- see backend
+// SplitBillService.createDirectSplitBill's own doc comment. Same shape as
+// GroupSplitBillsView above, minus the member-picker: a 1:1 split always has exactly
+// one other participant, fixed by which conversation this was opened from.
+private struct DirectSplitBillsView: View {
+    let otherUserId: String
+    let otherUserName: String
+    let currentUserId: String?
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var splitBills: [SplitBillWithParticipants]?
+    @State private var error: String?
+    @State private var busyId: String?
+    @State private var showNewForm = false
+    @State private var amountText = ""
+    @State private var descriptionText = ""
+    @State private var ladderMode = false
+    @State private var varianceLevel = 1
+    @State private var receiptUrlDrafts: [String: String] = [:]
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    if !showNewForm {
+                        Button(action: { showNewForm = true }) {
+                            Text("Split a bill").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            IdsTextField("Total amount (RWF)", text: $amountText, keyboardType: .numberPad)
+                            IdsTextField("What was it for?", text: $descriptionText)
+                            Text("Split with \(otherUserName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            HStack {
+                                Text("🎲 Ladder game (randomized split)").font(.caption)
+                                Spacer()
+                                Text(ladderMode ? "On" : "Off").font(.caption).bold().foregroundColor(ladderMode ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture { ladderMode.toggle() }
+                            if ladderMode {
+                                HStack(spacing: 8) {
+                                    ForEach([1, 2, 3], id: \.self) { level in
+                                        Button(action: { varianceLevel = level }) {
+                                            Text("Level \(level)").font(.caption).bold()
+                                                .foregroundColor(varianceLevel == level ? .white : IDS.Colors.textPrimary)
+                                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                                .background(varianceLevel == level ? IDS.Colors.brand : IDS.Colors.chipBackground).cornerRadius(8)
+                                        }
+                                    }
+                                }
+                            }
+                            Button(action: { Task { await create() } }) {
+                                Text(busyId == "new" ? "Creating…" : "Create").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12)
+                                    .background((amountText.isEmpty || descriptionText.isEmpty) ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(10)
+                            }
+                            .disabled(busyId == "new" || amountText.isEmpty || descriptionText.isEmpty)
+                        }
+                        .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                    }
+                    if let splitBills {
+                        if splitBills.isEmpty {
+                            Text("No split bills with \(otherUserName) yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        ForEach(splitBills) { entry in
+                            let myShare = entry.participants.first { $0.userId == currentUserId }
+                            let isOrganizer = entry.splitBill.organizerId == currentUserId
+                            let hasPending = entry.participants.contains { $0.status == "PENDING" }
+                            let modeLabel = entry.splitBill.mode == "LADDER" ? " · 🎲 Ladder L\(entry.splitBill.ladderVarianceLevel ?? 0)" : ""
+                            let roundLabel = entry.splitBill.currentRound > 1 ? " · Round \(entry.splitBill.currentRound)" : ""
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(entry.splitBill.description).bold()
+                                Text("Total \(Int(entry.splitBill.totalAmount)) RWF · \(entry.splitBill.status)\(modeLabel)\(roundLabel)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                ForEach(entry.participants) { p in
+                                    let name = p.userId == otherUserId ? otherUserName : "You"
+                                    Text("\(name): \(Int(p.shareAmount)) RWF (\(p.status))").font(.caption)
+                                }
+                                if let url = entry.splitBill.receiptImageUrl {
+                                    Text("🧾 Receipt: \(url)").font(.caption2).foregroundColor(IDS.Colors.brand).lineLimit(1)
+                                }
+                                if let myShare, myShare.status == "PENDING" {
+                                    Button(action: { Task { await pay(entry.splitBill.id) } }) {
+                                        Text(busyId == entry.splitBill.id ? "Paying…" : "Pay my share (\(Int(myShare.shareAmount)) RWF)")
+                                            .bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                                    }
+                                    .disabled(busyId != nil)
+                                }
+                                if isOrganizer && entry.splitBill.receiptImageUrl == nil {
+                                    HStack(spacing: 6) {
+                                        IdsTextField("Receipt photo URL", text: Binding(
+                                            get: { receiptUrlDrafts[entry.splitBill.id] ?? "" },
+                                            set: { receiptUrlDrafts[entry.splitBill.id] = $0 }
+                                        ))
+                                        Button(action: { Task { await attachReceipt(entry.splitBill.id) } }) {
+                                            Text("Attach").font(.caption).bold().padding(.horizontal, 12).padding(.vertical, 8)
+                                                .background(IDS.Colors.chipBackground).cornerRadius(8)
+                                        }
+                                        .disabled(busyId != nil || (receiptUrlDrafts[entry.splitBill.id] ?? "").trimmingCharacters(in: .whitespaces).isEmpty)
+                                    }
+                                }
+                                if isOrganizer && entry.splitBill.status == "OPEN" && hasPending && entry.splitBill.currentRound < 5 {
+                                    Button(action: { Task { await nextRound(entry.splitBill.id) } }) {
+                                        Text("Nudge unpaid → round \(entry.splitBill.currentRound + 1)").font(.caption).bold()
+                                            .frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                                    }
+                                    .disabled(busyId != nil)
+                                }
+                            }
+                            .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        }
+                    } else {
+                        ProgressView()
+                    }
+                }
+                .padding(IDS.Layout.screenHorizontal)
+            }
+            .navigationTitle("Split bills")
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Close") { dismiss() } } }
+            .task { await refresh() }
+        }
+    }
+
+    private func refresh() async {
+        do { splitBills = try await NetworkClient.shared.getDirectSplitBills(otherUserId: otherUserId).splitBills }
+        catch { self.error = "Could not load split bills." }
+    }
+
+    private func create() async {
+        guard let amount = Double(amountText) else { return }
+        busyId = "new"; error = nil
+        defer { busyId = nil }
+        do {
+            _ = try await NetworkClient.shared.createDirectSplitBill(
+                otherUserId: otherUserId, totalAmount: amount, description: descriptionText,
+                mode: ladderMode ? "LADDER" : "EVEN", ladderVarianceLevel: ladderMode ? varianceLevel : nil
+            )
+            amountText = ""; descriptionText = ""; showNewForm = false; ladderMode = false
+            await refresh()
+        } catch { self.error = "That split bill could not be created." }
+    }
+
+    private func pay(_ splitBillId: String) async {
+        busyId = splitBillId; error = nil
+        defer { busyId = nil }
+        do {
+            _ = try await NetworkClient.shared.paySplitBillShare(splitBillId: splitBillId)
+            await refresh()
+        } catch { self.error = "That payment could not be completed." }
+    }
+
+    private func attachReceipt(_ splitBillId: String) async {
+        guard let url = receiptUrlDrafts[splitBillId], !url.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        busyId = splitBillId; error = nil
+        defer { busyId = nil }
+        do {
+            _ = try await NetworkClient.shared.attachSplitBillReceipt(splitBillId: splitBillId, imageUrl: url)
+            receiptUrlDrafts[splitBillId] = nil
+            await refresh()
+        } catch { self.error = "That receipt could not be attached." }
+    }
+
+    private func nextRound(_ splitBillId: String) async {
+        busyId = splitBillId; error = nil
+        defer { busyId = nil }
+        do {
+            _ = try await NetworkClient.shared.requestSplitBillNextRound(splitBillId: splitBillId)
+            await refresh()
+        } catch { self.error = "Could not start the next settlement round." }
+    }
+}
+
 // Real leave-group/add-member (2026-07-22) -- found fully built on the backend
 // (GroupMessagingController's POST/DELETE .../members) with zero client UI anywhere.
 // Add-member picks from the caller's real Talk contacts, filtered to exclude people
@@ -1571,6 +1743,9 @@ private struct ChatThreadScreen: View {
     @State private var showPhotoPicker = false
     @State private var uploadingPhoto = false
     @State private var showMediaGallery = false
+    // Real 1:1-chat split-bill (2026-08-09) -- see DirectSplitBillsView's own doc
+    // comment; mirrors GroupThreadScreen's own identical showSplitBills toggle.
+    @State private var showSplitBills = false
     // Real KakaoTalk-style 기프티콘 gift voucher (item 138) -- see
     // GiftVoucherComposerPanel's own doc comment.
     @State private var vouchersByMessageId: [String: GiftVoucherDto] = [:]
@@ -1613,6 +1788,10 @@ private struct ChatThreadScreen: View {
                     Image(systemName: "photo.on.rectangle").font(.system(size: 18)).frame(width: 40, height: 40)
                 }
                 .accessibilityLabel("Shared photos")
+                Button(action: { showSplitBills = true }) {
+                    Image(systemName: "receipt").font(.system(size: 18)).frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Split a bill")
                 Button(blocking ? "…" : (isBlocked ? "Unblock" : "Block")) {
                     if isBlocked {
                         Task { await unblockParticipant() }
@@ -1931,6 +2110,9 @@ private struct ChatThreadScreen: View {
         }
         .sheet(isPresented: $showMediaGallery) {
             MediaGalleryView(imageUrls: (messages ?? []).compactMap { $0.imageUrl }.reversed())
+        }
+        .sheet(isPresented: $showSplitBills) {
+            DirectSplitBillsView(otherUserId: conversation.otherUserId, otherUserName: conversation.otherUserName, currentUserId: currentUserId)
         }
         .sheet(item: $forwarding) { message in
             ForwardPickerView(

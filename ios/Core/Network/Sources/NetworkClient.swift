@@ -5301,6 +5301,19 @@ public struct AttachSplitBillReceiptRequest: Encodable { public let imageUrl: St
 // requestNextRound's controller responses carry only {success, splitBill}, no participants.
 public struct SplitBillOnlyResponse: Decodable { public let success: Bool; public let splitBill: SplitBillDto }
 
+// Real 1:1-chat split-bill request (2026-08-09) -- no participantUserIds field, unlike
+// CreateSplitBillRequest above: the other person is fixed by the otherUserId path
+// segment, since this endpoint is for exactly two people, not an existing group. See
+// backend SplitBillController's CreateDirectSplitBillRequest's own doc comment.
+public struct CreateDirectSplitBillRequest: Encodable {
+    public let totalAmount: Double; public let description: String
+    public let mode: String; public let ladderVarianceLevel: Int?
+    public init(totalAmount: Double, description: String, mode: String = "EVEN", ladderVarianceLevel: Int? = nil) {
+        self.totalAmount = totalAmount; self.description = description
+        self.mode = mode; self.ladderVarianceLevel = ladderVarianceLevel
+    }
+}
+
 public struct AddContactRequest: Encodable { public let name: String; public let bank: String?; public let phoneNumber: String }
 public struct ContactDto: Decodable, Identifiable { public let id: String; public let userId: String; public let name: String; public let bank: String; public let acc: String; public let phoneNumber: String; public let color: String; public let letter: String }
 public struct ContactsResponse: Decodable { public let success: Bool; public let contacts: [ContactDto] }
@@ -5531,6 +5544,25 @@ extension NetworkClient {
 
     public func getSplitBillsForGroup(groupConversationId: String) async throws -> SplitBillsForGroupResponse {
         try await get("api/v1/split-bills/conversations/\(groupConversationId)")
+    }
+
+    // Real 1:1-chat split-bill entry point (2026-08-09) -- see backend
+    // SplitBillService.createDirectSplitBill's own doc comment: resolves a hidden
+    // 2-person group between the caller and otherUserId first, so this never needs an
+    // existing named group the way createSplitBill above does.
+    public func createDirectSplitBill(otherUserId: String, totalAmount: Double, description: String, mode: String = "EVEN", ladderVarianceLevel: Int? = nil) async throws -> CreateSplitBillResponse {
+        try await authenticatedPost(
+            "api/v1/split-bills/direct/\(otherUserId)",
+            body: CreateDirectSplitBillRequest(totalAmount: totalAmount, description: description, mode: mode, ladderVarianceLevel: ladderVarianceLevel),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    // Real read-only counterpart -- never creates a hidden group as a side effect of
+    // just viewing this tab; see backend SplitBillService.getDirectSplitBills's own
+    // doc comment.
+    public func getDirectSplitBills(otherUserId: String) async throws -> SplitBillsForGroupResponse {
+        try await get("api/v1/split-bills/direct/\(otherUserId)")
     }
 
     public func paySplitBillShare(splitBillId: String) async throws -> PaySplitBillShareResponse {

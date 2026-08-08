@@ -3140,9 +3140,32 @@ every other Android change today — no device available this session.
 
 Two of three clients can now reach this feature. iOS remains the one honestly-named gap.
 
+### iOS client wired in, closing all 3 platforms (2026-08-09)
+
+`TalkScreen.swift`'s `ChatThreadScreen` (the 1:1 conversation screen — `GroupThreadScreen`, its
+group-chat sibling, already had `GroupSplitBillsView` wired in, same "receipt" toolbar icon this pass
+mirrors) gets the identical entry point Android and web already have: a new `DirectSplitBillsView`
+struct, same shape as `GroupSplitBillsView` minus the member-picker. `NetworkClient.swift` gained
+`CreateDirectSplitBillRequest`, `createDirectSplitBill`, and `getDirectSplitBills` — the `Core/Network`
+Tuist module all 3 platforms' iOS clients already share.
+
+**Verification tier, honestly named**: real `xcodebuild -scheme CoreNetwork build` — compiles, links,
+codesigns cleanly, confirming the new network-layer code is correct. For `TalkScreen.swift` itself (in
+the `App` target, which can't build standalone the way `CoreNetwork`/`FeaturePayments`/`FeatureBanking`
+can): ran the real `ItundaApp` scheme build and confirmed the *only* errors are the same pre-existing,
+unrelated brownfield-module dependency failures this thread has named before
+(`React`/`React_RCTAppDelegate`/`MapLibre`/`BrickModule`/`GraniteBrownfield`) — zero errors mentioning
+`TalkScreen.swift` anywhere in the output, and `swiftc -parse` on the file alone is also clean. That's
+real, if indirect, evidence the new code is syntactically and semantically sound within its own target,
+short of a full link (which nothing in `App/Sources` can currently get past on this brownfield blocker).
+`accessibility-lint.py` clean.
+
+**All 3 platforms can now reach this feature** — the 1:1-chat split-bill gap that was investigated and
+shelved twice before is closed everywhere: backend, web, Android, iOS. No device/simulator has watched
+any of the 3 clients actually render or complete a real split this session; that remains the honestly-
+named ceiling on every non-web platform's work in this whole thread.
+
 ### Unresolved / worth a follow-up
-- iOS still needs the same "Split a bill" entry point wired into its own 1:1 conversation screen — the
-  backend and 2 of 3 clients are done; iOS is the last one.
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the
