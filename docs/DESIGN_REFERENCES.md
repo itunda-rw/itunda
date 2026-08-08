@@ -2500,18 +2500,29 @@ precedent and warned against repeating it).
 
 1. **[sourced, real, done same day]** Agent fraud-engine gap and Saronite `openURL` allowlist — both
    fixed, see above.
-2. **[sourced, real, large, NOT fixed this pass — sized honestly]** Kinyarwanda/French localization.
-   `find` across every localization convention this repo could plausibly use (`values-rw/`,
-   `values-fr/`, any `i18n`/`localiz*` directory, any `"rw":`/`"kinyarwanda"` key) returned **zero
-   real locale infrastructure anywhere** — not bank-mfe, not Android, not iOS. Every string in the
-   whole app is hardcoded English. itunda's own explicit financial-inclusion mission, and the
-   Paytm/PhonePe research finding that >50% of new fintech users in a comparable market prefer
-   regional-language support over English, make this a real, significant gap — but full localization
-   (locale infrastructure + translating what is likely thousands of strings across 3 platforms) is a
-   multi-week-scale project, not something to rush or silently half-build in one pass. Not attempted
-   this round; recommend a dedicated future effort starting with locale *infrastructure* (a real
-   i18n framework wired into all 3 clients) before content, and prioritizing the highest-traffic
-   screens (login, wallet overview, transfer) first if translation work is itself phased.
+2. **[sourced, real, large — first slice shipped 2026-08-08, honestly not finished]**
+   Kinyarwanda/French localization. `find` across every localization convention this repo could
+   plausibly use (`values-rw/`, `values-fr/`, any `i18n`/`localiz*` directory, any
+   `"rw":`/`"kinyarwanda"` key) returned **zero real locale infrastructure anywhere** — not bank-mfe,
+   not Android, not iOS. Every string in the whole app was hardcoded English. itunda's own explicit
+   financial-inclusion mission, and the Paytm/PhonePe research finding that >50% of new fintech users
+   in a comparable market prefer regional-language support over English, make this a real,
+   significant gap. Full localization (translating what is likely thousands of strings across 3
+   platforms) is genuinely multi-week-scale and NOT attempted here — but real locale
+   *infrastructure* plus the single highest-traffic screen (login) is now real, not just planned:
+   `services/micro-frontends/bank-mfe/src/i18n/` — a small, dependency-free dictionary + React
+   Context (`translations.ts`/`I18nContext.tsx`, deliberately not pulling in a full i18n framework
+   for 2 locales and 1 screen, matching this codebase's own "don't add weight you don't need yet"
+   discipline), a working English/Kinyarwanda switcher on `LoginPage.tsx` (persisted to
+   `localStorage`, defaulting to the browser's own locale if it's Kinyarwanda), verified via
+   `tsc -b` clean and a real headless-Chrome render (not just a type-check) — screenshot sent to the
+   user directly. **Explicitly, honestly scoped smaller than "done"**: web only, one screen only, and
+   the Kinyarwanda text itself is a careful, good-faith translation, **not verified by a native
+   speaker** — flagged in the code's own doc comment, matching this codebase's established "demo/
+   simulated, honestly labeled" discipline for anything it can't fully verify itself (same pattern as
+   `DemoExternalBalanceService`). Android and iOS still have zero locale infrastructure. Real next
+   steps, in order: native-speaker review of the existing `rw` strings, the same infrastructure on
+   Android/iOS, then phase content outward from login into wallet-overview and transfer next.
 3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given
@@ -2600,8 +2611,24 @@ limit) before they even started, regardless of running one-at-a-time this round.
   net-receive amount, not just the raw rate. itunda's FX disclosure practice already exceeds what
   Wise got fined for lacking.
 
+### 1:1-chat split-bill gap — investigated deeper, confirmed non-trivial with a concrete reason
+
+Re-examined whether the group-chat coupling was really as large as first estimated: `GroupConversation`
+has no minimum-member requirement (`createGroup` only requires "at least one other real member"), so
+a 2-person group is structurally valid — meaning an organizer and one other user *could* be wrapped in
+a synthetic 2-person group and route through 100% of the existing, unmodified `createSplitBill` logic.
+That looked promising until designing it out fully: a synthetic group created via the existing, public
+`createGroup` would show up in both users' real "My Groups" list (`GroupConversationRepository.
+findByMember` has no concept of hidden/synthetic groups) — a confusing, generically-named group neither
+user asked to create. Fixing that cleanly needs either (a) a new hidden/synthetic flag on
+`GroupConversation`, threaded through the group-listing query, or (b) extending `SplitBill`'s own
+domain model with a second, direct-conversation-backed branch, touching every method that currently
+assumes `groupConversationId` (settlement messages, `getSplitBillsForGroup`, several others). Both are
+real, non-trivial scope — confirms the original sizing, now with a concrete design reason rather than a
+vague "non-trivial." Not built this pass; noted for whoever picks this up next.
+
 ### Unresolved / worth a follow-up
-- The 1:1-chat split-bill gap (Section 19 main body) — real, scoped, not yet built.
+- The 1:1-chat split-bill gap above — real, scoped, two concrete design options identified, neither built.
 - Naver Pay's real engineering-blog depth (d2.naver.com) and Wise's real ledger architecture: both
   now confirmed genuinely unrecoverable with this environment's current fetch tooling, not worth a
   third attempt without a different access method. Samsung Pay: still entirely unresearched.
