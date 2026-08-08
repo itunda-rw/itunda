@@ -17,7 +17,18 @@ android {
         buildConfigField("String", "API_BASE_URL", "\"${project.findProperty("apiBaseUrl") ?: "http://10.0.2.2:4001/"}\"")
     }
 
-    buildTypes { release { isMinifyEnabled = false } }
+    buildTypes {
+        release {
+            // Real Toss-parity performance/security fix (2026-08-09), same as :app -- see
+            // proguard-rules.pro's own header for why Gson needed explicit keep rules first.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }

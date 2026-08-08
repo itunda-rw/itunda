@@ -27,7 +27,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Real Toss-parity performance/security fix (2026-08-09), same as :app -- see
+            // proguard-rules.pro's own header for why Gson needed explicit keep rules first.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
