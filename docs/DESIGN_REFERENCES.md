@@ -2542,9 +2542,27 @@ precedent and warned against repeating it).
    real gap only by actually running something (the first was the account-linking silent-failure
    bug) — a clean compile is necessary but not sufficient evidence a UI change actually works.
 
-   iOS still has zero locale infrastructure. Real next steps, in order: native-speaker review of the
-   existing `rw` strings, the same infrastructure on iOS, then phase content outward from login into
-   wallet-overview and transfer next, on all 3 platforms.
+   **iOS extended the same day, completing login-screen parity on all 3 platforms.**
+   `LoginScreen.swift` now uses a plain Swift dictionary + a `t(_:)` helper, mirroring web/Android's
+   own identical "don't add framework weight this scope doesn't need yet" choice — deliberately NOT
+   `.strings` files + `NSLocalizedString` (the standard iOS mechanism), and deliberately kept
+   entirely self-contained in this one existing file rather than adding new files to the Xcode
+   project: this project's `.pbxproj` has no file-system-synchronized groups (confirmed via grep
+   before writing this), so every new Swift file needs a real, error-prone manual `.pbxproj` edit —
+   not worth that risk for one screen's worth of strings. Same toggle-switcher UX as Android
+   (persisted to `UserDefaults`, defaulting to the device's preferred language if it's Kinyarwanda).
+   **Honestly lower verification tier than Android got**: zero errors attributed to the file in a
+   full `xcodebuild` attempt, plus a clean `swiftc -parse` syntax check and a clean
+   `accessibility-lint.py` pass — but no real on-device/simulator screenshot this time, unlike
+   Android. The `ItundaApp` scheme still can't fully link (the same pre-existing, unrelated CocoaPods
+   gaps named in Section 18), and there's no established simulator-screenshot workflow for iOS this
+   session the way there is for Android's emulator — building one (or running `pod install` to fix
+   the underlying link gap) was judged out of scope for this specific fix rather than attempted as a
+   risky side effect.
+
+   Real next steps, in order: native-speaker review of the existing `rw` strings on both platforms,
+   a real iOS simulator/on-device check of this screen (the verification gap named above), then
+   phase content outward from login into wallet-overview and transfer next, on all 3 platforms.
 3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given

@@ -2,8 +2,8 @@ export const theLanguageWeNeverAskedAbout = {
   slug: 'the-language-we-never-asked-about',
   title: "We built a financial-inclusion app for Rwanda and never once asked whether it spoke Kinyarwanda",
   date: '2026-08-08',
-  author: 'Web & Android Teams',
-  tags: ['web', 'android', 'i18n', 'accessibility', 'research', 'incident-writeup'],
+  author: 'Web, Android & iOS Teams',
+  tags: ['web', 'android', 'ios', 'i18n', 'accessibility', 'research', 'incident-writeup'],
   excerpt:
     "A research pass into how Paytm and PhonePe serve low-digital-literacy users in India turned into a much simpler, much more uncomfortable question about our own app: does it work in the language most of our own users actually speak? We checked. It didn't. Here's the honest first step, not the finished answer — including a real bug the compiler never would have caught.",
   content: `
@@ -39,8 +39,14 @@ The real cause: the API we used, \`AppCompatDelegate.setApplicationLocales\`, on
 
 Switching the app's whole Activity base class to fix one language switcher would have been a much bigger, riskier change than the feature itself. Instead we built the switch ourselves: wrap the localized screen in its own configuration override, applied directly through Compose, independent of whatever kind of Activity happens to be hosting it. Rebuilt, reinstalled, tapped the switcher again. This time the screen actually changed — English to Kinyarwanda, live, no reload. We killed the app entirely and relaunched it to check the choice actually stuck. It did.
 
+## The third platform, and the honest gap in how we checked it
+
+We closed out the third platform the same day. iOS's login screen got the identical treatment — a small dictionary of strings, a toggle switcher, a choice that survives closing and reopening the app. We deliberately kept it inside the one file that already existed rather than adding a new file to the project: this particular Xcode project doesn't use the newer auto-syncing folder feature, which means every new file has to be registered by hand in a large, easy-to-corrupt project file. That felt like a bad trade for a single screen's worth of strings, so we didn't make it.
+
+Here's the part worth being honest about instead of quietly smoothing over: we couldn't check this one the way we checked Android's. The Android bug only surfaced because we installed a real build on a real emulator and pressed the actual button. We don't have that same setup ready for iOS in this environment — the full app can't even finish linking yet, for reasons that have nothing to do with this change, and there's no simulator-screenshot habit built up the way there is on the Android side. What we do have is a clean build of the specific file with zero errors, a clean syntax check, and a clean accessibility pass. That's real signal, but it's not the same thing as watching the screen actually change languages in front of us, and after what just happened on Android, we're not willing to pretend those are equivalent. Said plainly, in the code and here: this one still needs a real device check before anyone treats it as verified the same way the other two are.
+
 ## What's still true after today
 
-iOS still has nothing. Web and Android each have one screen out of what's probably hundreds on each platform. The Kinyarwanda strings that do exist — on both platforms now — need a real speaker to check them before anyone should call this production-ready. None of that got fixed today, and none of it should be quietly forgotten because a handful of smaller things did get fixed instead. A mission statement about financial inclusion is a real commitment, not a decoration — and the honest state of that commitment, right now, is: started on two of three platforms, not finished on any of them, written down exactly that way. The Android bug is the more useful takeaway of the two, honestly: a language switcher that silently does nothing is worse than no switcher at all, and the only way we found that out was by actually pressing the button.
+Every platform now has one localized screen and a language switcher that actually works — two of them proven by watching it happen, one of them proven only by the build succeeding. The Kinyarwanda strings on all three still need a real speaker to check them before any of this is production-ready. None of that got fixed today, and none of it should be quietly forgotten because a handful of smaller things did get fixed instead. A mission statement about financial inclusion is a real commitment, not a decoration — and the honest state of that commitment, right now, is: started on three platforms, finished on none of them, verified to different degrees on each, written down exactly that way. The Android bug is still the sharpest lesson of the three: a language switcher that silently does nothing is worse than no switcher at all, and the only way we found that out was by actually pressing the button.
 `,
 };
