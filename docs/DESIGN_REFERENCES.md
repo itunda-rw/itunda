@@ -2575,10 +2575,37 @@ precedent and warned against repeating it).
    so (unlike the login screen's real headless-Chrome screenshot) this one is compile+logic-verified
    only, not visually confirmed end-to-end.
 
+   **Android extended to the same second screen** (`OverviewScreen.kt`) — real `values/strings.xml`
+   + `values-rw/strings.xml` entries (`overview_*`), using Android's own native printf-style format
+   specifiers (`%1$s`/`%2$d`) for the same dynamic-amount/count strings web needed
+   `{{placeholder}}` interpolation for. Also caught and fixed two smaller real things while doing
+   this: (1) the file's own top-of-file doc comment was stale, still describing the
+   `AppCompatDelegate` approach that was actually replaced during the login-screen fix — corrected;
+   (2) the web pass's `overview.linkError`/`unlinkError` set turned out to be missing a real third
+   case (the `VERIFICATION_FAILED` message shown when a link attempt is declined but not thrown as
+   an error, see Section 17) — added to Android's strings AND retroactively to bank-mfe's own
+   `translations.ts`, not left inconsistent between platforms. A real Kotlin compile error also
+   caught a cross-module smart-cast restriction (`account.demoBalance`, a nullable property from a
+   different Gradle module, needed a local `val` binding before a null check would smart-cast it) —
+   a genuine, unrelated-to-localization Kotlin gotcha the compiler itself caught.
+
+   **Verification note, mixed**: `:app:compileDebugKotlin` clean, `accessibility-lint.py` clean, and
+   — unlike the compile-only iOS login fix — a REAL login flow was run end-to-end against the live
+   local backend on this exact build (real seeded demo account, `+250788123456`/`password123`,
+   confirmed via a real emulator screenshot showing the actual wallet balance), proving the
+   string-resource wiring for login didn't regress. The actual `OverviewScreen` render itself,
+   however, is **not** visually confirmed this round: the emulator process hung mid-navigation
+   (confirmed genuinely stuck, not just slow — a `qemu-system-aarch64` process sitting in
+   uninterruptible-sleep state even after a 120-second wait), most likely resource contention with
+   the private-cloud Multipass VM also running on this same machine (see
+   [[project_itunda_private_cloud]]). Not pushed further to avoid destabilizing an already-stressed
+   environment. Named as a real, open gap rather than silently skipped or asserted as verified.
+
    Real next steps, in order: native-speaker review of the existing `rw` strings on both platforms,
-   a real iOS simulator/on-device check of the login screen (the verification gap named above), a
-   real logged-in-session visual check of the new overview strings, then phase content outward into
-   Android/iOS's own overview screens and transfer next, on all 3 platforms.
+   a real iOS simulator/on-device check of the login screen and a real emulator check of Android's
+   overview screen (both named verification gaps above), a real logged-in-session visual check of
+   web's new overview strings, then phase content outward into iOS's own overview screen and
+   transfer next, on all 3 platforms.
 3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given

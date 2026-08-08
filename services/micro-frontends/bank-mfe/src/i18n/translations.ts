@@ -57,7 +57,14 @@ type TranslationKey =
   | 'overview.linkAccount'
   | 'overview.loadError'
   | 'overview.linkError'
-  | 'overview.unlinkError';
+  | 'overview.unlinkError'
+  // Real gap caught while porting this exact screen to Android (2026-08-08): this
+  // specific message -- shown when the backend saves a link attempt as
+  // VERIFICATION_FAILED, a real 200 response, not a thrown error (see
+  // BankDashboard.tsx's own handleLink comment) -- was missed in this file's own first
+  // pass over this screen. Fixed here retroactively, and on Android at the same time,
+  // not left inconsistent between the two.
+  | 'overview.verificationFailed';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -87,6 +94,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'overview.loadError': 'Could not load your overview.',
     'overview.linkError': 'Could not link that account.',
     'overview.unlinkError': 'Could not unlink this account.',
+    'overview.verificationFailed': "Could not verify that {{provider}} account. It wasn't linked.",
   },
   rw: {
     'login.tagline': "Injira kuri konti yawe ya Itunda.",
@@ -115,5 +123,6 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'overview.loadError': "Ntibishoboka gushaka amakuru y'umutungo wawe.",
     'overview.linkError': 'Ntibishoboka guhuza iyo konti.',
     'overview.unlinkError': 'Ntibishoboka kuraho iyo konti.',
+    'overview.verificationFailed': 'Ntibishoboka kwemeza iyo konti ya {{provider}}. Ntiyahujwe.',
   },
 };

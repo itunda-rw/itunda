@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Kinyarwanda translations for LoginScreen.kt's strings. See values/strings.xml's own
-  doc comment for the full context. Same honesty note as bank-mfe's i18n/translations.ts:
-  this is a careful, good-faith translation, NOT verified by a native Kinyarwanda
-  speaker, and should get real native-speaker review before being treated as
-  production-final.
+  Kinyarwanda translations for LoginScreen.kt and OverviewScreen.kt's strings. See
+  values/strings.xml's own doc comment for the full context. Same honesty note as
+  bank-mfe's i18n/translations.ts: this is a careful, good-faith translation, NOT
+  verified by a native Kinyarwanda speaker, and should get real native-speaker review
+  before being treated as production-final.
 -->
 <resources>
     <string name="login_back">Subira inyuma</string>
@@ -29,4 +29,30 @@
     <string name="login_switch_to_login">Usanzwe ufite konti? Injira</string>
     <string name="login_switch_to_register">Uri mushya kuri itunda? Fungura konti</string>
     <string name="login_language_switcher_label">Ururimi</string>
+
+    <string name="overview_title">Umutungo wanjye</string>
+    <string name="overview_load_error">Ntibishoboka gushaka amakuru y\'umutungo wawe.</string>
+    <string name="overview_net_worth">Umutungo wose</string>
+    <string name="overview_amount_rwf">RWF %1$s</string>
+    <string name="overview_accounts">Konti</string>
+    <string name="overview_savings_title">Ubwizigame</string>
+    <string name="overview_savings_value">RWF %1$s mu migambi %2$d</string>
+    <string name="overview_loans_title">Inguzanyo</string>
+    <string name="overview_loans_value">RWF %1$s zisigaye, %2$d zikoreshwa</string>
+    <string name="overview_investments_title">Ishoramari</string>
+    <string name="overview_investments_value">RWF %1$s yatanzwe, ibintu %2$d</string>
+    <string name="overview_insurance_title">Ubwishingizi</string>
+    <string name="overview_insurance_value">gahunda %1$d zikora, RWF %2$s ku kwezi</string>
+    <string name="overview_linked_accounts">Konti zihujwe</string>
+    <string name="overview_demo_balance">Amafaranga y\'ikitegererezo: %1$s %2$s</string>
+    <string name="overview_unlink">Kuraho ihuza</string>
+    <string name="overview_link_prompt">Huza konti ya banki cyangwa Mobile Money</string>
+    <string name="overview_provider_label">Ikigo</string>
+    <string name="overview_provider_name_placeholder">Izina ry\'ikigo</string>
+    <string name="overview_account_phone_placeholder">Numero ya konti / telefoni</string>
+    <string name="overview_linking">Guhuza…</string>
+    <string name="overview_link_account">Huza konti</string>
+    <string name="overview_link_error">Ntibishoboka guhuza iyo konti.</string>
+    <string name="overview_unlink_error">Ntibishoboka kuraho iyo konti.</string>
+    <string name="overview_verification_failed">Ntibishoboka kwemeza iyo konti ya %1$s. Ntiyahujwe.</string>
 </resources>

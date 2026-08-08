@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Real first slice of Kinyarwanda/English localization on Android (2026-08-08). See
-  bank-mfe/src/i18n's own doc comment for the full context. This app previously had NO
-  strings.xml at all in the main :app module: every string was hardcoded directly in
-  Kotlin. LoginScreen.kt is itunda's own highest-traffic screen (see its own doc
-  comment), so it's the first real screen extracted, matching the same bounded scope
-  the web pass used. Uses Android's own real locale-resource mechanism (values-rw/) plus
-  AppCompatDelegate.setApplicationLocales for an in-app switcher independent of the
-  device's system language, rather than a hand-rolled solution like web's: Android
-  already has real, mature tooling for exactly this.
+  Real Kinyarwanda/English localization on Android (2026-08-08+). See bank-mfe/src/i18n's
+  own doc comment for the full context. This app previously had NO strings.xml at all in
+  the main :app module: every string was hardcoded directly in Kotlin. LoginScreen.kt
+  (itunda's own highest-traffic screen) was the first real screen extracted;
+  OverviewScreen.kt (the screen every user lands on right after logging in) is the
+  second, following the same phased rollout docs/DESIGN_REFERENCES.md Section 19 names.
+  Uses Android's own real locale-resource mechanism (values-rw/) for the strings
+  themselves, plus its own real printf-style format specifiers (%1$s/%2$d) for the
+  handful that carry a dynamic amount/count: Android's native equivalent of the
+  {{placeholder}} interpolation added to bank-mfe's own i18n for the same reason.
+  Correction: the in-app switcher is NOT AppCompatDelegate.setApplicationLocales, despite
+  an earlier version of this comment saying so. See LoginScreen.kt's own doc comment
+  for why that API silently doesn't work here (MainActivity extends FragmentActivity, not
+  AppCompatActivity) and what replaced it.
 -->
 <resources>
     <string name="login_back">Back</string>
@@ -33,4 +38,35 @@
     <string name="login_switch_to_login">Already have an account? Log in</string>
     <string name="login_switch_to_register">New to itunda? Create an account</string>
     <string name="login_language_switcher_label">Language</string>
+
+    <string name="overview_title">My assets</string>
+    <string name="overview_load_error">Could not load your overview.</string>
+    <string name="overview_net_worth">Net worth</string>
+    <string name="overview_amount_rwf">RWF %1$s</string>
+    <string name="overview_accounts">Accounts</string>
+    <string name="overview_savings_title">Savings</string>
+    <string name="overview_savings_value">RWF %1$s across %2$d goal(s)</string>
+    <string name="overview_loans_title">Loans</string>
+    <string name="overview_loans_value">RWF %1$s outstanding, %2$d active</string>
+    <string name="overview_investments_title">Investments</string>
+    <string name="overview_investments_value">RWF %1$s cost basis, %2$d holding(s)</string>
+    <string name="overview_insurance_title">Insurance</string>
+    <string name="overview_insurance_value">%1$d active plan(s), RWF %2$s/month</string>
+    <string name="overview_linked_accounts">Linked accounts</string>
+    <string name="overview_demo_balance">Demo balance: %1$s %2$s</string>
+    <string name="overview_unlink">Unlink</string>
+    <string name="overview_link_prompt">Link a bank or mobile money account</string>
+    <string name="overview_provider_label">Provider</string>
+    <string name="overview_provider_name_placeholder">Provider name</string>
+    <string name="overview_account_phone_placeholder">Account / phone number</string>
+    <string name="overview_linking">Linking…</string>
+    <string name="overview_link_account">Link account</string>
+    <string name="overview_link_error">Could not link that account.</string>
+    <string name="overview_unlink_error">Could not unlink this account.</string>
+    <!-- Real gap caught while translating this screen (2026-08-08): this specific
+         message, shown when the backend saves a link attempt as VERIFICATION_FAILED
+         (a real 200 response, not a thrown error, see the call site's own comment), was
+         missed in the first web localization pass over this exact screen. Fixed here
+         AND retroactively in bank-mfe's own translations.ts, not left inconsistent. -->
+    <string name="overview_verification_failed">Could not verify that %1$s account. It wasn\'t linked.</string>
 </resources>

@@ -28,8 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import rw.itunda.app.R
 import rw.itunda.core.network.LinkAccountRequest
 import rw.itunda.core.network.LinkedAccountEntityDto
 import rw.itunda.core.network.NetworkClient
@@ -47,6 +50,7 @@ private val COMMON_LINK_PROVIDERS = listOf("MTN Mobile Money", "Airtel Money", "
 @Composable
 fun OverviewScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
+    val context = LocalContext.current
     var overview by remember { mutableStateOf<OverviewResponse?>(null) }
     var linkedAccounts by remember { mutableStateOf<List<LinkedAccountEntityDto>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -62,14 +66,14 @@ fun OverviewScreen(onBack: () -> Unit) {
             linkedAccounts = NetworkClient.apiService.getLinkedAccounts().linkedAccounts
             error = null
         } catch (_: Exception) {
-            error = "Could not load your overview."
+            error = context.getString(R.string.overview_load_error)
         }
     }
     LaunchedEffect(Unit) { refresh() }
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(20.dp)) {
-            BackTopBar(title = "My assets", onBack = onBack)
+            BackTopBar(title = stringResource(R.string.overview_title), onBack = onBack)
         }
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val current = overview
@@ -80,12 +84,12 @@ fun OverviewScreen(onBack: () -> Unit) {
                 item {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp)) {
-                            Text("Net worth", style = MaterialTheme.typography.labelMedium)
-                            Text("RWF ${current.netWorth}", style = MaterialTheme.typography.headlineMedium)
+                            Text(stringResource(R.string.overview_net_worth), style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.overview_amount_rwf, current.netWorth), style = MaterialTheme.typography.headlineMedium)
                         }
                     }
                 }
-                item { Text("Accounts", style = MaterialTheme.typography.titleMedium) }
+                item { Text(stringResource(R.string.overview_accounts), style = MaterialTheme.typography.titleMedium) }
                 items(current.accounts, key = { it.id }) { account ->
                     Card(Modifier.fillMaxWidth()) {
                         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -98,35 +102,35 @@ fun OverviewScreen(onBack: () -> Unit) {
                     }
                 }
                 item {
-                    SummaryRow("Savings", "RWF ${current.savings.totalSaved} across ${current.savings.goalCount} goal(s)")
+                    SummaryRow(stringResource(R.string.overview_savings_title), stringResource(R.string.overview_savings_value, current.savings.totalSaved, current.savings.goalCount))
                 }
                 item {
-                    SummaryRow("Loans", "RWF ${current.loans.totalOutstanding} outstanding, ${current.loans.activeCount} active")
+                    SummaryRow(stringResource(R.string.overview_loans_title), stringResource(R.string.overview_loans_value, current.loans.totalOutstanding, current.loans.activeCount))
                 }
                 item {
-                    SummaryRow("Investments", "RWF ${current.investments.totalCostBasis} cost basis, ${current.investments.holdingCount} holding(s)")
+                    SummaryRow(stringResource(R.string.overview_investments_title), stringResource(R.string.overview_investments_value, current.investments.totalCostBasis, current.investments.holdingCount))
                 }
                 item {
-                    SummaryRow("Insurance", "${current.insurance.activePolicyCount} active plan(s), RWF ${current.insurance.totalMonthlyPremium}/month")
+                    SummaryRow(stringResource(R.string.overview_insurance_title), stringResource(R.string.overview_insurance_value, current.insurance.activePolicyCount, current.insurance.totalMonthlyPremium))
                 }
                 item { Spacer(Modifier.height(4.dp)) }
-                item { Text("Linked accounts", style = MaterialTheme.typography.titleMedium) }
+                item { Text(stringResource(R.string.overview_linked_accounts), style = MaterialTheme.typography.titleMedium) }
                 items(linkedAccounts, key = { it.id }) { account ->
                     LinkedAccountCard(account, busy) {
                         busy = true
                         scope.launch {
                             try { NetworkClient.apiService.unlinkAccount(account.id); refresh() }
-                            catch (_: Exception) { error = "Could not unlink this account." }
+                            catch (_: Exception) { error = context.getString(R.string.overview_unlink_error) }
                             finally { busy = false }
                         }
                     }
                 }
                 item {
                     if (!showLinkForm) {
-                        IdsButton(text = "Link a bank or mobile money account", onClick = { showLinkForm = true })
+                        IdsButton(text = stringResource(R.string.overview_link_prompt), onClick = { showLinkForm = true })
                     } else {
                         Column {
-                            Text("Provider", style = MaterialTheme.typography.labelMedium)
+                            Text(stringResource(R.string.overview_provider_label), style = MaterialTheme.typography.labelMedium)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 COMMON_LINK_PROVIDERS.forEach { name ->
                                     IdsButton(
@@ -138,12 +142,12 @@ fun OverviewScreen(onBack: () -> Unit) {
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            IdsTextField(value = providerText, onValueChange = { providerText = it }, label = "Provider name", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = providerText, onValueChange = { providerText = it }, label = stringResource(R.string.overview_provider_name_placeholder), modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
-                            IdsTextField(value = accountNumberText, onValueChange = { accountNumberText = it }, label = "Account / phone number", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = accountNumberText, onValueChange = { accountNumberText = it }, label = stringResource(R.string.overview_account_phone_placeholder), modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
                             IdsButton(
-                                text = if (busy) "Linking…" else "Link account",
+                                text = if (busy) stringResource(R.string.overview_linking) else stringResource(R.string.overview_link_account),
                                 enabled = !busy && providerText.isNotBlank() && accountNumberText.length >= 4,
                                 onClick = {
                                     busy = true
@@ -158,10 +162,11 @@ fun OverviewScreen(onBack: () -> Unit) {
                                             // VERIFICATION_FAILED so it shows up in history below) -- without this
                                             // check the form just closed as if the link had worked.
                                             if (linked.status == "VERIFICATION_FAILED") {
-                                                error = linked.failureReason ?: "Could not verify that $submittedProvider account. It wasn't linked."
+                                                error = linked.failureReason
+                                                    ?: context.getString(R.string.overview_verification_failed, submittedProvider)
                                             }
                                         } catch (_: Exception) {
-                                            error = "Could not link that account."
+                                            error = context.getString(R.string.overview_link_error)
                                         } finally { busy = false }
                                     }
                                 },
@@ -189,11 +194,12 @@ private fun LinkedAccountCard(account: LinkedAccountEntityDto, busy: Boolean, on
         Text(account.provider, style = MaterialTheme.typography.bodyLarge)
         Text(account.externalAccountNumberMasked, style = MaterialTheme.typography.bodySmall)
         Text(account.status, style = MaterialTheme.typography.bodySmall)
-        if (account.demoBalance != null) {
-            Text("Demo balance: ${account.demoBalanceCurrency} ${account.demoBalance}", style = MaterialTheme.typography.bodySmall)
+        val demoBalance = account.demoBalance
+        if (demoBalance != null) {
+            Text(stringResource(R.string.overview_demo_balance, account.demoBalanceCurrency ?: "", demoBalance), style = MaterialTheme.typography.bodySmall)
         }
         if (account.status == "LINKED") {
-            IdsButton(text = "Unlink", enabled = !busy, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small, onClick = onUnlink)
+            IdsButton(text = stringResource(R.string.overview_unlink), enabled = !busy, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small, onClick = onUnlink)
         }
     }
 }
