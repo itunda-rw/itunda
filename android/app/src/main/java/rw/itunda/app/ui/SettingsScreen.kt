@@ -152,7 +152,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
             // same discipline this screen's own header comment already established
             // for the "보안" rows this app deliberately doesn't fake.
             item {
-                val activity = LocalContext.current as androidx.fragment.app.FragmentActivity
+                val activity = LocalRealActivity.current
                 val biometricAvailable = remember { NIDABiometricAuth(activity).isAvailable() }
                 if (biometricAvailable) {
                     val tokenStore = remember { NetworkClient.currentTokenStore() }

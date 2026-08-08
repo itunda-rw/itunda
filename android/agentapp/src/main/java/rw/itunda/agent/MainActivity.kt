@@ -19,6 +19,13 @@ import rw.itunda.core.designsystem.theme.IdsTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Real screenshot/screen-recording protection (2026-08-09), same Toss-parity fix as
+        // the customer app's MainActivity.kt -- this app shows real agent till/reconciliation
+        // cash amounts on nearly every screen.
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
         setContent { IdsTheme { Surface(Modifier.fillMaxSize()) { AgentApp() } } }
     }
 }

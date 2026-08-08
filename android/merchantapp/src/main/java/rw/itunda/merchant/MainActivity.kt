@@ -33,6 +33,13 @@ private sealed class MerchantScreen {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Real screenshot/screen-recording protection (2026-08-09), same Toss-parity fix as
+        // the customer app's MainActivity.kt -- this app shows real till cash/order payment
+        // totals on nearly every screen.
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
         setContent {
             // Real shared brand theme (2026-07-24), same fix as riderapp's own
             // MainActivity.kt -- this app also depended on :core:designsystem

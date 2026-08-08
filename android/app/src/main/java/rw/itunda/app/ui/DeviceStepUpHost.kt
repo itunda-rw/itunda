@@ -7,8 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.fragment.app.FragmentActivity
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.identity.DeviceKeyManager
@@ -43,7 +41,7 @@ fun DeviceStepUpHost(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val activity = LocalContext.current as FragmentActivity
+    val activity = LocalRealActivity.current
     val deviceKeyManager = remember { DeviceKeyManager() }
 
     // Real biometric-first step-up (item 246): if this device already registered a

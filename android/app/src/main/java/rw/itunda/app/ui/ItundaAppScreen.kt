@@ -371,7 +371,7 @@ fun ItundaAppScreen(
         // chat thread instead of dropping the buyer on a conversation list.
         var pendingConversationId by rememberSaveable { mutableStateOf<String?>(null) }
         var biometricError by remember { mutableStateOf<String?>(null) }
-        val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
+        val activity = LocalRealActivity.current
         val biometricAuth = remember(activity) { rw.itunda.core.identity.NIDABiometricAuth(activity) }
 
         // Real device binding step-up (2026-07-21 port) -- shared across every

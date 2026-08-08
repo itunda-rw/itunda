@@ -27,6 +27,7 @@ import rw.itunda.core.network.ThemePreference
 import java.util.Locale
 import rw.itunda.app.ui.AppLockScreen
 import rw.itunda.app.ui.ItundaAppScreen
+import rw.itunda.app.ui.LocalRealActivity
 import rw.itunda.app.ui.LoginScreen
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.identity.NIDABiometricAuth
@@ -50,6 +51,21 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Real screenshot/screen-recording protection (2026-08-09) -- found missing during a
+        // Toss-parity security audit: zero FLAG_SECURE usage existed anywhere in this codebase,
+        // meaning every screen (wallet balance, transfer amounts, card details, PIN/password
+        // entry) was screenshottable and screen-recordable by any other app or the OS itself,
+        // and would appear as plaintext in the recent-apps task switcher thumbnail. Every real
+        // fintech app (Toss included) blocks this app-wide, not per-screen -- itunda shows a
+        // real balance on nearly every tab (see HomeTab's WalletHeroCard), so a per-screen
+        // allowlist would be both more fragile and less protective than a blanket flag set once
+        // here, before setContent, so it also covers the task-switcher thumbnail.
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
+
         applyMapsDeepLink(intent)
 
         // Root/FDS gate on the real app entry point, ported from
@@ -91,12 +107,31 @@ class MainActivity : FragmentActivity() {
             // respect the stored choice instead of the device's raw OS locale.
             val baseContext = LocalContext.current
             val locale by AppLocalePreference.locale.collectAsStateWithLifecycle()
+            // Real fix (2026-08-09), found via physical-device logcat: createConfigurationContext()
+            // alone returns a bare android.app.ContextImpl with no ContextWrapper chain back to
+            // the real Activity. That silently breaks every AndroidX mechanism that discovers the
+            // hosting Activity by walking LocalContext.current's ContextWrapper.getBaseContext()
+            // chain -- not just the explicit `as FragmentActivity` casts LocalRealActivity now
+            // covers below, but also Compose-internal owner lookups such as
+            // LocalActivityResultRegistryOwner (crashed live: "No ActivityResultRegistryOwner was
+            // provided", HoodShared.kt's rememberRealLocationRequester -> MarketplaceScreen ->
+            // HoodTab). Wrapping the config-overridden Resources in a ContextWrapper around the
+            // REAL baseContext -- instead of using the bare configuration context directly --
+            // keeps that chain intact while still serving localized strings.
             val localizedContext = remember(locale) {
                 val config = Configuration(baseContext.resources.configuration)
                 config.setLocale(Locale(locale))
-                baseContext.createConfigurationContext(config)
+                val configResources = baseContext.createConfigurationContext(config).resources
+                object : android.content.ContextWrapper(baseContext) {
+                    override fun getResources() = configResources
+                }
             }
-            CompositionLocalProvider(LocalContext provides localizedContext) {
+            // LocalRealActivity carries the real FragmentActivity (`this`) alongside the
+            // locale-overridden LocalContext -- some call sites still cast LocalContext.current
+            // directly instead of relying on chain-walking, so screens needing the real Activity
+            // (biometrics, app-lock) must
+            // read LocalRealActivity.current instead. See LocalRealActivity.kt.
+            CompositionLocalProvider(LocalContext provides localizedContext, LocalRealActivity provides this) {
                 val themeMode by ThemePreference.mode.collectAsStateWithLifecycle()
                 val darkTheme = when (themeMode) {
                     ThemeMode.LIGHT -> false
