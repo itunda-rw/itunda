@@ -3204,6 +3204,47 @@ the first time that habit caught a gap in code the *same* session had just writt
 same discipline that catches a stale mistake also catches a fresh one, if applied consistently rather
 than only pointed backward at old commits.
 
+### Merchant moderation queue — a real admin surface with zero client, closed (2026-08-09)
+
+A fresh uncalled-endpoint sweep (the same technique that's closed 7+ real gaps earlier this session)
+found `MerchantModerationAdminController` — `GET /api/v1/system/merchants/uncategorized`,
+`POST /{merchantId}/suspend`, `POST /{merchantId}/reactivate` — completely unreached from any client.
+Real, working, `ADMIN`-gated, backed by `MerchantRepository.findByStatusAndCategoryIsNull` (the real
+signal a merchant needs attention: `ACTIVE` status but no category set, meaning it's live but not
+actually browsable to a real buyer). `ops-mfe` has a real queue view for every *other* `/api/v1/system`
+admin surface — fraud, compliance, incidents, support, insurance, partners, escrow disputes, agent
+reconciliation, hood content reports, property ownership — 10 sibling queues, all wired, this one alone
+missing.
+
+Closed the same way as every prior queue this thread has added: `MerchantModerationQueue.tsx`, mirroring
+`PropertyOwnershipQueue.tsx`'s exact shape (`usePagedQueue`, `QueueHeader`/`QueueEmpty`/`QueueError`/
+`QueueLoadMore` from the shared `QueueState.tsx`). One real design decision the backend's own shape
+forced: there's no "list suspended merchants" endpoint to browse reactivation candidates from — only the
+uncategorized-`ACTIVE` list — so `reactivate` has no queue of its own to attach a button to. Added a
+small manual "Reactivate a suspended merchant" ID-entry form instead, the same "manual entry when there's
+no browsable list" discipline `RequestMoneyCard`'s own pay-code field already establishes elsewhere in
+this codebase, rather than leaving the endpoint reachable by nobody or building a list endpoint the
+backend was never asked for.
+
+**Verified live end to end, the strongest tier**: real admin login (seeded `+250788999000`/`admin123`),
+real headless Chrome over CDP. Confirmed the queue tab renders real backend data (business names, KYB
+status, creation dates matching a direct `curl` against the same endpoint exactly). Then exercised the
+full round trip for real: clicked **Suspend** on a real merchant, confirmed it disappeared from the
+client's own list *and* independently confirmed via a second direct `curl` against the backend that it
+no longer appears in `/uncategorized` (not just trusting the UI's own optimistic state) — then typed its
+id into the manual reactivate form, submitted, and confirmed the success message and that reactivation
+genuinely restored `ACTIVE` status. Zero console exceptions throughout. Real `tsc -b && vite build` also
+clean.
+
+**Two smaller findings from the same sweep, named but not fixed this pass** (lower severity, no security
+or correctness risk, just silent-drift/completeness gaps):
+- `GET /api/v1/maps/categories` exists on the backend but web/Android both hardcode their own copy of the
+  category list client-side instead of fetching it — a real, if minor, risk if the backend list ever
+  changes without every client being updated in lockstep.
+- `GET /api/v1/actions/types` (offline action-type discovery) has zero callers — Android's
+  `OfflineActionQueue.kt` submits batches via the sibling endpoint but never queries this one, presumably
+  hardcoding its own supported-type list instead.
+
 ### Unresolved / worth a follow-up
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,

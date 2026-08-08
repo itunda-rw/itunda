@@ -111,6 +111,32 @@ export const decidePropertyOwnership = (submissionId: string, approve: boolean, 
     body: JSON.stringify({ approve, reason }),
   });
 
+// Real merchant moderation queue -- `MerchantModerationAdminController` had zero client
+// anywhere despite being real and working (found via an uncalled-endpoint sweep): every
+// other real admin queue under /api/v1/system (fraud, compliance, escrow, support,
+// partners, property-verification, agent-reconciliation, incidents) has one, this was
+// the one sibling left out. "ACTIVE with no category" is the real signal a merchant
+// needs admin attention (see backend MerchantRepository.findByStatusAndCategoryIsNull's
+// own doc comment) -- suspend/reactivate are the only two actions this queue offers,
+// matching the backend's own real, minimal scope.
+export interface UncategorizedMerchant {
+  merchantId: string;
+  businessName: string;
+  kybVerified: boolean;
+  createdAt: string;
+}
+
+export const fetchUncategorizedMerchants = (page = 0) =>
+  apiFetch<{ success: boolean; merchants: UncategorizedMerchant[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/merchants/uncategorized?page=${page}`,
+  ).then((response) => ({ items: response.merchants, totalElements: response.totalElements, hasMore: response.page + 1 < response.totalPages }));
+
+export const suspendMerchant = (merchantId: string) =>
+  apiFetch<{ success: boolean; status: string }>(`/api/v1/system/merchants/${merchantId}/suspend`, { method: 'POST' });
+
+export const reactivateMerchant = (merchantId: string) =>
+  apiFetch<{ success: boolean; status: string }>(`/api/v1/system/merchants/${merchantId}/reactivate`, { method: 'POST' });
+
 // Real Hood (Marketplace/Community/Jobs/PropertyListing/messaging) content-moderation
 // report queue (item 127) -- `HoodReportAdminController` had zero client anywhere
 // despite the customer-facing "report" creation endpoint being real and in use; found
