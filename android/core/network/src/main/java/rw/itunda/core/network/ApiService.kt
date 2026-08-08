@@ -1981,6 +1981,15 @@ data class SplitBillWithParticipants(val splitBill: SplitBillDto, val participan
 data class SplitBillsForGroupResponse(val success: Boolean, val splitBills: List<SplitBillWithParticipants>)
 data class PaySplitBillShareResponse(val success: Boolean, val participant: SplitBillParticipantDto)
 
+// Real 1:1-chat split-bill request (2026-08-09) -- no participantUserIds field, unlike
+// CreateSplitBillRequest above: the other person is fixed by the {otherUserId} path
+// segment, since this endpoint is for exactly two people, not an existing group. See
+// backend SplitBillController's CreateDirectSplitBillRequest's own doc comment.
+data class CreateDirectSplitBillRequest(
+    val totalAmount: java.math.BigDecimal, val description: String,
+    val mode: String = "EVEN", val ladderVarianceLevel: Int? = null,
+)
+
 // Real saved-contacts list for quick transfers (rw.itunda.contacts) -- found
 // 2026-07-22 fully built on the backend (a real IDOR fix ported from the original
 // Express controller, see ContactsController.kt's own doc comment) with zero client
@@ -3472,6 +3481,23 @@ interface ApiService {
 
     @POST("api/v1/split-bills/{id}/receipt")
     suspend fun attachSplitBillReceipt(@Path("id") splitBillId: String, @Body request: AttachSplitBillReceiptRequest): SplitBillOnlyResponse
+
+    // Real 1:1-chat split-bill entry point (2026-08-09) -- see backend
+    // SplitBillService.createDirectSplitBill's own doc comment: resolves a hidden
+    // 2-person group between the caller and otherUserId first, so this never needs an
+    // existing named group the way createSplitBill above does.
+    @POST("api/v1/split-bills/direct/{otherUserId}")
+    suspend fun createDirectSplitBill(
+        @Path("otherUserId") otherUserId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body request: CreateDirectSplitBillRequest,
+    ): CreateSplitBillResponse
+
+    // Real read-only counterpart -- never creates a hidden group as a side effect of
+    // just viewing this tab; see backend SplitBillService.getDirectSplitBills's own
+    // doc comment.
+    @GET("api/v1/split-bills/direct/{otherUserId}")
+    suspend fun getDirectSplitBills(@Path("otherUserId") otherUserId: String): SplitBillsForGroupResponse
 
     @POST("api/v1/split-bills/{id}/next-round")
     suspend fun requestSplitBillNextRound(@Path("id") splitBillId: String): SplitBillOnlyResponse

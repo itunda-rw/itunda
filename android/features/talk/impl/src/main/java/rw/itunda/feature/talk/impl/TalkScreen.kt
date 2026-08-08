@@ -113,6 +113,7 @@ import rw.itunda.core.network.AttachSplitBillReceiptRequest
 import rw.itunda.core.network.ConversationSummaryDto
 import rw.itunda.core.network.CreateChatReportRequest
 import rw.itunda.core.network.CreateGroupRequest
+import rw.itunda.core.network.CreateDirectSplitBillRequest
 import rw.itunda.core.network.CreateSplitBillRequest
 import rw.itunda.core.network.EmoticonDto
 import rw.itunda.core.network.EmoticonPackDto
@@ -1355,6 +1356,207 @@ private fun GroupSplitBillsView(
     }
 }
 
+// Real 1:1-chat split-bill view (2026-08-09) -- see backend
+// SplitBillService.createDirectSplitBill's own doc comment. Same shape as
+// GroupSplitBillsView above, minus the member-picker: a 1:1 split always has exactly
+// one other participant, fixed by which conversation this was opened from.
+@Composable
+private fun DirectSplitBillsView(
+    otherUserId: String,
+    otherUserName: String,
+    currentUserId: String?,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    var splitBills by remember { mutableStateOf<List<SplitBillWithParticipants>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busyId by remember { mutableStateOf<String?>(null) }
+    var showNewForm by remember { mutableStateOf(false) }
+    var amountText by remember { mutableStateOf("") }
+    var descriptionText by remember { mutableStateOf("") }
+    var ladderMode by remember { mutableStateOf(false) }
+    var varianceLevel by remember { mutableStateOf(1) }
+    var receiptUrlDrafts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val coroutineScope = rememberCoroutineScope()
+
+    suspend fun refresh() {
+        try {
+            splitBills = NetworkClient.apiService.getDirectSplitBills(otherUserId).splitBills
+            error = null
+        } catch (_: Exception) {
+            error = "Could not load split bills."
+        }
+    }
+    LaunchedEffect(otherUserId) { refresh() }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        BackTopBar("Split bills with $otherUserName", onBack)
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
+            item {
+                if (!showNewForm) {
+                    IdsButton(text = "Split a bill", onClick = { showNewForm = true })
+                } else {
+                    Column {
+                        IdsTextField(amountText, { amountText = it }, label = "Total amount (RWF)", keyboardType = KeyboardType.Number, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        IdsTextField(descriptionText, { descriptionText = it }, label = "What was it for?", modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Split with $otherUserName", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { ladderMode = !ladderMode }.padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("🎲 Ladder game (randomized split)", fontSize = 13.sp)
+                            Text(if (ladderMode) "On" else "Off", fontSize = 12.sp, color = if (ladderMode) Ids.colors.brand else Ids.colors.textSecondary, fontWeight = FontWeight.Bold)
+                        }
+                        if (ladderMode) {
+                            Text(
+                                when (varianceLevel) {
+                                    3 -> "One random person pays the whole thing -- everyone else pays nothing."
+                                    2 -> "Wider random spread -- shares can differ a lot."
+                                    else -> "Mild random spread around an even split."
+                                },
+                                fontSize = 12.sp, color = Ids.colors.textSecondary,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                                listOf(1, 2, 3).forEach { level ->
+                                    val selected = varianceLevel == level
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                            .clickable { varianceLevel = level }
+                                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    ) {
+                                        Text("Level $level", color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        IdsButton(
+                            text = if (busyId == "new") "Creating…" else "Create split bill",
+                            enabled = busyId == null && amountText.toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO } == true &&
+                                descriptionText.isNotBlank(),
+                            onClick = {
+                                val amount = amountText.toBigDecimalOrNull() ?: return@IdsButton
+                                busyId = "new"
+                                coroutineScope.launch {
+                                    try {
+                                        NetworkClient.apiService.createDirectSplitBill(
+                                            otherUserId,
+                                            UUID.randomUUID().toString(),
+                                            CreateDirectSplitBillRequest(
+                                                amount, descriptionText,
+                                                mode = if (ladderMode) "LADDER" else "EVEN",
+                                                ladderVarianceLevel = if (ladderMode) varianceLevel else null,
+                                            ),
+                                        )
+                                        amountText = ""; descriptionText = ""; showNewForm = false; ladderMode = false
+                                        refresh()
+                                    } catch (_: Exception) {
+                                        error = "That split bill could not be created."
+                                    } finally { busyId = null }
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+            val current = splitBills
+            if (current == null) item { SkeletonBlock() }
+            else if (current.isEmpty()) item { Text("No split bills with $otherUserName yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
+            else items(current, key = { it.splitBill.id }) { entry ->
+                val myShare = entry.participants.find { it.userId == currentUserId }
+                val isOrganizer = entry.splitBill.organizerId == currentUserId
+                val hasPending = entry.participants.any { it.status == "PENDING" }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(entry.splitBill.description, fontWeight = FontWeight.SemiBold)
+                        val modeLabel = if (entry.splitBill.mode == "LADDER") " · 🎲 Ladder L${entry.splitBill.ladderVarianceLevel}" else ""
+                        val roundLabel = if (entry.splitBill.currentRound > 1) " · Round ${entry.splitBill.currentRound}" else ""
+                        Text("Total RWF ${entry.splitBill.totalAmount} · ${entry.splitBill.status}$modeLabel$roundLabel", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                        entry.participants.forEach { participant ->
+                            val name = if (participant.userId == otherUserId) otherUserName else "You"
+                            Text("$name: RWF ${participant.shareAmount} (${participant.status})", fontSize = 13.sp)
+                        }
+                        entry.splitBill.receiptImageUrl?.let { url ->
+                            Text("🧾 Receipt: $url", fontSize = 12.sp, color = Ids.colors.brand)
+                        }
+                        if (myShare != null && myShare.status == "PENDING") {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            IdsButton(
+                                text = if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (RWF ${myShare.shareAmount})",
+                                enabled = busyId == null,
+                                onClick = {
+                                    busyId = entry.splitBill.id
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.paySplitBillShare(entry.splitBill.id, UUID.randomUUID().toString())
+                                            refresh()
+                                        } catch (_: Exception) {
+                                            error = "That payment could not be completed."
+                                        } finally { busyId = null }
+                                    }
+                                },
+                            )
+                        }
+                        if (isOrganizer && entry.splitBill.receiptImageUrl == null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                IdsTextField(
+                                    receiptUrlDrafts[entry.splitBill.id] ?: "",
+                                    { receiptUrlDrafts = receiptUrlDrafts + (entry.splitBill.id to it) },
+                                    label = "Receipt photo URL",
+                                    modifier = Modifier.weight(1f),
+                                )
+                                IdsButton(
+                                    text = "Attach",
+                                    enabled = busyId == null && !(receiptUrlDrafts[entry.splitBill.id].isNullOrBlank()),
+                                    size = IdsButtonSize.Small,
+                                    onClick = {
+                                        val url = receiptUrlDrafts[entry.splitBill.id] ?: return@IdsButton
+                                        busyId = entry.splitBill.id
+                                        coroutineScope.launch {
+                                            try {
+                                                NetworkClient.apiService.attachSplitBillReceipt(entry.splitBill.id, AttachSplitBillReceiptRequest(url))
+                                                receiptUrlDrafts = receiptUrlDrafts - entry.splitBill.id
+                                                refresh()
+                                            } catch (_: Exception) {
+                                                error = "That receipt could not be attached."
+                                            } finally { busyId = null }
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                        if (isOrganizer && entry.splitBill.status == "OPEN" && hasPending && entry.splitBill.currentRound < 5) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            IdsButton(
+                                text = "Nudge unpaid → round ${entry.splitBill.currentRound + 1}",
+                                enabled = busyId == null,
+                                variant = IdsButtonVariant.Tinted,
+                                onClick = {
+                                    busyId = entry.splitBill.id
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.requestSplitBillNextRound(entry.splitBill.id)
+                                            refresh()
+                                        } catch (_: Exception) {
+                                            error = "Could not start the next settlement round."
+                                        } finally { busyId = null }
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Real leave-group/add-member (2026-07-22) -- found fully built on the backend
 // (GroupMessagingController's POST/DELETE .../members) with zero client UI anywhere,
 // despite group chat itself being fully wired. Add-member picks from the caller's
@@ -1750,6 +1952,9 @@ private fun ChatThreadView(
     // Real per-thread shared-media gallery (2026-08-04) -- see GroupThreadView's own
     // doc comment for the full sourced account.
     var showMediaGallery by remember { mutableStateOf(false) }
+    // Real 1:1-chat split-bill (2026-08-09) -- see DirectSplitBillsView's own doc
+    // comment; mirrors GroupThreadView's own identical showSplitBills toggle.
+    var showSplitBills by remember { mutableStateOf(false) }
     // Real Thread support (2026-08-05) -- see docs/DESIGN_REFERENCES.md Talk section
     // recommendation #3's own account. A message with real replies opens its own
     // sub-conversation view here, not just the inline "replying to" tag replyingTo above
@@ -1914,6 +2119,15 @@ private fun ChatThreadView(
             MediaGalleryView(imageUrls = (messages ?: emptyList()).mapNotNull { it.imageUrl }.reversed(), onBack = { showMediaGallery = false })
             return@Column
         }
+        if (showSplitBills) {
+            DirectSplitBillsView(
+                otherUserId = conversation.otherUserId,
+                otherUserName = conversation.otherUserName,
+                currentUserId = currentUserId,
+                onBack = { showSplitBills = false },
+            )
+            return@Column
+        }
         openThreadFor?.let { root ->
             RepliesThreadView(
                 rootMessage = root,
@@ -1926,6 +2140,7 @@ private fun ChatThreadView(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { showMediaGallery = true }) { Text("Photos", color = Ids.colors.textSecondary) }
+            TextButton(onClick = { showSplitBills = true }) { Text("Split a bill", color = Ids.colors.textSecondary) }
             TextButton(
                 onClick = {
                     if (isBlocked) {

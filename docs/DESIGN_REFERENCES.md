@@ -3119,9 +3119,30 @@ own group-chat split-bill UI (`ItundaAppScreen.kt`'s Talk tab, iOS's equivalent)
 endpoints. The backend work is 100% shared across all 3 clients already; only the per-platform UI wiring
 remains.
 
+### Android client wired in, same day (2026-08-09)
+
+Picked up the named follow-up immediately: `TalkScreen.kt`'s `ChatThreadView` (the 1:1 conversation
+screen — `GroupThreadView`, its group-chat sibling, already had `GroupSplitBillsView` wired in) gets the
+identical "Split a bill" text button its group-chat sibling already has, opening a new
+`DirectSplitBillsView` composable — same shape as `GroupSplitBillsView` minus the member-picker, same
+reasoning as web's `DirectSplitBillsView`. New Retrofit endpoints (`createDirectSplitBill`/
+`getDirectSplitBills`) and a `CreateDirectSplitBillRequest` DTO added to the shared `core/network`
+module's `ApiService.kt`.
+
+One real gotcha, caught by the compiler rather than found live: the new DTO needed its own explicit
+import in `TalkScreen.kt` (this codebase doesn't use wildcard imports), missed on the first pass and
+caught immediately by `Unresolved reference 'CreateDirectSplitBillRequest'` on the first compile attempt
+— fixed before moving on, not worked around.
+
+**Verification tier**: `:core:network:compileDebugKotlin`, `:features:talk:impl:compileDebugKotlin`, and
+`:app:compileDebugKotlin` all clean, `accessibility-lint.py` clean. Compile-tier only, same ceiling as
+every other Android change today — no device available this session.
+
+Two of three clients can now reach this feature. iOS remains the one honestly-named gap.
+
 ### Unresolved / worth a follow-up
-- The 1:1-chat split-bill feature above needs Android/iOS client wiring — backend is real and
-  live-verified, but only web can reach it right now.
+- iOS still needs the same "Split a bill" entry point wired into its own 1:1 conversation screen — the
+  backend and 2 of 3 clients are done; iOS is the last one.
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the
