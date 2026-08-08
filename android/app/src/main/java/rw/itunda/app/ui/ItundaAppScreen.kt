@@ -119,11 +119,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsCard
@@ -549,7 +551,7 @@ fun ItundaAppScreen(
                 var reportBusy by remember { mutableStateOf(false) }
                 androidx.compose.material3.AlertDialog(
                     onDismissRequest = { showScamReportDialog = false },
-                    title = { Text("Report this number as a scam", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
+                    title = { Text(stringResource(R.string.scam_report_title), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
                     text = {
                         androidx.compose.foundation.text.BasicTextField(
                             value = reportReason,
@@ -558,7 +560,7 @@ fun ItundaAppScreen(
                             modifier = Modifier.fillMaxWidth()
                                 .background(Ids.colors.surfaceSoft, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                                 .padding(12.dp),
-                            decorationBox = { inner -> if (reportReason.isEmpty()) Text("Why are you reporting this number?", color = Ids.colors.textTertiary, fontSize = 15.sp); inner() },
+                            decorationBox = { inner -> if (reportReason.isEmpty()) Text(stringResource(R.string.scam_report_reason_placeholder), color = Ids.colors.textTertiary, fontSize = 15.sp); inner() },
                         )
                     },
                     confirmButton = {
@@ -581,11 +583,11 @@ fun ItundaAppScreen(
                                     }
                                 }
                             },
-                        ) { Text(if (reportBusy) "Reporting…" else "Report", color = Ids.colors.brand, fontWeight = FontWeight.SemiBold) }
+                        ) { Text(if (reportBusy) stringResource(R.string.scam_report_reporting) else stringResource(R.string.scam_report_button), color = Ids.colors.brand, fontWeight = FontWeight.SemiBold) }
                     },
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = { showScamReportDialog = false }, enabled = !reportBusy) {
-                            Text("Cancel", color = Ids.colors.textSecondary)
+                            Text(stringResource(R.string.scam_report_cancel), color = Ids.colors.textSecondary)
                         }
                     },
                     containerColor = Ids.colors.surface,

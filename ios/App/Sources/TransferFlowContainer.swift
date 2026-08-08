@@ -8,6 +8,35 @@ private enum TransferStep: Equatable {
     case amount(accountNumber: String)
 }
 
+// Localized 2026-08-08 (docs/DESIGN_REFERENCES.md Section 19) -- the scam-report
+// reason sheet and the biometric-failure fallback message below are owned by this
+// file (not TransferFlowScreens.swift's RecipientEntryScreen/TransferAmountScreen),
+// so they get their own tiny dict here rather than crossing the module boundary.
+// Reuses AppLocale/loadStoredLocale from LoginScreen.swift (same App target).
+private let transferContainerStrings: [AppLocale: [String: String]] = [
+    .en: [
+        "scamReasonPlaceholder": "Why are you reporting this number?",
+        "scamReasonTitle": "Report as a scam",
+        "cancel": "Cancel",
+        "reporting": "Reporting…",
+        "report": "Report",
+        "biometricFailed": "Couldn't verify. Try again.",
+    ],
+    .rw: [
+        "scamReasonPlaceholder": "Kuki utanga raporo kuri iyi numero?",
+        "scamReasonTitle": "Tanga raporo ko ari uburiganya",
+        "cancel": "Hagarika",
+        "reporting": "Kohereza raporo…",
+        "report": "Ohereza raporo",
+        "biometricFailed": "Ntibyashobotse kwemeza. Ongera ugerageze.",
+    ],
+]
+
+private func tc(_ key: String) -> String {
+    let locale = loadStoredLocale()
+    return transferContainerStrings[locale]?[key] ?? transferContainerStrings[.en]?[key] ?? key
+}
+
 /// Owns the real send-money flow's step state + network calls (2026-07-12) --
 /// mirrors Android's ItundaAppScreen.kt transferStep handling exactly. Lives in the
 /// App target because it needs TransferViewModel/NetworkClient, which
@@ -130,15 +159,15 @@ struct TransferFlowContainer: View {
         .sheet(isPresented: $showScamReportSheet) {
             NavigationView {
                 Form {
-                    TextField("Why are you reporting this number?", text: $scamReportReason)
+                    TextField(tc("scamReasonPlaceholder"), text: $scamReportReason)
                 }
-                .navigationTitle("Report as a scam")
+                .navigationTitle(tc("scamReasonTitle"))
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showScamReportSheet = false }.disabled(scamReportBusy)
+                        Button(tc("cancel")) { showScamReportSheet = false }.disabled(scamReportBusy)
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button(scamReportBusy ? "Reporting…" : "Report") { submitScamReport() }
+                        Button(scamReportBusy ? tc("reporting") : tc("report")) { submitScamReport() }
                             .disabled(scamReportBusy || scamReportReason.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                 }
@@ -201,7 +230,7 @@ struct TransferFlowContainer: View {
         pendingAmountRwf = amountRwf
         NIDABiometricAuth.shared.authenticateForTransaction(reason: "Confirm sending \(amountRwf) RWF") { success, error in
             guard success else {
-                errorMessage = error?.localizedDescription ?? "Couldn't verify. Try again."
+                errorMessage = error?.localizedDescription ?? tc("biometricFailed")
                 return
             }
             Task { @MainActor in

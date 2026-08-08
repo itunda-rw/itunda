@@ -14,6 +14,98 @@ import CoreDesignSystem
 /// own note on the same constraint). TransferViewModel (App/Sources) owns the real
 /// quoteTransfer/confirmTransfer calls and is the only caller.
 
+// Real 3rd screen of Kinyarwanda localization on iOS (2026-08-08) -- extends the
+// pattern LoginScreen.swift/OverviewLoansCreditScoreScreens.swift established (see
+// docs/DESIGN_REFERENCES.md Section 19) into this Feature module. Deliberately its
+// own self-contained dictionary rather than reusing App/Sources' AppLocale/
+// loadStoredLocale directly: this module can't depend back on App (see this file's
+// own note above), so those `internal` symbols aren't visible here -- exactly the
+// same per-module-resources necessity Android hit (android/features/payments/impl
+// needed its own values-rw/strings.xml since FeaturePayments can't see :app's
+// resources either). Reads the same UserDefaults key ("itunda.locale") the
+// App-target switcher writes to, so both targets stay in sync without either
+// depending on the other. Same honesty note as every prior screen/platform: a
+// careful, good-faith translation, NOT verified by a native Kinyarwanda speaker.
+private enum PaymentsLocale: String { case en, rw }
+
+private func loadPaymentsLocale() -> PaymentsLocale {
+    if let raw = UserDefaults.standard.string(forKey: "itunda.locale"), let locale = PaymentsLocale(rawValue: raw) {
+        return locale
+    }
+    let preferred = Locale.preferredLanguages.first ?? "en"
+    return preferred.hasPrefix("rw") ? .rw : .en
+}
+
+private let paymentsStrings: [PaymentsLocale: [String: String]] = [
+    .en: [
+        "recipientHeadline": "Which account should\nwe send to?",
+        "recipientInputLabel": "Enter phone or account number",
+        "recipientInputDescription": "Phone or account number, up to 16 digits",
+        "selectBank": "Select bank",
+        "selectBankHint": "Optional, for your own reference",
+        "contacts": "Contacts",
+        "addContact": "+ Add",
+        "cancel": "Cancel",
+        "namePlaceholder": "Name",
+        "phonePlaceholder": "Phone number",
+        "saveContact": "Save contact",
+        "noContacts": "No saved contacts yet.",
+        "next": "Next",
+        "fromWallet": "From Itunda Wallet",
+        "availableBalance": "Available RWF %@",
+        "toAccount": "To account %@",
+        "newRecipient": "New recipient",
+        "scamWarningTitle": "Caution needed before this transfer",
+        "scamWarningBody": "This recipient has been reported by %d other itunda users. Double-check before sending.",
+        "scamReportedThanks": "Thanks -- this number has been reported.",
+        "reportScam": "Report this number as a scam",
+        "amountQuestion": "How much to send?",
+        "amountMax": "Max",
+        "send": "Send",
+        "deleteDigit": "Delete",
+    ],
+    .rw: [
+        "recipientHeadline": "Ni iyihe konti\ntwohereza mo?",
+        "recipientInputLabel": "Andika numero ya telefoni cyangwa konti",
+        "recipientInputDescription": "Numero ya telefoni cyangwa konti, ntirengeje imibare 16",
+        "selectBank": "Hitamo banki",
+        "selectBankHint": "Si ngombwa, ni ukugira ngo ubimenye",
+        "contacts": "Abo wabitse",
+        "addContact": "+ Ongeraho",
+        "cancel": "Hagarika",
+        "namePlaceholder": "Izina",
+        "phonePlaceholder": "Numero ya telefoni",
+        "saveContact": "Bika uyu muntu",
+        "noContacts": "Nta bantu wabitse. Ongeraho hejuru kugira ngo wihute ubutaha.",
+        "next": "Komeza",
+        "fromWallet": "Biva kuri Wallet ya Itunda",
+        "availableBalance": "Amafaranga ahari RWF %@",
+        "toAccount": "Kuri konti %@",
+        "newRecipient": "Uwakira mushya",
+        "scamWarningTitle": "Witondere mbere yo kohereza",
+        "scamWarningBody": "Uyu muntu yatanzweho raporo n'abakoresha itunda %d. Genzura neza mbere yo kohereza.",
+        "scamReportedThanks": "Murakoze -- iyi numero yatanzweho raporo.",
+        "reportScam": "Tanga raporo kuri iyi numero",
+        "amountQuestion": "Ni angahe ushaka kohereza?",
+        "amountMax": "Byose",
+        "send": "Ohereza",
+        "deleteDigit": "Siba",
+    ],
+]
+
+private func pt(_ key: String) -> String {
+    let locale = loadPaymentsLocale()
+    return paymentsStrings[locale]?[key] ?? paymentsStrings[.en]?[key] ?? key
+}
+
+private func pt(_ key: String, _ arg: String) -> String {
+    String(format: pt(key), arg)
+}
+
+private func pt(_ key: String, _ arg: Int) -> String {
+    String(format: pt(key), arg)
+}
+
 // Real saved-contacts list (2026-07-22) -- see rw.itunda.contacts.ContactsController's
 // own doc comment on the backend. This tiny UI-facing shape (not NetworkClient's own
 // ContactDto) keeps this Feature module's existing independence from App's
@@ -56,7 +148,7 @@ public struct RecipientEntryScreen: View {
             FlowTopBar(onBack: onBack)
 
             VStack(alignment: .leading, spacing: 0) {
-                Text("Which account should\nwe send to?")
+                Text(pt("recipientHeadline"))
                     .font(IDS.scaledFont(size: 26, weight: .bold, relativeTo: .title1))
                     .foregroundColor(IDS.Colors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -69,7 +161,7 @@ public struct RecipientEntryScreen: View {
                 // TransferViewModel.normalizeRecipientIdentifier), not just an account
                 // number, now that TransferViewModel.sendTransfer calls the real
                 // rw.itunda.p2p.sendDirect.
-                Text("Enter phone or account number")
+                Text(pt("recipientInputLabel"))
                     .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .footnote))
                     .foregroundColor(IDS.Colors.brand)
                 Spacer().frame(height: 6)
@@ -78,7 +170,7 @@ public struct RecipientEntryScreen: View {
                     .font(IDS.scaledFont(size: 22, weight: .semibold, relativeTo: .title3))
                     .foregroundColor(IDS.Colors.textPrimary)
                     .keyboardType(.numberPad)
-                    .accessibilityLabel("Phone or account number, up to 16 digits")
+                    .accessibilityLabel(pt("recipientInputDescription"))
                     .onChange(of: accountNumber) { newValue in
                         accountNumber = String(newValue.filter(\.isNumber).prefix(16))
                     }
@@ -89,14 +181,14 @@ public struct RecipientEntryScreen: View {
 
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Select bank")
+                        Text(pt("selectBank"))
                             .font(.system(size: 17))
                             .foregroundColor(IDS.Colors.textTertiary)
                         // Real Toss auto-detects the bank from a real BIN registry;
                         // itunda has none to check against, so this doesn't claim to
                         // (2026-07-12, matching Android's RecipientEntryScreen fix).
                         if accountNumber.isEmpty {
-                            Text("Optional, for your own reference")
+                            Text(pt("selectBankHint"))
                                 .font(.system(size: 13))
                                 .foregroundColor(IDS.Colors.textTertiary)
                         }
@@ -113,23 +205,23 @@ public struct RecipientEntryScreen: View {
                 if accountNumber.isEmpty {
                     Spacer().frame(height: 28)
                     HStack {
-                        Text("Contacts")
+                        Text(pt("contacts"))
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(IDS.Colors.textSecondary)
                         Spacer()
-                        Button(showAddContact ? "Cancel" : "+ Add") { showAddContact.toggle() }
+                        Button(showAddContact ? pt("cancel") : pt("addContact")) { showAddContact.toggle() }
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(IDS.Colors.brand)
                     }
                     Spacer().frame(height: 12)
                     if showAddContact {
                         VStack(alignment: .leading, spacing: 8) {
-                            TextField("Name", text: $newContactName)
+                            TextField(pt("namePlaceholder"), text: $newContactName)
                                 .padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
-                            TextField("Phone number", text: $newContactPhone)
+                            TextField(pt("phonePlaceholder"), text: $newContactPhone)
                                 .keyboardType(.phonePad)
                                 .padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
-                            Button("Save contact") {
+                            Button(pt("saveContact")) {
                                 onAddContact(newContactName, newContactPhone)
                                 newContactName = ""; newContactPhone = ""; showAddContact = false
                             }
@@ -139,7 +231,7 @@ public struct RecipientEntryScreen: View {
                         Spacer().frame(height: 12)
                     }
                     if contacts.isEmpty && !showAddContact {
-                        Text("No saved contacts yet.")
+                        Text(pt("noContacts"))
                             .font(.caption).foregroundColor(IDS.Colors.textSecondary)
                     }
                     ForEach(contacts) { contact in
@@ -154,7 +246,7 @@ public struct RecipientEntryScreen: View {
             Spacer()
 
             if accountNumber.count >= 4 {
-                FlowNextBar(enabled: true, label: "Next") { onNext(accountNumber) }
+                FlowNextBar(enabled: true, label: pt("next")) { onNext(accountNumber) }
             }
             NumericKeypad(
                 onDigit: { d in if accountNumber.count < 16 { accountNumber += d } },
@@ -212,16 +304,16 @@ public struct TransferAmountScreen: View {
             FlowTopBar(onBack: onBack)
 
             VStack(alignment: .leading, spacing: 6) {
-                TransferPartyRow(label: "From Itunda Wallet", sublabel: "Available RWF \(formatAmount(Int(availableBalance)))", symbol: "creditcard")
+                TransferPartyRow(label: pt("fromWallet"), sublabel: pt("availableBalance", formatAmount(Int(availableBalance))), symbol: "creditcard")
                 Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
-                TransferPartyRow(label: "To account \(recipientAccountNumber)", sublabel: "New recipient", symbol: "leaf")
+                TransferPartyRow(label: pt("toAccount", recipientAccountNumber), sublabel: pt("newRecipient"), symbol: "leaf")
 
                 if let scamWarning, scamWarning.reportCount > 0 {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Caution needed before this transfer")
+                        Text(pt("scamWarningTitle"))
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.red)
-                        Text("This recipient has been reported by \(scamWarning.reportCount) other itunda users. Double-check before sending.")
+                        Text(pt("scamWarningBody", scamWarning.reportCount))
                             .font(.system(size: 12))
                             .foregroundColor(.red)
                     }
@@ -232,7 +324,7 @@ public struct TransferAmountScreen: View {
                     .padding(.top, 12)
                 }
                 Button(action: onReportScam) {
-                    Text(scamReported ? "Thanks -- this number has been reported." : "Report this number as a scam")
+                    Text(scamReported ? pt("scamReportedThanks") : pt("reportScam"))
                         .font(.system(size: 12))
                         .foregroundColor(IDS.Colors.textTertiary)
                 }
@@ -244,7 +336,7 @@ public struct TransferAmountScreen: View {
             Spacer().frame(height: 40)
 
             VStack(spacing: 16) {
-                Text("How much to send?")
+                Text(pt("amountQuestion"))
                     .font(.system(size: 16))
                     .foregroundColor(IDS.Colors.textSecondary)
                 Text(digits.isEmpty ? "0 RWF" : "\(formatAmount(amount)) RWF")
@@ -257,7 +349,7 @@ public struct TransferAmountScreen: View {
             HStack(spacing: 10) {
                 QuickAmountChip(label: "+10,000") { digits = String((Int(digits) ?? 0) + 10_000) }
                 QuickAmountChip(label: "+100,000") { digits = String((Int(digits) ?? 0) + 100_000) }
-                QuickAmountChip(label: "Max") { digits = String(Int(availableBalance)) }
+                QuickAmountChip(label: pt("amountMax")) { digits = String(Int(availableBalance)) }
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 12)
@@ -267,7 +359,7 @@ public struct TransferAmountScreen: View {
                     .tint(IDS.Colors.brand)
                     .padding(.vertical, 24)
             } else {
-                FlowNextBar(enabled: !digits.isEmpty && amount > 0, label: "Send") { onConfirm(amount) }
+                FlowNextBar(enabled: !digits.isEmpty && amount > 0, label: pt("send")) { onConfirm(amount) }
                 NumericKeypad(
                     onDigit: { d in if digits.count < 9 { digits += d } },
                     onDelete: { if !digits.isEmpty { digits.removeLast() } }
@@ -501,7 +593,7 @@ private struct NumericKeypad: View {
                             .frame(height: 60)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(key == "DEL" ? "Delete" : key)
+                        .accessibilityLabel(key == "DEL" ? pt("deleteDigit") : key)
                     }
                 }
             }

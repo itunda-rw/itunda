@@ -55,4 +55,9 @@
     <string name="overview_link_error">Ntibishoboka guhuza iyo konti.</string>
     <string name="overview_unlink_error">Ntibishoboka kuraho iyo konti.</string>
     <string name="overview_verification_failed">Ntibishoboka kwemeza iyo konti ya %1$s. Ntiyahujwe.</string>
+    <string name="scam_report_title">Tanga raporo kuri iyi numero</string>
+    <string name="scam_report_reason_placeholder">Kuki utanga raporo kuri iyi numero?</string>
+    <string name="scam_report_reporting">Kohereza raporo…</string>
+    <string name="scam_report_button">Ohereza raporo</string>
+    <string name="scam_report_cancel">Hagarika</string>
 </resources>

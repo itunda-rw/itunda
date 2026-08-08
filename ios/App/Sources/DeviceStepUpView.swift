@@ -9,6 +9,41 @@ import CoreIdentity
 /// Toss requires before a new device can move money. Mirrors bank-mfe's
 /// DeviceStepUpPrompt (BankDashboard.tsx) / Android's DeviceStepUpDialog exactly --
 /// same copy, same shape (password field, Cancel/Verify).
+///
+/// Localized 2026-08-08 (docs/DESIGN_REFERENCES.md Section 19) -- reuses
+/// AppLocale/loadStoredLocale from LoginScreen.swift directly since this file lives
+/// in the same App target (unlike Features/Payments' TransferFlowScreens.swift,
+/// which needed its own copy). Worth doing here specifically because this dialog is
+/// shared by four money-moving flows (Gift, Commerce, Eats, Stocks -- see
+/// DeviceStepUpHost's own doc comment below), not just Transfer.
+private let deviceStepUpStrings: [AppLocale: [String: String]] = [
+    .en: [
+        "title": "\u{1F512} Verify this device",
+        "body": "This is a new device for your account. Re-enter your password to allow it to send money, then try again.",
+        "password": "Password",
+        "showPassword": "Show password",
+        "hidePassword": "Hide password",
+        "cancel": "Cancel",
+        "verifying": "Verifying…",
+        "verifyDevice": "Verify device",
+    ],
+    .rw: [
+        "title": "\u{1F512} Emeza iyi terefoni",
+        "body": "Iyi ni terefoni nshya kuri konti yawe. Ongera wandike ijambo ry'ibanga kugira ngo wemeze ko ishobora kohereza amafaranga, hanyuma ugerageze nanone.",
+        "password": "Ijambo ry'ibanga",
+        "showPassword": "Erekana ijambo ry'ibanga",
+        "hidePassword": "Hisha ijambo ry'ibanga",
+        "cancel": "Hagarika",
+        "verifying": "Kwemeza…",
+        "verifyDevice": "Emeza terefoni",
+    ],
+]
+
+private func dsu(_ key: String) -> String {
+    let locale = loadStoredLocale()
+    return deviceStepUpStrings[locale]?[key] ?? deviceStepUpStrings[.en]?[key] ?? key
+}
+
 struct DeviceStepUpView: View {
     @State private var password = ""
     @FocusState private var passwordFocused: Bool
@@ -23,9 +58,9 @@ struct DeviceStepUpView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\u{1F512} Verify this device")
+            Text(dsu("title"))
                 .font(.system(size: 16, weight: .bold))
-            Text("This is a new device for your account. Re-enter your password to allow it to send money, then try again.")
+            Text(dsu("body"))
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
             // Real "Minimum Input" simplicity fix (docs/DESIGN_REFERENCES.md §11, rule #4),
@@ -34,9 +69,9 @@ struct DeviceStepUpView: View {
             HStack {
                 Group {
                     if passwordVisible {
-                        TextField("Password", text: $password)
+                        TextField(dsu("password"), text: $password)
                     } else {
-                        SecureField("Password", text: $password)
+                        SecureField(dsu("password"), text: $password)
                     }
                 }
                 .focused($passwordFocused)
@@ -48,7 +83,7 @@ struct DeviceStepUpView: View {
                         .foregroundColor(.secondary)
                         .frame(width: 24, height: 24)
                 }
-                .accessibilityLabel(passwordVisible ? "Hide password" : "Show password")
+                .accessibilityLabel(passwordVisible ? dsu("hidePassword") : dsu("showPassword"))
             }
             .padding(12)
             .background(Color(.secondarySystemBackground))
@@ -58,10 +93,10 @@ struct DeviceStepUpView: View {
                 Text(error).font(.system(size: 12)).foregroundColor(.red)
             }
             HStack(spacing: 10) {
-                Button("Cancel", action: onCancel)
+                Button(dsu("cancel"), action: onCancel)
                     .disabled(busy)
                 Spacer()
-                Button(busy ? "Verifying…" : "Verify device") { onVerify(password) }
+                Button(busy ? dsu("verifying") : dsu("verifyDevice")) { onVerify(password) }
                     .disabled(busy || password.isEmpty)
                     .fontWeight(.semibold)
             }

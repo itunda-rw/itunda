@@ -69,4 +69,13 @@
          missed in the first web localization pass over this exact screen. Fixed here
          AND retroactively in bank-mfe's own translations.ts, not left inconsistent. -->
     <string name="overview_verification_failed">Could not verify that %1$s account. It wasn\'t linked.</string>
+    <!-- Real gap caught while localizing iOS's TransferFlowContainer.swift (2026-08-08):
+         this scam-report reason dialog exists only in ItundaAppScreen.kt's transfer step,
+         separate from TransferFlow.kt's own "Report this number as a scam" link (already
+         localized), and was missed in the earlier Android transfer pass. -->
+    <string name="scam_report_title">Report this number as a scam</string>
+    <string name="scam_report_reason_placeholder">Why are you reporting this number?</string>
+    <string name="scam_report_reporting">Reporting…</string>
+    <string name="scam_report_button">Report</string>
+    <string name="scam_report_cancel">Cancel</string>
 </resources>

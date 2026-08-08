@@ -2777,6 +2777,48 @@ assumes `groupConversationId` (settlement messages, `getSplitBillsForGroup`, sev
 real, non-trivial scope — confirms the original sizing, now with a concrete design reason rather than a
 vague "non-trivial." Not built this pass; noted for whoever picks this up next.
 
+### iOS's Transfer flow localized — closes the 3x3 login/overview/transfer × web/Android/iOS grid (2026-08-08)
+
+The third and last platform for the transfer screen, following the exact web → Android → iOS order the
+whole thread used. `TransferFlowScreens.swift` (`RecipientEntryScreen`/`TransferAmountScreen`, the
+`Features/Payments` Swift module) needed its own self-contained locale dictionary rather than reusing
+`LoginScreen.swift`'s `AppLocale`/`loadStoredLocale` directly: that module deliberately can't depend
+back on `App` (same constraint `BankView.swift`'s own doc comment already names for `TransferViewModel`),
+so those `internal` symbols aren't visible to it — the exact same reason Android's
+`android/features/payments/impl` needed its own `values-rw/strings.xml` rather than sharing `:app`'s.
+Read the same UserDefaults key (`itunda.locale`) the App-target switcher already writes, so both targets
+stay in sync without a shared dependency either way. `DeviceStepUpView.swift` and
+`TransferFlowContainer.swift` (both `App/Sources`, same target as `LoginScreen.swift`) *did* reuse
+`AppLocale`/`loadStoredLocale` directly, each adding its own small dict — `DeviceStepUpView` is shared by
+four money-moving flows (Gift, Commerce, Eats, Stocks), not just Transfer, so localizing it here paid off
+beyond this one screen. All Kinyarwanda strings ported verbatim from Android's already-shipped
+`values-rw/strings.xml` for the shared copy, to keep phrasing consistent across platforms rather than
+re-translating the same sentence three different ways.
+
+**Real cross-platform gap caught while doing this, fixed on both platforms**: iOS's
+`TransferFlowContainer.swift` has its own scam-report reason sheet ("Why are you reporting this
+number?", Cancel/Report), separate from `TransferFlowScreens.swift`'s already-localized "Report this
+number as a scam" link. Localizing it surfaced that Android's equivalent dialog — in
+`ItundaAppScreen.kt`, not `TransferFlow.kt`, so the earlier Android transfer pass never saw it — was the
+same kind of gap: hardcoded English, never touched. Fixed on both: added `scam_report_*` keys to
+`:app`'s `values{,-rw}/strings.xml` and wired `stringResource()` calls into `ItundaAppScreen.kt`'s
+`AlertDialog`, matching the iOS fix in the same pass rather than leaving one platform behind — directly
+the lesson from [[project_itunda_toss_conference_research]]'s own "nobody checked cross-platform parity
+on a landed fix" finding, applied proactively this time instead of caught later.
+
+**Verification tier, named honestly**: `swiftc -parse` clean on all 3 touched Swift files,
+`:app:compileDebugKotlin` clean, XML well-formed. Same compile-tier-only ceiling as every other
+non-web platform this thread — no simulator/device/emulator check this round (see
+[[feedback_emulator_for_visual_verification]]).
+
+**Running tally, updated**: all 3 screens (login/overview/transfer) now exist on all 3 platforms — 9/9
+combinations. Verification tiers vary: web transfer is the only one with a real live authenticated
+session (CDP-driven); everything else is compile+lint tier, several with a real emulator/simulator pass
+earlier in the thread (Android login, iOS login/overview) but not this most recent round. Real
+next steps, in order: native-speaker review of every `rw` string on all 3 platforms (still never done),
+physical-device wiring for Android (stated intent, not yet set up), a fourth localization screen once a
+verification method is back online, and the still-open 1:1-chat SplitBill gap below.
+
 ### Unresolved / worth a follow-up
 - The 1:1-chat split-bill gap above — real, scoped, two concrete design options identified, neither built.
 - Naver Pay's real engineering-blog depth (d2.naver.com) and Wise's real ledger architecture: both
