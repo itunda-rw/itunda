@@ -304,9 +304,18 @@ class CommunityController(private val communityService: CommunityService, privat
     fun handleAlreadyCheckedIn(ex: MeetupAttendanceAlreadyCheckedInException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ALREADY_CHECKED_IN", ex.message ?: "Conflict"))
 
+    // Real gap found 2026-08-08 (third IDOR audit pass): a real 403 here let a
+    // stranger with a real sessionId they aren't a member of distinguish "exists,
+    // you're not in this group" from a genuinely nonexistent sessionId (404) via
+    // status code alone -- same existence-oracle bug class already found and fixed
+    // twice this session (GroupAccountController, SavingsController). Notably: this
+    // exact method's own doc comment already documents a prior real bug (an
+    // unauthenticated caller could read every real attendee's userId) that this same
+    // membership check was added to fix -- the membership gate itself was correct,
+    // just mapped to the wrong status code.
     @ExceptionHandler(MeetupAttendanceNotAMemberException::class)
     fun handleNotAMember(ex: MeetupAttendanceNotAMemberException) =
-        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("NOT_A_MEMBER", ex.message ?: "Forbidden"))
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("SESSION_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(InvalidGroupBuyFinalizeException::class)
     fun handleInvalidGroupBuyFinalize(ex: InvalidGroupBuyFinalizeException) =
