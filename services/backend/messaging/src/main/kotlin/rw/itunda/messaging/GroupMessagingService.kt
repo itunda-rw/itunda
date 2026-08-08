@@ -186,6 +186,17 @@ class GroupMessagingService(
      * an existing direct group between the same two people rather than spawning a new
      * hidden group -- and therefore a second, disconnected settlement thread -- every
      * time they split another bill together.
+     *
+     * Real gap caught while re-reading this file's own rate-limiting discipline
+     * (2026-08-09): [createGroup]/[createGroupByPhoneNumbers] both rate-limit real group
+     * creation, but this method's first version didn't -- calling
+     * `createSplitBill.createDirectSplitBill` with a different real `otherUserId` each
+     * time would have created an unlimited number of hidden groups + member rows with no
+     * throttle at all, unlike every other creation path in this file. Rate-limited on
+     * the "creating a new one" branch only, not the "reusing an existing pair" branch,
+     * so two people who've already split a bill together aren't throttled by their own
+     * repeat, legitimate usage -- `createSplitBill`'s own `splitbill:create` limit
+     * already covers that case.
      */
     @Transactional
     fun getOrCreateDirectSplitGroup(userId: String, otherUserId: String): GroupConversation {
@@ -193,6 +204,7 @@ class GroupMessagingService(
             throw GroupNeedsMoreMembersException("A group needs at least one other real member")
         }
         groupConversationRepository.findDirectGroupBetween(userId, otherUserId)?.let { return it }
+        rateLimiter.checkLimit("messaging:group-create:$userId", limit = 20, window = Duration.ofHours(1))
         val otherUser = userRepository.findById(otherUserId)
             .orElseThrow { GroupMemberNotFoundException("No itunda account found for that user") }
         return createGroupInternal(

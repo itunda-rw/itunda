@@ -645,6 +645,26 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 savedSlot.captured.isDirect shouldBe true
                 verify { groupConversationMemberRepository.saveAll(match<List<GroupConversationMember>> { it.size == 2 && it.map { m -> m.userId }.toSet() == setOf("user_a", "user_b") }) }
             }
+
+            Then("it rate-limits the creation the same way createGroup/createGroupByPhoneNumbers do") {
+                verify(exactly = 1) { rateLimiter.checkLimit("messaging:group-create:user_a", limit = 20, window = Duration.ofHours(1)) }
+            }
+        }
+
+        When("the group-creation rate limit is exceeded") {
+            every { groupConversationRepository.findDirectGroupBetween("user_a", "user_b") } returns null
+            every {
+                rateLimiter.checkLimit("messaging:group-create:user_a", limit = 20, window = Duration.ofHours(1))
+            } throws RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException before ever creating a hidden group") {
+                try {
+                    service.getOrCreateDirectSplitGroup("user_a", "user_b")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { groupConversationRepository.save(any()) }
+                }
+            }
         }
 
         When("resolving a direct split group that already exists between the same two people") {
@@ -656,6 +676,10 @@ class GroupMessagingServiceTest : BehaviorSpec({
             Then("it reuses the existing hidden group instead of creating a second one") {
                 group.id shouldBe "group_direct_1"
                 verify(exactly = 0) { groupConversationRepository.save(any()) }
+            }
+
+            Then("it does NOT rate-limit a repeat split between an already-paired-up couple") {
+                verify(exactly = 0) { rateLimiter.checkLimit("messaging:group-create:user_a", limit = 20, window = Duration.ofHours(1)) }
             }
         }
 

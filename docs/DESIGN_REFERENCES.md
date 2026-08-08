@@ -3175,6 +3175,35 @@ a hidden group as a side effect (the caller's own group count stayed unchanged) 
 (`findDirectGroupBetween` only ever matches a group where the *caller's own id* is one of the two members
 queried, so a stranger's pairing can never resolve), verified live rather than only reasoned about.
 
+### One more real gap, found re-reading this feature's own file: missing rate limit (2026-08-09)
+
+Re-reading `GroupMessagingService.kt`'s own established discipline before calling the split-bill feature
+finished: both `createGroup` and `createGroupByPhoneNumbers` rate-limit real group creation
+(`messaging:group-create:$userId`, 20/hour) — the exact fix `AlreadyGroupMemberException`'s own sibling
+bug got in an earlier session (found live 2026-08-02, "an authenticated caller could otherwise spam
+unlimited GroupConversation + member rows"). `getOrCreateDirectSplitGroup`'s first version, added earlier
+today, called `createGroupInternal` directly on its "creating a new hidden group" branch with no rate
+limit at all — the same class of gap, self-introduced in the same session that fixed the original one.
+Calling `createDirectSplitBill` with a different real `otherUserId` each time (bounded to real registered
+users, since [GroupMemberNotFoundException] rejects a fake one, but the real user base is still a large
+enough surface) would have created an unbounded number of hidden groups + member rows with zero throttle.
+
+Fixed by adding the identical `rateLimiter.checkLimit("messaging:group-create:$userId", ...)` call, scoped
+deliberately to only the "creating a new pair" branch — not the "reusing an existing pair" branch, so two
+people who've already split a bill together once aren't throttled by their own repeat, legitimate use
+(`createSplitBill`'s own separate `splitbill:create` limit already covers that case on its own).
+
+New Kotest coverage proves both halves of the fix: a real `RateLimitExceededException` propagates before
+any group row is created, *and* a separate test confirms `checkLimit` is never even called on the
+reuse-existing-pair path — not just "the happy path still passes," but that the fix is scoped correctly in
+both directions. `:messaging:test`/`:splitbill:test` both clean.
+
+**Worth naming as its own lesson**: this session already has an established habit of periodically
+re-checking its own past audits (Idempotency-Key sweeps, Flyway migration checks, IDOR passes) — this is
+the first time that habit caught a gap in code the *same* session had just written, not older code. The
+same discipline that catches a stale mistake also catches a fresh one, if applied consistently rather
+than only pointed backward at old commits.
+
 ### Unresolved / worth a follow-up
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
