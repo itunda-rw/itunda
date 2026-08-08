@@ -3209,7 +3209,14 @@ than only pointed backward at old commits.
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the
   underlying mechanism has changed, not just added-to.
-- The 1:1-chat split-bill gap above — real, scoped, two concrete design options identified, neither built.
+- ~~The 1:1-chat split-bill gap above — real, scoped, two concrete design options identified, neither built.~~
+  **Closed 2026-08-09** — see the dedicated section above; stale line kept struck through rather than
+  deleted so the history of "shelved twice, closed on the third real pass" stays visible in place.
+- **Named, not urgent**: the entire split-bill UI family (`GroupSplitBillsView` and today's new
+  `DirectSplitBillsView`, on all 3 platforms) has zero localization — checked before assuming today's
+  new views regressed anything, and confirmed the pre-existing `GroupSplitBillsView` was already
+  English-only on web/Android/iOS before this session touched it, so nothing new broke. Real future
+  localization target once the current thread's other open items close out; not scoped into today's work.
 - Naver Pay's real engineering-blog depth (d2.naver.com) and Wise's real ledger architecture: both
   now confirmed genuinely unrecoverable with this environment's current fetch tooling, not worth a
   third attempt without a different access method. Samsung Pay: still entirely unresearched.
