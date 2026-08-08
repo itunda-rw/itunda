@@ -2647,12 +2647,32 @@ precedent and warned against repeating it).
    as a scam" link visible on the confirm screen) is a separate component this pass didn't touch —
    still English in both locales, confirmed visible in the real Kinyarwanda screenshot.
 
+   **Android extended to the same third screen the same day** — `TransferFlow.kt`
+   (`RecipientEntryScreen`/`TransferAmountScreen`/`DeviceStepUpDialog`, the feature-module
+   equivalent of web's `TransferFlow`, all 3 reached from the same real send-money path wired via
+   `MainViewModel.sendTransfer`). This is a bigger, more Toss-reference-faithful flow than web's
+   simpler form (a real 2-step recipient/amount wizard, quick-amount chips, a device step-up
+   dialog) — translated as one cohesive unit anyway, matching bank-mfe's own scope. The
+   `android/features/payments/impl` module had no `res/` directory at all before this — created
+   `values/strings.xml` + `values-rw/strings.xml` from scratch, Android's native format specifiers
+   for the 3 dynamic strings (available balance, recipient account, scam-report count). Also fixed
+   a real, unrelated stale doc comment found while reading this file closely: its own header still
+   claimed this flow was "a UI shell, not wired to the backend," left un-updated since before it
+   was actually wired to `MainViewModel.sendTransfer` with real device step-up and biometric
+   confirmation — corrected in place rather than left misleading the next reader.
+
+   **Verification tier, named honestly**: `:features:payments:impl:compileDebugKotlin` and
+   `:app:compileDebugKotlin` both clean, `accessibility-lint.py` clean — compile+lint tier only,
+   matching iOS's own tier, not web's live-session tier. No physical-device check this round: the
+   emulator is confirmed unreliable this session (see
+   [[feedback_emulator_for_visual_verification]]'s correction) and physical-device wiring hasn't
+   been set up yet — a real, named gap, not silently skipped.
+
    Real next steps, in order: native-speaker review of the existing `rw` strings on all 3
-   platforms, a real iOS simulator/on-device check of both localized screens (the `ItundaApp`
+   platforms, a real iOS simulator/on-device check of its two localized screens (the `ItundaApp`
    scheme's pre-existing link blocker is still unresolved), a real *physical-device* check of
-   Android's two screens (the emulator is no longer in use this session — see
-   [[feedback_emulator_for_visual_verification]]'s correction), `ReportScamLink`'s own string, then
-   phase content outward into a third screen on Android/iOS and a fourth screen on all 3 platforms.
+   Android's three screens once that's wired up, `ReportScamLink`'s own string (web) and iOS's
+   transfer flow (still not started), then a fourth screen on whichever platforms are ready for it.
 3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given

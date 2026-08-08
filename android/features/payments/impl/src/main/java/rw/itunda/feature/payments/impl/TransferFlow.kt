@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -51,11 +52,18 @@ import java.util.Locale
  *    a connector line, a headline that goes from muted to bold once an
  *    amount is entered, quick-amount chips, a Next bar, and a keypad.
  *
- * Backed by local state only, not TransferService -- itunda has no login
- * flow yet (see MainViewModel.kt / NetworkClient.kt), so there is no real
- * session to quote a transfer against. Honestly a UI shell, not wired to
- * the backend, exactly like the mini-app host's "no active session" finding
- * earlier this session -- not silently claimed as more than it is.
+ * Correction (2026-08-08, found stale while localizing this file): the paragraph below
+ * describing this as "a UI shell, not wired to the backend" is out of date and was left
+ * un-updated after this flow was actually wired up. `ItundaAppScreen.kt` now calls both
+ * screens with real callbacks into `MainViewModel.sendTransfer` (real
+ * `rw.itunda.p2p.sendDirect`), real device step-up, real biometric confirmation, and a
+ * real scam-check warning -- this is itunda's actual, live send-money flow, not a shell.
+ * Kept the original paragraph below for the historical "why these two screens exist"
+ * account, since that part is still accurate.
+ *
+ * Originally backed by local state only, not TransferService -- itunda had no login
+ * flow yet (see MainViewModel.kt / NetworkClient.kt) at the time this was written, so
+ * there was no real session to quote a transfer against.
  */
 
 internal val rwfFormatter = NumberFormat.getNumberInstance(Locale.US)
@@ -98,7 +106,7 @@ fun RecipientEntryScreen(
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             Text(
-                "Which account should\nwe send to?",
+                stringResource(R.string.transfer_recipient_headline),
                 color = Ids.colors.textPrimary,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
@@ -110,7 +118,7 @@ fun RecipientEntryScreen(
             // is recognized and normalized client-side -- see MainViewModel.
             // normalizeRecipientIdentifier), not just an account number, now that
             // MainViewModel.sendTransfer calls the real rw.itunda.p2p.sendDirect.
-            Text("Enter phone or account number", color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.transfer_recipient_input_label), color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(6.dp))
             // Fixed (2026-07-11): the only form input in this app had no accessible
             // label at all -- BasicTextField, unlike a View-based TextInputLayout,
@@ -119,6 +127,7 @@ fun RecipientEntryScreen(
             // unless told to), so TalkBack announced this as a bare, unlabeled edit
             // field. docs/ACCESSIBILITY.md flagged form labels as an open, unaudited
             // item -- this was the field that audit needed to find.
+            val recipientInputDescription = stringResource(R.string.transfer_recipient_input_description)
             BasicTextField(
                 value = accountNumber,
                 onValueChange = { input -> accountNumber = input.filter { it.isDigit() }.take(16) },
@@ -126,7 +135,7 @@ fun RecipientEntryScreen(
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { contentDescription = "Phone or account number, up to 16 digits" }
+                    .semantics { contentDescription = recipientInputDescription }
             )
             Spacer(modifier = Modifier.height(8.dp))
             androidx.compose.material3.Divider(color = Ids.colors.brand, thickness = 2.dp)
@@ -142,7 +151,7 @@ fun RecipientEntryScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Select bank", color = Ids.colors.textTertiary, fontSize = 17.sp)
+                    Text(stringResource(R.string.transfer_select_bank), color = Ids.colors.textTertiary, fontSize = 17.sp)
                     // Real Toss auto-detects the bank from the account number's real
                     // BIN registry -- itunda has no such registry to check against, so
                     // this doesn't claim to (2026-07-12 fix: the previous copy here,
@@ -152,7 +161,7 @@ fun RecipientEntryScreen(
                     // not a resolved bank). A picker is a real, honest affordance for a
                     // future release; for now this is just a label.
                     Text(
-                        "Optional, for your own reference",
+                        stringResource(R.string.transfer_select_bank_hint),
                         color = Ids.colors.textTertiary,
                         fontSize = 13.sp
                     )
@@ -178,9 +187,9 @@ fun RecipientEntryScreen(
             if (accountNumber.isEmpty()) {
                 Spacer(modifier = Modifier.height(28.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Contacts", color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.transfer_contacts_label), color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Text(
-                        if (showAddContactForm) "Cancel" else "+ Add",
+                        if (showAddContactForm) stringResource(R.string.transfer_cancel) else stringResource(R.string.transfer_add_contact),
                         color = Ids.colors.brand,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -189,24 +198,28 @@ fun RecipientEntryScreen(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 if (showAddContactForm) {
+                    val contactNamePlaceholder = stringResource(R.string.transfer_contact_name_placeholder)
+                    val contactNameDescription = stringResource(R.string.transfer_contact_name_description)
                     BasicTextField(
                         value = newContactName,
                         onValueChange = { newContactName = it },
                         textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Contact name" },
-                        decorationBox = { inner -> if (newContactName.isEmpty()) Text("Name", color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = contactNameDescription },
+                        decorationBox = { inner -> if (newContactName.isEmpty()) Text(contactNamePlaceholder, color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    val contactPhonePlaceholder = stringResource(R.string.transfer_contact_phone_placeholder)
+                    val contactPhoneDescription = stringResource(R.string.transfer_contact_phone_description)
                     BasicTextField(
                         value = newContactPhone,
                         onValueChange = { input -> newContactPhone = input.filter { it.isDigit() || it == '+' } },
                         textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Contact phone number" },
-                        decorationBox = { inner -> if (newContactPhone.isEmpty()) Text("Phone number", color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = contactPhoneDescription },
+                        decorationBox = { inner -> if (newContactPhone.isEmpty()) Text(contactPhonePlaceholder, color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Save contact",
+                        stringResource(R.string.transfer_save_contact),
                         color = if (newContactName.isNotBlank() && newContactPhone.isNotBlank()) Ids.colors.brand else Ids.colors.textTertiary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -218,7 +231,7 @@ fun RecipientEntryScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 if (contacts.isEmpty() && !showAddContactForm) {
-                    EmptyState("No saved contacts yet — add one above to send faster next time.", icon = Icons.Outlined.PersonOutline)
+                    EmptyState(stringResource(R.string.transfer_no_contacts), icon = Icons.Outlined.PersonOutline)
                 } else {
                     contacts.forEach { contact ->
                         RecentRecipientRow(name = contact.name, bankAndAccount = "${contact.bank} - ${contact.phoneNumber}") {
@@ -232,7 +245,7 @@ fun RecipientEntryScreen(
         Spacer(modifier = Modifier.weight(1f))
 
         if (accountNumber.length >= 4) {
-            FlowNextBar(enabled = true, label = "Next") { onNext(accountNumber) }
+            FlowNextBar(enabled = true, label = stringResource(R.string.transfer_next)) { onNext(accountNumber) }
         }
         NumericKeypad(
             onDigit = { d -> if (accountNumber.length < 16) accountNumber += d },
@@ -271,8 +284,8 @@ fun TransferAmountScreen(
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             TransferPartyRow(
-                label = "From Itunda Wallet",
-                sublabel = "Available RWF ${rwfFormatter.format(availableBalanceLong)}",
+                label = stringResource(R.string.transfer_from_wallet),
+                sublabel = stringResource(R.string.transfer_available_balance, rwfFormatter.format(availableBalanceLong)),
                 icon = Icons.Outlined.AccountBalanceWallet
             )
             Spacer(modifier = Modifier.height(2.dp))
@@ -285,8 +298,8 @@ fun TransferAmountScreen(
             )
             Spacer(modifier = Modifier.height(2.dp))
             TransferPartyRow(
-                label = "To account $recipientAccountNumber",
-                sublabel = "New recipient",
+                label = stringResource(R.string.transfer_to_account, recipientAccountNumber),
+                sublabel = stringResource(R.string.transfer_new_recipient),
                 icon = Icons.Outlined.Savings
             )
             if (scamWarning != null && scamWarning.reportCount > 0) {
@@ -298,9 +311,9 @@ fun TransferAmountScreen(
                         .background(Ids.colors.dangerTint)
                         .padding(horizontal = 12.dp, vertical = 10.dp)
                 ) {
-                    Text("Caution needed before this transfer", color = Ids.colors.danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.transfer_scam_warning_title), color = Ids.colors.danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        "This recipient has been reported by ${scamWarning.reportCount} other itunda users. Double-check before sending.",
+                        stringResource(R.string.transfer_scam_warning_body, scamWarning.reportCount),
                         color = Ids.colors.danger,
                         fontSize = 12.sp,
                     )
@@ -308,7 +321,7 @@ fun TransferAmountScreen(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                if (scamReported) "Thanks -- this number has been reported." else "Report this number as a scam",
+                if (scamReported) stringResource(R.string.transfer_scam_reported_thanks) else stringResource(R.string.transfer_report_scam),
                 color = Ids.colors.textTertiary,
                 fontSize = 12.sp,
                 modifier = Modifier.clickable(enabled = !scamReported, onClick = onReportScam),
@@ -325,7 +338,7 @@ fun TransferAmountScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("How much to send?", color = Ids.colors.textSecondary, fontSize = 16.sp)
+            Text(stringResource(R.string.transfer_amount_question), color = Ids.colors.textSecondary, fontSize = 16.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = if (digits.isEmpty()) "0 RWF" else "${rwfFormatter.format(amount)} RWF",
@@ -342,7 +355,7 @@ fun TransferAmountScreen(
         ) {
             QuickAmountChip("+10,000") { digits = ((digits.toLongOrNull() ?: 0L) + 10_000L).toString() }
             QuickAmountChip("+100,000") { digits = ((digits.toLongOrNull() ?: 0L) + 100_000L).toString() }
-            QuickAmountChip("Max") { digits = availableBalanceLong.toString() }
+            QuickAmountChip(stringResource(R.string.transfer_amount_max)) { digits = availableBalanceLong.toString() }
         }
 
         if (isSubmitting) {
@@ -350,7 +363,7 @@ fun TransferAmountScreen(
                 androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
             }
         } else {
-            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = "Send") { onConfirm(amount) }
+            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = stringResource(R.string.transfer_send)) { onConfirm(amount) }
             NumericKeypad(
                 onDigit = { d -> if (digits.length < 9) digits += d },
                 onDelete = { if (digits.isNotEmpty()) digits = digits.dropLast(1) }
@@ -391,13 +404,14 @@ fun DeviceStepUpDialog(
     // the identical same-day fix on the shared IdsTextField's own isPassword mode: a local
     // UI-only affordance, not a security control.
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    val passwordDescription = stringResource(R.string.transfer_password_description)
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text("🔒 Verify this device", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.transfer_device_verify_title), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 Text(
-                    "This is a new device for your account. Re-enter your password to allow it to send money, then try again.",
+                    stringResource(R.string.transfer_device_verify_body),
                     color = Ids.colors.textSecondary,
                     fontSize = 13.sp,
                 )
@@ -419,7 +433,7 @@ fun DeviceStepUpDialog(
                             .padding(vertical = 12.dp, horizontal = 12.dp)
                             .padding(end = 36.dp)
                             .focusRequester(focusRequester)
-                            .semantics { contentDescription = "Password" }
+                            .semantics { contentDescription = passwordDescription }
                     )
                     IconButton(
                         onClick = { passwordVisible = !passwordVisible },
@@ -427,7 +441,7 @@ fun DeviceStepUpDialog(
                     ) {
                         Icon(
                             if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            contentDescription = if (passwordVisible) stringResource(R.string.transfer_hide_password) else stringResource(R.string.transfer_show_password),
                             tint = Ids.colors.textTertiary,
                         )
                     }
@@ -440,12 +454,12 @@ fun DeviceStepUpDialog(
         },
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = { onVerify(password) }, enabled = !busy && password.isNotEmpty()) {
-                Text(if (busy) "Verifying…" else "Verify device", color = Ids.colors.brand, fontWeight = FontWeight.SemiBold)
+                Text(if (busy) stringResource(R.string.transfer_verifying) else stringResource(R.string.transfer_verify_device), color = Ids.colors.brand, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
             androidx.compose.material3.TextButton(onClick = onCancel, enabled = !busy) {
-                Text("Cancel", color = Ids.colors.textSecondary)
+                Text(stringResource(R.string.transfer_cancel), color = Ids.colors.textSecondary)
             }
         },
         containerColor = Ids.colors.surface,
@@ -563,6 +577,7 @@ internal fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
         listOf("7", "8", "9"),
         listOf("00", "0", "DEL")
     )
+    val deleteDescription = stringResource(R.string.transfer_delete_digit)
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
         keys.forEach { row ->
             Row(modifier = Modifier.fillMaxWidth().height(60.dp)) {
@@ -575,7 +590,7 @@ internal fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
                             // Digit keys' visible text is already their own accessible
                             // name; DEL's "⌫" glyph is not, so it needs an explicit one
                             // -- same reasoning as TopIconButton's fix elsewhere.
-                            .then(if (key == "DEL") Modifier.semantics { contentDescription = "Delete" } else Modifier),
+                            .then(if (key == "DEL") Modifier.semantics { contentDescription = deleteDescription } else Modifier),
                         contentAlignment = Alignment.Center
                     ) {
                         if (key == "DEL") {

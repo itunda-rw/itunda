@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Kinyarwanda translations for TransferFlow.kt's strings. See values/strings.xml's own
+  doc comment for the full context. Same honesty note as every prior screen: careful,
+  good-faith translation, NOT verified by a native Kinyarwanda speaker.
+-->
+<resources>
+    <string name="transfer_recipient_headline">Ni iyihe konti\ntwohereza mo?</string>
+    <string name="transfer_recipient_input_label">Andika numero ya telefoni cyangwa konti</string>
+    <string name="transfer_recipient_input_description">Numero ya telefoni cyangwa konti, ntirengeje imibare 16</string>
+    <string name="transfer_select_bank">Hitamo banki</string>
+    <string name="transfer_select_bank_hint">Si ngombwa, ni ukugira ngo ubimenye</string>
+    <string name="transfer_contacts_label">Abo wabitse</string>
+    <string name="transfer_add_contact">+ Ongeraho</string>
+    <string name="transfer_cancel">Hagarika</string>
+    <string name="transfer_contact_name_placeholder">Izina</string>
+    <string name="transfer_contact_name_description">Izina ry\'uwo mwavuganye</string>
+    <string name="transfer_contact_phone_placeholder">Numero ya telefoni</string>
+    <string name="transfer_contact_phone_description">Numero ya telefoni y\'uwo mwavuganye</string>
+    <string name="transfer_save_contact">Bika uyu muntu</string>
+    <string name="transfer_no_contacts">Nta bantu wabitse. Ongeraho hejuru kugira ngo wihute ubutaha.</string>
+    <string name="transfer_next">Komeza</string>
+    <string name="transfer_from_wallet">Biva kuri Wallet ya Itunda</string>
+    <string name="transfer_available_balance">Amafaranga ahari RWF %1$s</string>
+    <string name="transfer_to_account">Kuri konti %1$s</string>
+    <string name="transfer_new_recipient">Uwakira mushya</string>
+    <string name="transfer_scam_warning_title">Witondere mbere yo kohereza</string>
+    <string name="transfer_scam_warning_body">Uyu muntu yatanzweho raporo n\'abakoresha itunda %1$d. Genzura neza mbere yo kohereza.</string>
+    <string name="transfer_scam_reported_thanks">Murakoze — iyi numero yatanzweho raporo.</string>
+    <string name="transfer_report_scam">Tanga raporo kuri iyi numero</string>
+    <string name="transfer_amount_question">Ni angahe ushaka kohereza?</string>
+    <string name="transfer_amount_max">Byose</string>
+    <string name="transfer_send">Ohereza</string>
+    <string name="transfer_device_verify_title">🔒 Emeza iyi terefoni</string>
+    <string name="transfer_device_verify_body">Iyi ni terefoni nshya kuri konti yawe. Ongera wandike ijambo ry\'ibanga kugira ngo wemeze ko ishobora kohereza amafaranga, hanyuma ugerageze nanone.</string>
+    <string name="transfer_password_description">Ijambo ry\'ibanga</string>
+    <string name="transfer_show_password">Erekana ijambo ry\'ibanga</string>
+    <string name="transfer_hide_password">Hisha ijambo ry\'ibanga</string>
+    <string name="transfer_verifying">Kwemeza…</string>
+    <string name="transfer_verify_device">Emeza terefoni</string>
+    <string name="transfer_delete_digit">Siba</string>
+</resources>
