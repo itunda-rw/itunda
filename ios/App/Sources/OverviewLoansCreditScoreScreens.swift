@@ -11,8 +11,61 @@ import CoreNetwork
 
 private let linkProviders = ["MTN Mobile Money", "Airtel Money", "Bank of Kigali", "Equity Bank Rwanda"]
 
+// Real second iOS screen localized (2026-08-08), following web/Android's own identical
+// "phase content outward from login into wallet overview" step (docs/DESIGN_REFERENCES.md
+// Section 19). Reuses AppLocale/loadStoredLocale from LoginScreen.swift (same target,
+// promoted to internal there for exactly this reuse) rather than duplicating locale
+// detection a second time. Includes overview.verificationFailed from the start -- web's own
+// first pass over this exact screen missed that key entirely (only caught while porting to
+// Android), so it's added here up front rather than repeating that omission a third time.
+private let overviewStrings: [AppLocale: [String: String]] = [
+    .en: [
+        "title": "My assets",
+        "loadError": "Could not load your overview.",
+        "netWorth": "Net worth",
+        "accounts": "Accounts",
+        "savings": "Savings: %d RWF across %d goal(s)",
+        "loans": "Loans: %d RWF outstanding, %d active",
+        "investments": "Investments: %d RWF cost basis, %d holding(s)",
+        "insurance": "Insurance: %d active plan(s), %d RWF/month",
+        "linkedAccounts": "Linked accounts",
+        "demoBalance": "Demo balance: %@ %d",
+        "unlink": "Unlink",
+        "linkPrompt": "Link a bank or mobile money account",
+        "providerNamePlaceholder": "Provider name",
+        "accountPhonePlaceholder": "Account / phone number",
+        "linking": "Linking…",
+        "linkAccount": "Link account",
+        "linkError": "Could not link that account.",
+        "unlinkError": "Could not unlink this account.",
+        "verificationFailed": "Could not verify that %@ account. It wasn't linked.",
+    ],
+    .rw: [
+        "title": "Umutungo wanjye",
+        "loadError": "Ntibishoboka gushaka amakuru y'umutungo wawe.",
+        "netWorth": "Umutungo wose",
+        "accounts": "Konti",
+        "savings": "Ubwizigame: RWF %d mu migambi %d",
+        "loans": "Inguzanyo: RWF %d zisigaye, %d zikoreshwa",
+        "investments": "Ishoramari: RWF %d yatanzwe, ibintu %d",
+        "insurance": "Ubwishingizi: gahunda %d zikora, RWF %d ku kwezi",
+        "linkedAccounts": "Konti zihujwe",
+        "demoBalance": "Amafaranga y'ikitegererezo: %@ %d",
+        "unlink": "Kuraho ihuza",
+        "linkPrompt": "Huza konti ya banki cyangwa Mobile Money",
+        "providerNamePlaceholder": "Izina ry'ikigo",
+        "accountPhonePlaceholder": "Numero ya konti / telefoni",
+        "linking": "Guhuza…",
+        "linkAccount": "Huza konti",
+        "linkError": "Ntibishoboka guhuza iyo konti.",
+        "unlinkError": "Ntibishoboka kuraho iyo konti.",
+        "verificationFailed": "Ntibishoboka kwemeza iyo konti ya %@. Ntiyahujwe.",
+    ],
+]
+
 struct OverviewScreenView: View {
     var onBack: () -> Void = {}
+    @State private var locale: AppLocale = loadStoredLocale()
     @State private var overview: OverviewResponse?
     @State private var linkedAccounts: [LinkedAccountDto] = []
     @State private var error: String?
@@ -21,12 +74,16 @@ struct OverviewScreenView: View {
     @State private var provider = ""
     @State private var accountNumber = ""
 
+    private func t(_ key: String) -> String {
+        overviewStrings[locale]?[key] ?? overviewStrings[.en]?[key] ?? key
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }.accessibilityLabel("Back")
                 Spacer()
-                Text("My assets").font(.headline).foregroundColor(IDS.Colors.textPrimary)
+                Text(t("title")).font(.headline).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
                 Color.clear.frame(width: 20)
             }
@@ -37,14 +94,14 @@ struct OverviewScreenView: View {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     if let overview {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Net worth").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Text(t("netWorth")).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                             Text("\(Int(overview.netWorth)) RWF").font(.title).bold()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Accounts").bold()
+                            Text(t("accounts")).bold()
                             ForEach(overview.accounts) { a in
                                 HStack { Text("\(a.name) (\(a.type))"); Spacer(); Text("\(a.currency) \(Int(a.balance))") }.font(.subheadline)
                             }
@@ -52,25 +109,25 @@ struct OverviewScreenView: View {
                         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Savings: \(Int(overview.savings.totalSaved)) RWF across \(overview.savings.goalCount) goal(s)").font(.subheadline)
-                            Text("Loans: \(Int(overview.loans.totalOutstanding)) RWF outstanding, \(overview.loans.activeCount) active").font(.subheadline)
-                            Text("Investments: \(Int(overview.investments.totalCostBasis)) RWF cost basis, \(overview.investments.holdingCount) holding(s)").font(.subheadline)
-                            Text("Insurance: \(overview.insurance.activePolicyCount) active plan(s), \(Int(overview.insurance.totalMonthlyPremium)) RWF/month").font(.subheadline)
+                            Text(String(format: t("savings"), Int(overview.savings.totalSaved), overview.savings.goalCount)).font(.subheadline)
+                            Text(String(format: t("loans"), Int(overview.loans.totalOutstanding), overview.loans.activeCount)).font(.subheadline)
+                            Text(String(format: t("investments"), Int(overview.investments.totalCostBasis), overview.investments.holdingCount)).font(.subheadline)
+                            Text(String(format: t("insurance"), overview.insurance.activePolicyCount, Int(overview.insurance.totalMonthlyPremium))).font(.subheadline)
                         }
                         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Linked accounts").bold()
+                            Text(t("linkedAccounts")).bold()
                             ForEach(linkedAccounts) { account in
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(account.provider).bold()
                                     Text("\(account.externalAccountNumberMasked) · \(account.status)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     if let demoBalance = account.demoBalance {
-                                        Text("Demo balance: \(account.demoBalanceCurrency ?? "") \(Int(demoBalance))").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        Text(String(format: t("demoBalance"), account.demoBalanceCurrency ?? "", Int(demoBalance))).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     }
                                     if account.status == "LINKED" {
                                         Button(action: { Task { await unlink(account.id) } }) {
-                                            Text("Unlink").font(.caption).bold()
+                                            Text(t("unlink")).font(.caption).bold()
                                         }
                                         .disabled(busy)
                                     }
@@ -79,7 +136,7 @@ struct OverviewScreenView: View {
                             }
                             if !showLinkForm {
                                 Button(action: { showLinkForm = true }) {
-                                    Text("Link a bank or mobile money account").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
+                                    Text(t("linkPrompt")).bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
                                 }
                             } else {
                                 VStack(alignment: .leading, spacing: 8) {
@@ -88,10 +145,10 @@ struct OverviewScreenView: View {
                                             Button(p) { provider = p }.font(.caption).bold()
                                         }
                                     }
-                                    IdsTextField("Provider name", text: $provider)
-                                    IdsTextField("Account / phone number", text: $accountNumber)
+                                    IdsTextField(t("providerNamePlaceholder"), text: $provider)
+                                    IdsTextField(t("accountPhonePlaceholder"), text: $accountNumber)
                                     Button(action: { Task { await link() } }) {
-                                        Text(busy ? "Linking…" : "Link account").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
+                                        Text(busy ? t("linking") : t("linkAccount")).bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
                                     }
                                     .disabled(busy || provider.isEmpty || accountNumber.isEmpty)
                                 }
@@ -114,7 +171,7 @@ struct OverviewScreenView: View {
             overview = try await NetworkClient.shared.getOverview()
             linkedAccounts = try await NetworkClient.shared.getLinkedAccounts().linkedAccounts
             error = nil
-        } catch { self.error = "Could not load your overview." }
+        } catch { self.error = t("loadError") }
     }
 
     private func link() async {
@@ -130,9 +187,9 @@ struct OverviewScreenView: View {
             // VERIFICATION_FAILED so it shows up in the list above) -- without this check
             // the form just closed as if the link had worked.
             if linked.status == "VERIFICATION_FAILED" {
-                self.error = linked.failureReason ?? "Could not verify that \(submittedProvider) account. It wasn't linked."
+                self.error = linked.failureReason ?? String(format: t("verificationFailed"), submittedProvider)
             }
-        } catch { self.error = "Could not link that account." }
+        } catch { self.error = t("linkError") }
     }
 
     private func unlink(_ accountId: String) async {
@@ -141,7 +198,7 @@ struct OverviewScreenView: View {
         do {
             _ = try await NetworkClient.shared.unlinkAccount(accountId: accountId)
             await refresh()
-        } catch { self.error = "Could not unlink this account." }
+        } catch { self.error = t("unlinkError") }
     }
 }
 

@@ -4,16 +4,22 @@ import CoreDesignSystem
 // Real first slice of Kinyarwanda localization on iOS (2026-08-08) -- see Android's
 // LoginScreen.kt and bank-mfe's src/i18n/ for the full context (docs/DESIGN_REFERENCES.md
 // Section 19): itunda had zero locale infrastructure anywhere before this research thread.
-// Kept entirely self-contained in this one file rather than adding new files to the Xcode
+// Kept entirely self-contained in this file rather than adding new files to the Xcode
 // project: this project's .pbxproj has no file-system-synchronized groups (confirmed via
 // grep before writing this), so every new Swift file needs a real, error-prone manual
 // pbxproj edit -- not worth that risk for one screen's worth of strings. A plain dictionary
 // (not .strings files + NSLocalizedString) for the same reason bank-mfe's own i18n avoided
-// a full framework: right now this is 2 locales, 1 screen, not the scope that needs it.
-// Same honesty note as web/Android: the `rw` strings are a careful, good-faith translation,
-// NOT verified by a native speaker, and should get real native-speaker review before being
-// treated as production-final.
-private enum AppLocale: String { case en, rw }
+// a full framework: right now this is 2 locales, a couple of screens, not the scope that
+// needs it. Same honesty note as web/Android: the `rw` strings are a careful, good-faith
+// translation, NOT verified by a native speaker, and should get real native-speaker review
+// before being treated as production-final.
+//
+// AppLocale/loadStoredLocale are internal (not private), not because this needs to be a
+// general-purpose module, but because OverviewScreenView (OverviewLoansCreditScoreScreens.swift,
+// same target) needs the exact same locale-detection logic -- promoted once real duplication
+// appeared, same "promote to shared only once it's needed twice" precedent
+// packages/design-tokens already established for this codebase, not speculative reuse.
+enum AppLocale: String { case en, rw }
 
 private let loginStrings: [AppLocale: [String: String]] = [
     .en: [
@@ -46,9 +52,9 @@ private let loginStrings: [AppLocale: [String: String]] = [
     ],
 ]
 
-private let localeStorageKey = "itunda.locale"
+let localeStorageKey = "itunda.locale"
 
-private func loadStoredLocale() -> AppLocale {
+func loadStoredLocale() -> AppLocale {
     if let raw = UserDefaults.standard.string(forKey: localeStorageKey), let locale = AppLocale(rawValue: raw) {
         return locale
     }

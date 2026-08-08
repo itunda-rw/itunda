@@ -2601,11 +2601,29 @@ precedent and warned against repeating it).
    [[project_itunda_private_cloud]]). Not pushed further to avoid destabilizing an already-stressed
    environment. Named as a real, open gap rather than silently skipped or asserted as verified.
 
-   Real next steps, in order: native-speaker review of the existing `rw` strings on both platforms,
-   a real iOS simulator/on-device check of the login screen and a real emulator check of Android's
-   overview screen (both named verification gaps above), a real logged-in-session visual check of
-   web's new overview strings, then phase content outward into iOS's own overview screen and
-   transfer next, on all 3 platforms.
+   **iOS extended to the same second screen** (`OverviewScreenView`,
+   `OverviewLoansCreditScoreScreens.swift`) — completing (login, overview) × (web, Android, iOS), 6
+   of 6, the same day the second screen started. Reused `AppLocale`/`loadStoredLocale` from
+   `LoginScreen.swift` (same target) by widening their access from `private` to Swift's default
+   `internal`, rather than duplicating locale-detection a second time — the "promote to shared once
+   real duplication appears" precedent this codebase already established elsewhere
+   (`packages/design-tokens`), applied here for the first time in this specific thread. Used
+   `String(format:)` for the dynamic strings (iOS's own native equivalent of web's
+   `{{placeholder}}`/Android's `%1$s`). **Included `overview.verificationFailed` from the very
+   first pass this time** — the exact key web's own first pass missed and that only got caught
+   while porting to Android — rather than repeating that omission a third time.
+
+   Verified the same way as the login-screen iOS fix: zero errors attributed to either touched file
+   in a full `xcodebuild` attempt (confirming the cross-file symbol reuse actually resolves), a
+   clean `swiftc -parse`, and a clean `accessibility-lint.py` pass. No real simulator/on-device
+   screenshot this round either — same standing gap named in the login-screen entry above, not
+   re-attempted given the `ItundaApp` scheme's pre-existing link blocker.
+
+   Real next steps, in order: native-speaker review of the existing `rw` strings on all 3
+   platforms, a real iOS simulator/on-device check of both localized screens and a real Android
+   emulator check of `OverviewScreen` (all named verification gaps above), a real logged-in-session
+   visual check of web's overview strings, then phase content outward into a third screen (transfer)
+   on all 3 platforms.
 3. **[sourced, real lead, not yet checked]** Nubank's NuScore-style transaction-history credit
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given
