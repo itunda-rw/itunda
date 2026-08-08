@@ -1,7 +1,5 @@
 package rw.itunda.app.ui
 
-import android.content.Context
-import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -31,9 +29,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rw.itunda.app.R
+import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.AuthResult
 import rw.itunda.core.network.SessionManager
 import rw.itunda.core.designsystem.components.IdsButton
@@ -62,31 +61,21 @@ import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
-import java.util.Locale
 
-private const val LOCALE_PREFS_NAME = "itunda_locale_prefs"
-private const val LOCALE_PREFS_KEY = "app_locale"
-
-/**
- * Real per-app language override, self-contained in Compose -- found live on the
- * emulator (not just a clean compile) that AppCompatDelegate.setApplicationLocales,
- * the "normal" per-app language API, silently no-ops here: MainActivity extends
- * FragmentActivity, not AppCompatActivity, so there's no AppCompatDelegate instance
- * attached to it to notice the change and recreate. Rather than switch the app's whole
- * Activity base class just for this (a much bigger, riskier change), this wraps the
- * localized content in its own Configuration-overridden Context via
- * createConfigurationContext -- works with any Activity type, takes effect immediately
- * on recomposition, no Activity recreation needed. Persisted to SharedPreferences
- * directly (no AndroidX DataStore dependency yet in this module) so the choice survives
- * a process restart, matching bank-mfe's own localStorage persistence.
- */
-private fun readStoredLocale(context: Context): String =
-    context.getSharedPreferences(LOCALE_PREFS_NAME, Context.MODE_PRIVATE).getString(LOCALE_PREFS_KEY, null)
-        ?: if (Locale.getDefault().language == "rw") "rw" else "en"
-
-private fun storeLocale(context: Context, locale: String) {
-    context.getSharedPreferences(LOCALE_PREFS_NAME, Context.MODE_PRIVATE).edit().putString(LOCALE_PREFS_KEY, locale).apply()
-}
+// Real per-app language override -- found live on the emulator (not just a clean
+// compile) that AppCompatDelegate.setApplicationLocales, the "normal" per-app
+// language API, silently no-ops here: MainActivity extends FragmentActivity, not
+// AppCompatActivity, so there's no AppCompatDelegate instance attached to it to
+// notice the change and recreate. A Configuration-overridden Context via
+// createConfigurationContext works with any Activity type instead.
+//
+// Corrected 2026-08-08: the actual state + persistence now lives in
+// rw.itunda.core.network.AppLocalePreference, not here -- this screen originally
+// wrapped only its own subtree in the CompositionLocalProvider, which meant the
+// switcher below silently never affected anything past the login screen itself (see
+// AppLocalePreference's own doc comment for the full story). MainActivity.kt now
+// wraps the real app root in it; this screen just reads/writes the shared StateFlow
+// like SettingsScreen.kt's own copy of the same switcher does.
 
 /**
  * Real Toss-inspired step redesign, 2026-08-03 -- the previous version (still a real
@@ -115,14 +104,8 @@ private fun storeLocale(context: Context, locale: String) {
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
     val baseContext = LocalContext.current
-    var locale by remember { mutableStateOf(readStoredLocale(baseContext)) }
-    val localizedContext = remember(locale) {
-        val config = Configuration(baseContext.resources.configuration)
-        config.setLocale(Locale(locale))
-        baseContext.createConfigurationContext(config)
-    }
+    val locale by AppLocalePreference.locale.collectAsState()
 
-    CompositionLocalProvider(LocalContext provides localizedContext) {
     IdsTheme {
         var isRegisterMode by remember { mutableStateOf(false) }
         var step by remember { mutableStateOf(0) }
@@ -206,10 +189,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     Spacer(modifier = Modifier.weight(1f))
                     LanguageSwitcher(
                         locale = locale,
-                        onLocaleChange = { next ->
-                            locale = next
-                            storeLocale(baseContext, next)
-                        },
+                        onLocaleChange = { next -> AppLocalePreference.set(baseContext, next) },
                     )
                 }
 
@@ -308,7 +288,6 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 }
             }
         }
-    }
     }
 }
 

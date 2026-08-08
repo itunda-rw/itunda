@@ -78,4 +78,38 @@
     <string name="scam_report_reporting">Reporting…</string>
     <string name="scam_report_button">Report</string>
     <string name="scam_report_cancel">Cancel</string>
+    <!-- 4th localization screen (2026-08-08): SettingsScreen.kt, the only place a
+         logged-in user can reach a language switcher at all, since LoginScreen.kt's own
+         switcher is unreachable once signed in. -->
+    <string name="settings_back">Back</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_my_info">My info</string>
+    <string name="settings_security">Security</string>
+    <string name="settings_unlock_biometrics">Unlock with biometrics</string>
+    <string name="settings_unlock_biometrics_body">Require Face/Fingerprint to open Itunda</string>
+    <string name="settings_verify_biometrics">Verify this device with biometrics</string>
+    <string name="settings_verify_biometrics_body">Skip retyping your password for step-up verification</string>
+    <string name="settings_confirm_password">Confirm your password</string>
+    <string name="settings_confirm_password_body">Enter your password once to enable biometric device verification.</string>
+    <string name="settings_password">Password</string>
+    <string name="settings_verifying">Verifying…</string>
+    <string name="settings_confirm">Confirm</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_display">Display</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_body">Match device, or force light/dark</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_devices">Devices</string>
+    <string name="settings_unknown_device">Unknown device</string>
+    <string name="settings_this_device_suffix"> (this device)</string>
+    <string name="settings_trusted">Trusted -- can send money</string>
+    <string name="settings_not_verified">Not verified -- can\'t send money yet</string>
+    <string name="settings_remove">Remove</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_mark_all_read">Mark all read</string>
+    <string name="settings_no_notifications">No notifications</string>
+    <string name="settings_log_out">Log out</string>
 </resources>

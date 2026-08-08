@@ -14,9 +14,75 @@ import CoreIdentity
 /// (bank-mfe's Devices tab, 2026-07-20) and Android (SettingsScreen.kt, same day as
 /// this). This is the iOS port, same real GET/POST/DELETE /api/v1/auth/devices
 /// endpoints, same real list/revoke actions.
+///
+/// Localized 2026-08-08 (docs/DESIGN_REFERENCES.md Section 19) -- the 4th screen in
+/// the Kinyarwanda thread, and deliberately picked next: it's the only place in the
+/// app where a logged-in user can reach a language switcher at all, since
+/// LoginScreen.swift's toggle is only visible before signing in. Reuses
+/// AppLocale/loadStoredLocale directly (same App target as LoginScreen.swift). Same
+/// honesty note as every prior screen: careful, good-faith translation, not verified
+/// by a native Kinyarwanda speaker.
+private let settingsStrings: [AppLocale: [String: String]] = [
+    .en: [
+        "back": "Back",
+        "title": "Settings",
+        "language": "Language",
+        "myInfo": "My info",
+        "devices": "Devices",
+        "unknownDevice": "Unknown device",
+        "thisDevice": " (this device)",
+        "trusted": "Trusted -- can send money",
+        "notVerified": "Not verified -- can't send money yet",
+        "remove": "Remove",
+        "noNotifications": "No notifications",
+        "notifications": "Notifications",
+        "markAllRead": "Mark all read",
+        "security": "Security",
+        "unlockBiometrics": "Unlock with biometrics",
+        "unlockBiometricsBody": "Require Face/Touch ID to open Itunda",
+        "verifyBiometrics": "Verify this device with biometrics",
+        "verifyBiometricsBody": "Skip retyping your password for step-up verification",
+        "logOut": "Log out",
+        "confirmPassword": "Confirm your password",
+        "password": "Password",
+        "cancel": "Cancel",
+        "verifying": "Verifying…",
+        "confirm": "Confirm",
+        "confirmPasswordBody": "Enter your password once to enable biometric device verification.",
+    ],
+    .rw: [
+        "back": "Subira inyuma",
+        "title": "Igenamiterere",
+        "language": "Ururimi",
+        "myInfo": "Amakuru yanjye",
+        "devices": "Ibikoresho",
+        "unknownDevice": "Ikoresho kitazwi",
+        "thisDevice": " (iki gikoresho)",
+        "trusted": "Byemewe -- gishobora kohereza amafaranga",
+        "notVerified": "Ntibyemejwe -- ntigishobora kohereza amafaranga",
+        "remove": "Kuraho",
+        "noNotifications": "Nta menyesha rihari",
+        "notifications": "Amamenyesha",
+        "markAllRead": "Yose yasomwe",
+        "security": "Umutekano",
+        "unlockBiometrics": "Fungura ukoresheje ibimenyetso by'umubiri",
+        "unlockBiometricsBody": "Saba Face/Touch ID kugira ngo ufungure itunda",
+        "verifyBiometrics": "Emeza iki gikoresho ukoresheje ibimenyetso by'umubiri",
+        "verifyBiometricsBody": "Simbuka kwandika ijambo ry'ibanga ku kwemeza",
+        "logOut": "Sohoka",
+        "confirmPassword": "Emeza ijambo ry'ibanga ryawe",
+        "password": "Ijambo ry'ibanga",
+        "cancel": "Hagarika",
+        "verifying": "Kwemeza…",
+        "confirm": "Emeza",
+        "confirmPasswordBody": "Andika ijambo ry'ibanga rimwe kugira ngo wemeze ibimenyetso by'umubiri ku gikoresho.",
+    ],
+]
+
 struct SettingsScreen: View {
     @StateObject private var viewModel = SettingsViewModel()
     let onDone: () -> Void
+    @State private var locale: AppLocale = loadStoredLocale()
     @State private var appLockEnabled = KeychainTokenStore.shared.isAppLockEnabled()
     // Real Secure-Enclave-signed-challenge device verification (item 246) -- see
     // DeviceKeyManager's own doc comment. Mirrors Android's SettingsScreen.kt toggle
@@ -28,6 +94,10 @@ struct SettingsScreen: View {
     @State private var keyRegisterError: String?
     @State private var keyRegistering = false
 
+    private func t(_ key: String) -> String {
+        settingsStrings[locale]?[key] ?? settingsStrings[.en]?[key] ?? key
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -36,14 +106,28 @@ struct SettingsScreen: View {
                         .font(.system(size: 18, weight: .medium))
                         .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Back")
-                Text("Settings").font(.system(size: 20, weight: .bold))
+                .accessibilityLabel(t("back"))
+                Text(t("title")).font(.system(size: 20, weight: .bold))
                 Spacer()
+                // Real in-app language switcher for logged-in users (2026-08-08) -- see
+                // this file's own top-of-file doc comment: LoginScreen.swift's own
+                // toggle is unreachable once signed in, so this is the only place a
+                // logged-in user can change it. Same simple EN/RW toggle, same
+                // UserDefaults key, so both screens agree on the current language.
+                Button(action: {
+                    locale = (locale == .en) ? .rw : .en
+                    UserDefaults.standard.set(locale.rawValue, forKey: localeStorageKey)
+                }) {
+                    Text(locale == .en ? "EN" : "RW")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .accessibilityLabel(t("language"))
             }
             .padding(.horizontal, 8)
 
             List {
-                Section("My info") {
+                Section(t("myInfo")) {
                     HStack(spacing: 14) {
                         Circle().fill(Color.gray.opacity(0.2)).frame(width: 44, height: 44)
                             .overlay(Image(systemName: "person.fill"))
@@ -62,7 +146,7 @@ struct SettingsScreen: View {
                 // section: every device this account has ever signed in from,
                 // whether it's trusted (can move money) or merely seen, and a real
                 // "Remove" action.
-                Section("Devices") {
+                Section(t("devices")) {
                     ForEach(viewModel.devices) { device in
                         HStack(spacing: 14) {
                             Image(systemName: "iphone")
@@ -70,14 +154,14 @@ struct SettingsScreen: View {
                                 .background(Color.gray.opacity(0.15))
                                 .clipShape(Circle())
                             VStack(alignment: .leading, spacing: 2) {
-                                Text((device.deviceName ?? "Unknown device") + (device.deviceId == DeviceStore.shared.getOrCreateDeviceId() ? " (this device)" : ""))
+                                Text((device.deviceName ?? t("unknownDevice")) + (device.deviceId == DeviceStore.shared.getOrCreateDeviceId() ? t("thisDevice") : ""))
                                     .font(.system(size: 15, weight: .semibold))
-                                Text(device.trusted ? "Trusted -- can send money" : "Not verified -- can't send money yet")
+                                Text(device.trusted ? t("trusted") : t("notVerified"))
                                     .font(.system(size: 12))
                                     .foregroundColor(device.trusted ? .secondary : .red)
                             }
                             Spacer()
-                            Button("Remove") { Task { await viewModel.revokeDevice(device.deviceId) } }
+                            Button(t("remove")) { Task { await viewModel.revokeDevice(device.deviceId) } }
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(.red)
                         }
@@ -86,7 +170,7 @@ struct SettingsScreen: View {
 
                 Section {
                     if viewModel.notifications.isEmpty {
-                        Text("No notifications").foregroundColor(.secondary)
+                        Text(t("noNotifications")).foregroundColor(.secondary)
                     } else {
                         ForEach(viewModel.notifications) { notification in
                             Button(action: { Task { await viewModel.markRead(notification.id) } }) {
@@ -103,10 +187,10 @@ struct SettingsScreen: View {
                     }
                 } header: {
                     HStack {
-                        Text("Notifications")
+                        Text(t("notifications"))
                         Spacer()
                         if viewModel.unreadCount > 0 {
-                            Button("Mark all read") { Task { await viewModel.markAllRead() } }
+                            Button(t("markAllRead")) { Task { await viewModel.markAllRead() } }
                                 .font(.system(size: 13, weight: .semibold))
                         }
                     }
@@ -117,7 +201,7 @@ struct SettingsScreen: View {
                 // enrolled; a tappable row that goes nowhere is worse than not showing
                 // it, same discipline Android's own SettingsScreen.kt establishes.
                 if isBiometricUnlockAvailable() {
-                    Section("Security") {
+                    Section(t("security")) {
                         Toggle(isOn: $appLockEnabled) {
                             HStack(spacing: 14) {
                                 Image(systemName: "faceid")
@@ -125,8 +209,8 @@ struct SettingsScreen: View {
                                     .background(Color.gray.opacity(0.15))
                                     .clipShape(Circle())
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Unlock with biometrics").font(.system(size: 16, weight: .semibold))
-                                    Text("Require Face/Touch ID to open Itunda").font(.system(size: 13)).foregroundColor(.secondary)
+                                    Text(t("unlockBiometrics")).font(.system(size: 16, weight: .semibold))
+                                    Text(t("unlockBiometricsBody")).font(.system(size: 13)).foregroundColor(.secondary)
                                 }
                             }
                         }
@@ -152,8 +236,8 @@ struct SettingsScreen: View {
                                     .background(Color.gray.opacity(0.15))
                                     .clipShape(Circle())
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Verify this device with biometrics").font(.system(size: 16, weight: .semibold))
-                                    Text("Skip retyping your password for step-up verification").font(.system(size: 13)).foregroundColor(.secondary)
+                                    Text(t("verifyBiometrics")).font(.system(size: 16, weight: .semibold))
+                                    Text(t("verifyBiometricsBody")).font(.system(size: 13)).foregroundColor(.secondary)
                                 }
                             }
                         }
@@ -167,24 +251,24 @@ struct SettingsScreen: View {
                             onDone()
                         }
                     }) {
-                        Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
+                        Label(t("logOut"), systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 }
             }
         }
         .task { await viewModel.load() }
-        .alert("Confirm your password", isPresented: $showKeyPasswordPrompt) {
-            SecureField("Password", text: $keyPassword)
-            Button("Cancel", role: .cancel) {
+        .alert(t("confirmPassword"), isPresented: $showKeyPasswordPrompt) {
+            SecureField(t("password"), text: $keyPassword)
+            Button(t("cancel"), role: .cancel) {
                 keyPassword = ""
                 keyRegisterError = nil
             }
-            Button(keyRegistering ? "Verifying…" : "Confirm") {
+            Button(keyRegistering ? t("verifying") : t("confirm")) {
                 Task { await registerDeviceKey() }
             }
             .disabled(keyPassword.isEmpty || keyRegistering)
         } message: {
-            Text(keyRegisterError ?? "Enter your password once to enable biometric device verification.")
+            Text(keyRegisterError ?? t("confirmPasswordBody"))
         }
     }
 

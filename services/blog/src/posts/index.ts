@@ -19,6 +19,7 @@ import { theMatureFeatureThatForgotWhatItWasSaying } from './the-mature-feature-
 import { whatWeFoundOutsideOurOwnReference } from './what-we-found-outside-our-own-reference';
 import { theLanguageWeNeverAskedAbout } from './the-language-we-never-asked-about';
 import { theFixThatForgotItsOwnLesson } from './the-fix-that-forgot-its-own-lesson';
+import { theSwitchThatOnlyFlippedOneRoom } from './the-switch-that-only-flipped-one-room';
 
 export interface Post {
   slug: string;
@@ -30,7 +31,7 @@ export interface Post {
   content: string;
 }
 
-export const posts: Post[] = [theFixThatForgotItsOwnLesson, theLanguageWeNeverAskedAbout, whatWeFoundOutsideOurOwnReference, theMatureFeatureThatForgotWhatItWasSaying, theFormThatClosedOnALie, theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
+export const posts: Post[] = [theSwitchThatOnlyFlippedOneRoom, theFixThatForgotItsOwnLesson, theLanguageWeNeverAskedAbout, whatWeFoundOutsideOurOwnReference, theMatureFeatureThatForgotWhatItWasSaying, theFormThatClosedOnALie, theFixWeAlreadyHad, theRiskWeAlreadyKnewAbout, threeFlowsTheFraudEngineNeverSaw, theLinterThatLiedToItselfFirst, theKeyThatCantLeaveThePhone, securityAndSimplicityTogether, theAuditWeSaidWeFinished, aRealDebitCardWithNoCardNetwork, oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 

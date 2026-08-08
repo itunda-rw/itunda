@@ -1,6 +1,7 @@
 package rw.itunda.app
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -8,18 +9,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SessionManager
 import rw.itunda.core.network.SessionState
 import rw.itunda.core.network.ThemeMode
 import rw.itunda.core.network.ThemePreference
+import java.util.Locale
 import rw.itunda.app.ui.AppLockScreen
 import rw.itunda.app.ui.ItundaAppScreen
 import rw.itunda.app.ui.LoginScreen
@@ -77,36 +82,52 @@ class MainActivity : FragmentActivity() {
         // still forgets to paint its own background now shows the correct
         // themed color underneath instead of a stale/wrong one.
         setContent {
-            val themeMode by ThemePreference.mode.collectAsStateWithLifecycle()
-            val darkTheme = when (themeMode) {
-                ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
-                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            // Real app-root locale wiring (2026-08-08 fix) -- see AppLocalePreference's
+            // own doc comment: this used to be missing entirely, so the in-app language
+            // switcher only ever affected LoginScreen's own subtree, never anything a
+            // user sees after logging in. Wrapping the whole tree here, above both
+            // branches of the session-state `when`, is what actually makes every
+            // screen's stringResource() calls -- in :app and every feature module --
+            // respect the stored choice instead of the device's raw OS locale.
+            val baseContext = LocalContext.current
+            val locale by AppLocalePreference.locale.collectAsStateWithLifecycle()
+            val localizedContext = remember(locale) {
+                val config = Configuration(baseContext.resources.configuration)
+                config.setLocale(Locale(locale))
+                baseContext.createConfigurationContext(config)
             }
-            IdsTheme(darkTheme = darkTheme) {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    val sessionState by SessionManager.sessionState.collectAsStateWithLifecycle()
-                    when (sessionState) {
-                        is SessionState.LoggedIn -> {
-                            val tokenStore = remember { NetworkClient.currentTokenStore() }
-                            val biometricAvailable = remember { NIDABiometricAuth(this).isAvailable() }
-                            var unlocked by remember { mutableStateOf(AppUnlockState.unlockedThisProcess) }
-                            if (biometricAvailable && tokenStore.isAppLockEnabled() && !unlocked) {
-                                AppLockScreen(activity = this) {
-                                    AppUnlockState.unlockedThisProcess = true
-                                    unlocked = true
+            CompositionLocalProvider(LocalContext provides localizedContext) {
+                val themeMode by ThemePreference.mode.collectAsStateWithLifecycle()
+                val darkTheme = when (themeMode) {
+                    ThemeMode.LIGHT -> false
+                    ThemeMode.DARK -> true
+                    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                }
+                IdsTheme(darkTheme = darkTheme) {
+                    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        val sessionState by SessionManager.sessionState.collectAsStateWithLifecycle()
+                        when (sessionState) {
+                            is SessionState.LoggedIn -> {
+                                val tokenStore = remember { NetworkClient.currentTokenStore() }
+                                val biometricAvailable = remember { NIDABiometricAuth(this).isAvailable() }
+                                var unlocked by remember { mutableStateOf(AppUnlockState.unlockedThisProcess) }
+                                if (biometricAvailable && tokenStore.isAppLockEnabled() && !unlocked) {
+                                    AppLockScreen(activity = this) {
+                                        AppUnlockState.unlockedThisProcess = true
+                                        unlocked = true
+                                    }
+                                } else {
+                                    ItundaAppScreen(
+                                        openMapFromDeepLink = mapDeepLinkRequested,
+                                        initialMapSearchQuery = mapSearchFromDeepLink,
+                                        onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
+                                    )
                                 }
-                            } else {
-                                ItundaAppScreen(
-                                    openMapFromDeepLink = mapDeepLinkRequested,
-                                    initialMapSearchQuery = mapSearchFromDeepLink,
-                                    onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
-                                )
                             }
-                        }
-                        is SessionState.LoggedOut -> {
-                            AppUnlockState.unlockedThisProcess = false
-                            LoginScreen(onLoggedIn = {})
+                            is SessionState.LoggedOut -> {
+                                AppUnlockState.unlockedThisProcess = false
+                                LoginScreen(onLoggedIn = {})
+                            }
                         }
                     }
                 }

@@ -33,10 +33,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import rw.itunda.app.R
+import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.NotificationDto
 import rw.itunda.core.network.ThemeMode
@@ -58,6 +61,13 @@ import rw.itunda.core.identity.NIDABiometricAuth
  * published Gateway/Passport architecture), already shipped on web (bank-mfe's
  * Devices tab) since 2026-07-20. This is the Android port, same real
  * GET/POST/DELETE /api/v1/auth/devices endpoints, same real list/revoke actions.
+ *
+ * Localized 2026-08-08 (docs/DESIGN_REFERENCES.md Section 19) -- the 4th screen in
+ * the Kinyarwanda thread, and the only place a logged-in user can reach a language
+ * switcher at all, since LoginScreen.kt's own switcher is unreachable once signed
+ * in. Same shared rw.itunda.core.network.AppLocalePreference LoginScreen.kt now
+ * uses, found and fixed the same day: it used to hold only screen-local state that
+ * never propagated past LoginScreen's own subtree.
  */
 @Composable
 fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () -> Unit) {
@@ -65,6 +75,8 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
     val notifications by viewModel.notifications.collectAsState()
     val unreadCount by viewModel.unreadNotificationCount.collectAsState()
     val devices by viewModel.devices.collectAsState()
+    val baseContext = LocalContext.current
+    val locale by AppLocalePreference.locale.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.loadSettingsData() }
 
@@ -81,14 +93,33 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 modifier = Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
             }
-            Text("Settings", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+            Text(
+                stringResource(R.string.settings_title),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Ids.colors.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            // Real in-app language switcher for logged-in users -- see this file's own
+            // top-of-file doc comment. Same simple EN/RW toggle LoginScreen.kt shows,
+            // same shared AppLocalePreference, so both screens always agree.
+            Text(
+                if (locale == "en") "EN" else "RW",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = Ids.colors.textTertiary,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { AppLocalePreference.set(baseContext, if (locale == "en") "rw" else "en") }
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
         }
 
         LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
             item {
-                Text("My info", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_my_info), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -126,7 +157,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 if (biometricAvailable) {
                     val tokenStore = remember { NetworkClient.currentTokenStore() }
                     var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
-                    Text("Security", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_security), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -140,8 +171,8 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                         }
                         Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Unlock with biometrics", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                            Text("Require Face/Fingerprint to open Itunda", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                            Text(stringResource(R.string.settings_unlock_biometrics), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.settings_unlock_biometrics_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
                         }
                         Switch(
                             checked = appLockEnabled,
@@ -177,8 +208,8 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                         }
                         Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Verify this device with biometrics", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                            Text("Skip retyping your password for step-up verification", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                            Text(stringResource(R.string.settings_verify_biometrics), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.settings_verify_biometrics_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
                         }
                         Switch(
                             checked = hasDeviceKey,
@@ -199,11 +230,11 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                         var password by remember { mutableStateOf("") }
                         AlertDialog(
                             onDismissRequest = { showKeyPasswordPrompt = false; keyRegisterError = null },
-                            title = { Text("Confirm your password") },
+                            title = { Text(stringResource(R.string.settings_confirm_password)) },
                             text = {
                                 Column {
                                     Text(
-                                        "Enter your password once to enable biometric device verification.",
+                                        stringResource(R.string.settings_confirm_password_body),
                                         color = Ids.colors.textTertiary,
                                         fontSize = 13.sp,
                                     )
@@ -213,7 +244,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                                         onValueChange = { password = it },
                                         visualTransformation = PasswordVisualTransformation(),
                                         singleLine = true,
-                                        label = { Text("Password") },
+                                        label = { Text(stringResource(R.string.settings_password)) },
                                     )
                                     keyRegisterError?.let {
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -240,10 +271,10 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                                             }
                                         }
                                     },
-                                ) { Text(if (keyRegistering) "Verifying…" else "Confirm") }
+                                ) { Text(if (keyRegistering) stringResource(R.string.settings_verifying) else stringResource(R.string.settings_confirm)) }
                             },
                             dismissButton = {
-                                TextButton(onClick = { showKeyPasswordPrompt = false; keyRegisterError = null }) { Text("Cancel") }
+                                TextButton(onClick = { showKeyPasswordPrompt = false; keyRegisterError = null }) { Text(stringResource(R.string.settings_cancel)) }
                             },
                         )
                     }
@@ -261,7 +292,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
             // changing the phone's own OS-wide setting. Default SYSTEM.
             item {
                 val themeMode by ThemePreference.mode.collectAsState()
-                Text("Display", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_display), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -275,15 +306,19 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Theme", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Match device, or force light/dark", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                        Text(stringResource(R.string.settings_theme), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.settings_theme_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
                     }
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf(ThemeMode.SYSTEM to "System", ThemeMode.LIGHT to "Light", ThemeMode.DARK to "Dark").forEach { (mode, label) ->
+                    listOf(
+                        ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
+                        ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
+                        ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
+                    ).forEach { (mode, label) ->
                         val selected = themeMode == mode
                         Box(
                             modifier = Modifier
@@ -312,7 +347,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
             // ever signed in from, whether it's trusted (can move money) or merely
             // seen, and a real "Remove" action.
             item {
-                Text("Devices", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_devices), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
             }
             items(devices, key = { it.id }) { device ->
@@ -328,10 +363,10 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Notifications", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_notifications), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     if (unreadCount > 0) {
                         Text(
-                            "Mark all read",
+                            stringResource(R.string.settings_mark_all_read),
                             color = Ids.colors.brand,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -345,7 +380,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
             if (notifications.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                        Text("No notifications", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                        Text(stringResource(R.string.settings_no_notifications), color = Ids.colors.textTertiary, fontSize = 14.sp)
                     }
                 }
             } else {
@@ -365,7 +400,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 ) {
                     Icon(Icons.Outlined.Logout, contentDescription = null, tint = Ids.colors.danger)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Log out", color = Ids.colors.danger, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.settings_log_out), color = Ids.colors.danger, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(modifier = Modifier.height(40.dp))
             }
@@ -391,19 +426,19 @@ private fun DeviceRow(device: rw.itunda.core.network.TrustedDeviceDto, onRevoke:
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                (device.deviceName ?: "Unknown device") + if (isThisDevice) " (this device)" else "",
+                (device.deviceName ?: stringResource(R.string.settings_unknown_device)) + if (isThisDevice) stringResource(R.string.settings_this_device_suffix) else "",
                 color = Ids.colors.textPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                if (device.trusted) "Trusted -- can send money" else "Not verified -- can't send money yet",
+                if (device.trusted) stringResource(R.string.settings_trusted) else stringResource(R.string.settings_not_verified),
                 color = if (device.trusted) Ids.colors.textTertiary else Ids.colors.danger,
                 fontSize = 12.sp,
             )
         }
         Text(
-            "Remove",
+            stringResource(R.string.settings_remove),
             color = Ids.colors.danger,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,

@@ -2819,7 +2819,61 @@ next steps, in order: native-speaker review of every `rw` string on all 3 platfo
 physical-device wiring for Android (stated intent, not yet set up), a fourth localization screen once a
 verification method is back online, and the still-open 1:1-chat SplitBill gap below.
 
+### Settings screen (4th screen) — and a real Android bug that meant the switcher never worked past login (2026-08-08)
+
+Picked `SettingsScreen` as the 4th localization screen deliberately, not arbitrarily: on both Android
+and iOS, it's the *only* place a logged-in user can reach a language switcher at all — the one on
+`LoginScreen`/`LoginScreen.kt` is only rendered pre-login, so anyone already signed in when this thread
+started had no way to change language short of logging out. Fixed on both: iOS's `SettingsScreen.swift`
+reuses `AppLocale`/`loadStoredLocale` directly (same `App` target as `LoginScreen.swift`) and gained the
+same EN/RW toggle in its own top bar. Android's needed more than a toggle — see below.
+
+**Real, serious bug found while wiring Android's toggle, not a translation gap**: `LoginScreen.kt`'s
+switcher wrote to its own `readStoredLocale`/`storeLocale` functions and wrapped only *its own* Compose
+subtree in the `Configuration`-overridden `CompositionLocalProvider`. `MainActivity.kt`'s `setContent`
+never wrapped `ItundaAppScreen` — everything a user sees after logging in — in anything equivalent. That
+means every `stringResource()` call this whole thread added across `OverviewScreen.kt`, `TransferFlow.kt`,
+`ItundaAppScreen.kt`, and now `SettingsScreen.kt` itself was silently reading the **device's raw OS
+locale** the entire time, never the stored in-app choice — unless the phone's own system language
+happened to already be Kinyarwanda. The switcher looked and compiled correctly and even worked, but only
+on the one screen it lived on. Every "Android's transfer/overview screen is localized" claim earlier in
+this thread was true of the code but not of what a real user pressing the toggle would actually see.
+
+**Fixed by promoting the locale state out of a single screen and into a real app-wide source of truth**,
+mirroring `ThemePreference`'s own already-established `StateFlow` pattern (same directory,
+`core/network/ThemePreference.kt`) rather than inventing a new mechanism: a new
+`core/network/AppLocalePreference.kt` (`MutableStateFlow<String>`, `restore(context)` called once from
+`ItundaApplication.onCreate` alongside `ThemePreference.restore()`, `set(context, locale)` persisting to
+the same `SharedPreferences` file the old per-screen functions used). `MainActivity.kt`'s `setContent` now
+builds the `Configuration`-overridden `CompositionLocalProvider` **once**, wrapping the entire
+`when (sessionState)` block — both `LoginScreen` and `ItundaAppScreen` — instead of each screen
+(redundantly, or in `ItundaAppScreen`'s case, not at all) building its own. `LoginScreen.kt` was
+simplified to just read/write the shared `StateFlow` instead of owning a duplicate, dead-end copy.
+Compose's `LocalContext` crosses Gradle-module boundaries at runtime even though the modules can't see
+each other at compile time, so this one fix at the true root is what actually makes every module's
+`stringResource()` calls — `:app`, `:features:payments:impl`, everything — respect the switcher.
+
+**Same lesson as the `AppCompatDelegate` bug from the very first localization pass, in a different
+shape**: a language switcher that silently only half-works is worse than an obviously-broken one, because
+nothing about it looks wrong — it compiles, it renders, the one screen it's on works. The only way either
+bug surfaced was by tracing the actual data flow end to end instead of trusting that "the string resource
+exists and the screen compiles" meant "the feature works." Caught this time while extending the feature to
+a new screen, not by a dedicated audit — worth remembering that adding a 4th consumer of a mechanism is
+itself a good moment to double check the mechanism, not just assume it already works because the first
+three consumers seemed to.
+
+**Verification tier**: `:app:compileDebugKotlin` and `:core:network:compileDebugKotlin` both clean,
+`accessibility-lint.py` clean, all edited XML well-formed (one recurrence of the known `--`-in-XML-comment
+gotcha, caught by the same build and fixed the same way as every prior time). Compile-tier only — the
+actual runtime behavior of the fix (does the toggle in Settings now really change Overview/Transfer/
+everything else) has not been watched on a real emulator or device this round, so it's asserted from
+reading the code path, not observed. That's a real, named gap, not a silent claim of "verified."
+
 ### Unresolved / worth a follow-up
+- The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
+  Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
+  not just Settings and Login. Highest-priority verification item in this whole thread now that the
+  underlying mechanism has changed, not just added-to.
 - The 1:1-chat split-bill gap above — real, scoped, two concrete design options identified, neither built.
 - Naver Pay's real engineering-blog depth (d2.naver.com) and Wise's real ledger architecture: both
   now confirmed genuinely unrecoverable with this environment's current fetch tooling, not worth a

@@ -8,6 +8,7 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import rw.itunda.app.BuildConfig
+import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SessionManager
@@ -94,6 +95,7 @@ class ItundaApplication : Application(), ReactApplication {
         MapConfig.init(rw.itunda.app.BuildConfig.TILES_BASE_URL, rw.itunda.app.BuildConfig.GLYPHS_BASE_URL)
         SessionManager.restoreSession()
         ThemePreference.restore()
+        AppLocalePreference.restore(this)
     }
 }
 
