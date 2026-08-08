@@ -2529,12 +2529,49 @@ precedent and warned against repeating it).
    BaFin compliance-debt pattern — real cautionary lessons, no direct itunda code action; worth an
    ongoing-monitoring habit more than a one-time fix.
 
+### Follow-up checks, same day (2026-08-08) — Recommendations 3-5 resolved
+
+Checked directly against itunda's own code, no fork needed (narrow, quick verifications):
+
+- **Recommendation 3 (Nubank NuScore) — already done, no gap.** itunda's
+  `CreditScoreService.kt` (`services/backend/core/.../creditscore/`) computes its score live, purely
+  from itunda's own real transaction/loan/savings/KYC repositories (+2 points per completed
+  transaction capped at 100, loan-repayment history, savings-goal activity, account age, KYC
+  status) — zero external/bureau/simulated data source anywhere in the path (confirmed via grep for
+  "bureau"/"external"/"third-party"/"simulated" across the whole module). The class's own doc
+  comment already frames this exactly as "real alternative data... not a real credit bureau score,"
+  and all 3 clients show the user "Based on your own account activity, not a bureau report." This
+  independently matches Nubank's own NuScore philosophy — built before this research pass found the
+  comparison, not after.
+- **Recommendation 4 (Kakao Pay data-sharing) — checked, no active gap, one informational note.**
+  itunda has no analytics/ad SDKs in any client build config and no real third-party integration
+  that receives user data beyond expected push-notification delivery (device token + notification
+  text via FCM/APNs, a standard, low-risk, necessary integration — not comparable to Kakao Pay's
+  bulk data-sharing-with-a-shareholder issue). One thing worth noting: `android/core/consent` exists
+  as an empty scaffold module (a `build.gradle.kts` with zero source files) — someone anticipated
+  needing real consent-tracking infrastructure and never built it out. Worth completing *before* any
+  future real third-party integration (analytics, ad tech, an external fraud-scoring vendor) is
+  added, not urgent today since there's nothing yet to need consent for.
+- **Recommendation 5 (Kakao Pay settle-up-from-chat) — mostly already done, one real minor gap.**
+  Confirmed on all 3 platforms: itunda's `SplitBillController`'s own domain-model doc comment
+  explicitly cites this exact pattern ("A real KakaoPay-style '정산하기' request, chat-embedded in
+  an existing GroupConversation") — a real "Split a bill" action already sits inside itunda's group
+  chat UI (`TalkScreen.swift` iOS, `TalkScreen.kt` Android, `BankDashboard.tsx` web), tied to that
+  conversation's `groupConversationId`, matching the Kakao Pay pattern directly. **Real gap**: it's
+  wired into group chats only — 1:1 direct-message threads have no split-bill entry point at all,
+  narrower than real KakaoTalk's 정산하기 (which works in both). Checked the backend
+  (`SplitBillService.kt:88-171`): `createSplitBill` is architecturally coupled to
+  `GroupMessagingService` throughout (group-membership lookup for the headcount split, group message
+  posting for notifications) — there's no 1:1-conversation equivalent to plug into. Extending this
+  is real, non-trivial scope (either a parallel 1:1 code path or a refactor to abstract over
+  "conversation with N members" regardless of group/1:1 shape), not a same-day fix — noted as a real
+  follow-up, not attempted this pass to avoid a rushed retrofit into a working, tested feature.
+
 ### Unresolved / worth a follow-up
-- 3 of the 5 ecosystem passes ran out of web-search budget partway through (Naver Pay/Samsung Pay
-  entirely unresearched; Wise's real ledger architecture and Revolut/N26 design-system content
-  genuinely unrecovered this round) — a future pass with a fresh search budget, one ecosystem at a
-  time rather than 5 in parallel, would likely recover more.
-- Recommendations 3-6 above: real, sourced, not yet checked against itunda's actual code.
+- The 1:1-chat split-bill gap named above — real, scoped, not yet built.
+- Naver Pay/Samsung Pay: entirely unresearched (search-budget exhaustion, prior pass). Wise's real
+  ledger architecture and Revolut/N26 design-system content: also unrecovered. A future pass should
+  go one ecosystem at a time (this round's own lesson) rather than running several in parallel.
 - **Aside, out of scope, flagged not investigated**: the mini-program research pass noticed stray git
   worktrees at `.claude/worktrees/wf_f205a3b5-33c-{7,8,9,10,11}/`, each containing a full copy of the
   repo (confirmed via an unrelated grep this pass turning up hits from all 5) — likely leftover from
