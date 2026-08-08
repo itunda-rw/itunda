@@ -1233,14 +1233,14 @@ private fun HomeTab(
                     rows = listOf(
                         ShellRow(
                             "RWF %,.0f".format(spendingInsight?.totalSpent?.toDouble() ?: 0.0),
-                            if (topCategory != null) "Spent this period -- mostly on ${topCategory.name}" else "Spent this period",
+                            if (topCategory != null) stringResource(R.string.home_spent_period_category, topCategory.name) else stringResource(R.string.home_spent_period),
                             ">",
                             Icons.Outlined.PieChart,
                             AccentPurple,
                             onClick = onOpenSpendingInsight,
                         ),
-                        ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments, AccentBlue),
-                        ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem, AccentOrange)
+                        ShellRow(stringResource(R.string.home_promo_cashback_title), stringResource(R.string.home_promo_cashback_subtitle), stringResource(R.string.home_promo_cashback_action), Icons.Outlined.Payments, AccentBlue),
+                        ShellRow(stringResource(R.string.home_promo_sprinkle_title), stringResource(R.string.home_promo_sprinkle_subtitle), stringResource(R.string.home_promo_sprinkle_action), Icons.Outlined.Redeem, AccentOrange)
                     )
                 )
             }
@@ -1249,8 +1249,8 @@ private fun HomeTab(
                 ShellSection(
                     title = "",
                     rows = listOf(
-                        ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments, AccentBlue),
-                        ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem, AccentOrange)
+                        ShellRow(stringResource(R.string.home_promo_cashback_title), stringResource(R.string.home_promo_cashback_subtitle), stringResource(R.string.home_promo_cashback_action), Icons.Outlined.Payments, AccentBlue),
+                        ShellRow(stringResource(R.string.home_promo_sprinkle_title), stringResource(R.string.home_promo_sprinkle_subtitle), stringResource(R.string.home_promo_sprinkle_action), Icons.Outlined.Redeem, AccentOrange)
                     )
                 )
             }
@@ -1259,9 +1259,9 @@ private fun HomeTab(
             ShellSection(
                 title = "",
                 rows = listOf(
-                    ShellRow("Get cashback every time you pay", "", ">", Icons.Outlined.Payments, AccentBlue),
-                    ShellRow("Pay with face ID", "", ">", Icons.Outlined.Face, AccentPurple),
-                    ShellRow("Receive government alerts", "", ">", Icons.Outlined.Campaign, AccentRed)
+                    ShellRow(stringResource(R.string.home_promo_pay_cashback), "", ">", Icons.Outlined.Payments, AccentBlue),
+                    ShellRow(stringResource(R.string.home_promo_face_id), "", ">", Icons.Outlined.Face, AccentPurple),
+                    ShellRow(stringResource(R.string.home_promo_gov_alerts), "", ">", Icons.Outlined.Campaign, AccentRed)
                 )
             )
         }
@@ -1272,14 +1272,26 @@ private fun HomeTab(
         // under it.
         if (savingsGoals.isNotEmpty() || interestJar != null) {
             item {
+                val roundUpOff = stringResource(R.string.home_round_up_off)
+                val roundUpOn = stringResource(R.string.home_round_up_on)
+                val roundUpSetUp = stringResource(R.string.home_round_up_set_up)
+                val interestJarLabel = stringResource(R.string.home_interest_jar)
+                val earnedThisMonthLabel = stringResource(R.string.home_earned_this_month)
+                val roundUpTitle = stringResource(R.string.home_round_up_title)
+                val roundUpRoundingText = roundUpSettings?.roundToNearest?.let { stringResource(R.string.home_round_up_rounding, "%,.0f".format(it)) }
+                // stringResource() is @Composable and buildList{}'s lambda below isn't, so
+                // the per-goal progress pattern is fetched once here (outside the loop)
+                // and applied with plain Kotlin String.format inside it, same reasoning as
+                // the round-up strings above.
+                val savingsProgressPattern = stringResource(R.string.home_savings_progress)
                 ShellSection(
-                    title = "Savings",
+                    title = stringResource(R.string.home_savings),
                     rows = buildList {
                         interestJar?.let { jar ->
                             add(
                                 ShellRow(
-                                    "Interest jar",
-                                    "Earned this month",
+                                    interestJarLabel,
+                                    earnedThisMonthLabel,
                                     "RWF %,.0f".format(jar.earnedThisMonth),
                                     Icons.Outlined.Savings,
                                     AccentOrange,
@@ -1294,7 +1306,7 @@ private fun HomeTab(
                             add(
                                 ShellRow(
                                     goal.name,
-                                    "RWF %,.0f of %,.0f".format(goal.currentAmount, goal.targetAmount),
+                                    savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount)),
                                     "$progressPercent%",
                                     Icons.Outlined.Savings,
                                     AccentBlue,
@@ -1308,11 +1320,11 @@ private fun HomeTab(
                         if (savingsGoals.isNotEmpty()) {
                             add(
                                 ShellRow(
-                                    "Round-up saving",
+                                    roundUpTitle,
                                     if (roundUpSettings?.enabled == true) {
-                                        "Rounding up to RWF %,.0f".format(roundUpSettings?.roundToNearest)
-                                    } else "Off",
-                                    if (roundUpSettings?.enabled == true) "On" else "Set up",
+                                        roundUpRoundingText ?: roundUpOff
+                                    } else roundUpOff,
+                                    if (roundUpSettings?.enabled == true) roundUpOn else roundUpSetUp,
                                     Icons.Outlined.CurrencyExchange,
                                     AccentPurple,
                                     onClick = { showRoundUpDialog = true },
@@ -1364,18 +1376,18 @@ private fun RoundUpSettingsDialog(
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Round-up saving") },
+        title = { Text(stringResource(R.string.home_round_up_title)) },
         text = {
             Column {
-                Text("Every time you send money, round the payment up and save the difference.", color = TossSecondary, fontSize = 13.sp)
+                Text(stringResource(R.string.home_round_up_body), color = TossSecondary, fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Text("Enable round-up", modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.home_round_up_enable), modifier = Modifier.weight(1f))
                     androidx.compose.material3.Switch(checked = enabled, onCheckedChange = { enabled = it })
                 }
                 if (enabled) {
                     Spacer(Modifier.height(12.dp))
-                    Text("Round up to nearest", color = TossSecondary, fontSize = 13.sp)
+                    Text(stringResource(R.string.home_round_up_nearest), color = TossSecondary, fontSize = 13.sp)
                     Row(modifier = Modifier.fillMaxWidth()) {
                         listOf(100L, 500L, 1000L).forEach { option ->
                             Row(
@@ -1388,7 +1400,7 @@ private fun RoundUpSettingsDialog(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text("Save into", color = TossSecondary, fontSize = 13.sp)
+                    Text(stringResource(R.string.home_round_up_save_into), color = TossSecondary, fontSize = 13.sp)
                     goals.forEach { goal ->
                         Row(
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
@@ -1402,10 +1414,10 @@ private fun RoundUpSettingsDialog(
             }
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(onClick = { onSave(enabled, increment, if (enabled) selectedGoalId else null) }) { Text("Save") }
+            androidx.compose.material3.TextButton(onClick = { onSave(enabled, increment, if (enabled) selectedGoalId else null) }) { Text(stringResource(R.string.home_save)) }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") }
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.home_cancel)) }
         }
     )
 }
@@ -1413,7 +1425,7 @@ private fun RoundUpSettingsDialog(
 @Composable
 private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
     Column {
-        Text("Discover", color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
+        Text(stringResource(R.string.home_discover), color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
         items.forEach { discoverItem ->
             val accentColor = try {
                 Color(android.graphics.Color.parseColor(discoverItem.color))
@@ -1432,7 +1444,7 @@ private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
                             Text(discoverItem.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TossText)
                             if (discoverItem.isNew) {
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("NEW", color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.home_new_badge), color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                         Text(discoverItem.subtitle, fontSize = 14.sp, color = TossSecondary)
@@ -1466,15 +1478,15 @@ private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Un
                 .background(TossCardSoft)
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            Text("Search", color = TossSecondary, fontSize = 15.sp)
+            Text(stringResource(R.string.home_search), color = TossSecondary, fontSize = 15.sp)
         }
         // Both icons were real no-op taps (found 2026-07-22 audit) despite their own
         // real destinations already existing elsewhere in this file: QR scan opens
         // the same real "Pay" screen (scan-or-pay-by-code) the My tab's Pay row
         // already reaches; Notifications opens Settings, which already renders a
         // real notifications list against GET /api/v1/notifications.
-        IdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code", onClick = onOpenPay)
-        IdsIconButton(Icons.Outlined.Notifications, contentDescription = "Notifications", onClick = onOpenNotifications)
+        IdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = stringResource(R.string.home_scan_qr), onClick = onOpenPay)
+        IdsIconButton(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.home_notifications), onClick = onOpenNotifications)
     }
 }
 
@@ -1506,7 +1518,7 @@ private fun WalletHeroCard(
             // with nothing earned yet keeps the plain label rather than a "+RWF 0"
             // that reads as broken.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Wallet", fontSize = 14.sp, color = TossSecondary)
+                Text(stringResource(R.string.home_wallet), fontSize = 14.sp, color = TossSecondary)
                 if (earnedThisMonth > 0.0) {
                     Text(
                         "  +RWF %,.0f".format(earnedThisMonth),
@@ -1529,8 +1541,8 @@ private fun WalletHeroCard(
             // glyph -- IdsButton's icon param is new this pass (see its own doc
             // comment) specifically for this.
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IdsButton("Cash out", onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = Icons.Outlined.Add)
-                IdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
+                IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = Icons.Outlined.Add)
+                IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
             }
             // Real fix, 2026-08-03: these two rows used to be hardcoded literal
             // strings ("Bravo Korea parking" / "Savings deposit") baked into every
@@ -1556,7 +1568,7 @@ private fun WalletHeroCard(
             // was already wired to a sibling ShellRow in the same tab, just never to
             // this row.
             Text(
-                "See all",
+                stringResource(R.string.home_see_all),
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onSeeAll),
                 color = TossSecondary,
                 fontSize = 16.sp,

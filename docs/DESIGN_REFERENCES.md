@@ -2990,7 +2990,47 @@ capture.
 `HomeView` — the screen a signed-in itunda user actually sees first — is now fully localized on web,
 matching the depth (if not yet the verification tier) of Android/iOS's own most-worked-on screens.
 
+### Same real gap, found on Android too: `HomeTab`, not `OverviewScreen.kt` (2026-08-09)
+
+Checked whether Android had the identical "translated the wrong screen" mistake just found and fixed on
+web — it did. `TossTab.Home` (`ItundaAppScreen.kt`'s `when (selectedTab)` dispatch) is Android's real
+default landing tab, rendered by a composable called `HomeTab` — a completely different, much larger
+screen than `OverviewScreen.kt` (the "second screen" the earlier Android pass actually translated:
+savings/loans/investments/insurance summary, reachable from Home but not Home itself). `HomeTab` and its
+sub-composables (`HomeTopBar`, `WalletHeroCard`, `RoundUpSettingsDialog`, Android's own `DiscoverSection`
+— a separate implementation from web's, same name) had exactly 5 `stringResource()` calls in the entire
+~2700-line file before this pass, all from the `scam_report_*` fix earlier today. Everything else —
+the search bar placeholder, "Cash out"/"Send" buttons, "See all", the round-up savings dialog, the
+Savings section, and a set of static Toss-style promotional rows (cashback, face-ID pay, government
+alerts) — was hardcoded English.
+
+Added ~35 new `home_*` string keys (`:app`'s `values{,-rw}/strings.xml`) and wired every one in. Two real
+Compose-specific gotchas along the way, both caught before the build, not after:
+- `stringResource()` is `@Composable` and can't be called inside a `buildList { }` builder lambda's
+  per-item `forEach` the way the original code structured the Savings section's rows — fetched the
+  round-up/interest-jar/progress strings (including the progress-format *pattern* itself) once outside
+  the loop, then applied plain Kotlin `String.format`/`.format()` per item inside it, same reasoning as
+  Android's own `SCHEDULED_TRANSFER_STATUS_KEY`-style indirection used elsewhere this session.
+- The known `--`-in-XML-comment gotcha recurred a third time this session, caught by the same
+  `mergeDebugResources` build failure and fixed the same way as every prior time.
+
+Left the promotional rows' *content* exactly as it already was (Toss-reference-matching static
+marketing copy, e.g. "Transfer cashback — BK account -> TUYIZERE Eric") — translating it into Kinyarwanda
+is a real, in-scope i18n task; whether that kind of illustrative promotional content belongs in this
+screen at all is a separate, out-of-scope product question this pass didn't touch.
+
+**Verification tier, named honestly**: `:app:compileDebugKotlin` clean, `accessibility-lint.py` clean,
+both `strings.xml` files well-formed. Compile-tier only — same as every other Android change today, no
+device available this session to watch it actually render.
+
+`HomeTab` — Android's own real first-seen screen — now has the same depth of translation coverage
+`OverviewScreen.kt`/`TransferFlow.kt`/`SettingsScreen.kt` already had, closing the same class of gap on
+the second of three platforms. iOS not checked yet for the equivalent mistake.
+
 ### Unresolved / worth a follow-up
+- Check iOS for the same "translated the wrong/secondary screen, not the real landing one" mistake
+  before assuming it doesn't have it too — found on 2 of 3 platforms so far by asking the question
+  explicitly rather than assuming.
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the

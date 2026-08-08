@@ -112,4 +112,43 @@
     <string name="settings_mark_all_read">Mark all read</string>
     <string name="settings_no_notifications">No notifications</string>
     <string name="settings_log_out">Log out</string>
+    <!-- Real 2026-08-09 parity fix: HomeTab, not OverviewScreen.kt, is Android's actual
+         default landing tab (TossTab.Home), the exact same "translated the wrong
+         screen" gap just found and fixed on web's BankDashboard (HomeView vs
+         OverviewView). HomeTab itself had almost zero stringResource() calls before this. -->
+    <string name="home_search">Search</string>
+    <string name="home_scan_qr">Scan QR code</string>
+    <string name="home_notifications">Notifications</string>
+    <string name="home_wallet">Wallet</string>
+    <string name="home_cash_out">Cash out</string>
+    <string name="home_send">Send</string>
+    <string name="home_see_all">See all</string>
+    <string name="home_round_up_title">Round-up saving</string>
+    <string name="home_round_up_body">Every time you send money, round the payment up and save the difference.</string>
+    <string name="home_round_up_enable">Enable round-up</string>
+    <string name="home_round_up_nearest">Round up to nearest</string>
+    <string name="home_round_up_save_into">Save into</string>
+    <string name="home_save">Save</string>
+    <string name="home_cancel">Cancel</string>
+    <string name="home_discover">Discover</string>
+    <string name="home_new_badge">NEW</string>
+    <string name="home_spent_period_category">Spent this period -- mostly on %1$s</string>
+    <string name="home_spent_period">Spent this period</string>
+    <string name="home_promo_cashback_title">Transfer cashback</string>
+    <string name="home_promo_cashback_subtitle">BK account -> TUYIZERE Eric</string>
+    <string name="home_promo_cashback_action">Claim</string>
+    <string name="home_promo_sprinkle_title">Sprinkle money to friends</string>
+    <string name="home_promo_sprinkle_subtitle">19:03:55 left</string>
+    <string name="home_promo_sprinkle_action">Send</string>
+    <string name="home_promo_pay_cashback">Get cashback every time you pay</string>
+    <string name="home_promo_face_id">Pay with face ID</string>
+    <string name="home_promo_gov_alerts">Receive government alerts</string>
+    <string name="home_savings">Savings</string>
+    <string name="home_interest_jar">Interest jar</string>
+    <string name="home_earned_this_month">Earned this month</string>
+    <string name="home_savings_progress">RWF %1$s of %2$s</string>
+    <string name="home_round_up_rounding">Rounding up to RWF %1$s</string>
+    <string name="home_round_up_off">Off</string>
+    <string name="home_round_up_on">On</string>
+    <string name="home_round_up_set_up">Set up</string>
 </resources>
