@@ -3236,6 +3236,16 @@ id into the manual reactivate form, submitted, and confirmed the success message
 genuinely restored `ACTIVE` status. Zero console exceptions throughout. Real `tsc -b && vite build` also
 clean.
 
+**One more real proof, checking the feature actually does what it claims rather than trusting its own
+doc comment**: `MerchantService.suspendMerchant`'s own comment cites "Eats' actual browse results for a
+real user" as the reason `SUSPENDED` matters, written before today, for pre-existing code this pass
+didn't touch. Verified directly rather than taking the comment's word for it — found the real
+customer-facing browse endpoint (`GET /api/v1/shopping/merchants`), picked a real merchant visible to a
+real logged-in customer, suspended it through the new admin queue's own backend call, and confirmed via
+a second real customer-session request that it genuinely disappeared from browse — then reactivated it
+and confirmed it reappeared. Not just "the admin flag flipped," the actual end-to-end consequence a real
+buyer would experience, proven live in both directions.
+
 **Two smaller findings from the same sweep, named but not fixed this pass** (lower severity, no security
 or correctness risk, just silent-drift/completeness gaps):
 - `GET /api/v1/maps/categories` exists on the backend but web/Android both hardcode their own copy of the
