@@ -3280,3 +3280,81 @@ or correctness risk, just silent-drift/completeness gaps):
   repo (confirmed via an unrelated grep this pass turning up hits from all 5) — likely leftover from
   an earlier `Workflow` run this session, not touched or cleaned up here since it's unrelated to this
   work; worth the user's attention if disk space matters, not investigated further.
+
+## 20. Performance, and closing the security/simplicity/customer-orientation loop on real hardware
+
+**Added 2026-08-09**, at explicit user request, the first session in which a physical Android
+device (Samsung Galaxy A16) was actually available: audit itunda against Toss's own security,
+performance, simplicity, and customer-orientation standard, verifying on real hardware rather
+than compile-tier only. WebSearch was already exhausted (200/200) by this point; WebFetch
+against specific known toss.tech URLs remained available and was used instead.
+
+### References
+
+| Topic | Source | Pattern |
+|---|---|---|
+| Real-device testing philosophy | toss.tech/article/device-farm-nebula | Toss built "Nebula," an internal real-device farm, deliberately choosing physical hardware over emulators: *"actual behavior — battery drain, network conditions, hardware quirks — can't be replicated in simulation."* Stated principle: **"verification must match production reality as closely as possible."** Directly validated by this session's own experience: the `ClassCastException`/`ActivityResultRegistryOwner` crashes fixed earlier today were invisible to an entire session of compile-tier and (flaky) emulator verification, and only surfaced the moment real hardware became available. |
+| "No More Loading" product principle | toss.im/tossfeed/article/tossproductprinciples (already sourced, Section 11) | *"Pull all levers to eliminate delays — whether by redesigning flows, improving policies, or adopting new technology."* Performance is treated as a product-simplicity concern, not a separate technical-only workstream. |
+| Perceived-speed via interaction friction, not just raw rendering speed | toss.tech/article/4-ways-for-minimum-input | Re-confirmed while researching this section: Toss's own public engineering writing frames "feels fast" largely through reduced clicks/auto-focus/auto-submit (Section 11's own findings), not purely through startup-time or frame-rate numbers — those technical practices aren't published in detail in Toss's own accessible blog content, so this section's technical benchmarks below are itunda's own real measurements, not a sourced Toss number to match. |
+
+### itunda's real state, measured on physical hardware (not assumed)
+
+- **Real cold-start time, measured 3x via `adb shell am start -W`**: 1779ms / 1868ms / 1790ms
+  (avg ~1.8s) on a Galaxy A16, **debug build** (no R8, no resource shrinking — see below). Google's
+  own Android Vitals threshold for "bad" cold start is >5s; itunda's debug build is already well
+  under that, but a debug number isn't the real comparison point — see the R8 fix below for why.
+- **Real, serious gap found and fixed: release build had `isMinifyEnabled = false`, and its own
+  referenced `proguard-rules.pro` didn't exist as a file at all.** Every release build this app has
+  ever produced shipped fully unshrunk and unobfuscated — bigger APK, slower class-verification at
+  startup, and (a real security angle, not just performance) trivially reverse-engineerable, unlike
+  Toss's own real production APK. Fixed: wrote real Gson/Retrofit keep rules (`app/proguard-rules.pro`
+  — Gson does not protect application DTOs automatically the way Retrofit/OkHttp's own bundled
+  consumer-rules already protect themselves), then flipped `isMinifyEnabled = true` +
+  `isShrinkResources = true`. **Verified, not just compiled**: found a second, fully independent
+  pre-existing environment gap while verifying this — `:app:assembleRelease` had never actually
+  succeeded in this environment at all (`Couldn't determine Hermesc location`,
+  `node_modules/react-native/sdks/hermesc/` genuinely missing, CI never exercises this path since
+  `.github/workflows/ci-cd.yml` only runs `assembleDebug`). Found a real working universal
+  (arm64+x86_64) `hermesc` binary already present as a transitive dependency
+  (`node_modules/hermes-compiler/hermesc/osx-bin/hermesc`) and wired it in as an existence-gated
+  fallback in `app/build.gradle.kts`'s `react {}` block, so a future environment where the real
+  download succeeds isn't silently overridden. `:app:assembleRelease` now succeeds end-to-end:
+  **123.9MB vs debug's 229.5MB, a real ~46% size reduction**, not a projected one.
+- **Runtime correctness of the R8 change, not just a successful build**: a clean R8 build does not
+  itself prove Gson (de)serialization survived minification — field renaming would silently corrupt
+  JSON at runtime with no compile-time warning. Signed the release APK locally with the standard
+  debug keystore (`apksigner`/`zipalign` from build-tools, for local device verification only — not
+  a real distribution signing key) and installed it on the physical device to confirm a real login
+  round-trip still (de)serializes correctly. See the device-verification note below for result.
+- **FLAG_SECURE (screenshot/screen-recording protection): zero hits anywhere in the Android
+  codebase before this pass** — every screen (wallet balance, transfer amounts, PIN/password entry)
+  was screenshottable, screen-recordable, and would render in the recent-apps task-switcher
+  thumbnail in plaintext. Every serious fintech app, Toss included, blocks this app-wide. Added to
+  all 4 Android apps' `MainActivity` (`:app`, `:merchantapp`, `:riderapp`, `:agentapp`) — **verified
+  live, not just added**: `adb shell screencap` on the real device now returns a solid black
+  capture (18KB vs a real screen's ~130-200KB), confirmed via direct pixel inspection.
+- **Biometric app-lock, verified against real biometric hardware for the first time this session**:
+  item 246 (Keystore-signed-challenge device verification, built 2026-08-07) was compile-verified
+  only until now. On this physical device, launching itunda fired a real system fingerprint prompt
+  ("Itunda Secure Confirmation" / "Unlock Itunda"), and cancelling it correctly fell through to
+  itunda's own "Itunda is locked" screen with a real Cancel/Unlock pair — not a crash, not a silent
+  bypass straight into the authenticated app. A genuine, working security gate, not just code that
+  compiles.
+
+### Unresolved / in progress
+
+- The signed release-build device install and its real login round-trip test were interrupted by
+  the physical device's screen lock (shared device, same one used to view this Claude Code session
+  — see [[feedback_emulator_for_visual_verification]]) before the runtime Gson-correctness check
+  could complete. Picking back up once the device is unlocked again.
+- `merchantapp`/`riderapp`/`agentapp` still have `isMinifyEnabled` unchecked (not yet confirmed
+  either way) — only `:app`'s release config was in scope for this pass since it's the
+  customer-facing app the user's own device testing is centered on. Worth the same audit.
+- No jank/frame-drop measurement (`dumpsys gfxinfo`) completed yet on scroll-heavy screens
+  (HomeTab, Hood, Shop) — queued, blocked on the same device-lock interruption above.
+- Toss's own real, technical (not product-principle-level) performance-engineering writing was not
+  found via the WebFetch attempts made this pass (toss.tech's own public content skews toward
+  product/UX and infra-tooling stories, not raw rendering/startup benchmarks) — the comparison
+  points above are itunda's own real measurements assessed against general Android platform
+  standards (Android Vitals), not a like-for-like sourced Toss number. Flagged as lower-confidence
+  than the rest of this section, same discipline as Section 12's own unresolved item.

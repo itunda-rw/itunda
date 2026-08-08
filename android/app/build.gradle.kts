@@ -46,6 +46,21 @@ react {
     // Project Modules section below) -- only genuinely-standard-autolinked libraries
     // like react-native-safe-area-context were missing it.
     autolinkLibrariesWithApp()
+
+    // Real fix (2026-08-09), found while verifying the release-build R8/minify change below:
+    // release builds (never exercised by CI, which only runs assembleDebug -- see
+    // .github/workflows/ci-cd.yml) failed with "Couldn't determine Hermesc location" --
+    // node_modules/react-native/sdks/hermesc/ genuinely doesn't exist in this environment
+    // (the prebuilt-binary download step react-native's own postinstall normally runs never
+    // completed here). A real, working universal (arm64+x86_64) hermesc binary already exists
+    // a few packages over though, pulled in as a transitive dependency of the RN toolchain
+    // (`hermes-compiler`) -- point at it, but only as a fallback so a future environment where
+    // the real sdks/hermesc download succeeds isn't silently overridden by this local path.
+    val defaultHermescDir = file("../../packages/saronite/node_modules/react-native/sdks/hermesc")
+    val fallbackHermesc = file("../../packages/saronite/node_modules/hermes-compiler/hermesc/osx-bin/hermesc")
+    if (!defaultHermescDir.exists() && fallbackHermesc.exists()) {
+        hermesCommand = fallbackHermesc.absolutePath
+    }
 }
 
 // brick-module's own react-native-helpers.gradle (2026-07-12, granite-adoption
@@ -138,7 +153,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Real Toss-parity performance/security fix (2026-08-09): this was `false` with a
+            // proguard-rules.pro reference that didn't even exist as a file -- meaning release
+            // builds shipped completely unshrunk and unobfuscated. See proguard-rules.pro's own
+            // header for why Gson needed explicit keep rules before this could be flipped on.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
