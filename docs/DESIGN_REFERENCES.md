@@ -2869,6 +2869,17 @@ actual runtime behavior of the fix (does the toggle in Settings now really chang
 everything else) has not been watched on a real emulator or device this round, so it's asserted from
 reading the code path, not observed. That's a real, named gap, not a silent claim of "verified."
 
+**Stronger iOS verification the same day, real `xcodebuild`, not just `swiftc -parse`**: ran a real
+`xcodebuild -scheme FeaturePayments build` against the `iOS Simulator` destination — compiles, links,
+codesigns `TransferFlowScreens.swift` cleanly as a standalone framework, a real step up from parse-only
+checking. Also tried the full `ItundaApp` scheme: it fails, but at `Unable to resolve module dependency`
+for `React_RCTAppDelegate`/`MapLibre`/`BrickModule`/`GraniteBrownfield`/`React` — the same pre-existing,
+unrelated brownfield-module link blocker this thread has named before, nothing in any file this session
+touched. Confirms the day's changes aren't the cause of that gap, without closing it. Also re-ran the
+full backend test suite (`./gradlew test --continue`) after all of today's changes — clean, no
+regressions from anything in this thread (the AgentService/Saronite/CommunityController backend fixes
+from earlier in the session, or the frontend-only work today).
+
 **Web has the same "unreachable after login" shape, fixed the same day.** `LoginPage.tsx`'s own
 switcher (a real `<select>`, added the very first day of this thread) only renders on the logged-out
 page — once a bank-mfe user signs in, there was no persistent way to change language without logging
