@@ -9,6 +9,122 @@
 import SwiftUI
 import CoreDesignSystem
 
+// Real 2026-08-09 parity fix -- checked whether iOS had the same "translated the
+// wrong screen" mistake just found and fixed on web (HomeView vs OverviewView) and
+// Android (HomeTab vs OverviewScreen.kt): it did. ContentView.swift's real default
+// tab (tag 0, "Home") renders THIS file, not OverviewScreenView -- the screen the
+// earlier localization pass actually translated. BankView had zero locale
+// infrastructure before this. Same self-contained-dictionary approach
+// TransferFlowScreens.swift already established for Features/Payments (this module
+// can't depend back on App either, so App's AppLocale isn't visible here), reading
+// the same UserDefaults key ("itunda.locale") every other screen writes to. Same
+// honesty note as every prior screen: careful, good-faith translation, not verified
+// by a native Kinyarwanda speaker.
+private enum BankingLocale: String { case en, rw }
+
+private func loadBankingLocale() -> BankingLocale {
+    if let raw = UserDefaults.standard.string(forKey: "itunda.locale"), let locale = BankingLocale(rawValue: raw) {
+        return locale
+    }
+    let preferred = Locale.preferredLanguages.first ?? "en"
+    return preferred.hasPrefix("rw") ? .rw : .en
+}
+
+private let bankingStrings: [BankingLocale: [String: String]] = [
+    .en: [
+        "goodMorning": "Good morning",
+        "notifications": "Notifications",
+        "profile": "Profile",
+        "totalBalance": "Itunda total balance",
+        "balanceSubtitle": "Wallet, bank and mobile money in one place",
+        "mainWallet": "Main wallet",
+        "spendToday": "Spend today",
+        "sendMoneyNow": "Send money now",
+        "quickTransfer": "Transfer",
+        "quickBills": "Bills",
+        "quickMoMo": "MoMo",
+        "quickSavings": "Savings",
+        "savingsTitle": "Savings",
+        "view": "View",
+        "connectedMoneyTitle": "Connected money",
+        "manage": "Manage",
+        "spentThisMonth": "Spent this month",
+        "viewTransactionHistory": "View transaction history",
+        "rwandaServicesTitle": "For life in Rwanda",
+        "more": "More",
+        "rewardsTitle": "Rewards and savings",
+        "discoverTitle": "Discover",
+        "discoverNew": "NEW",
+        "bkAccountTitle": "BK Bank account",
+        "bkAccountSubtitle": "Salary and card settlement",
+        "momoSubtitle": "Daily spending wallet",
+        "airtelTitle": "Airtel Money",
+        "airtelSubtitle": "Backup cash-out line",
+        "connected": "Connected",
+        "cashPowerTitle": "Pay CashPower",
+        "cashPowerSubtitle": "Top up electricity instantly",
+        "open": "Open",
+        "iremboTitle": "Irembo services",
+        "iremboSubtitle": "Government and document payments",
+        "browse": "Browse",
+        "mySpendingTitle": "My spending",
+        "mySpendingSubtitle": "View monthly categories and trends",
+        "seeAll": "See all",
+        "rewardsRowTitle": "Itunda rewards",
+        "rewardsRowSubtitle": "Claim today's cashback and offers",
+        "goalSaverTitle": "Goal saver",
+        "goalSaverSubtitle": "Rainy day fund progress",
+    ],
+    .rw: [
+        "goodMorning": "Mwaramutse",
+        "notifications": "Amamenyesha",
+        "profile": "Umwirondoro",
+        "totalBalance": "Amafaranga yose ya itunda",
+        "balanceSubtitle": "Wallet, banki na Mobile Money byose hamwe",
+        "mainWallet": "Wallet nyamukuru",
+        "spendToday": "Wakoresheje uyu munsi",
+        "sendMoneyNow": "Ohereza amafaranga",
+        "quickTransfer": "Kohereza",
+        "quickBills": "Kwishyura fagitire",
+        "quickMoMo": "MoMo",
+        "quickSavings": "Ubwizigame",
+        "savingsTitle": "Ubwizigame",
+        "view": "Reba",
+        "connectedMoneyTitle": "Amafaranga ahujwe",
+        "manage": "Gucunga",
+        "spentThisMonth": "Wakoresheje muri uku kwezi",
+        "viewTransactionHistory": "Reba amateka y'ibikorwa",
+        "rwandaServicesTitle": "Ubuzima muri Rwanda",
+        "more": "Ibindi",
+        "rewardsTitle": "Ibihembo n'ubwizigame",
+        "discoverTitle": "Menya",
+        "discoverNew": "GISHYA",
+        "bkAccountTitle": "Konti ya BK Bank",
+        "bkAccountSubtitle": "Umushahara n'ubwishyu bwa karita",
+        "momoSubtitle": "Wallet yo gukoresha buri munsi",
+        "airtelTitle": "Airtel Money",
+        "airtelSubtitle": "Umurongo w'inyongera wo kubikuza",
+        "connected": "Byahujwe",
+        "cashPowerTitle": "Kwishyura CashPower",
+        "cashPowerSubtitle": "Ongera amashanyarazi ako kanya",
+        "open": "Fungura",
+        "iremboTitle": "Serivisi za Irembo",
+        "iremboSubtitle": "Kwishyura Leta n'inyandiko",
+        "browse": "Reba",
+        "mySpendingTitle": "Amakoreshereze yanjye",
+        "mySpendingSubtitle": "Reba ibyiciro n'imigendekere y'ukwezi",
+        "seeAll": "Reba byose",
+        "rewardsRowTitle": "Ibihembo bya itunda",
+        "rewardsRowSubtitle": "Saba amafaranga n'ibindi byiza by'uyu munsi",
+        "goalSaverTitle": "Umugambi w'ubwizigame",
+        "goalSaverSubtitle": "Imigendekere y'ubwizigame bw'ibihe bikomeye",
+    ],
+]
+
+private func bt(_ key: String, locale: BankingLocale) -> String {
+    bankingStrings[locale]?[key] ?? bankingStrings[.en]?[key] ?? key
+}
+
 /// A row for BankView's real "Savings" section -- plain primitives, not the App
 /// target's Wallet/SavingsGoal/InterestJar types, because Features/Banking (a Tuist
 /// Feature module) cannot depend back on App (App depends on Feature, never the
@@ -54,6 +170,7 @@ public struct DiscoverRowData: Identifiable {
 }
 
 public struct BankView: View {
+    @State private var locale: BankingLocale = loadBankingLocale()
     private let balanceText: String
     private let savingsRows: [SavingsRowData]
     private let discoverRows: [DiscoverRowData]
@@ -84,13 +201,13 @@ public struct BankView: View {
     public var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: IDS.Layout.cardGap) {
-                HomeTopBar()
-                AccountSummaryCard(balanceText: balanceText, onSend: onSend)
-                QuickActionsRow()
+                HomeTopBar(locale: locale)
+                AccountSummaryCard(balanceText: balanceText, onSend: onSend, locale: locale)
+                QuickActionsRow(locale: locale)
                 if !savingsRows.isEmpty {
                     HomeSectionCard(
-                        title: "Savings",
-                        actionLabel: "View",
+                        title: bt("savingsTitle", locale: locale),
+                        actionLabel: bt("view", locale: locale),
                         rows: savingsRows.map {
                             HomeRowData(title: $0.title, subtitle: $0.subtitle, trailing: $0.trailing, symbol: "leaf", iconBackground: IDS.Colors.successTint, onTap: $0.onTap)
                         }
@@ -101,20 +218,20 @@ public struct BankView: View {
                 // rows in this section stay illustrative (no real spend-by-category
                 // aggregation endpoint exists yet).
                 HomeSectionCard(
-                    title: "Connected money",
-                    actionLabel: "Manage",
-                    rows: [HomeRowData(title: "Spent this month", subtitle: "View transaction history", trailing: "", symbol: "list.bullet", iconBackground: IDS.Colors.chipBackground, onTap: onOpenTransactionHistory)]
-                        + BankViewData.connectedMoney
+                    title: bt("connectedMoneyTitle", locale: locale),
+                    actionLabel: bt("manage", locale: locale),
+                    rows: [HomeRowData(title: bt("spentThisMonth", locale: locale), subtitle: bt("viewTransactionHistory", locale: locale), trailing: "", symbol: "list.bullet", iconBackground: IDS.Colors.chipBackground, onTap: onOpenTransactionHistory)]
+                        + BankViewData.connectedMoney(locale: locale)
                 )
-                HomeSectionCard(title: "For life in Rwanda", actionLabel: "More", rows: BankViewData.rwandaServices)
-                HomeSectionCard(title: "Rewards and savings", actionLabel: "View", rows: BankViewData.rewards)
+                HomeSectionCard(title: bt("rwandaServicesTitle", locale: locale), actionLabel: bt("more", locale: locale), rows: BankViewData.rwandaServices(locale: locale))
+                HomeSectionCard(title: bt("rewardsTitle", locale: locale), actionLabel: bt("view", locale: locale), rows: BankViewData.rewards(locale: locale))
                 if !discoverRows.isEmpty {
                     HomeSectionCard(
-                        title: "Discover",
+                        title: bt("discoverTitle", locale: locale),
                         actionLabel: "",
                         rows: discoverRows.enumerated().map { index, row in
                             HomeRowData(
-                                title: row.isNew ? "\(row.title) · NEW" : row.title,
+                                title: row.isNew ? "\(row.title) · \(bt("discoverNew", locale: locale))" : row.title,
                                 subtitle: row.subtitle,
                                 trailing: row.badge ?? "",
                                 symbol: "sparkles",
@@ -133,22 +250,32 @@ public struct BankView: View {
 }
 
 private enum BankViewData {
-    static let connectedMoney = [
-        HomeRowData(title: "BK Bank account", subtitle: "Salary and card settlement", trailing: "RWF 842,000", symbol: "building.columns", iconBackground: IDS.Colors.backgroundTertiary),
-        HomeRowData(title: "MTN MoMo", subtitle: "Daily spending wallet", trailing: "RWF 118,400", symbol: "iphone", iconBackground: IDS.Colors.successTint),
-        HomeRowData(title: "Airtel Money", subtitle: "Backup cash-out line", trailing: "Connected", symbol: "creditcard", iconBackground: IDS.Colors.warningTint)
-    ]
+    // Functions taking `locale` rather than static `let` arrays (2026-08-09 localization
+    // fix) -- a `static let` only ever evaluates once per process lifetime, which would
+    // freeze these rows in whichever language was active the first time this enum was
+    // touched, never picking up a later switch the way BankView's own @State locale can.
+    static func connectedMoney(locale: BankingLocale) -> [HomeRowData] {
+        [
+            HomeRowData(title: bt("bkAccountTitle", locale: locale), subtitle: bt("bkAccountSubtitle", locale: locale), trailing: "RWF 842,000", symbol: "building.columns", iconBackground: IDS.Colors.backgroundTertiary),
+            HomeRowData(title: "MTN MoMo", subtitle: bt("momoSubtitle", locale: locale), trailing: "RWF 118,400", symbol: "iphone", iconBackground: IDS.Colors.successTint),
+            HomeRowData(title: bt("airtelTitle", locale: locale), subtitle: bt("airtelSubtitle", locale: locale), trailing: bt("connected", locale: locale), symbol: "creditcard", iconBackground: IDS.Colors.warningTint),
+        ]
+    }
 
-    static let rwandaServices = [
-        HomeRowData(title: "Pay CashPower", subtitle: "Top up electricity instantly", trailing: "Open", symbol: "doc.text", iconBackground: IDS.Colors.warningTint),
-        HomeRowData(title: "Irembo services", subtitle: "Government and document payments", trailing: "Browse", symbol: "building.columns", iconBackground: IDS.Colors.pressed),
-        HomeRowData(title: "My spending", subtitle: "View monthly categories and trends", trailing: "See all", symbol: "wallet.pass", iconBackground: IDS.Colors.backgroundTertiary)
-    ]
+    static func rwandaServices(locale: BankingLocale) -> [HomeRowData] {
+        [
+            HomeRowData(title: bt("cashPowerTitle", locale: locale), subtitle: bt("cashPowerSubtitle", locale: locale), trailing: bt("open", locale: locale), symbol: "doc.text", iconBackground: IDS.Colors.warningTint),
+            HomeRowData(title: bt("iremboTitle", locale: locale), subtitle: bt("iremboSubtitle", locale: locale), trailing: bt("browse", locale: locale), symbol: "building.columns", iconBackground: IDS.Colors.pressed),
+            HomeRowData(title: bt("mySpendingTitle", locale: locale), subtitle: bt("mySpendingSubtitle", locale: locale), trailing: bt("seeAll", locale: locale), symbol: "wallet.pass", iconBackground: IDS.Colors.backgroundTertiary),
+        ]
+    }
 
-    static let rewards = [
-        HomeRowData(title: "Itunda rewards", subtitle: "Claim today's cashback and offers", trailing: "140 RWF", symbol: "sparkles", iconBackground: IDS.Colors.successTint),
-        HomeRowData(title: "Goal saver", subtitle: "Rainy day fund progress", trailing: "62%", symbol: "leaf", iconBackground: IDS.Colors.pressed)
-    ]
+    static func rewards(locale: BankingLocale) -> [HomeRowData] {
+        [
+            HomeRowData(title: bt("rewardsRowTitle", locale: locale), subtitle: bt("rewardsRowSubtitle", locale: locale), trailing: "140 RWF", symbol: "sparkles", iconBackground: IDS.Colors.successTint),
+            HomeRowData(title: bt("goalSaverTitle", locale: locale), subtitle: bt("goalSaverSubtitle", locale: locale), trailing: "62%", symbol: "leaf", iconBackground: IDS.Colors.pressed),
+        ]
+    }
 }
 
 private struct HomeRowData: Identifiable {
@@ -164,10 +291,12 @@ private struct HomeRowData: Identifiable {
 }
 
 private struct HomeTopBar: View {
+    let locale: BankingLocale
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: IDS.Layout.tightGap) {
-                Text("Good morning")
+                Text(bt("goodMorning", locale: locale))
                     .font(IDS.Typography.bodyMedium)
                     .foregroundColor(IDS.Colors.textSecondary)
                 Text("Itunda")
@@ -178,8 +307,8 @@ private struct HomeTopBar: View {
             Spacer()
 
             HStack(spacing: IDS.Layout.inlineGap) {
-                TopBarActionButton(symbol: "bell", accessibilityLabel: "Notifications")
-                TopBarActionButton(symbol: "person", accessibilityLabel: "Profile")
+                TopBarActionButton(symbol: "bell", accessibilityLabel: bt("notifications", locale: locale))
+                TopBarActionButton(symbol: "person", accessibilityLabel: bt("profile", locale: locale))
             }
         }
     }
@@ -208,29 +337,30 @@ private struct TopBarActionButton: View {
 private struct AccountSummaryCard: View {
     let balanceText: String
     let onSend: () -> Void
+    let locale: BankingLocale
 
     var body: some View {
         VStack(alignment: .leading, spacing: IDS.Layout.cardGap) {
             VStack(alignment: .leading, spacing: IDS.Layout.tightGap) {
-                Text("Itunda total balance")
+                Text(bt("totalBalance", locale: locale))
                     .font(IDS.Typography.sectionLabel)
                     .foregroundColor(IDS.Colors.textSecondary)
                 Text(balanceText)
                     .font(IDS.Typography.largeAmount)
                     .foregroundColor(IDS.Colors.textPrimary)
-                Text("Wallet, bank and mobile money in one place")
+                Text(bt("balanceSubtitle", locale: locale))
                     .font(IDS.Typography.bodyMedium)
                     .foregroundColor(IDS.Colors.textSecondary)
             }
 
             HStack(spacing: IDS.Layout.inlineGap) {
-                BalanceTile(title: "Main wallet", amount: balanceText)
-                BalanceTile(title: "Spend today", amount: "RWF 18,200")
+                BalanceTile(title: bt("mainWallet", locale: locale), amount: balanceText)
+                BalanceTile(title: bt("spendToday", locale: locale), amount: "RWF 18,200")
             }
 
             Button(action: onSend) {
                 HStack(spacing: IDS.Layout.tightGap) {
-                    Text("Send money now")
+                    Text(bt("sendMoneyNow", locale: locale))
                         .font(IDS.Typography.bodyBold)
                         .foregroundColor(IDS.Colors.textBrand)
                     Image(systemName: "chevron.right")
@@ -272,16 +402,20 @@ private struct BalanceTile: View {
 }
 
 private struct QuickActionsRow: View {
-    private let actions: [(String, String, Color)] = [
-        ("Transfer", "arrow.up.right", IDS.Colors.successTint),
-        ("Bills", "doc.text", IDS.Colors.warningTint),
-        ("MoMo", "iphone", IDS.Colors.pressed),
-        ("Savings", "leaf", IDS.Colors.dangerTint)
-    ]
+    let locale: BankingLocale
+
+    private var actions: [(String, String, Color)] {
+        [
+            (bt("quickTransfer", locale: locale), "arrow.up.right", IDS.Colors.successTint),
+            (bt("quickBills", locale: locale), "doc.text", IDS.Colors.warningTint),
+            (bt("quickMoMo", locale: locale), "iphone", IDS.Colors.pressed),
+            (bt("quickSavings", locale: locale), "leaf", IDS.Colors.dangerTint),
+        ]
+    }
 
     var body: some View {
         HStack(spacing: IDS.Layout.inlineGap) {
-            ForEach(actions, id: \.0) { action in
+            ForEach(actions, id: \.1) { action in
                 VStack(spacing: IDS.Layout.tightGap) {
                     Image(systemName: action.1)
                         .font(IDS.scaledFont(size: 20, weight: .medium, relativeTo: .body))

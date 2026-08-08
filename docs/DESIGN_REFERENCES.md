@@ -3027,10 +3027,42 @@ device available this session to watch it actually render.
 `OverviewScreen.kt`/`TransferFlow.kt`/`SettingsScreen.kt` already had, closing the same class of gap on
 the second of three platforms. iOS not checked yet for the equivalent mistake.
 
+### Same real gap, found on iOS too: `BankView.swift`, not `OverviewScreenView` (2026-08-09)
+
+Checked the third platform for the same mistake rather than assuming three-for-three meant it was clean
+on iOS by default — it wasn't. `ContentView.swift`'s real `TabView` (tag 0, the default selected tab)
+renders `BankView`, in the `Features/Banking` Tuist module — a completely separate screen from
+`OverviewScreenView` (`OverviewLoansCreditScoreScreens.swift`, in `App/Sources`), which is what the
+earlier iOS localization pass actually translated. `BankView.swift` had zero locale infrastructure of
+any kind before this: `HomeTopBar`, `AccountSummaryCard`, `QuickActionsRow`, and every `HomeSectionCard`
+title/row (`BankViewData`'s static connected-money/Rwanda-services/rewards content) were hardcoded
+English.
+
+Same self-contained-dictionary approach `TransferFlowScreens.swift` already established for
+`Features/Payments` — `Features/Banking` can't depend back on `App` either, so `LoginScreen.swift`'s
+`AppLocale` isn't visible here — reading the same `itunda.locale` UserDefaults key. One real Swift-specific
+gotcha caught before it shipped, not found live: `BankViewData`'s three row lists were originally
+`static let` arrays. A `static let` only evaluates once per process lifetime — if left as-is with
+translated strings baked in, they'd freeze in whichever language was active the very first time
+`BankView` was touched, never picking up a later switch the way the screen's own `@State` locale can.
+Converted all three to functions taking `locale: BankingLocale`, called fresh from `body` every time,
+instead of finding this the hard way after the fact.
+
+Left the promotional row content itself untouched (same call as Android's equivalent, static
+Toss-reference marketing copy — a real i18n task, not a reason to question whether it belongs on the
+screen). Verified with a real `xcodebuild -scheme FeatureBanking build` against iOS Simulator — compiles,
+links, codesigns cleanly, the same tier `FeaturePayments` got a few sections ago, not just `swiftc -parse`.
+
+**All three platforms now have the same class of bug fixed**: web (`HomeView` vs `OverviewView`),
+Android (`HomeTab` vs `OverviewScreen.kt`), iOS (`BankView` vs `OverviewScreenView`) all independently
+localized their app's *secondary* wallet-detail screen first and left the actual default landing screen
+mostly or entirely untranslated, in three unrelated codebases with three different histories. Worth
+naming as a pattern, not three coincidences: "the second screen we built" and "the screen a signed-in
+user actually lands on" are not automatically the same screen, and nothing forces a localization effort
+to check that assumption unless someone deliberately asks the question per platform, which this thread
+only started doing once it happened once, on web, and got curious whether it was a fluke.
+
 ### Unresolved / worth a follow-up
-- Check iOS for the same "translated the wrong/secondary screen, not the real landing one" mistake
-  before assuming it doesn't have it too — found on 2 of 3 platforms so far by asking the question
-  explicitly rather than assuming.
 - The Android locale-propagation fix above needs a real emulator/device pass: toggle the switcher on
   Settings, confirm Overview/Transfer/Talk/every other screen actually re-renders in the new language,
   not just Settings and Login. Highest-priority verification item in this whole thread now that the
