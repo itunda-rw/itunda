@@ -3519,3 +3519,37 @@ real fingerprint (the automated biometric gate above correctly cannot be bypasse
   second time with all 3 vars actually set; the identical directions `curl` call now returns a
   real 200 with real turn-by-turn geometry and street-level instructions (KG 17 Avenue, KN 3
   Road, etc.) for a real Kigali route.
+
+### A fourth real gap in the same pass: "directions" was a route planner, not a navigator
+- User feedback after both bugs above were fixed: "doesn't feel like real navigation as Naver
+  Maps or other maps." Confirmed by reading the code, not just the framing: `MapsScreen.kt`
+  computed a route, drew a static polyline, and rendered an expandable, all-at-once list of
+  every turn — a route *planner*, with zero live-tracking concept anywhere in the file (`grep`
+  for `isNavigating`/`currentStep`/camera-follow/rerouting: zero hits). `myLocation` itself was
+  only ever fetched once per screen open, not continuously.
+- **Built a real "Start Navigation" mode**, not just flagged the gap: reused the app's existing
+  one-shot `fetchRealLocation()` (already wired to the real `FusedLocationProviderClient`) in a
+  4-second polling loop while navigating — the same "poll a one-shot fetch on a timer" pattern
+  `riderapp`'s own `LocationUtil.kt`/`RiderLocationPusher` already establishes for continuous
+  tracking elsewhere in this codebase, not a new pattern. Added `currentStepIndexFor()`: since
+  OSRM's route response has no explicit step-to-geometry mapping, this finds the route
+  polyline's nearest point to the user's live GPS fix, sums distance-along-route up to that
+  point, and matches it against each step's own `distanceMeters` in order — the same
+  map-matching simplification real turn-by-turn apps use. The map's existing camera-follow
+  effect (already present, re-centering on every `myLocation` update) now zooms to a real
+  street-level 17.5 while navigating instead of the general "locate me" 14.0. Active navigation
+  replaces the flat step list with a single prominent current-step card (instruction + steps
+  remaining + distance remaining + "End navigation"), matching Naver/Kakao's own turn-by-turn
+  framing — see fewer things, not more, while actually moving.
+- **Deliberately not built, scoped out honestly**: voice/audio guidance (real TTS wiring, a
+  separate, larger feature) and live rerouting-on-deviation (would need re-calling
+  `getDirections` whenever the user strays far enough from the polyline — a real, valuable
+  follow-up, not done this pass).
+- **Verification status, honestly**: `:features:maps:impl` and the full `:app` both compile
+  clean, and the built APK launches and reaches Maps/search without a crash on the physical
+  device. The actual live-tracking behavior (does the current-step card really advance as GPS
+  updates, does the camera really follow) fundamentally needs real physical movement to verify
+  — something automation (adb taps) cannot simulate — so this is handed to the user directly to
+  try rather than falsely claimed as device-verified. Repeated cross-app confusion during this
+  same session (see [[feedback_emulator_for_visual_verification]]) made continued blind
+  automated tapping unproductive at this point anyway.

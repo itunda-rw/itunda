@@ -460,6 +460,35 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
         if (hasPermission) fetchRealLocation() else locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
+    // Real "Start Navigation" mode (2026-08-09) -- found live on the physical device: a
+    // computed route + a static, all-at-once step list ("doesn't feel like real navigation as
+    // Naver Maps or other maps") is a route planner, not a navigator. This closes that gap: a
+    // live-tracked mode that polls the device's real GPS fix every 4s (reusing
+    // fetchRealLocation's existing one-shot fetch, same pattern RiderLocationPusher already
+    // uses for continuous tracking elsewhere in this codebase), follows the user with the
+    // camera, and auto-advances the highlighted current step as they actually travel --
+    // instead of a flat list read once before setting off. No voice guidance yet (a real,
+    // separate, larger feature -- TTS wiring, not scoped into this pass).
+    var navigating by remember { mutableStateOf(false) }
+    var currentStepIndex by remember { mutableStateOf(0) }
+
+    LaunchedEffect(navigating) {
+        while (navigating) {
+            fetchRealLocation()
+            delay(4000)
+        }
+    }
+
+    // Real safety net: `route` is cleared to null at 8 separate call sites (new search,
+    // cleared selection, itinerary edits, etc.) -- rather than touching every one of them to
+    // also reset navigating/currentStepIndex, react to the one thing they all have in common.
+    LaunchedEffect(route) {
+        if (route == null) {
+            navigating = false
+            currentStepIndex = 0
+        }
+    }
+
     // Shared by both the search field's own leading icon and its keyboard "search"
     // IME action -- runs immediately, bypassing the debounce below.
     fun runSearch() {
@@ -788,6 +817,49 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
 
     val measureTotalKm = measurePoints.zipWithNext().sumOf { (a, b) -> haversineKm(a.first, a.second, b.first, b.second) }
 
+    // Real step-matching for "Start Navigation" mode -- OSRM's own route response has no
+    // explicit step-to-geometry-index mapping (RouteStepDto is just instruction/distance/
+    // streetName), so this does the same map-matching simplification real turn-by-turn
+    // apps use under the hood: find the route's own geometry point nearest the user's live
+    // GPS fix, sum the polyline distance up to that point ("distance traveled along the
+    // route so far"), then find which step that distance falls into by walking each step's
+    // own distanceMeters in order. Steps and geometry come from the same OSRM response, so
+    // their total distances line up closely enough for this to track well in practice.
+    fun currentStepIndexFor(activeRoute: RouteResultDto, userLat: Double, userLng: Double): Int {
+        if (activeRoute.geometry.isEmpty() || activeRoute.steps.isEmpty()) return 0
+        var nearestIdx = 0
+        var nearestDistKm = Double.MAX_VALUE
+        var cumulativeKm = 0.0
+        val cumulativeAtIndex = DoubleArray(activeRoute.geometry.size)
+        for (i in activeRoute.geometry.indices) {
+            val (lat, lng) = activeRoute.geometry[i]
+            if (i > 0) {
+                val (prevLat, prevLng) = activeRoute.geometry[i - 1]
+                cumulativeKm += haversineKm(prevLat, prevLng, lat, lng)
+            }
+            cumulativeAtIndex[i] = cumulativeKm
+            val distToUser = haversineKm(lat, lng, userLat, userLng)
+            if (distToUser < nearestDistKm) {
+                nearestDistKm = distToUser
+                nearestIdx = i
+            }
+        }
+        val distanceTraveledKm = cumulativeAtIndex[nearestIdx]
+        var stepCumulativeKm = 0.0
+        activeRoute.steps.forEachIndexed { i, step ->
+            stepCumulativeKm += step.distanceMeters / 1000.0
+            if (distanceTraveledKm <= stepCumulativeKm) return i
+        }
+        return activeRoute.steps.size - 1
+    }
+
+    LaunchedEffect(myLocation, navigating, route) {
+        if (!navigating) return@LaunchedEffect
+        val (lat, lng) = myLocation ?: return@LaunchedEffect
+        val activeRoute = route?.route ?: return@LaunchedEffect
+        currentStepIndex = currentStepIndexFor(activeRoute, lat, lng)
+    }
+
     // Converts the ruler's tapped points directly into a real driving/walking route --
     // unlike fetchItinerary above, this does NOT prepend myLocation as an implicit
     // origin: the ruler's own first tapped point IS the start, matching bank-mfe's own
@@ -1018,7 +1090,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                 val style = map.style ?: return@getMapAsync
                 val source = style.getSourceAs<GeoJsonSource>(MY_LOCATION_SOURCE_ID) ?: return@getMapAsync
                 source.setGeoJson(FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(Point.fromLngLat(location.second, location.first)))))
-                map.easeCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(LatLng(location.first, location.second), 14.0))
+                // Real navigation-mode camera (2026-08-09): a closer, street-level zoom while
+                // actively navigating (matching Naver/Kakao's own turn-by-turn framing) instead
+                // of the general-purpose "locate me" overview zoom every other caller of this
+                // same location update wants.
+                val zoom = if (navigating) 17.5 else 14.0
+                map.easeCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(LatLng(location.first, location.second), zoom))
             }
         }
         LaunchedEffect(selectedPlace, itineraryStops, itineraryBuilding) {
@@ -1733,20 +1810,81 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             }
                                         }
                                     }
-                                    if (currentRoute.route.steps.isNotEmpty()) {
-                                        Text(
-                                            if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
-                                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                            modifier = Modifier.padding(top = 4.dp).clickable { showSteps = !showSteps },
-                                        )
-                                    }
-                                    if (showSteps) {
-                                        Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            currentRoute.route.steps.forEachIndexed { i, step ->
+                                    // Real "Start Navigation" mode (2026-08-09) -- see
+                                    // currentStepIndexFor's own doc comment above for why. While
+                                    // active, this replaces the flat steps list with a single,
+                                    // prominent current-step card (the same "just the next turn,
+                                    // nothing else" framing Naver/Kakao/Google's own turn-by-turn
+                                    // view uses) instead of a scrollable wall of every step at
+                                    // once.
+                                    if (navigating) {
+                                        val steps = currentRoute.route.steps
+                                        val stepIdx = currentStepIndex.coerceIn(0, (steps.size - 1).coerceAtLeast(0))
+                                        val activeStep = steps.getOrNull(stepIdx)
+                                        val remainingKm = steps.drop(stepIdx + 1).sumOf { it.distanceMeters } / 1000.0 +
+                                            (activeStep?.distanceMeters ?: 0.0) / 1000.0
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(top = 8.dp)
+                                                .background(Ids.colors.brand, RoundedCornerShape(14.dp))
+                                                .padding(16.dp),
+                                        ) {
+                                            Column {
                                                 Text(
-                                                    "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
-                                                    fontSize = 12.sp, color = Ids.colors.textSecondary,
+                                                    activeStep?.instruction ?: "Arriving at your destination",
+                                                    fontSize = 17.sp, fontWeight = FontWeight.Bold,
+                                                    color = androidx.compose.ui.graphics.Color.White,
                                                 )
+                                                Text(
+                                                    "Step ${stepIdx + 1} of ${steps.size} · ${"%.1f".format(remainingKm)} km remaining",
+                                                    fontSize = 12.sp,
+                                                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                                                    modifier = Modifier.padding(top = 4.dp),
+                                                )
+                                                Text(
+                                                    "End navigation",
+                                                    fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                                    color = androidx.compose.ui.graphics.Color.White,
+                                                    modifier = Modifier
+                                                        .padding(top = 10.dp)
+                                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                                        .clickable { navigating = false }
+                                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        if (currentRoute.route.steps.isNotEmpty()) {
+                                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                                                Text(
+                                                    if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
+                                                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
+                                                    modifier = Modifier.weight(1f).clickable { showSteps = !showSteps },
+                                                )
+                                                Text(
+                                                    "▶ Start navigation",
+                                                    fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                                    color = androidx.compose.ui.graphics.Color.White,
+                                                    modifier = Modifier
+                                                        .background(Ids.colors.brand, RoundedCornerShape(8.dp))
+                                                        .clickable {
+                                                            currentStepIndex = 0
+                                                            navigating = true
+                                                            requestMyLocation()
+                                                        }
+                                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                )
+                                            }
+                                        }
+                                        if (showSteps) {
+                                            Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                currentRoute.route.steps.forEachIndexed { i, step ->
+                                                    Text(
+                                                        "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
+                                                        fontSize = 12.sp, color = Ids.colors.textSecondary,
+                                                    )
+                                                }
                                             }
                                         }
                                     }
