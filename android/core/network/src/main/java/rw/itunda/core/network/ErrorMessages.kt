@@ -4,16 +4,20 @@ import retrofit2.HttpException
 
 // Relocated 2026-07-22 from app/ui/SuperAppTabs.kt while extracting Marketplace into
 // :features:marketplace:impl -- this is a pure HttpException-to-message mapper with no
-// Compose/UI dependency, shared by every feature area (Hood, Invest, Maps), so it moves
-// next to NetworkClient itself rather than into the design-system module.
-fun superAppErrorMessage(e: HttpException): String = when (e.code()) {
-    // Real 400 case (found in a 2026-07-19 UX-copy sweep, prompted by the new price-offer
-    // flow's own-offer/invalid-amount validation errors): a real, user-actionable input
-    // problem was falling into the generic "Something went wrong" bucket below, unlike
-    // bank-mfe which already surfaces the real backend validation message directly.
-    // A full message pass-through would need a broader networking-layer change (Retrofit's
-    // HttpException doesn't carry a typed body here) -- this generic-but-honest bucket
-    // closes the gap for every existing 400 across the app, not just price offers.
+// Compose/UI dependency, shared by every feature area (Hood, Invest, Maps, Shop, Eats),
+// so it moves next to NetworkClient itself rather than into the design-system module.
+//
+// Real backend-message pass-through (2026-08-10) -- the exact gap this function's own
+// 2026-07-19 comment named ("A full message pass-through would need a broader
+// networking-layer change") was actually closed the very next day for the P2P transfer
+// flow specifically (see MainViewModel.backendErrorMessage's apiErrorMessage(e) call),
+// but this far-more-widely-shared sibling was never updated to match -- every real,
+// specific backend error message this app has written since then (bump-cooldown
+// countdowns, price-offer validation, review-eligibility checks, etc.) was still being
+// silently discarded in favor of a generic bucket for every caller of this function.
+// Same fallback order as backendErrorMessage: the real message when the backend sent
+// one, the honest generic bucket only when it didn't.
+fun superAppErrorMessage(e: HttpException): String = apiErrorMessage(e) ?: when (e.code()) {
     400 -> "Please check what you entered and try again."
     401, 403 -> "You don't have access to do that."
     404 -> "That couldn't be found."
