@@ -3553,3 +3553,46 @@ real fingerprint (the automated biometric gate above correctly cannot be bypasse
   try rather than falsely claimed as device-verified. Repeated cross-app confusion during this
   same session (see [[feedback_emulator_for_visual_verification]]) made continued blind
   automated tapping unproductive at this point anyway.
+
+## 22. "Take it seriously" -- voice guidance + live rerouting, closing both explicit follow-ups
+
+**Added 2026-08-09**, immediately continuing Section 21 at explicit user direction ("this is
+real, Rwandans are gonna use it in their everyday life") — the two items Section 21 named and
+deliberately deferred, now built rather than left as a wishlist.
+
+- **Real voice guidance**: plain `android.speech.tts.TextToSpeech`, no new dependency. Speaks
+  the current step's real instruction text every time `currentStepIndex` advances during active
+  navigation (`LaunchedEffect(currentStepIndex, navigating)`), using `QUEUE_FLUSH` so a fast
+  step change doesn't queue up stale announcements behind it. Init failure (some devices
+  genuinely have no TTS engine) sets `ttsReady = false` and silently disables voice rather than
+  crashing or surfacing an error for what's a non-essential enhancement, not a core function. A
+  real mute/unmute toggle ("🔊 Voice on" / "🔇 Voice off") sits next to "End navigation" in the
+  active-navigation card, calling `tts.stop()` on mute so an in-flight announcement doesn't keep
+  talking after the user turns it off.
+- **Real live rerouting-on-deviation**: a `LaunchedEffect(myLocation, navigating)` that, on
+  every location update while navigating, computes the user's real distance to the nearest
+  point on the current route polyline (reusing `currentStepIndexFor`'s own haversine
+  map-matching). Past 60m off-route, it re-calls the real `getDirections` endpoint from the
+  user's actual current position to the real captured destination and replaces `route` — the
+  same thing happens whether the deviation was a missed turn or a deliberate detour, matching
+  how real turn-by-turn apps don't distinguish the two. A `rerouting` guard flag prevents
+  overlapping reroute calls from firing back-to-back while one is already in flight. A failed
+  reroute attempt (network blip) is swallowed silently, keeping the stale route on screen rather
+  than interrupting navigation with an error — the next location update simply tries again.
+  `navigationDestination` is captured once, at the moment "Start Navigation" is tapped, from
+  whichever of the two real entry points fired it (`selectedPlace` for a single-destination
+  route, or `itineraryStops.lastOrNull()` for a multi-stop itinerary) — covers both real
+  navigation flows, not just the one Section 21 originally wired the button onto.
+- **A real ordering bug caught before it shipped, not after**: `currentStepIndexFor`'s rerouting
+  logic needed `haversineKm` (a local Kotlin function, order-sensitive within a composable body)
+  earlier in the file than its original declaration point near the ruler tool -- moved it up
+  once, rather than duplicating the formula a second time.
+
+### Verification status, same honesty as Section 21
+`:features:maps:impl` and the full `:app` compile clean; the built APK installs and launches
+without a crash. Voice guidance, rerouting-on-deviation, and itinerary-flow navigation all
+still need the same real physical movement to verify as Section 21's original live-tracking
+claim -- not yet confirmed by the user trying it. Not scoped into this pass: transit
+directions (itunda's self-hosted OSRM has driving + foot profiles only, no transit data source
+exists to route against), and a richer POI detail sheet (hours/ratings/photos) — worth their
+own dedicated look now that the core navigation experience is real.

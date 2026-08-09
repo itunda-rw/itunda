@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.content.pm.PackageManager
+import android.speech.tts.TextToSpeech
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -460,6 +461,22 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
         if (hasPermission) fetchRealLocation() else locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
+    // Real straight-line distance -- the same Haversine great-circle formula
+    // rw.itunda.core.geo.GeoUtils.haversineKm implements on the backend, kept as a
+    // plain local function here since the ruler tool and navigation both need it to update
+    // live, not once per API call. Declared here (moved up from its original position near
+    // the ruler tool below) since "Start Navigation"'s rerouting effect needs it earlier in
+    // this composable than a local function's declaration order otherwise allows.
+    fun haversineKm(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val r = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = kotlin.math.sin(dLat / 2).let { it * it } +
+            kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
+            kotlin.math.sin(dLng / 2).let { it * it }
+        return r * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+    }
+
     // Real "Start Navigation" mode (2026-08-09) -- found live on the physical device: a
     // computed route + a static, all-at-once step list ("doesn't feel like real navigation as
     // Naver Maps or other maps") is a route planner, not a navigator. This closes that gap: a
@@ -467,16 +484,68 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
     // fetchRealLocation's existing one-shot fetch, same pattern RiderLocationPusher already
     // uses for continuous tracking elsewhere in this codebase), follows the user with the
     // camera, and auto-advances the highlighted current step as they actually travel --
-    // instead of a flat list read once before setting off. No voice guidance yet (a real,
-    // separate, larger feature -- TTS wiring, not scoped into this pass).
+    // instead of a flat list read once before setting off.
     var navigating by remember { mutableStateOf(false) }
     var currentStepIndex by remember { mutableStateOf(0) }
+    // Real destination captured at the moment navigation starts (2026-08-09) -- needed by
+    // rerouting below, since `selectedPlace`/`itineraryStops` can change shape (itinerary vs.
+    // single place) while `route` itself doesn't carry a destination coordinate back.
+    var navigationDestination by remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
     LaunchedEffect(navigating) {
         while (navigating) {
             fetchRealLocation()
             delay(4000)
         }
+    }
+
+    // Real live rerouting-on-deviation (2026-08-09) -- explicitly scoped out of the first
+    // navigation pass as a real follow-up, now built: real turn-by-turn apps recompute the
+    // route the moment you actually miss a turn, instead of leaving you following a line that
+    // no longer matches where you are. Reuses currentStepIndexFor's own nearest-point distance
+    // (below) -- if the user's live GPS fix is more than 60m from the route polyline, re-fetch
+    // directions from their real current position to the same real destination.
+    var rerouting by remember { mutableStateOf(false) }
+    LaunchedEffect(myLocation, navigating) {
+        if (!navigating || rerouting) return@LaunchedEffect
+        val (lat, lng) = myLocation ?: return@LaunchedEffect
+        val activeRoute = route?.route ?: return@LaunchedEffect
+        val dest = navigationDestination ?: return@LaunchedEffect
+        val nearestKm = activeRoute.geometry.minOfOrNull { (glat, glng) -> haversineKm(glat, glng, lat, lng) } ?: return@LaunchedEffect
+        if (nearestKm * 1000.0 <= 60.0) return@LaunchedEffect
+        rerouting = true
+        try {
+            val response = NetworkClient.apiService.getDirections(lat, lng, dest.first, dest.second, travelMode)
+            route = MapsDirectionsResponse(success = response.success, route = response.route)
+            routeAlternatives = null
+            currentStepIndex = 0
+        } catch (_: Exception) {
+            // A failed reroute attempt shouldn't interrupt navigation -- the stale route stays
+            // on screen and the next location update simply tries again.
+        } finally {
+            rerouting = false
+        }
+    }
+
+    // Real voice guidance (2026-08-09) -- explicitly scoped out of the first navigation pass
+    // as "a real, separate, larger feature," now built. Plain android.speech.tts.TextToSpeech,
+    // no new dependency. Initialized once for the composable's lifetime; a failed init (some
+    // devices genuinely have no TTS engine installed) silently disables voice rather than
+    // crashing or showing an error for a non-essential feature.
+    var voiceEnabled by remember { mutableStateOf(true) }
+    var ttsReady by remember { mutableStateOf(false) }
+    val tts = remember {
+        arrayOfNulls<TextToSpeech>(1).also { holder ->
+            holder[0] = TextToSpeech(context) { status -> ttsReady = status == TextToSpeech.SUCCESS }
+        }[0]!!
+    }
+    DisposableEffect(Unit) {
+        onDispose { tts.stop(); tts.shutdown() }
+    }
+    LaunchedEffect(currentStepIndex, navigating) {
+        if (!navigating || !ttsReady || !voiceEnabled) return@LaunchedEffect
+        val instruction = route?.route?.steps?.getOrNull(currentStepIndex)?.instruction ?: return@LaunchedEffect
+        tts.speak(instruction, TextToSpeech.QUEUE_FLUSH, null, "itunda-nav-step-$currentStepIndex")
     }
 
     // Real safety net: `route` is cleared to null at 8 separate call sites (new search,
@@ -486,6 +555,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
         if (route == null) {
             navigating = false
             currentStepIndex = 0
+            navigationDestination = null
         }
     }
 
@@ -801,19 +871,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
         itineraryStops = emptyList()
     }
 
-    // Real straight-line distance -- the same Haversine great-circle formula
-    // rw.itunda.core.geo.GeoUtils.haversineKm implements on the backend, kept as a
-    // plain local function here since a ruler tool needs to update live as a user
-    // taps, not once per API call.
-    fun haversineKm(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
-        val r = 6371.0
-        val dLat = Math.toRadians(lat2 - lat1)
-        val dLng = Math.toRadians(lng2 - lng1)
-        val a = kotlin.math.sin(dLat / 2).let { it * it } +
-            kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
-            kotlin.math.sin(dLng / 2).let { it * it }
-        return r * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
-    }
+    // haversineKm moved above (before the "Start Navigation" state block) since rerouting
+    // needs it earlier in this composable than its original position here.
 
     val measureTotalKm = measurePoints.zipWithNext().sumOf { (a, b) -> haversineKm(a.first, a.second, b.first, b.second) }
 
@@ -1842,16 +1901,29 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                     color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
                                                     modifier = Modifier.padding(top = 4.dp),
                                                 )
-                                                Text(
-                                                    "End navigation",
-                                                    fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                                    color = androidx.compose.ui.graphics.Color.White,
-                                                    modifier = Modifier
-                                                        .padding(top = 10.dp)
-                                                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                                                        .clickable { navigating = false }
-                                                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                                                )
+                                                Row(modifier = Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Text(
+                                                        "End navigation",
+                                                        fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        modifier = Modifier
+                                                            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                                            .clickable { navigating = false }
+                                                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                    )
+                                                    Text(
+                                                        if (voiceEnabled) "🔊 Voice on" else "🔇 Voice off",
+                                                        fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        modifier = Modifier
+                                                            .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                                            .clickable {
+                                                                voiceEnabled = !voiceEnabled
+                                                                if (!voiceEnabled) tts.stop()
+                                                            }
+                                                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                    )
+                                                }
                                             }
                                         }
                                     } else {
@@ -1870,6 +1942,11 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                         .background(Ids.colors.brand, RoundedCornerShape(8.dp))
                                                         .clickable {
                                                             currentStepIndex = 0
+                                                            // Itinerary routes have no single `selectedPlace` (the destination is the
+                                                            // last stop in itineraryStops instead) -- covers both real Start
+                                                            // Navigation entry points with the one real destination each carries.
+                                                            navigationDestination = selectedPlace?.let { it.latitude to it.longitude }
+                                                                ?: itineraryStops.lastOrNull()?.let { it.latitude to it.longitude }
                                                             navigating = true
                                                             requestMyLocation()
                                                         }
