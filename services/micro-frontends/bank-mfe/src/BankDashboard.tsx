@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Heart, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -13928,14 +13928,21 @@ function OrderFoodView() {
                   {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
                 </p>
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); toggleFavorite(r.merchantId); }}
-                disabled={favoritingId === r.merchantId}
-                aria-label={favoriteIds.has(r.merchantId) ? 'Remove from favorites' : 'Add to favorites'}
-                style={{ padding: '6px', flexShrink: 0 }}
-              >
-                <Heart size={20} color={favoriteIds.has(r.merchantId) ? 'var(--itunda-red)' : 'var(--itunda-grey-400)'} fill={favoriteIds.has(r.merchantId) ? 'var(--itunda-red)' : 'none'} />
-              </button>
+              {/* Real gap found live (2026-08-10), docs/DESIGN_REFERENCES.md Section 7's
+                  own "four separate bespoke favorite implementations" note: this was a
+                  hand-rolled Lucide Heart button with its own aria-label wording
+                  ("...favorites") and styling, distinct from the shared WishlistButton
+                  every other favorite/heart affordance on this screen already uses
+                  (Hood listings/Jobs/Property, Shop products) -- the exact same
+                  interaction looked and read differently depending on which feature you
+                  were in. Unified onto the same shared component. */}
+              <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                <WishlistButton
+                  favorited={favoriteIds.has(r.merchantId)}
+                  busy={favoritingId === r.merchantId}
+                  onToggle={() => toggleFavorite(r.merchantId)}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -14004,14 +14011,10 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
             <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{f.businessName}</p>
             <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{f.category ? `${f.category} · Real menu, real delivery` : 'Real menu, real delivery'}</p>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); handleRemove(f.restaurantId); }}
-            disabled={removingId === f.restaurantId}
-            aria-label="Remove from favorites"
-            style={{ padding: '6px', flexShrink: 0 }}
-          >
-            <Heart size={20} color="var(--itunda-red)" fill="var(--itunda-red)" />
-          </button>
+          {/* Same shared-component fix as the restaurant list card above. */}
+          <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+            <WishlistButton favorited busy={removingId === f.restaurantId} onToggle={() => handleRemove(f.restaurantId)} />
+          </div>
         </div>
       ))}
     </div>
