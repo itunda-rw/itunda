@@ -96,8 +96,9 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100svh' }}>
+    <div className="merchant-shell" style={{ display: 'flex', minHeight: '100svh' }}>
       <nav
+        className="merchant-nav"
         style={{
           width: '220px',
           flexShrink: 0,
@@ -109,51 +110,57 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           gap: '4px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px', marginBottom: '20px' }}>
+        <div className="merchant-nav-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 8px', marginBottom: '20px' }}>
           <Store size={20} color="var(--itunda-blue)" />
           <h1 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda Business</h1>
         </div>
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '10px 12px',
-              borderRadius: '10px',
-              fontSize: '14px',
-              fontWeight: 600,
-              textAlign: 'left',
-              color: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-700)',
-              backgroundColor: tab === id ? 'var(--itunda-blue-light)' : 'transparent',
-            }}
-          >
-            <Icon size={18} />
-            {label}
-          </button>
-        ))}
+        <div className="merchant-nav-items" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              aria-label={label}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: 600,
+                textAlign: 'left',
+                color: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-700)',
+                backgroundColor: tab === id ? 'var(--itunda-blue-light)' : 'transparent',
+              }}
+            >
+              <Icon size={18} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
 
-        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
-          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-900)', padding: '0 8px', marginBottom: '2px' }}>
-            {merchant.businessName}
-          </p>
-          {user && (
-            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', padding: '0 8px', marginBottom: '8px' }}>
-              {user.firstName} {user.lastName}
+        <div className="merchant-nav-footer" style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
+          <div className="merchant-nav-footer-details">
+            <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-900)', padding: '0 8px', marginBottom: '2px' }}>
+              {merchant.businessName}
             </p>
-          )}
+            {user && (
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', padding: '0 8px', marginBottom: '8px' }}>
+                {user.firstName} {user.lastName}
+              </p>
+            )}
+          </div>
           <button
             onClick={handleLogout}
+            aria-label="Sign out"
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-500)' }}
           >
-            <LogOut size={16} /> Sign out
+            <LogOut size={16} /> <span>Sign out</span>
           </button>
         </div>
       </nav>
 
-      <main style={{ flex: 1, padding: '32px 40px', maxWidth: '960px' }}>
+      <main className="merchant-main" style={{ flex: 1, padding: '32px 40px', maxWidth: '960px' }}>
         {tab === 'collect' && <CollectScreen />}
         {tab === 'pos' && <PosScreen />}
         {tab === 'eats' && <EatsOrdersScreen />}

@@ -1,7 +1,12 @@
 /* Same design-token source as bank-mfe/kyc-mfe/ops-mfe -- see that package's index.css
    header for the dated history. #root deliberately does NOT cap at 480px here: this is
    a business-owner dashboard (reports table, QR display), not the mobile-first consumer
-   super-app, so it uses the full viewport width, same reasoning as ops-mfe. */
+   super-app, so it uses the full viewport width, same reasoning as ops-mfe.
+   Corrected 2026-08-10: "not mobile-first" doesn't mean "breaks on mobile" -- a real
+   small Rwandan merchant collecting payment at their own counter uses their phone for
+   that, and the desktop sidebar+row layout below left the actual page content (the
+   Collect-payment QR generator) cut off entirely below ~768px. See the real
+   `@media (max-width: 768px)` fix further down this file. */
 @import "@itunda/design-tokens/tokens.css";
 
 body {
@@ -95,4 +100,60 @@ input, textarea {
   animation-iteration-count: infinite;
   animation-name: shimmer;
   animation-timing-function: linear;
+}
+
+/* Real gap found live (2026-08-10) via an actual CDP screenshot of the rendered
+   dashboard, not code review: the "not mobile-first" rationale at this file's own
+   header assumed a merchant manages their business from a desktop -- but a real small
+   Rwandan merchant (matatu driver, shop owner) collecting payment at their own counter
+   uses their phone for that, not a desktop, and MerchantDashboard's fixed 220px sidebar
+   + flex row layout left literally no room for the actual content (the Collect-payment
+   QR generator, the single most core feature) on any real phone-width screen -- every
+   label and the submit button were cut off past the visible edge. This doesn't reverse
+   the desktop-first layout (unchanged above 768px); it just stops it from silently
+   breaking below that, which is a real minimum for a page real users will load on a
+   real phone regardless of what it was designed for. */
+@media (max-width: 768px) {
+  .merchant-shell {
+    flex-direction: column !important;
+  }
+  .merchant-nav {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    border-right: none !important;
+    border-bottom: 1px solid var(--itunda-grey-200);
+    padding: 8px !important;
+    align-items: center;
+    gap: 8px !important;
+  }
+  .merchant-nav-header {
+    display: none !important;
+  }
+  .merchant-nav-items {
+    flex-direction: row !important;
+    gap: 4px !important;
+  }
+  .merchant-nav-items button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 8px 10px !important;
+  }
+  .merchant-nav-items button span {
+    display: none;
+  }
+  .merchant-nav-footer {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+    flex-shrink: 0;
+  }
+  .merchant-nav-footer-details {
+    display: none !important;
+  }
+  .merchant-main {
+    padding: 16px !important;
+    max-width: 100% !important;
+  }
 }
