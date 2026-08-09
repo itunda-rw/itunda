@@ -110,6 +110,14 @@ start_infra() {
   )
 }
 
+# Real fix (2026-08-09), found live via a real "no places found" Maps search on the physical
+# device: without NOMINATIM_BASE_URL/OSRM_BASE_URL/OSRM_FOOT_BASE_URL, NominatimGeocodingClient/
+# OsrmRoutingClient are unconfigured and every maps search/reverse-geocode/directions call
+# silently no-op's to an empty result -- the exact same failure mode
+# infra/k8s/progressive-delivery/backend-rollout.yaml's own comment documents as a real past
+# production outage (2026-07-27), just never also fixed for local dev. Same self-hosted node
+# (itunda-dc-a, 192.168.252.4) as the tile/glyph servers Android's own tilesBaseUrl/glyphsBaseUrl
+# gradle properties already default to.
 start_backend() {
   local default_db_port="3306"
   local default_redis_port="6379"
@@ -129,6 +137,9 @@ start_backend() {
     REDIS_HOST="${REDIS_HOST:-localhost}" \
     REDIS_PORT="${REDIS_PORT:-$default_redis_port}" \
     KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}" \
+    NOMINATIM_BASE_URL="${NOMINATIM_BASE_URL:-http://192.168.252.4:8088}" \
+    OSRM_BASE_URL="${OSRM_BASE_URL:-http://192.168.252.4:5000}" \
+    OSRM_FOOT_BASE_URL="${OSRM_FOOT_BASE_URL:-http://192.168.252.4:5001}" \
     ./gradlew :app:bootRun
   )
 }

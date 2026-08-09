@@ -3491,3 +3491,23 @@ real fingerprint (the automated biometric gate above correctly cannot be bypasse
   on-screen confirmation that tiles now actually render (not just that the relay itself responds)
   is still pending — the physical device is in active use by the user for unrelated things;
   picking this back up once it's free.
+
+### A third real bug in the same pass, found by the user directly trying Maps search
+- User report: "I tried to search but no places found." Confirmed via direct `curl` against the
+  real backend: `GET /api/v1/maps/search?q=...` returned `{"success":true,"results":[]}` for
+  every query, regardless of term. Root cause: `NOMINATIM_BASE_URL` was completely unset on this
+  session's locally-running backend process — `NominatimGeocodingClient.isConfigured` is false
+  without it, and `search()` honestly (by design, per its own doc comment) returns an empty list
+  rather than a fabricated result whenever unconfigured or unreachable. This exact failure mode
+  already has a documented real precedent: `infra/k8s/progressive-delivery/backend-rollout.yaml`'s
+  own comment describes a **real past production outage** (2026-07-27) where the identical 3 env
+  vars (`NOMINATIM_BASE_URL`, `OSRM_BASE_URL`, `OSRM_FOOT_BASE_URL`) were never actually set on
+  the manifest, silently no-op'ing every maps search/reverse/directions call — fixed there, but
+  **never also fixed in `scripts/local-ecosystem.sh`**, the canonical local-dev startup script,
+  meaning every local dev session (not just this one) has been hitting this exact same gap.
+  Confirmed the real self-hosted Nominatim instance is genuinely live and answering real Rwanda
+  place data (`192.168.252.4:8088`, same node as the tile servers above) via a direct `curl`
+  (`City of Kigali, Rwanda` for a `kigali` query). Fixed `local-ecosystem.sh`'s `start_backend()`
+  to set all 3 vars with the same defaults as the production manifest, then restarted the local
+  backend with them set and confirmed live: the same `curl` search that returned an empty array
+  now returns real ranked results.
