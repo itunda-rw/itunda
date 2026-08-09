@@ -131,6 +131,16 @@ export type TranslationKey =
   // ScheduledTransfersCard, AutoTransfersCard, RequestMoneyCard, AutoTopUpCard.
   | 'discover.title'
   | 'discover.new'
+  | 'coopRail.title'
+  | 'coopRail.subtitle'
+  | 'coopRail.sacco.title'
+  | 'coopRail.sacco.subtitle'
+  | 'coopRail.ikimina.title'
+  | 'coopRail.ikimina.subtitle'
+  | 'coopRail.motoOwnership.title'
+  | 'coopRail.motoOwnership.subtitle'
+  | 'coopRail.harvestAdvance.title'
+  | 'coopRail.harvestAdvance.subtitle'
   | 'miniWallet.title'
   | 'miniWallet.cancel'
   | 'miniWallet.addMoney'
@@ -307,6 +317,16 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'home.unusuallyLarge': 'Unusually large',
     'discover.title': 'Discover',
     'discover.new': 'NEW',
+    'coopRail.title': 'Built for how Rwanda saves',
+    'coopRail.subtitle': "Cooperative products a telco wallet doesn't model",
+    'coopRail.sacco.title': 'SACCO shares',
+    'coopRail.sacco.subtitle': 'Buy cooperative shares, earn a real dividend',
+    'coopRail.ikimina.title': 'Ikimina',
+    'coopRail.ikimina.subtitle': 'Join a rotating savings circle with people you trust',
+    'coopRail.motoOwnership.title': 'Moto-Taxi Ownership',
+    'coopRail.motoOwnership.subtitle': 'Save toward your own bike, then convert to a loan',
+    'coopRail.harvestAdvance.title': 'Harvest advance',
+    'coopRail.harvestAdvance.subtitle': 'Input financing from your coffee cooperative',
     'miniWallet.title': 'Mini account',
     'miniWallet.cancel': 'Cancel',
     'miniWallet.addMoney': '+ Add money',
@@ -482,6 +502,16 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'home.unusuallyLarge': 'Menshi kurusha uko bisanzwe',
     'discover.title': 'Menya',
     'discover.new': 'GISHYA',
+    'coopRail.title': 'Byakorewe uko Abanyarwanda babika amafaranga',
+    'coopRail.subtitle': "Ibicuruzwa by'amakoperative izindi porogaramu z'amafaranga zidasobanukirwa",
+    'coopRail.sacco.title': 'Imigabane ya SACCO',
+    'coopRail.sacco.subtitle': 'Gura imigabane ya koperative, wakire inyungu nyayo',
+    'coopRail.ikimina.title': 'Ikimina',
+    'coopRail.ikimina.subtitle': "Injira mu kimina n'abo wizera",
+    'coopRail.motoOwnership.title': "Kugura moto y'ubwoko bwa Moto-Taxi",
+    'coopRail.motoOwnership.subtitle': 'Bika kugira ngo ugure moto yawe, hanyuma bihinduke inguzanyo',
+    'coopRail.harvestAdvance.title': 'Inguzanyo yo gutera imbere isarura',
+    'coopRail.harvestAdvance.subtitle': "Inguzanyo y'ibikoresho biva kuri koperative y'ikawa",
     'miniWallet.title': 'Konti ntoya',
     'miniWallet.cancel': 'Hagarika',
     'miniWallet.addMoney': '+ Ongeraho amafaranga',

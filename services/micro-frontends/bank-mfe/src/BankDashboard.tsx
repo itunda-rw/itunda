@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Image as ImageIcon, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -653,7 +653,58 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
   );
 }
 
-function HomeView({ onNavigateToCard }: { onNavigateToCard: () => void }) {
+// Real product-positioning fix (2026-08-10, see the "itunda: the wedge, not the
+// mirror" strategy memo from this same session): SACCO shares, Ikimina, Moto-Taxi
+// Ownership, and Harvest advance are itunda's only real Rwanda-specific products --
+// the ones MTN MoMo's own roadmap can't trivially replicate (SACCO shares/Ikimina were
+// rendered as plain scrollable sections inside Savings, past 5 other sections;
+// Harvest advance/Moto-Taxi Ownership were one of 8 identical buttons inside Loans).
+// Zero discoverability from Home, same visual weight as "Foreign currency" and
+// "Digital certificate" everywhere they did appear. This doesn't add a feature -- it
+// gives the four real, working, already-shipped features that are actually
+// differentiated a home-screen presence that matches what they're worth, with real
+// explanatory copy instead of a bare label. Routes to the real tab each already lives
+// in (SAVINGS for the two cooperative-savings products, LOANS for the two credit
+// products) -- not a deep link to the exact scroll position, but real, honest, and a
+// large improvement over not being reachable from Home at all.
+function CooperativeSavingsRail({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
+  const { t } = useI18n();
+  const items: { title: string; subtitle: string; icon: ReactElement; tint: string; tab: Tab }[] = [
+    { title: t('coopRail.sacco.title'), subtitle: t('coopRail.sacco.subtitle'), icon: <Landmark size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', tab: 'SAVINGS' },
+    { title: t('coopRail.ikimina.title'), subtitle: t('coopRail.ikimina.subtitle'), icon: <Users size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', tab: 'SAVINGS' },
+    { title: t('coopRail.motoOwnership.title'), subtitle: t('coopRail.motoOwnership.subtitle'), icon: <Bike size={20} color="var(--itunda-blue)" />, tint: 'var(--itunda-blue-light)', tab: 'LOANS' },
+    { title: t('coopRail.harvestAdvance.title'), subtitle: t('coopRail.harvestAdvance.subtitle'), icon: <Sprout size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', tab: 'LOANS' },
+  ];
+
+  return (
+    <div
+      className="itunda-card"
+      style={{ padding: '20px', marginBottom: '16px', border: '1px solid var(--itunda-blue)' }}
+    >
+      <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: 'var(--itunda-grey-900)' }}>{t('coopRail.title')}</h3>
+      <p style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)', marginTop: '2px', marginBottom: '16px' }}>{t('coopRail.subtitle')}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {items.map((item) => (
+          <button
+            key={item.title}
+            onClick={() => onNavigateToTab(item.tab)}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
+          >
+            <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: item.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {item.icon}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>{item.title}</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>{item.subtitle}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HomeView({ onNavigateToCard, onNavigateToTab }: { onNavigateToCard: () => void; onNavigateToTab: (tab: Tab) => void }) {
   const { t } = useI18n();
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -707,6 +758,7 @@ function HomeView({ onNavigateToCard }: { onNavigateToCard: () => void }) {
         />
       )}
       <QuickActions onCardsClick={onNavigateToCard} />
+      <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} />
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <ScheduledTransfersCard />
       <AutoTransfersCard />
@@ -20813,7 +20865,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         )}
       </div>
 
-      {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} />}
+      {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} />}
       {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
