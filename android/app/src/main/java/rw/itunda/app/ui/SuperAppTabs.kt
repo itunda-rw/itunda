@@ -663,8 +663,18 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Un
 private enum class ShopMode { SHOP, EATS }
 
 @Composable
-internal fun ShopTab() {
+internal fun ShopTab(
+    pendingEatsMerchantId: String? = null,
+    pendingEatsMerchantName: String? = null,
+    onPendingEatsConsumed: () -> Unit = {},
+) {
     var mode by remember { mutableStateOf(ShopMode.SHOP) }
+    // Real "Delivery" pill deep-link from Maps (2026-08-09) -- see ItundaAppScreen.kt's
+    // own doc comment on pendingEatsMerchantId for the full account. Switches this tab's
+    // own local mode toggle to EATS the moment a pending target arrives.
+    LaunchedEffect(pendingEatsMerchantId) {
+        if (pendingEatsMerchantId != null) mode = ShopMode.EATS
+    }
     Column(modifier = Modifier.fillMaxSize()) {
         // Flat category strip (2026-07-24), same treatment as HoodTab's own
         // Market/Life/Jobs/Home row -- see that composable's own comment for
@@ -712,6 +722,9 @@ internal fun ShopTab() {
                 deviceStepUpHost = { visible, onDismiss, onVerified ->
                     DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                 },
+                pendingMerchantId = pendingEatsMerchantId,
+                pendingMerchantName = pendingEatsMerchantName,
+                onPendingMerchantConsumed = onPendingEatsConsumed,
             )
         }
     }

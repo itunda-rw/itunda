@@ -392,7 +392,17 @@ private val MAP_STYLE_JSON: String get() = """
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearchQuery: String? = null) {
+fun MapScreen(
+    onBack: () -> Unit,
+    initialCategory: String? = null,
+    initialSearchQuery: String? = null,
+    // Real "배달" (Delivery) pill (2026-08-09) -- see docs/DESIGN_REFERENCES.md Section
+    // 35's own "named, not built this pass" note for why this needed a new navigation
+    // contract: itunda's Feature-module isolation forbids Maps depending on Eats
+    // directly, so the app shell (the only thing that can see both) supplies this
+    // callback instead. Optional/no-op default so no other MapScreen call site breaks.
+    onOrderDelivery: (merchantId: String, businessName: String) -> Unit = { _, _ -> },
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     // The cash-out flow deliberately arrives with the public agent network selected.
@@ -1991,6 +2001,21 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         filled = false,
                                         enabled = true,
                                         onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$callNumber"))) },
+                                    )
+                                }
+                                // Real "배달" (Delivery) pill (2026-08-09) -- closes the one
+                                // named-but-not-built pill from Section 35. Only shown when
+                                // this merchant genuinely has a real orderable catalog (the
+                                // exact same `showMenuTab` check the Menu tab itself already
+                                // uses) -- never a fake "order here" button for a merchant
+                                // with nothing to sell through itunda.
+                                if (selectedMerchant != null && !placeProducts.isNullOrEmpty()) {
+                                    PlaceActionPill(
+                                        icon = "🛵",
+                                        label = "Delivery",
+                                        filled = false,
+                                        enabled = true,
+                                        onClick = { onOrderDelivery(selectedMerchant.merchantId, selectedMerchant.businessName) },
                                     )
                                 }
                                 val followMerchantId = selectedMerchant?.merchantId

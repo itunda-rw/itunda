@@ -156,8 +156,18 @@ private enum class EatsMode { ORDER, DELIVER }
 @Composable
 fun EatsContent(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+    // Real "Delivery" pill deep-link from Maps (2026-08-09) -- see
+    // ItundaAppScreen.kt's own doc comment on pendingEatsMerchantId for the full
+    // account. Forces ORDER mode (not DELIVER) since a pending target is always a real
+    // merchant to order FROM, never a rider-role entry point.
+    pendingMerchantId: String? = null,
+    pendingMerchantName: String? = null,
+    onPendingMerchantConsumed: () -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(EatsMode.ORDER) }
+    LaunchedEffect(pendingMerchantId) {
+        if (pendingMerchantId != null) mode = EatsMode.ORDER
+    }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal)) {
         // Real de-emphasis (2026-07-24) -- "Deliver" (the rider role) previously got
         // equal 50% visual weight next to "Order food" as a full segmented toggle,
@@ -178,7 +188,12 @@ fun EatsContent(
             )
         }
         when (mode) {
-            EatsMode.ORDER -> OrderFoodContent(deviceStepUpHost)
+            EatsMode.ORDER -> OrderFoodContent(
+                deviceStepUpHost,
+                pendingMerchantId = pendingMerchantId,
+                pendingMerchantName = pendingMerchantName,
+                onPendingMerchantConsumed = onPendingMerchantConsumed,
+            )
             EatsMode.DELIVER -> DeliverContent()
         }
     }
@@ -513,6 +528,9 @@ private fun EatsMembershipCard() {
 @Composable
 private fun OrderFoodContent(
     deviceStepUpHost: @Composable (Boolean, () -> Unit, suspend () -> Unit) -> Unit,
+    pendingMerchantId: String? = null,
+    pendingMerchantName: String? = null,
+    onPendingMerchantConsumed: () -> Unit = {},
 ) {
     var view by remember { mutableStateOf(OrderFoodView.BROWSE) }
     var restaurants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
@@ -633,6 +651,20 @@ private fun OrderFoodContent(
         val restaurant = allRestaurants?.find { it.merchantId == dish.merchantId }
             ?: ShoppingMerchantDto(merchantId = dish.merchantId, businessName = dish.merchantName, category = null, cashbackRate = "1%")
         openRestaurant(restaurant)
+    }
+
+    // Real "Delivery" pill deep-link from Maps (2026-08-09) -- same real fallback shape
+    // openDish above already established (resolve against the already-loaded real
+    // catalog, fall back to a minimal stub carrying the real businessName Maps already
+    // had, never a blank one) applied to a second real entry point into the same
+    // openRestaurant flow. Consumed exactly once -- onPendingMerchantConsumed clears the
+    // shell's own state so navigating away and back to Shop doesn't reopen it.
+    LaunchedEffect(pendingMerchantId) {
+        val merchantId = pendingMerchantId ?: return@LaunchedEffect
+        val restaurant = allRestaurants?.find { it.merchantId == merchantId }
+            ?: ShoppingMerchantDto(merchantId = merchantId, businessName = pendingMerchantName ?: "", category = null, cashbackRate = "1%")
+        openRestaurant(restaurant)
+        onPendingMerchantConsumed()
     }
 
     // Real "Reorder" button (2026-07-19): re-populate the cart from a past order's real

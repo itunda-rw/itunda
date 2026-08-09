@@ -4200,3 +4200,44 @@ same resolution already applied to Maps.
 `:features:shop:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
 Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
 live app process. Not yet tapped through by the user on the real screen.
+
+## 37. Real "배달" (Delivery) pill -- the one Maps pill that needed a new cross-feature contract
+
+**Added 2026-08-09.** Closes the last named gap from Section 35's "named, not built this pass"
+list: a Delivery pill on the Maps place-info sheet that actually opens itunda's real Eats ordering
+flow for that merchant, not a fake button.
+
+### The real architectural problem, and how it was solved
+itunda's Android app enforces real Feature-module isolation (Toss Microfeature pattern, with real
+CI enforcement) -- `:features:maps:impl` cannot depend on `:features:eats:impl` directly, and Eats
+itself isn't even a standalone top-level screen; it lives folded inside `ShopTab`'s own internal
+`ShopMode.EATS` toggle, one level further from Maps than it first appears. The only component that
+can see both Maps and Shop/Eats is `ItundaAppScreen.kt`, the app shell. Solved by adding a small,
+explicit deep-link contract: `MapScreen` gained an `onOrderDelivery(merchantId, businessName)`
+callback (default no-op, so no other call site breaks); the shell wires it to close the Map
+overlay, switch the bottom-nav tab to Shop, and hold the pending merchant in plain `remember` state
+(not `rememberSaveable` -- an in-flight navigation intent has no reason to survive process death).
+`ShopTab` reacts to a non-null pending id by switching its own internal mode to `EATS`; `EatsContent`
+forwards it to `OrderFoodContent`, which resolves it via the exact same real fallback shape
+`openDish`'s own pre-existing code already established (look it up in the already-loaded real
+catalog; if not loaded yet, build a minimal stub carrying the REAL business name Maps already had,
+never a blank one) and opens it through the real, already-proven `openRestaurant` flow -- zero new
+backend work, zero duplicated menu-loading logic.
+
+### What was built
+- The pill itself only renders when `!placeProducts.isNullOrEmpty()` -- the exact same real-data
+  check the Menu tab (Section 28) already uses, so it never appears for a merchant with nothing
+  orderable through itunda.
+- The pending-target state is consumed exactly once (`onPendingMerchantConsumed`), so returning to
+  Shop later via the bottom nav doesn't reopen the same restaurant.
+
+### Verification status, honestly incomplete this pass
+`:features:maps:impl`, `:features:eats:impl`, and `:app:compileDebugKotlin` all compiled clean
+individually, then the full `:app:assembleDebug` build succeeded -- the entire cross-module wiring
+type-checks end to end. **The physical device disconnected partway through this pass** (confirmed
+via `adb devices` returning empty after a server restart, a real external state this session
+doesn't control) -- unlike every other entry in this document, this one could NOT be installed or
+crash-checked on the real device before being committed. This is a real, named gap, not silently
+skipped: the next session/turn with device access needs to install, launch, and actually tap
+Delivery from a real merchant's Maps card before this can be called done the way every other
+Section in this document means it.

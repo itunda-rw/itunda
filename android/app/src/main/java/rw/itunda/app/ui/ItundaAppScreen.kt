@@ -245,6 +245,14 @@ fun ItundaAppScreen(
         var showPay by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
         var mapSearchQueryForScreen by rememberSaveable { mutableStateOf<String?>(null) }
+        // Real "Delivery" pill deep-link, Maps -> Eats (2026-08-09) -- itunda's
+        // Feature-module isolation forbids Maps depending on Eats directly, so this
+        // shell (the only thing that can see both) carries a small, plain (not
+        // rememberSaveable -- an in-flight navigation intent has no reason to survive
+        // process death) pending-target across the tab switch. Cleared by ShopTab once
+        // consumed, so returning to Shop later doesn't re-trigger the same restaurant.
+        var pendingEatsMerchantId by remember { mutableStateOf<String?>(null) }
+        var pendingEatsMerchantName by remember { mutableStateOf<String?>(null) }
         var showAgentCash by rememberSaveable { mutableStateOf(false) }
         var showInvest by rememberSaveable { mutableStateOf(false) }
         // Real Overview/Loans/Support screens (2026-07-22) -- these three backend
@@ -783,6 +791,12 @@ fun ItundaAppScreen(
                 onBack = { showMap = false },
                 initialCategory = if (showAgentCash) "ITUNDA_AGENT" else null,
                 initialSearchQuery = mapSearchQueryForScreen,
+                onOrderDelivery = { merchantId, businessName ->
+                    pendingEatsMerchantId = merchantId
+                    pendingEatsMerchantName = businessName
+                    showMap = false
+                    selectedTab = TossTab.Shop
+                },
             )
             return@IdsTheme
         }
@@ -1049,7 +1063,11 @@ fun ItundaAppScreen(
                         onOpenPay = { showPay = true },
                         onOpenNotifications = { showSettings = true },
                     )
-                    TossTab.Shop -> ShopTab()
+                    TossTab.Shop -> ShopTab(
+                        pendingEatsMerchantId = pendingEatsMerchantId,
+                        pendingEatsMerchantName = pendingEatsMerchantName,
+                        onPendingEatsConsumed = { pendingEatsMerchantId = null; pendingEatsMerchantName = null },
+                    )
                     TossTab.Hood -> HoodTab(
                         onMessageSeller = { conversationId ->
                             pendingConversationId = conversationId
