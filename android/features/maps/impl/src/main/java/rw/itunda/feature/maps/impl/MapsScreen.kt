@@ -466,6 +466,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
     // comment on the backend for the real, separately-deployed foot-profile OSRM
     // instance this reaches.
     var travelMode by remember { mutableStateOf("DRIVING") }
+    // Real "each mode shows its own precomputed time" (2026-08-09) -- the mode-selector row
+    // in the real reference screenshots (Section 27) shows every mode's own time up front,
+    // not just the currently-active one. A lightweight background fetch for the one mode NOT
+    // currently active; null until that fetch resolves (or forever, if it errors -- an honest
+    // omission, never a guessed number).
+    var otherModeEtaMinutes by remember { mutableStateOf<Double?>(null) }
     var showSteps by remember { mutableStateOf(false) }
     var routing by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
@@ -2125,6 +2131,14 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         selectedRouteIndex = 0
                                         route = MapsDirectionsResponse(success = true, route = response.routes[0])
                                         showSteps = false
+                                        otherModeEtaMinutes = null
+                                        launch {
+                                            try {
+                                                val otherMode = if (mode == "DRIVING") "WALKING" else "DRIVING"
+                                                val otherResponse = NetworkClient.apiService.getDirections(origin.first, origin.second, place.latitude, place.longitude, otherMode)
+                                                otherModeEtaMinutes = otherResponse.route.durationMinutes
+                                            } catch (_: Exception) { /* honest omission, not a guessed number */ }
+                                        }
                                     } catch (e: HttpException) {
                                         error = superAppErrorMessage(e)
                                     } catch (e: Exception) {
@@ -2137,7 +2151,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                                 listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking").forEach { (mode, label) ->
                                     val active = travelMode == mode
-                                    Box(
+                                    // Real per-mode precomputed time (2026-08-09) -- matches
+                                    // the real reference screenshots' mode-selector row, where
+                                    // every mode shows its own time, not just the active one.
+                                    val eta = if (active) route?.route?.durationMinutes else otherModeEtaMinutes
+                                    Column(
+                                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                                         modifier = Modifier
                                             .weight(1f)
                                             .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
@@ -2147,9 +2166,15 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                 }
                                             }
                                             .padding(vertical = 6.dp),
-                                        contentAlignment = androidx.compose.ui.Alignment.Center,
                                     ) {
                                         Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary)
+                                        if (eta != null) {
+                                            Text(
+                                                "${eta.toInt()} min",
+                                                fontSize = 10.sp,
+                                                color = if (active) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f) else Ids.colors.textTertiary,
+                                            )
+                                        }
                                     }
                                 }
                             }

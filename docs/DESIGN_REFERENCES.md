@@ -3948,3 +3948,40 @@ and a live app process. Visual confirmation that food-category merchants (e.g. a
 non-food merchants stay blue, still needs the user's own eyes -- this closes out every item
 Section 27 named, but the whole "100% Naver Maps" visual-parity thread stays open pending real
 on-screen comparison against the reference screenshots.
+
+## 31. Per-mode precomputed ETA in the driving/walking selector row
+
+**Added 2026-08-09.** Section 27's own screenshot walkthrough named "a mode-selector row (bus/
+car/walk/bike icons each showing its own precomputed time)" as a real pattern; itunda's toggle
+already picked a mode, but only ever showed a time for whichever mode was currently active --
+switching was the only way to see how long the other real option would take.
+
+### What real data itunda has
+itunda's self-hosted OSRM already serves both a driving and a foot profile (Section 20) via the
+existing `GET /maps/directions` endpoint's own `mode` param -- confirmed live against the running
+backend for the same real Kigali trip: `DRIVING` returned 2.3 min / 1.64 km, `WALKING` returned
+14.3 min / 1.19 km for the identical origin/destination. Both numbers are real OSRM output, not
+estimated from distance client-side.
+
+### What was built
+- `otherModeEtaMinutes` state: whenever the active mode's directions are fetched, a second,
+  lightweight background fetch (`getDirections`, not the heavier `getDirectionsAlternatives`)
+  runs for the other mode and stores just its duration -- fails silently (stays `null`, not a
+  guessed number) if that second call errors.
+- The mode-toggle row now shows each mode's own time under its label: the active mode's real
+  route duration, the inactive mode's `otherModeEtaMinutes` once it resolves.
+
+### Deliberately not attempted
+Section 27 also named a "compact horizontal segment bar showing each leg's proportion of the trip
+in color" -- real transit-specific UI (showing bus-vs-walk-vs-subway portions of one trip).
+itunda's routes are always single-mode end-to-end (no transit data source exists, per Section 20
+and Section 27's own honesty note), so there are no real distinct segments to bar-chart; building
+one would mean inventing a multi-leg trip that never actually happens. Left out again, same
+reasoning as before.
+
+### Verification status
+`:features:maps:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
+Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
+live app process. The underlying driving/walking endpoint split was confirmed live against the
+real backend before building; the on-screen rendering of both numbers side by side in the
+selector row still needs the user's own eyes on the physical device.
