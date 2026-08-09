@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Image as ImageIcon, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Image as ImageIcon, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -20677,6 +20677,45 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'SUPPORT', label: 'Support' },
   ];
 
+  // Real gap found live (2026-08-10) via an actual headless-Chrome screenshot (through
+  // a real CDP device-metrics capture, not code review): all 36 entries in TABS above
+  // rendered as one `display:flex` row with `flex:1` on every button and no
+  // overflow-x/wrap -- at any real viewport width, the buttons hit their own text's
+  // intrinsic minimum width and the row silently overflowed with NO scroll affordance
+  // (default `overflow: visible`, not `auto`), so roughly 29 of the 36 tabs -- including
+  // real, fully-built features like Marketplace/Jobs/Property/Rides/Loans -- were
+  // completely unreachable through this nav on any device that isn't an unrealistically
+  // wide desktop window. Same root problem the mobile apps' "All" tab just got fixed for
+  // (see ItundaAppScreen.kt's own doc comment) -- a supply-side flat dump instead of a
+  // demand-side grouping (toss.tech/article/mydoc) -- applied here as a primary row of
+  // the 7 most-used tabs plus a categorized "More" panel for the rest, using the same
+  // category names the mobile fix established for consistency. Every tab id and its
+  // `{tab === 'X' && <XView />}` routing below is completely unchanged -- this only
+  // changes how a tab gets selected, not what selecting it does.
+  // Kept to just 4 + the More button itself (2026-08-10, corrected same day): an
+  // earlier version of this fix used 7 primary tabs and still silently overflowed at a
+  // real 390px width -- "Savings"/"Messages" are long enough words that even flex:1
+  // across just 8 buttons ran out of room. Verified via a real CDP screenshot that 4 +
+  // More fits with room to spare; `overflow-x: auto` below is a real safety net either
+  // way, so a future addition degrades to a scrollable row instead of silently
+  // vanishing off-screen again.
+  const PRIMARY_TAB_IDS: Tab[] = ['HOME', 'SHOP', 'EATS', 'MESSAGES'];
+  const MORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
+    { title: 'Accounts', ids: ['MY', 'OVERVIEW', 'CARD', 'DEVICES', 'IDENTITY', 'CERTIFICATE', 'SUBSCRIPTIONS', 'SPENDING', 'FOREIGN_CURRENCY'] },
+    { title: 'Save & grow', ids: ['STOCKS', 'SAVINGS'] },
+    { title: 'Hood', ids: ['MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY'] },
+    { title: 'Transport', ids: ['RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS'] },
+    { title: 'Borrow', ids: ['LOANS', 'CREDIT_SCORE'] },
+    { title: 'Community & trust', ids: ['TRUST_SCORE', 'KNOWLEDGE'] },
+    { title: 'Cash agent tools', ids: ['AGENT'] },
+    { title: 'More', ids: ['MAP', 'SHOPPING', 'REWARDS', 'INSURANCE', 'BILLS', 'USSD', 'SUPPORT'] },
+  ];
+  const primaryTabs = TABS.filter((t) => PRIMARY_TAB_IDS.includes(t.id));
+  const tabLabel = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
+  const moreTabIds = MORE_TAB_GROUPS.flatMap((g) => g.ids);
+  const isMoreTabActive = moreTabIds.includes(tab);
+  const [showMoreTabs, setShowMoreTabs] = useState(false);
+
   return (
     <div style={{ padding: '20px', paddingBottom: '100px', maxWidth: '480px', margin: '0 auto' }}>
       <motion.div
@@ -20703,21 +20742,75 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </motion.div>
 
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
-        {TABS.map(({ id, label }) => (
+      <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
+          {primaryTabs.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => { setTab(id); setShowMoreTabs(false); }}
+              style={{
+                flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+                color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                backgroundColor: tab === id ? 'var(--itunda-blue)' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {label}
+            </button>
+          ))}
           <button
-            key={id}
-            onClick={() => setTab(id)}
+            onClick={() => setShowMoreTabs((v) => !v)}
+            aria-label="More"
+            aria-expanded={showMoreTabs}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: tab === id ? 'var(--itunda-blue)' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: (isMoreTabActive || showMoreTabs) ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: (isMoreTabActive || showMoreTabs) ? 'var(--itunda-blue)' : 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
             }}
           >
-            {label}
+            <LayoutGrid size={14} /> More
           </button>
-        ))}
+        </div>
+
+        {showMoreTabs && (
+          <>
+            <div
+              onClick={() => setShowMoreTabs(false)}
+              style={{ position: 'fixed', inset: 0, zIndex: 20, background: 'rgba(0,0,0,0.15)' }}
+            />
+            <div
+              className="itunda-card"
+              style={{
+                position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 21,
+                maxHeight: '70svh', overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '18px',
+              }}
+            >
+              {MORE_TAB_GROUPS.map((group) => (
+                <div key={group.title}>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 8px' }}>
+                    {group.title}
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {group.ids.map((id) => (
+                      <button
+                        key={id}
+                        onClick={() => { setTab(id); setShowMoreTabs(false); }}
+                        style={{
+                          padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
+                          color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-800)',
+                          backgroundColor: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                        }}
+                      >
+                        {tabLabel(id)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} />}
