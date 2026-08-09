@@ -4010,3 +4010,73 @@ real action alongside dialing, matching the reference screenshot's own pattern e
 `:features:maps:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
 Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
 live app process.
+
+## 33. "One thing, one page" -- direct user feedback fix, applied to the whole Maps screen
+
+**Added 2026-08-09.** Direct, blunt user feedback after the last several Maps passes:
+*"user experience is worse, there is flower of info you can't just put everything on one page
+(toss uses one page one action in almost everything)."* Not a request for more polish -- a
+structural complaint about the screen's own information architecture, which every prior pass
+this session had been making worse by adding more content to the same one sheet.
+
+### What was researched first
+itunda already has a real, deep "One thing, one page" research section in this same document
+(the "One thing, one page — a deeper look" section, added 2026-07-21). Re-read it rather than
+guessing: the canonical Toss statement (`toss.im/tossfeed/article/tossproductprinciples`,
+principle #8) is *"each page should deliver a single, clear core message, refined to its
+essentials."* The most load-bearing finding: Toss's own real "내 문서함" (My Documents) feature
+-- one screen combining certificate issuance, bill payment, and notifications -- was diagnosed as
+a violation, and **Toss's fix was never "reorganize the same screen" -- it was eliminating the
+multi-purpose screen entirely, redistributing each function elsewhere.** No case was found of
+Toss defending a genuinely multi-action screen as a legitimate exception.
+
+### What itunda's Maps screen was actually doing wrong
+Audited the screen's real structure against that standard and found itunda had built its own
+literal "My Documents": the bottom sheet stacked, in one continuously-scrolling view --
+1. Place info (header, Save/Share/Call pills, Home/Menu/Reviews tabs) -- **Sections 28-32**
+2. Route planning (mode toggle, ETA, alternatives, turn-by-turn steps)
+3. Active turn-by-turn navigation
+4. A bookmark folder/color picker
+
+all beneath EACH OTHER, distinguished only by nested `if`s, never as separate screens -- exactly
+the "flower of info" the user named. A second, distinct instance of the same bug existed in the
+no-place-selected default view: the multi-stop itinerary planner card stayed visible stacked on
+top of the "Around you" browse feed and the full saved-places/folder-sharing/move-bookmark UI,
+simultaneously.
+
+### What was built
+Per Toss's own actual resolution (redistribute, don't reorganize-in-place), made these views
+**mutually exclusive** instead of stacked:
+- **Place info** (browsing) and **route planning/navigation** now show/hide as a matched pair on
+  `route == null`. Mode selection moved out of the always-visible place-info view into the route
+  view itself -- place info now offers exactly one action, a single "Directions" button.
+- A real "← Back to `<place name>`" link now exists at the top of the route-planning view (there
+  was previously no way back to place info except fully deselecting the place) -- clears
+  `route`/`routeAlternatives`/`selectedRouteIndex`/`otherModeEtaMinutes`/`showSteps` via a new
+  `clearRoute()` function.
+- **Active navigation** now shows ONLY the current-maneuver card -- the mode toggle, alternate-
+  route cards, and distance summary (previously all still visible above the nav card while
+  actively driving) are hidden while `navigating`, matching how the real Naver/Kakao/Google
+  turn-by-turn view looks (confirmed against this session's own Naver reference screenshots).
+- The itinerary-builder card and the "Around you" browse/bookmarks feed now show/hide as a
+  matched pair on `itineraryBuilding`, instead of both being visible at once.
+
+### Named, not silently scoped out
+The itinerary card's own internal mode-toggle-always-visible pattern was left as-is this pass --
+a smaller, single self-contained card, a real but lower-severity instance of the same class of
+issue; a genuine next candidate if this thread continues. The user's message also asked to
+"improve a whole itunda," not just Maps -- this pass scoped to Maps specifically (the screen the
+feedback was about, and the one with the freshest, most acute violation from this session's own
+recent additions); auditing the rest of the app's screens against this same principle is real,
+separate, not-yet-started work, not something silently declared done here.
+
+### Verification status
+`:features:maps:impl` compiled clean on the first attempt (no forward-reference or scope errors
+despite moving `fetchDirections`/the mode toggle/the route summary out of their original nested
+position), then the full `:app:assembleDebug` build succeeded. Installed on the physical device;
+the app launched with an empty `logcat -b crash` buffer and a live app process. **The device was
+actively in use by the user during this verification pass** (foreground focus shown to be the
+Claude Code companion app, not itunda, mid-check) -- deliberately did not attempt further
+automated tap-through to avoid interfering with real concurrent use. The actual visual result --
+whether the new place-info/route-planning/navigation split reads as genuinely simpler on the real
+screen -- needs the user's own hands next.

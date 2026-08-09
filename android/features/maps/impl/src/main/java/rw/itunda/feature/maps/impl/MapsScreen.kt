@@ -1823,6 +1823,64 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             // already uses -- rather than threading a second selected-merchant
                             // state through the whole file.
                             val matchedMerchant = selectedMerchant
+                            // Real driving/walking mode toggle (2026-07-22) -- same real
+                            // Naver/Kakao Maps convention of picking a travel mode before/
+                            // after a route is drawn. Switching mode while a route is already
+                            // shown re-fetches against itunda's own separately-deployed
+                            // foot-profile OSRM instance. Moved above the place/route split
+                            // below (2026-08-09) since both the place-info "Directions" button
+                            // and the route view's own mode toggle need to call it.
+                            fun fetchDirections(mode: String) {
+                                coroutineScope.launch {
+                                    routing = true
+                                    error = null
+                                    try {
+                                        val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
+                                        val response = NetworkClient.apiService.getDirectionsAlternatives(
+                                            origin.first, origin.second, place.latitude, place.longitude, mode,
+                                        )
+                                        travelMode = mode
+                                        routeAlternatives = response.routes
+                                        selectedRouteIndex = 0
+                                        route = MapsDirectionsResponse(success = true, route = response.routes[0])
+                                        showSteps = false
+                                        otherModeEtaMinutes = null
+                                        launch {
+                                            try {
+                                                val otherMode = if (mode == "DRIVING") "WALKING" else "DRIVING"
+                                                val otherResponse = NetworkClient.apiService.getDirections(origin.first, origin.second, place.latitude, place.longitude, otherMode)
+                                                otherModeEtaMinutes = otherResponse.route.durationMinutes
+                                            } catch (_: Exception) { /* honest omission, not a guessed number */ }
+                                        }
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } catch (e: Exception) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
+                                    } finally {
+                                        routing = false
+                                    }
+                                }
+                            }
+                            fun clearRoute() {
+                                route = null
+                                routeAlternatives = null
+                                selectedRouteIndex = 0
+                                otherModeEtaMinutes = null
+                                showSteps = false
+                            }
+                            // Real "one thing per page" fix (2026-08-09) -- direct user
+                            // feedback: "flower of info, you can't just put everything on one
+                            // page" (Toss's own product principle #8, see docs/
+                            // DESIGN_REFERENCES.md's "One thing, one page" section -- Toss's
+                            // real resolution for a multi-purpose screen like this one was
+                            // never "reorganize in place," it was eliminating the multi-
+                            // purpose screen: each function moves to its own screen). Place
+                            // browsing (this whole block) and route planning/navigation
+                            // (below) are now mutually exclusive, not stacked -- requesting
+                            // directions replaces this view entirely instead of appending
+                            // beneath it, matching how the real Naver Maps reference
+                            // screenshots show these as genuinely separate screens.
+                            if (route == null) {
                             Row(verticalAlignment = Alignment.Top) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -2127,116 +2185,154 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     color = Ids.colors.textSecondary,
                                 )
                             }
-                            // Real driving/walking mode toggle (2026-07-22) -- same real
-                            // Naver/Kakao Maps convention of picking a travel mode
-                            // before/after a route is drawn. Switching mode while a route
-                            // is already shown re-fetches against itunda's own
-                            // separately-deployed foot-profile OSRM instance.
-                            fun fetchDirections(mode: String) {
-                                coroutineScope.launch {
-                                    routing = true
-                                    error = null
-                                    try {
-                                        val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
-                                        val response = NetworkClient.apiService.getDirectionsAlternatives(
-                                            origin.first, origin.second, place.latitude, place.longitude, mode,
+                            // Real single "Directions" entry point (2026-08-09) -- mode
+                            // selection now happens on the dedicated route-planning view
+                            // below, not here, so this place-info view stays to one real
+                            // action: view info, or ask for directions.
+                            Box(
+                                modifier = Modifier
+                                    .background(Ids.colors.brand, RoundedCornerShape(12.dp))
+                                    .clickable(enabled = !routing) { fetchDirections(travelMode) }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                            ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
+                            if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
+                                Text(
+                                    "Back to cash-out codes",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Ids.colors.brand,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(onClick = onBack)
+                                        .padding(vertical = 8.dp),
+                                )
+                            }
+                            } else {
+                                // Real route-planning / active-navigation view (2026-08-09) --
+                                // its own screen now, never stacked beneath place info. Only
+                                // one of {place info, this} is ever visible at a time.
+                                val currentRoute = route
+                                if (currentRoute != null) {
+                                    if (!navigating) {
+                                        Text(
+                                            "← Back to $placeName",
+                                            fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
+                                            modifier = Modifier.clickable { clearRoute() }.padding(bottom = 6.dp),
                                         )
-                                        travelMode = mode
-                                        routeAlternatives = response.routes
-                                        selectedRouteIndex = 0
-                                        route = MapsDirectionsResponse(success = true, route = response.routes[0])
-                                        showSteps = false
-                                        otherModeEtaMinutes = null
-                                        launch {
-                                            try {
-                                                val otherMode = if (mode == "DRIVING") "WALKING" else "DRIVING"
-                                                val otherResponse = NetworkClient.apiService.getDirections(origin.first, origin.second, place.latitude, place.longitude, otherMode)
-                                                otherModeEtaMinutes = otherResponse.route.durationMinutes
-                                            } catch (_: Exception) { /* honest omission, not a guessed number */ }
-                                        }
-                                    } catch (e: HttpException) {
-                                        error = superAppErrorMessage(e)
-                                    } catch (e: Exception) {
-                                        error = "Couldn't reach itunda. Check your connection and try again."
-                                    } finally {
-                                        routing = false
-                                    }
-                                }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                                listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking").forEach { (mode, label) ->
-                                    val active = travelMode == mode
-                                    // Real per-mode precomputed time (2026-08-09) -- matches
-                                    // the real reference screenshots' mode-selector row, where
-                                    // every mode shows its own time, not just the active one.
-                                    val eta = if (active) route?.route?.durationMinutes else otherModeEtaMinutes
-                                    Column(
-                                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                            .clickable(enabled = !routing) {
-                                                if (mode != travelMode) {
-                                                    if (route != null) fetchDirections(mode) else travelMode = mode
-                                                }
-                                            }
-                                            .padding(vertical = 6.dp),
-                                    ) {
-                                        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary)
-                                        if (eta != null) {
-                                            Text(
-                                                "${eta.toInt()} min",
-                                                fontSize = 10.sp,
-                                                color = if (active) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f) else Ids.colors.textTertiary,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            val currentRoute = route
-                            if (currentRoute != null) {
-                                Column {
-                                    Text(
-                                        "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
-                                        fontSize = 13.sp, color = Ids.colors.textSecondary,
-                                    )
-                                    // Real alternative-route picker (2026-07-22) -- only
-                                    // rendered when OSRM genuinely offered more than one
-                                    // real route for this trip. See
-                                    // MapsDirectionsAlternativesResponse's own doc comment.
-                                    val alternatives = routeAlternatives
-                                    if (alternatives != null && alternatives.size > 1) {
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) {
-                                            alternatives.forEachIndexed { i, alt ->
-                                                val active = selectedRouteIndex == i
-                                                Box(
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                            listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking").forEach { (mode, label) ->
+                                                val active = travelMode == mode
+                                                // Real per-mode precomputed time (2026-08-09) --
+                                                // matches the real reference screenshots' mode-
+                                                // selector row, where every mode shows its own
+                                                // time, not just the active one.
+                                                val eta = if (active) route?.route?.durationMinutes else otherModeEtaMinutes
+                                                Column(
+                                                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                                                     modifier = Modifier
                                                         .weight(1f)
                                                         .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                                        .clickable {
-                                                            selectedRouteIndex = i
-                                                            route = MapsDirectionsResponse(success = true, route = alt)
+                                                        .clickable(enabled = !routing) {
+                                                            if (mode != travelMode) fetchDirections(mode)
                                                         }
-                                                        .padding(vertical = 5.dp),
-                                                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                                                        .padding(vertical = 6.dp),
                                                 ) {
+                                                    Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary)
+                                                    if (eta != null) {
+                                                        Text(
+                                                            "${eta.toInt()} min",
+                                                            fontSize = 10.sp,
+                                                            color = if (active) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f) else Ids.colors.textTertiary,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Text(
+                                            "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
+                                            fontSize = 13.sp, color = Ids.colors.textSecondary,
+                                            modifier = Modifier.padding(top = 8.dp),
+                                        )
+                                        // Real alternative-route picker (2026-07-22) -- only
+                                        // rendered when OSRM genuinely offered more than one
+                                        // real route for this trip. See
+                                        // MapsDirectionsAlternativesResponse's own doc comment.
+                                        val alternatives = routeAlternatives
+                                        if (alternatives != null && alternatives.size > 1) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) {
+                                                alternatives.forEachIndexed { i, alt ->
+                                                    val active = selectedRouteIndex == i
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
+                                                            .clickable {
+                                                                selectedRouteIndex = i
+                                                                route = MapsDirectionsResponse(success = true, route = alt)
+                                                            }
+                                                            .padding(vertical = 5.dp),
+                                                        contentAlignment = androidx.compose.ui.Alignment.Center,
+                                                    ) {
+                                                        Text(
+                                                            "Route ${i + 1} · ${"%.1f".format(alt.distanceKm)}km · ${alt.durationMinutes.toInt()}min",
+                                                            fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                                            color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary,
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if (currentRoute.route.steps.isNotEmpty()) {
+                                            Text(
+                                                if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
+                                                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
+                                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).clickable { showSteps = !showSteps },
+                                            )
+                                        }
+                                        // Real full-width prominent CTA (2026-08-09), matching
+                                        // real Naver Maps' own "안내시작" (Start guide) bottom bar.
+                                        Row(
+                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(top = 8.dp)
+                                                .background(Ids.colors.brand, RoundedCornerShape(12.dp))
+                                                .clickable {
+                                                    currentStepIndex = 0
+                                                    // Itinerary routes have no single `selectedPlace` (the destination is the
+                                                    // last stop in itineraryStops instead) -- covers both real Start
+                                                    // Navigation entry points with the one real destination each carries.
+                                                    navigationDestination = selectedPlace?.let { it.latitude to it.longitude }
+                                                        ?: itineraryStops.lastOrNull()?.let { it.latitude to it.longitude }
+                                                    navigating = true
+                                                    requestMyLocation()
+                                                }
+                                                .padding(vertical = 13.dp),
+                                        ) {
+                                            Text(
+                                                "▶  Start navigation",
+                                                fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                                                color = androidx.compose.ui.graphics.Color.White,
+                                            )
+                                        }
+                                        if (showSteps) {
+                                            Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                currentRoute.route.steps.forEachIndexed { i, step ->
                                                     Text(
-                                                        "Route ${i + 1} · ${"%.1f".format(alt.distanceKm)}km · ${alt.durationMinutes.toInt()}min",
-                                                        fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                                                        color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary,
+                                                        "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
+                                                        fontSize = 12.sp, color = Ids.colors.textSecondary,
                                                     )
                                                 }
                                             }
                                         }
-                                    }
-                                    // Real "Start Navigation" mode (2026-08-09) -- see
-                                    // currentStepIndexFor's own doc comment above for why. While
-                                    // active, this replaces the flat steps list with a single,
-                                    // prominent current-step card (the same "just the next turn,
-                                    // nothing else" framing Naver/Kakao/Google's own turn-by-turn
-                                    // view uses) instead of a scrollable wall of every step at
-                                    // once.
-                                    if (navigating) {
+                                    } else {
+                                        // Real "Start Navigation" mode (2026-08-09) -- see
+                                        // currentStepIndexFor's own doc comment above for why.
+                                        // Shows ONLY the current maneuver -- no mode toggle, no
+                                        // alternatives, no distance summary -- matching real
+                                        // Naver/Kakao/Google's own turn-by-turn view exactly,
+                                        // and this same pass's "one thing per page" fix.
                                         val steps = currentRoute.route.steps
                                         val stepIdx = currentStepIndex.coerceIn(0, (steps.size - 1).coerceAtLeast(0))
                                         val activeStep = steps.getOrNull(stepIdx)
@@ -2245,7 +2341,6 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(top = 8.dp)
                                                 .background(Ids.colors.brand, RoundedCornerShape(14.dp))
                                                 .padding(16.dp),
                                         ) {
@@ -2286,77 +2381,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                 }
                                             }
                                         }
-                                    } else {
-                                        // Real full-width prominent CTA (2026-08-09), matching
-                                        // real Naver Maps' own "안내시작" (Start guide) bottom bar
-                                        // -- this used to be a small pill squeezed into the same
-                                        // row as the steps-toggle text, easy to miss as the
-                                        // screen's actual primary action. The steps toggle is now
-                                        // its own row above; Start Navigation gets real visual
-                                        // weight matching what it actually does.
-                                        if (currentRoute.route.steps.isNotEmpty()) {
-                                            Text(
-                                                if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
-                                                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).clickable { showSteps = !showSteps },
-                                            )
-                                        }
-                                        Row(
-                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(top = 8.dp)
-                                                .background(Ids.colors.brand, RoundedCornerShape(12.dp))
-                                                .clickable {
-                                                    currentStepIndex = 0
-                                                    // Itinerary routes have no single `selectedPlace` (the destination is the
-                                                    // last stop in itineraryStops instead) -- covers both real Start
-                                                    // Navigation entry points with the one real destination each carries.
-                                                    navigationDestination = selectedPlace?.let { it.latitude to it.longitude }
-                                                        ?: itineraryStops.lastOrNull()?.let { it.latitude to it.longitude }
-                                                    navigating = true
-                                                    requestMyLocation()
-                                                }
-                                                .padding(vertical = 13.dp),
-                                        ) {
-                                            Text(
-                                                "▶  Start navigation",
-                                                fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                                                color = androidx.compose.ui.graphics.Color.White,
-                                            )
-                                        }
-                                        if (showSteps) {
-                                            Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                currentRoute.route.steps.forEachIndexed { i, step ->
-                                                    Text(
-                                                        "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
-                                                        fontSize = 12.sp, color = Ids.colors.textSecondary,
-                                                    )
-                                                }
-                                            }
-                                        }
                                     }
                                 }
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .background(Ids.colors.brand, RoundedCornerShape(12.dp))
-                                        .clickable(enabled = !routing) { fetchDirections(travelMode) }
-                                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                                ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
-                            }
-                            if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
-                                Text(
-                                    "Back to cash-out codes",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Ids.colors.brand,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(onClick = onBack)
-                                        .padding(vertical = 8.dp),
-                                )
                             }
                             // A little breathing room below so the drag-to-Full state
                             // doesn't cut the last line off against the screen edge.
@@ -2449,6 +2475,15 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     }
                                 }
                             }
+                            // Real "one thing per page" fix (2026-08-09) -- same complaint,
+                            // same fix as the place-detail sheet above: this "Around you"
+                            // browse/bookmarks content used to stay visible underneath the
+                            // multi-stop itinerary builder card, so planning a trip and
+                            // browsing/bookmark-managing were on screen simultaneously.
+                            // Mutually exclusive now, matching itunda's own real Naver Map
+                            // Smart Around sheet reference (below) with one real function at
+                            // a time.
+                            if (!itineraryBuilding) {
                             // Real default "around me" state (2026-07-21) -- Naver Map's
                             // own Smart Around sheet keeps a non-modal panel permanently
                             // docked with real curated content even before any search,
@@ -2642,6 +2677,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         }
                                     }
                                 }
+                            }
                             }
                             Box(modifier = Modifier.height(24.dp))
                         }
