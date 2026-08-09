@@ -1078,6 +1078,15 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     .target(LatLng(RWANDA_CENTER_LAT, RWANDA_CENTER_LNG))
                     .zoom(12.0)
                     .build()
+                // Real fix (2026-08-09), direct user report ("why do we have maplibre
+                // watermark"): MapLibre's own logo mark is on by default and was never
+                // touched -- itunda self-hosts its own tiles/style/data, so showing the
+                // library's own branding reads as an unfinished third-party wrapper, not
+                // itunda's real product. Attribution stays ON, deliberately -- itunda's
+                // tiles are genuinely built from real OpenStreetMap data (Geofabrik Rwanda
+                // extract), and OSM's ODbL license requires real credit; only the logo
+                // mark (MapLibre's own branding, not a data-license requirement) is hidden.
+                map.uiSettings.isLogoEnabled = false
                 map.setStyle(Style.Builder().fromJson(MAP_STYLE_JSON)) { style ->
                     val pinDensity = context.resources.displayMetrics.density
                     style.addImage(MERCHANT_ICON_ID, createPinBitmap(pinDensity, "#3182F6"))
@@ -1331,7 +1340,19 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     MapSheetValue.Full at fullTopGapPx
                 }
             }
-            LaunchedEffect(sheetAnchors) { sheetState.updateAnchors(sheetAnchors) }
+            // Real fix (2026-08-09), direct user report ("bottom sheet hangs in middle of
+            // screen instead of raising from bottom"): `updateAnchors(anchors)` without an
+            // explicit target defaults to `sheetState.currentValue` at call time -- but a
+            // separate `LaunchedEffect(selectedPlace)` above can call `animateTo(Peek)`
+            // before real anchors ever exist (on first composition, before
+            // BoxWithConstraints has measured a real screen height), animating against an
+            // empty anchor set with nowhere real to land. Passing the target explicitly
+            // here, keyed to itunda's own current selection state, makes the sheet's
+            // first-ever real settle deterministic instead of depending on which
+            // LaunchedEffect happens to run first.
+            LaunchedEffect(sheetAnchors) {
+                sheetState.updateAnchors(sheetAnchors, if (selectedPlace != null) MapSheetValue.Half else MapSheetValue.Peek)
+            }
 
             AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 

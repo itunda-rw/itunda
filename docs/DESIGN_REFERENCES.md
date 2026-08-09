@@ -4080,3 +4080,41 @@ Claude Code companion app, not itunda, mid-check) -- deliberately did not attemp
 automated tap-through to avoid interfering with real concurrent use. The actual visual result --
 whether the new place-info/route-planning/navigation split reads as genuinely simpler on the real
 screen -- needs the user's own hands next.
+
+## 34. Bottom-sheet initial-settle race, and the MapLibre logo watermark
+
+**Added 2026-08-09**, two real bugs the user found live while testing Section 33's build: *"why
+bottom sheet not raising from bottom but hangs in middle of screen and why do we have maplibre
+watermark."*
+
+### Bottom sheet settling mid-screen instead of at the bottom
+Root cause, found by reading the real `AnchoredDraggableState` API (`javap` against the actual
+`androidx.compose.foundation` 1.6.1 `.aar` in the Gradle cache, not assumed): `updateAnchors(anchors)`
+called with no explicit second argument defaults `newTarget` to `sheetState.currentValue` **at the
+moment `updateAnchors` runs**. A separate, earlier `LaunchedEffect(selectedPlace)` calls
+`sheetState.animateTo(MapSheetValue.Peek)` on first composition (since `selectedPlace` starts
+null) -- but this can fire *before* `BoxWithConstraints` has ever measured a real screen height,
+meaning it animates against an **empty** anchor set with no real Peek position to land on yet.
+Depending on exactly how that empty-anchor animation resolves `currentValue`, the later real
+`updateAnchors` call could inherit an unintended settle target instead of Peek. Fixed by making
+the target explicit every time real anchors are (re)computed --
+`updateAnchors(sheetAnchors, if (selectedPlace != null) Half else Peek)` -- so the sheet's
+first-ever real settle no longer depends on which of two `LaunchedEffect`s happens to run first.
+
+### MapLibre logo watermark
+Never touched before now -- `map.uiSettings.isLogoEnabled` defaults to `true`, so MapLibre's own
+branding mark was rendering on every real map view. Since itunda self-hosts its own
+tiles/style/routing/geocoding, showing the underlying library's own logo reads as an unfinished
+third-party wrapper rather than itunda's real product. Fixed with `map.uiSettings.isLogoEnabled =
+false`. **Deliberately left attribution ON** -- itunda's tiles are genuinely built from real
+OpenStreetMap data (the same Geofabrik Rwanda extract cited throughout this document's Maps
+sections), and OSM's ODbL license requires real credit; that's a real legal/licensing
+requirement, not library branding, so only the logo mark was removed.
+
+### Verification status
+`:features:maps:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
+Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
+live app process. The sheet-settle fix addresses the mechanism most consistent with the reported
+symptom based on reading the real gesture-library API, but wasn't reproduced interactively before
+the fix (the device was mid-use by the user at the time it was reported) -- needs the user's own
+next open of the Maps screen to confirm it actually resolves.
