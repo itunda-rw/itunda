@@ -3508,6 +3508,14 @@ real fingerprint (the automated biometric gate above correctly cannot be bypasse
   Confirmed the real self-hosted Nominatim instance is genuinely live and answering real Rwanda
   place data (`192.168.252.4:8088`, same node as the tile servers above) via a direct `curl`
   (`City of Kigali, Rwanda` for a `kigali` query). Fixed `local-ecosystem.sh`'s `start_backend()`
-  to set all 3 vars with the same defaults as the production manifest, then restarted the local
-  backend with them set and confirmed live: the same `curl` search that returned an empty array
-  now returns real ranked results.
+  to set all 3 vars with the same defaults as the production manifest.
+  **Own mistake caught and fixed within the same pass**: the actual running local backend
+  process was restarted with only `NOMINATIM_BASE_URL` set (verified missing via `ps eww -p
+  $PID | grep OSRM` — genuinely absent from the process environment), not the 2 OSRM vars also
+  fixed in the script file moments earlier -- a real "fixed the script, forgot to also apply it
+  to the process already running" gap, caught by the user's own next real report ("after search
+  I tried to find directions but not found," reproduced via `curl` as a real `404
+  ROUTE_NOT_FOUND`, while OSRM itself answered a real route directly). Restarted the backend a
+  second time with all 3 vars actually set; the identical directions `curl` call now returns a
+  real 200 with real turn-by-turn geometry and street-level instructions (KG 17 Avenue, KN 3
+  Road, etc.) for a real Kigali route.
