@@ -1313,6 +1313,17 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
             // Real category-chip "nearby places" search (Naver/Kakao's own convention) --
             // mirrors bank-mfe's MapView.tsx chip row, now with a per-category emoji glyph
             // (MAP_CATEGORY_ICONS) so chips read at a glance instead of as text-only pills.
+            //
+            // Real UI/UX fix (2026-08-09), found live after direct user feedback ("not good,
+            // not simplicity"): the active chip used a hardcoded purple (0xFF8B5CF6) instead
+            // of the app's real brand blue (Ids.colors.brand, Toss blue #3182F6) -- every
+            // OTHER "active" element on this same screen (route-alternative picker, Start
+            // Navigation card) correctly used the brand token, making this chip row visually
+            // disjointed from the rest of the app. This and several other hardcoded hex colors
+            // below also never adapted to dark mode (this session's own test device defaults
+            // to system dark mode) while everything using Ids.colors.* correctly does --
+            // very likely the real, concrete cause of "doesn't look good," not a vague
+            // aesthetic complaint. Swept the whole file for the same pattern and fixed each.
             Row(
                 modifier = Modifier
                     .horizontalScroll(rememberScrollState()),
@@ -1325,7 +1336,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier
                             .shadow(if (active) 3.dp else 1.dp, RoundedCornerShape(999.dp))
-                            .background(if (active) androidx.compose.ui.graphics.Color(0xFF8B5CF6) else Ids.colors.surface, RoundedCornerShape(999.dp))
+                            .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
                             .clickable(enabled = !categoryLoading || active) { searchNearbyCategory(category.id) }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
@@ -1631,7 +1642,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     modifier = Modifier
                         .size(46.dp)
                         .shadow(3.dp, CircleShape)
-                        .background(if (measuring) androidx.compose.ui.graphics.Color(0xFFE53935) else Ids.colors.surface, CircleShape)
+                        .background(if (measuring) Ids.colors.danger else Ids.colors.surface, CircleShape)
                         .clip(CircleShape)
                         .clickable { toggleMeasuring() },
                     contentAlignment = Alignment.Center,
@@ -1736,6 +1747,15 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 )
                             }
                             if (matchedMerchant != null) {
+                                // Real simplicity fix (2026-08-09), found live after direct user
+                                // feedback ("not simplicity at all"): this used to be up to 7
+                                // separate stacked Text rows, one fact per line -- rating,
+                                // category, cashback, min-order, distance, hours, phone, each
+                                // its own row. Real Naver/Kakao Maps group related "at a glance"
+                                // facts onto one line with middle-dot separators instead, and
+                                // only give a genuine action (call) its own row. Grouped into 3
+                                // lines: (category · rating · distance), (cashback · min order),
+                                // (hours), plus phone as the one real tappable action.
                                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     if (matchedMerchant.photoUrl != null) {
                                         AsyncImage(
@@ -1745,28 +1765,25 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
                                         )
                                     }
-                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                        if (matchedMerchant.rating != null) {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                Text("⭐ ${"%.1f".format(matchedMerchant.rating)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
-                                                if (matchedMerchant.reviewCount > 0) {
-                                                    Text("(${matchedMerchant.reviewCount} review${if (matchedMerchant.reviewCount == 1L) "" else "s"})", fontSize = 12.sp, color = Ids.colors.textSecondary)
-                                                }
-                                            }
+                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        val glanceLine = listOfNotNull(
+                                            matchedMerchant.category,
+                                            matchedMerchant.rating?.let { r ->
+                                                "⭐ ${"%.1f".format(r)}" + if (matchedMerchant.reviewCount > 0) " (${matchedMerchant.reviewCount})" else ""
+                                            },
+                                            matchedMerchant.distanceKm?.let { d ->
+                                                val eta = matchedMerchant.deliveryTimeMinutes?.let { " · ~$it min" } ?: ""
+                                                "${"%.1f".format(d)} km$eta"
+                                            },
+                                        ).joinToString(" · ")
+                                        if (glanceLine.isNotEmpty()) {
+                                            Text(glanceLine, fontSize = 12.sp, color = Ids.colors.textSecondary)
                                         }
-                                        val merchantCategory = matchedMerchant.category
-                                        if (merchantCategory != null) {
-                                            Text(merchantCategory, fontSize = 12.sp, color = Ids.colors.textSecondary)
-                                        }
-                                        Text("${matchedMerchant.cashbackRate} cashback", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand)
-                                        val minOrderAmount = matchedMerchant.minOrderAmount
-                                        if (minOrderAmount != null) {
-                                            Text("Min. order RWF ${minOrderAmount.toInt()}", fontSize = 11.sp, color = Ids.colors.textSecondary)
-                                        }
-                                        if (matchedMerchant.distanceKm != null) {
-                                            val etaText = matchedMerchant.deliveryTimeMinutes?.let { " · ~$it min" } ?: ""
-                                            Text("${"%.1f".format(matchedMerchant.distanceKm)} km away$etaText", fontSize = 11.sp, color = Ids.colors.textSecondary)
-                                        }
+                                        val valueLine = listOfNotNull(
+                                            "${matchedMerchant.cashbackRate} cashback",
+                                            matchedMerchant.minOrderAmount?.let { "Min. RWF ${it.toInt()}" },
+                                        ).joinToString(" · ")
+                                        Text(valueLine, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand)
                                         val openingHours = matchedMerchant.openingHours
                                         if (openingHours != null) {
                                             Text("🕒 $openingHours", fontSize = 11.sp, color = Ids.colors.textSecondary)
@@ -1791,7 +1808,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(androidx.compose.ui.graphics.Color(0xFFF9FAFB), RoundedCornerShape(8.dp))
+                                        .background(Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
                                         .padding(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
@@ -1881,7 +1898,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .background(if (active) Ids.colors.brand else androidx.compose.ui.graphics.Color(0xFFF2F4F6), RoundedCornerShape(8.dp))
+                                            .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
                                             .clickable(enabled = !routing) {
                                                 if (mode != travelMode) {
                                                     if (route != null) fetchDirections(mode) else travelMode = mode
@@ -1913,7 +1930,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                 Box(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .background(if (active) Ids.colors.brand else androidx.compose.ui.graphics.Color(0xFFF2F4F6), RoundedCornerShape(8.dp))
+                                                        .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
                                                         .clickable {
                                                             selectedRouteIndex = i
                                                             route = MapsDirectionsResponse(success = true, route = alt)
@@ -2055,7 +2072,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(androidx.compose.ui.graphics.Color(0xFFF2F7FF), RoundedCornerShape(12.dp))
+                                        .background(Ids.colors.successTint, RoundedCornerShape(12.dp))
                                         .padding(12.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
@@ -2287,7 +2304,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             Column(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .background(androidx.compose.ui.graphics.Color(0xFFF9FAFB), RoundedCornerShape(8.dp))
+                                                    .background(Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
                                                     .padding(8.dp),
                                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                                             ) {

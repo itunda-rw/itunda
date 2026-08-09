@@ -3709,3 +3709,43 @@ of those would be a much larger, separate project.
   fields present on the real response — the full path from merchant input to customer-visible
   data confirmed working, not assumed from the individual pieces compiling. App installs and
   launches without a crash on the physical device with this change.
+
+## 26. Real UI/UX cleanup, prompted by direct user feedback ("not good, not simplicity at all")
+
+**Added 2026-08-09**, immediately after the user's blunt feedback. Rather than guess blind at
+what "doesn't look good" meant, re-read the whole file critically against this app's own real
+design-system conventions (`Ids.colors.*`) and found two concrete, fixable root causes.
+
+- **Real finding #1: a genuine brand-color inconsistency.** The category-chip row's active
+  state used a hardcoded purple (`0xFF8B5CF6`), while the *entire rest of the app* -- including
+  every other "active" element on this exact same Maps screen (the route-alternative picker,
+  the Start Navigation card) -- uses the app's real brand blue (`Ids.colors.brand`, Toss blue
+  `#3182F6`). A stray purple accent on the screen's most prominent, most-frequently-seen row is
+  a real, visible reason a screen can look "off" against the rest of a blue-branded app.
+- **Real finding #2, likely the bigger one: zero dark-mode adaptation.** A file-wide sweep found
+  11 hardcoded hex colors across this screen (`grep -c "Color(0x"`), none of which adapt between
+  light/dark theme, versus 101 correct uses of `Ids.colors.*` tokens that do. This session's own
+  test device defaults to system dark mode (a standing, previously-documented fact) -- every one
+  of those hardcoded colors was designed against a light background and would render wrong
+  (a stark near-white folder-picker panel, a light-blue itinerary info box) against dark
+  surfaces everywhere else on the same screen. Fixed all of them to their real semantic
+  equivalents, matched by exact hex value where one existed (`0xFFF2F4F6` is *exactly*
+  `Ids.colors.surfaceSoft`) rather than guessed: active chip → `Ids.colors.brand`, measuring-mode
+  toggle → `Ids.colors.danger` (a real semantic token this screen wasn't using), inactive pills
+  and folder-picker panel → `Ids.colors.surfaceSoft`, itinerary info box → `Ids.colors.successTint`
+  (closest real semantic match; no dedicated "info tint" token exists). Left the bookmark
+  star's gold (`0xFFF5A623`) untouched -- a deliberate, theme-independent "favorite" color real
+  map apps (Google/Naver Maps included) also keep fixed across light/dark, not a bug.
+- **Real finding #3: genuine information-density clutter in the merchant detail card** (the
+  same card Sections 23/25 built up incrementally across this session, one field at a time,
+  without a cohesive pass). Up to 7 separate one-fact-per-line `Text` rows (rating, category,
+  cashback, min order, distance, hours, phone) stacked with no grouping. Real Naver/Kakao Maps
+  group related "at a glance" facts onto one line with middle-dot separators and only give a
+  genuine action its own row. Regrouped into 3 lines -- (category · rating · distance),
+  (cashback · min order), (hours) -- plus phone kept as its own row since it's the one real
+  tappable action, not just information.
+- **Verification status, honestly**: `:features:maps:impl` compiles clean, the app installs and
+  launches without a crash. These are real, concrete, verifiable-by-reading-the-code fixes (a
+  literal wrong color and non-adapting hex values are objectively wrong, not subjective), but
+  whether they're *what the user meant* by "not good" can't be confirmed without them actually
+  looking at the real screen -- handed back to the user rather than declared as resolved.
