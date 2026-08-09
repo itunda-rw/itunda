@@ -1261,6 +1261,32 @@ fun MapScreen(
                         }
                     }
                 }
+                // Real "long-press to drop a pin" (2026-08-10) -- a universal, decades-old
+                // convention on Google Maps, Apple Maps, Kakao Maps, and Naver Maps: a
+                // long-press on any bare map point (not a real feature) drops a pin there
+                // and opens the same detail sheet a search result does, so a user can get
+                // directions to or share a spot that has no listed place. Shows immediately
+                // with a placeholder name (matching how all four reference apps render the
+                // pin before the reverse-geocode call returns) rather than waiting.
+                map.addOnMapLongClickListener { latLng ->
+                    if (!currentMeasuring) {
+                        val dropped = PlaceSearchResultDto("Dropped pin", latLng.latitude, latLng.longitude)
+                        selectPlace(dropped)
+                        coroutineScope.launch {
+                            try {
+                                val name = NetworkClient.apiService.reverseGeocode(latLng.latitude, latLng.longitude).placeName
+                                if (name != null && selectedPlace?.latitude == latLng.latitude && selectedPlace?.longitude == latLng.longitude) {
+                                    selectedPlace = PlaceSearchResultDto(name, latLng.latitude, latLng.longitude)
+                                }
+                            } catch (_: Exception) {
+                                // Non-critical -- the pin stays labeled "Dropped pin"; still fully usable for directions.
+                            }
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
             }
             onDispose {
                 lifecycleOwner.lifecycle.removeObserver(observer)

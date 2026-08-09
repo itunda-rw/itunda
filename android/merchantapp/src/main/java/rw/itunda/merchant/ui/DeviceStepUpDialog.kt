@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -53,6 +54,12 @@ fun DeviceStepUpDialog(onVerified: () -> Unit, onCancel: () -> Unit) {
                     onValueChange = { password = it },
                     label = "Password",
                     visualTransformation = PasswordVisualTransformation(),
+                    // Real fix (2026-08-10) -- same live-blocking bug the consumer app's own
+                    // DeviceStepUpDialog had: without an explicit KeyboardType.Password, the
+                    // IME is free to autocorrect/auto-capitalize the typed value, silently
+                    // mutating it behind the masked display -- so a correctly-typed password
+                    // could submit wrong with no visible sign why.
+                    keyboardType = KeyboardType.Password,
                 )
                 if (error != null) {
                     Spacer(modifier = androidx.compose.ui.Modifier.height(8.dp))
