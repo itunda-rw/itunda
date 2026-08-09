@@ -3878,3 +3878,33 @@ against a real merchant with real products; the Reviews tab's data path uses ide
 conditional logic but has not yet been exercised against a merchant with real review data (none
 exist in the current seed set) -- still needs the user's own eyes once a merchant has a real
 review, or a seed review to test against.
+
+## 29. Pill-shaped action row -- the other item Section 27 named and deferred, now built
+
+**Added 2026-08-09.** Section 27's "deliberately not attempted" list also named itunda's real
+share/bookmark/call actions as "a smaller, real, still-open follow-up" to reshape into Naver's
+own pill-button style (출발/도착/배달/공유/전화/알림받기 -- outlined pills, filled solid blue
+when toggled on). Picked up as the next concrete item from that same list.
+
+### What changed
+- New `PlaceActionPill` composable: an outlined pill (1dp `Ids.colors.divider` border, 999dp
+  corner radius) by default, filled solid `Ids.colors.brand` when `filled = true` -- matching the
+  real reference screenshots' own convention of a solid pill for a toggled-on state.
+- Replaced the old small corner-icon 📤/★ pair (squeezed into the name/address header row) with
+  a real pill row underneath: **Save** (★/☆, fills solid when bookmarked -- the same
+  `toggleBookmark` call as before, just a different visual container), **Share** (📤, same
+  `ACTION_SEND` intent as before), and **Call** (📞, only rendered when `selectedMerchant?.phoneNumber`
+  is real and non-null -- reuses the same `ACTION_DIAL` intent the Home tab's phone row already
+  had).
+- No fabricated 출발/도착/배달/알림받기 (Directions/Arrival/Delivery/Notify) pills added --
+  Directions already has its own dedicated entry point elsewhere in this sheet (not duplicated
+  into a second control), and itunda has no delivery-from-this-pin or store-follow-notification
+  feature on this screen to back those two honestly.
+
+### Verification status
+`:features:maps:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
+Installed on the physical device; the app launched to a resumed foreground activity with an
+empty `logcat -b crash` buffer and no `FATAL`/`AndroidRuntime`/`Exception` lines in the app's own
+process log. Same as Section 28: functionally verified (compiles, launches, doesn't crash), but
+the actual pill visual against the real Naver reference screenshots hasn't been eyeballed by the
+user on the physical screen yet.

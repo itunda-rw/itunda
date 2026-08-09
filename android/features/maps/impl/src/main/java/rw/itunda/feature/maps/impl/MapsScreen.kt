@@ -172,6 +172,34 @@ private val BOOKMARK_COLOR_PALETTE = listOf("#F5A623", "#3182F6", "#8B5CF6", "#E
 // on the first comma only (Nominatim's own convention: segment 0 is always the specific
 // place/building name, everything after is the real address hierarchy) -- no new backend
 // field, no new data, just real presentation of what's already there.
+// Real Naver Maps-style pill action button (2026-08-09) -- outlined by default (a
+// hairline border in Ids.colors.divider), filled solid brand when `filled` is true
+// (matches the real reference screenshots' own convention of a solid-filled pill for
+// a toggled-on state like a saved bookmark).
+@Composable
+private fun PlaceActionPill(icon: String, label: String, filled: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .then(
+                if (filled) Modifier.background(Ids.colors.brand)
+                else Modifier.border(1.dp, Ids.colors.divider, RoundedCornerShape(999.dp)),
+            )
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(icon, fontSize = 13.sp)
+        Text(
+            label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (filled) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary,
+        )
+    }
+}
+
 private fun splitPlaceName(displayName: String): Pair<String, String?> {
     val comma = displayName.indexOf(',')
     return if (comma < 0) displayName to null else displayName.substring(0, comma).trim() to displayName.substring(comma + 1).trim()
@@ -1785,15 +1813,35 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         Text(placeAddress, fontSize = 12.sp, color = Ids.colors.textSecondary, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                                     }
                                 }
-                                // Real "share this place" (2026-07-22) -- ported from
-                                // bank-mfe's own real Web Share/clipboard action. Plain
-                                // name+coordinate text via Android's native share sheet,
-                                // not a link into itunda's own domain -- there's no public
-                                // per-place page a recipient outside this app could open.
-                                Text(
-                                    "📤",
-                                    fontSize = 18.sp,
-                                    modifier = Modifier.padding(end = 8.dp).clickable {
+                            }
+                            // Real Naver Maps-style pill action row (2026-08-09, Section 27's
+                            // own "deliberately not attempted" list) -- replaces the small
+                            // corner-icon share/bookmark from before with itunda's real subset
+                            // of Naver's 출발/도착/배달/공유/전화/알림받기 row: Share and Save
+                            // (bookmark), always real; Call, only when this merchant actually
+                            // has a real phoneNumber set. No fake "Directions"/"Delivery" pill
+                            // added here -- Directions already has its own dedicated entry
+                            // point elsewhere in this sheet, not duplicated.
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
+                                val bookmarked = isBookmarked(place)
+                                PlaceActionPill(
+                                    icon = if (bookmarked) "★" else "☆",
+                                    label = if (bookmarked) "Saved" else "Save",
+                                    filled = bookmarked,
+                                    enabled = !bookmarking,
+                                    onClick = { toggleBookmark(place) },
+                                )
+                                PlaceActionPill(
+                                    icon = "📤",
+                                    label = "Share",
+                                    filled = false,
+                                    enabled = true,
+                                    onClick = {
+                                        // Real "share this place" (2026-07-22) -- ported from
+                                        // bank-mfe's own real Web Share/clipboard action. Plain
+                                        // name+coordinate text via Android's native share sheet,
+                                        // not a link into itunda's own domain -- there's no public
+                                        // per-place page a recipient outside this app could open.
                                         val text = "${place.displayName} (${"%.6f".format(place.latitude)}, ${"%.6f".format(place.longitude)})"
                                         val intent = Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
@@ -1802,12 +1850,16 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         context.startActivity(Intent.createChooser(intent, place.displayName))
                                     },
                                 )
-                                Text(
-                                    if (isBookmarked(place)) "★" else "☆",
-                                    fontSize = 20.sp,
-                                    color = if (isBookmarked(place)) androidx.compose.ui.graphics.Color(0xFFF5A623) else Ids.colors.textSecondary,
-                                    modifier = Modifier.clickable(enabled = !bookmarking) { toggleBookmark(place) },
-                                )
+                                val callNumber = selectedMerchant?.phoneNumber
+                                if (callNumber != null) {
+                                    PlaceActionPill(
+                                        icon = "📞",
+                                        label = "Call",
+                                        filled = false,
+                                        enabled = true,
+                                        onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$callNumber"))) },
+                                    )
+                                }
                             }
                             if (matchedMerchant != null) {
                                 // Real "Itunda Places" tab row (2026-08-09) -- Menu/Reviews only
