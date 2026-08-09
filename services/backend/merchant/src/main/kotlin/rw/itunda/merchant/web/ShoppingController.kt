@@ -127,6 +127,10 @@ class ShoppingController(
                 // itunda delivery, the same real Coupang Eats/배민1 distinction
                 // docs/DESIGN_REFERENCES.md named.
                 "singleOrderDelivery" to true,
+                // Real merchant-set phone/hours (2026-08-09) -- see Merchant.kt's own
+                // doc comment. Null unless the merchant has actually set one.
+                "phoneNumber" to merchant.phoneNumber,
+                "openingHours" to merchant.openingHours,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))

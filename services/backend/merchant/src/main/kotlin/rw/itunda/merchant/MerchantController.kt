@@ -35,6 +35,8 @@ data class SetParticipatesInEatsMembershipRequest(val participates: Boolean)
 data class SetAcceptsScheduledOrdersRequest(val accepts: Boolean)
 data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
+data class SetPhoneNumberRequest(val phoneNumber: String?)
+data class SetOpeningHoursRequest(val openingHours: String?)
 data class CollectPaymentRequest(val couponId: String? = null)
 // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see MerchantStaticQrService's own
 // doc comment.
@@ -217,6 +219,26 @@ class MerchantController(
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
+    // Real merchant-set phone number + opening hours (2026-08-09) -- see
+    // MerchantService.setPhoneNumber/setOpeningHours's own doc comments.
+    @PostMapping("/phone")
+    fun setPhoneNumber(
+        @RequestBody request: SetPhoneNumberRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setPhoneNumber(currentUser.userId, request.phoneNumber)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    @PostMapping("/hours")
+    fun setOpeningHours(
+        @RequestBody request: SetOpeningHoursRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setOpeningHours(currentUser.userId, request.openingHours)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
     // Real read-only preview (item 149) -- see MerchantService.previewIntent's own doc
     // comment. Lets a payer see the merchant/amount/their own real coupon eligibility
     // before committing to collect().
@@ -394,4 +416,12 @@ class MerchantController(
     @ExceptionHandler(InvalidMinOrderAmountException::class)
     fun handleInvalidMinOrderAmount(ex: InvalidMinOrderAmountException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MIN_ORDER_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidPhoneNumberException::class)
+    fun handleInvalidPhoneNumber(ex: InvalidPhoneNumberException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PHONE_NUMBER", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidOpeningHoursException::class)
+    fun handleInvalidOpeningHours(ex: InvalidOpeningHoursException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_OPENING_HOURS", ex.message ?: "Bad request"))
 }

@@ -46,6 +46,8 @@ class InvalidCategoryException(message: String) : RuntimeException(message)
 class InvalidCashbackRateException(message: String) : RuntimeException(message)
 class InvalidPhotoUrlException(message: String) : RuntimeException(message)
 class InvalidMinOrderAmountException(message: String) : RuntimeException(message)
+class InvalidPhoneNumberException(message: String) : RuntimeException(message)
+class InvalidOpeningHoursException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
@@ -283,6 +285,32 @@ class MerchantService(
         }
         val merchant = getMyMerchant(ownerUserId)
         merchant.minOrderAmount = minOrderAmount
+        return merchantRepository.save(merchant)
+    }
+
+    // Real merchant-set phone number + opening hours (2026-08-09) -- see Merchant.kt's
+    // own doc comment for why this is plain free text, same bar as photoUrl/category.
+    // Passing null explicitly clears it, same convention as every other optional field
+    // on this entity.
+    @Transactional
+    fun setPhoneNumber(ownerUserId: String, phoneNumber: String?): Merchant {
+        val trimmed = phoneNumber?.trim()
+        if (trimmed != null && trimmed.length > 32) {
+            throw InvalidPhoneNumberException("Phone number must be 32 characters or fewer")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.phoneNumber = trimmed?.ifEmpty { null }
+        return merchantRepository.save(merchant)
+    }
+
+    @Transactional
+    fun setOpeningHours(ownerUserId: String, openingHours: String?): Merchant {
+        val trimmed = openingHours?.trim()
+        if (trimmed != null && trimmed.length > 200) {
+            throw InvalidOpeningHoursException("Opening hours must be 200 characters or fewer")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.openingHours = trimmed?.ifEmpty { null }
         return merchantRepository.save(merchant)
     }
 

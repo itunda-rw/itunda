@@ -25,6 +25,10 @@ export interface ShoppingMerchant {
   reviewCount?: number;
   distanceKm?: number | null;
   deliveryTimeMinutes?: number | null;
+  // Real merchant-set phone/hours (2026-08-09) -- see Merchant.kt's own doc comment on
+  // the backend. Null/undefined unless the merchant has actually set one.
+  phoneNumber?: string | null;
+  openingHours?: string | null;
 }
 
 // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see the backend's

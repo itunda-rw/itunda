@@ -2972,12 +2972,20 @@ public struct ShoppingMerchantDto: Decodable, Identifiable {
     public let reviewCount: Int?
     public let distanceKm: Double?
     public let deliveryTimeMinutes: Int?
+    // Real merchant-set phone/hours (2026-08-09) -- see Merchant.kt's own doc comment on
+    // the backend. Nil unless the merchant has actually set one. DTO field only this
+    // pass -- MapScreenView's own detail sheet doesn't yet have the richer photo/rating/
+    // category card Android and bank-mfe already got (a real, separate, larger gap:
+    // that infrastructure doesn't exist on iOS's Maps screen at all yet, not just these
+    // 2 fields), tracked honestly rather than silently left out.
+    public let phoneNumber: String?
+    public let openingHours: String?
     public var id: String { merchantId }
 
     public init(
         merchantId: String, businessName: String, category: String?, cashbackRate: String, latitude: Double? = nil, longitude: Double? = nil,
         photoUrl: String? = nil, minOrderAmount: Double? = nil, rating: Double? = nil, reviewCount: Int? = nil,
-        distanceKm: Double? = nil, deliveryTimeMinutes: Int? = nil
+        distanceKm: Double? = nil, deliveryTimeMinutes: Int? = nil, phoneNumber: String? = nil, openingHours: String? = nil
     ) {
         self.merchantId = merchantId
         self.businessName = businessName
@@ -2991,6 +2999,8 @@ public struct ShoppingMerchantDto: Decodable, Identifiable {
         self.reviewCount = reviewCount
         self.distanceKm = distanceKm
         self.deliveryTimeMinutes = deliveryTimeMinutes
+        self.phoneNumber = phoneNumber
+        self.openingHours = openingHours
     }
 }
 public struct ShoppingMerchantsResponse: Decodable { public let success: Bool; public let merchants: [ShoppingMerchantDto] }

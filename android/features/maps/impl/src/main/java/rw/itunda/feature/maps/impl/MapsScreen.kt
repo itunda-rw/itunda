@@ -1767,6 +1767,20 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             val etaText = matchedMerchant.deliveryTimeMinutes?.let { " · ~$it min" } ?: ""
                                             Text("${"%.1f".format(matchedMerchant.distanceKm)} km away$etaText", fontSize = 11.sp, color = Ids.colors.textSecondary)
                                         }
+                                        val openingHours = matchedMerchant.openingHours
+                                        if (openingHours != null) {
+                                            Text("🕒 $openingHours", fontSize = 11.sp, color = Ids.colors.textSecondary)
+                                        }
+                                        val phoneNumber = matchedMerchant.phoneNumber
+                                        if (phoneNumber != null) {
+                                            Text(
+                                                "📞 $phoneNumber",
+                                                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
+                                                modifier = Modifier.padding(top = 2.dp).clickable {
+                                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phoneNumber")))
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                             }

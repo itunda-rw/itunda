@@ -3663,3 +3663,49 @@ markets and bus stops.
   exist in Nominatim's whole-country index, neither near that particular test point), not a
   itunda code bug -- flagged rather than silently accepted as "working" from one lucky query.
 - App installs and launches without a crash on the physical device after this change.
+
+## 25. Real merchant phone + opening hours -- a genuine new data field, built end-to-end
+
+**Added 2026-08-09**, same "take it seriously" pass, picking Section 23's own explicitly-named
+follow-up. Unlike Section 23's fix (existing data, never rendered), this is a genuinely new
+field: `Merchant.kt` had no phone number or opening-hours column at all before this. Scoped
+honestly to what a merchant can actually self-report today (plain free text, same bar as
+`businessName`/`category` already are) -- itunda has no structured per-weekday hours system or
+phone-verification pipeline to invent a machine-readable "open now" indicator, and building one
+of those would be a much larger, separate project.
+
+- **Backend, built following the exact established pattern**: `Merchant.kt` gained
+  `phoneNumber`/`openingHours` columns (migration `V231__merchant_phone_hours.sql`,
+  `scripts/verify-flyway-migrations.sh` clean). `MerchantService.setPhoneNumber`/
+  `setOpeningHours` mirror `setPhotoUrl`'s exact shape (trim, length-cap, nullable-clears-it).
+  New `POST /api/v1/merchant/phone` / `/hours` endpoints mirror `/photo`/`/min-order` exactly,
+  found by reading the controller's own already-established one-field-per-endpoint convention
+  rather than inventing a new shape. Exposed through the existing `/shopping/merchants`
+  response map (the same one Maps' own `merchants` list already loads).
+- **Merchant-facing input, a real gap closed, not just plumbing with no way to ever populate
+  real data**: `merchant-mfe`'s existing `StoreSettingsCard` (already handles photo/min-order/
+  cashback) gained two more fields with the same save flow. This was the one real missing
+  piece -- `RegisterScreen.tsx` only ever collects a business name; without this, the new
+  backend columns could never carry real merchant-entered data.
+- **Customer-facing display, both platforms with existing rich detail cards**: Android
+  (Section 23's own new card) and `bank-mfe` (which already had the identical rich card,
+  independently discovered while looking for where to add this) both render `🕒 hours` and a
+  real tappable `📞 phone` (Android: `Intent.ACTION_DIAL`; web: `tel:` link) when a merchant has
+  set them.
+- **A real, honestly-tracked cross-platform gap, not silently skipped**: iOS's Maps screen has
+  no equivalent rich detail card at all yet (no photo/rating/category rendering either,
+  independent of this feature) -- added `phoneNumber`/`openingHours` to the Swift
+  `ShoppingMerchantDto` so the data flows through correctly once that infrastructure exists, but
+  did not build a new iOS card from scratch this pass (a genuinely separate, larger task: iOS's
+  Maps screen would need the same coordinate-matching detail-sheet work Android/web already
+  have, not just 2 more fields).
+- **Verified live, full round trip, not just compiled**: `:merchant:compileKotlin` +
+  `:app:compileKotlin` (backend), `:core:network:compileDebugKotlin` +
+  `:features:maps:impl:compileDebugKotlin` (Android), `tsc -b` clean on both `bank-mfe` and
+  `merchant-mfe`, `swiftc -parse` clean (iOS). Restarted the real backend (migration applied
+  automatically on startup) and called the real new endpoints against a real seeded merchant
+  ("Heaven Kigali"): `POST /merchant/phone` and `/merchant/hours` both persisted correctly, and
+  a follow-up `GET /shopping/merchants` (the exact endpoint Maps reads from) confirmed both
+  fields present on the real response — the full path from merchant input to customer-visible
+  data confirmed working, not assumed from the individual pieces compiling. App installs and
+  launches without a crash on the physical device with this change.

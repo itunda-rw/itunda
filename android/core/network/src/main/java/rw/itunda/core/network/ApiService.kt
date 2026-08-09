@@ -1020,6 +1020,10 @@ data class ShoppingMerchantDto(
     val reviewCount: Long = 0,
     val distanceKm: Double? = null,
     val deliveryTimeMinutes: Int? = null,
+    // Real merchant-set phone/hours (2026-08-09) -- see Merchant.kt's own doc comment on
+    // the backend. Null unless the merchant has actually set one.
+    val phoneNumber: String? = null,
+    val openingHours: String? = null,
 )
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
 

@@ -1200,6 +1200,15 @@ export default function MapView() {
                         {selectedMerchant.cashbackRate ? `${selectedMerchant.cashbackRate} cashback` : ''}
                       </span>
                     )}
+                    {selectedMerchant.openingHours && <span>🕒 {selectedMerchant.openingHours}</span>}
+                    {selectedMerchant.phoneNumber && (
+                      <a
+                        href={`tel:${selectedMerchant.phoneNumber}`}
+                        style={{ fontWeight: 700, color: 'var(--toss-blue)', textDecoration: 'none' }}
+                      >
+                        📞 {selectedMerchant.phoneNumber}
+                      </a>
+                    )}
                   </div>
                 </div>
               )}

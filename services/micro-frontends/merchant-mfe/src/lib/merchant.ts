@@ -39,6 +39,10 @@ export interface Merchant {
   // Real 배달의민족 예약주문 (scheduled ordering) opt-in (2026-07-26) -- a restaurant
   // explicitly opts into accepting buyer-scheduled future delivery/pickup times.
   acceptsScheduledOrders: boolean;
+  // Real phone number + opening hours (2026-08-09) -- see Merchant.kt's own doc
+  // comment on the backend. Both plain merchant-set free text; null means unset.
+  phoneNumber: string | null;
+  openingHours: string | null;
 }
 
 export const setMerchantLocation = (latitude: number, longitude: number) =>
@@ -241,6 +245,20 @@ export const setMinOrderAmount = (minOrderAmount: number | null) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/min-order', {
     method: 'POST',
     body: JSON.stringify({ minOrderAmount }),
+  }).then((r) => r.merchant);
+
+// Real merchant-set phone number + opening hours (2026-08-09) -- see
+// MerchantService.setPhoneNumber/setOpeningHours's own doc comments on the backend.
+export const setMerchantPhoneNumber = (phoneNumber: string | null) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/phone', {
+    method: 'POST',
+    body: JSON.stringify({ phoneNumber }),
+  }).then((r) => r.merchant);
+
+export const setMerchantOpeningHours = (openingHours: string | null) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/hours', {
+    method: 'POST',
+    body: JSON.stringify({ openingHours }),
   }).then((r) => r.merchant);
 
 // Real Naver Pay-style boosted cashback opt-in -- rate is a fraction 0-0.05 (0-5%);

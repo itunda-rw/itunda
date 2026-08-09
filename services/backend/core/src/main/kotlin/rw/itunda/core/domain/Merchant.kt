@@ -95,6 +95,22 @@ class Merchant(
     @Column(name = "min_order_amount", precision = 18, scale = 2, nullable = true)
     var minOrderAmount: BigDecimal? = null,
 
+    // Real phone number + opening hours (2026-08-09) -- closes a genuine gap named live
+    // on the Maps detail sheet: knowing whether a real place is even open, and a real way
+    // to call ahead, are core to what makes Naver/Kakao Maps actually useful for everyday
+    // wayfinding, not just a pin on a screen. Both plain merchant-set free text, same
+    // "real, not fabricated" bar as photoUrl/category above -- itunda has no structured
+    // per-weekday hours system (and no phone-verification pipeline) to invent a
+    // machine-readable one, so this is honestly scoped to what a merchant can actually
+    // self-report today, same as businessName/category already are. Nullable: unset
+    // means the map's detail sheet simply doesn't show that row, never a fabricated
+    // "Open now"/fake number.
+    @Column(name = "phone_number", length = 32, nullable = true)
+    var phoneNumber: String? = null,
+
+    @Column(name = "opening_hours", length = 200, nullable = true)
+    var openingHours: String? = null,
+
     // Real external-checkout API key (2026-07-21) -- mirrors Partner.apiKeyHash's exact
     // pattern (SHA-256 hash, never the raw key, which is shown to the merchant exactly
     // once at generation time). Nullable: unset means this merchant hasn't opted into
