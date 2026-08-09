@@ -4241,3 +4241,36 @@ live app process, real foreground activity. The one thing still outstanding is t
 device tap-through (open a merchant with a real menu, tap Delivery, confirm it lands in Eats
 ordering) -- the app is currently sitting at its own real biometric step-up gate, which only the
 user's own fingerprint/face can pass, so that specific interaction needs their hands next.
+
+## 38. "One thing, one page" beyond Shop -- GroupAccountScreen's stacked action flows
+
+**Added 2026-08-10.** Continued the app-wide "improve a whole itunda" audit (Section 36 covered
+the 5 biggest screens; this pass covered the next tier of mid-sized ones: Ride, Invest,
+TransferHub, Loans, WeeklySavings, DesignatedDriver, GroupAccount, Ikimina, Property, Jobs,
+Community). Most were already clean -- mode enums or status-gated conditionals genuinely
+mutually exclusive. Found one real violation, same shape as the already-fixed
+`PayAMerchantSection`: `GroupAccountDetailContent` (`GroupAccountScreen.kt`) unconditionally
+stacked **three unrelated action flows** for an account owner -- a "Monthly dues" card (its own
+set/remind/clear actions), a "Deposit or withdraw" card, and an "Invite a member" card -- every
+single time, not an edge case. A non-owner member still saw two of the three simultaneously
+(deposit + dues).
+
+### What was built
+A real mode picker (`GroupAccountActionMode.MONEY` / `DUES` / `INVITE`, defaulting to `MONEY` --
+moving money is the single most common reason to open a shared account), rendered as three
+pill-style tabs (Invite only shown to the owner, matching who could already see that card).
+Balance and Members stay always-visible above the picker -- both are pure information, not
+competing actions, the same distinction Section 36's own Face-Pay-stays-visible reasoning already
+established.
+
+### Also named, not fixed this pass
+`LoansScreen.kt`'s `OverdraftPanel`/`PostpaidCreditPanel` stack a Draw/Spend action and a Repay
+action in the same card -- flagged as real but borderline: two quick, related actions on the SAME
+resource (closer to a bank tile's own Deposit/Withdraw pairing than to three unrelated purposes),
+not clearly enough of a violation to justify a mode-picker split without more direct evidence it's
+actually confusing users. Left as-is; worth a second look if it comes up again.
+
+### Verification status
+`:app:compileDebugKotlin` compiled clean, then the full `:app:assembleDebug` build succeeded.
+Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
+live app process. Not yet tapped through by the user on the real screen.

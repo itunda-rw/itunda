@@ -180,6 +180,10 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
     }
 }
 
+// Real "one thing, one page" fix (2026-08-10) -- see GroupAccountDetailContent's own
+// doc comment on the mode picker this backs.
+private enum class GroupAccountActionMode { MONEY, DUES, INVITE }
+
 @Composable
 private fun GroupAccountDetailContent(id: String) {
     var detail by remember { mutableStateOf<GroupAccountDetailResponse?>(null) }
@@ -192,6 +196,13 @@ private fun GroupAccountDetailContent(id: String) {
     var duesBusy by remember { mutableStateOf(false) }
     var remindedCount by remember { mutableStateOf<Int?>(null) }
     var needsDeviceVerification by remember { mutableStateOf(false) }
+    // Real "one thing, one page" fix (2026-08-10) -- found via the same
+    // audit that already fixed ShopScreen's PayAMerchantSection: this screen
+    // unconditionally stacked three unrelated action flows (manage monthly
+    // dues, deposit/withdraw, invite a member), each its own real form, all
+    // visible at once for an owner. Mutually exclusive now via a real mode
+    // picker, matching that same fix.
+    var actionMode by remember { mutableStateOf(GroupAccountActionMode.MONEY) }
     val myUserId = NetworkClient.currentTokenStore().getUserId()
     val coroutineScope = rememberCoroutineScope()
 
@@ -352,6 +363,29 @@ private fun GroupAccountDetailContent(id: String) {
             }
         }
         item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                listOfNotNull(
+                    GroupAccountActionMode.MONEY to "Deposit & withdraw",
+                    GroupAccountActionMode.DUES to "Monthly dues",
+                    (GroupAccountActionMode.INVITE to "Invite").takeIf { isOwner },
+                ).forEach { (m, label) ->
+                    val active = actionMode == m
+                    Text(
+                        label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        color = if (active) Color.White else TossText,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (active) TossBlue else TossCardSoft)
+                            .clickable { actionMode = m }
+                            .padding(vertical = 10.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
+        }
+        if (actionMode == GroupAccountActionMode.DUES) {
+        item {
             Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Monthly dues", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -404,6 +438,8 @@ private fun GroupAccountDetailContent(id: String) {
                 }
             }
         }
+        }
+        if (actionMode == GroupAccountActionMode.MONEY) {
         item {
             if (needsDeviceVerification) {
                 DeviceStepUpHost(
@@ -430,7 +466,8 @@ private fun GroupAccountDetailContent(id: String) {
                 }
             }
         }
-        if (isOwner) {
+        }
+        if (isOwner && actionMode == GroupAccountActionMode.INVITE) {
             item {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
