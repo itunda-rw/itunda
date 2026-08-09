@@ -74,6 +74,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "rewardsRowSubtitle": "Claim today's cashback and offers",
         "goalSaverTitle": "Goal saver",
         "goalSaverSubtitle": "Rainy day fund progress",
+        "coopRailTitle": "Built for how Rwanda saves",
     ],
     .rw: [
         "goodMorning": "Mwaramutse",
@@ -118,6 +119,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "rewardsRowSubtitle": "Saba amafaranga n'ibindi byiza by'uyu munsi",
         "goalSaverTitle": "Umugambi w'ubwizigame",
         "goalSaverSubtitle": "Imigendekere y'ubwizigame bw'ibihe bikomeye",
+        "coopRailTitle": "Byakorewe uko Abanyarwanda babika amafaranga",
     ],
 ]
 
@@ -143,6 +145,33 @@ public struct SavingsRowData: Identifiable {
         self.title = title
         self.subtitle = subtitle
         self.trailing = trailing
+        self.onTap = onTap
+    }
+}
+
+/// A row for BankView's real "Built for how Rwanda saves" rail (2026-08-10) -- see the
+/// "itunda: the wedge, not the mirror" strategy memo from this same session, and the
+/// identical fix on bank-mfe's HomeView / Android's HomeTab. SACCO shares, Ikimina,
+/// Moto-Taxi Ownership, and Harvest advance are itunda's only real Rwanda-specific
+/// products -- the ones MTN MoMo's own roadmap can't trivially replicate -- yet all
+/// four lived only inside EntireMenuScreen's "Financial services"/"Switch & save"
+/// rows, same visual weight as "Foreign currency". Unlike SavingsRowData (which maps
+/// every row to the same "leaf"/green treatment), this carries its own symbol/tint per
+/// row -- these four need to read as visually distinct products, not one more
+/// generic list.
+public struct CooperativeRowData: Identifiable {
+    public let id = UUID()
+    public let title: String
+    public let subtitle: String
+    public let symbol: String
+    public let tint: Color
+    public let onTap: () -> Void
+
+    public init(title: String, subtitle: String, symbol: String, tint: Color, onTap: @escaping () -> Void) {
+        self.title = title
+        self.subtitle = subtitle
+        self.symbol = symbol
+        self.tint = tint
         self.onTap = onTap
     }
 }
@@ -174,6 +203,7 @@ public struct BankView: View {
     private let balanceText: String
     private let savingsRows: [SavingsRowData]
     private let discoverRows: [DiscoverRowData]
+    private let coopRows: [CooperativeRowData]
     private let onSend: () -> Void
     private let onOpenTransactionHistory: () -> Void
 
@@ -188,12 +218,14 @@ public struct BankView: View {
         balanceText: String = "RWF 0",
         savingsRows: [SavingsRowData] = [],
         discoverRows: [DiscoverRowData] = [],
+        coopRows: [CooperativeRowData] = [],
         onSend: @escaping () -> Void = {},
         onOpenTransactionHistory: @escaping () -> Void = {}
     ) {
         self.balanceText = balanceText
         self.savingsRows = savingsRows
         self.discoverRows = discoverRows
+        self.coopRows = coopRows
         self.onSend = onSend
         self.onOpenTransactionHistory = onOpenTransactionHistory
     }
@@ -204,6 +236,15 @@ public struct BankView: View {
                 HomeTopBar(locale: locale)
                 AccountSummaryCard(balanceText: balanceText, onSend: onSend, locale: locale)
                 QuickActionsRow(locale: locale)
+                if !coopRows.isEmpty {
+                    HomeSectionCard(
+                        title: bt("coopRailTitle", locale: locale),
+                        actionLabel: "",
+                        rows: coopRows.map {
+                            HomeRowData(title: $0.title, subtitle: $0.subtitle, trailing: "", symbol: $0.symbol, iconBackground: $0.tint, onTap: $0.onTap)
+                        }
+                    )
+                }
                 if !savingsRows.isEmpty {
                     HomeSectionCard(
                         title: bt("savingsTitle", locale: locale),

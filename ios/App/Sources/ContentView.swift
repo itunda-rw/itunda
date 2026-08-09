@@ -64,6 +64,25 @@ struct ContentView: View {
     // page (Send money/Auto-transfer/history) lives one level into the menu. See
     // TransferHubScreen.swift's own doc comment.
     @State private var showTransferHub = false
+    // Real product-positioning fix (2026-08-10, see the "itunda: the wedge, not the
+    // mirror" strategy memo, and the identical fix on bank-mfe's HomeView / Android's
+    // HomeTab): these 4 screens already existed but were only reachable from
+    // EntireMenuScreen's own local @State -- same "each presenting view owns its own
+    // sheet state" convention already used there, duplicated here so Home can reach
+    // them directly instead of only through the All tab.
+    @State private var showSacco = false
+    @State private var showIkimina = false
+    @State private var showMotoOwnership = false
+    @State private var showHarvestAdvance = false
+
+    private var coopRows: [CooperativeRowData] {
+        [
+            CooperativeRowData(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "building.columns.fill", tint: Color.accentPurple.opacity(0.15), onTap: { showSacco = true }),
+            CooperativeRowData(title: "Ikimina", subtitle: "Join a rotating savings circle with people you trust", symbol: "person.2.fill", tint: Color.accentTeal.opacity(0.15), onTap: { showIkimina = true }),
+            CooperativeRowData(title: "Moto-Taxi Ownership", subtitle: "Save toward your own bike, then convert to a loan", symbol: "bicycle", tint: Color.accentBlue.opacity(0.15), onTap: { showMotoOwnership = true }),
+            CooperativeRowData(title: "Harvest advance", subtitle: "Input financing from your coffee cooperative", symbol: "leaf.fill", tint: Color.accentOrange.opacity(0.15), onTap: { showHarvestAdvance = true }),
+        ]
+    }
 
     // Real Savings section rows with real tap targets (2026-07-12) -- built here,
     // not inside BankViewModel, because triggering savingsFlowStep needs
@@ -102,6 +121,7 @@ struct ContentView: View {
                 balanceText: bankViewModel.balanceText,
                 savingsRows: savingsRows,
                 discoverRows: bankViewModel.discoverRows,
+                coopRows: coopRows,
                 onSend: { showTransferFlow = true },
                 onOpenTransactionHistory: { showTransactionHistory = true }
             )
@@ -139,6 +159,18 @@ struct ContentView: View {
                         },
                         onBack: { showTransactionHistory = false }
                     )
+                }
+                .sheet(isPresented: $showSacco) {
+                    SaccoScreenView(onBack: { showSacco = false })
+                }
+                .sheet(isPresented: $showIkimina) {
+                    IkiminaScreenView(onBack: { showIkimina = false })
+                }
+                .sheet(isPresented: $showMotoOwnership) {
+                    MotoOwnershipScreenView(onBack: { showMotoOwnership = false })
+                }
+                .sheet(isPresented: $showHarvestAdvance) {
+                    HarvestAdvanceScreenView(onBack: { showHarvestAdvance = false })
                 }
                 .tabItem {
                     Image(systemName: "house.fill")
