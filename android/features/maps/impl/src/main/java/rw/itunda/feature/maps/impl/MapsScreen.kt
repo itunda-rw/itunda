@@ -989,7 +989,14 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     val pinDensity = context.resources.displayMetrics.density
                     style.addImage(MERCHANT_ICON_ID, createPinBitmap(pinDensity, "#3182F6"))
                     style.addImage(DESTINATION_ICON_ID, createPinBitmap(pinDensity, "#E53935"))
-                    style.addImage(NEARBY_ICON_ID, createPinBitmap(pinDensity, "#8B5CF6"))
+                    // Real fix (2026-08-09), same UI/UX cleanup as the category chips: this was
+                    // the same stray purple (#8B5CF6), not itunda's real palette anywhere --
+                    // used for EVERY category-search pin (restaurants, hospitals, banks, all of
+                    // them), a very frequently-seen element. Real Naver Maps uses a warm
+                    // amber/orange for exactly this kind of general "place" pin (see its own
+                    // food/cafe category badges) -- matches Ids.colors.warning (#FFA000) here,
+                    // a real, already-defined semantic token, not a new invented color.
+                    style.addImage(NEARBY_ICON_ID, createPinBitmap(pinDensity, "#FFA000"))
 
                     style.addSource(GeoJsonSource(MERCHANTS_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
                     style.addLayer(
@@ -1333,14 +1340,29 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     val active = activeCategory == category.id
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier
                             .shadow(if (active) 3.dp else 1.dp, RoundedCornerShape(999.dp))
                             .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
                             .clickable(enabled = !categoryLoading || active) { searchNearbyCategory(category.id) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(start = if (active) 12.dp else 6.dp, end = 12.dp, top = if (active) 8.dp else 6.dp, bottom = if (active) 8.dp else 6.dp),
                     ) {
-                        Text(MAP_CATEGORY_ICONS[category.id] ?: "📍", fontSize = 13.sp)
+                        // Real colored-circle icon badge (2026-08-09), matching real Naver
+                        // Maps' own category-chip style (see 발견 tab's own 음식점/카페 chips) --
+                        // itunda's chips previously had a plain inline emoji with no badge
+                        // treatment at all. Only in the inactive state; the active state's
+                        // solid blue fill + white label already reads clearly on its own,
+                        // matching Naver's own selected-chip treatment.
+                        if (active) {
+                            Text(MAP_CATEGORY_ICONS[category.id] ?: "📍", fontSize = 13.sp)
+                        } else {
+                            Box(
+                                modifier = Modifier.size(24.dp).clip(CircleShape).background(Ids.colors.warningTint),
+                                contentAlignment = androidx.compose.ui.Alignment.Center,
+                            ) {
+                                Text(MAP_CATEGORY_ICONS[category.id] ?: "📍", fontSize = 12.sp)
+                            }
+                        }
                         Text(
                             if (active && categoryLoading) "…" else category.label,
                             fontSize = 12.sp,
@@ -2005,32 +2027,44 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             }
                                         }
                                     } else {
+                                        // Real full-width prominent CTA (2026-08-09), matching
+                                        // real Naver Maps' own "안내시작" (Start guide) bottom bar
+                                        // -- this used to be a small pill squeezed into the same
+                                        // row as the steps-toggle text, easy to miss as the
+                                        // screen's actual primary action. The steps toggle is now
+                                        // its own row above; Start Navigation gets real visual
+                                        // weight matching what it actually does.
                                         if (currentRoute.route.steps.isNotEmpty()) {
-                                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                                                Text(
-                                                    if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
-                                                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                                    modifier = Modifier.weight(1f).clickable { showSteps = !showSteps },
-                                                )
-                                                Text(
-                                                    "▶ Start navigation",
-                                                    fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                                    color = androidx.compose.ui.graphics.Color.White,
-                                                    modifier = Modifier
-                                                        .background(Ids.colors.brand, RoundedCornerShape(8.dp))
-                                                        .clickable {
-                                                            currentStepIndex = 0
-                                                            // Itinerary routes have no single `selectedPlace` (the destination is the
-                                                            // last stop in itineraryStops instead) -- covers both real Start
-                                                            // Navigation entry points with the one real destination each carries.
-                                                            navigationDestination = selectedPlace?.let { it.latitude to it.longitude }
-                                                                ?: itineraryStops.lastOrNull()?.let { it.latitude to it.longitude }
-                                                            navigating = true
-                                                            requestMyLocation()
-                                                        }
-                                                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                                                )
-                                            }
+                                            Text(
+                                                if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
+                                                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
+                                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).clickable { showSteps = !showSteps },
+                                            )
+                                        }
+                                        Row(
+                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(top = 8.dp)
+                                                .background(Ids.colors.brand, RoundedCornerShape(12.dp))
+                                                .clickable {
+                                                    currentStepIndex = 0
+                                                    // Itinerary routes have no single `selectedPlace` (the destination is the
+                                                    // last stop in itineraryStops instead) -- covers both real Start
+                                                    // Navigation entry points with the one real destination each carries.
+                                                    navigationDestination = selectedPlace?.let { it.latitude to it.longitude }
+                                                        ?: itineraryStops.lastOrNull()?.let { it.latitude to it.longitude }
+                                                    navigating = true
+                                                    requestMyLocation()
+                                                }
+                                                .padding(vertical = 13.dp),
+                                        ) {
+                                            Text(
+                                                "▶  Start navigation",
+                                                fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                                                color = androidx.compose.ui.graphics.Color.White,
+                                            )
                                         }
                                         if (showSteps) {
                                             Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

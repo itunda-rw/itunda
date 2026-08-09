@@ -3749,3 +3749,73 @@ design-system conventions (`Ids.colors.*`) and found two concrete, fixable root 
   literal wrong color and non-adapting hex values are objectively wrong, not subjective), but
   whether they're *what the user meant* by "not good" can't be confirmed without them actually
   looking at the real screen -- handed back to the user rather than declared as resolved.
+
+## 27. "100% Naver Maps like" -- 16 real reference screenshots, direct visual comparison
+
+**Added 2026-08-09**, immediately after the user shared 16 real screenshots of the actual
+Naver Map app (a real business page for "호미스피자 판교점," search, directions, and the
+Discover/발견 home tab) with the explicit ask to match this style. Read all 16 directly rather
+than working from memory of what Naver Maps "generally" looks like.
+
+### What the real screenshots showed, concretely
+- **Place detail page**: tabbed structure (홈/소식/메뉴/리뷰/사진/주변/정보 -- Home/News/Menu/
+  Review/Photos/Nearby/Info), a horizontal pill-shaped action-button row (출발/도착/배달/공유/
+  전화/알림받기 -- outlined pills, the selected one filled solid blue), a large swipeable photo
+  carousel, then icon-led info rows (📍 address with a collapsible detail line, 🕒 hours with a
+  chevron, 📞 phone with a "복사"/copy action, a website link, an amenities list).
+- **Directions/search flow**: an origin↔destination search bar with a swap icon, a mode-selector
+  row (bus/car/walk/bike icons each showing its own precomputed time, the selected mode filled
+  blue), a route-summary card (large time number, fare, departure→arrival clock times), a
+  compact horizontal **segment bar** showing each leg's proportion of the trip in color, real
+  bus/subway line numbers and live arrival countdowns, alternate-route cards side by side
+  (추천/큰길우선/계단회피 -- Recommended/Main-roads/Avoid-stairs, each its own time+distance+step-
+  count card), and a full-width bottom bar with two real actions (미리보기/안내시작 -- Preview /
+  Start guide).
+- **Discover/home tab**: category chips with a **colored circular icon badge** per category
+  (orange for food/cafe, green for order-related), map pins as colored circular badges (not
+  plain teardrops), and a ranked "popular nearby now" card list.
+
+### What's realistically portable to itunda, and what genuinely isn't
+itunda's Maps is real self-hosted routing/geocoding + real itunda merchant data -- it does not
+have (and building would be a much larger, separate project): live transit data (bus/subway
+lines, arrival countdowns -- itunda's self-hosted OSRM has driving+foot profiles only, no
+transit source exists to route against, already documented in Section 20), a
+reviews/photos/news social layer per place, or a "trending nearby" crowd-sourced feed. Scoped
+this pass to the real, achievable, honest wins: visual polish and layout patterns that apply to
+data itunda genuinely has.
+
+- **Fixed a second instance of the same stray purple found in Section 26**: every
+  category-search pin on the map (`NEARBY_ICON_ID`) used the identical `#8B5CF6`, not just the
+  chip row -- a very frequently-seen element (every restaurant/hospital/bank pin from a category
+  search). Changed to `#FFA000`, matching `Ids.colors.warning` exactly -- a real, already-defined
+  semantic token, and (checked against the reference screenshots) a real match for Naver's own
+  warm-amber convention for general "place" pins.
+- **Category chips now have a colored circular icon badge** (a small `Ids.colors.warningTint`
+  circle behind the emoji), matching the real screenshots' own chip style -- itunda's previous
+  chips had a plain inline emoji with no badge treatment. Only applied to the inactive state; the
+  active state's solid blue fill + white label already reads clearly on its own, matching how
+  Naver's own selected chips work.
+- **"Start Navigation" is now a real full-width primary CTA**, matching the real screenshots'
+  own bottom-bar prominence, instead of a small pill squeezed into the same row as the
+  steps-toggle text (easy to miss as the screen's actual primary action before this).
+
+### Deliberately not attempted this pass, named honestly
+- The tabbed place-detail structure (Home/News/Menu/Review/Photos/Nearby/Info) -- itunda has
+  real data for maybe 2 of those 7 tabs (a rough "Info" equivalent, "Nearby" via existing
+  category search); building 5 empty/fake tabs to match the visual shape would mean inventing
+  content, which this whole session's own standing discipline has repeatedly refused to do.
+- The pill-shaped multi-action button row (출발/도착/배달/공유/전화/알림받기) -- itunda's
+  detail sheet has share/bookmark/call, a real subset; redesigning those 3 into pill shapes is a
+  smaller, real, still-open follow-up.
+- The route segment bar and mode-selector-with-precomputed-times row -- real, valuable, visual
+  UI work (not requiring new data, only precomputing both modes' `getDirections` calls upfront)
+  that didn't fit in this same pass; a good next concrete target.
+- Colored circular badges for MERCHANT pins specifically (itunda already has real per-merchant
+  `category` data that could drive per-category pin colors, matching Naver's own approach more
+  closely than the current single-blue-dot-for-all-merchants treatment) -- named, not built, a
+  real next step.
+
+### Verification status, same honesty as Section 26
+`:features:maps:impl` compiles clean, the full app installs and launches without a crash on the
+physical device. Visual comparison against the real reference screenshots (not just "looks
+plausible in the abstract") still needs the user's own eyes on the real screen.
