@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Isolation
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.Instant
@@ -42,6 +43,21 @@ import java.util.concurrent.TimeUnit
  * it holds -- release quickly regardless of how many rows are pending; whatever this
  * poll doesn't get to is picked up by the next one 2 seconds later, unchanged from the
  * existing at-least-once semantics.
+ *
+ * Real second-layer bug found live (2026-08-09), one level deeper than the fix above:
+ * even with `relayBudget` bounding how long the Kafka-send loop runs, the initial
+ * `PESSIMISTIC_WRITE` SELECT itself (`findTop100ByProcessedAtIsNullOrderByCreatedAtAsc`)
+ * takes real InnoDB next-key (row + GAP) locks under MySQL's default REPEATABLE READ
+ * isolation, because `processed_at IS NULL` is an unbounded range, not a single row.
+ * During a sustained Kafka outage (confirmed live: 39 real pending rows accumulated
+ * over one long session), that gap lock spans the whole unprocessed range -- so a
+ * brand-new outbox row from ANY unrelated real transaction elsewhere in this backend
+ * (a transfer, a payment, any ledger post) can fall inside that gap and block on it,
+ * eventually failing with `Lock wait timeout exceeded` -- reproduced live via a real
+ * P2P transfer that 500'd for exactly this reason while Kafka was down. `READ_COMMITTED`
+ * disables InnoDB's gap-locking for locking reads while still giving this method the
+ * real per-row exclusive lock it needs to stop two replicas double-relaying the same
+ * pending row -- the actual guarantee this class's own doc comment above describes.
  */
 @Component
 class OutboxRelay(
@@ -56,7 +72,7 @@ class OutboxRelay(
     }
 
     @Scheduled(fixedDelay = 2000)
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     fun relay() {
         val pending = outboxEventRepository.findTop100ByProcessedAtIsNullOrderByCreatedAtAsc()
         val deadline = Instant.now().plus(relayBudget)
