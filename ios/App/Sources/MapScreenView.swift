@@ -116,6 +116,7 @@ private let mapCategoryIcons: [String: String] = [
     "RESTAURANT": "🍽️", "CAFE": "☕", "HOSPITAL": "🏥", "PHARMACY": "💊",
     "BANK": "🏦", "ATM": "🏧", "HOTEL": "🏨", "SUPERMARKET": "🛒",
     "GAS_STATION": "⛽", "SCHOOL": "🏫", "ITUNDA_AGENT": "💰",
+    "MARKET": "🧺", "BUS_STOP": "🚌",
 ]
 
 /// Real, minimal handle onto the live `MLNMapView` (2026-07-21) -- SwiftUI's

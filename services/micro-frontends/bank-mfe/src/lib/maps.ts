@@ -133,6 +133,10 @@ export const NEARBY_CATEGORIES: MapPlaceCategory[] = [
   { id: 'GAS_STATION', label: 'Gas stations' },
   { id: 'SCHOOL', label: 'Schools' },
   { id: 'ITUNDA_AGENT', label: 'Cash agents' },
+  // Real additions (2026-08-09), same pass as the backend's own MapPlaceCategory.kt enum --
+  // live-verified against itunda's real self-hosted Nominatim before adding.
+  { id: 'MARKET', label: 'Markets' },
+  { id: 'BUS_STOP', label: 'Bus stops' },
 ];
 
 export const searchNearbyPlaces = (category: string, lat: number, lng: number, radiusKm = 2.0) =>

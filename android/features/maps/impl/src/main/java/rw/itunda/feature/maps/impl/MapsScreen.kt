@@ -215,6 +215,7 @@ private val MAP_CATEGORY_ICONS = mapOf(
     "RESTAURANT" to "🍽️", "CAFE" to "☕", "HOSPITAL" to "🏥", "PHARMACY" to "💊",
     "BANK" to "🏦", "ATM" to "🏧", "HOTEL" to "🏨", "SUPERMARKET" to "🛒",
     "GAS_STATION" to "⛽", "SCHOOL" to "🏫", "ITUNDA_AGENT" to "💜",
+    "MARKET" to "🧺", "BUS_STOP" to "🚌",
 )
 
 // Real teardrop pin markers (2026-07-21), replacing the flat, unlabeled `CircleLayer`

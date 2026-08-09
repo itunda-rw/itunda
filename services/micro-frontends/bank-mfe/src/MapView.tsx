@@ -181,6 +181,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   RESTAURANT: '🍽️', CAFE: '☕', HOSPITAL: '🏥', PHARMACY: '💊',
   BANK: '🏦', ATM: '🏧', HOTEL: '🏨', SUPERMARKET: '🛒',
   GAS_STATION: '⛽', SCHOOL: '🏫', ITUNDA_AGENT: '💰',
+  MARKET: '🧺', BUS_STOP: '🚌',
 };
 
 // Real fixed (non-theme-reactive) text colors for this component's own deliberately-

@@ -3633,3 +3633,33 @@ this section's own Section 22 named: "a richer POI detail sheet (hours/ratings/p
   card renders correctly needs a real device tap at real, non-deterministic pin coordinates --
   not reliably automatable the way earlier text-field/button taps in this same session were, so
   this is handed to the user to check directly rather than claimed as visually verified.
+
+## 24. Two missing everyday categories, added and live-verified across all 4 clients
+
+**Added 2026-08-09**, same "take it seriously" pass. Existing category coverage
+(Restaurant/Cafe/Hospital/Pharmacy/Bank/ATM/Hotel/Supermarket/Gas station/School/Itunda agent)
+was already solid, but missing two genuinely common Rwandan daily-life wayfinding needs:
+markets and bus stops.
+
+- **Live-verified before adding, same discipline `MapPlaceCategory.kt`'s own doc comment
+  already established** ("live-verified against itunda's actual self-hosted Nominatim... not
+  just assumed"): direct `curl` against the real Nominatim instance for `market` and
+  `bus stop` returned real, relevant Rwanda rows before either was added anywhere ("Kimisagara
+  Market," "City market, KN 59 Street, Nyarugenge," a real "Bus stop, KK 105 Street, Kanombe"),
+  not noise matches on unrelated place names.
+- **Added consistently across all 4 real clients that each independently hardcode this same
+  category list** (confirmed via the existing code's own comments, e.g. "mirrors bank-mfe's own
+  hardcoded NEARBY_CATEGORIES list exactly"): the backend's `MapPlaceCategory` enum (the real
+  whitelist gate), Android's `MAP_NEARBY_CATEGORIES` + `MAP_CATEGORY_ICONS`, web's
+  `NEARBY_CATEGORIES` + `CATEGORY_ICONS` in `bank-mfe`, and iOS's `mapNearbyCategories` +
+  `mapCategoryIcons`. All 4 compile/typecheck clean (`:maps:compileKotlin`,
+  `:core:network:compileDebugKotlin` + `:features:maps:impl:compileDebugKotlin`, `tsc -b`,
+  `swiftc -parse`).
+- **Verified live against the real, restarted backend**: `GET /api/v1/maps/nearby?category=
+  MARKET` from a real central-Kigali coordinate returned real markets (Kimisagara Market, City
+  market) with real computed distances. The same call for `BUS_STOP` returned an empty list at
+  that specific coordinate -- **an honest data-completeness limitation of OSM's own Rwanda
+  bus-stop tagging** (confirmed via the earlier unbounded `/search` call: only 2 bus stops
+  exist in Nominatim's whole-country index, neither near that particular test point), not a
+  itunda code bug -- flagged rather than silently accepted as "working" from one lucky query.
+- App installs and launches without a crash on the physical device after this change.

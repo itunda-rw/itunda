@@ -3116,6 +3116,10 @@ public let mapNearbyCategories: [MapPlaceCategory] = [
     MapPlaceCategory(id: "GAS_STATION", label: "Gas stations"),
     MapPlaceCategory(id: "SCHOOL", label: "Schools"),
     MapPlaceCategory(id: "ITUNDA_AGENT", label: "Cash agents"),
+    // Real additions (2026-08-09), same pass as the backend's own MapPlaceCategory.kt enum --
+    // live-verified against itunda's real self-hosted Nominatim before adding.
+    MapPlaceCategory(id: "MARKET", label: "Markets"),
+    MapPlaceCategory(id: "BUS_STOP", label: "Bus stops"),
 ]
 
 // imageUrl/originalPrice/discountPercent added 2026-07-21, closing
