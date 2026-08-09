@@ -93,7 +93,16 @@ fun DeviceStepUpHost(
                     onVerified()
                 } catch (e: HttpException) {
                     busy = false
-                    error = if (e.code() == 400) "Incorrect password." else "Something went wrong. Please try again."
+                    error = when (e.code()) {
+                        400 -> "Incorrect password."
+                        // Real gap found live (2026-08-10), same fix as
+                        // superAppErrorMessage's own: a 503/504 here is itunda's
+                        // infrastructure having a bad moment, not a wrong password --
+                        // say that plainly rather than leaving the user to assume
+                        // they mistyped it and keep retrying the same password.
+                        503, 504 -> "itunda is having a brief hiccup on our end -- not your password. Try again in a moment."
+                        else -> "Something went wrong. Please try again."
+                    }
                 } catch (_: IOException) {
                     busy = false
                     error = "Couldn't reach itunda. Check your connection and try again."

@@ -494,6 +494,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             404 -> "That account or goal couldn't be found."
             409 -> "This request is already being processed."
             502 -> "The payment provider declined this transaction."
+            // Real gap found live (2026-08-10), same fix as superAppErrorMessage's own
+            // -- distinct from 502 above, which is a real payment-PROVIDER decline
+            // (MTN/Airtel's own API), not itunda's infrastructure. A 503/504 is
+            // itunda's own side having a bad moment (e.g. a pod restarting) -- the
+            // money itself was never at risk (no real transfer was attempted), so say
+            // that plainly rather than leaving the user to wonder.
+            503, 504 -> "itunda is having a brief hiccup on our end -- your money is safe, nothing was sent. Try again in a moment."
             else -> "Something went wrong. Please try again."
         }
 

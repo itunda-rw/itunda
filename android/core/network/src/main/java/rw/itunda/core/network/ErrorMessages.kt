@@ -24,5 +24,16 @@ fun superAppErrorMessage(e: HttpException): String = apiErrorMessage(e) ?: when 
     409 -> "That's already been done, or is being processed."
     422 -> "Insufficient funds for this order."
     429 -> "Too many attempts -- please wait a moment and try again."
+    // Real gap found live (2026-08-10): a 502/503/504 -- a genuine, real backend
+    // outage (e.g. Istio's own "no healthy upstream" while a pod is restarting) --
+    // was falling into the generic else bucket below, since that failure mode never
+    // carries a parseable JSON body for apiErrorMessage to find. "Something went
+    // wrong. Please try again." is exactly the vague, Apple-style dead end this
+    // session's whole error-handling pass is about replacing: it doesn't say WHOSE
+    // fault it is (so a user reasonably wonders if they broke something) or give any
+    // real reason to believe trying again will help. A real server-side outage is
+    // never the user's fault and IS usually transient -- say both, real Toss-style
+    // honesty plus reassurance rather than a shrug.
+    502, 503, 504 -> "itunda is having a brief hiccup on our end -- not something you did. Try again in a moment."
     else -> "Something went wrong. Please try again."
 }

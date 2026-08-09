@@ -114,10 +114,19 @@ object SessionManager {
         }
     }
 
-    private fun httpErrorMessage(e: retrofit2.HttpException): String = when (e.code()) {
+    // Real gap found live (2026-08-10): the two other backend-message helpers in this
+    // app (ErrorMessages.kt's superAppErrorMessage, MainViewModel's own
+    // backendErrorMessage) both call apiErrorMessage(e) first for a real, specific
+    // backend message -- this one, backing login/register, itunda's own first-touch
+    // flow, never did. Also adds explicit 503/504 handling matching those two: a real
+    // backend outage here is the single worst place to leave a user on a vague
+    // "something went wrong" -- it's the very first thing a new or returning user
+    // sees, with the least reason yet to trust the app if it looks broken.
+    private fun httpErrorMessage(e: retrofit2.HttpException): String = apiErrorMessage(e) ?: when (e.code()) {
         401 -> "Incorrect phone number or password."
         409 -> "An account with this phone number already exists."
         429 -> "Too many attempts. Please wait a moment and try again."
+        503, 504 -> "itunda is having a brief hiccup on our end -- not something you did. Try again in a moment."
         else -> "Something went wrong. Please try again."
     }
 }
