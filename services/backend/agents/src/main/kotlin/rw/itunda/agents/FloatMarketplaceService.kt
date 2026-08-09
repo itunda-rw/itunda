@@ -1,5 +1,7 @@
 package rw.itunda.agents
 
+import jakarta.persistence.EntityManager
+import jakarta.persistence.LockModeType
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -64,6 +66,7 @@ class FloatMarketplaceService(
     private val ledgerAccountRepository: LedgerAccountRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val entityManager: EntityManager,
 ) {
 
     @Transactional
@@ -139,13 +142,30 @@ class FloatMarketplaceService(
         // accept racing a decline) could both pass a status check taken from a stale,
         // unlocked read before either one reaches the listing lock below, and both go
         // on to post a real, separate ledger transfer for the same request.
+        //
+        // Real lost-update bug found live (2026-08-09), same class as LedgerService's
+        // own fix the same day: `request` above is an UNLOCKED read of this exact same
+        // entity id, done purely for the ownership pre-check. Because it's already
+        // managed in this transaction's persistence context, the locked fetch below
+        // would return that SAME cached instance with its stale `status` field instead
+        // of the row it just locked -- a real double-accept risk (two concurrent
+        // accepts on different requests against the same listing, or an accept racing a
+        // decline, could both read REQUESTED). `entityManager.refresh(...,
+        // PESSIMISTIC_WRITE)` forces the true current row state, matching
+        // LedgerService.postLedgerTransaction's own fix and its own doc comment for why
+        // a bare refresh() (no lock mode) is NOT enough under MySQL's REPEATABLE READ.
         val lockedRequest = floatTransferRequestRepository.findByIdForUpdate(requestId).orElseThrow { FloatTransferRequestNotFoundException("Float transfer request not found") }
+        entityManager.refresh(lockedRequest, LockModeType.PESSIMISTIC_WRITE)
         if (lockedRequest.status != FloatTransferRequestStatus.REQUESTED) throw FloatTransferRequestNotPendingException("This request has already been resolved")
 
         // Real row lock -- see FloatListingRepository.findByIdForUpdate's own doc
         // comment. Serializes concurrent accepts against the same listing so
-        // claimedAmount is always checked against the real, current value.
+        // claimedAmount is always checked against the real, current value. Same
+        // staleness risk as lockedRequest above -- `listingCheck` earlier in this
+        // method already loaded this exact listing id unlocked -- so this also needs
+        // an explicit locking refresh, not just the locked fetch alone.
         val listing = floatListingRepository.findByIdForUpdate(lockedRequest.listingId).orElseThrow { FloatListingNotFoundException("Float listing not found") }
+        entityManager.refresh(listing, LockModeType.PESSIMISTIC_WRITE)
         if (listing.status != FloatListingStatus.OPEN) throw FloatListingNotOpenException("This float listing is no longer open")
         if (lockedRequest.amount > listing.remainingAmount()) throw FloatListingInsufficientRemainingException("This request can no longer be fulfilled -- the listing's remaining amount has already been claimed")
 

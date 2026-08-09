@@ -8,6 +8,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import jakarta.persistence.EntityManager
+import jakarta.persistence.LockModeType
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Agent
 import rw.itunda.core.domain.AgentOperator
@@ -48,7 +50,11 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         ledgerAccountRepository: LedgerAccountRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = FloatMarketplaceService(agentRepository, operatorRepository, listingRepository, requestRepository, ledgerAccountRepository, ledgerService, rateLimiter)
+        // relaxed: refresh() is a real call this class now makes (see acceptRequest's
+        // own 2026-08-09 lost-update fix comment) but has nothing meaningful to verify
+        // against a mocked, already-fully-stubbed entity in these tests.
+        entityManager: EntityManager = mockk(relaxed = true),
+    ) = FloatMarketplaceService(agentRepository, operatorRepository, listingRepository, requestRepository, ledgerAccountRepository, ledgerService, rateLimiter, entityManager)
 
     Given("a real active agent operator posting a listing") {
         val agentRepository = mockk<AgentRepository>()
@@ -138,9 +144,11 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
         val requestRepository = mockk<FloatTransferRequestRepository>()
         val ledgerAccountRepository = mockk<LedgerAccountRepository>()
         val ledgerService = mockk<LedgerService>()
+        val entityManager = mockk<EntityManager>(relaxed = true)
         val svc = service(
             agentRepository = agentRepository, operatorRepository = operatorRepository, listingRepository = listingRepository,
             requestRepository = requestRepository, ledgerAccountRepository = ledgerAccountRepository, ledgerService = ledgerService,
+            entityManager = entityManager,
         )
         val owningOperator = AgentOperator("operator_1", "agent_1", "owner_1")
         val listingAgent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000"))
@@ -189,6 +197,20 @@ class FloatMarketplaceServiceTest : BehaviorSpec({
             Then("the listing's claimedAmount reflects the accepted amount and stays OPEN (10,000 of 20,000 claimed)") {
                 listing.claimedAmount shouldBeEqualIgnoringScale BigDecimal("10000")
                 listing.status shouldBe FloatListingStatus.OPEN
+            }
+
+            // Real lost-update bug found live (2026-08-09), same class as
+            // LedgerService's own fix the same day: `request`/`listingCheck` above are
+            // unlocked reads of these exact same entity ids, done for the ownership
+            // pre-check -- without a locking refresh, the later "locked" fetch would
+            // return those same stale cached instances instead of the row it just
+            // locked. Asserts the fix's real mechanism, not just its symptom (a plain
+            // MockK mock can't reproduce Hibernate's own identity-map caching, so this
+            // can only confirm the call happened with the right lock mode -- the actual
+            // staleness was proven live against the real backend).
+            Then("both the request and the listing are refreshed with a locking read, not trusted from cache") {
+                verify(exactly = 1) { entityManager.refresh(request, LockModeType.PESSIMISTIC_WRITE) }
+                verify(exactly = 1) { entityManager.refresh(listing, LockModeType.PESSIMISTIC_WRITE) }
             }
         }
     }
