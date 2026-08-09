@@ -3452,5 +3452,42 @@ real fingerprint (the automated biometric gate above correctly cannot be bypasse
   modules for the same reused-wrong-exception-for-a-different-failure-reason pattern; not done
   this pass, this was a targeted fix for the one bug actually observed live on-device, not a full
   sweep.
-- The release-build runtime Gson-correctness check (Section 20's own unresolved item) is still
-  open — unrelated to this section's fix.
+- ~~The release-build runtime Gson-correctness check (Section 20's own unresolved item) is still
+  open~~ **Resolved, same day, prompted directly by the user** ("recheck again because features
+  like maps can reach backend" — a real, correct hint that pointed straight back at this). The
+  earlier "inconclusive, no app logs visible" framing was itself a mistake: the crash log buffer
+  (`logcat -d -b crash`) was never suppressed on this device, only routine `Log.d` calls were —
+  re-checking it (which should have been done more thoroughly the first time) immediately showed
+  a real, fatal `ClassCastException: java.lang.Class cannot be cast to java.lang.reflect.
+  ParameterizedType` inside Retrofit's dynamic proxy, on literally the first suspend API call
+  (`getWallets()`). This is a well-known, documented Retrofit + R8-full-mode requirement that was
+  missing from this pass's own `proguard-rules.pro`: Retrofit's Kotlin-coroutine adapter resolves
+  a suspend function's real return type by reflecting on its synthetic `kotlin.coroutines.
+  Continuation<? super T>` parameter's generic signature, and R8 full mode strips that generic
+  info unless `Continuation` itself is kept. Added Retrofit's own official required rule set
+  (`-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation` plus the
+  accompanying `-keepattributes`/interface-method rules) to all 4 apps' `proguard-rules.pro`.
+  **Verified live, not just compiled**: rebuilt, signed, and reinstalled the release APK —
+  launches clean (no crash), and Maps genuinely loaded "7 real merchants on the map" from the
+  real backend, the exact suspend-API-call path that used to crash immediately. My original
+  assumption that "Retrofit/OkHttp ship their own consumer-rules.pro, don't need manual rules
+  here" (Section 20's original `proguard-rules.pro` header) was wrong for this specific case —
+  corrected in the file's own comment.
+
+### A separate, unrelated real infra bug found and fixed in the same pass
+- The user's own direct on-device observation ("no map view") caught a genuinely separate issue
+  from the above: map tiles/glyphs weren't rendering even once the crash was fixed and real
+  merchant data loaded. Root cause: the local `socat` relays this dev environment uses to expose
+  the private cloud's internal tile/glyph servers on `127.0.0.1:8090`/`8091` were pointed at a
+  **stale, wrong LAN IP** (`192.168.252.3`, unreachable — confirmed via a direct `curl` timeout),
+  not the real current one (`192.168.252.4`, confirmed reachable, real `204`). Killed the stale
+  relays, restarted pointed at the correct IP, confirmed `127.0.0.1:8090` now returns the same
+  real `204` directly. Extended this session's `-PapiBaseUrl` device-testing pattern to the tile
+  URLs too (`-PtilesBaseUrl=http://127.0.0.1:8090 -PglyphsBaseUrl=http://127.0.0.1:8091` +
+  matching `adb reverse` mappings) so map tiles are actually reachable from the physical device
+  at all — this device-testing gap (tile/glyph URLs defaulting to a LAN-only address, same class
+  of issue as the original `10.0.2.2` emulator-only API default from earlier this session) was
+  never hit before because no prior session had a physical device to notice it on. Visual
+  on-screen confirmation that tiles now actually render (not just that the relay itself responds)
+  is still pending — the physical device is in active use by the user for unrelated things;
+  picking this back up once it's free.

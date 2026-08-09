@@ -14,3 +14,17 @@
     ** component*();
     ** copy(...);
 }
+
+# Real fix (2026-08-09), same crash found live on :app -- Retrofit's Kotlin-coroutine adapter
+# needs kotlin.coroutines.Continuation's generic signature kept, or every suspend API call
+# crashes with "Class cannot be cast to ParameterizedType". Retrofit's own official required rule.
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+-keepattributes InnerClasses, EnclosingMethod, RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations, AnnotationDefault
+-keepclassmembers,allowshrinking,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
+-dontwarn org.codehaus.mojo.animal_sniffer.AnnotationStub
+-dontwarn javax.annotation.**
+-dontwarn kotlin.Unit
+-dontwarn retrofit2.KotlinExtensions
+-dontwarn retrofit2.KotlinExtensions$*
