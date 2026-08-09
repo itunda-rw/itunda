@@ -53,19 +53,19 @@ export default function BusinessAccountScreen() {
   };
 
   if (wallet === undefined) {
-    return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   }
 
   if (wallet === null) {
     return (
-      <div className="toss-card" style={{ maxWidth: '480px' }}>
+      <div className="itunda-card" style={{ maxWidth: '480px' }}>
         <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Business account</h2>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
           Keep your business money separate from your personal wallet. Your real card/QR collections still settle
           to your personal wallet as before — move money into your business account whenever you're ready to set it aside.
         </p>
-        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{error}</p>}
-        <button className="toss-btn toss-btn-primary" onClick={handleOpen} disabled={opening}>
+        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>}
+        <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={opening}>
           {opening ? 'Opening…' : 'Open business account'}
         </button>
       </div>
@@ -74,15 +74,15 @@ export default function BusinessAccountScreen() {
 
   return (
     <div style={{ maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div className="toss-card">
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Business balance</p>
+      <div className="itunda-card">
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Business balance</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{wallet.balance.toLocaleString()} RWF</h2>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{wallet.accountNumber}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{wallet.accountNumber}</p>
       </div>
 
       <MoveMoneyCard onMoved={load} />
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Business transactions</h3>
         {// Real copy-voice fix (item 244, round 6 of the empty-state pass): matches
         // the same pattern as WalletTransactionsView's own already-shipped fix --
@@ -95,7 +95,7 @@ export default function BusinessAccountScreen() {
               <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                 <div>
                   <p style={{ fontSize: '13px' }}>{entry.memo}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{new Date(entry.createdAt).toLocaleDateString()}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{new Date(entry.createdAt).toLocaleDateString()}</p>
                 </div>
                 <p style={{ fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}>
                   {entry.direction === 'CREDIT' ? '+' : '-'}{entry.amount.toLocaleString()} RWF
@@ -141,14 +141,14 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
 
   if (needsDeviceVerification) {
     return (
-      <div className="toss-card">
+      <div className="itunda-card">
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
       </div>
     );
   }
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Move money</h3>
       <input
         type="number"
@@ -156,14 +156,14 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="Amount (RWF)"
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
       />
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={moving} onClick={() => move('TO_BUSINESS')}>
+        <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={moving} onClick={() => move('TO_BUSINESS')}>
           To business
         </button>
-        <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={moving} onClick={() => move('TO_PERSONAL')}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={moving} onClick={() => move('TO_PERSONAL')}>
           To personal
         </button>
       </div>

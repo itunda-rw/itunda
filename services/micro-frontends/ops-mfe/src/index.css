@@ -7,8 +7,8 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-900);
+  background-color: var(--itunda-grey-100);
+  color: var(--itunda-grey-900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -16,7 +16,7 @@ body {
 #root {
   width: 100%;
   min-height: 100svh;
-  background-color: var(--toss-grey-100);
+  background-color: var(--itunda-grey-100);
 }
 
 h1, h2, h3, h4, p {
@@ -36,16 +36,16 @@ input, textarea {
   font-family: inherit;
 }
 
-.toss-card {
-  background: var(--toss-white);
-  border-radius: var(--toss-radius-md);
+.itunda-card {
+  background: var(--itunda-white);
+  border-radius: var(--itunda-radius-md);
   padding: 24px;
-  box-shadow: var(--toss-shadow);
+  box-shadow: var(--itunda-shadow);
   margin-bottom: 16px;
-  transition: var(--toss-transition);
+  transition: var(--itunda-transition);
 }
 
-.toss-btn {
+.itunda-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,22 +55,22 @@ input, textarea {
   font-size: 15px;
 }
 
-.toss-btn-primary {
-  background-color: var(--toss-blue);
-  color: var(--toss-white);
+.itunda-btn-primary {
+  background-color: var(--itunda-blue);
+  color: var(--itunda-white);
 }
 
-.toss-btn-secondary {
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-800);
+.itunda-btn-secondary {
+  background-color: var(--itunda-grey-100);
+  color: var(--itunda-grey-800);
 }
 
-.toss-btn-danger {
-  background-color: var(--toss-red);
-  color: var(--toss-white);
+.itunda-btn-danger {
+  background-color: var(--itunda-red);
+  color: var(--itunda-white);
 }
 
-.toss-btn:disabled {
+.itunda-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

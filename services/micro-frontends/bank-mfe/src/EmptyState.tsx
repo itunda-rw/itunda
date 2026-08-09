@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 // Real shared empty/error-state components (2026-08-04) -- closes
 // docs/DESIGN_REFERENCES.md Section 9's #1 recommendation on bank-mfe, which had
 // no shared component at all: every "No X yet." was its own bare
-// <p style={{ color: 'var(--toss-grey-500)' }}>...</p>. Android already built the
+// <p style={{ color: 'var(--itunda-grey-500)' }}>...</p>. Android already built the
 // equivalent (EmptyState/ErrorCard in core/designsystem) and iOS just got its own
 // (EmptyStateView/ErrorCardView in Core/DesignSystem) -- same icon-in-soft-circle
 // + centered message shape here, using lucide-react (already a dependency, used
@@ -17,15 +17,15 @@ export function EmptyState({ message, icon: Icon = Inbox }: { message: string; i
           width: '56px',
           height: '56px',
           borderRadius: '50%',
-          backgroundColor: 'var(--toss-grey-100)',
+          backgroundColor: 'var(--itunda-grey-100)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon size={24} color="var(--toss-grey-500)" />
+        <Icon size={24} color="var(--itunda-grey-500)" />
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
     </div>
   );
 }
@@ -35,28 +35,28 @@ export function EmptyState({ message, icon: Icon = Inbox }: { message: string; i
 // same load-failure branches across the app -- stayed plain red text + a bare
 // "Retry" text link, the identical gap Android's ErrorCard / iOS's ErrorCardView
 // (same date) closed. Mirrors EmptyState's centered icon-circle layout exactly.
-// tokens.css has no dedicated red-tint variable (only --toss-blue-light exists for
+// tokens.css has no dedicated red-tint variable (only --itunda-blue-light exists for
 // the blue role) -- rather than expand the shared token package for one call site,
-// this computes the tint locally via color-mix, matching --toss-blue-light's own
-// real value (~4% blue over white) at the same ratio against --toss-red.
+// this computes the tint locally via color-mix, matching --itunda-blue-light's own
+// real value (~4% blue over white) at the same ratio against --itunda-red.
 export function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 20px', margin: '8px 0', textAlign: 'center' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 20px', margin: '8px 0', textAlign: 'center' }}>
       <div
         style={{
           width: '56px',
           height: '56px',
           borderRadius: '50%',
-          backgroundColor: 'color-mix(in srgb, var(--toss-red) 12%, transparent)',
+          backgroundColor: 'color-mix(in srgb, var(--itunda-red) 12%, transparent)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <AlertCircle size={24} color="var(--toss-red)" />
+        <AlertCircle size={24} color="var(--itunda-red)" />
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
-      <button type="button" onClick={onRetry} className="toss-btn toss-btn-primary" style={{ padding: '10px 24px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', margin: 0, maxWidth: '260px' }}>{message}</p>
+      <button type="button" onClick={onRetry} className="itunda-btn itunda-btn-primary" style={{ padding: '10px 24px' }}>
         Retry
       </button>
     </div>

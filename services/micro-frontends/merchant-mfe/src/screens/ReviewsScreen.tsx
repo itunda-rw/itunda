@@ -29,28 +29,28 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
 
   return (
     <div style={{ maxWidth: '560px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div className="toss-card">
+      <div className="itunda-card">
         <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Booking reviews</h2>
         {/* Real copy-voice fix (item 244, round 5 of the empty-state pass): honest
             about whose gap this is -- reviews only appear once customers leave
             them after a booking, not something the merchant is missing a step on. */}
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
           {rating?.average != null ? `${rating.average.toFixed(1)} ★ average (${rating.count} review${rating.count === 1 ? '' : 's'})` : 'No reviews yet — reviews will show up here once customers leave them after a booking.'}
         </p>
       </div>
 
       {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+        <div className="itunda-card">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         </div>
       )}
 
       {reviews === null && !error && (
-        <div className="toss-card skeleton" style={{ height: '120px' }} />
+        <div className="itunda-card skeleton" style={{ height: '120px' }} />
       )}
 
       {reviews !== null && reviews.length === 0 && (
-        <div className="toss-card">
+        <div className="itunda-card">
           {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
               about whose gap this is, same reasoning as this screen's own summary
               paragraph above. */}
@@ -96,19 +96,19 @@ function ProductReviewsSection() {
 
   return (
     <>
-      <div className="toss-card">
+      <div className="itunda-card">
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Product reviews</h2>
       </div>
       {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+        <div className="itunda-card">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         </div>
       )}
       {reviews === null && !error && (
-        <div className="toss-card skeleton" style={{ height: '120px' }} />
+        <div className="itunda-card skeleton" style={{ height: '120px' }} />
       )}
       {reviews !== null && reviews.length === 0 && (
-        <div className="toss-card">
+        <div className="itunda-card">
           {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
               about whose gap this is -- reviews only appear once customers leave
               them after a purchase. */}
@@ -144,18 +144,18 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700 }}>{review.productName}</p>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
       </div>
-      {review.comment && <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{review.comment}</p>}
-      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{new Date(review.createdAt).toLocaleDateString()}</p>
+      {review.comment && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{review.comment}</p>}
+      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{new Date(review.createdAt).toLocaleDateString()}</p>
 
       {review.ownerReply && !replying && (
-        <div style={{ padding: '10px', background: 'var(--toss-grey-100)', borderRadius: '8px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--toss-grey-700)', marginBottom: '2px' }}>Your reply</p>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-900)' }}>{review.ownerReply}</p>
+        <div style={{ padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--itunda-grey-700)', marginBottom: '2px' }}>Your reply</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-900)' }}>{review.ownerReply}</p>
         </div>
       )}
 
@@ -168,23 +168,23 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
             maxLength={1000}
             required
             rows={3}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
           />
           {error && (
-            <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
           )}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !reply.trim()}>
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting || !reply.trim()}>
               {submitting ? 'Posting…' : review.ownerReply ? 'Update reply' : 'Post reply'}
             </button>
-            <button type="button" className="toss-btn toss-btn-secondary" onClick={() => setReplying(false)}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => setReplying(false)}>
               Cancel
             </button>
           </div>
         </form>
       ) : (
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ alignSelf: 'flex-start', padding: '8px 12px', fontSize: '13px' }}
           onClick={() => setReplying(true)}
         >
@@ -217,18 +217,18 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700 }}>{review.serviceName}</p>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
       </div>
-      {review.comment && <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{review.comment}</p>}
-      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{new Date(review.createdAt).toLocaleDateString()}</p>
+      {review.comment && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{review.comment}</p>}
+      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{new Date(review.createdAt).toLocaleDateString()}</p>
 
       {review.ownerReply && !replying && (
-        <div style={{ padding: '10px', background: 'var(--toss-grey-100)', borderRadius: '8px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--toss-grey-700)', marginBottom: '2px' }}>Your reply</p>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-900)' }}>{review.ownerReply}</p>
+        <div style={{ padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--itunda-grey-700)', marginBottom: '2px' }}>Your reply</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-900)' }}>{review.ownerReply}</p>
         </div>
       )}
 
@@ -241,23 +241,23 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
             maxLength={1000}
             required
             rows={3}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
           />
           {error && (
-            <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
           )}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !reply.trim()}>
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting || !reply.trim()}>
               {submitting ? 'Posting…' : review.ownerReply ? 'Update reply' : 'Post reply'}
             </button>
-            <button type="button" className="toss-btn toss-btn-secondary" onClick={() => setReplying(false)}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => setReplying(false)}>
               Cancel
             </button>
           </div>
         </form>
       ) : (
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ alignSelf: 'flex-start', padding: '8px 12px', fontSize: '13px' }}
           onClick={() => setReplying(true)}
         >

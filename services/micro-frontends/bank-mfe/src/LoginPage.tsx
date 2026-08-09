@@ -39,13 +39,13 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
     <div style={{ minHeight: '100svh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <form
         onSubmit={handleSubmit}
-        className="toss-card"
+        className="itunda-card"
         style={{ width: '360px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShieldCheck size={24} color="var(--toss-blue)" />
-            <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Itunda</h1>
+            <ShieldCheck size={24} color="var(--itunda-blue)" />
+            <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda</h1>
           </div>
           {/* Real first language switcher (2026-08-08) -- see src/i18n's own doc comment
               for why this exists: itunda had zero localization anywhere before this,
@@ -56,19 +56,19 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
             value={locale}
             onChange={(e) => setLocale(e.target.value as 'en' | 'rw')}
             aria-label="Language"
-            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--toss-grey-200)', color: 'var(--toss-grey-700)', background: 'var(--toss-white)' }}
+            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: 'var(--itunda-white)' }}
           >
             {LOCALES.map((l) => (
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '-8px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '-8px' }}>
           {t('login.tagline')}
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>{t('login.phoneNumber')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('login.phoneNumber')}</span>
           {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11,
               rule #4 -- toss.tech/article/4-ways-for-minimum-input): the very first field on
               itunda's single highest-traffic screen had no autoFocus, an extra tap before
@@ -83,14 +83,14 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
             style={{
               padding: '12px 14px',
               borderRadius: '10px',
-              border: '1px solid var(--toss-grey-200)',
+              border: '1px solid var(--itunda-grey-200)',
               fontSize: '15px',
             }}
           />
         </label>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>{t('login.password')}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('login.password')}</span>
           <div style={{ position: 'relative' }}>
             <input
               type={showPassword ? 'text' : 'password'}
@@ -101,7 +101,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
                 width: '100%',
                 padding: '12px 40px 12px 14px',
                 borderRadius: '10px',
-                border: '1px solid var(--toss-grey-200)',
+                border: '1px solid var(--itunda-grey-200)',
                 fontSize: '15px',
                 boxSizing: 'border-box',
               }}
@@ -110,7 +110,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
-              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--toss-grey-500)' }}
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -118,19 +118,19 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
         </label>
 
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
             {error}
           </p>
         )}
 
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
           {submitting ? t('login.signingIn') : t('login.signIn')}
         </button>
 
         <button
           type="button"
           onClick={onCreateAccount}
-          style={{ background: 'none', border: 'none', fontSize: '13px', color: 'var(--toss-grey-500)', cursor: 'pointer' }}
+          style={{ background: 'none', border: 'none', fontSize: '13px', color: 'var(--itunda-grey-500)', cursor: 'pointer' }}
         >
           {t('login.createAccount')}
         </button>

@@ -162,7 +162,7 @@ private struct CashbackChanceCard: View {
 // exhaustive service catalog needed to be one tap away, not nested two taps under My --
 // matching real Toss's own bottom nav (홈/혜택/쇼핑/페이/전체, no separate "My" tab at
 // all; personal info lives at the top of 전체 instead). Mirrors Android's MenuScreen
-// exactly (see ItundaAppScreen.kt's own doc comment on TossTab.All for the full history).
+// exactly (see ItundaAppScreen.kt's own doc comment on ItundaTab.All for the full history).
 // MyTabView's own real content (orders/favorites/listings tracking) isn't dropped -- it's
 // reachable one tap in via the profile icon this screen's own IdsAllTopBar now points at,
 // the exact same nesting this tab used to have with Menu, just inverted.

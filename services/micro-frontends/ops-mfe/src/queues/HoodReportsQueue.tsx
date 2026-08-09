@@ -35,7 +35,7 @@ function HoodReportCard({ report, onDecided }: { report: HoodReport; onDecided: 
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <span
@@ -43,8 +43,8 @@ function HoodReportCard({ report, onDecided }: { report: HoodReport; onDecided: 
               display: 'inline-block',
               fontSize: '12px',
               fontWeight: 700,
-              color: 'var(--toss-blue)',
-              backgroundColor: 'var(--toss-blue-light)',
+              color: 'var(--itunda-blue)',
+              backgroundColor: 'var(--itunda-blue-light)',
               padding: '2px 8px',
               borderRadius: '6px',
               marginBottom: '6px',
@@ -52,20 +52,20 @@ function HoodReportCard({ report, onDecided }: { report: HoodReport; onDecided: 
           >
             {TARGET_LABEL[report.targetType]}
           </span>
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{report.reason}</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{report.reason}</p>
         </div>
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
         Reported by {report.reporterUserId} · Target {report.targetId} · {new Date(report.createdAt).toLocaleString()}
       </p>
       {actionError && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
           {actionError}
         </p>
       )}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ flex: 1 }}
           disabled={pending !== null}
           onClick={() => decide('dismiss')}
@@ -73,7 +73,7 @@ function HoodReportCard({ report, onDecided }: { report: HoodReport; onDecided: 
           {pending === 'dismiss' ? '…' : 'Dismiss'}
         </button>
         <button
-          className="toss-btn toss-btn-danger"
+          className="itunda-btn itunda-btn-danger"
           style={{ flex: 1 }}
           disabled={pending !== null}
           onClick={() => decide('remove')}

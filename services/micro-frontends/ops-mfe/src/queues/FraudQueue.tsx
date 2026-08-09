@@ -23,7 +23,7 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <span
@@ -31,8 +31,8 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
               display: 'inline-block',
               fontSize: '12px',
               fontWeight: 700,
-              color: 'var(--toss-blue)',
-              backgroundColor: 'var(--toss-blue-light)',
+              color: 'var(--itunda-blue)',
+              backgroundColor: 'var(--itunda-blue-light)',
               padding: '2px 8px',
               borderRadius: '6px',
               marginBottom: '6px',
@@ -40,18 +40,18 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
           >
             {RULE_LABEL[flag.rule]}
           </span>
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{flag.description}</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{flag.description}</p>
         </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
           {flag.amount.toLocaleString()} RWF
         </span>
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
         User {flag.userId} · Transaction {flag.transactionId} · Flagged {new Date(flag.createdAt).toLocaleString()}
       </p>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ flex: 1 }}
           disabled={pending}
           onClick={() => decide('CLEARED')}
@@ -59,7 +59,7 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
           Clear
         </button>
         <button
-          className="toss-btn toss-btn-danger"
+          className="itunda-btn itunda-btn-danger"
           style={{ flex: 1 }}
           disabled={pending}
           onClick={() => decide('CONFIRMED')}

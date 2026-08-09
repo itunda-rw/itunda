@@ -226,23 +226,23 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="toss-card"
+      className="itunda-card"
       style={{ padding: '28px', position: 'relative', overflow: 'hidden' }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <p style={{ color: 'var(--toss-grey-700)', fontSize: '15px', fontWeight: '600' }}>{wallet?.accountName ?? t('dashboard.mainAccount')}</p>
-        <ShieldCheck size={20} color="var(--toss-green)" />
+        <p style={{ color: 'var(--itunda-grey-700)', fontSize: '15px', fontWeight: '600' }}>{wallet?.accountName ?? t('dashboard.mainAccount')}</p>
+        <ShieldCheck size={20} color="var(--itunda-green)" />
       </div>
 
-      <h1 style={{ color: 'var(--toss-grey-900)', fontSize: '36px', fontWeight: '700', margin: '0 0 28px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-        {(wallet?.balance ?? 0).toLocaleString()} <span style={{ fontSize: '20px', color: 'var(--toss-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
+      <h1 style={{ color: 'var(--itunda-grey-900)', fontSize: '36px', fontWeight: '700', margin: '0 0 28px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+        {(wallet?.balance ?? 0).toLocaleString()} <span style={{ fontSize: '20px', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
       </h1>
 
       <div style={{ display: 'flex', gap: '12px' }}>
-        <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-primary" style={{ flex: 1, gap: '8px' }} onClick={onTransferClick}>
+        <motion.button whileTap={{ scale: 0.96 }} className="itunda-btn itunda-btn-primary" style={{ flex: 1, gap: '8px' }} onClick={onTransferClick}>
           <ArrowUpRight size={18} /> {t('dashboard.transfer')}
         </motion.button>
-        <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-secondary" style={{ flex: 1, gap: '8px' }} disabled title="Real mobile-money top-up needs a live MTN/Airtel/bank provider relationship this backend doesn't have yet -- see docs/TOSS_PARITY_MATRIX.md's Transfer row">
+        <motion.button whileTap={{ scale: 0.96 }} className="itunda-btn itunda-btn-secondary" style={{ flex: 1, gap: '8px' }} disabled title="Real mobile-money top-up needs a live MTN/Airtel/bank provider relationship this backend doesn't have yet -- see docs/TOSS_PARITY_MATRIX.md's Transfer row">
           <Plus size={18} /> {t('dashboard.topUp')}
         </motion.button>
       </div>
@@ -291,9 +291,9 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
   };
 
   return (
-    <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{t('deviceStepUp.title')}</p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+    <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{t('deviceStepUp.title')}</p>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         {t('deviceStepUp.body')}
       </p>
       {/* Real "Minimum Input" simplicity fix (item 244, docs/DESIGN_REFERENCES.md §11, rule
@@ -307,21 +307,21 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
           onChange={(e) => setPassword(e.target.value)}
           placeholder={t('deviceStepUp.passwordPlaceholder')}
           required
-          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 40px 10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 40px 10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
         />
         <button
           type="button"
           onClick={() => setShowPassword((v) => !v)}
           aria-label={showPassword ? t('deviceStepUp.hidePassword') : t('deviceStepUp.showPassword')}
-          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--toss-grey-500)' }}
+          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
         >
           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       </div>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>{t('deviceStepUp.cancel')}</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>{t('deviceStepUp.cancel')}</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>
           {busy ? t('deviceStepUp.verifying') : t('deviceStepUp.verify')}
         </button>
       </div>
@@ -354,10 +354,10 @@ function ReportScamLink({ identifier }: { identifier: string }) {
     }
   };
 
-  if (done) return <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{t('scamReport.thanks')}</p>;
+  if (done) return <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('scamReport.thanks')}</p>;
 
   return (
-    <button type="button" onClick={handleReport} disabled={reporting} style={{ fontSize: '12px', color: 'var(--toss-grey-500)', textAlign: 'left' }}>
+    <button type="button" onClick={handleReport} disabled={reporting} style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', textAlign: 'left' }}>
       {reporting ? t('scamReport.reporting') : t('scamReport.reportLink')}
     </button>
   );
@@ -447,29 +447,29 @@ function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => vo
 
   if (result) {
     return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px', marginBottom: '16px' }}>
-        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px', marginBottom: '16px' }}>
+        <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>{result.message}</h3>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
           {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })}
         </p>
-        <button className="toss-btn toss-btn-secondary" onClick={onSuccess}>{t('transfer.done')}</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={onSuccess}>{t('transfer.done')}</button>
       </div>
     );
   }
 
   if (reviewing) {
     return (
-      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('transfer.confirmTitle')}</h3>
-        <div style={{ fontSize: '13px', color: 'var(--toss-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <span>{t('transfer.toRecipient', { recipient })}</span>
           <span style={{ fontWeight: 700 }}>{t('transfer.amountLine', { amount: Number(amount).toLocaleString() })}</span>
         </div>
         {scamCheck?.warn && (
-          <div style={{ backgroundColor: 'var(--toss-red-light)', border: '1px solid var(--toss-red)', borderRadius: '8px', padding: '10px 12px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-red)' }}>{t('transfer.scamWarningTitle')}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '2px' }}>
+          <div style={{ backgroundColor: 'var(--itunda-red-light)', border: '1px solid var(--itunda-red)', borderRadius: '8px', padding: '10px 12px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-red)' }}>{t('transfer.scamWarningTitle')}</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '2px' }}>
               {t('transfer.scamWarningBody', { count: scamCheck.reportCount })}
             </p>
           </div>
@@ -488,7 +488,7 @@ function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => vo
                 {busy ? t('transfer.sending') : t('transfer.send', { amount: Number(amount).toLocaleString() })}
               </IdsButton>
             </div>
-            {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+            {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
             <ReportScamLink identifier={recipient.trim()} />
           </>
         )}
@@ -497,24 +497,24 @@ function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => vo
   }
 
   return (
-    <form onSubmit={handleReview} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <form onSubmit={handleReview} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('transfer.title')}</h3>
       <input
         type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder={t('transfer.recipientPlaceholder')} required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <input
         type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t('transfer.amountPlaceholder')} required min="1" max={walletBalance}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       {insufficientBalance && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-red)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }}>
           {t('transfer.insufficientBalance', { amount: walletBalance.toLocaleString() })}
         </p>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)' }}>{t('transfer.contactsLabel')}</p>
-        <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700, background: 'none', border: 'none' }}>
+        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>{t('transfer.contactsLabel')}</p>
+        <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700, background: 'none', border: 'none' }}>
           {showAddContact ? t('transfer.cancel') : t('transfer.addContact')}
         </button>
       </div>
@@ -522,13 +522,13 @@ function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => vo
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <input
             type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder={t('transfer.namePlaceholder')}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="text" value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder={t('transfer.phonePlaceholder')}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="button" className="toss-btn toss-btn-secondary" disabled={!newContactName || !newContactPhone} onClick={handleAddContact}>
+          <button type="button" className="itunda-btn itunda-btn-secondary" disabled={!newContactName || !newContactPhone} onClick={handleAddContact}>
             {t('transfer.saveContact')}
           </button>
         </div>
@@ -543,14 +543,14 @@ function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => vo
           style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', background: 'none', border: 'none', textAlign: 'left' }}
         >
           <span style={{ fontSize: '13px', fontWeight: 700 }}>{c.name}</span>
-          <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{c.bank} · {c.phoneNumber}</span>
+          <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{c.bank} · {c.phoneNumber}</span>
         </button>
       ))}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose}>{t('transfer.cancel')}</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={insufficientBalance}>{t('transfer.continue')}</button>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={onClose}>{t('transfer.cancel')}</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={insufficientBalance}>{t('transfer.continue')}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -567,7 +567,7 @@ function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => vo
 function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
   const { t } = useI18n();
   const actions = [
-    { title: t('quickActions.scanToPay'), icon: <ScanFace size={24} color="var(--toss-blue)" />, bg: 'var(--toss-blue-light)', onClick: undefined as (() => void) | undefined },
+    { title: t('quickActions.scanToPay'), icon: <ScanFace size={24} color="var(--itunda-blue)" />, bg: 'var(--itunda-blue-light)', onClick: undefined as (() => void) | undefined },
     { title: t('quickActions.cards'), icon: <WalletIcon size={24} color="#8A2BE2" />, bg: 'rgba(138, 43, 226, 0.1)', onClick: onCardsClick },
   ];
 
@@ -577,7 +577,7 @@ function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
         <motion.div
           key={i}
           whileTap={action.onClick ? { scale: 0.96 } : undefined}
-          className="toss-card"
+          className="itunda-card"
           onClick={action.onClick}
           role={action.onClick ? 'button' : undefined}
           tabIndex={action.onClick ? 0 : undefined}
@@ -587,7 +587,7 @@ function QuickActions({ onCardsClick }: { onCardsClick: () => void }) {
           <div style={{ width: '48px', height: '48px', borderRadius: '16px', backgroundColor: action.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {action.icon}
           </div>
-          <span style={{ fontWeight: '600', fontSize: '15px', color: 'var(--toss-grey-900)' }}>{action.title}</span>
+          <span style={{ fontWeight: '600', fontSize: '15px', color: 'var(--itunda-grey-900)' }}>{action.title}</span>
         </motion.div>
       ))}
     </div>
@@ -601,11 +601,11 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
-      className="toss-card"
+      className="itunda-card"
       style={{ padding: '24px 20px' }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '0 4px' }}>
-        <h3 style={{ color: 'var(--toss-grey-900)', margin: 0, fontSize: '18px', fontWeight: '700' }}>{t('home.recentActivity')}</h3>
+        <h3 style={{ color: 'var(--itunda-grey-900)', margin: 0, fontSize: '18px', fontWeight: '700' }}>{t('home.recentActivity')}</h3>
       </div>
 
       {transactions.length === 0 ? (
@@ -625,22 +625,22 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-500)' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>
                       {tx.channel ? tx.channel.slice(0, 2) : tx.type.slice(0, 2)}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ color: 'var(--toss-grey-900)', fontWeight: '600', fontSize: '16px' }}>{tx.description}</span>
+                      <span style={{ color: 'var(--itunda-grey-900)', fontWeight: '600', fontSize: '16px' }}>{tx.description}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ color: 'var(--toss-grey-500)', fontSize: '13px', fontWeight: '500' }}>{new Date(tx.createdAt).toLocaleString()}</span>
+                        <span style={{ color: 'var(--itunda-grey-500)', fontSize: '13px', fontWeight: '500' }}>{new Date(tx.createdAt).toLocaleString()}</span>
                         {isUnusual && (
-                          <span style={{ color: 'var(--toss-red)', fontSize: '11px', fontWeight: '700', backgroundColor: '#FEECEE', padding: '2px 6px', borderRadius: '6px' }}>
+                          <span style={{ color: 'var(--itunda-red)', fontSize: '11px', fontWeight: '700', backgroundColor: '#FEECEE', padding: '2px 6px', borderRadius: '6px' }}>
                             {t('home.unusuallyLarge')}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <span style={{ fontWeight: '700', fontSize: '16px', color: isUnusual ? 'var(--toss-red)' : isCredit ? 'var(--toss-blue)' : 'var(--toss-grey-900)' }}>
+                  <span style={{ fontWeight: '700', fontSize: '16px', color: isUnusual ? 'var(--itunda-red)' : isCredit ? 'var(--itunda-blue)' : 'var(--itunda-grey-900)' }}>
                     {isCredit ? '+' : ''}{tx.amount.toLocaleString()} RWF
                   </span>
                 </motion.div>
@@ -687,8 +687,8 @@ function HomeView({ onNavigateToCard }: { onNavigateToCard: () => void }) {
   if (wallet === undefined) {
     return (
       <div>
-        <div className="toss-card skeleton" style={{ height: '180px', marginBottom: '16px' }} />
-        <div className="toss-card skeleton" style={{ height: '300px' }} />
+        <div className="itunda-card skeleton" style={{ height: '180px', marginBottom: '16px' }} />
+        <div className="itunda-card skeleton" style={{ height: '300px' }} />
       </div>
     );
   }
@@ -737,14 +737,14 @@ function DiscoverSection() {
       <h3 style={{ fontSize: '19px', fontWeight: 700, marginBottom: '10px' }}>{t('discover.title')}</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {items.map((item) => (
-          <div key={item.id} className="toss-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderRadius: '20px' }}>
+          <div key={item.id} className="itunda-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderRadius: '20px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: item.color, flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ fontSize: '16px', fontWeight: 600 }}>{item.title}</span>
                 {item.isNew && <span style={{ fontSize: '11px', fontWeight: 700, color: item.color }}>{t('discover.new')}</span>}
               </div>
-              <p style={{ fontSize: '14px', color: 'var(--toss-grey-500)' }}>{item.subtitle}</p>
+              <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>{item.subtitle}</p>
             </div>
             {item.badge && <span style={{ fontSize: '13px', fontWeight: 600, color: item.color }}>{item.badge}</span>}
           </div>
@@ -828,52 +828,52 @@ function MiniWalletCard() {
   if (miniWallet === undefined) return null;
 
   return (
-    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('miniWallet.title')}</h3>
         {miniWallet && (
-          <button className="toss-btn toss-btn-secondary" onClick={() => setShowDeposit((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowDeposit((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
             {showDeposit ? t('miniWallet.cancel') : t('miniWallet.addMoney')}
           </button>
         )}
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {!miniWallet && !needsBirthDate && (
         <div>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
             {t('miniWallet.description')}
           </p>
-          <button className="toss-btn toss-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('miniWallet.opening') : t('miniWallet.open')}</button>
+          <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? t('miniWallet.opening') : t('miniWallet.open')}</button>
         </div>
       )}
 
       {!miniWallet && needsBirthDate && (
         <form onSubmit={handleSetBirthDateAndOpen} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{t('miniWallet.birthDatePrompt')}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('miniWallet.birthDatePrompt')}</p>
           <input
             type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Continue"
               doesn't say what happens next -- the paragraph above already names the real
               outcome ("check eligibility"), so the button says it too. */}
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('miniWallet.checking') : t('miniWallet.checkEligibility')}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('miniWallet.checking') : t('miniWallet.checkEligibility')}</button>
         </form>
       )}
 
       {miniWallet && (
         <div>
           <p style={{ fontSize: '20px', fontWeight: 700 }}>{miniWallet.balance.toLocaleString()} RWF</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{miniWallet.accountNumber}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{miniWallet.accountNumber}</p>
           {showDeposit && (
             <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="number" placeholder={t('miniWallet.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
-              <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('miniWallet.adding') : t('miniWallet.add')}</button>
+              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('miniWallet.adding') : t('miniWallet.add')}</button>
             </form>
           )}
         </div>
@@ -950,10 +950,10 @@ function ScheduledTransfersCard() {
   const minDate = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
 
   return (
-    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('scheduledTransfers.title')}</h3>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
           {showCreate ? t('scheduledTransfers.cancel') : t('scheduledTransfers.schedule')}
         </button>
       </div>
@@ -962,38 +962,38 @@ function ScheduledTransfersCard() {
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
             type="text" placeholder={t('scheduledTransfers.recipientPlaceholder')} value={recipient} onChange={(e) => setRecipient(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="number" placeholder={t('scheduledTransfers.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} min={minDate} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="text" placeholder={t('scheduledTransfers.descriptionPlaceholder')} value={description} onChange={(e) => setDescription(e.target.value)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('scheduledTransfers.scheduling') : t('scheduledTransfers.scheduleButton')}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('scheduledTransfers.scheduling') : t('scheduledTransfers.scheduleButton')}</button>
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {pending.length === 0 && past.length === 0 && (
         <EmptyState message={t('scheduledTransfers.noTransfers')} />
       )}
 
       {[...pending, ...past.slice(0, 3)].map((tr) => (
-        <div key={tr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+        <div key={tr.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
           <div>
             <p style={{ fontSize: '13px', fontWeight: 700 }}>{tr.recipientName} · {tr.amount.toLocaleString()} RWF</p>
-            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{tr.scheduledDate} · {t(SCHEDULED_TRANSFER_STATUS_KEY[tr.status])}</p>
+            <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{tr.scheduledDate} · {t(SCHEDULED_TRANSFER_STATUS_KEY[tr.status])}</p>
           </div>
           {tr.status === 'PENDING' && (
-            <button className="toss-btn toss-btn-secondary" disabled={busyId === tr.id} onClick={() => handleCancel(tr.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+            <button className="itunda-btn itunda-btn-secondary" disabled={busyId === tr.id} onClick={() => handleCancel(tr.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
               {busyId === tr.id ? '…' : t('scheduledTransfers.cancel')}
             </button>
           )}
@@ -1088,10 +1088,10 @@ function AutoTransfersCard() {
   const cancelled = (transfers ?? []).filter((at) => at.status === 'CANCELLED');
 
   return (
-    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('autoTransfers.title')}</h3>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
           {showCreate ? t('autoTransfers.cancel') : t('autoTransfers.setUp')}
         </button>
       </div>
@@ -1100,15 +1100,15 @@ function AutoTransfersCard() {
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
             type="text" placeholder={t('autoTransfers.recipientPlaceholder')} value={recipient} onChange={(e) => setRecipient(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="number" placeholder={t('autoTransfers.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <select
             value={frequency} onChange={(e) => setFrequency(e.target.value as AutoTransferFrequency)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           >
             <option value="WEEKLY">{t('autoTransfers.weekly')}</option>
             <option value="MONTHLY">{t('autoTransfers.monthly')}</option>
@@ -1116,47 +1116,47 @@ function AutoTransfersCard() {
           {frequency === 'WEEKLY' ? (
             <select
               value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
             >
               {WEEKDAY_NAMES.map((name, i) => <option key={name} value={i + 1}>{t(WEEKDAY_KEYS[i])}</option>)}
             </select>
           ) : (
             <select
               value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
             >
               {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>{t('autoTransfers.dayOfMonth', { day: d })}</option>)}
             </select>
           )}
           <input
             type="text" placeholder={t('autoTransfers.descriptionPlaceholder')} value={description} onChange={(e) => setDescription(e.target.value)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('autoTransfers.settingUp') : t('autoTransfers.setUpButton')}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('autoTransfers.settingUp') : t('autoTransfers.setUpButton')}</button>
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {active.length === 0 && cancelled.length === 0 && (
         <EmptyState message={t('autoTransfers.noTransfers')} />
       )}
 
       {[...active, ...cancelled.slice(0, 2)].map((at) => (
-        <div key={at.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+        <div key={at.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
           <div>
             <p style={{ fontSize: '13px', fontWeight: 700 }}>{at.recipientName} · {at.amount.toLocaleString()} RWF</p>
-            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+            <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
               {at.frequency === 'WEEKLY' ? t('autoTransfers.weeklyLabel', { day: t(WEEKDAY_KEYS[(at.dayOfWeek ?? 1) - 1]) }) : t('autoTransfers.monthlyLabel', { day: at.dayOfMonth ?? 1 })} · {t(AUTO_TRANSFER_STATUS_KEY[at.status])}
               {at.lastFailureReason && ` · ${at.lastFailureReason}`}
             </p>
           </div>
           {at.status !== 'CANCELLED' && (
             <div style={{ display: 'flex', gap: '6px' }}>
-              <button className="toss-btn toss-btn-secondary" disabled={busyId === at.id} onClick={() => handleToggle(at)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={busyId === at.id} onClick={() => handleToggle(at)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                 {busyId === at.id ? '…' : at.status === 'ACTIVE' ? t('autoTransfers.pause') : t('autoTransfers.resume')}
               </button>
-              <button className="toss-btn toss-btn-secondary" disabled={busyId === at.id} onClick={() => handleCancel(at.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={busyId === at.id} onClick={() => handleCancel(at.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                 {t('autoTransfers.cancelAction')}
               </button>
             </div>
@@ -1235,10 +1235,10 @@ function RequestMoneyCard() {
   };
 
   return (
-    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('requestMoney.title')}</h3>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
           {showCreate ? t('requestMoney.cancel') : t('requestMoney.newRequest')}
         </button>
       </div>
@@ -1247,19 +1247,19 @@ function RequestMoneyCard() {
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
             type="number" placeholder={t('requestMoney.amountPlaceholder')} value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="text" placeholder={t('requestMoney.whatsItFor')} value={description} onChange={(e) => setDescription(e.target.value)}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={creating}>{creating ? t('requestMoney.creating') : t('requestMoney.createButton')}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={creating}>{creating ? t('requestMoney.creating') : t('requestMoney.createButton')}</button>
         </form>
       )}
 
       {created && (
-        <div style={{ padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px', marginBottom: '12px' }}>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{t('requestMoney.shareCode')}</p>
+        <div style={{ padding: '12px', background: 'var(--itunda-grey-100)', borderRadius: '10px', marginBottom: '12px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('requestMoney.shareCode')}</p>
           <p style={{ fontSize: '16px', fontWeight: 700, fontFamily: 'monospace', wordBreak: 'break-all' }}>{created.id}</p>
         </div>
       )}
@@ -1270,24 +1270,24 @@ function RequestMoneyCard() {
         <form onSubmit={handlePay} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <input
             type="text" placeholder={t('requestMoney.payCodePlaceholder')} value={payCode} onChange={(e) => setPayCode(e.target.value)} required
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={paying} style={{ padding: '10px 16px', fontSize: '13px' }}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={paying} style={{ padding: '10px 16px', fontSize: '13px' }}>
             {paying ? t('requestMoney.paying') : t('requestMoney.pay')}
           </button>
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {requests !== null && requests.length > 0 && (
         <div>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '4px' }}>{t('requestMoney.myRequests')}</p>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>{t('requestMoney.myRequests')}</p>
           {requests.slice(0, 5).map((r) => (
-            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{r.amount.toLocaleString()} RWF{r.description ? ` · ${r.description}` : ''}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{t(P2P_REQUEST_STATUS_KEY[r.status])}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{t(P2P_REQUEST_STATUS_KEY[r.status])}</p>
               </div>
             </div>
           ))}
@@ -1370,52 +1370,52 @@ function AutoTopUpCard({ walletId }: { walletId: string }) {
   if (setting === undefined) return null;
 
   return (
-    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('autoTopUp.title')}</h3>
         {linkedAccounts.length > 0 && (
-          <button className="toss-btn toss-btn-secondary" onClick={() => setShowForm((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowForm((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
             {showForm ? t('autoTopUp.cancel') : setting ? t('autoTopUp.edit') : t('autoTopUp.setUp')}
           </button>
         )}
       </div>
 
       {linkedAccounts.length === 0 && !setting && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{t('autoTopUp.linkFirst')}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('autoTopUp.linkFirst')}</p>
       )}
 
       {showForm && (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-          <select value={linkedAccountId} onChange={(e) => setLinkedAccountId(e.target.value)} required style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
+          <select value={linkedAccountId} onChange={(e) => setLinkedAccountId(e.target.value)} required style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}>
             <option value="">{t('autoTopUp.selectAccount')}</option>
             {linkedAccounts.map((a) => <option key={a.id} value={a.id}>{a.provider} · {a.externalAccountNumberMasked}</option>)}
           </select>
           <input type="number" placeholder={t('autoTopUp.thresholdPlaceholder')} value={thresholdAmount} onChange={(e) => setThresholdAmount(e.target.value)} min="0" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }} />
           <input type="number" placeholder={t('autoTopUp.topUpPlaceholder')} value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} min="1" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }} />
           <input type="number" placeholder={t('autoTopUp.maxPerDay')} value={dailyTriggerCap} onChange={(e) => setDailyTriggerCap(e.target.value)} min="1"
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('autoTopUp.saving') : t('autoTopUp.save')}</button>
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }} />
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('autoTopUp.saving') : t('autoTopUp.save')}</button>
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {setting && !showForm && (
         <div>
           <p style={{ fontSize: '13px' }}>
             {t('autoTopUp.summaryLine', { state: setting.enabled ? t('autoTopUp.on') : t('autoTopUp.off'), topUp: setting.topUpAmount.toLocaleString(), threshold: setting.thresholdAmount.toLocaleString() })}
           </p>
-          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '8px' }}>
+          <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
             {t('autoTopUp.upToPerDay', { cap: setting.dailyTriggerCap, count: setting.triggersToday })}
           </p>
-          {triggerResult && <p style={{ fontSize: '12px', color: 'var(--toss-blue)', marginBottom: '8px' }}>{triggerResult}</p>}
+          {triggerResult && <p style={{ fontSize: '12px', color: 'var(--itunda-blue)', marginBottom: '8px' }}>{triggerResult}</p>}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleToggle} style={{ fontSize: '12px', padding: '6px 10px' }}>
+            <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleToggle} style={{ fontSize: '12px', padding: '6px 10px' }}>
               {setting.enabled ? t('autoTopUp.turnOff') : t('autoTopUp.turnOn')}
             </button>
-            <button className="toss-btn toss-btn-secondary" disabled={triggering} onClick={handleTrigger} style={{ fontSize: '12px', padding: '6px 10px' }}>
+            <button className="itunda-btn itunda-btn-secondary" disabled={triggering} onClick={handleTrigger} style={{ fontSize: '12px', padding: '6px 10px' }}>
               {triggering ? t('autoTopUp.checking') : t('autoTopUp.checkNow')}
             </button>
           </div>
@@ -1469,40 +1469,40 @@ function CertificateView() {
   };
 
   if (certificate === undefined) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
 
   return (
-    <div className="toss-card" style={{ padding: '28px' }}>
+    <div className="itunda-card" style={{ padding: '28px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-        <ShieldCheck size={22} color={certificate?.status === 'ACTIVE' ? 'var(--toss-green)' : 'var(--toss-grey-500)'} />
+        <ShieldCheck size={22} color={certificate?.status === 'ACTIVE' ? 'var(--itunda-green)' : 'var(--itunda-grey-500)'} />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Itunda Certificate</h2>
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '20px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '20px' }}>
         A digital certificate you can use to sign agreements in Itunda. You'll need a verified identity first.
       </p>
 
       {certificate && certificate.status === 'ACTIVE' ? (
         <div>
-          <p style={{ fontSize: '13px', color: 'var(--toss-green)', fontWeight: 700, marginBottom: '8px' }}>Active</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', fontFamily: 'monospace', marginBottom: '4px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-green)', fontWeight: 700, marginBottom: '8px' }}>Active</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', fontFamily: 'monospace', marginBottom: '4px' }}>
             Serial {certificate.serialNumber}
           </p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '20px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '20px' }}>
             Expires {new Date(certificate.expiresAt).toLocaleDateString()}
           </p>
-          <button className="toss-btn toss-btn-secondary" onClick={handleRevoke} disabled={busy}>
+          <button className="itunda-btn itunda-btn-secondary" onClick={handleRevoke} disabled={busy}>
             {busy ? 'Revoking…' : 'Revoke certificate'}
           </button>
         </div>
       ) : (
         <div>
           {certificate && (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
               Your previous certificate was {certificate.status.toLowerCase()}.
             </p>
           )}
-          <button className="toss-btn toss-btn-primary" onClick={handleIssue} disabled={busy}>
+          <button className="itunda-btn itunda-btn-primary" onClick={handleIssue} disabled={busy}>
             {busy ? 'Issuing…' : 'Issue a certificate'}
           </button>
         </div>
@@ -1518,7 +1518,7 @@ function CertificateView() {
       )}
 
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '16px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '16px' }} role="alert">{error}</p>
       )}
 
       <VerifyCertificateCard />
@@ -1570,18 +1570,18 @@ function VerifyCertificateCard() {
   };
 
   return (
-    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--toss-grey-100)' }}>
+    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--itunda-grey-100)' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Verify a certificate</h3>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
         Check whether a certificate serial number is still active, or verify a document someone signed with theirs.
       </p>
       <form onSubmit={handleCheckStatus} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
         <input
           value={serialNumber} onChange={(e) => { setSerialNumber(e.target.value); setStatusResult(null); setVerifyResult(null); }}
           placeholder="Serial number" required
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn" disabled={busy}>{busy ? 'Checking…' : 'Check status'}</button>
+        <button type="submit" className="itunda-btn" disabled={busy}>{busy ? 'Checking…' : 'Check status'}</button>
       </form>
       {statusResult && (
         <p style={{ fontSize: '13px', marginBottom: '10px' }}>
@@ -1594,27 +1594,27 @@ function VerifyCertificateCard() {
         <input
           value={payload} onChange={(e) => { setPayload(e.target.value); setVerifyResult(null); }}
           placeholder="Payload (the exact text they signed)" required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           value={signature} onChange={(e) => { setSignature(e.target.value); setVerifyResult(null); }}
           placeholder="Signature (base64)" required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={busy || !serialNumber}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy || !serialNumber}>
           {busy ? 'Verifying…' : 'Verify signature'}
         </button>
       </form>
       {verifyResult && (
         <div style={{ marginTop: '10px' }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: verifyResult.signatureValid ? 'var(--toss-green)' : 'var(--toss-red)' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: verifyResult.signatureValid ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
             {verifyResult.signatureValid ? '✓ Signature is valid' : '✗ Signature does not match'}
           </p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Certificate status: {verifyResult.certificateStatus}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Certificate status: {verifyResult.certificateStatus}</p>
         </div>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -1690,16 +1690,16 @@ function OverviewView() {
   };
 
   if (!overview) {
-    return <div className="toss-card skeleton" style={{ height: '260px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{t('overview.netWorth')}</p>
+      <div className="itunda-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('overview.netWorth')}</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{overview.netWorth.toLocaleString()} RWF</h2>
       </div>
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>{t('overview.accounts')}</h3>
         {overview.accounts.map((a) => (
           <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
@@ -1708,28 +1708,28 @@ function OverviewView() {
           </div>
         ))}
       </div>
-      <div className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <p style={{ fontSize: '13px' }}>{t('overview.savings', { amount: overview.savings.totalSaved.toLocaleString(), count: overview.savings.goalCount })}</p>
         <p style={{ fontSize: '13px' }}>{t('overview.loans', { amount: overview.loans.totalOutstanding.toLocaleString(), count: overview.loans.activeCount })}</p>
         <p style={{ fontSize: '13px' }}>{t('overview.investments', { amount: overview.investments.totalCostBasis.toLocaleString(), count: overview.investments.holdingCount })}</p>
         <p style={{ fontSize: '13px' }}>{t('overview.insurance', { count: overview.insurance.activePolicyCount, amount: overview.insurance.totalMonthlyPremium.toLocaleString() })}</p>
       </div>
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>{t('overview.linkedAccounts')}</h3>
         {linkedAccounts.map((a) => (
-          <div key={a.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--toss-grey-100)' }}>
+          <div key={a.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--itunda-grey-100)' }}>
             <p style={{ fontSize: '13px', fontWeight: 700 }}>{a.provider}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{a.externalAccountNumberMasked} · {a.status}</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{a.externalAccountNumberMasked} · {a.status}</p>
             {a.demoBalance != null && (
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{t('overview.demoBalance', { currency: a.demoBalanceCurrency ?? '', amount: a.demoBalance.toLocaleString() })}</p>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('overview.demoBalance', { currency: a.demoBalanceCurrency ?? '', amount: a.demoBalance.toLocaleString() })}</p>
             )}
             {a.status === 'LINKED' && (
-              <button className="toss-btn toss-btn-secondary" style={{ marginTop: '4px' }} disabled={busy} onClick={() => handleUnlink(a.id)}>{t('overview.unlink')}</button>
+              <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '4px' }} disabled={busy} onClick={() => handleUnlink(a.id)}>{t('overview.unlink')}</button>
             )}
           </div>
         ))}
         {!showLinkForm ? (
-          <button className="toss-btn toss-btn-primary" style={{ marginTop: '10px' }} onClick={() => setShowLinkForm(true)}>
+          <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '10px' }} onClick={() => setShowLinkForm(true)}>
             {t('overview.linkAccountPrompt')}
           </button>
         ) : (
@@ -1737,7 +1737,7 @@ function OverviewView() {
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {LINK_PROVIDERS.map((p) => (
                 <button
-                  type="button" key={p} className="toss-btn toss-btn-secondary"
+                  type="button" key={p} className="itunda-btn itunda-btn-secondary"
                   onClick={() => {
                     setProvider(p);
                     // Real friction fix (2026-08-10) -- pre-fill with the caller's own
@@ -1751,17 +1751,17 @@ function OverviewView() {
             </div>
             <input
               type="text" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t('overview.providerNamePlaceholder')} required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
             />
             <input
               type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder={t('overview.accountPhonePlaceholder')} required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
             />
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? t('overview.linking') : t('overview.linkAccount')}</button>
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? t('overview.linking') : t('overview.linkAccount')}</button>
           </form>
         )}
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -1851,14 +1851,14 @@ function LoansView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OFFERS')}>Offers</button>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('MY_LOANS')}>My loans ({myLoans?.length ?? 0})</button>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OVERDRAFT')}>Overdraft</button>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('POSTPAID_CREDIT')}>Postpaid credit</button>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('HARVEST_ADVANCE')}>Harvest advance</button>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('VUP')}>VUP Financial Services</button>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('STUDENT')}>BRD Student Loan</button>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('MOTO_OWNERSHIP')}>Moto-Taxi Ownership</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('OFFERS')}>Offers</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('MY_LOANS')}>My loans ({myLoans?.length ?? 0})</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('OVERDRAFT')}>Overdraft</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('POSTPAID_CREDIT')}>Postpaid credit</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('HARVEST_ADVANCE')}>Harvest advance</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('VUP')}>VUP Financial Services</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('STUDENT')}>BRD Student Loan</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('MOTO_OWNERSHIP')}>Moto-Taxi Ownership</button>
       </div>
       {mode === 'OVERDRAFT' && <OverdraftView />}
       {mode === 'POSTPAID_CREDIT' && <PostpaidCreditView />}
@@ -1866,11 +1866,11 @@ function LoansView() {
       {mode === 'VUP' && <VupLoanView />}
       {mode === 'STUDENT' && <StudentLoanView />}
       {mode === 'MOTO_OWNERSHIP' && <MotoOwnershipView />}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && refinanceResult && (
-        <div className="toss-card" style={{ padding: '16px', border: '1px solid var(--toss-blue)' }}>
+        <div className="itunda-card" style={{ padding: '16px', border: '1px solid var(--itunda-blue)' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
         </div>
       )}
       {mode === 'OFFERS' && (
@@ -1878,8 +1878,8 @@ function LoansView() {
           {lenders && (
             <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
               <button
-                className="toss-btn toss-btn-secondary"
-                style={{ fontSize: '12px', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === null ? { border: '1px solid var(--toss-blue)', color: 'var(--toss-blue)' } : {}) }}
+                className="itunda-btn itunda-btn-secondary"
+                style={{ fontSize: '12px', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === null ? { border: '1px solid var(--itunda-blue)', color: 'var(--itunda-blue)' } : {}) }}
                 onClick={() => selectLender(null)}
               >
                 All lenders
@@ -1887,8 +1887,8 @@ function LoansView() {
               {lenders.map((lender) => (
                 <button
                   key={lender.id}
-                  className="toss-btn toss-btn-secondary"
-                  style={{ fontSize: '12px', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === lender.id ? { border: '1px solid var(--toss-blue)', color: 'var(--toss-blue)' } : {}) }}
+                  className="itunda-btn itunda-btn-secondary"
+                  style={{ fontSize: '12px', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === lender.id ? { border: '1px solid var(--itunda-blue)', color: 'var(--itunda-blue)' } : {}) }}
                   onClick={() => selectLender(lender.id)}
                 >
                   {lender.name}
@@ -1896,7 +1896,7 @@ function LoansView() {
               ))}
             </div>
           )}
-          {offers === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> :
+          {offers === null ? <div className="itunda-card skeleton" style={{ height: '160px' }} /> :
            offers.length === 0 ? <EmptyState message="No offers right now — check back later or explore another lender." /> :
            offers.map((offer) => (
             <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
@@ -1904,25 +1904,25 @@ function LoansView() {
         </>
       )}
       {mode === 'MY_LOANS' && (
-        myLoans === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> :
-        myLoans.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You have no loans yet.</p> :
+        myLoans === null ? <div className="itunda-card skeleton" style={{ height: '160px' }} /> :
+        myLoans.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>You have no loans yet.</p> :
         myLoans.map((loan) => (
-          <div key={loan.id} className="toss-card" style={{ padding: '16px' }}>
+          <div key={loan.id} className="itunda-card" style={{ padding: '16px' }}>
             <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{loan.principal.toLocaleString()} RWF loan</h4>
             <p style={{ fontSize: '13px' }}>Outstanding: {loan.outstanding.toLocaleString()} RWF</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Status: {loan.status} · {loan.interestRate}%</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Status: {loan.status} · {loan.interestRate}%</p>
             {loan.status === 'ACTIVE' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                 <input
                   type="number" value={repayAmounts[loan.id] ?? ''}
                   onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [loan.id]: e.target.value }))}
                   placeholder="Repay amount (RWF)"
-                  style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                  style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
                 />
-                <button className="toss-btn toss-btn-primary" disabled={busyId === loan.id} onClick={() => handleRepay(loan)}>
+                <button className="itunda-btn itunda-btn-primary" disabled={busyId === loan.id} onClick={() => handleRepay(loan)}>
                   {busyId === loan.id ? 'Repaying…' : 'Repay'}
                 </button>
-                <button className="toss-btn toss-btn-secondary" disabled={busyId === loan.id} onClick={() => handleRefinance(loan)}>
+                <button className="itunda-btn itunda-btn-secondary" disabled={busyId === loan.id} onClick={() => handleRefinance(loan)}>
                   {busyId === loan.id ? 'Checking…' : 'Refinance to a lower rate'}
                 </button>
               </div>
@@ -1937,17 +1937,17 @@ function LoansView() {
 function LoanOfferCard({ offer, busy, onApply }: { offer: LoanOffer; busy: boolean; onApply: (amount: number) => void }) {
   const [amount, setAmount] = useState(String(offer.maxAmount));
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{offer.name}</h4>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{offer.lenderName}</p>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{offer.lenderName}</p>
       <p style={{ fontSize: '13px' }}>Up to {offer.maxAmount.toLocaleString()} RWF · {offer.interestRate}% · {offer.term}</p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{offer.requirements}</p>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{offer.requirements}</p>
       <input
         type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', marginTop: '8px', width: '100%', boxSizing: 'border-box' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', marginTop: '8px', width: '100%', boxSizing: 'border-box' }}
       />
       <button
-        className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy}
+        className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busy}
         onClick={() => { const n = Number(amount); if (n > 0) onApply(n); }}
       >
         {busy ? 'Applying…' : 'Apply'}
@@ -2030,21 +2030,21 @@ function OverdraftView() {
     }
   };
 
-  if (account === undefined) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (account === undefined) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
 
   if (account === null) {
     return (
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Open an overdraft line</h4>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           A pre-approved credit limit you can draw from anytime -- pay interest only on what you actually use, up to 500,000 RWF.
         </p>
-        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
         <input
           type="number" value={requestedLimit} onChange={(e) => setRequestedLimit(e.target.value)} placeholder="Requested limit (RWF)"
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', marginTop: '8px', width: '100%', boxSizing: 'border-box' }}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', marginTop: '8px', width: '100%', boxSizing: 'border-box' }}
         />
-        <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleOpen}>
+        <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleOpen}>
           {busy ? 'Opening…' : 'Open overdraft'}
         </button>
       </div>
@@ -2053,22 +2053,22 @@ function OverdraftView() {
 
   const availableCredit = account.creditLimit - account.drawnBalance;
   return (
-    <div className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Overdraft line</h4>
       <p style={{ fontSize: '13px' }}>Drawn: {account.drawnBalance.toLocaleString()} RWF of {account.creditLimit.toLocaleString()} RWF</p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Available to draw: {availableCredit.toLocaleString()} RWF · {account.interestRate}% annual, interest only on what's drawn</p>
-      {notice && <p style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>{notice}</p>}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Available to draw: {availableCredit.toLocaleString()} RWF · {account.interestRate}% annual, interest only on what's drawn</p>
+      {notice && <p style={{ fontSize: '12px', color: 'var(--itunda-blue)' }}>{notice}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <input
         type="number" value={drawAmount} onChange={(e) => setDrawAmount(e.target.value)} placeholder="Draw amount (RWF)"
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
       />
-      <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleDraw}>{busy ? 'Drawing…' : 'Draw'}</button>
+      <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleDraw}>{busy ? 'Drawing…' : 'Draw'}</button>
       <input
         type="number" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} placeholder="Repay amount (RWF)"
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
       />
-      <button className="toss-btn toss-btn-secondary" disabled={busy || account.drawnBalance <= 0} onClick={handleRepay}>{busy ? 'Repaying…' : 'Repay'}</button>
+      <button className="itunda-btn itunda-btn-secondary" disabled={busy || account.drawnBalance <= 0} onClick={handleRepay}>{busy ? 'Repaying…' : 'Repay'}</button>
     </div>
   );
 }
@@ -2143,17 +2143,17 @@ function PostpaidCreditView() {
     }
   };
 
-  if (line === undefined) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (line === undefined) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
 
   if (line === null) {
     return (
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Get postpaid credit</h4>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           A small credit line for real purchases, interest-free if you pay within 30 days -- your limit is set automatically from your credit score, up to 300,000 RWF.
         </p>
-        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-        <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleApply}>
+        {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+        <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleApply}>
           {busy ? 'Applying…' : 'Get postpaid credit'}
         </button>
       </div>
@@ -2162,29 +2162,29 @@ function PostpaidCreditView() {
 
   const availableCredit = line.creditLimit - line.currentBalance;
   return (
-    <div className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Postpaid credit</h4>
       <p style={{ fontSize: '13px' }}>Owed: {line.currentBalance.toLocaleString()} RWF of {line.creditLimit.toLocaleString()} RWF</p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Available: {availableCredit.toLocaleString()} RWF · interest-free if repaid within 30 days</p>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Available: {availableCredit.toLocaleString()} RWF · interest-free if repaid within 30 days</p>
       {line.status === 'SUSPENDED' && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-red)', fontWeight: 700 }}>Suspended -- repay your overdue balance to keep spending.</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-red)', fontWeight: 700 }}>Suspended -- repay your overdue balance to keep spending.</p>
       )}
       {line.cycleDueAt && line.status === 'ACTIVE' && (
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Due by {new Date(line.cycleDueAt).toLocaleDateString()}</p>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Due by {new Date(line.cycleDueAt).toLocaleDateString()}</p>
       )}
-      {notice && <p style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>{notice}</p>}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {notice && <p style={{ fontSize: '12px', color: 'var(--itunda-blue)' }}>{notice}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <input
         type="number" value={spendAmount} onChange={(e) => setSpendAmount(e.target.value)} placeholder="Spend amount (RWF)"
         disabled={line.status === 'SUSPENDED'}
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
       />
-      <button className="toss-btn toss-btn-primary" disabled={busy || line.status === 'SUSPENDED'} onClick={handleSpend}>{busy ? 'Adding…' : 'Add to wallet'}</button>
+      <button className="itunda-btn itunda-btn-primary" disabled={busy || line.status === 'SUSPENDED'} onClick={handleSpend}>{busy ? 'Adding…' : 'Add to wallet'}</button>
       <input
         type="number" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} placeholder="Repay amount (RWF)"
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
       />
-      <button className="toss-btn toss-btn-secondary" disabled={busy || line.currentBalance <= 0} onClick={handleRepay}>{busy ? 'Repaying…' : 'Repay'}</button>
+      <button className="itunda-btn itunda-btn-secondary" disabled={busy || line.currentBalance <= 0} onClick={handleRepay}>{busy ? 'Repaying…' : 'Repay'}</button>
     </div>
   );
 }
@@ -2291,55 +2291,55 @@ function HarvestAdvanceView() {
     }
   };
 
-  if (memberships === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (memberships === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      <div className="toss-card" style={{ padding: '16px' }}>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Cooperative harvest advance</h4>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           Input financing or post-harvest advances for coffee cooperative members. Cooperative registration is self-declared -- not verified against a real RCA registry.
         </p>
         <input
           type="text" value={coopName} onChange={(e) => setCoopName(e.target.value)} placeholder="Register a new cooperative (name)"
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
         />
-        <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleRegisterAndJoin}>
+        <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleRegisterAndJoin}>
           {busy ? 'Working…' : 'Register & join'}
         </button>
         <input
           type="text" value={coopId} onChange={(e) => setCoopId(e.target.value)} placeholder="Or join an existing cooperative (id)"
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
         />
-        <button className="toss-btn toss-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleJoinExisting}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleJoinExisting}>
           {busy ? 'Working…' : 'Join'}
         </button>
       </div>
 
       {memberships.length === 0 ? (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>You're not a member of any cooperative yet.</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>You're not a member of any cooperative yet.</p>
       ) : (
         memberships.map((m) => (
-          <div key={m.id} className="toss-card" style={{ padding: '16px' }}>
+          <div key={m.id} className="itunda-card" style={{ padding: '16px' }}>
             <p style={{ fontSize: '13px', fontWeight: 700 }}>Cooperative membership {m.cooperativeId}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Member since {new Date(m.memberSince).toLocaleDateString()}</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Member since {new Date(m.memberSince).toLocaleDateString()}</p>
             <input
               type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} placeholder="Advance amount (RWF)"
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             />
             <select
               value={advancePurpose} onChange={(e) => setAdvancePurpose(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             >
               <option value="INPUT_FINANCING">Input financing (seeds/fertilizer)</option>
               <option value="POST_HARVEST">Post-harvest advance</option>
             </select>
             <input
               type="date" value={harvestDate} onChange={(e) => setHarvestDate(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             />
-            <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRequestAdvance(m.id)}>
+            <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRequestAdvance(m.id)}>
               {busy ? 'Requesting…' : 'Request advance'}
             </button>
           </div>
@@ -2351,14 +2351,14 @@ function HarvestAdvanceView() {
           <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My advances</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {advances.map((a) => (
-              <div key={a.id} className="toss-card" style={{ padding: '14px' }}>
+              <div key={a.id} className="itunda-card" style={{ padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>{a.principalAmount.toLocaleString()} RWF · {a.purpose}</p>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{a.status}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{a.status}</span>
                 </div>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Repay by {new Date(a.repaymentDueDate).toLocaleDateString()}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Repay by {new Date(a.repaymentDueDate).toLocaleDateString()}</p>
                 {a.status === 'REQUESTED' && (
-                  <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleDisburse(a.id)}>
+                  <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleDisburse(a.id)}>
                     {busy ? 'Disbursing…' : 'Disburse'}
                   </button>
                 )}
@@ -2368,7 +2368,7 @@ function HarvestAdvanceView() {
                   // free-form amount let a token repayment silently close out the full
                   // debt. Repayment is full-settlement-only -- no amount to type, just
                   // the real outstanding principal shown up front.
-                  <button className="toss-btn toss-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRepay(a.id, a.principalAmount)}>
+                  <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRepay(a.id, a.principalAmount)}>
                     {busy ? 'Repaying…' : `Repay in full (${a.principalAmount.toLocaleString()} RWF)`}
                   </button>
                 )}
@@ -2452,24 +2452,24 @@ function VupLoanView() {
     }
   };
 
-  if (loans === null || eligibility === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (loans === null || eligibility === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      <div className="toss-card" style={{ padding: '16px' }}>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>VUP Financial Services</h4>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           Rwanda's Vision 2020 Umurenge Programme subsidized microloan for farming, livestock, or small business -- {eligibility.interestRate * 100}% interest, for
           {' '}Ubudehe categories {eligibility.minUbudeheCategory}-{eligibility.maxUbudeheCategory} only. Ubudehe category is self-declared -- not verified against a real government registry.
         </p>
         {!eligibility.canApply ? (
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '8px' }}>You already have an active VUP loan -- repay it before applying for another.</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '8px' }}>You already have an active VUP loan -- repay it before applying for another.</p>
         ) : (
           <>
             <select
               value={category} onChange={(e) => setCategory(Number(e.target.value))}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             >
               <option value={1}>Ubudehe category 1</option>
               <option value={2}>Ubudehe category 2</option>
@@ -2477,7 +2477,7 @@ function VupLoanView() {
             </select>
             <select
               value={purpose} onChange={(e) => setPurpose(e.target.value as VupLoanPurpose)}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             >
               <option value="FARMING">Farming</option>
               <option value="LIVESTOCK">Livestock</option>
@@ -2485,9 +2485,9 @@ function VupLoanView() {
             </select>
             <input
               type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Loan amount (RWF, up to 500,000)"
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             />
-            <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'apply'} onClick={handleApply}>
+            <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'apply'} onClick={handleApply}>
               {busyId === 'apply' ? 'Applying…' : 'Apply'}
             </button>
           </>
@@ -2499,19 +2499,19 @@ function VupLoanView() {
           <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My VUP loans</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {loans.map((loan) => (
-              <div key={loan.id} className="toss-card" style={{ padding: '14px' }}>
+              <div key={loan.id} className="itunda-card" style={{ padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.purpose}</p>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--toss-red)' : 'var(--toss-blue)' }}>{loan.status}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-blue)' }}>{loan.status}</span>
                 </div>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
                   Outstanding: {loan.outstandingPrincipal.toLocaleString()} RWF
                   {loan.dueDate && ` · Due ${new Date(loan.dueDate).toLocaleDateString()}`}
                 </p>
                 {loan.status === 'REQUESTED' && (
                   <>
-                    <p style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>Demo: instantly approved -- stands in for the real SACCO officer approval step.</p>
-                    <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === loan.id} onClick={() => handleDisburse(loan.id)}>
+                    <p style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>Demo: instantly approved -- stands in for the real SACCO officer approval step.</p>
+                    <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === loan.id} onClick={() => handleDisburse(loan.id)}>
                       {busyId === loan.id ? 'Disbursing…' : 'Disburse'}
                     </button>
                   </>
@@ -2521,9 +2521,9 @@ function VupLoanView() {
                     <input
                       type="number" value={repayAmounts[loan.id] ?? ''} onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [loan.id]: e.target.value }))}
                       placeholder="Repayment amount (RWF)"
-                      style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                      style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
                     />
-                    <button className="toss-btn toss-btn-secondary" disabled={busyId === loan.id} onClick={() => handleRepay(loan.id)}>
+                    <button className="itunda-btn itunda-btn-secondary" disabled={busyId === loan.id} onClick={() => handleRepay(loan.id)}>
                       {busyId === loan.id ? 'Repaying…' : 'Repay'}
                     </button>
                   </div>
@@ -2631,43 +2631,43 @@ function StudentLoanView() {
     }
   };
 
-  if (loans === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (loans === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      <div className="toss-card" style={{ padding: '16px' }}>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>BRD Student Loan</h4>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           Rwanda's national higher-education student loan, run by the Development Bank of Rwanda (BRD) since 2016 -- 11% undergraduate / 12% postgraduate,
           {' '}with a grace period after graduation before repayment starts. Declared household income is self-declared -- not verified against BRD's real
           {' '}Financial Means Testing process. Repayment here is user-initiated from your wallet -- itunda cannot deduct from your paycheck like the real
           {' '}8%-of-income scheme BRD uses.
         </p>
         {hasActiveLoan ? (
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '8px' }}>You already have an active student loan -- repay it before applying for another.</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '8px' }}>You already have an active student loan -- repay it before applying for another.</p>
         ) : (
           <>
             <select
               value={level} onChange={(e) => setLevel(e.target.value as StudentLoanLevel)}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             >
               <option value="UNDERGRADUATE">Undergraduate (11%)</option>
               <option value="POSTGRADUATE">Postgraduate (12%)</option>
             </select>
             <input
               type="number" value={income} onChange={(e) => setIncome(e.target.value)} placeholder="Declared annual household income (RWF)"
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             />
             <input
               type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Loan amount (RWF, up to 2,000,000)"
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             />
             <input
               type="date" value={graduationDate} onChange={(e) => setGraduationDate(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             />
-            <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'apply'} onClick={handleApply}>
+            <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'apply'} onClick={handleApply}>
               {busyId === 'apply' ? 'Applying…' : 'Apply'}
             </button>
           </>
@@ -2679,44 +2679,44 @@ function StudentLoanView() {
           <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My student loans</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {loans.map((loan) => (
-              <div key={loan.id} className="toss-card" style={{ padding: '14px' }}>
+              <div key={loan.id} className="itunda-card" style={{ padding: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>{loan.principalAmount.toLocaleString()} RWF · {loan.level}</p>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--toss-red)' : 'var(--toss-blue)' }}>{loan.status}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: loan.status === 'OVERDUE' ? 'var(--itunda-red)' : 'var(--itunda-blue)' }}>{loan.status}</span>
                 </div>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
                   Outstanding: {loan.outstandingBalance.toLocaleString()} RWF
                   {loan.graceEndsAt && ` · Grace ends ${new Date(loan.graceEndsAt).toLocaleDateString()}`}
                 </p>
                 {loan.status === 'REQUESTED' && (
                   <>
-                    <p style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>Demo: instantly approved -- stands in for the real BRD/MINEDUC approval step.</p>
-                    <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === loan.id} onClick={() => handleDisburse(loan.id)}>
+                    <p style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>Demo: instantly approved -- stands in for the real BRD/MINEDUC approval step.</p>
+                    <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === loan.id} onClick={() => handleDisburse(loan.id)}>
                       {busyId === loan.id ? 'Disbursing…' : 'Disburse'}
                     </button>
                   </>
                 )}
                 {loan.status === 'DISBURSED' && (
-                  <button className="toss-btn toss-btn-secondary" style={{ marginTop: '8px' }} disabled={busyId === loan.id} onClick={() => handleDeclareGraduated(loan.id)}>
+                  <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px' }} disabled={busyId === loan.id} onClick={() => handleDeclareGraduated(loan.id)}>
                     {busyId === loan.id ? 'Updating…' : 'Declare graduated'}
                   </button>
                 )}
                 {loan.status === 'IN_GRACE_PERIOD' && (
-                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>In your grace period -- repayment isn't due yet.</p>
+                  <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>In your grace period -- repayment isn't due yet.</p>
                 )}
                 {(loan.status === 'REPAYING' || loan.status === 'OVERDUE') && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                     {suggested[loan.id] && (
-                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
                         Suggested: {Math.round(suggested[loan.id].suggestedMonthlyPayment).toLocaleString()} RWF/mo · {suggested[loan.id].note}
                       </p>
                     )}
                     <input
                       type="number" value={repayAmounts[loan.id] ?? ''} onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [loan.id]: e.target.value }))}
                       placeholder="Repayment amount (RWF)"
-                      style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                      style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
                     />
-                    <button className="toss-btn toss-btn-secondary" disabled={busyId === loan.id} onClick={() => handleRepay(loan.id)}>
+                    <button className="itunda-btn itunda-btn-secondary" disabled={busyId === loan.id} onClick={() => handleRepay(loan.id)}>
                       {busyId === loan.id ? 'Repaying…' : 'Repay'}
                     </button>
                   </div>
@@ -2834,36 +2834,36 @@ function MotoOwnershipView() {
     }
   };
 
-  if (plans === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (plans === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      <div className="toss-card" style={{ padding: '16px' }}>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Moto-Taxi Ownership Plan</h4>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           Save toward a 30% down payment on your own moto-taxi bike (itunda's own down-payment policy), then convert the rest into an unsecured loan.
           {' '}A real entry-level bike costs around 600,000 RWF -- this fills the gap left since Rwanda's taxi-moto cooperatives, which used to help
           {' '}drivers become owner-operators, were dissolved.
         </p>
         {hasActivePlan ? (
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '8px' }}>You already have an active moto-taxi ownership plan -- complete or cancel it before starting another.</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '8px' }}>You already have an active moto-taxi ownership plan -- complete or cancel it before starting another.</p>
         ) : (
           <>
             <input
               type="number" value={bikePrice} onChange={(e) => setBikePrice(e.target.value)} placeholder="Bike price (RWF, 300,000-2,500,000)"
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             />
             <input
               type="number" value={dailyContribution} onChange={(e) => setDailyContribution(e.target.value)} placeholder="Daily contribution (RWF)"
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
             />
             {previewDownPayment > 0 && (
-              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
                 Down payment target (30%): {previewDownPayment.toLocaleString()} RWF
               </p>
             )}
-            <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'create'} onClick={handleCreate}>
+            <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busyId === 'create'} onClick={handleCreate}>
               {busyId === 'create' ? 'Creating…' : 'Start plan'}
             </button>
           </>
@@ -2877,39 +2877,39 @@ function MotoOwnershipView() {
             {plans.map((plan) => {
               const progressPct = plan.downPaymentTarget > 0 ? Math.min(100, Math.round((plan.savedAmount / plan.downPaymentTarget) * 100)) : 0;
               return (
-                <div key={plan.id} className="toss-card" style={{ padding: '14px' }}>
+                <div key={plan.id} className="itunda-card" style={{ padding: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{plan.bikePrice.toLocaleString()} RWF bike</p>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{plan.status}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{plan.status}</span>
                   </div>
                   {plan.status === 'SAVING' && (
                     <>
-                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+                      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
                         Saved {plan.savedAmount.toLocaleString()} / {plan.downPaymentTarget.toLocaleString()} RWF down payment
                       </p>
-                      <div style={{ height: '6px', borderRadius: '3px', background: 'var(--toss-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${progressPct}%`, background: 'var(--toss-blue)' }} />
+                      <div style={{ height: '6px', borderRadius: '3px', background: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${progressPct}%`, background: 'var(--itunda-blue)' }} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                         <input
                           type="number" value={contributeAmounts[plan.id] ?? ''} onChange={(e) => setContributeAmounts((prev) => ({ ...prev, [plan.id]: e.target.value }))}
                           placeholder="Contribution amount (RWF)"
-                          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
                         />
                         <div style={{ display: 'flex', gap: '6px' }}>
-                          <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busyId === plan.id} onClick={() => handleContribute(plan.id)}>
+                          <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busyId === plan.id} onClick={() => handleContribute(plan.id)}>
                             {busyId === plan.id ? 'Saving…' : 'Contribute'}
                           </button>
-                          <button className="toss-btn toss-btn-secondary" style={{ flex: 1, color: 'var(--toss-red)' }} disabled={busyId === plan.id} onClick={() => handleCancel(plan.id)}>
+                          <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1, color: 'var(--itunda-red)' }} disabled={busyId === plan.id} onClick={() => handleCancel(plan.id)}>
                             Cancel
                           </button>
                         </div>
                         {plan.savedAmount >= plan.downPaymentTarget && (
                           <>
-                            <p style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                            <p style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>
                               This releases your full {plan.bikePrice.toLocaleString()} RWF bike price to your wallet (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.
                             </p>
-                            <button className="toss-btn toss-btn-primary" disabled={busyId === plan.id} onClick={() => handleConvert(plan.id)}>
+                            <button className="itunda-btn itunda-btn-primary" disabled={busyId === plan.id} onClick={() => handleConvert(plan.id)}>
                               {busyId === plan.id ? 'Converting…' : 'Convert to loan'}
                             </button>
                           </>
@@ -2919,19 +2919,19 @@ function MotoOwnershipView() {
                   )}
                   {plan.status === 'LOAN_ACTIVE' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Loan outstanding: {plan.loanOutstanding.toLocaleString()} RWF</p>
+                      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Loan outstanding: {plan.loanOutstanding.toLocaleString()} RWF</p>
                       <input
                         type="number" value={repayAmounts[plan.id] ?? ''} onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [plan.id]: e.target.value }))}
                         placeholder="Repayment amount (RWF)"
-                        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
                       />
-                      <button className="toss-btn toss-btn-secondary" disabled={busyId === plan.id} onClick={() => handleRepay(plan.id)}>
+                      <button className="itunda-btn itunda-btn-secondary" disabled={busyId === plan.id} onClick={() => handleRepay(plan.id)}>
                         {busyId === plan.id ? 'Repaying…' : 'Repay'}
                       </button>
                     </div>
                   )}
                   {plan.status === 'COMPLETED' && (
-                    <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>Paid off -- this bike is now fully yours.</p>
+                    <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>Paid off -- this bike is now fully yours.</p>
                   )}
                 </div>
               );
@@ -2965,38 +2965,38 @@ function CreditScoreView() {
   }, []);
 
   if (!result) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Your score</p>
+      <div className="itunda-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Your score</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{result.score} / 850</h2>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Based on your own account activity, not a bureau report.</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Based on your own account activity, not a bureau report.</p>
       </div>
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What makes up your score</h3>
         {result.factors.map((f) => (
           <div key={f.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <div>
               <p>{f.name}</p>
-              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{f.description}</p>
+              <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{f.description}</p>
             </div>
             <span>+{f.points}</span>
           </div>
         ))}
       </div>
       {suggestions !== null && suggestions.length > 0 && (
-        <div className="toss-card" style={{ padding: '16px' }}>
+        <div className="itunda-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What would raise your score</h3>
           {suggestions.map((s) => (
             <div key={s.action} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
               <div>
                 <p>{s.action}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{s.description}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{s.description}</p>
               </div>
-              <span style={{ color: 'var(--toss-blue)', fontWeight: 700 }}>+{s.pointsGain}</span>
+              <span style={{ color: 'var(--itunda-blue)', fontWeight: 700 }}>+{s.pointsGain}</span>
             </div>
           ))}
         </div>
@@ -3020,23 +3020,23 @@ function TrustScoreView() {
   }, []);
 
   if (!result) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Your trust score</p>
+      <div className="itunda-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Your trust score</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{result.score} / 1000</h2>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>How your neighbors see you on Marketplace, Jobs, and Property.</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>How your neighbors see you on Marketplace, Jobs, and Property.</p>
       </div>
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What makes up your score</h3>
         {result.factors.map((f) => (
           <div key={f.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <div>
               <p>{f.name}</p>
-              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{f.description}</p>
+              <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{f.description}</p>
             </div>
             <span>+{f.points}</span>
           </div>
@@ -3112,30 +3112,30 @@ function RewardsView() {
   };
 
   if (!tasks) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Total earned</p>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
+      <div className="itunda-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Total earned</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{tasks.rewardsTotal} RWF</h2>
       </div>
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Missions</h3>
         {tasks.tasks.map((t) => (
           <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '8px 0' }}>
             <div>
               <p>{t.title}</p>
-              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{t.subtitle}</p>
+              <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{t.subtitle}</p>
             </div>
             {t.claimed ? (
-              <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Claimed</span>
+              <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Claimed</span>
             ) : (
               <button
-                className="toss-btn toss-btn-secondary"
+                className="itunda-btn itunda-btn-secondary"
                 disabled={!t.eligible || claimingId === t.id}
                 onClick={() => handleClaim(t.id)}
               >
@@ -3145,14 +3145,14 @@ function RewardsView() {
           </div>
         ))}
       </div>
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>🚶 Walking rewards</h3>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Today: {todaySteps ?? 0} steps</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Today: {todaySteps ?? 0} steps</p>
         {/* Real lottery-style bonus (item 248) -- the real, stated odds shown up front,
             same discipline this app's own dark-pattern-prevention rules require: never a
             mechanic a user only discovers by winning. */}
         {stepTiers.length > 0 && (
-          <ul style={{ fontSize: '11px', color: 'var(--toss-grey-500)', margin: '6px 0 0', paddingLeft: '16px' }}>
+          <ul style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', margin: '6px 0 0', paddingLeft: '16px' }}>
             {stepTiers.map((tier) => (
               <li key={tier.stepsRequired}>
                 {tier.stepsRequired.toLocaleString()} steps: +{tier.rewardAmount} RWF guaranteed, plus a {Math.round(tier.lotteryOdds * 100)}% chance of a +{tier.lotteryBonusAmount} RWF bonus
@@ -3166,18 +3166,18 @@ function RewardsView() {
             placeholder="Enter steps"
             value={stepsInput}
             onChange={(e) => setStepsInput(e.target.value)}
-            style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+            style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
           />
-          <button className="toss-btn toss-btn-secondary" disabled={reportingSteps} onClick={handleReportSteps}>
+          <button className="itunda-btn itunda-btn-secondary" disabled={reportingSteps} onClick={handleReportSteps}>
             {reportingSteps ? '...' : 'Report'}
           </button>
         </div>
       </div>
       {referral && (
-        <div className="toss-card" style={{ padding: '16px' }}>
+        <div className="itunda-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Invite friends</h3>
           <p style={{ fontSize: '18px', fontWeight: 700 }}>{referral.referralCode}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
             {referral.completedReferralCount} completed of {referral.referredCount} referred
           </p>
         </div>
@@ -3313,28 +3313,28 @@ function InsuranceView() {
   };
 
   if (!plans) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
   }
 
   const enrolledPlanIds = new Set(policies.map((p) => p.planId));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
 
       {policies.length > 0 && (
-        <div className="toss-card" style={{ padding: '16px' }}>
+        <div className="itunda-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My policies</h3>
           {policies.map((p) => (
-            <div key={p.id} style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div key={p.id} style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <p style={{ fontSize: '13px', fontWeight: 600 }}>{p.planName}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{p.policyNumber} · {p.status} · {p.monthlyPremium.toLocaleString()} RWF/mo</p>
+                  <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{p.policyNumber} · {p.status} · {p.monthlyPremium.toLocaleString()} RWF/mo</p>
                 </div>
                 <button
-                  className="toss-btn toss-btn-secondary"
+                  className="itunda-btn itunda-btn-secondary"
                   disabled={p.status !== 'active'}
                   onClick={() => setClaimPolicyId(p.id)}
                 >
@@ -3347,20 +3347,20 @@ function InsuranceView() {
                     placeholder="What happened?"
                     value={claimDescription}
                     onChange={(e) => setClaimDescription(e.target.value)}
-                    style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+                    style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
                   />
                   <input
                     type="number"
                     placeholder="Claim amount (RWF)"
                     value={claimAmount}
                     onChange={(e) => setClaimAmount(e.target.value)}
-                    style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+                    style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
                   />
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="toss-btn toss-btn-secondary" disabled={submittingClaim} onClick={handleSubmitClaim}>
+                    <button className="itunda-btn itunda-btn-secondary" disabled={submittingClaim} onClick={handleSubmitClaim}>
                       {submittingClaim ? '...' : 'Submit claim'}
                     </button>
-                    <button className="toss-btn toss-btn-secondary" onClick={() => setClaimPolicyId(null)}>Cancel</button>
+                    <button className="itunda-btn itunda-btn-secondary" onClick={() => setClaimPolicyId(null)}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -3376,17 +3376,17 @@ function InsuranceView() {
                             placeholder="Daily contribution (0 = manual only)"
                             value={newFundDaily}
                             onChange={(e) => setNewFundDaily(e.target.value)}
-                            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+                            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
                           />
                           <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className="toss-btn toss-btn-secondary" disabled={fundBusyId === p.id} onClick={() => handleCreateFund(p.id)}>
+                            <button className="itunda-btn itunda-btn-secondary" disabled={fundBusyId === p.id} onClick={() => handleCreateFund(p.id)}>
                               {fundBusyId === p.id ? '...' : 'Start saving'}
                             </button>
-                            <button className="toss-btn toss-btn-secondary" onClick={() => setCreatingFundPolicyId(null)}>Cancel</button>
+                            <button className="itunda-btn itunda-btn-secondary" onClick={() => setCreatingFundPolicyId(null)}>Cancel</button>
                           </div>
                         </div>
                       ) : (
-                        <button className="toss-btn toss-btn-secondary" onClick={() => setCreatingFundPolicyId(p.id)}>
+                        <button className="itunda-btn itunda-btn-secondary" onClick={() => setCreatingFundPolicyId(p.id)}>
                           Save for next premium
                         </button>
                       )}
@@ -3396,11 +3396,11 @@ function InsuranceView() {
                 const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
                 return (
                   <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
                       Saved toward next premium: {fund.currentAmount.toLocaleString()} / {fund.targetAmount.toLocaleString()} RWF
                     </p>
-                    <div style={{ height: '6px', borderRadius: '3px', background: 'var(--toss-grey-100)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--toss-blue)' }} />
+                    <div style={{ height: '6px', borderRadius: '3px', background: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--itunda-blue)' }} />
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input
@@ -3408,12 +3408,12 @@ function InsuranceView() {
                         placeholder="Add amount (RWF)"
                         value={contributeAmount[fund.id] ?? ''}
                         onChange={(e) => setContributeAmount((prev) => ({ ...prev, [fund.id]: e.target.value }))}
-                        style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+                        style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
                       />
-                      <button className="toss-btn toss-btn-secondary" disabled={fundBusyId === fund.id} onClick={() => handleContribute(fund.id)}>
+                      <button className="itunda-btn itunda-btn-secondary" disabled={fundBusyId === fund.id} onClick={() => handleContribute(fund.id)}>
                         {fundBusyId === fund.id ? '...' : 'Add'}
                       </button>
-                      <button className="toss-btn toss-btn-secondary" disabled={fundBusyId === fund.id} onClick={() => handleCancelFund(fund.id)}>
+                      <button className="itunda-btn itunda-btn-secondary" disabled={fundBusyId === fund.id} onClick={() => handleCancelFund(fund.id)}>
                         Cancel fund
                       </button>
                     </div>
@@ -3426,13 +3426,13 @@ function InsuranceView() {
       )}
 
       {claims.length > 0 && (
-        <div className="toss-card" style={{ padding: '16px' }}>
+        <div className="itunda-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My claims</h3>
           {claims.map((c) => (
             <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
               <div>
                 <p>{c.description}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{c.status}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{c.status}</p>
               </div>
               <span>{c.amount.toLocaleString()} RWF</span>
             </div>
@@ -3440,18 +3440,18 @@ function InsuranceView() {
         </div>
       )}
 
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Browse plans</h3>
         {plans.map((plan) => (
-          <div key={plan.id} style={{ padding: '10px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+          <div key={plan.id} style={{ padding: '10px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 600 }}>{plan.name}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString()} RWF/mo · cover {plan.coverageAmount.toLocaleString()} RWF</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{plan.description}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString()} RWF/mo · cover {plan.coverageAmount.toLocaleString()} RWF</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{plan.description}</p>
               </div>
               <button
-                className="toss-btn toss-btn-secondary"
+                className="itunda-btn itunda-btn-secondary"
                 disabled={enrolledPlanIds.has(plan.id) || enrollingId === plan.id}
                 onClick={() => handleEnroll(plan.id)}
               >
@@ -3530,14 +3530,14 @@ function CropWeatherIndexSection() {
   };
 
   if (!catalog) {
-    return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   }
 
   return (
-    <div className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div>
         <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Crop Weather Insurance</h3>
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
           Rwanda's real National Agricultural Insurance Scheme model: if your district's official rainfall for this
           season falls below the drought threshold, every enrolled farmer in that district and season is paid
           automatically — no claim needed. The season's rainfall figure is transcribed by an admin from the real
@@ -3545,21 +3545,21 @@ function CropWeatherIndexSection() {
         </p>
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
 
       {policies.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {policies.map((p) => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 600 }}>{p.cropType.replace('_', ' ')} · {p.district} {p.season}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
                   {p.status} · insured {p.insuredAmount.toLocaleString()} RWF · premium {p.premiumAmount.toLocaleString()} RWF
                 </p>
               </div>
               {p.status === 'ENROLLED' && (
-                <button className="toss-btn toss-btn-secondary" disabled={busyId === p.id} onClick={() => handleCancel(p.id)}>
+                <button className="itunda-btn itunda-btn-secondary" disabled={busyId === p.id} onClick={() => handleCancel(p.id)}>
                   {busyId === p.id ? '...' : 'Cancel'}
                 </button>
               )}
@@ -3569,7 +3569,7 @@ function CropWeatherIndexSection() {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <select value={cropType} onChange={(e) => setCropType(e.target.value as WeatherIndexCropType)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}>
+        <select value={cropType} onChange={(e) => setCropType(e.target.value as WeatherIndexCropType)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}>
           {catalog.map((c) => (
             <option key={c.cropType} value={c.cropType}>{c.name} — {c.premiumRatePercent}% premium rate</option>
           ))}
@@ -3578,23 +3578,23 @@ function CropWeatherIndexSection() {
           placeholder="District (e.g. Nyagatare)"
           value={district}
           onChange={(e) => setDistrict(e.target.value)}
-          style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+          style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
         />
         <input
           placeholder="Season (e.g. 2026B)"
           value={season}
           onChange={(e) => setSeason(e.target.value)}
-          style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+          style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
         />
         <input
           type="number"
           placeholder="Insured amount (RWF, max 500,000)"
           value={insuredAmount}
           onChange={(e) => setInsuredAmount(e.target.value)}
-          style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+          style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
         />
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Premium: {computedPremium.toLocaleString()} RWF, charged now to your wallet.</p>
-        <button className="toss-btn toss-btn-secondary" disabled={enrolling} onClick={handleEnroll}>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Premium: {computedPremium.toLocaleString()} RWF, charged now to your wallet.</p>
+        <button className="itunda-btn itunda-btn-secondary" disabled={enrolling} onClick={handleEnroll}>
           {enrolling ? '...' : 'Enroll'}
         </button>
       </div>
@@ -3659,24 +3659,24 @@ function BillsView() {
   };
 
   if (!providers) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
 
       {pending.length > 0 && (
-        <div className="toss-card" style={{ padding: '16px' }}>
+        <div className="itunda-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Pending bills</h3>
           {pending.map((b) => (
-            <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 600 }}>{b.provider}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{b.accountNumber} · due {b.dueDate} · {b.amount.toLocaleString()} RWF</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{b.accountNumber} · due {b.dueDate} · {b.amount.toLocaleString()} RWF</p>
               </div>
-              <button className="toss-btn toss-btn-secondary" disabled={payingId === b.id} onClick={() => handlePay(b)}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={payingId === b.id} onClick={() => handlePay(b)}>
                 {payingId === b.id ? '...' : 'Pay'}
               </button>
             </div>
@@ -3684,44 +3684,44 @@ function BillsView() {
         </div>
       )}
 
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Buy airtime</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <input
             placeholder="Phone number"
             value={airtimePhone}
             onChange={(e) => setAirtimePhone(e.target.value)}
-            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
           />
           <input
             type="number"
             placeholder="Amount (RWF)"
             value={airtimeAmount}
             onChange={(e) => setAirtimeAmount(e.target.value)}
-            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
           />
           <select
             value={airtimeProvider}
             onChange={(e) => setAirtimeProvider(e.target.value)}
-            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
           >
             <option value="">Default provider</option>
             {providers.filter((p) => p.category === 'airtime').map((p) => (
               <option key={p.id} value={p.name}>{p.logo} {p.name}</option>
             ))}
           </select>
-          <button className="toss-btn toss-btn-secondary" disabled={buyingAirtime} onClick={handleBuyAirtime}>
+          <button className="itunda-btn itunda-btn-secondary" disabled={buyingAirtime} onClick={handleBuyAirtime}>
             {buyingAirtime ? '...' : 'Buy airtime'}
           </button>
         </div>
       </div>
 
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>All billers</h3>
         {providers.map((p) => (
           <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{p.logo} {p.name}</span>
-            <span style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{p.category}</span>
+            <span style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{p.category}</span>
           </div>
         ))}
       </div>
@@ -3828,8 +3828,8 @@ function AgentOperatorView() {
 
   if (notOperator) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
           You are not assigned as an Itunda agent till operator. Ask an Itunda staff admin to assign your account to a store.
         </p>
       </div>
@@ -3837,64 +3837,64 @@ function AgentOperatorView() {
   }
 
   if (!till) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button className={section === 'till' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'} onClick={() => setSection('till')} style={{ flex: 1 }}>Till</button>
-        <button className={section === 'float' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'} onClick={() => setSection('float')} style={{ flex: 1 }}>Float marketplace</button>
+        <button className={section === 'till' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'} onClick={() => setSection('till')} style={{ flex: 1 }}>Till</button>
+        <button className={section === 'float' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'} onClick={() => setSection('float')} style={{ flex: 1 }}>Float marketplace</button>
       </div>
       {section === 'float' ? <FloatMarketplaceSection /> : (
       <>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{till.agentName}</p>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
+      <div className="itunda-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{till.agentName}</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{till.expectedCash.toLocaleString()} RWF expected in till</h2>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           Today: {till.todayCashIn.toLocaleString()} RWF in · {till.todayCashOut.toLocaleString()} RWF out
         </p>
         {till.reconciliation && (
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
             Last count: {till.reconciliation.countedCash.toLocaleString()} RWF ({till.reconciliation.status}, variance {till.reconciliation.variance.toLocaleString()})
           </p>
         )}
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Accept cash-in</h3>
         <input type="text" placeholder="Customer account number" value={cashInAccount} onChange={(e) => setCashInAccount(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
         <input type="number" placeholder="Amount (RWF)" value={cashInAmount} onChange={(e) => setCashInAmount(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
         <input type="text" placeholder="Receipt number" value={cashInReceipt} onChange={(e) => setCashInReceipt(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
-        <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleCashIn}>{busy ? 'Working…' : 'Accept cash-in'}</button>
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleCashIn}>{busy ? 'Working…' : 'Accept cash-in'}</button>
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Pay cash-out</h3>
         <input type="text" placeholder="Customer account number" value={cashOutAccount} onChange={(e) => setCashOutAccount(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
         <input type="number" placeholder="Amount (RWF)" value={cashOutAmount} onChange={(e) => setCashOutAmount(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
         <input type="text" placeholder="Receipt number" value={cashOutReceipt} onChange={(e) => setCashOutReceipt(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
         <input type="text" placeholder="Customer's withdrawal code" value={cashOutCode} onChange={(e) => setCashOutCode(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
-        <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleCashOut}>{busy ? 'Working…' : 'Pay cash-out'}</button>
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleCashOut}>{busy ? 'Working…' : 'Pay cash-out'}</button>
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Submit today's till count</h3>
         <input type="number" placeholder="Counted cash (RWF)" value={countedCash} onChange={(e) => setCountedCash(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
-        <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSubmitTillCount}>{busy ? 'Working…' : 'Submit count'}</button>
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSubmitTillCount}>{busy ? 'Working…' : 'Submit count'}</button>
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Recent activity</h3>
         {activity.length === 0 && <EmptyState message="No cash movements yet today — your cash-in/cash-out activity will show up here." />}
         {activity.map((a) => (
@@ -4040,26 +4040,26 @@ function FloatMarketplaceSection() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Offer surplus float</h3>
         <input type="number" placeholder="Amount to offer (RWF)" value={listAmount} onChange={(e) => setListAmount(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
-        <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handlePostListing}>{busy ? 'Working…' : 'Post listing'}</button>
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handlePostListing}>{busy ? 'Working…' : 'Post listing'}</button>
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Nearby agents with float to spare</h3>
-        <button className="toss-btn toss-btn-secondary" disabled={locating} onClick={handleFindNearby} style={{ marginBottom: '8px' }}>
+        <button className="itunda-btn itunda-btn-secondary" disabled={locating} onClick={handleFindNearby} style={{ marginBottom: '8px' }}>
           {locating ? 'Finding…' : 'Find nearby listings'}
         </button>
         {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): points
             back to the real "Find nearby listings" button right above. */}
         {nearby.length === 0 && <EmptyState message='No nearby listings loaded yet — tap "Find nearby listings" above to search.' />}
         {nearby.map((n) => (
-          <div key={n.listing.id} style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+          <div key={n.listing.id} style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
               <span>{n.agentDisplayName} · {n.distanceKm.toFixed(1)} km</span>
               <span style={{ fontWeight: 600 }}>{n.remainingAmount.toLocaleString()} RWF available</span>
@@ -4067,25 +4067,25 @@ function FloatMarketplaceSection() {
             <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
               <input type="number" placeholder="Amount to request" value={requestAmounts[n.listing.id] || ''}
                 onChange={(e) => setRequestAmounts((prev) => ({ ...prev, [n.listing.id]: e.target.value }))}
-                style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', flex: 1 }} />
-              <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => handleRequestFloat(n.listing.id, n.remainingAmount)}>Request</button>
+                style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', flex: 1 }} />
+              <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={() => handleRequestFloat(n.listing.id, n.remainingAmount)}>Request</button>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
         {myListings.length === 0 && <EmptyState message="No float listings yet — post one to let nearby agents claim your spare cash." />}
         {myListings.map((l) => (
           <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
             <span>{l.amount.toLocaleString()} RWF offered · {l.claimedAmount.toLocaleString()} claimed · {l.status}</span>
-            {l.status === 'OPEN' && <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => handleCancelListing(l.id)}>Cancel</button>}
+            {l.status === 'OPEN' && <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={() => handleCancelListing(l.id)}>Cancel</button>}
           </div>
         ))}
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Requests against my listings</h3>
         {incomingRequests.length === 0 && <EmptyState message="No requests yet — they'll show up here once another agent claims from your listing." />}
         {incomingRequests.map((r) => (
@@ -4093,15 +4093,15 @@ function FloatMarketplaceSection() {
             <span>{r.amount.toLocaleString()} RWF · {r.status}</span>
             {r.status === 'REQUESTED' && (
               <div style={{ display: 'flex', gap: '6px' }}>
-                <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => handleAcceptRequest(r.id)}>Accept</button>
-                <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => handleDeclineRequest(r.id)}>Decline</button>
+                <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={() => handleAcceptRequest(r.id)}>Accept</button>
+                <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={() => handleDeclineRequest(r.id)}>Decline</button>
               </div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My requests</h3>
         {myRequests.length === 0 && <EmptyState message="No requests yet — claim from a nearby listing above and it'll show up here." />}
         {myRequests.map((r) => (
@@ -4156,13 +4156,13 @@ function UssdSettingsView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="toss-card" style={{ padding: '20px' }}>
+      <div className="itunda-card" style={{ padding: '20px' }}>
         <p style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>USSD access</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
           Roughly two-thirds of people in Rwanda have a feature phone, not a smartphone. Set a real 4-6 digit
           USSD PIN so you can check your balance and send money from any phone, no app or internet needed.
         </p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
           Honestly scoped: the real menu, PIN check, and money transfer are fully built and working today. Dialing
           a short code like <code>*123#</code> to reach them needs a real partnership with a mobile network operator
           this project doesn't have yet -- the same honest limitation as our ID-verification integration.
@@ -4172,13 +4172,13 @@ function UssdSettingsView() {
             <input
               type={pinVisible ? 'text' : 'password'} inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)}
               placeholder="New USSD PIN (4-6 digits)" maxLength={6}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '12px 40px 12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '12px 40px 12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
             <button
               type="button"
               onClick={() => setPinVisible((v) => !v)}
               aria-label={pinVisible ? 'Hide PIN' : 'Show PIN'}
-              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--toss-grey-500)' }}
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: '4px', display: 'flex', color: 'var(--itunda-grey-500)' }}
             >
               {pinVisible ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -4186,11 +4186,11 @@ function UssdSettingsView() {
           <input
             type={pinVisible ? 'text' : 'password'} inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)}
             placeholder="Confirm PIN" maxLength={6}
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
-          {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+          {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
           {success && <p style={{ fontSize: '13px', color: '#1E8E4F' }}>Your USSD PIN has been set.</p>}
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
             {submitting ? 'Saving…' : 'Set USSD PIN'}
           </button>
         </form>
@@ -4216,7 +4216,7 @@ function ForeignCurrencyView() {
   useEffect(load, []);
 
   if (wallets === null) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '160px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   }
 
   const openCurrencies = new Set(wallets.map((w) => w.currency));
@@ -4225,17 +4225,17 @@ function ForeignCurrencyView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {wallets.length === 0 ? (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+        <div className="itunda-card">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
             Open a USD, EUR, or GBP account to hold foreign currency and convert between it and RWF at a real live rate.
           </p>
         </div>
       ) : (
         wallets.map((w) => (
-          <div key={w.id} className="toss-card" style={{ padding: '20px' }}>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{w.currency} account</p>
+          <div key={w.id} className="itunda-card" style={{ padding: '20px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{w.currency} account</p>
             <h2 style={{ fontSize: '24px', fontWeight: 700 }}>{w.balance.toLocaleString()} {w.currency}</h2>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{w.accountNumber}</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{w.accountNumber}</p>
           </div>
         ))
       )}
@@ -4244,7 +4244,7 @@ function ForeignCurrencyView() {
       {wallets.length > 0 && <ConvertCurrencyCard wallets={wallets} onConverted={load} />}
 
       {conversions.length > 0 && (
-        <div className="toss-card">
+        <div className="itunda-card">
           <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Recent conversions</h3>
           {conversions.map((c) => (
             <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
@@ -4276,14 +4276,14 @@ function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly 
   };
 
   return (
-    <div className="toss-card">
+    <div className="itunda-card">
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Open an account</h3>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         {currencies.map((c) => (
           <button
             key={c}
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             style={{ flex: 1 }}
             disabled={opening !== null}
             onClick={() => handleOpen(c)}
@@ -4331,13 +4331,13 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
   };
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Convert</h3>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)' }}>
+        <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)' }}>
           {wallets.map((w) => <option key={w.currency} value={w.currency}>{w.currency}</option>)}
         </select>
-        <select value={direction} onChange={(e) => setDirection(e.target.value as 'TO_FOREIGN' | 'TO_RWF')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)' }}>
+        <select value={direction} onChange={(e) => setDirection(e.target.value as 'TO_FOREIGN' | 'TO_RWF')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)' }}>
           <option value="TO_FOREIGN">RWF → {currency}</option>
           <option value="TO_RWF">{currency} → RWF</option>
         </select>
@@ -4350,18 +4350,18 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
         onChange={(e) => setAmount(e.target.value)}
         placeholder={`Amount (${fromCurrency})`}
         required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
       />
       {rate !== null && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Live rate: 1 {fromCurrency} ≈ {rate.toFixed(4)} {toCurrency} (before itunda's 1.5% margin)</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Live rate: 1 {fromCurrency} ≈ {rate.toFixed(4)} {toCurrency} (before itunda's 1.5% margin)</p>
       )}
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
       {result && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-blue)', fontWeight: 700, margin: 0 }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', fontWeight: 700, margin: 0 }}>
           Converted {result.fromAmount.toLocaleString()} {result.fromCurrency} → {result.toAmount.toLocaleString()} {result.toCurrency}
         </p>
       )}
-      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+      <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
         {submitting ? 'Converting…' : 'Convert'}
       </button>
     </form>
@@ -4384,19 +4384,19 @@ function SpendingInsightView() {
   }, []);
 
   if (!categories) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '200px' }} />;
   }
 
   const maxAmount = Math.max(...categories.map((c) => c.amount), 1);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Total spent, all time</p>
+      <div className="itunda-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Total spent, all time</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{totalSpent.toLocaleString()} RWF</h2>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Real, ledger-based -- what every wallet debit actually paid for.</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Real, ledger-based -- what every wallet debit actually paid for.</p>
       </div>
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>By category</h3>
         {categories.length === 0 ? (
           <EmptyState message="No spending recorded yet — your breakdown will show up here once you use your wallet." />
@@ -4407,8 +4407,8 @@ function SpendingInsightView() {
                 <span>{c.name}</span>
                 <span style={{ fontWeight: 700 }}>{c.amount.toLocaleString()} RWF</span>
               </div>
-              <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(c.amount / maxAmount) * 100}%`, backgroundColor: 'var(--toss-blue)', borderRadius: '3px' }} />
+              <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(c.amount / maxAmount) * 100}%`, backgroundColor: 'var(--itunda-blue)', borderRadius: '3px' }} />
               </div>
             </div>
           ))
@@ -4434,32 +4434,32 @@ function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
   useEffect(load, []);
 
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Budgets</h3>
-        <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setShowForm((v) => !v)}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Cancel' : '+ Set budget'}
         </button>
       </div>
       {showForm && <SetBudgetForm categories={categories} onSet={() => { setShowForm(false); load(); }} />}
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {budgets === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
       ) : budgets.length === 0 ? (
         <EmptyState message="No budgets set yet -- set a monthly limit to get alerted before you overspend." />
       ) : (
         budgets.map((b) => {
-          const barColor = b.status === 'OVER' ? 'var(--toss-red)' : b.status === 'NEAR' ? '#F5A623' : 'var(--toss-blue)';
+          const barColor = b.status === 'OVER' ? 'var(--itunda-red)' : b.status === 'NEAR' ? '#F5A623' : 'var(--itunda-blue)';
           return (
             <div key={b.category ?? 'overall'} style={{ padding: '8px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
                 <span>{b.category ?? 'Overall'}</span>
                 <span style={{ fontWeight: 700, color: barColor }}>{b.spent.toLocaleString()} / {b.monthlyLimit.toLocaleString()} RWF</span>
               </div>
-              <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', overflow: 'hidden' }}>
+              <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${Math.min(100, b.percentUsed)}%`, backgroundColor: barColor, borderRadius: '3px' }} />
               </div>
-              {b.status === 'OVER' && <p style={{ fontSize: '11px', color: 'var(--toss-red)', marginTop: '2px' }}>Over budget</p>}
+              {b.status === 'OVER' && <p style={{ fontSize: '11px', color: 'var(--itunda-red)', marginTop: '2px' }}>Over budget</p>}
               {b.status === 'NEAR' && <p style={{ fontSize: '11px', color: '#F5A623', marginTop: '2px' }}>Nearing your limit</p>}
             </div>
           );
@@ -4496,8 +4496,8 @@ function SetBudgetForm({ categories, onSet }: { categories: SpendingCategory[]; 
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-      <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px', padding: '12px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}>
         <option value="">Overall spending</option>
         {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
       </select>
@@ -4508,10 +4508,10 @@ function SetBudgetForm({ categories, onSet }: { categories: SpendingCategory[]; 
         onChange={(e) => setMonthlyLimit(e.target.value)}
         placeholder="Monthly limit (RWF)"
         required
-        style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
       />
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
-      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ fontSize: '13px', padding: '8px' }}>
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
+      <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ fontSize: '13px', padding: '8px' }}>
         {submitting ? 'Saving…' : 'Save budget'}
       </button>
     </form>
@@ -4544,15 +4544,15 @@ function SubscriptionsView() {
   }, []);
 
   if (subscriptions === null) {
-    return error ? <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '160px' }} />;
+    return error ? <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p> : <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div className="toss-card" style={{ padding: '24px' }}>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Estimated monthly total</p>
+      <div className="itunda-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Estimated monthly total</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{total.toLocaleString()} RWF</h2>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Detected from your own real payment history, not a linked-card feed.</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Detected from your own real payment history, not a linked-card feed.</p>
       </div>
       {// Real copy-voice fix (item 244, round 6 of the empty-state pass): this is
       // auto-detected from real payment history (see the real-data note above), not
@@ -4562,16 +4562,16 @@ function SubscriptionsView() {
         <EmptyState message="No recurring payments detected yet — once a payment repeats a few times, it'll show up here." />
       ) : (
         subscriptions.map((s) => (
-          <div key={`${s.displayName}-${s.cadence}`} className="toss-card" style={{ padding: '16px' }}>
+          <div key={`${s.displayName}-${s.cadence}`} className="itunda-card" style={{ padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{s.displayName}</h4>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{s.cadence === 'WEEKLY' ? 'Weekly' : 'Monthly'} · {s.occurrenceCount} payments seen</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{s.cadence === 'WEEKLY' ? 'Weekly' : 'Monthly'} · {s.occurrenceCount} payments seen</p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: '14px', fontWeight: 700 }}>{s.amount.toLocaleString()} RWF</p>
                 {s.priceIncreased && s.previousAmount !== null && (
-                  <p style={{ fontSize: '11px', color: 'var(--toss-red)' }}>↑ from {s.previousAmount.toLocaleString()} RWF</p>
+                  <p style={{ fontSize: '11px', color: 'var(--itunda-red)' }}>↑ from {s.previousAmount.toLocaleString()} RWF</p>
                 )}
               </div>
             </div>
@@ -4583,14 +4583,14 @@ function SubscriptionsView() {
           actually authorized (item 145) -- distinct from the detected-from-history
           section above: these are real active billing-key authorizations that charge
           automatically until cancelled, not a heuristic guess. */}
-      <div className="toss-card" style={{ padding: '24px' }}>
+      <div className="itunda-card" style={{ padding: '24px' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Merchant subscriptions</h3>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
           Plans you've subscribed to. These charge your wallet automatically until you cancel.
         </p>
-        {billingError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{billingError}</p>}
+        {billingError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{billingError}</p>}
         {billingSubs === null && !billingError ? (
-          <div className="toss-card skeleton" style={{ height: '80px' }} />
+          <div className="itunda-card skeleton" style={{ height: '80px' }} />
         ) : billingSubs && billingSubs.length === 0 ? (
           <EmptyState message="No merchant subscriptions yet — plans you subscribe to will show up here." />
         ) : (
@@ -4623,22 +4623,22 @@ function MerchantBillingSubscriptionRow({ subscription, onChanged }: { subscript
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '12px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
         <div>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>{subscription.chargeCount} charge{subscription.chargeCount === 1 ? '' : 's'} so far</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
             {subscription.status === 'ACTIVE'
               ? `Next charge ${new Date(subscription.nextChargeAt).toLocaleDateString()}`
               : `Cancelled ${subscription.cancelledAt ? new Date(subscription.cancelledAt).toLocaleDateString() : ''}`}
           </p>
           {subscription.lastFailureReason && subscription.status === 'ACTIVE' && (
-            <p style={{ fontSize: '11px', color: 'var(--toss-red)' }}>Last charge failed: {subscription.lastFailureReason}</p>
+            <p style={{ fontSize: '11px', color: 'var(--itunda-red)' }}>Last charge failed: {subscription.lastFailureReason}</p>
           )}
         </div>
         {subscription.status === 'ACTIVE' && (
           <button
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
             disabled={busy}
             onClick={handleCancel}
@@ -4647,7 +4647,7 @@ function MerchantBillingSubscriptionRow({ subscription, onChanged }: { subscript
           </button>
         )}
       </div>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -4694,19 +4694,19 @@ function IdentityView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Verify your identity</h2>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {hasPending ? (
-        <div className="toss-card" style={{ padding: '16px' }}>
+        <div className="itunda-card" style={{ padding: '16px' }}>
           <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Submission pending review</h4>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>We'll update your status once it's reviewed.</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>We'll update your status once it's reviewed.</p>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+        <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
           <div style={{ display: 'flex', gap: '6px' }}>
             {(['NATIONAL_ID', 'PASSPORT'] as IdentityDocumentType[]).map((t) => (
               <button
                 type="button" key={t}
-                className={documentType === t ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                className={documentType === t ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 onClick={() => setDocumentType(t)}
               >
                 {t}
@@ -4715,24 +4715,24 @@ function IdentityView() {
           </div>
           <input
             type="text" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Document number" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <input
             type="text" value={documentReference} onChange={(e) => setDocumentReference(e.target.value)} placeholder="Document reference (scan/photo reference)" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Submitting…' : 'Submit for review'}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? 'Submitting…' : 'Submit for review'}</button>
         </form>
       )}
       <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Your submissions</h3>
-      {submissions === null ? <div className="toss-card skeleton" style={{ height: '80px' }} /> :
-        submissions.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You have no submissions yet.</p> :
+      {submissions === null ? <div className="itunda-card skeleton" style={{ height: '80px' }} /> :
+        submissions.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>You have no submissions yet.</p> :
         submissions.map((s) => (
-          <div key={s.id} className="toss-card" style={{ padding: '16px' }}>
+          <div key={s.id} className="itunda-card" style={{ padding: '16px' }}>
             <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{s.documentType} · {s.documentNumber}</h4>
             <p style={{ fontSize: '13px' }}>Status: {s.status}</p>
-            {s.decisionReason && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{s.decisionReason}</p>}
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Filed: {s.submittedAt}</p>
+            {s.decisionReason && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{s.decisionReason}</p>}
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Filed: {s.submittedAt}</p>
           </div>
         ))}
     </div>
@@ -4783,11 +4783,11 @@ function SupportView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {!showNewForm ? (
-        <button className="toss-btn toss-btn-primary" onClick={() => setShowNewForm(true)}>Report an issue with a transaction</button>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Report an issue with a transaction</button>
       ) : (
-        <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+        <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
           <p style={{ fontSize: '12px', fontWeight: 700 }}>Which transaction?</p>
           {transactions.slice(0, 10).map((tx) => (
             <label key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -4800,7 +4800,7 @@ function SupportView() {
             {SUPPORT_CATEGORIES.map((c) => (
               <button
                 type="button" key={c}
-                className={category === c ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                className={category === c ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 onClick={() => setCategory(c)}
               >
                 {c}
@@ -4809,23 +4809,23 @@ function SupportView() {
           </div>
           <textarea
             value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the issue" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy || !selectedTransactionId || !description}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy || !selectedTransactionId || !description}>
             {busy ? 'Submitting…' : 'Submit ticket'}
           </button>
         </form>
       )}
       <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Your tickets</h3>
-      {tickets === null ? <div className="toss-card skeleton" style={{ height: '80px' }} /> :
-        tickets.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You have no support tickets.</p> :
+      {tickets === null ? <div className="itunda-card skeleton" style={{ height: '80px' }} /> :
+        tickets.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>You have no support tickets.</p> :
         tickets.map((t) => (
-          <div key={t.id} className="toss-card" style={{ padding: '16px' }}>
+          <div key={t.id} className="itunda-card" style={{ padding: '16px' }}>
             <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{t.category}</h4>
             <p style={{ fontSize: '13px' }}>{t.description}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Status: {t.status}</p>
-            {t.resolution && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Resolution: {t.resolution}</p>}
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Filed: {t.createdAt}</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Status: {t.status}</p>
+            {t.resolution && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Resolution: {t.resolution}</p>}
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Filed: {t.createdAt}</p>
           </div>
         ))}
     </div>
@@ -4860,16 +4860,16 @@ function MyBookingsCard() {
   };
 
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My bookings</h3>
       {bookings.slice(0, 5).map((b) => (
-        <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: '13px', borderTop: '1px solid var(--toss-grey-100)' }}>
+        <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: '13px', borderTop: '1px solid var(--itunda-grey-100)' }}>
           <div>
             <p style={{ fontWeight: 600 }}>{b.serviceName}</p>
-            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{b.bookingDate} · {b.startTime.slice(0, 5)} · {b.status}</p>
+            <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{b.bookingDate} · {b.startTime.slice(0, 5)} · {b.status}</p>
           </div>
           {(b.status === 'REQUESTED' || b.status === 'CONFIRMED') && (
-            <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => cancel(b.id)} disabled={cancelling === b.id}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => cancel(b.id)} disabled={cancelling === b.id}>
               {cancelling === b.id ? '…' : 'Cancel'}
             </button>
           )}
@@ -4914,12 +4914,12 @@ function BookingReviewButton({ booking }: { booking: MerchantBooking }) {
   };
 
   if (done) {
-    return <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Thanks for your review!</span>;
+    return <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Thanks for your review!</span>;
   }
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => setOpen(true)}>
         Rate this visit
       </button>
     );
@@ -4933,12 +4933,12 @@ function BookingReviewButton({ booking }: { booking: MerchantBooking }) {
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         placeholder="How was it? (optional)"
-        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
       />
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
           {submitting ? 'Submitting…' : 'Submit review'}
         </button>
       </div>
@@ -4991,7 +4991,7 @@ function MyView() {
       <NotificationsCard />
       <MyBookingsCard />
       {(shopOrders.length > 0 || eatsOrders.length > 0) && (
-        <div className="toss-card" style={{ padding: '16px' }}>
+        <div className="itunda-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My orders</h3>
           {shopOrders.slice(0, 3).map((order) => (
             <div key={order.id} style={rowStyle}>
@@ -5007,14 +5007,14 @@ function MyView() {
           ))}
         </div>
       )}
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My favorites</h3>
         <div style={rowStyle}><span>Marketplace wishlist</span><span>{favoriteListingsCount}</span></div>
         <div style={rowStyle}><span>Jobs wishlist</span><span>{favoriteJobPostsCount}</span></div>
         <div style={rowStyle}><span>Property wishlist</span><span>{favoritePropertyListingsCount}</span></div>
         <div style={rowStyle}><span>Restaurant favorites</span><span>{favoriteRestaurantsCount}</span></div>
       </div>
-      <div className="toss-card" style={{ padding: '16px' }}>
+      <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
         <div style={rowStyle}><span>Marketplace</span><span>{myListingsCount}</span></div>
         <div style={rowStyle}><span>Jobs posted</span><span>{myJobPostsCount}</span></div>
@@ -5025,9 +5025,9 @@ function MyView() {
       <MyProductSubscriptionsCard />
       <AffiliateEarningsCard />
       {miniApps.length > 0 && (
-        <div className="toss-card" style={{ padding: '16px' }}>
+        <div className="itunda-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Mini apps</h3>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
             Third-party apps reviewed and approved to run inside itunda.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -5036,11 +5036,11 @@ function MyView() {
                 {app.iconUrl ? (
                   <img src={app.iconUrl} alt="" style={{ width: '36px', height: '36px', borderRadius: '8px', flexShrink: 0 }} />
                 ) : (
-                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: 'var(--toss-grey-100)', flexShrink: 0 }} />
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: 'var(--itunda-grey-100)', flexShrink: 0 }} />
                 )}
                 <div>
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>{app.name}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{app.description}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{app.description}</p>
                 </div>
               </div>
             ))}
@@ -5078,14 +5078,14 @@ function NotificationsCard() {
   };
 
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Notifications</h3>
         {unreadCount > 0 && (
           <span
             role="button"
             onClick={handleReadAll}
-            style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-blue)', cursor: 'pointer' }}
+            style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-blue)', cursor: 'pointer' }}
           >
             Mark all read
           </span>
@@ -5106,12 +5106,12 @@ function NotificationsCard() {
               flexDirection: 'column',
               gap: '2px',
               padding: '10px 0',
-              borderTop: '1px solid var(--toss-grey-100)',
+              borderTop: '1px solid var(--itunda-grey-100)',
               cursor: n.isRead ? 'default' : 'pointer',
             }}
           >
             <span style={{ fontSize: '14px', fontWeight: n.isRead ? 400 : 700 }}>{n.title}</span>
-            <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{n.body}</span>
+            <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{n.body}</span>
           </div>
         ))
       )}
@@ -5158,19 +5158,19 @@ function ProfilePhotoCard() {
   };
 
   return (
-    <div className="toss-card" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+    <div className="itunda-card" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
       {profilePhotoUrl ? (
         <img src={profilePhotoUrl} alt="" style={{ width: '56px', height: '56px', borderRadius: '28px', objectFit: 'cover', flexShrink: 0 }} />
       ) : (
-        <div style={{ width: '56px', height: '56px', borderRadius: '28px', backgroundColor: 'var(--toss-grey-100)', flexShrink: 0 }} />
+        <div style={{ width: '56px', height: '56px', borderRadius: '28px', backgroundColor: 'var(--itunda-grey-100)', flexShrink: 0 }} />
       )}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
         <input
           type="url" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Profile photo URL"
-          style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '12px' }}
+          style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '12px' }}
         />
-        <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }} disabled={saving} onClick={handleSave}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }} disabled={saving} onClick={handleSave}>
           {saving ? 'Saving…' : 'Save photo'}
         </button>
       </div>
@@ -5189,7 +5189,7 @@ function VerificationCard() {
   if (!status || (status.emailVerified && status.phoneVerified)) return null;
 
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Verify your account</h3>
       {!status.phoneVerified && <VerificationRow kind="phone" onVerified={load} />}
       {!status.emailVerified && <VerificationRow kind="email" hasEmail={status.email !== null} onVerified={load} />}
@@ -5249,11 +5249,11 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
   }
 
   return (
-    <div style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+    <div style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
       {!sent ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '13px' }}>{kind === 'email' ? 'Email' : 'Phone number'} not verified</span>
-          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSend} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSend} style={{ fontSize: '12px', padding: '6px 10px' }}>
             {busy ? '…' : 'Send code'}
           </button>
         </div>
@@ -5261,14 +5261,14 @@ function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' 
         <form onSubmit={handleConfirm} style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text" inputMode="numeric" pattern="[0-9]*" autoFocus placeholder="Enter code" value={code} onChange={(e) => setCode(e.target.value)} required
-            style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy} style={{ fontSize: '12px', padding: '8px 12px' }}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy} style={{ fontSize: '12px', padding: '8px 12px' }}>
             {busy ? '…' : 'Confirm'}
           </button>
         </form>
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '4px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -5355,14 +5355,14 @@ function MyVehiclesCard() {
   };
 
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>My vehicles</h3>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
           {showCreate ? 'Cancel' : '+ Add'}
         </button>
       </div>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
         Estimated resale value based on age and mileage -- itunda's own general estimate, not a market comp.
       </p>
 
@@ -5370,44 +5370,44 @@ function MyVehiclesCard() {
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           <input
             type="text" placeholder="Make (e.g. Toyota)" value={make} onChange={(e) => setMake(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="text" placeholder="Model (e.g. RAV4)" value={model} onChange={(e) => setModel(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="number" placeholder="Model year" value={modelYear} onChange={(e) => setModelYear(e.target.value)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="number" placeholder="Purchase price (RWF)" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} min="1" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} max={new Date().toISOString().slice(0, 10)} required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="number" placeholder="Current mileage (km)" value={mileageKm} onChange={(e) => setMileageKm(e.target.value)} min="0" required
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Adding…' : 'Add vehicle'}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? 'Adding…' : 'Add vehicle'}</button>
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {(vehicles ?? []).length === 0 && <EmptyState message="No vehicles added yet — add one to track its value and get real offers." />}
 
       {(vehicles ?? []).map((v) => {
         const valuation = valuations[v.id];
         return (
-          <div key={v.id} style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+          <div key={v.id} style={{ padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{v.modelYear} {v.make} {v.model}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
                   {v.mileageKm.toLocaleString()} km
                   {valuation && (
                     <> · {valuation.ageYears} {valuation.ageYears === 1 ? 'year' : 'years'} old · expected {valuation.expectedMileageKm.toLocaleString()} km</>
@@ -5415,17 +5415,17 @@ function MyVehiclesCard() {
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <button className="toss-btn toss-btn-secondary" disabled={busyId === v.id} onClick={() => handleUpdateMileage(v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                <button className="itunda-btn itunda-btn-secondary" disabled={busyId === v.id} onClick={() => handleUpdateMileage(v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                   Update km
                 </button>
-                <button className="toss-btn toss-btn-secondary" disabled={busyId === v.id} onClick={() => handleRemove(v.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                <button className="itunda-btn itunda-btn-secondary" disabled={busyId === v.id} onClick={() => handleRemove(v.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                   Remove
                 </button>
               </div>
             </div>
             {valuation && (
-              <div style={{ marginTop: '8px', display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--toss-grey-500)' }}>
-                <span>Now: <strong style={{ color: 'var(--toss-grey-900)' }}>{valuation.currentEstimatedValue.toLocaleString()} RWF</strong></span>
+              <div style={{ marginTop: '8px', display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
+                <span>Now: <strong style={{ color: 'var(--itunda-grey-900)' }}>{valuation.currentEstimatedValue.toLocaleString()} RWF</strong></span>
                 <span>+1y: {valuation.estimatedValueIn1Year.toLocaleString()}</span>
                 <span>+2y: {valuation.estimatedValueIn2Years.toLocaleString()}</span>
                 <span>+3y: {valuation.estimatedValueIn3Years.toLocaleString()}</span>
@@ -5521,10 +5521,10 @@ function FamilyLinkCard() {
   const hasAnything = (invites?.length ?? 0) > 0 || (children?.length ?? 0) > 0 || (guardians?.length ?? 0) > 0;
 
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Family</h3>
-        <button className="toss-btn toss-btn-secondary" onClick={() => setShowInvite((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowInvite((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
           {showInvite ? 'Cancel' : '+ Link a family member'}
         </button>
       </div>
@@ -5533,23 +5533,23 @@ function FamilyLinkCard() {
         <form onSubmit={handleInvite} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <input
             type="text" placeholder="Phone number" value={childPhone} onChange={(e) => setChildPhone(e.target.value)} required
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
 
       {(invites ?? []).length > 0 && (
         <div style={{ marginBottom: '10px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '6px' }}>Pending invitations</p>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>Pending invitations</p>
           {(invites ?? []).map((inv) => (
             <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
               <p style={{ fontSize: '13px' }}>Family link request</p>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <button className="toss-btn toss-btn-primary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, true)} style={{ fontSize: '12px', padding: '6px 10px' }}>Accept</button>
-                <button className="toss-btn toss-btn-secondary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, false)} style={{ fontSize: '12px', padding: '6px 10px' }}>Decline</button>
+                <button className="itunda-btn itunda-btn-primary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, true)} style={{ fontSize: '12px', padding: '6px 10px' }}>Accept</button>
+                <button className="itunda-btn itunda-btn-secondary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, false)} style={{ fontSize: '12px', padding: '6px 10px' }}>Decline</button>
               </div>
             </div>
           ))}
@@ -5558,23 +5558,23 @@ function FamilyLinkCard() {
 
       {(children ?? []).length > 0 && (
         <div style={{ marginBottom: '10px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '6px' }}>Linked children</p>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>Linked children</p>
           {(children ?? []).map((c) => (
-            <div key={c.link.id} style={{ padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div key={c.link.id} style={{ padding: '6px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{c.childName}</p>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button className="toss-btn toss-btn-secondary" onClick={() => handleToggleOverview(c.link.childUserId)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                  <button className="itunda-btn itunda-btn-secondary" onClick={() => handleToggleOverview(c.link.childUserId)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                     {openOverviewFor === c.link.childUserId ? 'Hide' : 'View'}
                   </button>
-                  <button className="toss-btn toss-btn-secondary" disabled={busyId === c.link.id} onClick={() => handleRevoke(c.link.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                  <button className="itunda-btn itunda-btn-secondary" disabled={busyId === c.link.id} onClick={() => handleRevoke(c.link.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                     Unlink
                   </button>
                 </div>
               </div>
               {openOverviewFor === c.link.childUserId && overview && (
-                <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-                  <p>Balance: <strong style={{ color: 'var(--toss-grey-900)' }}>{overview.walletBalance.toLocaleString()} RWF</strong></p>
+                <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+                  <p>Balance: <strong style={{ color: 'var(--itunda-grey-900)' }}>{overview.walletBalance.toLocaleString()} RWF</strong></p>
                   {overview.recentTransactions.slice(0, 5).map((t) => (
                     <p key={t.id}>{t.description} · {t.amount.toLocaleString()} RWF</p>
                   ))}
@@ -5588,11 +5588,11 @@ function FamilyLinkCard() {
 
       {(guardians ?? []).length > 0 && (
         <div>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '6px' }}>Your guardians</p>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>Your guardians</p>
           {(guardians ?? []).map((g) => (
-            <div key={g.link.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div key={g.link.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
               <p style={{ fontSize: '13px' }}>{g.guardianName}</p>
-              <button className="toss-btn toss-btn-secondary" disabled={busyId === g.link.id} onClick={() => handleRevoke(g.link.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={busyId === g.link.id} onClick={() => handleRevoke(g.link.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                 Unlink
               </button>
             </div>
@@ -5629,15 +5629,15 @@ function SubscribeAndSaveButton({ merchantId, productId }: { merchantId: string;
   };
 
   if (done) {
-    return <p style={{ fontSize: '12px', color: 'var(--toss-blue)', textAlign: 'center' }}>Subscribed -- 5% off every delivery, every 30 days.</p>;
+    return <p style={{ fontSize: '12px', color: 'var(--itunda-blue)', textAlign: 'center' }}>Subscribed -- 5% off every delivery, every 30 days.</p>;
   }
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSubscribe} style={{ fontSize: '12px', padding: '8px 14px' }}>
+      <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSubscribe} style={{ fontSize: '12px', padding: '8px 14px' }}>
         {busy ? 'Setting up…' : 'Subscribe & save 5% (every 30 days)'}
       </button>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '4px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -5689,28 +5689,28 @@ function MyProductSubscriptionsCard() {
   if (!subscriptions || subscriptions.length === 0) return null;
 
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Subscribe & save</h3>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {subscriptions.map((s) => (
-        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
           <div>
             <p style={{ fontSize: '13px', fontWeight: 700 }}>Qty {s.quantity} · every {s.intervalDays}d</p>
-            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+            <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
               {s.status === 'CANCELLED' && s.cancelledAt
                 ? `Cancelled ${new Date(s.cancelledAt).toLocaleDateString()}`
                 : `${PRODUCT_SUBSCRIPTION_STATUS_LABEL[s.status]} · ${s.deliveryCount} delivered`}
             </p>
             {s.lastFailureReason && s.status === 'ACTIVE' && (
-              <p style={{ fontSize: '11px', color: 'var(--toss-red)' }}>Last delivery failed: {s.lastFailureReason}</p>
+              <p style={{ fontSize: '11px', color: 'var(--itunda-red)' }}>Last delivery failed: {s.lastFailureReason}</p>
             )}
           </div>
           {s.status !== 'CANCELLED' && (
             <div style={{ display: 'flex', gap: '6px' }}>
-              <button className="toss-btn toss-btn-secondary" disabled={busyId === s.id} onClick={() => handleToggle(s)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={busyId === s.id} onClick={() => handleToggle(s)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                 {busyId === s.id ? '…' : s.status === 'ACTIVE' ? 'Pause' : 'Resume'}
               </button>
-              <button className="toss-btn toss-btn-secondary" disabled={busyId === s.id} onClick={() => handleCancel(s.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={busyId === s.id} onClick={() => handleCancel(s.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
                 Cancel
               </button>
             </div>
@@ -5741,21 +5741,21 @@ function AffiliateEarningsCard() {
   const totalClicks = links.reduce((sum, l) => sum + l.clickCount, 0);
 
   return (
-    <div className="toss-card" style={{ padding: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Partner earnings</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
         Earn 3% on any purchase made through a product link you've shared.
       </p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
-        <span style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>Links shared</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>Links shared</span>
         <span style={{ fontSize: '13px', fontWeight: 700 }}>{links.length}</span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
-        <span style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>Total clicks</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>Total clicks</span>
         <span style={{ fontSize: '13px', fontWeight: 700 }}>{totalClicks}</span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
-        <span style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>Total earned</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
+        <span style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>Total earned</span>
         <span style={{ fontSize: '13px', fontWeight: 700 }}>{totalEarned.toLocaleString()} RWF</span>
       </div>
     </div>
@@ -5785,19 +5785,19 @@ function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null
     }
   };
 
-  if (enrolled === null) return <div className="toss-card skeleton" style={{ height: '64px', marginBottom: '16px' }} />;
+  if (enrolled === null) return <div className="itunda-card skeleton" style={{ height: '64px', marginBottom: '16px' }} />;
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={{ fontSize: '14px', fontWeight: 700 }}>😊 Face Pay</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
             {enrolled ? 'Enabled — authorize payment codes with your face, no code re-entry needed' : 'Not enabled on this account'}
           </p>
         </div>
         <button
-          className={`toss-btn ${enrolled ? 'toss-btn-danger' : 'toss-btn-primary'}`}
+          className={`itunda-btn ${enrolled ? 'itunda-btn-danger' : 'itunda-btn-primary'}`}
           onClick={handleToggle}
           disabled={busy}
           style={{ padding: '8px 14px', fontSize: '12px' }}
@@ -5805,7 +5805,7 @@ function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null
           {busy ? '…' : enrolled ? 'Disable' : 'Enable'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -5883,9 +5883,9 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   };
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay by code</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
         {facePayEnrolled
           ? 'Face Pay is on — enter the code the merchant shows you to authorize with your face.'
           : 'No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.'}
@@ -5896,7 +5896,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <p style={{ fontSize: '14px', fontWeight: 700 }}>{preview.businessName}</p>
           <p style={{ fontSize: '20px', fontWeight: 700 }}>{preview.amount.toLocaleString()} RWF</p>
-          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Apply a coupon?</p>
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Apply a coupon?</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
               <input type="radio" name="coupon" checked={selectedCouponId === null} onChange={() => setSelectedCouponId(null)} />
@@ -5909,7 +5909,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
               </label>
             ))}
           </div>
-          {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
+          {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
           <div style={{ display: 'flex', gap: '10px' }}>
             <IdsButton fullWidth style={{ flex: 1 }} disabled={submitting} onClick={handleConfirm}>
               {submitting ? 'Paying…' : 'Pay'}
@@ -5925,15 +5925,15 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
             onChange={(e) => setCode(e.target.value)}
             placeholder="Payment code"
             required
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
             {submitting ? (facePayEnrolled ? 'Authorizing…' : 'Paying…') : facePayEnrolled ? '😊 Pay' : 'Pay'}
           </button>
         </form>
       )}
       {error && !preview && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -5967,44 +5967,44 @@ function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) 
   };
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay a merchant's static QR</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
         For a merchant with one permanent code (like a market stall) -- enter their merchant ID and how much you're paying.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <input
           type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)} placeholder="Merchant ID" required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <div style={{ display: 'flex', gap: '10px' }}>
           <input
             type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)" required
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>{submitting ? 'Paying…' : 'Pay'}</button>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>{submitting ? 'Paying…' : 'Pay'}</button>
         </div>
       </form>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>}
     </div>
   );
 }
 
 function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult; onDone: () => void }) {
   return (
-    <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-      <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+    <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+      <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
       <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Paid {result.merchantName}</h3>
       <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{result.amount.toLocaleString()} RWF</p>
       {result.channel === 'FACE_PAY' && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>😊 Authorized with Face Pay</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>😊 Authorized with Face Pay</p>
       )}
       {result.cashbackEarned > 0 && (
-        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-green)', marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-green)', marginBottom: '16px' }}>
           +{result.cashbackEarned.toLocaleString()} RWF cashback earned
         </p>
       )}
-      <button className="toss-btn toss-btn-secondary" onClick={onDone} style={{ marginTop: '8px' }}>Done</button>
+      <button className="itunda-btn itunda-btn-secondary" onClick={onDone} style={{ marginTop: '8px' }}>Done</button>
     </div>
   );
 }
@@ -6046,39 +6046,39 @@ function ShoppingView() {
   }
 
   if (merchants === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
 
   return (
     <div>
       {membershipDay?.isMembershipDay && (
-        <div className="toss-card" style={{ marginBottom: '16px', backgroundColor: 'var(--toss-blue-light)', border: '1px solid var(--toss-blue)' }}>
-          <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-blue)' }}>🎉 Membership Day -- {membershipDay.multiplier}x cashback today</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>Every purchase you make today earns {membershipDay.multiplier}x the usual cashback.</p>
+        <div className="itunda-card" style={{ marginBottom: '16px', backgroundColor: 'var(--itunda-blue-light)', border: '1px solid var(--itunda-blue)' }}>
+          <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-blue)' }}>🎉 Membership Day -- {membershipDay.multiplier}x cashback today</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>Every purchase you make today earns {membershipDay.multiplier}x the usual cashback.</p>
         </div>
       )}
       <FacePaySettingsCard enrolled={facePayEnrolled} onChanged={loadFacePayStatus} />
       <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled ?? false} />
       <PayByStaticQrCard onPaid={setPaymentResult} />
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
         Earn cashback every time you shop with Itunda merchants.
       </p>
       {merchants.length === 0 ? (
-        <div className="toss-card">
+        <div className="itunda-card">
           <EmptyState message="No stores here yet — check back soon as more merchants join itunda." />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {merchants.map((m) => (
-            <div key={m.merchantId} className="toss-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px' }}>
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShoppingBag size={20} color="var(--toss-blue)" />
+            <div key={m.merchantId} className="itunda-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShoppingBag size={20} color="var(--itunda-blue)" />
               </div>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{m.businessName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Pay by QR or code to earn cashback</p>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{m.businessName}</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Pay by QR or code to earn cashback</p>
               </div>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-green)' }}>{m.cashbackRate} back</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-green)' }}>{m.cashbackRate} back</span>
             </div>
           ))}
         </div>
@@ -6104,7 +6104,7 @@ function Sparkline({ values, positive }: { values: number[]; positive: boolean }
           style={{
             flex: 1,
             height: `${Math.max(8, ((v - min) / range) * 100)}%`,
-            backgroundColor: positive ? 'var(--toss-green)' : 'var(--toss-red)',
+            backgroundColor: positive ? 'var(--itunda-green)' : 'var(--itunda-red)',
             borderRadius: '2px',
             opacity: 0.3 + (0.7 * i) / values.length,
           }}
@@ -6187,19 +6187,19 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   const positive = stock.changePercent >= 0;
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-        <button onClick={onClose} style={{ color: 'var(--toss-grey-500)', display: 'flex', padding: '4px' }} aria-label="Back">
+        <button onClick={onClose} style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }} aria-label="Back">
           <ArrowLeft size={18} />
         </button>
-        <button onClick={handleToggleWatch} disabled={watchBusy} style={{ color: watching ? '#FFC107' : 'var(--toss-grey-300)', display: 'flex', padding: '4px' }} aria-label="Toggle watch">
+        <button onClick={handleToggleWatch} disabled={watchBusy} style={{ color: watching ? '#FFC107' : 'var(--itunda-grey-300)', display: 'flex', padding: '4px' }} aria-label="Toggle watch">
           <Star size={20} fill={watching ? '#FFC107' : 'none'} />
         </button>
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontWeight: 600 }}>{stock.symbol} · {stock.marketCap}</p>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', fontWeight: 600 }}>{stock.symbol} · {stock.marketCap}</p>
       <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>{stock.name}</h3>
       <p style={{ fontSize: '26px', fontWeight: 700, marginBottom: '4px' }}>{stock.price.toLocaleString()} RWF</p>
-      <p style={{ fontSize: '14px', fontWeight: 700, color: positive ? 'var(--toss-green)' : 'var(--toss-red)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
+      <p style={{ fontSize: '14px', fontWeight: 700, color: positive ? 'var(--itunda-green)' : 'var(--itunda-red)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
         {positive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
         {positive ? '+' : ''}{stock.change.toLocaleString()} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%) today
       </p>
@@ -6209,19 +6209,19 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
       ) : history.length > 0 ? (
         <div style={{ marginBottom: '16px' }}>
           <Sparkline values={history.map((h) => h.price)} positive={positive} />
-          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>Last 14 days -- real deterministic simulation, not live RSE data</p>
+          <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>Last 14 days -- real deterministic simulation, not live RSE data</p>
         </div>
       ) : null}
 
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '12px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '12px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BUY', 'SELL'] as const).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: mode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === m ? (m === 'BUY' ? 'var(--toss-blue)' : 'var(--toss-red)') : 'transparent',
+              color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: mode === m ? (m === 'BUY' ? 'var(--itunda-blue)' : 'var(--itunda-red)') : 'transparent',
             }}
           >
             {m === 'BUY' ? 'Buy' : 'Sell'}
@@ -6232,9 +6232,9 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
         <input
           type="number" min="0.0001" step="any" value={shares} onChange={(e) => setShares(e.target.value)}
           placeholder="Shares" required
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className={mode === 'BUY' ? 'toss-btn toss-btn-primary' : 'toss-btn'} style={mode === 'SELL' ? { backgroundColor: 'var(--toss-red)', color: 'white' } : undefined} disabled={submitting}>
+        <button type="submit" className={mode === 'BUY' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn'} style={mode === 'SELL' ? { backgroundColor: 'var(--itunda-red)', color: 'white' } : undefined} disabled={submitting}>
           {submitting ? 'Working…' : mode === 'BUY' ? 'Buy' : 'Sell'}
         </button>
       </form>
@@ -6243,7 +6243,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
           <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
-        error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
+        error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -6286,22 +6286,22 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
   };
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '15px', fontWeight: 700 }}>Investment cash</p>
-        <button onClick={() => { setExpanded(!expanded); setError(null); }} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+        <button onClick={() => { setExpanded(!expanded); setError(null); }} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
           {expanded ? 'Cancel' : 'Add funds'}
         </button>
       </div>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Move money from your main wallet into your investment account.</p>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Move money from your main wallet into your investment account.</p>
       {expanded && (
         <form onSubmit={handleFund} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
           <input
             type="number" min="1" step="any" value={amount} onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount (RWF)" required
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>
             {busy ? 'Working…' : 'Add'}
           </button>
         </form>
@@ -6311,7 +6311,7 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
           <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
-        error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
+        error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -6364,19 +6364,19 @@ function StocksView() {
         tabIndex={0}
         onClick={() => setSelectedStock(stock)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedStock(stock); } }}
-        className="toss-card"
+        className="itunda-card"
         style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', cursor: 'pointer' }}
       >
         <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
             {stock.symbol}
-            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--toss-grey-500)', marginLeft: '6px' }}>{stock.market}</span>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--itunda-grey-500)', marginLeft: '6px' }}>{stock.market}</span>
           </p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{stock.name}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{stock.name}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
           <p style={{ fontSize: '15px', fontWeight: 700 }}>{stock.price.toLocaleString()} RWF</p>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: positive ? 'var(--toss-green)' : 'var(--toss-red)', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end' }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: positive ? 'var(--itunda-green)' : 'var(--itunda-red)', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end' }}>
             {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {positive ? '+' : ''}{stock.changePercent.toFixed(2)}%
           </p>
@@ -6399,15 +6399,15 @@ function StocksView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {([{ id: 'MARKET', label: 'Market' }, { id: 'PORTFOLIO', label: 'Portfolio' }, { id: 'WATCHLIST', label: 'Watchlist' }] as const).map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setSubTab(id)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: subTab === id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: subTab === id ? 'var(--toss-blue)' : 'transparent',
+              color: subTab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: subTab === id ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {label}
@@ -6420,7 +6420,7 @@ function StocksView() {
       )}
 
       {subTab === 'MARKET' && (
-        stocks === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : (
+        stocks === null ? <div className="itunda-card skeleton" style={{ height: '220px' }} /> : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', gap: '6px', marginBottom: '4px' }}>
               {([{ id: 'ALL', label: 'All' }, { id: 'RSE', label: 'Rwanda (RSE)' }, { id: 'NASDAQ', label: 'Overseas' }] as const).map(({ id, label }) => (
@@ -6429,8 +6429,8 @@ function StocksView() {
                   onClick={() => setMarketFilter(id)}
                   style={{
                     padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
-                    color: marketFilter === id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                    backgroundColor: marketFilter === id ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                    color: marketFilter === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                    backgroundColor: marketFilter === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
                   }}
                 >
                   {label}
@@ -6443,18 +6443,18 @@ function StocksView() {
       )}
 
       {subTab === 'PORTFOLIO' && (
-        portfolio === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : (
+        portfolio === null ? <div className="itunda-card skeleton" style={{ height: '220px' }} /> : (
           <div>
-            <div className="toss-card" style={{ marginBottom: '16px' }}>
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontWeight: 600 }}>Total value</p>
+            <div className="itunda-card" style={{ marginBottom: '16px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', fontWeight: 600 }}>Total value</p>
               <p style={{ fontSize: '26px', fontWeight: 700, marginBottom: '4px' }}>{portfolio.totalValue.toLocaleString()} RWF</p>
-              <p style={{ fontSize: '14px', fontWeight: 700, color: portfolio.totalReturn >= 0 ? 'var(--toss-green)' : 'var(--toss-red)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: portfolio.totalReturn >= 0 ? 'var(--itunda-green)' : 'var(--itunda-red)', marginBottom: '12px' }}>
                 {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn.toLocaleString()} RWF ({portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturnPercent.toFixed(2)}%)
               </p>
               {portfolioHistory && portfolioHistory.length > 0 && (
                 <div>
                   <Sparkline values={portfolioHistory.map((h) => h.value)} positive={portfolio.totalReturn >= 0} />
-                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
                     Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction
                   </p>
                 </div>
@@ -6462,20 +6462,20 @@ function StocksView() {
             </div>
             <AddFundsCard onFunded={loadPortfolio} />
             {portfolio.holdings.length === 0 ? (
-              <div className="toss-card">
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You don't hold any real shares yet. Browse the Market tab to buy some.</p>
+              <div className="itunda-card">
+                <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>You don't hold any real shares yet. Browse the Market tab to buy some.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {portfolio.holdings.map((h) => (
-                  <div key={h.stockId} className="toss-card" style={{ padding: '16px 18px' }}>
+                  <div key={h.stockId} className="itunda-card" style={{ padding: '16px 18px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <p style={{ fontSize: '15px', fontWeight: 700 }}>{h.symbol}</p>
                       <p style={{ fontSize: '15px', fontWeight: 700 }}>{h.value.toLocaleString()} RWF</p>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{h.shares} shares @ {h.avgPrice.toLocaleString()} avg</p>
-                      <p style={{ fontSize: '12px', fontWeight: 700, color: h.return >= 0 ? 'var(--toss-green)' : 'var(--toss-red)' }}>
+                      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{h.shares} shares @ {h.avgPrice.toLocaleString()} avg</p>
+                      <p style={{ fontSize: '12px', fontWeight: 700, color: h.return >= 0 ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
                         {h.return >= 0 ? '+' : ''}{h.return.toFixed(2)}%
                       </p>
                     </div>
@@ -6488,8 +6488,8 @@ function StocksView() {
       )}
 
       {subTab === 'WATCHLIST' && (
-        watchlist === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : watchlist.length === 0 ? (
-          <div className="toss-card">
+        watchlist === null ? <div className="itunda-card skeleton" style={{ height: '220px' }} /> : watchlist.length === 0 ? (
+          <div className="itunda-card">
             <EmptyState message="No stocks watched yet. Tap the star on any stock in the Market tab to follow it." />
           </div>
         ) : (
@@ -6526,14 +6526,14 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
   };
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>New chat</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
         Start from an Itunda contact, or enter their phone number.
       </p>
       {contacts && contacts.length > 0 && (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          {contacts.map((contact) => <button key={contact.userId} type="button" className="toss-btn toss-btn-secondary" onClick={async () => { setSubmitting(true); try { const c = await startConversationWithUser(contact.userId); onStarted(c.id); } catch { setError('Could not start this chat.'); } finally { setSubmitting(false); } }} disabled={submitting}>{contact.name}</button>)}
+          {contacts.map((contact) => <button key={contact.userId} type="button" className="itunda-btn itunda-btn-secondary" onClick={async () => { setSubmitting(true); try { const c = await startConversationWithUser(contact.userId); onStarted(c.id); } catch { setError('Could not start this chat.'); } finally { setSubmitting(false); } }} disabled={submitting}>{contact.name}</button>)}
         </div>
       )}
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
@@ -6543,14 +6543,14 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
           onChange={(e) => setPhoneNumber(e.target.value)}
           placeholder="+250788123456"
           required
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
           {submitting ? 'Starting…' : 'Chat'}
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '10px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -6584,9 +6584,9 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
   };
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700 }}>New group</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         Name your group and add real members by phone number, separated by commas.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -6596,7 +6596,7 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Group name"
           required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           type="text"
@@ -6604,14 +6604,14 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
           onChange={(e) => setPhoneNumbers(e.target.value)}
           placeholder="+250788123456, +250788654321"
           required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
           {submitting ? 'Creating…' : 'Create group'}
         </button>
       </form>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
       )}
     </div>
   );
@@ -6670,12 +6670,12 @@ function MessageReactions({
             onClick={() => onToggle(r.emoji)}
             style={{
               display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '12px', fontSize: '12px',
-              border: mine ? '1px solid var(--toss-blue)' : '1px solid var(--toss-grey-200)',
-              backgroundColor: mine ? 'var(--toss-blue-light)' : 'var(--toss-white)',
+              border: mine ? '1px solid var(--itunda-blue)' : '1px solid var(--itunda-grey-200)',
+              backgroundColor: mine ? 'var(--itunda-blue-light)' : 'var(--itunda-white)',
             }}
           >
             <span>{r.emoji}</span>
-            <span style={{ color: 'var(--toss-grey-700)' }}>{r.userIds.length}</span>
+            <span style={{ color: 'var(--itunda-grey-700)' }}>{r.userIds.length}</span>
           </button>
         );
       })}
@@ -6683,7 +6683,7 @@ function MessageReactions({
         <button
           onClick={() => setPickerOpen((v) => !v)}
           aria-label="Add reaction"
-          style={{ display: 'flex', padding: '6px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', color: 'var(--toss-grey-500)' }}
+          style={{ display: 'flex', padding: '6px', borderRadius: '12px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-500)' }}
         >
           <SmilePlus size={14} />
         </button>
@@ -6691,7 +6691,7 @@ function MessageReactions({
           <div
             style={{
               position: 'absolute', bottom: '28px', display: 'flex', gap: '4px', padding: '6px 8px',
-              borderRadius: '12px', backgroundColor: 'var(--toss-white)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10,
+              borderRadius: '12px', backgroundColor: 'var(--itunda-white)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10,
               left: isMine ? undefined : 0, right: isMine ? 0 : undefined,
             }}
           >
@@ -6743,8 +6743,8 @@ function OfferBubble({
     <div
       style={{
         maxWidth: '75%', padding: '12px 14px', borderRadius: '16px', fontSize: '14px',
-        backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-        color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+        backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+        color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
@@ -6752,13 +6752,13 @@ function OfferBubble({
       <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[offer.status]}</p>
       {canRespond && !countering && (
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => onRespond(offer.id, 'ACCEPT')}>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => onRespond(offer.id, 'ACCEPT')}>
             Accept
           </button>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => onRespond(offer.id, 'REJECT')}>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => onRespond(offer.id, 'REJECT')}>
             Decline
           </button>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => setCountering(true)}>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => setCountering(true)}>
             Counter
           </button>
         </div>
@@ -6770,10 +6770,10 @@ function OfferBubble({
             value={counterAmount}
             onChange={(e) => setCounterAmount(e.target.value)}
             placeholder="Counter (RWF)"
-            style={{ flex: 1, padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)', fontSize: '12px' }}
+            style={{ flex: 1, padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)', fontSize: '12px' }}
           />
           <button
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             style={{ fontSize: '12px', padding: '6px 10px' }}
             disabled={!counterAmount || Number(counterAmount) <= 0}
             onClick={() => {
@@ -6809,8 +6809,8 @@ function GiftBubble({
     <div
       style={{
         maxWidth: '75%', padding: '14px 16px', borderRadius: '16px', fontSize: '14px',
-        backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-        color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+        backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+        color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
@@ -6821,7 +6821,7 @@ function GiftBubble({
       <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[gift.status]}</p>
       {canClaim && (
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }}
           onClick={() => onClaim(gift.id)}
         >
@@ -6862,8 +6862,8 @@ function GiftVoucherBubble({
     <div
       style={{
         maxWidth: '75%', padding: '14px 16px', borderRadius: '16px', fontSize: '14px',
-        backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-        color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+        backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+        color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
@@ -6874,7 +6874,7 @@ function GiftVoucherBubble({
       )}
       {canExtend && (
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }}
           disabled={extending}
           onClick={async () => {
@@ -6900,7 +6900,7 @@ function GiftVoucherBubble({
 // transparent art). See lib/emoticons.ts's own doc comment.
 function EmoticonBubble({ imageUrl }: { imageUrl: string | undefined }) {
   if (!imageUrl) {
-    return <div style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontStyle: 'italic' }}>[emoticon]</div>;
+    return <div style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', fontStyle: 'italic' }}>[emoticon]</div>;
   }
   return <img src={imageUrl} alt="emoticon" style={{ width: '96px', height: '96px', objectFit: 'contain' }} />;
 }
@@ -6935,13 +6935,13 @@ function EmoticonPickerPanel({
   }, [selectedPackId]);
 
   return (
-    <div style={{ padding: '10px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', marginBottom: '10px' }}>
+    <div style={{ padding: '10px', borderRadius: '12px', border: '1px solid var(--itunda-grey-200)', marginBottom: '10px' }}>
       {ownedPacks === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
       ) : ownedPacks.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '8px' }}>You don't own any emoticon packs yet.</p>
-          <button type="button" className="toss-btn toss-btn-primary" onClick={onOpenStore} style={{ padding: '8px 14px', fontSize: '13px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>You don't own any emoticon packs yet.</p>
+          <button type="button" className="itunda-btn itunda-btn-primary" onClick={onOpenStore} style={{ padding: '8px 14px', fontSize: '13px' }}>
             Browse Emoticon Store
           </button>
         </div>
@@ -6953,19 +6953,19 @@ function EmoticonPickerPanel({
                 key={op.packId}
                 type="button"
                 onClick={() => setSelectedPackId(op.packId)}
-                className={selectedPackId === op.packId ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                className={selectedPackId === op.packId ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}
               >
                 {packTitles[op.packId] ?? op.packId}
               </button>
             ))}
-            <button type="button" onClick={onOpenStore} className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+            <button type="button" onClick={onOpenStore} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}>
               Get more
             </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
             {packEmoticons === null ? (
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
             ) : (
               packEmoticons.map((e) => (
                 <button
@@ -7040,7 +7040,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div className="toss-card" style={{ width: '90%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div className="itunda-card" style={{ width: '90%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: '16px', fontWeight: 700 }}>🛍 Emoticon Store</p>
           {/* Real touch-target-size fix (item 244, web accessibility sweep):
@@ -7048,24 +7048,24 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
               well under WCAG 2.5.8's 24x24 CSS-pixel AA minimum. */}
           <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '16px', padding: '8px', minWidth: '24px', minHeight: '24px' }}>×</button>
         </div>
-        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-        {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+        {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
         {packs === null ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
         ) : (
           packs.map((pack) => {
             const owned = ownedPackIds.has(pack.id);
             return (
-              <div key={pack.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)' }}>
+              <div key={pack.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)' }}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <img src={pack.thumbnailUrl} alt="" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: '14px', fontWeight: 600 }}>{pack.title}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{pack.artistName} · {pack.price.toLocaleString()} RWF</p>
+                    <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{pack.artistName} · {pack.price.toLocaleString()} RWF</p>
                   </div>
                   <button
                     type="button"
-                    className={owned ? 'toss-btn toss-btn-secondary' : 'toss-btn toss-btn-primary'}
+                    className={owned ? 'itunda-btn itunda-btn-secondary' : 'itunda-btn itunda-btn-primary'}
                     disabled={owned || busyPackId === pack.id}
                     onClick={() => buy(pack.id)}
                     style={{ padding: '8px 12px', fontSize: '12px' }}
@@ -7074,7 +7074,7 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
                   </button>
                   <button
                     type="button"
-                    className="toss-btn toss-btn-secondary"
+                    className="itunda-btn itunda-btn-secondary"
                     disabled={busyPackId === pack.id}
                     onClick={() => setGiftingPackId(giftingPackId === pack.id ? null : pack.id)}
                     style={{ padding: '8px 12px', fontSize: '12px' }}
@@ -7089,11 +7089,11 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
                       value={giftPhone}
                       onChange={(e) => setGiftPhone(e.target.value)}
                       placeholder="Recipient phone number"
-                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
                     />
                     <button
                       type="button"
-                      className="toss-btn toss-btn-primary"
+                      className="itunda-btn itunda-btn-primary"
                       disabled={busyPackId === pack.id || !giftPhone.trim()}
                       onClick={() => gift(pack.id)}
                       style={{ padding: '8px 12px', fontSize: '12px' }}
@@ -7159,19 +7159,19 @@ function GiftVoucherComposerPanel({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', marginBottom: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderRadius: '12px', border: '1px solid var(--itunda-grey-200)', marginBottom: '10px' }}>
       <p style={{ fontSize: '13px', fontWeight: 700 }}>🎟️ Send a gift voucher</p>
       <input
         type="tel"
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
         placeholder="Recipient phone number"
-        style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       {selected ? (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--toss-grey-100)', borderRadius: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
           <span style={{ fontSize: '13px' }}>{selected.name} · {selected.merchantName} · {selected.price.toLocaleString()} RWF</span>
-          <button type="button" onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', fontSize: '12px', color: 'var(--toss-blue)' }}>Change</button>
+          <button type="button" onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', fontSize: '12px', color: 'var(--itunda-blue)' }}>Change</button>
         </div>
       ) : (
         <>
@@ -7181,9 +7181,9 @@ function GiftVoucherComposerPanel({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search a product to gift"
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
             />
-            <button type="submit" className="toss-btn toss-btn-secondary" disabled={searching || query.trim().length < 2} style={{ padding: '10px 14px', fontSize: '13px' }}>
+            <button type="submit" className="itunda-btn itunda-btn-secondary" disabled={searching || query.trim().length < 2} style={{ padding: '10px 14px', fontSize: '13px' }}>
               {searching ? '…' : 'Search'}
             </button>
           </form>
@@ -7197,7 +7197,7 @@ function GiftVoucherComposerPanel({
                     key={p.id}
                     type="button"
                     onClick={() => setSelected(p)}
-                    style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', background: 'none', fontSize: '13px', textAlign: 'left' }}
+                    style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', background: 'none', fontSize: '13px', textAlign: 'left' }}
                   >
                     <span>{p.name} · {p.merchantName}</span>
                     <span>{p.price.toLocaleString()} RWF</span>
@@ -7208,18 +7208,18 @@ function GiftVoucherComposerPanel({
           )}
         </>
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
           type="button"
-          className="toss-btn toss-btn-primary"
+          className="itunda-btn itunda-btn-primary"
           disabled={!selected || !phone.trim() || sending}
           onClick={send}
           style={{ flex: 1, padding: '10px' }}
         >
           {sending ? '…' : 'Send gift voucher'}
         </button>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ padding: '10px 16px' }} onClick={onCancel}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ padding: '10px 16px' }} onClick={onCancel}>
           Cancel
         </button>
       </div>
@@ -7641,33 +7641,33 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to conversations">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to conversations">
           <ArrowLeft size={20} />
         </button>
         <div>
           <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{conversation.otherUserName}</h3>
           {otherOnline !== null && (
-            <p style={{ fontSize: '12px', color: otherOnline ? 'var(--toss-green)' : 'var(--toss-grey-500)' }}>
+            <p style={{ fontSize: '12px', color: otherOnline ? 'var(--itunda-green)' : 'var(--itunda-grey-500)' }}>
               {otherOnline ? 'Online' : 'Offline'}
             </p>
           )}
         </div>
-        <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)', marginLeft: 'auto' }} aria-label="Shared photos">
+        <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', marginLeft: 'auto' }} aria-label="Shared photos">
           <ImageIcon size={20} />
         </button>
-        <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Split a bill">
+        <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)' }} aria-label="Split a bill">
           <Receipt size={20} />
         </button>
         <button
           type="button"
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           onClick={blocked ? handleUnblock : handleBlock}
           disabled={blocking}
           style={{ padding: '8px 10px', fontSize: '12px' }}
         >
           {blocking ? (blocked ? 'Unblocking…' : 'Blocking…') : blocked ? 'Unblock' : 'Block'}
         </button>
-        <button type="button" className="toss-btn toss-btn-secondary" onClick={handleQuiet} disabled={updatingQuiet} style={{ padding: '8px 10px', fontSize: '12px' }}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" onClick={handleQuiet} disabled={updatingQuiet} style={{ padding: '8px 10px', fontSize: '12px' }}>
           {updatingQuiet ? '…' : quiet ? 'Resume alerts' : 'Quiet room'}
         </button>
       </div>
@@ -7680,23 +7680,23 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       )}
 
       <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-        <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search this conversation" minLength={2} style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }} />
-        <button type="submit" className="toss-btn toss-btn-secondary" disabled={searching || searchQuery.trim().length < 2}>{searching ? '…' : 'Search'}</button>
-        {searchResults !== null && <button type="button" className="toss-btn toss-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>Clear</button>}
+        <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search this conversation" minLength={2} style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }} />
+        <button type="submit" className="itunda-btn itunda-btn-secondary" disabled={searching || searchQuery.trim().length < 2}>{searching ? '…' : 'Search'}</button>
+        {searchResults !== null && <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>Clear</button>}
       </form>
-      {searchResults !== null && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '6px' }}>{searchResults.length} matching message{searchResults.length === 1 ? '' : 's'}</p>}
+      {searchResults !== null && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>{searchResults.length} matching message{searchResults.length === 1 ? '' : 's'}</p>}
 
       {pinnedMessage && (
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--toss-grey-100)', fontSize: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--itunda-grey-100)', fontSize: '12px' }}>
           <span aria-hidden="true">📌</span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pinnedMessage.body}</span>
-          <button type="button" onClick={handleUnpin} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-600)', fontSize: '12px' }}>Unpin</button>
+          <button type="button" onClick={handleUnpin} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-600)', fontSize: '12px' }}>Unpin</button>
         </div>
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
-        {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
+        {messages === null && <div className="itunda-card skeleton" style={{ height: '120px' }} />}
         {messages !== null && messages.length === 0 && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', textAlign: 'center', marginTop: '20px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '20px' }}>
             Say hello — no messages yet.
           </p>
         )}
@@ -7715,7 +7715,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                   only ever set on a message actually created via the forward
                   endpoint, see lib/messaging.ts's own doc comment. */}
               {m.forwardedFromMessageId && (
-                <span style={{ fontSize: '10px', color: 'var(--toss-grey-400)', fontStyle: 'italic', marginBottom: '2px' }}>Forwarded</span>
+                <span style={{ fontSize: '10px', color: 'var(--itunda-grey-400)', fontStyle: 'italic', marginBottom: '2px' }}>Forwarded</span>
               )}
               {gift ? (
                 <GiftBubble gift={gift} isMine={isMine} currentUserId={currentUser?.id} onClaim={handleClaimGift} />
@@ -7736,8 +7736,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                     padding: '10px 14px',
                     borderRadius: '16px',
                     fontSize: '14px',
-                    backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                    color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                    backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                    color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                   }}
                 >
                   {m.body}
@@ -7750,17 +7750,17 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
               {(showTimestamp || (isMine && !m.readAt)) && (
-                <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>
                   {[isMine && !m.readAt ? '1' : null, showTimestamp ? chatMessageTime(m.sentAt) : null].filter(Boolean).join(' · ')}
                 </span>
               )}
-              <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
-              <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>
-              {!m.deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
-              {isMine && !m.deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
-              <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
+              <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
+              <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>
+              {!m.deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
+              {isMine && !m.deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
+              <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
               {!isMine && (
-                <button type="button" onClick={() => handleReport(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>
+                <button type="button" onClick={() => handleReport(m.id)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>
                   Report message
                 </button>
               )}
@@ -7771,7 +7771,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 <button
                   type="button"
                   onClick={() => setThreadRootMessage(m)}
-                  style={{ border: 'none', background: 'none', color: 'var(--toss-blue)', fontSize: '11px', fontWeight: 600, padding: '4px 0' }}
+                  style={{ border: 'none', background: 'none', color: 'var(--itunda-blue)', fontSize: '11px', fontWeight: 600, padding: '4px 0' }}
                 >
                   {m.replyCount} {m.replyCount === 1 ? 'reply' : 'replies'} →
                 </button>
@@ -7797,7 +7797,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           other participant started typing. */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">{liveAnnouncement}</div>
       {otherTyping && (
-        <p aria-live="polite" style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
+        <p aria-live="polite" style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
           {conversation.otherUserName} is typing…
         </p>
       )}
@@ -7808,7 +7808,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </div>
       ) : (
         error && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>
         )
       )}
 
@@ -7817,7 +7817,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           onSubmit={handleSendGift}
           style={{
             display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px',
-            borderRadius: '12px', border: '1px solid var(--toss-grey-200)', marginBottom: '10px',
+            borderRadius: '12px', border: '1px solid var(--itunda-grey-200)', marginBottom: '10px',
           }}
         >
           <p style={{ fontSize: '13px', fontWeight: 700 }}>🎁 Send a gift</p>
@@ -7826,7 +7826,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             value={giftAmount}
             onChange={(e) => setGiftAmount(e.target.value)}
             placeholder="Amount (RWF)"
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <input
             type="text"
@@ -7834,12 +7834,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             onChange={(e) => setGiftNote(e.target.value)}
             placeholder="Add a note (optional)"
             maxLength={200}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <select
             value={giftTheme}
             onChange={(e) => setGiftTheme(e.target.value as GiftTheme | '')}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           >
             <option value="">No theme (plain gift)</option>
             {(Object.keys(GIFT_THEME_LABELS) as GiftTheme[]).map((t) => (
@@ -7849,7 +7849,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               type="submit"
-              className="toss-btn toss-btn-primary"
+              className="itunda-btn itunda-btn-primary"
               disabled={sendingGift || !giftAmount || Number(giftAmount) <= 0}
               style={{ flex: 1, padding: '10px' }}
             >
@@ -7857,7 +7857,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             </button>
             <button
               type="button"
-              className="toss-btn toss-btn-secondary"
+              className="itunda-btn itunda-btn-secondary"
               style={{ padding: '10px 16px' }}
               onClick={() => setGiftComposerOpen(false)}
             >
@@ -7878,7 +7878,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         />
       )}
 
-      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
+      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--itunda-grey-600)', padding: '8px', borderLeft: '3px solid var(--itunda-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
       <input
         ref={photoInputRef}
         type="file"
@@ -7896,12 +7896,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           aria-label="Attach"
           disabled={uploadingPhoto}
           onClick={() => setShowAttachMenu((v) => !v)}
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px', fontWeight: 700 }}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '18px', fontWeight: 700 }}
         >
           {uploadingPhoto ? '…' : '+'}
         </button>
         {showAttachMenu && (
-          <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--toss-white)', border: '1px solid var(--toss-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
+          <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--itunda-white)', border: '1px solid var(--itunda-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
             <button type="button" onClick={() => { setShowAttachMenu(false); photoInputRef.current?.click(); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: '14px' }}>
               📷 Photo
             </button>
@@ -7930,9 +7930,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             }
           }}
           placeholder="Message"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" aria-label="Send message" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
+        <button type="submit" aria-label="Send message" className="itunda-btn itunda-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
           <Send size={16} />
         </button>
       </form>
@@ -7981,7 +7981,7 @@ function MentionSuggestions({ draft, members, currentUserId, onPick }: {
             onClick={() => onPick(m.name)}
             style={{
               whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-              color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
+              color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-blue)',
             }}
           >
             @{firstName}
@@ -8256,22 +8256,22 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to conversations">
+          <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to conversations">
             <ArrowLeft size={20} />
           </button>
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{group.name}</h3>
-            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{group.memberCount} members</p>
+            <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{group.memberCount} members</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
-          <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Shared photos">
+          <button type="button" onClick={() => setShowMediaGallery(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Shared photos">
             <ImageIcon size={20} />
           </button>
-          <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Manage members">
+          <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Manage members">
             <Users size={20} />
           </button>
-          <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Split a bill">
+          <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Split a bill">
             <Receipt size={20} />
           </button>
         </div>
@@ -8285,16 +8285,16 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       )}
 
       {pinnedMessage && (
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--toss-grey-100)', fontSize: '12px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--itunda-grey-100)', fontSize: '12px' }}>
           <span aria-hidden="true">📌</span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pinnedMessage.body}</span>
-          <button type="button" onClick={handleUnpin} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-600)', fontSize: '12px' }}>Unpin</button>
+          <button type="button" onClick={handleUnpin} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-600)', fontSize: '12px' }}>Unpin</button>
         </div>
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
-        {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
+        {messages === null && <div className="itunda-card skeleton" style={{ height: '120px' }} />}
         {messages !== null && messages.length === 0 && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', textAlign: 'center', marginTop: '20px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', textAlign: 'center', marginTop: '20px' }}>
             Say hello — no messages yet.
           </p>
         )}
@@ -8304,14 +8304,14 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
               {!isMine && (
-                <span style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '2px', marginLeft: '4px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginBottom: '2px', marginLeft: '4px' }}>
                   {nameForSender(m.senderId)}
                 </span>
               )}
               {/* Real message forwarding (2026-07-25) -- see lib/messaging.ts's own
                   doc comment. */}
               {m.forwardedFromMessageId && (
-                <span style={{ fontSize: '10px', color: 'var(--toss-grey-400)', fontStyle: 'italic', marginBottom: '2px' }}>Forwarded</span>
+                <span style={{ fontSize: '10px', color: 'var(--itunda-grey-400)', fontStyle: 'italic', marginBottom: '2px' }}>Forwarded</span>
               )}
               {m.emoticonId ? (
                 <EmoticonBubble imageUrl={emoticonImageById[m.emoticonId]} />
@@ -8326,8 +8326,8 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                     padding: '10px 14px',
                     borderRadius: '16px',
                     fontSize: '14px',
-                    backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                    color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                    backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                    color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                   }}
                 >
                   {m.body}
@@ -8339,13 +8339,13 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                 isMine={isMine}
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
-              <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
-              {!m.imageUrl && <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>}
-              {!(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
-              {isMine && !(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
-              <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
+              <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
+              {!m.imageUrl && <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>}
+              {!(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
+              {isMine && !(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
+              <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--itunda-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
               {(showTimestamp || (isMine && m.unreadCount > 0)) && (
-                <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>
                   {/* Real Kakao-style read-receipt countdown -- see
                       GroupMessagingService.getUnreadCounts's own doc comment. Only shown
                       on my own messages, same convention 1:1's own "1" indicator uses;
@@ -8359,7 +8359,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                 <button
                   type="button"
                   onClick={() => setThreadRootMessage(m)}
-                  style={{ border: 'none', background: 'none', color: 'var(--toss-blue)', fontSize: '11px', fontWeight: 600, padding: '4px 0' }}
+                  style={{ border: 'none', background: 'none', color: 'var(--itunda-blue)', fontSize: '11px', fontWeight: 600, padding: '4px 0' }}
                 >
                   {m.replyCount} {m.replyCount === 1 ? 'reply' : 'replies'} →
                 </button>
@@ -8384,13 +8384,13 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           new-message live region as ConversationThread's own identical addition. */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">{liveAnnouncement}</div>
       {Object.keys(typingUserIds).length > 0 && (
-        <p aria-live="polite" style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
+        <p aria-live="polite" style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
           {Object.keys(typingUserIds).map(nameForSender).join(', ')} {Object.keys(typingUserIds).length === 1 ? 'is' : 'are'} typing…
         </p>
       )}
 
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>
       )}
 
       {emoticonPickerOpen && (
@@ -8398,7 +8398,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       )}
       {emoticonStoreOpen && <EmoticonStoreModal onClose={() => setEmoticonStoreOpen(false)} />}
 
-      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
+      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--itunda-grey-600)', padding: '8px', borderLeft: '3px solid var(--itunda-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" aria-label="Cancel reply" onClick={() => setReplyingTo(null)}>×</button></div>}
       <MentionSuggestions draft={draft} members={members} currentUserId={currentUser?.id} onPick={(name) => setDraft((d) => applyMention(d, name))} />
       <input
         ref={photoInputRef}
@@ -8416,12 +8416,12 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           aria-label="Attach"
           disabled={uploadingPhoto}
           onClick={() => setShowAttachMenu((v) => !v)}
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px', fontWeight: 700 }}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '18px', fontWeight: 700 }}
         >
           {uploadingPhoto ? '…' : '+'}
         </button>
         {showAttachMenu && (
-          <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--toss-white)', border: '1px solid var(--toss-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
+          <div style={{ position: 'absolute', bottom: '52px', left: 0, background: 'var(--itunda-white)', border: '1px solid var(--itunda-grey-200)', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', zIndex: 10 }}>
             <button type="button" onClick={() => { setShowAttachMenu(false); photoInputRef.current?.click(); }} style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: '14px' }}>
               📷 Photo
             </button>
@@ -8442,9 +8442,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
             }
           }}
           placeholder="Message"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" aria-label="Send message" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
+        <button type="submit" aria-label="Send message" className="itunda-btn itunda-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
           <Send size={16} />
         </button>
       </form>
@@ -8465,12 +8465,12 @@ function MediaGalleryModal({ imageUrls, onClose }: { imageUrls: string[]; onClos
       onClick={onClose}
     >
       <div
-        style={{ background: 'var(--toss-white)', borderRadius: '16px 16px 0 0', padding: '16px', width: '100%', maxHeight: '70vh', overflowY: 'auto' }}
+        style={{ background: 'var(--itunda-white)', borderRadius: '16px 16px 0 0', padding: '16px', width: '100%', maxHeight: '70vh', overflowY: 'auto' }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Shared photos ({imageUrls.length})</h3>
         {imageUrls.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No photos shared in this conversation yet.</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>No photos shared in this conversation yet.</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
             {imageUrls.map((url, i) => (
@@ -8502,13 +8502,13 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
       onClick={onClose}
     >
       <div
-        className="toss-card"
+        className="itunda-card"
         style={{ width: '100%', maxHeight: '60vh', overflowY: 'auto', borderRadius: '16px 16px 0 0', margin: 0 }}
         onClick={(e) => e.stopPropagation()}
       >
         <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Forward to…</p>
         {conversations === null || groups === null ? (
-          <div className="toss-card skeleton" style={{ height: '100px' }} />
+          <div className="itunda-card skeleton" style={{ height: '100px' }} />
         ) : conversations.length === 0 && groups.length === 0 ? (
           <EmptyState message="No conversations to forward to yet — start a chat first." />
         ) : (
@@ -8516,7 +8516,7 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
             {conversations.map((c) => (
               <button
                 key={c.conversationId}
-                className="toss-card"
+                className="itunda-card"
                 style={{ width: '100%', textAlign: 'left' }}
                 onClick={() => onForward('DIRECT', c.conversationId)}
               >
@@ -8526,7 +8526,7 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
             {groups.map((g) => (
               <button
                 key={g.groupId}
-                className="toss-card"
+                className="itunda-card"
                 style={{ width: '100%', textAlign: 'left' }}
                 onClick={() => onForward('GROUP', g.groupId)}
               >
@@ -8535,7 +8535,7 @@ function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationTyp
             ))}
           </div>
         )}
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ width: '100%', marginTop: '12px' }} onClick={onClose}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ width: '100%', marginTop: '12px' }} onClick={onClose}>
           Cancel
         </button>
       </div>
@@ -8590,7 +8590,7 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }} onClick={onClose}>
       <div
-        className="toss-card"
+        className="itunda-card"
         style={{ width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', borderRadius: '16px 16px 0 0', margin: 0 }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -8598,28 +8598,28 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
           <p style={{ fontSize: '15px', fontWeight: 700 }}>Thread</p>
           {/* Real touch-target-size fix (item 244, web accessibility sweep):
               same as this file's other modal-close "x" -- see its own comment. */}
-          <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', color: 'var(--toss-grey-500)', padding: '8px', minWidth: '24px', minHeight: '24px' }}>×</button>
+          <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', color: 'var(--itunda-grey-500)', padding: '8px', minWidth: '24px', minHeight: '24px' }}>×</button>
         </div>
-        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginBottom: '8px' }}>{error}</p>}
+        {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginBottom: '8px' }}>{error}</p>}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '8px' }}>
           {messages === null ? (
-            <div className="toss-card skeleton" style={{ height: '80px' }} />
+            <div className="itunda-card skeleton" style={{ height: '80px' }} />
           ) : (
             messages.map((m, i) => {
               const isMine = m.senderId === currentUserId;
               return (
                 <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
-                  {i === 0 && <span style={{ fontSize: '10px', color: 'var(--toss-grey-400)', marginBottom: '2px' }}>Original message</span>}
+                  {i === 0 && <span style={{ fontSize: '10px', color: 'var(--itunda-grey-400)', marginBottom: '2px' }}>Original message</span>}
                   <div
                     style={{
                       maxWidth: '75%', padding: '10px 14px', borderRadius: '16px', fontSize: '14px',
-                      backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                      color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                      backgroundColor: isMine ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                      color: isMine ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
                     }}
                   >
                     {m.deletedAt ? 'This message was deleted' : m.body}
                   </div>
-                  <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>{chatMessageTime(m.sentAt)}</span>
+                  <span style={{ fontSize: '10px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>{chatMessageTime(m.sentAt)}</span>
                 </div>
               );
             })
@@ -8627,14 +8627,14 @@ function ThreadModal<T extends { id: string; senderId: string; body: string; sen
         </div>
         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
           <input
-            className="toss-input"
+            className="itunda-input"
             style={{ flex: 1 }}
             placeholder="Reply in thread…"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); }}
           />
-          <button type="button" className="toss-btn toss-btn-primary" style={{ padding: '10px 16px' }} onClick={handleSend} disabled={sending || !draft.trim()}>
+          <button type="button" className="itunda-btn itunda-btn-primary" style={{ padding: '10px 16px' }} onClick={handleSend} disabled={sending || !draft.trim()}>
             {sending ? '…' : 'Send'}
           </button>
         </div>
@@ -8722,7 +8722,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
   }
 
   if (conversations === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
 
   const visibleConversations = showArchived ? (archivedConversations ?? []) : conversations;
@@ -8732,45 +8732,45 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     <div>
       <NewChatCard onStarted={(id) => { load(); setOpenConversationId(id); }} />
       {archivedCount > 0 && (
-        <button type="button" className="toss-btn toss-btn-secondary" onClick={() => setShowArchived((value) => !value)} style={{ marginBottom: '10px' }}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => setShowArchived((value) => !value)} style={{ marginBottom: '10px' }}>
           {showArchived ? 'Show active chats' : `Archived (${archivedCount})`}
         </button>
       )}
       {visibleConversations.length === 0 ? (
-        <div className="toss-card">
+        <div className="itunda-card">
           <EmptyState message={showArchived ? "You haven't archived any chats." : "No conversations yet — start one from Friends, or say hi to someone you already know."} />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {visibleConversations.map((c) => (
-            <div key={c.conversationId} className="toss-card" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '18px 20px' }}>
+            <div key={c.conversationId} className="itunda-card" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '18px 20px' }}>
               <button
                 onClick={() => setOpenConversationId(c.conversationId)}
                 style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
               >
                 <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
-                  <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <MessageCircle size={20} color="var(--toss-blue)" />
+                  <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <MessageCircle size={20} color="var(--itunda-blue)" />
                   </div>
                   {presence[c.otherUserId] && (
                     <span
                       style={{
                         position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', borderRadius: '6px',
-                        backgroundColor: 'var(--toss-green)', border: '2px solid var(--toss-white)',
+                        backgroundColor: 'var(--itunda-green)', border: '2px solid var(--itunda-white)',
                       }}
                     />
                   )}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{c.otherUserName}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{c.otherUserName}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {c.lastMessagePreview ?? 'No messages yet'}
                   </p>
                 </div>
                 {c.unreadCount > 0 && (
                   <span
                     style={{
-                      fontSize: '11px', fontWeight: 700, color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
+                      fontSize: '11px', fontWeight: 700, color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-blue)',
                       borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
                     }}
                   >
@@ -8788,7 +8788,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
                 type="button"
                 onClick={() => toggleArchived(c.conversationId, !showArchived)}
                 title={showArchived ? 'Unarchive' : 'Archive'}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0, color: 'var(--toss-grey-500)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0, color: 'var(--itunda-grey-500)' }}
               >
                 {showArchived ? <ArchiveRestore size={18} /> : <Archive size={18} />}
               </button>
@@ -8894,25 +8894,25 @@ function GroupSplitBillsView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to group">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to group">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Split bills</h3>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {!showNewForm ? (
-        <button className="toss-btn toss-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
       ) : (
-        <form onSubmit={handleCreate} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+        <form onSubmit={handleCreate} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
           <input
             type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Total amount (RWF)" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <input
             type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was it for?" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Split with</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Split with</p>
           {otherMembers.map((m) => (
             <label key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
               {m.name}
@@ -8940,7 +8940,7 @@ function GroupSplitBillsView({
             onClick={() => setLadderMode((v) => !v)}
           >
             🎲 Ladder game (randomized split)
-            <span style={{ fontSize: '12px', color: ladderMode ? 'var(--toss-blue)' : 'var(--toss-grey-500)', fontWeight: 700 }}>
+            <span style={{ fontSize: '12px', color: ladderMode ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
               {ladderMode ? 'On' : 'Off'}
             </span>
           </button>
@@ -8949,7 +8949,7 @@ function GroupSplitBillsView({
               {[1, 2, 3].map((level) => (
                 <button
                   key={level} type="button"
-                  className={level === varianceLevel ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                  className={level === varianceLevel ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                   style={{ flex: 1, fontSize: '12px' }}
                   onClick={() => setVarianceLevel(level)}
                 >
@@ -8959,14 +8959,14 @@ function GroupSplitBillsView({
             </div>
           )}
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setShowNewForm(false)}>Cancel</button>
-            <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busyId === 'new' || selectedIds.size === 0}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setShowNewForm(false)}>Cancel</button>
+            <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busyId === 'new' || selectedIds.size === 0}>
               {busyId === 'new' ? 'Creating…' : 'Create'}
             </button>
           </div>
         </form>
       )}
-      {splitBills === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
+      {splitBills === null && <div className="itunda-card skeleton" style={{ height: '80px' }} />}
       {splitBills !== null && splitBills.length === 0 && (
         <EmptyState message="No split bills in this group yet — split one to divide a shared expense evenly." />
       )}
@@ -8976,9 +8976,9 @@ function GroupSplitBillsView({
         const hasPending = participants.some((p) => p.status === 'PENDING');
         const modeLabel = splitBill.mode === 'LADDER' ? ` · 🎲 Ladder L${splitBill.ladderVarianceLevel}` : '';
         return (
-          <div key={splitBill.id} className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div key={splitBill.id} className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{splitBill.description}</h4>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
               Total {splitBill.totalAmount.toLocaleString()} RWF · {splitBill.status}{modeLabel}
               {splitBill.currentRound > 1 ? ` · Round ${splitBill.currentRound}` : ''}
             </p>
@@ -8991,13 +8991,13 @@ function GroupSplitBillsView({
               );
             })}
             {splitBill.receiptImageUrl && (
-              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>
+              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--itunda-blue)' }}>
                 🧾 View receipt
               </a>
             )}
             {myShare && myShare.status === 'PENDING' && (
               <button
-                className="toss-btn toss-btn-primary" style={{ marginTop: '6px' }}
+                className="itunda-btn itunda-btn-primary" style={{ marginTop: '6px' }}
                 disabled={busyId === splitBill.id}
                 onClick={() => handlePay(splitBill.id)}
               >
@@ -9011,10 +9011,10 @@ function GroupSplitBillsView({
                     <input
                       type="text" placeholder="Receipt photo URL" value={receiptUrlDrafts[splitBill.id] ?? ''}
                       onChange={(e) => setReceiptUrlDrafts((prev) => ({ ...prev, [splitBill.id]: e.target.value }))}
-                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '12px' }}
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '12px' }}
                     />
                     <button
-                      type="button" className="toss-btn toss-btn-secondary" style={{ fontSize: '12px' }}
+                      type="button" className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px' }}
                       disabled={busyId === splitBill.id || !(receiptUrlDrafts[splitBill.id] ?? '').trim()}
                       onClick={() => handleAttachReceipt(splitBill.id)}
                     >
@@ -9024,7 +9024,7 @@ function GroupSplitBillsView({
                 )}
                 {splitBill.status === 'OPEN' && hasPending && splitBill.currentRound < 5 && (
                   <button
-                    type="button" className="toss-btn toss-btn-secondary" style={{ marginTop: '4px', fontSize: '12px' }}
+                    type="button" className="itunda-btn itunda-btn-secondary" style={{ marginTop: '4px', fontSize: '12px' }}
                     disabled={busyId === splitBill.id}
                     onClick={() => handleNextRound(splitBill.id)}
                   >
@@ -9127,32 +9127,32 @@ function DirectSplitBillsView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to conversation">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to conversation">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Split bills with {otherUserName}</h3>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {!showNewForm ? (
-        <button className="toss-btn toss-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
       ) : (
-        <form onSubmit={handleCreate} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+        <form onSubmit={handleCreate} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
           <input
             type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Total amount (RWF)" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <input
             type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was it for?" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Split with {otherUserName}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Split with {otherUserName}</p>
           <button
             type="button"
             style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: '13px', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left', font: 'inherit', color: 'inherit' }}
             onClick={() => setLadderMode((v) => !v)}
           >
             🎲 Ladder game (randomized split)
-            <span style={{ fontSize: '12px', color: ladderMode ? 'var(--toss-blue)' : 'var(--toss-grey-500)', fontWeight: 700 }}>
+            <span style={{ fontSize: '12px', color: ladderMode ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
               {ladderMode ? 'On' : 'Off'}
             </span>
           </button>
@@ -9161,7 +9161,7 @@ function DirectSplitBillsView({
               {[1, 2, 3].map((level) => (
                 <button
                   key={level} type="button"
-                  className={level === varianceLevel ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                  className={level === varianceLevel ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                   style={{ flex: 1, fontSize: '12px' }}
                   onClick={() => setVarianceLevel(level)}
                 >
@@ -9171,14 +9171,14 @@ function DirectSplitBillsView({
             </div>
           )}
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setShowNewForm(false)}>Cancel</button>
-            <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busyId === 'new'}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setShowNewForm(false)}>Cancel</button>
+            <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busyId === 'new'}>
               {busyId === 'new' ? 'Creating…' : 'Create'}
             </button>
           </div>
         </form>
       )}
-      {splitBills === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
+      {splitBills === null && <div className="itunda-card skeleton" style={{ height: '80px' }} />}
       {splitBills !== null && splitBills.length === 0 && (
         <EmptyState message={`No split bills with ${otherUserName} yet — split one to divide a shared expense evenly.`} />
       )}
@@ -9188,9 +9188,9 @@ function DirectSplitBillsView({
         const hasPending = participants.some((p) => p.status === 'PENDING');
         const modeLabel = splitBill.mode === 'LADDER' ? ` · 🎲 Ladder L${splitBill.ladderVarianceLevel}` : '';
         return (
-          <div key={splitBill.id} className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div key={splitBill.id} className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{splitBill.description}</h4>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
               Total {splitBill.totalAmount.toLocaleString()} RWF · {splitBill.status}{modeLabel}
               {splitBill.currentRound > 1 ? ` · Round ${splitBill.currentRound}` : ''}
             </p>
@@ -9200,13 +9200,13 @@ function DirectSplitBillsView({
               </p>
             ))}
             {splitBill.receiptImageUrl && (
-              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>
+              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--itunda-blue)' }}>
                 🧾 View receipt
               </a>
             )}
             {myShare && myShare.status === 'PENDING' && (
               <button
-                className="toss-btn toss-btn-primary" style={{ marginTop: '6px' }}
+                className="itunda-btn itunda-btn-primary" style={{ marginTop: '6px' }}
                 disabled={busyId === splitBill.id}
                 onClick={() => handlePay(splitBill.id)}
               >
@@ -9220,10 +9220,10 @@ function DirectSplitBillsView({
                     <input
                       type="text" placeholder="Receipt photo URL" value={receiptUrlDrafts[splitBill.id] ?? ''}
                       onChange={(e) => setReceiptUrlDrafts((prev) => ({ ...prev, [splitBill.id]: e.target.value }))}
-                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '12px' }}
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '12px' }}
                     />
                     <button
-                      type="button" className="toss-btn toss-btn-secondary" style={{ fontSize: '12px' }}
+                      type="button" className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px' }}
                       disabled={busyId === splitBill.id || !(receiptUrlDrafts[splitBill.id] ?? '').trim()}
                       onClick={() => handleAttachReceipt(splitBill.id)}
                     >
@@ -9233,7 +9233,7 @@ function DirectSplitBillsView({
                 )}
                 {splitBill.status === 'OPEN' && hasPending && splitBill.currentRound < 5 && (
                   <button
-                    type="button" className="toss-btn toss-btn-secondary" style={{ marginTop: '4px', fontSize: '12px' }}
+                    type="button" className="itunda-btn itunda-btn-secondary" style={{ marginTop: '4px', fontSize: '12px' }}
                     disabled={busyId === splitBill.id}
                     onClick={() => handleNextRound(splitBill.id)}
                   >
@@ -9321,29 +9321,29 @@ function GroupManageMembersView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to group">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to group">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Manage members</h3>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <h4 style={{ fontSize: '13px', fontWeight: 700 }}>Group info</h4>
       <input
         type="text" placeholder="Photo URL (blank to clear)" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <textarea
         placeholder="Group description (blank to clear)" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', fontFamily: 'inherit' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', fontFamily: 'inherit' }}
       />
-      <button className="toss-btn toss-btn-secondary" disabled={savingInfo} onClick={handleSaveInfo}>
+      <button className="itunda-btn itunda-btn-secondary" disabled={savingInfo} onClick={handleSaveInfo}>
         {savingInfo ? 'Saving…' : infoSaved ? 'Saved' : 'Save group info'}
       </button>
       <h4 style={{ fontSize: '13px', fontWeight: 700 }}>Members ({members.length})</h4>
       {members.map((m) => (
         <p key={m.userId} style={{ fontSize: '13px' }}>{m.userId === currentUserId ? `${m.name} (you)` : m.name}</p>
       ))}
-      <button className="toss-btn toss-btn-secondary" disabled={leaving} onClick={handleLeave}>
+      <button className="itunda-btn itunda-btn-secondary" disabled={leaving} onClick={handleLeave}>
         {leaving ? 'Leaving…' : 'Leave group'}
       </button>
       <h4 style={{ fontSize: '13px', fontWeight: 700, marginTop: '8px' }}>Add from your contacts</h4>
@@ -9351,7 +9351,7 @@ function GroupManageMembersView({
       {addable.map((c) => (
         <div key={c.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '13px' }}>{c.name}</span>
-          <button className="toss-btn toss-btn-secondary" disabled={busyUserId !== null} onClick={() => handleAdd(c)}>
+          <button className="itunda-btn itunda-btn-secondary" disabled={busyUserId !== null} onClick={() => handleAdd(c)}>
             {busyUserId === c.userId ? 'Adding…' : 'Add'}
           </button>
         </div>
@@ -9404,14 +9404,14 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
   }
 
   if (groups === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
 
   return (
     <div>
       <NewGroupCard onCreated={(id) => { load(); setOpenGroupId(id); }} />
       {groups.length === 0 ? (
-        <div className="toss-card">
+        <div className="itunda-card">
           <EmptyState message="No groups yet — start one to chat with more than one person at a time." />
         </div>
       ) : (
@@ -9420,22 +9420,22 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
             <button
               key={g.groupId}
               onClick={() => setOpenGroupId(g.groupId)}
-              className="toss-card"
+              className="itunda-card"
               style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
             >
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Users size={20} color="var(--toss-blue)" />
+              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Users size={20} color="var(--itunda-blue)" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{g.name} · {g.memberCount}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{g.name} · {g.memberCount}</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {g.lastMessagePreview ?? 'No messages yet'}
                 </p>
               </div>
               {g.unreadCount > 0 && (
                 <span
                   style={{
-                    fontSize: '11px', fontWeight: 700, color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
+                    fontSize: '11px', fontWeight: 700, color: 'var(--itunda-white)', backgroundColor: 'var(--itunda-blue)',
                     borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
                   }}
                 >
@@ -9478,15 +9478,15 @@ function MessagesView({ initialConversationId, onConsumedInitial }: { initialCon
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['DIRECT', 'GROUPS', 'FRIENDS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setMode(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: mode === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === v ? 'var(--toss-blue)' : 'transparent',
+              color: mode === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: mode === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'DIRECT' ? 'Direct' : v === 'GROUPS' ? 'Groups' : 'Friends'}
@@ -9547,10 +9547,10 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
   };
 
   if (error) return <ErrorCard message={error} onRetry={load} />;
-  if (contacts === null) return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+  if (contacts === null) return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   if (contacts.length === 0) {
     return (
-      <div className="toss-card">
+      <div className="itunda-card">
         <EmptyState message="No friends yet -- save someone's contact and they'll show up here once they're on itunda." />
       </div>
     );
@@ -9563,27 +9563,27 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
           key={c.userId}
           onClick={() => handleTap(c)}
           disabled={startingId === c.userId}
-          className="toss-card"
-          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', width: '100%', textAlign: 'left', background: 'var(--toss-white)', border: 'none', cursor: 'pointer' }}
+          className="itunda-card"
+          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', width: '100%', textAlign: 'left', background: 'var(--itunda-white)', border: 'none', cursor: 'pointer' }}
         >
           <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Users size={20} color="var(--toss-blue)" />
+            <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Users size={20} color="var(--itunda-blue)" />
             </div>
             {presence[c.userId] && (
               <span
                 style={{
                   position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', borderRadius: '6px',
-                  backgroundColor: 'var(--toss-green)', border: '2px solid var(--toss-white)',
+                  backgroundColor: 'var(--itunda-green)', border: '2px solid var(--itunda-white)',
                 }}
               />
             )}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{c.name}</p>
-            {presence[c.userId] && <p style={{ fontSize: '12px', color: 'var(--toss-green)', fontWeight: 700 }}>Active now</p>}
+            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{c.name}</p>
+            {presence[c.userId] && <p style={{ fontSize: '12px', color: 'var(--itunda-green)', fontWeight: 700 }}>Active now</p>}
           </div>
-          {startingId === c.userId && <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>…</span>}
+          {startingId === c.userId && <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>…</span>}
         </button>
       ))}
     </div>
@@ -9678,40 +9678,40 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
         + List an item
       </button>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700 }}>List an item</h3>
       <input
         type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What are you selling?" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <textarea
         value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" required rows={3}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', gap: '10px' }}>
         <input
           type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (RWF)" required min="1"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" required
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
       </div>
       <input
         type="text" value={meetingPlace} maxLength={120} onChange={(e) => setMeetingPlace(e.target.value)}
         placeholder="Suggested meeting place (optional)"
         aria-describedby="meeting-place-help"
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
-      <small id="meeting-place-help" style={{ color: 'var(--toss-grey-600)' }}>Use a public landmark, not a home address.</small>
+      <small id="meeting-place-help" style={{ color: 'var(--itunda-grey-600)' }}>Use a public landmark, not a home address.</small>
       <input
         type="file"
         accept="image/jpeg,image/png,image/webp"
@@ -9719,11 +9719,11 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
         onChange={(e) => handlePhotoSelected(e.target.files?.[0])}
         style={{ fontSize: '13px' }}
       />
-      {uploadingPhoto && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Uploading…</p>}
-      {photoUrl && !uploadingPhoto && <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>✓ Photo uploaded</p>}
+      {uploadingPhoto && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Uploading…</p>}
+      {photoUrl && !uploadingPhoto && <p style={{ fontSize: '12px', color: 'var(--itunda-green)' }}>✓ Photo uploaded</p>}
       <button
         type="button"
-        className="toss-btn toss-btn-secondary"
+        className="itunda-btn itunda-btn-secondary"
         disabled={locating}
         onClick={handleToggleShareLocation}
         style={{ fontSize: '13px' }}
@@ -9731,12 +9731,12 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
         {locating ? 'Finding your real location…' : shareLocation ? '📍 Real location shared -- buyers can see distance & get directions' : '📍 Share my real location (optional)'}
       </button>
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting || uploadingPhoto}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting || uploadingPhoto}>
           {submitting ? 'Listing…' : 'List it'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -9893,22 +9893,22 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
             {listing.title}
             {listing.status === 'SOLD' && (
-              <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 700, color: 'var(--toss-grey-500)', backgroundColor: 'var(--toss-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
+              <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 700, color: 'var(--itunda-grey-500)', backgroundColor: 'var(--itunda-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
                 SOLD
               </span>
             )}
           </p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{listing.category}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{listing.category}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
-          <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
+          <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
         </div>
       </div>
       {/* Real seller-uploaded photo (2026-08-01) -- see lib/marketplace.ts's own doc
@@ -9924,9 +9924,9 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       {/* Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
           comment. Only shown for someone else's listing. */}
       {!isMine && sellerTrustScore != null && <TrustBadge score={sellerTrustScore} />}
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{listing.description}</p>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{listing.description}</p>
       {listing.meetingPlace && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-600)', margin: 0 }}>Suggested hand-off: {listing.meetingPlace}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-600)', margin: 0 }}>Suggested hand-off: {listing.meetingPlace}</p>
       )}
       {offering && (
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -9935,9 +9935,9 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
             value={offerAmount}
             onChange={(e) => setOfferAmount(e.target.value)}
             placeholder="Your offer (RWF)"
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button className="toss-btn toss-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
             Send
           </button>
         </div>
@@ -9951,13 +9951,13 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
             value={buyerPhone}
             onChange={(e) => setBuyerPhone(e.target.value)}
             placeholder="Buyer's phone (optional)"
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkSold()}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkSold()}>
               Skip
             </button>
-            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkSold(buyerPhone.trim())}>
+            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkSold(buyerPhone.trim())}>
               Confirm
             </button>
           </div>
@@ -9980,7 +9980,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
             onSubmit={handleSubmitReview}
           />
         ) : (
-          <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
             Rate this buyer
           </button>
         )
@@ -9989,12 +9989,12 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
         {isMine ? (
           <>
             {listing.status === 'ACTIVE' && !markingSold && (
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => setMarkingSold(true)}>
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => setMarkingSold(true)}>
                 Mark sold
               </button>
             )}
             {listing.status !== 'REMOVED' && (
-              <button className="toss-btn toss-btn-danger" style={{ flex: 1 }} disabled={busy} onClick={handleRemove}>
+              <button className="itunda-btn itunda-btn-danger" style={{ flex: 1 }} disabled={busy} onClick={handleRemove}>
                 Remove
               </button>
             )}
@@ -10002,10 +10002,10 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
         ) : (
           listing.status === 'ACTIVE' && !offering && (
             <>
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={handleMessage}>
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={handleMessage}>
                 {busy ? 'Starting…' : 'Message seller'}
               </button>
-              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
+              <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
                 Make an offer
               </button>
             </>
@@ -10014,7 +10014,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
       </div>
       {!isMine && <HoodReportButton targetType="MARKETPLACE_LISTING" targetId={listing.id} />}
       {!isMine && listing.status === 'ACTIVE' && listing.latitude != null && listing.longitude != null && (
-        <button className="toss-btn toss-btn-secondary" disabled={locating} onClick={handleShowDirections}>
+        <button className="itunda-btn itunda-btn-secondary" disabled={locating} onClick={handleShowDirections}>
           {locating ? 'Finding your real location…' : showRoute ? 'Hide directions' : '🚗 Directions to this seller'}
         </button>
       )}
@@ -10028,7 +10028,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           toLabel={listing.title}
         />
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -10071,15 +10071,15 @@ function NeighborhoodSetupPrompt({ isSecond = false, onDone }: { isSecond?: bool
   };
 
   return (
-    <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
+    <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
       <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>{isSecond ? 'Add a second neighborhood' : 'Set your neighborhood'}</p>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
         {isSecond ? "Share a second real place -- like work -- to see what's happening there too." : "Share your real location once to see what's happening near you."}
       </p>
-      <button className="toss-btn toss-btn-primary" onClick={handleShare} disabled={busy}>
+      <button className="itunda-btn itunda-btn-primary" onClick={handleShare} disabled={busy}>
         {busy ? 'Finding your neighborhood…' : '📍 Share my location'}
       </button>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '12px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '12px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -10110,14 +10110,14 @@ function NeighborhoodSwitcherRow({
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', marginTop: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', marginTop: '10px' }}>
       <span style={{ fontSize: '13px', fontWeight: 600 }}>{secondNeighborhoodName ? `Second: ${secondNeighborhoodName}` : 'Add a second neighborhood'}</span>
       <div style={{ display: 'flex', gap: '12px' }}>
-        <button style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-blue)' }} onClick={onAddTapped}>
+        <button style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-blue)' }} onClick={onAddTapped}>
           {secondNeighborhoodName ? 'Change' : 'Add'}
         </button>
         {secondNeighborhoodName && (
-          <button style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-red)' }} onClick={handleRemove} disabled={removing}>
+          <button style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-red)' }} onClick={handleRemove} disabled={removing}>
             Remove
           </button>
         )}
@@ -10154,19 +10154,19 @@ function ListingWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (favorites === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   if (favorites.length === 0) return <EmptyState message="No saved listings yet -- tap ♡ on any listing to save it here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {favorites.map((f) => (
-        <div key={f.listingId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div key={f.listingId} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.title}</p>
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.category} · {f.price.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{f.category} · {f.price.toLocaleString()} RWF</p>
           </div>
           <button
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             disabled={removingId === f.listingId}
             onClick={() => handleRemove(f.listingId)}
             style={{ padding: '8px 12px', fontSize: '12px' }}
@@ -10250,27 +10250,27 @@ function KeywordAlertsView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <form onSubmit={handleAdd} className="toss-card" style={{ display: 'flex', gap: '8px' }}>
+      <form onSubmit={handleAdd} className="itunda-card" style={{ display: 'flex', gap: '8px' }}>
         <input
           type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Alert me for (e.g. iPhone 15)"
-          style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={adding || !keyword.trim()}>{adding ? '…' : 'Add'}</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={adding || !keyword.trim()}>{adding ? '…' : 'Add'}</button>
       </form>
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
 
       {alerts === null ? (
-        <div className="toss-card skeleton" style={{ height: '80px' }} />
+        <div className="itunda-card skeleton" style={{ height: '80px' }} />
       ) : alerts.length === 0 ? (
         <EmptyState message="No keyword alerts yet -- add one to get notified when a matching listing is posted." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {alerts.map((a) => (
-            <div key={a.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={a.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <p style={{ fontSize: '14px', fontWeight: 700 }}>{a.keyword}</p>
               <button
-                className="toss-btn toss-btn-secondary" disabled={removingId === a.id} onClick={() => handleRemove(a.id)}
+                className="itunda-btn itunda-btn-secondary" disabled={removingId === a.id} onClick={() => handleRemove(a.id)}
                 style={{ padding: '8px 12px', fontSize: '12px' }}
               >
                 {removingId === a.id ? 'Removing…' : 'Remove'}
@@ -10281,23 +10281,23 @@ function KeywordAlertsView() {
       )}
 
       {quietHours !== undefined && (
-        <div className="toss-card">
+        <div className="itunda-card">
           <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Quiet hours</h3>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
             Don't send alert notifications during these hours.
           </p>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
             <input
               type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)}
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
             />
             <input
               type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)}
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
             />
           </div>
           <button
-            className={quietHours?.enabled ? 'toss-btn toss-btn-secondary' : 'toss-btn toss-btn-primary'}
+            className={quietHours?.enabled ? 'itunda-btn itunda-btn-secondary' : 'itunda-btn itunda-btn-primary'}
             disabled={savingQuietHours}
             onClick={() => handleSaveQuietHours(!quietHours?.enabled)}
             style={{ width: '100%' }}
@@ -10386,15 +10386,15 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST', 'ALERTS', 'INSPECTIONS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+              color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? '♡ Wishlist' : v === 'ALERTS' ? '🔔 Alerts' : '🔧 Inspections'}
@@ -10432,22 +10432,22 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
           )}
 
           {view === 'NEIGHBORHOOD' && neighborhoodName && (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-              Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+              Your neighborhood: <strong style={{ color: 'var(--itunda-grey-900)' }}>{neighborhoodName}</strong>
             </p>
           )}
 
           {error && (
             <ErrorCard message={error} onRetry={load} />
           )}
-          {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+          {!error && listings === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
-            <div className="toss-card">
+            <div className="itunda-card">
               {/* Real copy-voice fix (item 244, round 5 of the empty-state pass --
                   docs/COPY_VOICE.md's rules, ported from the same-day Android/iOS
                   fix): say what's missing AND what fixes it, per this screen's own
                   real "+ List an item" button above in the MINE view. */}
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
                 {view === 'BROWSE' ? 'No listings yet — be the first to list something for sale.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet — try Browse to see listings from everywhere.' : view === 'PURCHASES' ? 'No purchases recorded yet — items you buy will show up here.' : 'You haven\'t listed anything yet — tap "+ List an item" above to list your first one.'}
               </p>
             </div>
@@ -10606,14 +10606,14 @@ function VehicleInspectionsView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BUYER', 'MECHANIC'] as const).map((t) => (
           <button
             key={t} onClick={() => setTab(t)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: tab === t ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: tab === t ? 'var(--toss-blue)' : 'transparent',
+              color: tab === t ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: tab === t ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {t === 'BUYER' ? 'Get a car inspected' : 'Mechanic'}
@@ -10623,52 +10623,52 @@ function VehicleInspectionsView() {
 
       {tab === 'BUYER' ? (
         <div>
-          <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <div className="itunda-card" style={{ marginBottom: '16px' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Book an inspection</h3>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Pay a local mechanic to inspect a used car before you buy it -- held until they deliver their findings.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <input
                 type="text" value={listingId} onChange={(e) => setListingId(e.target.value)} placeholder="Listing ID"
-                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               <select
                 value={mechanicId} onChange={(e) => setMechanicId(e.target.value)}
-                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               >
                 <option value="">Choose a mechanic</option>
                 {(mechanics ?? []).map((m) => <option key={m.id} value={m.id}>{m.businessName}</option>)}
               </select>
               <input
                 type="number" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Inspection fee (RWF)"
-                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               <input
                 type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
-                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
-              <button className="toss-btn toss-btn-primary" disabled={requesting} onClick={handleRequest}>
+              <button className="itunda-btn itunda-btn-primary" disabled={requesting} onClick={handleRequest}>
                 {requesting ? 'Booking…' : 'Book & pay'}
               </button>
             </div>
-            {buyerError && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{buyerError}</p>}
+            {buyerError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{buyerError}</p>}
           </div>
 
           {myBookings === null ? (
-            <div className="toss-card skeleton" style={{ height: '100px' }} />
+            <div className="itunda-card skeleton" style={{ height: '100px' }} />
           ) : myBookings.length === 0 ? (
             <EmptyState message="No inspections booked yet — book one to get a real used car checked before you buy." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {myBookings.map((b) => (
-                <div key={b.id} className="toss-card">
+                <div key={b.id} className="itunda-card">
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>Listing {b.listingId}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
                   {b.findings && <p style={{ fontSize: '13px', marginTop: '6px' }}>{b.findings}</p>}
                   {(b.status === 'REQUESTED' || b.status === 'ACCEPTED') && (
                     <button
-                      className="toss-btn toss-btn-danger" style={{ marginTop: '8px' }} disabled={busyBookingId === b.id}
+                      className="itunda-btn itunda-btn-danger" style={{ marginTop: '8px' }} disabled={busyBookingId === b.id}
                       onClick={() => handleCancel(b.id)}
                     >
                       {busyBookingId === b.id ? 'Cancelling…' : 'Cancel'}
@@ -10680,46 +10680,46 @@ function VehicleInspectionsView() {
           )}
         </div>
       ) : mechanicProfile === undefined ? (
-        <div className="toss-card skeleton" style={{ height: '160px' }} />
+        <div className="itunda-card skeleton" style={{ height: '160px' }} />
       ) : mechanicProfile === null ? (
-        <div className="toss-card">
+        <div className="itunda-card">
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Become an inspection mechanic</h3>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
             Get booked and paid to inspect used cars for real buyers before they purchase.
           </p>
           <input
             type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name"
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
           />
-          <button className="toss-btn toss-btn-primary" disabled={registering} onClick={handleRegister}>
+          <button className="itunda-btn itunda-btn-primary" disabled={registering} onClick={handleRegister}>
             {registering ? 'Registering…' : 'Register'}
           </button>
-          {mechanicError && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{mechanicError}</p>}
+          {mechanicError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{mechanicError}</p>}
         </div>
       ) : (
         <div>
-          <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
               <p style={{ fontSize: '15px', fontWeight: 700 }}>{mechanicProfile.businessName}</p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{mechanicProfile.available ? 'Visible for new bookings' : 'Not accepting bookings'}</p>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{mechanicProfile.available ? 'Visible for new bookings' : 'Not accepting bookings'}</p>
             </div>
-            <button className={mechanicProfile.available ? 'toss-btn toss-btn-danger' : 'toss-btn toss-btn-primary'} onClick={handleToggleAvailable}>
+            <button className={mechanicProfile.available ? 'itunda-btn itunda-btn-danger' : 'itunda-btn itunda-btn-primary'} onClick={handleToggleAvailable}>
               {mechanicProfile.available ? 'Go unavailable' : 'Go available'}
             </button>
           </div>
-          {mechanicError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{mechanicError}</p>}
+          {mechanicError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{mechanicError}</p>}
           {mechanicBookings === null ? (
-            <div className="toss-card skeleton" style={{ height: '100px' }} />
+            <div className="itunda-card skeleton" style={{ height: '100px' }} />
           ) : mechanicBookings.length === 0 ? (
             <EmptyState message="No bookings yet — they'll show up here once a buyer books an inspection." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {mechanicBookings.map((b) => (
-                <div key={b.id} className="toss-card">
+                <div key={b.id} className="itunda-card">
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>Listing {b.listingId}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
                   {b.status === 'REQUESTED' && (
-                    <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyBookingId === b.id} onClick={() => handleAccept(b.id)}>
+                    <button className="itunda-btn itunda-btn-primary" style={{ marginTop: '8px' }} disabled={busyBookingId === b.id} onClick={() => handleAccept(b.id)}>
                       {busyBookingId === b.id ? 'Accepting…' : 'Accept'}
                     </button>
                   )}
@@ -10728,9 +10728,9 @@ function VehicleInspectionsView() {
                       <textarea
                         value={findings[b.id] ?? ''} onChange={(e) => setFindings((prev) => ({ ...prev, [b.id]: e.target.value }))}
                         placeholder="Inspection findings" rows={2}
-                        style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', resize: 'vertical' }}
+                        style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', resize: 'vertical' }}
                       />
-                      <button className="toss-btn toss-btn-primary" disabled={busyBookingId === b.id} onClick={() => handleComplete(b.id)}>
+                      <button className="itunda-btn itunda-btn-primary" disabled={busyBookingId === b.id} onClick={() => handleComplete(b.id)}>
                         {busyBookingId === b.id ? 'Completing…' : 'Mark complete'}
                       </button>
                     </div>
@@ -10815,33 +10815,33 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
         + Write a post
       </button>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Write a post</h3>
       <select
         value={category} onChange={(e) => setCategory(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       >
         {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
       </select>
       <input
         type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <textarea
         value={body} onChange={(e) => setBody(e.target.value)} placeholder="What's going on in the neighborhood?" required rows={4}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
       />
       {category === 'meetup' && (
         <input
           type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
       )}
       {(category === 'meetup' || category === 'group_buy') && (
@@ -10850,12 +10850,12 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
           onChange={(e) => setCapacity(e.target.value)}
           placeholder={category === 'group_buy' ? 'Max people (up to 4, including you)' : 'Max people (optional)'}
           required={category === 'group_buy'}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
       )}
       <button
         type="button"
-        className="toss-btn toss-btn-secondary"
+        className="itunda-btn itunda-btn-secondary"
         disabled={locating}
         onClick={handleToggleShareLocation}
         style={{ fontSize: '13px' }}
@@ -10863,12 +10863,12 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
         {locating ? 'Finding your real location…' : shareLocation ? '📍 Real location shared -- others nearby can find this post' : '📍 Share my real location (optional)'}
       </button>
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
           {submitting ? 'Posting…' : 'Post'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -10894,7 +10894,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
 
   return (
     <div
-      className="toss-card"
+      className="itunda-card"
       style={{ display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
       role="button"
       tabIndex={0}
@@ -10902,10 +10902,10 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{categoryLabel}</span>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{categoryLabel}</span>
         {isMine && (
           <button
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             style={{ fontSize: '11px', padding: '4px 10px' }}
             disabled={busy}
             onClick={(e) => { e.stopPropagation(); void handleRemove(); }}
@@ -10914,11 +10914,11 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
           </button>
         )}
       </div>
-      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{post.title}</p>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
         {post.body}
       </p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-400)' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-400)' }}>
         ❤️ {post.likeCount} · 💬 {post.commentCount}
       </p>
       {/* Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a "view"
@@ -10927,7 +10927,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
           count rather than a bare label. */}
       {!isMine && post.category === 'meetup' && (
         <button
-          className="toss-btn toss-btn-primary"
+          className="itunda-btn itunda-btn-primary"
           style={{ fontSize: '12px', padding: '6px 12px', alignSelf: 'flex-start' }}
           disabled={joining}
           onClick={(e) => { e.stopPropagation(); onJoin?.(); }}
@@ -10936,7 +10936,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
         </button>
       )}
       {!isMine && <HoodReportButton targetType="COMMUNITY_POST" targetId={post.id} />}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -10993,17 +10993,17 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
   return (
     <div style={{ marginTop: '16px' }}>
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Sessions</h3>
-      {sessions === null && <div className="toss-card skeleton" style={{ height: '60px' }} />}
+      {sessions === null && <div className="itunda-card skeleton" style={{ height: '60px' }} />}
       {sessions !== null && sessions.length === 0 && (
         <EmptyState message="No sessions scheduled yet — start one to meet up with neighbors." />
       )}
       {sessions !== null && sessions.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           {sessions.map((s) => (
-            <div key={s.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
+            <div key={s.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
               <p style={{ fontSize: '13px' }}>{new Date(s.scheduledFor).toLocaleString()}</p>
               <button
-                className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 12px' }}
+                className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px', padding: '6px 12px' }}
                 disabled={checkingInId === s.id || checkedInIds.has(s.id)}
                 onClick={() => handleCheckIn(s.id)}
               >
@@ -11014,26 +11014,26 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
         </div>
       )}
       {isAuthor && (
-        <div className="toss-card">
+        <div className="itunda-card">
           <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Schedule sessions (up to 6)</p>
           {dates.map((d, i) => (
             <input
               key={i} type="datetime-local" value={d}
               onChange={(e) => setDates((prev) => prev.map((v, idx) => (idx === i ? e.target.value : v)))}
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '6px' }}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '6px' }}
             />
           ))}
           <div style={{ display: 'flex', gap: '8px' }}>
             {dates.length < 6 && (
-              <button className="toss-btn toss-btn-secondary" onClick={() => setDates((prev) => [...prev, ''])}>+ Add date</button>
+              <button className="itunda-btn itunda-btn-secondary" onClick={() => setDates((prev) => [...prev, ''])}>+ Add date</button>
             )}
-            <button className="toss-btn toss-btn-primary" disabled={scheduling} onClick={handleSchedule}>
+            <button className="itunda-btn itunda-btn-primary" disabled={scheduling} onClick={handleSchedule}>
               {scheduling ? 'Scheduling…' : 'Schedule'}
             </button>
           </div>
         </div>
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -11068,30 +11068,30 @@ function GroupBuyFinalizeSection({ post, currentUserId }: { post: CommunityPost;
 
   if (done) {
     return (
-      <div className="toss-card" style={{ marginTop: '16px' }}>
-        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>Split request sent -- see it in your group chat's Split bill tab.</p>
+      <div className="itunda-card" style={{ marginTop: '16px' }}>
+        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>Split request sent -- see it in your group chat's Split bill tab.</p>
       </div>
     );
   }
 
   return (
-    <div className="toss-card" style={{ marginTop: '16px' }}>
+    <div className="itunda-card" style={{ marginTop: '16px' }}>
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Split the cost</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
         Enter what you paid up front -- every real member who joined will be asked for their even share.
       </p>
       <input
         type="number" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="Total amount (RWF)"
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
       />
       <input
         type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was this for?"
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
       />
-      <button className="toss-btn toss-btn-primary" disabled={submitting} onClick={handleFinalize}>
+      <button className="itunda-btn itunda-btn-primary" disabled={submitting} onClick={handleFinalize}>
         {submitting ? 'Splitting…' : 'Request even split'}
       </button>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -11150,16 +11150,16 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
 
   return (
     <div>
-      <button className="toss-btn toss-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      {!post && !error && <div className="toss-card skeleton" style={{ height: '160px' }} />}
+      <button className="itunda-btn itunda-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {!post && !error && <div className="itunda-card skeleton" style={{ height: '160px' }} />}
       {post && (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '17px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>by {authorName}</p>
-          <p style={{ fontSize: '14px', color: 'var(--toss-grey-700)', whiteSpace: 'pre-wrap' }}>{post.body}</p>
+        <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '17px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{post.title}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>by {authorName}</p>
+          <p style={{ fontSize: '14px', color: 'var(--itunda-grey-700)', whiteSpace: 'pre-wrap' }}>{post.body}</p>
           <button
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             disabled={liking}
             onClick={handleLike}
             style={{ alignSelf: 'flex-start', fontSize: '13px' }}
@@ -11171,16 +11171,16 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
       {post && post.category === 'meetup' && <MeetupSessionsSection post={post} currentUserId={currentUser?.id} />}
       {post && post.category === 'group_buy' && <GroupBuyFinalizeSection post={post} currentUserId={currentUser?.id} />}
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
-      {comments === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
+      {comments === null && <div className="itunda-card skeleton" style={{ height: '80px' }} />}
       {comments !== null && comments.length === 0 && (
         <EmptyState message="No comments yet -- be the first to reply." />
       )}
       {comments !== null && comments.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           {comments.map(({ comment, authorName: name }) => (
-            <div key={comment.id} className="toss-card" style={{ padding: '10px 14px' }}>
-              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-700)' }}>{name}</p>
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-900)' }}>{comment.body}</p>
+            <div key={comment.id} className="itunda-card" style={{ padding: '10px 14px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{name}</p>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-900)' }}>{comment.body}</p>
             </div>
           ))}
         </div>
@@ -11188,9 +11188,9 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
       <form onSubmit={handleComment} style={{ display: 'flex', gap: '8px' }}>
         <input
           type="text" value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Add a comment"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={commenting || !commentBody.trim()}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={commenting || !commentBody.trim()}>
           {commenting ? '…' : 'Send'}
         </button>
       </form>
@@ -11270,15 +11270,15 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+              color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Feed' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My posts'}
@@ -11294,9 +11294,9 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
               onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
               style={{
                 whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${activeCategory === c.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: activeCategory === c.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: activeCategory === c.id ? 'var(--toss-blue)' : 'transparent',
+                border: `1px solid ${activeCategory === c.id ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                color: activeCategory === c.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                backgroundColor: activeCategory === c.id ? 'var(--itunda-blue)' : 'transparent',
               }}
             >
               {c.label}
@@ -11327,21 +11327,21 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
       )}
 
       {view === 'NEIGHBORHOOD' && neighborhoodName && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+          Your neighborhood: <strong style={{ color: 'var(--itunda-grey-900)' }}>{neighborhoodName}</strong>
         </p>
       )}
 
       {error && (
         <ErrorCard message={error} onRetry={load} />
       )}
-      {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+      {!error && posts === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
       {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
-        <div className="toss-card">
+        <div className="itunda-card">
           {/* Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
               from the same-day Android/iOS fix): say what's missing AND what fixes
               it, per this screen's own real "+ Write a post" button above in MINE. */}
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
             {view === 'BROWSE' ? 'No posts yet — be the first to share something with your neighbors.' : view === 'NEIGHBORHOOD' ? 'No posts in your neighborhood yet — try Browse to see posts from everywhere.' : 'You haven\'t posted anything yet — tap "+ Write a post" above to share your first one.'}
           </p>
         </div>
@@ -11370,7 +11370,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {meetups.length > 0 && (
               <>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>🎉 Meetups</p>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>🎉 Meetups</p>
                 {meetups.map(renderCard)}
               </>
             )}
@@ -11414,49 +11414,49 @@ function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; 
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
         + Post a job
       </button>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Post a job</h3>
       <select
         value={category} onChange={(e) => setCategory(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       >
         {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
       </select>
       <input
         type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What do you need done?" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <textarea
         value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the work" required rows={3}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', gap: '10px' }}>
         <select
           value={payType} onChange={(e) => setPayType(e.target.value as JobPayType)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         >
           <option value="HOURLY">Per hour</option>
           <option value="FIXED">Fixed price</option>
         </select>
         <input
           type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Pay (RWF)" required min="1"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
       </div>
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
           {submitting ? 'Posting…' : 'Post job'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -11573,12 +11573,12 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
   const payLabel = `${post.payAmount.toLocaleString()} RWF${post.payType === 'HOURLY' ? '/hr' : ''}`;
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{categoryLabel}</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{categoryLabel}</span>
           {post.status === 'FILLED' && (
-            <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--toss-grey-500)', backgroundColor: 'var(--toss-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
+            <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--itunda-grey-500)', backgroundColor: 'var(--itunda-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
               FILLED
             </span>
           )}
@@ -11588,15 +11588,15 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
               WishlistButton reuse exactly, closing a docs/DESIGN_REFERENCES.md-named
               gap: Marketplace listings already had this, Jobs never did. */}
           {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
-          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{payLabel}</span>
+          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{payLabel}</span>
         </div>
       </div>
-      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
+      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{post.title}</p>
       {/* Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
           comment. Only shown for someone else's post. */}
       {!isMine && posterTrustScore != null && <TrustBadge score={posterTrustScore} />}
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{post.description}</p>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{post.description}</p>
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {/* Real optional "who did you hire?" prompt (2026-07-24) -- see backend
           JobPostService.markFilled's own doc comment. */}
       {markingFilled && (
@@ -11606,13 +11606,13 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
             value={workerPhone}
             onChange={(e) => setWorkerPhone(e.target.value)}
             placeholder="Worker's phone (optional)"
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkFilled()}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkFilled()}>
               Skip
             </button>
-            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkFilled(workerPhone.trim())}>
+            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkFilled(workerPhone.trim())}>
               Confirm
             </button>
           </div>
@@ -11636,7 +11636,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
             onSubmit={handleSubmitReview}
           />
         ) : (
-          <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
             Rate this worker
           </button>
         )
@@ -11646,7 +11646,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
           <>
             {post.status === 'OPEN' && !markingFilled && (
               <button
-                className="toss-btn toss-btn-secondary"
+                className="itunda-btn itunda-btn-secondary"
                 disabled={busy}
                 onClick={() => setMarkingFilled(true)}
               >
@@ -11655,7 +11655,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
             )}
             {post.status !== 'REMOVED' && (
               <button
-                className="toss-btn toss-btn-secondary"
+                className="itunda-btn itunda-btn-secondary"
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
@@ -11671,11 +11671,11 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
         ) : (
           post.status === 'OPEN' && (
             <>
-              <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={onContact}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={onContact}>
                 Message poster
               </button>
               {!applicationSubmitted && !applying && (
-                <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => setApplying(true)}>
+                <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={() => setApplying(true)}>
                   Apply
                 </button>
               )}
@@ -11689,14 +11689,14 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
             value={applicationMessage}
             onChange={(e) => setApplicationMessage(e.target.value)}
             placeholder="Why should the poster pick you? (required)"
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', minHeight: '72px' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', minHeight: '72px' }}
           />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submittingApplication} onClick={() => setApplying(false)}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={submittingApplication} onClick={() => setApplying(false)}>
               Cancel
             </button>
             <button
-              className="toss-btn toss-btn-primary" style={{ flex: 1 }}
+              className="itunda-btn itunda-btn-primary" style={{ flex: 1 }}
               disabled={submittingApplication || applicationMessage.trim().length === 0}
               onClick={handleSubmitApplication}
             >
@@ -11706,26 +11706,26 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
         </div>
       )}
       {!isMine && applicationSubmitted && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Application sent — you'll hear back once the poster reviews it</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Application sent — you'll hear back once the poster reviews it</p>
       )}
       {isMine && post.status === 'OPEN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => setShowApplicants((v) => !v)}>
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={() => setShowApplicants((v) => !v)}>
             {showApplicants ? 'Hide applicants' : 'View applicants'}
           </button>
           {showApplicants && (
-            applications === null ? <div className="toss-card skeleton" style={{ height: '60px' }} /> :
+            applications === null ? <div className="itunda-card skeleton" style={{ height: '60px' }} /> :
             applications.filter((a) => a.status === 'PENDING').length === 0 ? (
               <EmptyState message="No applications yet — apply to a job post and it'll show up here." />
             ) : (
               applications.filter((a) => a.status === 'PENDING').map((app) => (
-                <div key={app.id} style={{ backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div key={app.id} style={{ backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <p style={{ fontSize: '13px' }}>{app.message}</p>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={respondingToId === app.id} onClick={() => handleRespond(app.id, false)}>
+                    <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={respondingToId === app.id} onClick={() => handleRespond(app.id, false)}>
                       Decline
                     </button>
-                    <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={respondingToId === app.id} onClick={() => handleRespond(app.id, true)}>
+                    <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={respondingToId === app.id} onClick={() => handleRespond(app.id, true)}>
                       Accept &amp; message
                     </button>
                   </div>
@@ -11763,21 +11763,21 @@ function MyJobApplicationsView() {
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your applications.'));
   }, []);
 
-  if (error) return <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>;
-  if (applications === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
-  if (applications.length === 0) return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You haven't applied to any jobs yet.</p>;
+  if (error) return <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
+  if (applications === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
+  if (applications.length === 0) return <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>You haven't applied to any jobs yet.</p>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {applications.map(({ application, title }) => (
-        <div key={application.id} className="toss-card">
+        <div key={application.id} className="itunda-card">
           <p style={{ fontSize: '14px', fontWeight: 700 }}>{title ?? 'Job post'}</p>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{application.message}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{application.message}</p>
           <span
             style={{
               display: 'inline-block', marginTop: '6px', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '8px',
-              color: application.status === 'ACCEPTED' ? 'var(--toss-blue)' : application.status === 'DECLINED' ? 'var(--toss-red)' : 'var(--toss-grey-700)',
-              backgroundColor: application.status === 'ACCEPTED' ? 'rgba(49, 130, 246, 0.1)' : application.status === 'DECLINED' ? 'rgba(229, 57, 53, 0.1)' : 'var(--toss-grey-100)',
+              color: application.status === 'ACCEPTED' ? 'var(--itunda-blue)' : application.status === 'DECLINED' ? 'var(--itunda-red)' : 'var(--itunda-grey-700)',
+              backgroundColor: application.status === 'ACCEPTED' ? 'rgba(49, 130, 246, 0.1)' : application.status === 'DECLINED' ? 'rgba(229, 57, 53, 0.1)' : 'var(--itunda-grey-100)',
             }}
           >
             {application.status}
@@ -11818,19 +11818,19 @@ function JobPostWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (favorites === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   if (favorites.length === 0) return <EmptyState message="No saved jobs yet -- tap ♡ on any job post to save it here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {favorites.map((f) => (
-        <div key={f.jobPostId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div key={f.jobPostId} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.title}</p>
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.category} · {f.payAmount.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{f.category} · {f.payAmount.toLocaleString()} RWF</p>
           </div>
           <button
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             disabled={removingId === f.jobPostId}
             onClick={() => handleRemove(f.jobPostId)}
             style={{ padding: '8px 12px', fontSize: '12px' }}
@@ -11933,15 +11933,15 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WORKED', 'APPLICATIONS', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+              color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : v === 'APPLICATIONS' ? 'My applications' : '♡ Wishlist'}
@@ -11963,9 +11963,9 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
                   onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
                   style={{
                     whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                    border: `1px solid ${activeCategory === c.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                    color: activeCategory === c.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                    backgroundColor: activeCategory === c.id ? 'var(--toss-blue)' : 'transparent',
+                    border: `1px solid ${activeCategory === c.id ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                    color: activeCategory === c.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                    backgroundColor: activeCategory === c.id ? 'var(--itunda-blue)' : 'transparent',
                   }}
                 >
                   {c.label}
@@ -11996,22 +11996,22 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
           )}
 
           {view === 'NEIGHBORHOOD' && neighborhoodName && (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-              Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+              Your neighborhood: <strong style={{ color: 'var(--itunda-grey-900)' }}>{neighborhoodName}</strong>
             </p>
           )}
 
           {error && (
             <ErrorCard message={error} onRetry={load} />
           )}
-          {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+          {!error && posts === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
-            <div className="toss-card">
+            <div className="itunda-card">
               {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
                   ported from the same-day Android/iOS fix): say what's missing AND
                   what fixes it, per this screen's own real "+ Post a job" button
                   above in the MINE view. */}
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
                 {view === 'BROWSE' ? 'No jobs posted yet — check back soon, or post one yourself.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet — try Browse to see jobs from everywhere.' : view === 'WORKED' ? 'No completed jobs recorded yet — jobs you complete will show up here.' : 'You haven\'t posted any jobs yet — tap "+ Post a job" above to post your first one.'}
               </p>
             </div>
@@ -12079,60 +12079,60 @@ function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: P
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
         + List a property
       </button>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700 }}>List a property</h3>
       <div style={{ display: 'flex', gap: '10px' }}>
         <select
           value={listingType} onChange={(e) => setListingType(e.target.value as PropertyListingType)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         >
           <option value="RENT">For rent</option>
           <option value="SALE">For sale</option>
         </select>
         <select
           value={propertyType} onChange={(e) => setPropertyType(e.target.value)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         >
           {propertyTypes.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
         </select>
       </div>
       <input
         type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. 2-bedroom apartment in Kacyiru" required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <textarea
         value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the property" required rows={3}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', gap: '10px' }}>
         <input
           type="number" value={price} onChange={(e) => setPrice(e.target.value)}
           placeholder={listingType === 'RENT' ? 'Rent per month (RWF)' : 'Price (RWF)'} required min="1"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           type="number" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} placeholder="Bedrooms" min="0"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           type="number" value={sizeSqm} onChange={(e) => setSizeSqm(e.target.value)} placeholder="Size (m²)" min="1"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
       </div>
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
           {submitting ? 'Listing…' : 'List it'}
         </button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -12272,14 +12272,14 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
             {listing.listingType === 'RENT' ? 'For rent' : 'For sale'} · {propertyTypeLabel}
           </span>
           {listing.status === 'TAKEN' && (
-            <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--toss-grey-500)', backgroundColor: 'var(--toss-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
+            <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--itunda-grey-500)', backgroundColor: 'var(--itunda-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
               TAKEN
             </span>
           )}
@@ -12290,11 +12290,11 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
               docs/DESIGN_REFERENCES.md-named gap: Marketplace listings already had
               this, Property never did. */}
           {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
-          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{priceLabel}</span>
+          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{priceLabel}</span>
         </div>
       </div>
-      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.title}</p>
-      {detailsLabel && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{detailsLabel}</p>}
+      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{listing.title}</p>
+      {detailsLabel && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{detailsLabel}</p>}
       {/* Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
           comment. Only shown for someone else's listing. */}
       {!isMine && listerTrustScore != null && <TrustBadge score={listerTrustScore} />}
@@ -12302,11 +12302,11 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
           just the lister, a trust signal for the buyer/tenant deciding whether to
           contact this listing. Mirrors PropertyScreen.kt's own badge exactly. */}
       {ownershipStatus === 'VERIFIED' && (
-        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)', backgroundColor: 'rgba(49,130,246,0.12)', padding: '2px 8px', borderRadius: '8px', width: 'fit-content' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-blue)', backgroundColor: 'rgba(49,130,246,0.12)', padding: '2px 8px', borderRadius: '8px', width: 'fit-content' }}>
           ✓ Owner verified
         </span>
       )}
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{listing.description}</p>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{listing.description}</p>
       {offering && (
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
@@ -12314,14 +12314,14 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
             value={offerAmount}
             onChange={(e) => setOfferAmount(e.target.value)}
             placeholder="Your offer (RWF)"
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button className="toss-btn toss-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
             Send
           </button>
         </div>
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {/* Real optional "who's the buyer/tenant?" prompt (2026-07-24) -- see backend
           PropertyListingService.markTaken's own doc comment. */}
       {markingTaken && (
@@ -12331,13 +12331,13 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
             value={counterpartyPhone}
             onChange={(e) => setCounterpartyPhone(e.target.value)}
             placeholder="Their phone (optional)"
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkTaken()}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkTaken()}>
               Skip
             </button>
-            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkTaken(counterpartyPhone.trim())}>
+            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkTaken(counterpartyPhone.trim())}>
               Confirm
             </button>
           </div>
@@ -12361,7 +12361,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
             onSubmit={handleSubmitReview}
           />
         ) : (
-          <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
             {listing.listingType === 'RENT' ? 'Rate this tenant' : 'Rate this buyer'}
           </button>
         )
@@ -12380,35 +12380,35 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
               onChange={(e) => handleOwnershipDocSelected(e.target.files?.[0])}
               style={{ fontSize: '13px' }}
             />
-            {uploadingOwnershipDoc && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Uploading…</p>}
-            {ownershipDocUrl && !uploadingOwnershipDoc && <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>✓ Document uploaded</p>}
+            {uploadingOwnershipDoc && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Uploading…</p>}
+            {ownershipDocUrl && !uploadingOwnershipDoc && <p style={{ fontSize: '12px', color: 'var(--itunda-green)' }}>✓ Document uploaded</p>}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submittingOwnership} onClick={() => { setShowOwnershipForm(false); setOwnershipDocUrl(''); }}>
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={submittingOwnership} onClick={() => { setShowOwnershipForm(false); setOwnershipDocUrl(''); }}>
                 Cancel
               </button>
               {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Submit"
                   doesn't say what happens -- this starts a real human-reviewer process (see
                   this block's own doc comment above), not an instant action. */}
-              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submittingOwnership || uploadingOwnershipDoc || !ownershipDocUrl.trim()} onClick={handleSubmitOwnership}>
+              <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submittingOwnership || uploadingOwnershipDoc || !ownershipDocUrl.trim()} onClick={handleSubmitOwnership}>
                 {submittingOwnership ? 'Submitting…' : 'Submit for review'}
               </button>
             </div>
           </div>
         ) : (
-          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => setShowOwnershipForm(true)}>
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={() => setShowOwnershipForm(true)}>
             Verify ownership
           </button>
         )
       )}
       {isMine && ownershipStatus === 'PENDING' && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Verification pending review</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Verification pending review</p>
       )}
       <div style={{ display: 'flex', gap: '10px' }}>
         {isMine ? (
           <>
             {listing.status === 'AVAILABLE' && !markingTaken && (
               <button
-                className="toss-btn toss-btn-secondary"
+                className="itunda-btn itunda-btn-secondary"
                 disabled={busy}
                 onClick={() => setMarkingTaken(true)}
               >
@@ -12417,7 +12417,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
             )}
             {listing.status !== 'REMOVED' && (
               <button
-                className="toss-btn toss-btn-secondary"
+                className="itunda-btn itunda-btn-secondary"
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
@@ -12433,10 +12433,10 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
         ) : (
           listing.status === 'AVAILABLE' && !offering && (
             <>
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={onContact}>
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={onContact}>
                 Message lister
               </button>
-              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
+              <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
                 Make an offer
               </button>
             </>
@@ -12478,19 +12478,19 @@ function PropertyListingWishlistView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (favorites === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   if (favorites.length === 0) return <EmptyState message="No saved properties yet -- tap ♡ on any listing to save it here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {favorites.map((f) => (
-        <div key={f.propertyListingId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div key={f.propertyListingId} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.title}</p>
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.propertyType} · {f.price.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{f.propertyType} · {f.price.toLocaleString()} RWF</p>
           </div>
           <button
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             disabled={removingId === f.propertyListingId}
             onClick={() => handleRemove(f.propertyListingId)}
             style={{ padding: '8px 12px', fontSize: '12px' }}
@@ -12598,15 +12598,15 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'ACQUIRED', 'WISHLIST', 'VALUATION'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+              color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'ACQUIRED' ? 'Places I got' : v === 'WISHLIST' ? '♡ Wishlist' : '시세 Value'}
@@ -12628,9 +12628,9 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
                   onClick={() => setListingTypeFilter(listingTypeFilter === t ? null : t)}
                   style={{
                     padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                    border: `1px solid ${listingTypeFilter === t ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                    color: listingTypeFilter === t ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                    backgroundColor: listingTypeFilter === t ? 'var(--toss-blue)' : 'transparent',
+                    border: `1px solid ${listingTypeFilter === t ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                    color: listingTypeFilter === t ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                    backgroundColor: listingTypeFilter === t ? 'var(--itunda-blue)' : 'transparent',
                   }}
                 >
                   {t === 'RENT' ? 'For rent' : 'For sale'}
@@ -12647,9 +12647,9 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
                   onClick={() => setPropertyTypeFilter(propertyTypeFilter === t.id ? null : t.id)}
                   style={{
                     whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                    border: `1px solid ${propertyTypeFilter === t.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                    color: propertyTypeFilter === t.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                    backgroundColor: propertyTypeFilter === t.id ? 'var(--toss-blue)' : 'transparent',
+                    border: `1px solid ${propertyTypeFilter === t.id ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                    color: propertyTypeFilter === t.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                    backgroundColor: propertyTypeFilter === t.id ? 'var(--itunda-blue)' : 'transparent',
                   }}
                 >
                   {t.label}
@@ -12680,22 +12680,22 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
           )}
 
           {view === 'NEIGHBORHOOD' && neighborhoodName && (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-              Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+              Your neighborhood: <strong style={{ color: 'var(--itunda-grey-900)' }}>{neighborhoodName}</strong>
             </p>
           )}
 
           {error && (
             <ErrorCard message={error} onRetry={load} />
           )}
-          {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+          {!error && listings === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
-            <div className="toss-card">
+            <div className="itunda-card">
               {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
                   ported from the same-day Android/iOS fix): say what's missing AND
                   what fixes it, per this screen's own real "+ List a property"
                   button above in the MINE view. */}
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
                 {view === 'BROWSE' ? 'No properties listed yet — check back soon, or list your own.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet — try Browse to see properties from everywhere.' : view === 'ACQUIRED' ? 'No properties acquired yet — properties you acquire will show up here.' : 'You haven\'t listed any properties yet — tap "+ List a property" above to list your first one.'}
               </p>
             </div>
@@ -12772,28 +12772,28 @@ function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[
   };
 
   return (
-    <div className="toss-card">
+    <div className="itunda-card">
       <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>우리집 시세 — Estimate my home's value</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
         A real estimate based on comparable listings near you, not a fabricated number.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text" value={latitude} placeholder="Latitude" onChange={(e) => setLatitude(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="text" value={longitude} placeholder="Longitude" onChange={(e) => setLongitude(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button className="toss-btn toss-btn-secondary" onClick={useMyLocation} style={{ padding: '10px 12px', fontSize: '12px' }}>
+          <button className="itunda-btn itunda-btn-secondary" onClick={useMyLocation} style={{ padding: '10px 12px', fontSize: '12px' }}>
             📍
           </button>
         </div>
         <select
           value={propertyType} onChange={(e) => setPropertyType(e.target.value)}
-          style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
         >
           <option value="">Property type…</option>
           {propertyTypes.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
@@ -12805,9 +12805,9 @@ function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[
               onClick={() => setListingType(t)}
               style={{
                 flex: 1, padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${listingType === t ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: listingType === t ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: listingType === t ? 'var(--toss-blue)' : 'transparent',
+                border: `1px solid ${listingType === t ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)'}`,
+                color: listingType === t ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                backgroundColor: listingType === t ? 'var(--itunda-blue)' : 'transparent',
               }}
             >
               {t === 'SALE' ? 'For sale' : 'For rent'}
@@ -12816,16 +12816,16 @@ function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[
         </div>
         <input
           type="text" value={sizeSqm} placeholder="Size (sqm)" onChange={(e) => setSizeSqm(e.target.value)}
-          style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
         />
-        {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-        <button className="toss-btn toss-btn-primary" disabled={loading} onClick={handleEstimate}>
+        {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+        <button className="itunda-btn itunda-btn-primary" disabled={loading} onClick={handleEstimate}>
           {loading ? 'Estimating…' : 'Estimate value'}
         </button>
         {estimate && (
-          <div style={{ marginTop: '8px', padding: '12px', borderRadius: '10px', backgroundColor: 'var(--toss-grey-100)' }}>
+          <div style={{ marginTop: '8px', padding: '12px', borderRadius: '10px', backgroundColor: 'var(--itunda-grey-100)' }}>
             <p style={{ fontSize: '24px', fontWeight: 700 }}>{estimate.estimatedValue.toLocaleString()} RWF</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
               Based on {estimate.comparableCount} comparable listing{estimate.comparableCount === 1 ? '' : 's'} within {estimate.radiusKm}km ({estimate.averagePricePerSqm.toLocaleString()} RWF/sqm avg)
             </p>
           </div>
@@ -12864,21 +12864,21 @@ function EatsOrderCard({ order, restaurant, action }: { order: EatsOrder; restau
   const canShowLiveTracking = canShowRoute && (order.status === 'RIDER_ASSIGNED' || order.status === 'PICKED_UP');
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{EATS_STATUS_LABEL[order.status]}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{order.deliveryAddress}</p>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{EATS_STATUS_LABEL[order.status]}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{order.deliveryAddress}</p>
         </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
       </div>
       {order.deliveryNotes && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)', backgroundColor: 'var(--toss-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
           Note: {order.deliveryNotes}
         </p>
       )}
       {canShowLiveTracking && (
-        <button className="toss-btn toss-btn-primary" onClick={() => { setShowLiveTracking((v) => !v); setShowRoute(false); }}>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => { setShowLiveTracking((v) => !v); setShowRoute(false); }}>
           {showLiveTracking ? 'Hide live tracking' : '🛵 Track your rider live'}
         </button>
       )}
@@ -12894,7 +12894,7 @@ function EatsOrderCard({ order, restaurant, action }: { order: EatsOrder; restau
         />
       )}
       {canShowRoute && !showLiveTracking && (
-        <button className="toss-btn toss-btn-secondary" onClick={() => setShowRoute((v) => !v)}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowRoute((v) => !v)}>
           {showRoute ? 'Hide route' : '🚗 View real delivery route'}
         </button>
       )}
@@ -12918,7 +12918,7 @@ function StarRatingInput({ value, onChange }: { value: number; onChange: (rating
     <div style={{ display: 'flex', gap: '4px' }}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button key={n} type="button" onClick={() => onChange(n)} style={{ display: 'flex', padding: 0 }} aria-label={`${n} star${n === 1 ? '' : 's'}`}>
-          <Star size={22} color={n <= value ? '#F5A623' : 'var(--toss-grey-200)'} fill={n <= value ? '#F5A623' : 'none'} />
+          <Star size={22} color={n <= value ? '#F5A623' : 'var(--itunda-grey-200)'} fill={n <= value ? '#F5A623' : 'none'} />
         </button>
       ))}
     </div>
@@ -12955,7 +12955,7 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
       <button
         type="button"
         onClick={toggle}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--toss-grey-700)', padding: 0 }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--itunda-grey-700)', padding: 0 }}
       >
         <Star size={14} color="#F5A623" fill="#F5A623" />
         {rating.average?.toFixed(1)} ({rating.count})
@@ -12963,16 +12963,16 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
           {reviews === null ? (
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Loading reviews…</p>
           ) : reviews.length === 0 ? (
             <EmptyState message="No written reviews yet — be the first to share how it went." />
           ) : (
             reviews.map((r) => (
-              <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+              <div key={r.id} style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>
                 <span style={{ color: '#F5A623' }}>{'★'.repeat(r.restaurantRating)}{'☆'.repeat(5 - r.restaurantRating)}</span>
                 {r.restaurantComment && <span> — {r.restaurantComment}</span>}
                 {r.ownerReply && (
-                  <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--toss-grey-500)' }}>
+                  <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--itunda-grey-500)' }}>
                     ↳ Restaurant: {r.ownerReply}
                   </div>
                 )}
@@ -13000,8 +13000,8 @@ function RestaurantReviewsManageView({ restaurantId }: { restaurantId: string })
   };
   useEffect(load, [restaurantId]);
 
-  if (error) return <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>;
-  if (reviews === null) return <div className="toss-card skeleton" style={{ height: '80px' }} />;
+  if (error) return <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>;
+  if (reviews === null) return <div className="itunda-card skeleton" style={{ height: '80px' }} />;
   if (reviews.length === 0) return null;
 
   return (
@@ -13036,20 +13036,20 @@ function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; 
   };
 
   return (
-    <div className="toss-card" style={{ padding: '14px' }}>
+    <div className="itunda-card" style={{ padding: '14px' }}>
       <span style={{ color: '#F5A623', fontSize: '13px' }}>{'★'.repeat(review.restaurantRating)}{'☆'.repeat(5 - review.restaurantRating)}</span>
       {review.restaurantComment && <p style={{ fontSize: '13px', marginTop: '4px' }}>{review.restaurantComment}</p>}
       {review.ownerReply ? (
-        <div style={{ marginTop: '8px', paddingLeft: '10px', borderLeft: '2px solid var(--toss-grey-200)', fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+        <div style={{ marginTop: '8px', paddingLeft: '10px', borderLeft: '2px solid var(--itunda-grey-200)', fontSize: '12px', color: 'var(--itunda-grey-700)' }}>
           Your reply: {review.ownerReply}
         </div>
       ) : replying ? (
         <form onSubmit={handleSubmit} style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
           <input
             type="text" placeholder="Write a reply…" value={reply} onChange={(e) => setReply(e.target.value)} required
-            style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ fontSize: '12px', padding: '8px 12px' }}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ fontSize: '12px', padding: '8px 12px' }}>
             {submitting ? '…' : 'Reply'}
           </button>
         </form>
@@ -13057,13 +13057,13 @@ function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; 
         <button
           type="button"
           onClick={() => setReplying(true)}
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ marginTop: '8px', fontSize: '12px', padding: '6px 10px' }}
         >
           Reply
         </button>
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '4px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -13107,12 +13107,12 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
   };
 
   if (done) {
-    return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Thanks for your review!</p>;
+    return <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Thanks for your review!</p>;
   }
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-secondary" onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-secondary" onClick={() => setOpen(true)}>
         Rate this order
       </button>
     );
@@ -13121,33 +13121,33 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
       <div>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Restaurant</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>Restaurant</p>
         <StarRatingInput value={restaurantRating} onChange={setRestaurantRating} />
         <input
           type="text"
           value={restaurantComment}
           onChange={(e) => setRestaurantComment(e.target.value)}
           placeholder="How was the food? (optional)"
-          style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
         />
       </div>
       {hasRider && (
         <div>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Rider</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>Rider</p>
           <StarRatingInput value={riderRating} onChange={setRiderRating} />
           <input
             type="text"
             value={riderComment}
             onChange={(e) => setRiderComment(e.target.value)}
             placeholder="How was the delivery? (optional)"
-            style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
         </div>
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
           {submitting ? 'Submitting…' : 'Submit review'}
         </button>
       </div>
@@ -13201,14 +13201,14 @@ function AddressAutocomplete({
         onFocus={() => setOpen(suggestions.length > 0)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder="Delivery address" required autoComplete="off"
-        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       {searching && (
-        <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: '12px', color: 'var(--toss-grey-500)' }}>…</span>
+        <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: '12px', color: 'var(--itunda-grey-500)' }}>…</span>
       )}
       {open && (
         <div
-          className="toss-card"
+          className="itunda-card"
           style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', padding: '6px', zIndex: 10, maxHeight: '220px', overflowY: 'auto' }}
         >
           {suggestions.map((s, i) => (
@@ -13377,7 +13377,7 @@ function MenuView({
 
   if (needsDeviceVerification) {
     return (
-      <div className="toss-card">
+      <div className="itunda-card">
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
       </div>
     );
@@ -13390,19 +13390,19 @@ function MenuView({
   }
 
   if (menu === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
 
   if (showCheckout) {
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to menu">
+          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to menu">
             <ArrowLeft size={20} />
           </button>
           <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Checkout</h3>
         </div>
-        <form onSubmit={handlePlaceOrder} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <form onSubmit={handlePlaceOrder} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {cartItems.map(([key, line]) => {
             const item = menu.products.find((p) => p.id === line.productId);
             if (!item) return null;
@@ -13414,7 +13414,7 @@ function MenuView({
               </div>
             );
           })}
-          <div style={{ display: 'flex', gap: '4px', padding: '4px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', gap: '4px', padding: '4px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
             {(['DELIVERY', 'PICKUP'] as const).map((ft) => (
               <button
                 key={ft}
@@ -13422,8 +13422,8 @@ function MenuView({
                 onClick={() => setFulfillmentType(ft)}
                 style={{
                   flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-                  color: fulfillmentType === ft ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                  backgroundColor: fulfillmentType === ft ? 'var(--toss-blue)' : 'transparent',
+                  color: fulfillmentType === ft ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                  backgroundColor: fulfillmentType === ft ? 'var(--itunda-blue)' : 'transparent',
                 }}
               >
                 {ft === 'DELIVERY' ? 'Delivery' : 'Pickup'}
@@ -13431,7 +13431,7 @@ function MenuView({
             ))}
           </div>
           {fulfillmentType === 'PICKUP' ? (
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
               No delivery fee -- collect your order at {menu.businessName} once it's ready.
             </p>
           ) : (
@@ -13442,7 +13442,7 @@ function MenuView({
                 onSelectSuggestion={(s) => { setAddress(s.displayName); setAddressCoords({ latitude: s.latitude, longitude: s.longitude }); }}
               />
               {addressCoords && (
-                <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>Pinned -- real distance-based delivery fee applies</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-green)' }}>Pinned -- real distance-based delivery fee applies</p>
               )}
             </>
           )}
@@ -13451,12 +13451,12 @@ function MenuView({
             onChange={(e) => setDeliveryNotes(e.target.value.slice(0, 500))}
             placeholder={fulfillmentType === 'PICKUP' ? 'Pickup notes (optional)' : 'Delivery notes (optional) -- e.g. Leave at the gate, call on arrival'}
             rows={2}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'none', fontFamily: 'inherit' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'none', fontFamily: 'inherit' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || (fulfillmentType === 'DELIVERY' && !address.trim())}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={placing || (fulfillmentType === 'DELIVERY' && !address.trim())}>
             {placing ? 'Placing order…' : 'Place order'}
           </button>
-          {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+          {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
         </form>
       </div>
     );
@@ -13465,7 +13465,7 @@ function MenuView({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to restaurants">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to restaurants">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{menu.businessName}</h3>
@@ -13485,32 +13485,32 @@ function MenuView({
             const isExpanded = expandedProductId === item.id;
             const allGroupsChosen = groups.every((g) => Boolean(pendingChoices[g.id]));
             return (
-              <div key={item.id} className="toss-card">
+              <div key={item.id} className="itunda-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ fontSize: '15px', fontWeight: 700 }}>{item.name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                    <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
                       {item.price.toLocaleString()} RWF{hasOptions ? ' · options required' : ''}
                     </p>
                   </div>
                   {hasOptions ? (
-                    <button onClick={() => toggleExpand(item.id)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }}>
+                    <button onClick={() => toggleExpand(item.id)} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }}>
                       {isExpanded ? 'Close' : 'Choose options'}
                     </button>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <button onClick={() => setSimpleQty(item.id, simpleQty - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
+                      <button onClick={() => setSimpleQty(item.id, simpleQty - 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
                       <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{simpleQty}</span>
-                      <button onClick={() => setSimpleQty(item.id, simpleQty + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
+                      <button onClick={() => setSimpleQty(item.id, simpleQty + 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
                     </div>
                   )}
                 </div>
                 {hasOptions && isExpanded && (
-                  <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--toss-grey-200)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--itunda-grey-200)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {groups.map((group) => (
                       <div key={group.id}>
                         <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                          {group.name} <span style={{ color: 'var(--toss-grey-400)', fontWeight: 400 }}>· choose 1</span>
+                          {group.name} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 400 }}>· choose 1</span>
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {group.choices.map((choice) => (
@@ -13529,7 +13529,7 @@ function MenuView({
                     ))}
                     <button
                       type="button"
-                      className="toss-btn toss-btn-primary"
+                      className="itunda-btn itunda-btn-primary"
                       disabled={!allGroupsChosen}
                       onClick={() => addConfiguredToCart(item)}
                     >
@@ -13543,7 +13543,7 @@ function MenuView({
         </div>
       )}
       {cartCount > 0 && (
-        <div className="toss-card" style={{ marginBottom: '80px', marginTop: '-2px' }}>
+        <div className="itunda-card" style={{ marginBottom: '80px', marginTop: '-2px' }}>
           <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Your cart</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {cartItems.map(([key, line]) => {
@@ -13553,9 +13553,9 @@ function MenuView({
                 <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '13px' }}>{item.name}{eatsOptionsSummary(item, line.choiceIds)}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => setLineQty(key, line, line.quantity - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '4px 10px' }}>−</button>
+                    <button onClick={() => setLineQty(key, line, line.quantity - 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }}>−</button>
                     <span style={{ minWidth: '14px', textAlign: 'center', fontWeight: 700, fontSize: '13px' }}>{line.quantity}</span>
-                    <button onClick={() => setLineQty(key, line, line.quantity + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '4px 10px' }}>+</button>
+                    <button onClick={() => setLineQty(key, line, line.quantity + 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '4px 10px' }}>+</button>
                   </div>
                 </div>
               );
@@ -13565,7 +13565,7 @@ function MenuView({
       )}
       {cartCount > 0 && (
         <button
-          className="toss-btn toss-btn-primary"
+          className="itunda-btn itunda-btn-primary"
           style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
           onClick={() => setShowCheckout(true)}
         >
@@ -13612,7 +13612,7 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder:
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
   if (orders.length === 0) return <EmptyState message="No orders yet — order from a nearby restaurant and it'll show up here." />;
 
   return (
@@ -13624,18 +13624,18 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder:
           restaurant={restaurants?.find((r) => r.merchantId === o.restaurantId)}
           action={
             o.status === 'PLACED' ? (
-              <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
+              <button className="itunda-btn itunda-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
                 {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
               </button>
             ) : o.status === 'DELIVERED' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <ReviewOrderCard order={o} onSubmitted={load} />
-                <button className="toss-btn toss-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
+                <button className="itunda-btn itunda-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
                   {reorderingId === o.id ? 'Reordering…' : 'Reorder'}
                 </button>
               </div>
             ) : o.status === 'CANCELLED' ? (
-              <button className="toss-btn toss-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
+              <button className="itunda-btn itunda-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
                 {reorderingId === o.id ? 'Reordering…' : 'Reorder'}
               </button>
             ) : undefined
@@ -13673,7 +13673,7 @@ function SearchAndCategoryChips({
         value={searchInput}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={placeholder}
-        className="toss-card"
+        className="itunda-card"
         style={{ width: '100%', padding: '12px 16px', fontSize: '14px', marginBottom: '10px', border: 'none' }}
       />
       {categories.length > 0 && (
@@ -13682,8 +13682,8 @@ function SearchAndCategoryChips({
             onClick={() => onSelectCategory(null)}
             style={{
               flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
-              color: selectedCategory === null ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: selectedCategory === null ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+              color: selectedCategory === null ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: selectedCategory === null ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
             }}
           >
             All
@@ -13694,8 +13694,8 @@ function SearchAndCategoryChips({
               onClick={() => onSelectCategory(c === selectedCategory ? null : c)}
               style={{
                 flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
-                color: selectedCategory === c ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: selectedCategory === c ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                color: selectedCategory === c ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                backgroundColor: selectedCategory === c ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
               }}
             >
               {c}
@@ -13808,13 +13808,13 @@ function OrderFoodView() {
 
   if (confirmed) {
     return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+        <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
         <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>Delivering to {confirmed.deliveryAddress}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>Delivering to {confirmed.deliveryAddress}</p>
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           onClick={() => { setConfirmed(null); setSelected(null); setView('ORDERS'); }}
         >
           Track order
@@ -13836,15 +13836,15 @@ function OrderFoodView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BROWSE', 'FAVORITES', 'ORDERS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+              color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Restaurants' : v === 'FAVORITES' ? 'Favorites' : 'My orders'}
@@ -13854,7 +13854,7 @@ function OrderFoodView() {
 
       {view === 'ORDERS' ? (
         <>
-          {reorderError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{reorderError}</p>}
+          {reorderError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{reorderError}</p>}
           <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} restaurants={allRestaurants} />
         </>
       ) : view === 'FAVORITES' ? (
@@ -13875,14 +13875,14 @@ function OrderFoodView() {
           {error ? (
             <ErrorCard message={error} onRetry={load} />
           ) : restaurants === null ? (
-            <div className="toss-card skeleton" style={{ height: '220px' }} />
+            <div className="itunda-card skeleton" style={{ height: '220px' }} />
           ) : restaurants.length === 0 ? (
-            <div className="toss-card">
+            <div className="itunda-card">
               {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
                   ported from the same-day Android/iOS fix): "registered yet" is
                   honest about whose gap this is -- no restaurant has joined yet,
                   not something the reader is missing a step on. */}
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
                 {selectedCategory || debouncedSearch ? 'No restaurants match your search — try a different category or search term.' : 'No restaurants registered yet — check back once restaurants in your area join itunda Eats.'}
               </p>
             </div>
@@ -13895,27 +13895,27 @@ function OrderFoodView() {
               tabIndex={0}
               onClick={() => setSelected(r)}
               onKeyDown={(e) => { if (e.key === 'Enter') setSelected(r); }}
-              className="toss-card"
+              className="itunda-card"
               style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
             >
               {r.photoUrl ? (
                 <img
                   src={r.photoUrl} alt=""
-                  style={{ width: '44px', height: '44px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, backgroundColor: 'var(--toss-blue-light)' }}
+                  style={{ width: '44px', height: '44px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, backgroundColor: 'var(--itunda-blue-light)' }}
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               ) : (
-                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Utensils size={20} color="var(--toss-blue)" />
+                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Utensils size={20} color="var(--itunda-blue)" />
                 </div>
               )}
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{r.businessName}</p>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{r.businessName}</p>
                 {/* Real browse-card enrichment (2026-07-21) -- rating/reviewCount/distance/
                     delivery-time estimate/min order, closing docs/DESIGN_REFERENCES.md's
                     Eats recommendations #1/#2. Every clause is conditionally rendered on
                     real data being present -- never a fabricated placeholder. */}
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                   {r.category && <span>{r.category}</span>}
                   {r.rating != null && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
@@ -13934,7 +13934,7 @@ function OrderFoodView() {
                 aria-label={favoriteIds.has(r.merchantId) ? 'Remove from favorites' : 'Add to favorites'}
                 style={{ padding: '6px', flexShrink: 0 }}
               >
-                <Heart size={20} color={favoriteIds.has(r.merchantId) ? 'var(--toss-red)' : 'var(--toss-grey-400)'} fill={favoriteIds.has(r.merchantId) ? 'var(--toss-red)' : 'none'} />
+                <Heart size={20} color={favoriteIds.has(r.merchantId) ? 'var(--itunda-red)' : 'var(--itunda-grey-400)'} fill={favoriteIds.has(r.merchantId) ? 'var(--itunda-red)' : 'none'} />
               </button>
             </div>
           ))}
@@ -13980,7 +13980,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
     );
   }
   if (favorites === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
   if (favorites.length === 0) {
     return <EmptyState message="No favorite restaurants yet. Tap the heart on a restaurant to save it here." />;
@@ -13994,15 +13994,15 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
           tabIndex={0}
           onClick={() => onOpen(f)}
           onKeyDown={(e) => { if (e.key === 'Enter') onOpen(f); }}
-          className="toss-card"
+          className="itunda-card"
           style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
         >
-          <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Utensils size={20} color="var(--toss-blue)" />
+          <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Utensils size={20} color="var(--itunda-blue)" />
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{f.businessName}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{f.category ? `${f.category} · Real menu, real delivery` : 'Real menu, real delivery'}</p>
+            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{f.businessName}</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{f.category ? `${f.category} · Real menu, real delivery` : 'Real menu, real delivery'}</p>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); handleRemove(f.restaurantId); }}
@@ -14010,7 +14010,7 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
             aria-label="Remove from favorites"
             style={{ padding: '6px', flexShrink: 0 }}
           >
-            <Heart size={20} color="var(--toss-red)" fill="var(--toss-red)" />
+            <Heart size={20} color="var(--itunda-red)" fill="var(--itunda-red)" />
           </button>
         </div>
       ))}
@@ -14104,20 +14104,20 @@ function DeliverView() {
     }
   };
 
-  if (rider === undefined) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (rider === undefined) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
 
   if (rider === null) {
     return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-        <Bike size={32} color="var(--toss-blue)" style={{ marginBottom: '10px' }} />
+      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+        <Bike size={32} color="var(--itunda-blue)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Deliver with Itunda</h3>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
           Earn a real delivery fee for every order you deliver, paid straight to your wallet.
         </p>
-        <button className="toss-btn toss-btn-primary" onClick={handleRegister} disabled={registering}>
+        <button className="itunda-btn itunda-btn-primary" onClick={handleRegister} disabled={registering}>
           {registering ? 'Registering…' : 'Become a rider'}
         </button>
-        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '12px' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '12px' }} role="alert">{error}</p>}
       </div>
     );
   }
@@ -14127,17 +14127,17 @@ function DeliverView() {
 
   return (
     <div>
-      <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div>
           <p style={{ fontSize: '15px', fontWeight: 700 }}>{rider.available ? "You're online" : "You're offline"}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{rider.available ? 'Visible for new deliveries' : 'Go online to see deliveries'}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{rider.available ? 'Visible for new deliveries' : 'Go online to see deliveries'}</p>
         </div>
-        <button className={rider.available ? 'toss-btn toss-btn-danger' : 'toss-btn toss-btn-primary'} onClick={handleToggleAvailable}>
+        <button className={rider.available ? 'itunda-btn itunda-btn-danger' : 'itunda-btn itunda-btn-primary'} onClick={handleToggleAvailable}>
           {rider.available ? 'Go offline' : 'Go online'}
         </button>
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>}
 
       {activeDeliveries.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
@@ -14150,7 +14150,7 @@ function DeliverView() {
                   key={o.id}
                   order={o}
                   action={next && (
-                    <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
+                    <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
                       {busyOrderId === o.id ? 'Updating…' : `Mark ${EATS_STATUS_LABEL[next].toLowerCase()}`}
                     </button>
                   )}
@@ -14165,7 +14165,7 @@ function DeliverView() {
         <div style={{ marginBottom: '20px' }}>
           <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Available deliveries</h4>
           {available === null ? (
-            <div className="toss-card skeleton" style={{ height: '100px' }} />
+            <div className="itunda-card skeleton" style={{ height: '100px' }} />
           ) : available.length === 0 ? (
             <EmptyState message="No deliveries waiting right now — stay online and you'll be notified." />
           ) : (
@@ -14175,7 +14175,7 @@ function DeliverView() {
                   key={o.id}
                   order={o}
                   action={
-                    <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleClaim(o.id)}>
+                    <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleClaim(o.id)}>
                       {busyOrderId === o.id ? 'Claiming…' : 'Claim delivery'}
                     </button>
                   }
@@ -14261,7 +14261,7 @@ function RestaurantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
   if (orders.length === 0) return null;
 
   return (
@@ -14277,11 +14277,11 @@ function RestaurantOrdersView() {
               order={o}
               action={
                 readyForPickupHandoff ? (
-                  <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleCompletePickup(o)}>
+                  <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleCompletePickup(o)}>
                     {busyOrderId === o.id ? 'Updating…' : 'Mark picked up'}
                   </button>
                 ) : next && (
-                  <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
+                  <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
                     {busyOrderId === o.id ? 'Updating…' : `Mark ${EATS_STATUS_LABEL[next].toLowerCase()}`}
                   </button>
                 )
@@ -14329,15 +14329,15 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
 
   return (
     <div style={{ position: 'relative', marginBottom: '12px' }}>
-      <label htmlFor={inputId} style={{ fontSize: '12px', color: 'var(--toss-grey-500)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
+      <label htmlFor={inputId} style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
       <input
         id={inputId}
         type="text" value={query} placeholder={placeholder}
         onChange={(e) => setQuery(e.target.value)}
-        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       {results && results.length > 0 && (
-        <div className="toss-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+        <div className="itunda-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
           {results.map((r, i) => (
             <button
               key={`${r.latitude}-${r.longitude}-${i}`} type="button"
@@ -14355,27 +14355,27 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
 
 function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?: React.ReactNode; stops?: RideTripStop[] | null }) {
   return (
-    <div className="toss-card">
+    <div className="itunda-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.pickupAddress}</p>
           {stops && stops.length > 0 && stops.map((s) => (
-            <p key={s.id} style={{ fontSize: '11px', color: s.arrivedAt ? 'var(--toss-grey-400)' : 'var(--toss-grey-700)', margin: '1px 0' }}>
+            <p key={s.id} style={{ fontSize: '11px', color: s.arrivedAt ? 'var(--itunda-grey-400)' : 'var(--itunda-grey-700)', margin: '1px 0' }}>
               {s.arrivedAt ? '✓' : '→'} {s.address}
             </p>
           ))}
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
-          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
+          <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
           {trip.scheduledFor && (
-            <p style={{ fontSize: '11px', color: 'var(--toss-blue)', fontWeight: 700, marginTop: '2px' }}>
+            <p style={{ fontSize: '11px', color: 'var(--itunda-blue)', fontWeight: 700, marginTop: '2px' }}>
               🕒 Scheduled for {new Date(trip.scheduledFor).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
         </div>
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
-          color: trip.status === 'CANCELLED' ? 'var(--toss-red)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
-          backgroundColor: trip.status === 'CANCELLED' ? 'var(--toss-red-light)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
+          color: trip.status === 'CANCELLED' ? 'var(--itunda-red)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-500)' : 'var(--itunda-blue)',
+          backgroundColor: trip.status === 'CANCELLED' ? 'var(--itunda-red-light)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-100)' : '#E8F0FE',
         }}>
           {trip.status === 'REQUESTED' && trip.scheduledFor ? 'Scheduled' : RIDE_STATUS_LABEL[trip.status]}
         </span>
@@ -14400,7 +14400,7 @@ function DriverRatingSection({ driverId }: { driverId: string }) {
   if (!rating || rating.count === 0) return null;
 
   return (
-    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--toss-grey-100)' }}>
+    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--itunda-grey-100)' }}>
       <button
         onClick={() => {
           setExpanded((e) => !e);
@@ -14408,19 +14408,19 @@ function DriverRatingSection({ driverId }: { driverId: string }) {
         }}
         style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: '#FFC107' }}
       >
-        ★ {rating.average?.toFixed(1)} <span style={{ color: 'var(--toss-grey-500)', fontWeight: 400 }}>({rating.count} rating{rating.count === 1 ? '' : 's'}) {expanded ? '▲' : '▼'}</span>
+        ★ {rating.average?.toFixed(1)} <span style={{ color: 'var(--itunda-grey-500)', fontWeight: 400 }}>({rating.count} rating{rating.count === 1 ? '' : 's'}) {expanded ? '▲' : '▼'}</span>
       </button>
       {expanded && (
         reviews === null ? (
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '6px' }}>Loading reviews…</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>Loading reviews…</p>
         ) : reviews.length === 0 ? (
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '6px' }}>No written reviews yet.</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>No written reviews yet.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
             {reviews.map((r) => (
-              <div key={r.id} style={{ padding: '8px 10px', borderRadius: '8px', background: 'var(--toss-grey-100)' }}>
+              <div key={r.id} style={{ padding: '8px 10px', borderRadius: '8px', background: 'var(--itunda-grey-100)' }}>
                 <p style={{ fontSize: '11px', fontWeight: 700 }}>{'⭐'.repeat(r.rating)}</p>
-                {r.comment && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>{r.comment}</p>}
+                {r.comment && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>{r.comment}</p>}
               </div>
             ))}
           </div>
@@ -14456,13 +14456,13 @@ function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted
   };
 
   return (
-    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--toss-grey-100)' }}>
+    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--itunda-grey-100)' }}>
       <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>Rate your driver</p>
       <div style={{ display: 'flex', gap: '4px', marginBottom: '6px' }}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n} type="button" onClick={() => setRating(n)}
-            style={{ fontSize: '20px', color: n <= rating ? '#FFC107' : 'var(--toss-grey-300)' }}
+            style={{ fontSize: '20px', color: n <= rating ? '#FFC107' : 'var(--itunda-grey-300)' }}
           >
             ★
           </button>
@@ -14472,14 +14472,14 @@ function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted
         <>
           <input
             type="text" value={comment} placeholder="Leave a comment (optional)" onChange={(e) => setComment(e.target.value)}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '12px', marginBottom: '6px' }}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '12px', marginBottom: '6px' }}
           />
-          <button className="toss-btn toss-btn-primary" disabled={submitting} onClick={handleSubmit} style={{ width: '100%', padding: '8px', fontSize: '13px' }}>
+          <button className="itunda-btn itunda-btn-primary" disabled={submitting} onClick={handleSubmit} style={{ width: '100%', padding: '8px', fontSize: '13px' }}>
             {submitting ? 'Submitting…' : 'Submit rating'}
           </button>
         </>
       )}
-      {error && <p style={{ fontSize: '11px', color: 'var(--toss-red)', marginTop: '4px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '11px', color: 'var(--itunda-red)', marginTop: '4px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -14673,14 +14673,14 @@ function RidesView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['RIDE', 'DRIVE'] as const).map((v) => (
           <button
             key={v} onClick={() => setSubTab(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: subTab === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: subTab === v ? 'var(--toss-blue)' : 'transparent',
+              color: subTab === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: subTab === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'RIDE' ? 'Get a ride' : 'Drive'}
@@ -14699,7 +14699,7 @@ function RidesView() {
                   <>
                     {activeTrip.driverId && <DriverRatingSection driverId={activeTrip.driverId} />}
                     {activeTrip.status !== 'IN_PROGRESS' && (
-                      <button className="toss-btn toss-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
+                      <button className="itunda-btn itunda-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
                         {busyTripId === activeTrip.id ? 'Cancelling…' : 'Cancel ride'}
                       </button>
                     )}
@@ -14708,9 +14708,9 @@ function RidesView() {
               />
             </div>
           ) : (
-            <div className="toss-card" style={{ marginBottom: '20px' }}>
+            <div className="itunda-card" style={{ marginBottom: '20px' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Car size={18} color="var(--toss-blue)" /> Request a ride
+                <Car size={18} color="var(--itunda-blue)" /> Request a ride
               </h3>
               <PlaceSearchInput label="Pickup" placeholder="Where from?" value={pickup} onSelect={setPickup} />
               {stops.map((stop, i) => (
@@ -14723,20 +14723,20 @@ function RidesView() {
               {stops.length < 3 && (
                 <button
                   type="button" onClick={() => setStops((prev) => [...prev, null])}
-                  style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-blue)', marginBottom: '12px' }}
+                  style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-blue)', marginBottom: '12px' }}
                 >
                   + Add a stop
                 </button>
               )}
 
-              <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '12px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+              <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '12px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
                 {(['now', 'later'] as const).map((v) => (
                   <button
                     key={v} type="button" onClick={() => setRideTiming(v)}
                     style={{
                       flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-                      color: rideTiming === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                      backgroundColor: rideTiming === v ? 'var(--toss-blue)' : 'transparent',
+                      color: rideTiming === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                      backgroundColor: rideTiming === v ? 'var(--itunda-blue)' : 'transparent',
                     }}
                   >
                     {v === 'now' ? 'Ride now' : 'Schedule'}
@@ -14746,12 +14746,12 @@ function RidesView() {
               {rideTiming === 'later' && (
                 <input
                   type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '12px' }}
                 />
               )}
 
               <button
-                className="toss-btn toss-btn-primary"
+                className="itunda-btn itunda-btn-primary"
                 disabled={!pickup || !dropoff || requesting || (rideTiming === 'later' && !scheduledAt) || stops.some((s) => s === null)}
                 onClick={handleRequestRide} style={{ width: '100%' }}
               >
@@ -14760,7 +14760,7 @@ function RidesView() {
             </div>
           )}
 
-          {rideError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{rideError}</p>}
+          {rideError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{rideError}</p>}
 
           {pastTrips.length > 0 && (
             <div>
@@ -14783,37 +14783,37 @@ function RidesView() {
       {subTab === 'DRIVE' && (
         <div>
           {driver === undefined ? (
-            <div className="toss-card skeleton" style={{ height: '180px' }} />
+            <div className="itunda-card skeleton" style={{ height: '180px' }} />
           ) : driver === null ? (
-            <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-              <Car size={32} color="var(--toss-blue)" style={{ marginBottom: '10px' }} />
+            <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+              <Car size={32} color="var(--itunda-blue)" style={{ marginBottom: '10px' }} />
               <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Drive with Itunda</h3>
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
                 Earn a real fare for every trip you complete, paid straight to your wallet.
               </p>
-              <button className="toss-btn toss-btn-primary" onClick={handleRegisterDriver} disabled={registeringDriver}>
+              <button className="itunda-btn itunda-btn-primary" onClick={handleRegisterDriver} disabled={registeringDriver}>
                 {registeringDriver ? 'Registering…' : 'Become a driver'}
               </button>
-              {driverError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '12px' }} role="alert">{driverError}</p>}
+              {driverError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '12px' }} role="alert">{driverError}</p>}
             </div>
           ) : (
             <div>
-              <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <div>
                   <p style={{ fontSize: '15px', fontWeight: 700 }}>{driver.available ? "You're online" : "You're offline"}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{driver.available ? 'Visible for new trip requests' : 'Go online to see trip requests'}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{driver.available ? 'Visible for new trip requests' : 'Go online to see trip requests'}</p>
                   {driverRating && driverRating.count > 0 && (
                     <p style={{ fontSize: '12px', color: '#FFC107', fontWeight: 700, marginTop: '4px' }}>
-                      ★ {driverRating.average?.toFixed(1)} <span style={{ color: 'var(--toss-grey-500)', fontWeight: 400 }}>({driverRating.count} rating{driverRating.count === 1 ? '' : 's'})</span>
+                      ★ {driverRating.average?.toFixed(1)} <span style={{ color: 'var(--itunda-grey-500)', fontWeight: 400 }}>({driverRating.count} rating{driverRating.count === 1 ? '' : 's'})</span>
                     </p>
                   )}
                 </div>
-                <button className={driver.available ? 'toss-btn toss-btn-danger' : 'toss-btn toss-btn-primary'} onClick={handleToggleAvailable}>
+                <button className={driver.available ? 'itunda-btn itunda-btn-danger' : 'itunda-btn itunda-btn-primary'} onClick={handleToggleAvailable}>
                   {driver.available ? 'Go offline' : 'Go online'}
                 </button>
               </div>
 
-              {driverError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">{driverError}</p>}
+              {driverError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{driverError}</p>}
 
               {activeDriverTrips.length > 0 && (
                 <div style={{ marginBottom: '20px' }}>
@@ -14828,12 +14828,12 @@ function RidesView() {
                           action={
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               {t.status === 'IN_PROGRESS' && nextStop && (
-                                <button className="toss-btn toss-btn-secondary" disabled={busyDriverTripId === t.id} onClick={() => handleArriveAtStop(t.id)}>
+                                <button className="itunda-btn itunda-btn-secondary" disabled={busyDriverTripId === t.id} onClick={() => handleArriveAtStop(t.id)}>
                                   {busyDriverTripId === t.id ? 'Updating…' : `Arrived at ${nextStop.address}`}
                                 </button>
                               )}
                               <button
-                                className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id}
+                                className="itunda-btn itunda-btn-primary" disabled={busyDriverTripId === t.id}
                                 onClick={() => handleDriverTripAction(t.id, t.status === 'DRIVER_ASSIGNED' ? startRideTrip : completeRideTrip)}
                               >
                                 {busyDriverTripId === t.id ? 'Updating…' : t.status === 'DRIVER_ASSIGNED' ? 'Start trip' : 'Complete trip'}
@@ -14851,7 +14851,7 @@ function RidesView() {
                 <div style={{ marginBottom: '20px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Trip requests near you</h4>
                   {availableTrips === null ? (
-                    <div className="toss-card skeleton" style={{ height: '100px' }} />
+                    <div className="itunda-card skeleton" style={{ height: '100px' }} />
                   ) : availableTrips.length === 0 ? (
                     <EmptyState message="No trip requests waiting right now — stay online and you'll be notified." />
                   ) : (
@@ -14862,13 +14862,13 @@ function RidesView() {
                           action={
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button
-                                className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id}
+                                className="itunda-btn itunda-btn-primary" disabled={busyDriverTripId === t.id}
                                 onClick={() => handleDriverTripAction(t.id, acceptRideTrip)}
                               >
                                 {busyDriverTripId === t.id ? 'Accepting…' : 'Accept'}
                               </button>
                               <button
-                                className="toss-btn toss-btn-secondary" disabled={busyDriverTripId === t.id}
+                                className="itunda-btn itunda-btn-secondary" disabled={busyDriverTripId === t.id}
                                 onClick={() => handleDriverTripAction(t.id, declineRideTrip)}
                               >
                                 Decline
@@ -14908,20 +14908,20 @@ const DESIGNATED_DRIVER_STATUS_LABEL: Record<DesignatedDriverTrip['status'], str
 
 function DesignatedDriverTripCard({ trip, action }: { trip: DesignatedDriverTrip; action?: React.ReactNode }) {
   return (
-    <div className="toss-card">
+    <div className="itunda-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.pickupAddress}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
-          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
+          <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
             {trip.vehicleMake} {trip.vehicleModel} · {trip.vehiclePlate}
           </p>
-          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
+          <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
         </div>
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
-          color: trip.status === 'CANCELLED' ? 'var(--toss-red)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
-          backgroundColor: trip.status === 'CANCELLED' ? 'var(--toss-red-light)' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
+          color: trip.status === 'CANCELLED' ? 'var(--itunda-red)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-500)' : 'var(--itunda-blue)',
+          backgroundColor: trip.status === 'CANCELLED' ? 'var(--itunda-red-light)' : trip.status === 'COMPLETED' ? 'var(--itunda-grey-100)' : '#E8F0FE',
         }}>
           {DESIGNATED_DRIVER_STATUS_LABEL[trip.status]}
         </span>
@@ -15083,13 +15083,13 @@ function DesignatedDriverView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className={subTab === 'REQUEST' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'REQUEST' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('REQUEST')} style={{ flex: 1 }}
         >
           Get a driver
         </button>
         <button
-          className={subTab === 'DRIVE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'DRIVE' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('DRIVE')} style={{ flex: 1 }}
         >
           Drive
@@ -15098,14 +15098,14 @@ function DesignatedDriverView() {
 
       {subTab === 'REQUEST' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {tripError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{tripError}</p>}
+          {tripError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{tripError}</p>}
           {activeTrip ? (
             <DesignatedDriverTripCard
               trip={activeTrip}
               action={
                 activeTrip.status === 'REQUESTED' && (
                   <button
-                    className="toss-btn toss-btn-secondary" disabled={busyTripId === activeTrip.id}
+                    className="itunda-btn itunda-btn-secondary" disabled={busyTripId === activeTrip.id}
                     onClick={() => handleCancelTrip(activeTrip.id)} style={{ marginTop: '8px', width: '100%' }}
                   >
                     {busyTripId === activeTrip.id ? '…' : 'Cancel'}
@@ -15114,27 +15114,27 @@ function DesignatedDriverView() {
               }
             />
           ) : (
-            <div className="toss-card">
+            <div className="itunda-card">
               <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Get a designated driver</p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 A real professional driver comes to you and drives YOUR OWN CAR home.
               </p>
               <PlaceSearchInput label="Pickup" placeholder="Where are you now?" value={pickup} onSelect={setPickup} />
               <PlaceSearchInput label="Drop-off" placeholder="Where's home?" value={dropoff} onSelect={setDropoff} />
               <input
                 type="text" value={vehicleMake} placeholder="Car make (e.g. Toyota)" onChange={(e) => setVehicleMake(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
               />
               <input
                 type="text" value={vehicleModel} placeholder="Car model (e.g. RAV4)" onChange={(e) => setVehicleModel(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
               />
               <input
                 type="text" value={vehiclePlate} placeholder="License plate" onChange={(e) => setVehiclePlate(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '12px' }}
               />
               <button
-                className="toss-btn toss-btn-primary" style={{ width: '100%' }}
+                className="itunda-btn itunda-btn-primary" style={{ width: '100%' }}
                 disabled={requesting || !pickup || !dropoff || !vehicleMake.trim() || !vehicleModel.trim() || !vehiclePlate.trim()}
                 onClick={handleRequestTrip}
               >
@@ -15155,20 +15155,20 @@ function DesignatedDriverView() {
 
       {subTab === 'DRIVE' && (
         <div>
-          {driver === undefined && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>}
+          {driver === undefined && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>}
           {driver === null && (
-            <div className="toss-card">
+            <div className="itunda-card">
               <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Become a designated driver</p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Any itunda user can register. License number is self-declared, not verified against a real registry.
               </p>
-              {driverError && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{driverError}</p>}
+              {driverError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{driverError}</p>}
               <input
                 type="text" value={licenseNumber} placeholder="License number" onChange={(e) => setLicenseNumber(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '12px' }}
               />
               <button
-                className="toss-btn toss-btn-primary" style={{ width: '100%' }}
+                className="itunda-btn itunda-btn-primary" style={{ width: '100%' }}
                 disabled={registeringDriver || !licenseNumber.trim()} onClick={handleRegisterDriver}
               >
                 {registeringDriver ? 'Registering…' : 'Register'}
@@ -15177,13 +15177,13 @@ function DesignatedDriverView() {
           )}
           {driver && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{driver.available ? 'Online' : 'Offline'}</p>
-                <button className="toss-btn toss-btn-secondary" onClick={handleToggleAvailable}>
+                <button className="itunda-btn itunda-btn-secondary" onClick={handleToggleAvailable}>
                   {driver.available ? 'Go offline' : 'Go online'}
                 </button>
               </div>
-              {driverError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{driverError}</p>}
+              {driverError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{driverError}</p>}
               {activeDriverTrips.length > 0 && (
                 <div>
                   <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Active</h4>
@@ -15195,7 +15195,7 @@ function DesignatedDriverView() {
                           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                             {t.status === 'ACCEPTED' && (
                               <button
-                                className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id} style={{ flex: 1 }}
+                                className="itunda-btn itunda-btn-primary" disabled={busyDriverTripId === t.id} style={{ flex: 1 }}
                                 onClick={() => handleDriverTripAction(t.id, startDesignatedDriverTrip)}
                               >
                                 {busyDriverTripId === t.id ? '…' : 'Start driving'}
@@ -15203,7 +15203,7 @@ function DesignatedDriverView() {
                             )}
                             {t.status === 'DRIVING' && (
                               <button
-                                className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id} style={{ flex: 1 }}
+                                className="itunda-btn itunda-btn-primary" disabled={busyDriverTripId === t.id} style={{ flex: 1 }}
                                 onClick={() => handleDriverTripAction(t.id, completeDesignatedDriverTrip)}
                               >
                                 {busyDriverTripId === t.id ? '…' : 'Complete'}
@@ -15225,7 +15225,7 @@ function DesignatedDriverView() {
                         key={t.id} trip={t}
                         action={
                           <button
-                            className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id} style={{ width: '100%', marginTop: '8px' }}
+                            className="itunda-btn itunda-btn-primary" disabled={busyDriverTripId === t.id} style={{ width: '100%', marginTop: '8px' }}
                             onClick={() => handleDriverTripAction(t.id, acceptDesignatedDriverTrip)}
                           >
                             {busyDriverTripId === t.id ? '…' : 'Accept'}
@@ -15368,13 +15368,13 @@ function BikeShareView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className={subTab === 'RENT' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'RENT' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('RENT')} style={{ flex: 1 }}
         >
           Rent a bike
         </button>
         <button
-          className={subTab === 'OWN' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'OWN' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('OWN')} style={{ flex: 1 }}
         >
           My bikes
@@ -15383,47 +15383,47 @@ function BikeShareView() {
 
       {subTab === 'RENT' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {riderError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{riderError}</p>}
+          {riderError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{riderError}</p>}
           {justCompletedRental && (
-            <div className="toss-card" style={{ textAlign: 'center', padding: '24px' }}>
+            <div className="itunda-card" style={{ textAlign: 'center', padding: '24px' }}>
               <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Rental complete</p>
               <p style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0' }}>{(justCompletedRental.totalFare ?? 0).toLocaleString()} RWF</p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{justCompletedRental.durationMinutes} minutes</p>
-              <button className="toss-btn toss-btn-secondary" onClick={() => setJustCompletedRental(null)} style={{ marginTop: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{justCompletedRental.durationMinutes} minutes</p>
+              <button className="itunda-btn itunda-btn-secondary" onClick={() => setJustCompletedRental(null)} style={{ marginTop: '12px' }}>
                 Done
               </button>
             </div>
           )}
           {!justCompletedRental && activeRental && (
-            <div className="toss-card">
+            <div className="itunda-card">
               <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>🚲 Riding now</p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Fare is calculated by elapsed time once you end the rental.
               </p>
-              <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={endingRental} onClick={handleEndRental}>
+              <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={endingRental} onClick={handleEndRental}>
                 {endingRental ? 'Ending…' : 'End rental (park the bike here)'}
               </button>
             </div>
           )}
           {!justCompletedRental && !activeRental && (
             <div>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Nearby bikes, within 5 km of your real location.
               </p>
               {nearbyBikes === null ? (
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+                <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
               ) : nearbyBikes.length === 0 ? (
                 <EmptyState message="No bikes nearby right now — try a different area or check back soon." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {nearbyBikes.map((bike) => (
-                    <div key={bike.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <p style={{ fontSize: '13px', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'}</p>
-                        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{bike.type === 'ELECTRIC' ? '150' : '80'} RWF/minute</p>
+                        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{bike.type === 'ELECTRIC' ? '150' : '80'} RWF/minute</p>
                       </div>
                       <button
-                        className="toss-btn toss-btn-primary" disabled={busyBikeId === bike.id}
+                        className="itunda-btn itunda-btn-primary" disabled={busyBikeId === bike.id}
                         onClick={() => handleStartRental(bike.id)}
                       >
                         {busyBikeId === bike.id ? '…' : 'Unlock'}
@@ -15439,8 +15439,8 @@ function BikeShareView() {
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past rentals</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
-                  <div key={r.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.durationMinutes} min</p>
+                  <div key={r.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
                   </div>
                 ))}
@@ -15452,27 +15452,27 @@ function BikeShareView() {
 
       {subTab === 'OWN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {ownerError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{ownerError}</p>}
-          <div className="toss-card">
+          {ownerError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{ownerError}</p>}
+          <div className="itunda-card">
             <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Add your bike to the pool</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Uses your real current location as the bike's starting spot.
             </p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
               <button
-                className={bikeType === 'REGULAR' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                className={bikeType === 'REGULAR' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 onClick={() => setBikeType('REGULAR')} style={{ flex: 1 }}
               >
                 Regular
               </button>
               <button
-                className={bikeType === 'ELECTRIC' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                className={bikeType === 'ELECTRIC' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 onClick={() => setBikeType('ELECTRIC')} style={{ flex: 1 }}
               >
                 Electric
               </button>
             </div>
-            <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={registering} onClick={handleRegisterBike}>
+            <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={registering} onClick={handleRegisterBike}>
               {registering ? 'Registering…' : 'Register bike'}
             </button>
           </div>
@@ -15481,9 +15481,9 @@ function BikeShareView() {
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bikes</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {myBikes.map((bike) => (
-                  <div key={bike.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'} bike</p>
-                    <button className="toss-btn toss-btn-secondary" disabled={busyBikeId === bike.id} onClick={() => handleToggleBikeAvailable(bike)}>
+                    <button className="itunda-btn itunda-btn-secondary" disabled={busyBikeId === bike.id} onClick={() => handleToggleBikeAvailable(bike)}>
                       {busyBikeId === bike.id ? '…' : bike.available ? 'Available' : 'Unavailable'}
                     </button>
                   </div>
@@ -15606,13 +15606,13 @@ function ParkingView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className={subTab === 'RENT' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'RENT' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('RENT')} style={{ flex: 1 }}
         >
           Find parking
         </button>
         <button
-          className={subTab === 'OWN' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'OWN' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('OWN')} style={{ flex: 1 }}
         >
           My spots
@@ -15621,47 +15621,47 @@ function ParkingView() {
 
       {subTab === 'RENT' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {renterError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{renterError}</p>}
+          {renterError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{renterError}</p>}
           {justCompletedSession && (
-            <div className="toss-card" style={{ textAlign: 'center', padding: '24px' }}>
+            <div className="itunda-card" style={{ textAlign: 'center', padding: '24px' }}>
               <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Parking complete</p>
               <p style={{ fontSize: '24px', fontWeight: 700, margin: '8px 0' }}>{(justCompletedSession.totalFare ?? 0).toLocaleString()} RWF</p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{justCompletedSession.durationMinutes} minutes</p>
-              <button className="toss-btn toss-btn-secondary" onClick={() => setJustCompletedSession(null)} style={{ marginTop: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{justCompletedSession.durationMinutes} minutes</p>
+              <button className="itunda-btn itunda-btn-secondary" onClick={() => setJustCompletedSession(null)} style={{ marginTop: '12px' }}>
                 Done
               </button>
             </div>
           )}
           {!justCompletedSession && activeSession && (
-            <div className="toss-card">
+            <div className="itunda-card">
               <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>🅿️ Parked now</p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Fare is calculated by elapsed time (rounded up to the next hour) once you check out.
               </p>
-              <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={endingSession} onClick={handleEndSession}>
+              <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={endingSession} onClick={handleEndSession}>
                 {endingSession ? 'Checking out…' : 'Check out'}
               </button>
             </div>
           )}
           {!justCompletedSession && !activeSession && (
             <div>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
                 Nearby parking, within 5 km of your real location.
               </p>
               {nearbySpots === null ? (
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+                <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
               ) : nearbySpots.length === 0 ? (
                 <EmptyState message="No parking nearby right now — try a different area or check back soon." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {nearbySpots.map((spot) => (
-                    <div key={spot.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={spot.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <p style={{ fontSize: '13px', fontWeight: 700 }}>{spot.address}</p>
-                        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
+                        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
                       </div>
                       <button
-                        className="toss-btn toss-btn-primary" disabled={busySpotId === spot.id}
+                        className="itunda-btn itunda-btn-primary" disabled={busySpotId === spot.id}
                         onClick={() => handleStartSession(spot.id)}
                       >
                         {busySpotId === spot.id ? '…' : 'Check in'}
@@ -15677,8 +15677,8 @@ function ParkingView() {
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past sessions</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {rentalHistory.filter((r) => r.status === 'COMPLETED').map((r) => (
-                  <div key={r.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.durationMinutes} min</p>
+                  <div key={r.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{r.durationMinutes} min</p>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{(r.totalFare ?? 0).toLocaleString()} RWF</p>
                   </div>
                 ))}
@@ -15690,22 +15690,22 @@ function ParkingView() {
 
       {subTab === 'OWN' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {ownerError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{ownerError}</p>}
-          <div className="toss-card">
+          {ownerError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{ownerError}</p>}
+          <div className="itunda-card">
             <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>List your spot</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Uses your real current location as the spot's location.
             </p>
             <input
               type="text" value={spotAddress} placeholder="Address (e.g. Kigali Heights driveway)" onChange={(e) => setSpotAddress(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
             />
             <input
               type="number" value={spotHourlyRate} placeholder="Hourly rate (RWF)" onChange={(e) => setSpotHourlyRate(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '12px' }}
             />
             <button
-              className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={registering || !spotAddress.trim() || !spotHourlyRate}
+              className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={registering || !spotAddress.trim() || !spotHourlyRate}
               onClick={handleRegisterSpot}
             >
               {registering ? 'Registering…' : 'Register spot'}
@@ -15716,12 +15716,12 @@ function ParkingView() {
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your spots</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {mySpots.map((spot) => (
-                  <div key={spot.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={spot.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <p style={{ fontSize: '13px', fontWeight: 700 }}>{spot.address}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
+                      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{spot.hourlyRate.toLocaleString()} RWF/hour</p>
                     </div>
-                    <button className="toss-btn toss-btn-secondary" disabled={busySpotId === spot.id} onClick={() => handleToggleSpotAvailable(spot)}>
+                    <button className="itunda-btn itunda-btn-secondary" disabled={busySpotId === spot.id} onClick={() => handleToggleSpotAvailable(spot)}>
                       {busySpotId === spot.id ? '…' : spot.available ? 'Available' : 'Unavailable'}
                     </button>
                   </div>
@@ -15847,13 +15847,13 @@ function BusView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className={subTab === 'RIDE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'RIDE' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('RIDE')} style={{ flex: 1 }}
         >
           Find a bus
         </button>
         <button
-          className={subTab === 'OPERATE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'OPERATE' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('OPERATE')} style={{ flex: 1 }}
         >
           My routes
@@ -15862,31 +15862,31 @@ function BusView() {
 
       {subTab === 'RIDE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {riderError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{riderError}</p>}
-          <div className="toss-card">
+          {riderError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{riderError}</p>}
+          <div className="itunda-card">
             <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Search routes</p>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <input
                 type="text" value={searchOrigin} placeholder="From (e.g. Kigali)" onChange={(e) => setSearchOrigin(e.target.value)}
-                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               <input
                 type="text" value={searchDestination} placeholder="To (e.g. Musanze)" onChange={(e) => setSearchDestination(e.target.value)}
-                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
             </div>
-            <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} onClick={loadTrips}>Search</button>
+            <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={loadTrips}>Search</button>
           </div>
           {trips === null ? (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
           ) : trips.length === 0 ? (
             <EmptyState message="No upcoming trips — request a ride and it'll show up here." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {trips.map((trip) => (
-                <div key={trip.id} className="toss-card">
+                <div key={trip.id} className="itunda-card">
                   <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
-                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
                     {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     {' · '}{trip.farePerSeat.toLocaleString()} RWF/seat · {trip.availableSeats} seat(s) left
                   </p>
@@ -15894,10 +15894,10 @@ function BusView() {
                     <input
                       type="number" min={1} max={trip.availableSeats} value={seatCounts[trip.id] ?? '1'}
                       onChange={(e) => setSeatCounts((prev) => ({ ...prev, [trip.id]: e.target.value }))}
-                      style={{ width: '60px', padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                      style={{ width: '60px', padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
                     />
                     <button
-                      className="toss-btn toss-btn-primary" disabled={busyTripId === trip.id} style={{ flex: 1 }}
+                      className="itunda-btn itunda-btn-primary" disabled={busyTripId === trip.id} style={{ flex: 1 }}
                       onClick={() => handleBookSeats(trip.id)}
                     >
                       {busyTripId === trip.id ? '…' : 'Book seats'}
@@ -15912,12 +15912,12 @@ function BusView() {
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bookings</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {myBookings.filter((b) => b.status === 'BOOKED').map((b) => (
-                  <div key={b.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={b.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <p style={{ fontSize: '13px', fontWeight: 700 }}>{b.seatCount} seat(s)</p>
-                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{b.totalFare.toLocaleString()} RWF</p>
+                      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{b.totalFare.toLocaleString()} RWF</p>
                     </div>
-                    <button className="toss-btn toss-btn-secondary" disabled={busyBookingId === b.id} onClick={() => handleCancelBooking(b.id)}>
+                    <button className="itunda-btn itunda-btn-secondary" disabled={busyBookingId === b.id} onClick={() => handleCancelBooking(b.id)}>
                       {busyBookingId === b.id ? '…' : 'Cancel'}
                     </button>
                   </div>
@@ -15930,34 +15930,34 @@ function BusView() {
 
       {subTab === 'OPERATE' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {operatorError && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{operatorError}</p>}
-          <div className="toss-card">
+          {operatorError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{operatorError}</p>}
+          <div className="itunda-card">
             <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Post a route</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '12px' }}>
               Any itunda user can post a scheduled trip -- no transport-licensing check.
             </p>
             <input
               type="text" value={tripOrigin} placeholder="Origin" onChange={(e) => setTripOrigin(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
             />
             <input
               type="text" value={tripDestination} placeholder="Destination" onChange={(e) => setTripDestination(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
             />
             <input
               type="datetime-local" value={tripDeparture} onChange={(e) => setTripDeparture(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
             />
             <input
               type="number" value={tripSeats} placeholder="Total seats" onChange={(e) => setTripSeats(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '8px' }}
             />
             <input
               type="number" value={tripFare} placeholder="Fare per seat (RWF)" onChange={(e) => setTripFare(e.target.value)}
-              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', marginBottom: '12px' }}
             />
             <button
-              className="toss-btn toss-btn-primary" style={{ width: '100%' }}
+              className="itunda-btn itunda-btn-primary" style={{ width: '100%' }}
               disabled={posting || !tripOrigin.trim() || !tripDestination.trim() || !tripDeparture || !tripSeats || !tripFare}
               onClick={handlePostTrip}
             >
@@ -15969,22 +15969,22 @@ function BusView() {
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your routes</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {myTrips.map((trip) => (
-                  <div key={trip.id} className="toss-card">
+                  <div key={trip.id} className="itunda-card">
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
                       {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       {' · '}{trip.availableSeats}/{trip.totalSeats} seats left · {trip.farePerSeat.toLocaleString()} RWF/seat
                     </p>
                     <button
-                      className="toss-btn toss-btn-secondary" style={{ marginTop: '8px', fontSize: '12px', padding: '6px 10px' }}
+                      className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px', fontSize: '12px', padding: '6px 10px' }}
                       onClick={() => toggleManifest(trip.id)}
                     >
                       {expandedTripId === trip.id ? 'Hide bookings' : 'View bookings'}
                     </button>
                     {expandedTripId === trip.id && (
-                      <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--toss-grey-100)' }}>
-                        {manifestError && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{manifestError}</p>}
-                        {!manifestError && tripBookings === null && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading…</p>}
+                      <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--itunda-grey-100)' }}>
+                        {manifestError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{manifestError}</p>}
+                        {!manifestError && tripBookings === null && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Loading…</p>}
                         {tripBookings !== null && tripBookings.length === 0 && (
                           <EmptyState message="No one's booked a seat yet — share your route to fill it up." />
                         )}
@@ -15992,10 +15992,10 @@ function BusView() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {tripBookings.map((b) => (
                               <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                                <span style={{ color: 'var(--toss-grey-700)' }}>
+                                <span style={{ color: 'var(--itunda-grey-700)' }}>
                                   Rider #{b.riderUserId.slice(-6)} · {b.seatCount} seat{b.seatCount > 1 ? 's' : ''}
                                 </span>
-                                <span style={{ fontWeight: 700, color: b.status === 'CANCELLED' ? 'var(--toss-grey-400)' : 'var(--toss-grey-900)' }}>
+                                <span style={{ fontWeight: 700, color: b.status === 'CANCELLED' ? 'var(--itunda-grey-400)' : 'var(--itunda-grey-900)' }}>
                                   {b.status === 'CANCELLED' ? 'Cancelled' : `${b.totalFare.toLocaleString()} RWF`}
                                 </span>
                               </div>
@@ -16055,19 +16055,19 @@ function KnowledgeView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Your reputation</p>
+      <div className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Your reputation</p>
         <p style={{ fontSize: '15px', fontWeight: 700 }}>{reputation ?? '…'} adopted answer{reputation === 1 ? '' : 's'}</p>
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className={subTab === 'BROWSE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'BROWSE' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('BROWSE')} style={{ flex: 1 }}
         >
           Browse
         </button>
         <button
-          className={subTab === 'MINE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          className={subTab === 'MINE' ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
           onClick={() => setSubTab('MINE')} style={{ flex: 1 }}
         >
           Mine
@@ -16076,7 +16076,7 @@ function KnowledgeView() {
       {subTab === 'BROWSE' && categories.length > 0 && (
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           <button
-            className={activeCategory === null ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+            className={activeCategory === null ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
             style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setActiveCategory(null)}
           >
             All
@@ -16084,7 +16084,7 @@ function KnowledgeView() {
           {categories.map((c) => (
             <button
               key={c.id}
-              className={activeCategory === c.id ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+              className={activeCategory === c.id ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
               style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setActiveCategory(c.id)}
             >
               {c.label}
@@ -16093,9 +16093,9 @@ function KnowledgeView() {
         </div>
       )}
       {subTab === 'BROWSE' && <KnowledgeAskCard onAsked={load} categories={categories} />}
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {questions === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
       ) : questions.length === 0 ? (
         // Real copy-voice fix (item 244, round 6 of the empty-state pass): specific
         // to which subtab is showing -- BROWSE has the real "Ask a question" form
@@ -16105,13 +16105,13 @@ function KnowledgeView() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {questions.map((q) => (
             <button
-              key={q.id} className="toss-card" style={{ textAlign: 'left', width: '100%' }}
+              key={q.id} className="itunda-card" style={{ textAlign: 'left', width: '100%' }}
               onClick={() => setOpenQuestionId(q.id)}
             >
               <p style={{ fontSize: '13px', fontWeight: 700 }}>
                 {q.adoptedAnswerId ? '✅ ' : ''}{q.title}
               </p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>
                 {categories.find((c) => c.id === q.category)?.label ?? q.category}
               </p>
             </button>
@@ -16123,9 +16123,9 @@ function KnowledgeView() {
           <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Your answers</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {myAnswers.map((a) => (
-              <div key={a.id} className="toss-card" style={{ padding: '10px 14px' }}>
+              <div key={a.id} className="itunda-card" style={{ padding: '10px 14px' }}>
                 <p style={{ fontSize: '13px' }}>{a.isAdopted ? '✅ Adopted' : 'Pending'}</p>
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{a.body}</p>
+                <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{a.body}</p>
               </div>
             ))}
           </div>
@@ -16145,7 +16145,7 @@ function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; catego
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-secondary" style={{ width: '100%' }} onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-secondary" style={{ width: '100%' }} onClick={() => setOpen(true)}>
         + Ask a question
       </button>
     );
@@ -16168,24 +16168,24 @@ function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; catego
   };
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <select
         value={category} onChange={(e) => setCategory(e.target.value)}
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
       >
         <option value="">Choose a category</option>
         {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
       </select>
       <input
         type="text" value={title} placeholder="Your question" onChange={(e) => setTitle(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <textarea
         value={body} placeholder="Add more detail" onChange={(e) => setBody(e.target.value)} rows={3}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
       />
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !category || !title.trim() || !body.trim()}>
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting || !category || !title.trim() || !body.trim()}>
         {submitting ? 'Posting…' : 'Post question'}
       </button>
     </form>
@@ -16242,17 +16242,17 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
 
   return (
     <div>
-      <button className="toss-btn toss-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      {!question && !error && <div className="toss-card skeleton" style={{ height: '120px' }} />}
+      <button className="itunda-btn itunda-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {!question && !error && <div className="itunda-card skeleton" style={{ height: '120px' }} />}
       {question && (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+        <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
           <p style={{ fontSize: '17px', fontWeight: 700 }}>{question.title}</p>
-          <p style={{ fontSize: '14px', color: 'var(--toss-grey-700)', whiteSpace: 'pre-wrap' }}>{question.body}</p>
+          <p style={{ fontSize: '14px', color: 'var(--itunda-grey-700)', whiteSpace: 'pre-wrap' }}>{question.body}</p>
         </div>
       )}
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Answers</h3>
-      {answers === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
+      {answers === null && <div className="itunda-card skeleton" style={{ height: '80px' }} />}
       {answers !== null && answers.length === 0 && (
         <EmptyState message="No answers yet -- be the first to help." />
       )}
@@ -16260,14 +16260,14 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
           {answers.map((a) => (
             <div
-              key={a.id} className="toss-card"
-              style={{ padding: '10px 14px', border: a.isAdopted ? '1.5px solid var(--toss-blue)' : undefined }}
+              key={a.id} className="itunda-card"
+              style={{ padding: '10px 14px', border: a.isAdopted ? '1.5px solid var(--itunda-blue)' : undefined }}
             >
-              {a.isAdopted && <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)', marginBottom: '4px' }}>✅ Adopted answer</p>}
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-900)' }}>{a.body}</p>
+              {a.isAdopted && <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-blue)', marginBottom: '4px' }}>✅ Adopted answer</p>}
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-900)' }}>{a.body}</p>
               {isAsker && !question?.adoptedAnswerId && (
                 <button
-                  className="toss-btn toss-btn-secondary" style={{ marginTop: '8px', fontSize: '12px' }}
+                  className="itunda-btn itunda-btn-secondary" style={{ marginTop: '8px', fontSize: '12px' }}
                   disabled={busyAnswerId === a.id} onClick={() => handleAdopt(a.id)}
                 >
                   {busyAnswerId === a.id ? '…' : 'Adopt this answer'}
@@ -16281,9 +16281,9 @@ function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: strin
         <form onSubmit={handleAnswer} style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text" value={answerBody} onChange={(e) => setAnswerBody(e.target.value)} placeholder="Write an answer"
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={answering || !answerBody.trim()}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={answering || !answerBody.trim()}>
             {answering ? '…' : 'Send'}
           </button>
         </form>
@@ -16310,16 +16310,16 @@ const DINE_IN_STATUS_CHAIN: DineInOrderStatus[] = ['PLACED', 'ACCEPTED', 'PREPAR
 
 function DineInOrderCard({ order, action }: { order: DineInOrder; action?: React.ReactNode }) {
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{DINE_IN_STATUS_LABEL[order.status]}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Table {order.tableNumber}</p>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{DINE_IN_STATUS_LABEL[order.status]}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Table {order.tableNumber}</p>
         </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
       </div>
       {order.notes && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)', backgroundColor: 'var(--toss-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
           Note: {order.notes}
         </p>
       )}
@@ -16384,7 +16384,7 @@ function DineInRestaurantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
   if (orders.length === 0) return null;
 
   return (
@@ -16401,12 +16401,12 @@ function DineInRestaurantOrdersView() {
                 (next || o.status === 'PLACED') && (
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {next && (
-                      <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
+                      <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
                         {busyOrderId === o.id ? 'Updating…' : `Mark ${DINE_IN_STATUS_LABEL[next].toLowerCase()}`}
                       </button>
                     )}
                     {o.status === 'PLACED' && (
-                      <button className="toss-btn toss-btn-secondary" disabled={busyOrderId === o.id} onClick={() => handleCancel(o)}>
+                      <button className="itunda-btn itunda-btn-secondary" disabled={busyOrderId === o.id} onClick={() => handleCancel(o)}>
                         Cancel
                       </button>
                     )}
@@ -16481,27 +16481,27 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+        <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
   }
 
   if (menu === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
 
   if (showCheckout) {
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to menu">
+          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to menu">
             <ArrowLeft size={20} />
           </button>
           <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Checkout</h3>
         </div>
-        <form onSubmit={handlePlaceOrder} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <form onSubmit={handlePlaceOrder} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {cartItems.map(([key, line]) => {
             const item = menu.products.find((p) => p.id === line.productId);
             if (!item) return null;
@@ -16519,19 +16519,19 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
             onChange={(e) => setTableNumber(e.target.value)}
             placeholder="Table number (e.g. 12, Patio 3)"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value.slice(0, 500))}
             placeholder="Notes (optional) -- e.g. No onions"
             rows={2}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'none', fontFamily: 'inherit' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'none', fontFamily: 'inherit' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !tableNumber.trim()}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={placing || !tableNumber.trim()}>
             {placing ? 'Placing order…' : 'Place order'}
           </button>
-          {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+          {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
         </form>
       </div>
     );
@@ -16540,7 +16540,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to restaurants">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to restaurants">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{menu.businessName}</h3>
@@ -16557,21 +16557,21 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
             const isExpanded = expandedProductId === item.id;
             const allGroupsChosen = groups.every((g) => Boolean(pendingChoices[g.id]));
             return (
-              <div key={item.id} className="toss-card">
+              <div key={item.id} className="itunda-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ fontSize: '14px', fontWeight: 700 }}>{item.name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
+                    <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
                   </div>
                   {hasOptions ? (
-                    <button className="toss-btn toss-btn-secondary" onClick={() => toggleExpand(item.id)}>
+                    <button className="itunda-btn itunda-btn-secondary" onClick={() => toggleExpand(item.id)}>
                       {isExpanded ? 'Close' : 'Add'}
                     </button>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <button onClick={() => setSimpleQty(item.id, simpleQty - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
+                      <button onClick={() => setSimpleQty(item.id, simpleQty - 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
                       <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{simpleQty}</span>
-                      <button onClick={() => setSimpleQty(item.id, simpleQty + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
+                      <button onClick={() => setSimpleQty(item.id, simpleQty + 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
                     </div>
                   )}
                 </div>
@@ -16579,7 +16579,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
                   <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {groups.map((group) => (
                       <div key={group.id}>
-                        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-700)', marginBottom: '4px' }}>{group.name}</p>
+                        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-700)', marginBottom: '4px' }}>{group.name}</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           {group.choices.map((choice) => (
                             <label key={choice.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
@@ -16596,7 +16596,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
                       </div>
                     ))}
                     <button
-                      className="toss-btn toss-btn-primary"
+                      className="itunda-btn itunda-btn-primary"
                       disabled={!allGroupsChosen}
                       onClick={() => addConfiguredToCart(item)}
                     >
@@ -16611,7 +16611,7 @@ function DineInMenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: Sho
       )}
       {cartCount > 0 && (
         <button
-          className="toss-btn toss-btn-primary"
+          className="itunda-btn itunda-btn-primary"
           style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
           onClick={() => setShowCheckout(true)}
         >
@@ -16642,12 +16642,12 @@ function DineInCustomerView() {
 
   if (confirmed) {
     return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+        <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
         <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>Table {confirmed.tableNumber}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={() => { setConfirmed(null); setSelected(null); setView('ORDERS'); }}>Done</button>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>Table {confirmed.tableNumber}</p>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => { setConfirmed(null); setSelected(null); setView('ORDERS'); }}>Done</button>
       </div>
     );
   }
@@ -16658,15 +16658,15 @@ function DineInCustomerView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BROWSE', 'ORDERS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+              color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Restaurants' : 'My orders'}
@@ -16675,21 +16675,21 @@ function DineInCustomerView() {
       </div>
       {view === 'BROWSE' ? (
         error ? (
-          <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p></div>
+          <div className="itunda-card"><p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p></div>
         ) : restaurants === null ? (
-          <div className="toss-card skeleton" style={{ height: '160px' }} />
+          <div className="itunda-card skeleton" style={{ height: '160px' }} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {restaurants.map((r) => (
-              <button key={r.merchantId} onClick={() => setSelected(r)} className="toss-card" style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}>
+              <button key={r.merchantId} onClick={() => setSelected(r)} className="itunda-card" style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none' }}>
                 <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.businessName}</p>
-                {r.category && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.category}</p>}
+                {r.category && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{r.category}</p>}
               </button>
             ))}
           </div>
         )
       ) : orders === null ? (
-        <div className="toss-card skeleton" style={{ height: '160px' }} />
+        <div className="itunda-card skeleton" style={{ height: '160px' }} />
       ) : orders.length === 0 ? (
         <EmptyState message="No table orders yet — they'll show up here as diners order from their table." />
       ) : (
@@ -16706,15 +16706,15 @@ function EatsView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['ORDER', 'DELIVER', 'DINE_IN'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setMode(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: mode === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === v ? 'var(--toss-blue)' : 'transparent',
+              color: mode === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: mode === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'ORDER' ? 'Order food' : v === 'DELIVER' ? 'Deliver' : 'Dine-in'}
@@ -16773,23 +16773,23 @@ function PlatformMembershipCard() {
   if (membership === undefined) return null;
 
   return (
-    <div className="toss-card" style={{ padding: '16px', marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>itunda Plus</h3>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {isActive ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
           Free delivery active until {new Date(membership!.activeUntil).toLocaleDateString()} at every restaurant, no participation required.
         </p>
       ) : (
         <div>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
             Free delivery at every restaurant -- no minimum order, no restaurant opt-in required.
           </p>
           <div style={{ display: 'flex', gap: '8px' }}>
             {PLATFORM_MEMBERSHIP_TIERS.map((tier) => (
               <button
                 key={tier.days}
-                className="toss-btn toss-btn-primary"
+                className="itunda-btn itunda-btn-primary"
                 disabled={busy}
                 onClick={() => handleSubscribe(tier.days)}
                 style={{ flex: 1, fontSize: '13px' }}
@@ -16835,23 +16835,23 @@ function EatsMembershipCard() {
   if (membership === undefined) return null;
 
   return (
-    <div className="toss-card" style={{ padding: '16px', marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Eats Club</h3>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {isActive ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
           Free delivery active until {new Date(membership!.activeUntil).toLocaleDateString()} at participating restaurants.
         </p>
       ) : (
         <div>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
             Free delivery at participating restaurants -- no minimum order.
           </p>
           <div style={{ display: 'flex', gap: '8px' }}>
             {EATS_MEMBERSHIP_TIERS.map((tier) => (
               <button
                 key={tier.days}
-                className="toss-btn toss-btn-primary"
+                className="itunda-btn itunda-btn-primary"
                 disabled={busy}
                 onClick={() => handleSubscribe(tier.days)}
                 style={{ flex: 1, fontSize: '13px' }}
@@ -16882,16 +16882,16 @@ function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: R
   // route, matching OrderService.getRiderLocation's own real SHIPPED-only gate exactly.
   const [showLiveTracking, setShowLiveTracking] = useState(false);
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{COMMERCE_STATUS_LABEL[order.status]}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{order.deliveryAddress}</p>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{COMMERCE_STATUS_LABEL[order.status]}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{order.deliveryAddress}</p>
         </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
       </div>
       {order.status === 'SHIPPED' && (
-        <button className="toss-btn toss-btn-primary" onClick={() => setShowLiveTracking((v) => !v)}>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowLiveTracking((v) => !v)}>
           {showLiveTracking ? 'Hide live tracking' : '🛵 Track your rider live'}
         </button>
       )}
@@ -16929,7 +16929,7 @@ function ProductRatingBadge({ productId }: { productId: string }) {
       <button
         type="button"
         onClick={toggle}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--toss-grey-700)', padding: 0 }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--itunda-grey-700)', padding: 0 }}
       >
         <Star size={13} color="#F5A623" fill="#F5A623" />
         {rating.average?.toFixed(1)} ({rating.count})
@@ -16937,16 +16937,16 @@ function ProductRatingBadge({ productId }: { productId: string }) {
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
           {reviews === null ? (
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Loading reviews…</p>
           ) : reviews.length === 0 ? (
             <EmptyState message="No written reviews yet — be the first to share how it went." />
           ) : (
             reviews.map((r) => (
-              <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+              <div key={r.id} style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>
                 <span style={{ color: '#F5A623' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
                 {r.comment && <span> — {r.comment}</span>}
                 {r.ownerReply && (
-                  <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--toss-grey-500)' }}>
+                  <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--itunda-grey-500)' }}>
                     ↳ Seller: {r.ownerReply}
                   </div>
                 )}
@@ -16977,15 +16977,15 @@ function PriceTiersDisplay({ productId, regularPrice }: { productId: string; reg
   if (!tiers || tiers.length === 0) return null;
 
   return (
-    <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--toss-grey-100)' }}>
+    <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--itunda-grey-100)' }}>
       <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>Buy more, pay less</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           <span>1+</span>
           <span>{regularPrice.toLocaleString()} RWF each</span>
         </div>
         {tiers.map((t) => (
-          <div key={t.minQuantity} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--toss-grey-700)', fontWeight: 600 }}>
+          <div key={t.minQuantity} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--itunda-grey-700)', fontWeight: 600 }}>
             <span>{t.minQuantity}+</span>
             <span>{t.unitPrice.toLocaleString()} RWF each</span>
           </div>
@@ -17034,18 +17034,18 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
 
   if (requested) {
     return (
-      <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--toss-grey-100)' }}>
+      <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--itunda-grey-100)' }}>
         <p style={{ fontSize: '13px', fontWeight: 700 }}>Booking requested</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>The business will confirm or decline your appointment. See it under My &gt; My bookings.</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>The business will confirm or decline your appointment. See it under My &gt; My bookings.</p>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--toss-grey-100)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--itunda-grey-100)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <p style={{ fontSize: '13px', fontWeight: 700 }}>Book an appointment ({product.durationMinutes} min)</p>
       {product.requiresPrepay && (
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
           Requesting this slot holds a {product.price.toLocaleString()} RWF deposit from your wallet.
         </p>
       )}
@@ -17054,10 +17054,10 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
         value={date}
         min={new Date().toISOString().slice(0, 10)}
         onChange={(e) => loadSlots(e.target.value)}
-        style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
       />
-      {slotsError && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }}>{slotsError}</p>}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }}>{error}</p>}
+      {slotsError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }}>{slotsError}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }}>{error}</p>}
       {date && slots !== null && (
         slots.length === 0 ? (
           <EmptyState message="No open times on this date — try another day." />
@@ -17066,7 +17066,7 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
             {slots.map((slot) => (
               <button
                 key={slot.startTime}
-                className="toss-btn toss-btn-secondary"
+                className="itunda-btn itunda-btn-secondary"
                 style={{ padding: '8px 12px', fontSize: '12px' }}
                 onClick={() => book(slot)}
                 disabled={requesting !== null}
@@ -17113,12 +17113,12 @@ function MerchantBookingInfoSection({ merchantId }: { merchantId: string }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Coupons for you</p>
           {coupons.map((c) => (
-            <div key={c.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--toss-blue-50, #EAF2FF)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={c.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--itunda-blue-50, #EAF2FF)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{c.title}</p>
-                {c.description && <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{c.description}</p>}
+                {c.description && <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{c.description}</p>}
               </div>
-              <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+              <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
                 {c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`}
               </p>
             </div>
@@ -17131,10 +17131,10 @@ function MerchantBookingInfoSection({ merchantId }: { merchantId: string }) {
             Reviews{rating?.average != null && ` · ⭐ ${rating.average.toFixed(1)} (${rating.count})`}
           </p>
           {reviews.slice(0, 3).map((r) => (
-            <div key={r.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--toss-grey-100)' }}>
+            <div key={r.id} style={{ padding: '10px 12px', borderRadius: '10px', background: 'var(--itunda-grey-100)' }}>
               <p style={{ fontSize: '12px', fontWeight: 700 }}>{'⭐'.repeat(r.rating)} · {r.serviceName}</p>
-              {r.comment && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>{r.comment}</p>}
-              {r.ownerReply && <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>↳ {r.ownerReply}</p>}
+              {r.comment && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>{r.comment}</p>}
+              {r.ownerReply && <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>↳ {r.ownerReply}</p>}
             </div>
           ))}
         </div>
@@ -17176,36 +17176,36 @@ function ProductInquirySection({ productId }: { productId: string }) {
   };
 
   return (
-    <div style={{ borderTop: '1px solid var(--toss-grey-100)', paddingTop: '12px' }}>
-      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '8px' }}>Questions & answers</p>
+    <div style={{ borderTop: '1px solid var(--itunda-grey-100)', paddingTop: '12px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>Questions & answers</p>
       <form onSubmit={handleAsk} style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
         <input
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask the seller a question"
-          style={{ flex: 1, padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-secondary" disabled={asking || !question.trim()} style={{ padding: '8px 14px' }}>
+        <button type="submit" className="itunda-btn itunda-btn-secondary" disabled={asking || !question.trim()} style={{ padding: '8px 14px' }}>
           Ask
         </button>
       </form>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {inquiries === null ? (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading questions…</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Loading questions…</p>
       ) : inquiries.length === 0 ? (
         <EmptyState message="No questions yet -- be the first to ask." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {inquiries.map((q) => (
-            <div key={q.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+            <div key={q.id} style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>
               <span style={{ fontWeight: 700 }}>Q. </span>{q.question}
               {q.answer ? (
-                <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--toss-grey-500)' }}>
+                <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--itunda-grey-500)' }}>
                   <span style={{ fontWeight: 700 }}>A. </span>{q.answer}
                 </div>
               ) : (
-                <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--toss-grey-400)', fontStyle: 'italic' }}>
+                <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--itunda-grey-400)', fontStyle: 'italic' }}>
                   Awaiting seller response
                 </div>
               )}
@@ -17249,13 +17249,13 @@ function ProductReviewRow({ item }: { item: CommerceOrderItem }) {
 
   if (done) {
     return (
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{item.productName}: thanks for your review!</p>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{item.productName}: thanks for your review!</p>
     );
   }
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '8px 12px' }} onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px', padding: '8px 12px' }} onClick={() => setOpen(true)}>
         Rate {item.productName}
       </button>
     );
@@ -17263,19 +17263,19 @@ function ProductReviewRow({ item }: { item: CommerceOrderItem }) {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{item.productName}</p>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{item.productName}</p>
       <StarRatingInput value={rating} onChange={setRating} />
       <input
         type="text"
         value={comment}
         onChange={(e) => setComment(e.target.value)}
         placeholder="How was it? (optional)"
-        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
       />
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
           {submitting ? 'Submitting…' : 'Submit review'}
         </button>
       </div>
@@ -17330,25 +17330,25 @@ function ReturnExchangeAction({ orderId }: { orderId: string }) {
   };
 
   if (result) {
-    return <p style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 600, marginTop: '6px' }}>{result.type === 'RETURN' ? 'Return' : 'Exchange'} requested — awaiting seller review.</p>;
+    return <p style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 600, marginTop: '6px' }}>{result.type === 'RETURN' ? 'Return' : 'Exchange'} requested — awaiting seller review.</p>;
   }
 
   if (!open) {
     return (
-      <button className="toss-btn toss-btn-secondary" style={{ marginTop: '6px', padding: '6px 12px', fontSize: '12px' }} onClick={() => setOpen(true)}>
+      <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '6px', padding: '6px 12px', fontSize: '12px' }} onClick={() => setOpen(true)}>
         Return or exchange
       </button>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '10px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <select value={type} onChange={(e) => setType(e.target.value as OrderReturnType)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
+        <select value={type} onChange={(e) => setType(e.target.value as OrderReturnType)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}>
           <option value="RETURN">Return</option>
           <option value="EXCHANGE">Exchange</option>
         </select>
-        <select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
+        <select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}>
           {ORDER_RETURN_REASON_CODES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ').toLowerCase()}</option>)}
         </select>
       </div>
@@ -17357,14 +17357,14 @@ function ReturnExchangeAction({ orderId }: { orderId: string }) {
         value={reasonNote}
         onChange={(e) => setReasonNote(e.target.value)}
         placeholder="Details (optional)"
-        style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
       />
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ flex: 1, padding: '8px', fontSize: '13px' }}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ flex: 1, padding: '8px', fontSize: '13px' }}>
           {submitting ? 'Submitting…' : 'Submit request'}
         </button>
-        <button type="button" className="toss-btn toss-btn-secondary" onClick={() => setOpen(false)} style={{ padding: '8px 12px', fontSize: '13px' }}>Cancel</button>
+        <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => setOpen(false)} style={{ padding: '8px 12px', fontSize: '13px' }}>Cancel</button>
       </div>
     </form>
   );
@@ -17384,14 +17384,14 @@ function MyReturnRequestsView() {
       <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>My return &amp; exchange requests</h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {requests.map((r) => (
-          <div key={r.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div key={r.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontSize: '13px', fontWeight: 700 }}>{r.type === 'RETURN' ? 'Return' : 'Exchange'}</p>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.reasonCode.replace(/_/g, ' ').toLowerCase()}</p>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{r.reasonCode.replace(/_/g, ' ').toLowerCase()}</p>
             </div>
             <span style={{
               fontSize: '12px', fontWeight: 700,
-              color: r.status === 'APPROVED' ? 'var(--toss-green)' : r.status === 'REJECTED' ? 'var(--toss-red)' : 'var(--toss-blue)',
+              color: r.status === 'APPROVED' ? 'var(--itunda-green)' : r.status === 'REJECTED' ? 'var(--itunda-red)' : 'var(--itunda-blue)',
             }}>
               {r.status === 'REQUESTED' ? 'Pending' : r.status === 'APPROVED' ? 'Approved' : 'Rejected'}
             </span>
@@ -17440,12 +17440,12 @@ function MerchantReturnQueueView() {
 
   if (error) {
     return (
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
       </div>
     );
   }
-  if (requests === null) return <div className="toss-card skeleton" style={{ height: '80px', marginBottom: '16px' }} />;
+  if (requests === null) return <div className="itunda-card skeleton" style={{ height: '80px', marginBottom: '16px' }} />;
   const open = requests.filter((r) => r.status === 'REQUESTED');
   if (open.length === 0) return null;
 
@@ -17454,17 +17454,17 @@ function MerchantReturnQueueView() {
       <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Return &amp; exchange requests</h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {open.map((r) => (
-          <div key={r.id} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div key={r.id} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.type === 'RETURN' ? 'Return' : 'Exchange'} requested</p>
-              <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.reasonCode.replace(/_/g, ' ').toLowerCase()}</span>
+              <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{r.reasonCode.replace(/_/g, ' ').toLowerCase()}</span>
             </div>
-            {r.reasonNote && <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{r.reasonNote}</p>}
+            {r.reasonNote && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{r.reasonNote}</p>}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => handleDecide(r.id, true)}>
+              <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => handleDecide(r.id, true)}>
                 {busyId === r.id ? '…' : 'Approve'}
               </button>
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => handleDecide(r.id, false)}>
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => handleDecide(r.id, false)}>
                 Reject
               </button>
             </div>
@@ -17503,7 +17503,7 @@ function WishlistButton({ favorited, busy, onToggle }: { favorited: boolean; bus
       onClick={onToggle}
       disabled={busy}
       aria-label={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
-      style={{ fontSize: '18px', lineHeight: 1, color: favorited ? 'var(--toss-red)' : 'var(--toss-grey-300)' }}
+      style={{ fontSize: '18px', lineHeight: 1, color: favorited ? 'var(--itunda-red)' : 'var(--itunda-grey-300)' }}
     >
       {favorited ? '♥' : '♡'}
     </button>
@@ -17521,8 +17521,8 @@ function TrustBadge({ score }: { score: number }) {
   return (
     <span
       style={{
-        fontSize: '11px', fontWeight: 700, color: 'var(--toss-grey-600)',
-        backgroundColor: 'var(--toss-grey-100)', padding: '2px 6px', borderRadius: '6px',
+        fontSize: '11px', fontWeight: 700, color: 'var(--itunda-grey-600)',
+        backgroundColor: 'var(--itunda-grey-100)', padding: '2px 6px', borderRadius: '6px',
       }}
     >
       Trust {score}
@@ -17556,16 +17556,16 @@ function HoodReportButton({ targetType, targetId }: { targetType: HoodReportTarg
   return (
     <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
       {message ? (
-        <p style={{ fontSize: '11px', color: message.startsWith('Thanks') ? 'var(--toss-green)' : 'var(--toss-red)' }}>{message}</p>
+        <p style={{ fontSize: '11px', color: message.startsWith('Thanks') ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>{message}</p>
       ) : showChoices ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Unsafe payment, contact request, or scam')}>Unsafe or scam</button>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Misleading, unavailable, or spam content')}>Misleading or spam</button>
-          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Harassment, hateful, illegal, or prohibited content')}>Abusive or illegal</button>
-          <button style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }} onClick={() => setShowChoices(false)}>Cancel</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Unsafe payment, contact request, or scam')}>Unsafe or scam</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Misleading, unavailable, or spam content')}>Misleading or spam</button>
+          <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Harassment, hateful, illegal, or prohibited content')}>Abusive or illegal</button>
+          <button style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }} onClick={() => setShowChoices(false)}>Cancel</button>
         </div>
       ) : (
-        <button style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }} disabled={sending} onClick={() => setShowChoices(true)}>
+        <button style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }} disabled={sending} onClick={() => setShowChoices(true)}>
           {sending ? 'Reporting…' : 'Report'}
         </button>
       )}
@@ -17600,7 +17600,7 @@ function HoodReviewForm({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>What went well? (shown publicly)</p>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>What went well? (shown publicly)</p>
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {HOOD_GOOD_POINT_LABELS.map(([id, label]) => {
           const selected = selectedGoodPoints.has(id);
@@ -17610,8 +17610,8 @@ function HoodReviewForm({
               onClick={() => onToggleGoodPoint(id)}
               style={{
                 fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
-                color: selected ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-                backgroundColor: selected ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                color: selected ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
+                backgroundColor: selected ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
               }}
             >
               {label}
@@ -17619,7 +17619,7 @@ function HoodReviewForm({
           );
         })}
       </div>
-      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Anything uncomfortable? (private -- only you two see this)</p>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Anything uncomfortable? (private -- only you two see this)</p>
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {HOOD_UNCOMFORTABLE_POINT_LABELS.map(([id, label]) => {
           const selected = selectedUncomfortablePoints.has(id);
@@ -17629,8 +17629,8 @@ function HoodReviewForm({
               onClick={() => onToggleUncomfortablePoint(id)}
               style={{
                 fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
-                color: selected ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-                backgroundColor: selected ? 'var(--toss-red)' : 'var(--toss-grey-100)',
+                color: selected ? 'var(--itunda-white)' : 'var(--itunda-grey-900)',
+                backgroundColor: selected ? 'var(--itunda-red)' : 'var(--itunda-grey-100)',
               }}
             >
               {label}
@@ -17639,10 +17639,10 @@ function HoodReviewForm({
         })}
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submitting} onClick={onCancel}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={submitting} onClick={onCancel}>
           Cancel
         </button>
-        <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={onSubmit}>
+        <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={onSubmit}>
           {submitting ? 'Submitting…' : 'Submit review'}
         </button>
       </div>
@@ -17661,13 +17661,13 @@ function HoodReviewResultView({ reviews, myUserId }: { reviews: HoodReview[]; my
   const theirs = reviews.find((r) => r.reviewerId !== myUserId);
   if (!mine && !theirs) return null;
   const block = (title: string, review: HoodReview) => (
-    <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--toss-grey-100)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-      <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{title}</p>
+    <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--itunda-grey-100)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{title}</p>
       {review.goodPoints.length > 0 && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>👍 {review.goodPoints.map(hoodGoodPointLabel).join(', ')}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>👍 {review.goodPoints.map(hoodGoodPointLabel).join(', ')}</p>
       )}
       {review.uncomfortablePoints.length > 0 && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-red)' }}>⚠️ {review.uncomfortablePoints.map(hoodUncomfortablePointLabel).join(', ')}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }}>⚠️ {review.uncomfortablePoints.map(hoodUncomfortablePointLabel).join(', ')}</p>
       )}
     </div>
   );
@@ -17688,8 +17688,8 @@ function ProductImageThumb({ imageUrl, size = 96 }: { imageUrl?: string | null; 
   const [failed, setFailed] = useState(false);
   if (!imageUrl || failed) {
     return (
-      <div style={{ width: size, height: size, borderRadius: '12px', background: 'var(--toss-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <ShoppingBag size={size * 0.4} color="var(--toss-blue)" />
+      <div style={{ width: size, height: size, borderRadius: '12px', background: 'var(--itunda-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <ShoppingBag size={size * 0.4} color="var(--itunda-blue)" />
       </div>
     );
   }
@@ -17698,7 +17698,7 @@ function ProductImageThumb({ imageUrl, size = 96 }: { imageUrl?: string | null; 
       src={imageUrl}
       alt=""
       onError={() => setFailed(true)}
-      style={{ width: size, height: size, borderRadius: '12px', objectFit: 'cover', background: 'var(--toss-grey-100)', flexShrink: 0 }}
+      style={{ width: size, height: size, borderRadius: '12px', objectFit: 'cover', background: 'var(--itunda-grey-100)', flexShrink: 0 }}
     />
   );
 }
@@ -17713,14 +17713,14 @@ function ProductPriceBlock({ price, originalPrice, discountPercent }: { price: n
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-red)' }}>{discountPercent}%</span>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-red)' }}>{discountPercent}%</span>
           <span style={{ fontSize: '14px', fontWeight: 700 }}>{price.toLocaleString()} RWF</span>
         </div>
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-400)', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()} RWF</p>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-400)', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()} RWF</p>
       </div>
     );
   }
-  return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{price.toLocaleString()} RWF</p>;
+  return <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{price.toLocaleString()} RWF</p>;
 }
 
 // Real dedicated product-detail screen (2026-07-21), closing
@@ -17777,12 +17777,12 @@ function ProductDetailView({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to catalog">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to catalog">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{merchant.businessName}</h3>
       </div>
-      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
+      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <ProductImageThumb imageUrl={product.imageUrl} size={220} />
         </div>
@@ -17795,25 +17795,25 @@ function ProductDetailView({
         </div>
         <ProductRatingBadge productId={product.id} />
         {product.description && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{product.description}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{product.description}</p>
         )}
         <PriceTiersDisplay productId={product.id} regularPrice={product.price} />
         <BookingWidget merchantId={merchant.merchantId} product={product} />
         {product.durationMinutes != null && <MerchantBookingInfoSection merchantId={merchant.merchantId} />}
         <ProductInquirySection productId={product.id} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', paddingTop: '4px', borderTop: '1px solid var(--toss-grey-100)' }}>
-          <button onClick={() => onSetQty(merchant, product, Math.max(0, qty - 1))} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>−</button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', paddingTop: '4px', borderTop: '1px solid var(--itunda-grey-100)' }}>
+          <button onClick={() => onSetQty(merchant, product, Math.max(0, qty - 1))} className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 16px' }}>−</button>
           <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700, fontSize: '16px' }}>{qty}</span>
-          <button onClick={() => onSetQty(merchant, product, qty + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>+</button>
+          <button onClick={() => onSetQty(merchant, product, qty + 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 16px' }}>+</button>
         </div>
         <SubscribeAndSaveButton merchantId={merchant.merchantId} productId={product.id} />
-        <button className="toss-btn toss-btn-primary" onClick={() => onSetQty(merchant, product, Math.max(1, qty))}>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => onSetQty(merchant, product, Math.max(1, qty))}>
           {qty > 0 ? 'Update cart' : 'Add to cart'}
         </button>
       </div>
       {totalCartItems > 0 && (
         <button
-          className="toss-btn toss-btn-primary"
+          className="itunda-btn itunda-btn-primary"
           style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
           onClick={onViewCart}
         >
@@ -17936,13 +17936,13 @@ function ProductCatalogView({
   }
 
   if (catalog === null) {
-    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to merchants">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to merchants">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700, flex: 1 }}>{catalog.businessName}</h3>
@@ -17950,15 +17950,15 @@ function ProductCatalogView({
           type="button"
           onClick={toggleFollow}
           disabled={followBusy}
-          className={following ? 'toss-btn toss-btn-secondary' : 'toss-btn toss-btn-primary'}
+          className={following ? 'itunda-btn itunda-btn-secondary' : 'itunda-btn itunda-btn-primary'}
           style={{ padding: '6px 14px', fontSize: '13px' }}
         >
           {following ? 'Following' : 'Follow'}
         </button>
       </div>
-      {shareNotice && <p style={{ fontSize: '12px', color: 'var(--toss-blue)', marginBottom: '12px' }} role="status">{shareNotice}</p>}
+      {shareNotice && <p style={{ fontSize: '12px', color: 'var(--itunda-blue)', marginBottom: '12px' }} role="status">{shareNotice}</p>}
       {billingPlans.length > 0 && (
-        <div className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Subscription plans</h4>
           {billingPlans.map((plan) => (
             <BillingPlanRow
@@ -17980,7 +17980,7 @@ function ProductCatalogView({
         // a detail-page visit -- recommendation #7).
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
           {catalog.products.map((item) => (
-            <div key={item.id} className="toss-card" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div key={item.id} className="itunda-card" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
                 <WishlistButton
                   favorited={favoritedIds.has(item.id)}
@@ -17993,7 +17993,7 @@ function ProductCatalogView({
                   disabled={sharingId === item.id}
                   aria-label="Share this product and earn a commission"
                   title="Share & earn 3%"
-                  style={{ background: 'var(--toss-white)', borderRadius: '999px', padding: '6px', boxShadow: '0 1px 4px rgba(0,0,0,0.12)', fontSize: '13px' }}
+                  style={{ background: 'var(--itunda-white)', borderRadius: '999px', padding: '6px', boxShadow: '0 1px 4px rgba(0,0,0,0.12)', fontSize: '13px' }}
                 >
                   🔗
                 </button>
@@ -18011,17 +18011,17 @@ function ProductCatalogView({
                 <p style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.3 }}>{item.name}</p>
                 <ProductPriceBlock price={item.price} originalPrice={item.originalPrice} discountPercent={item.discountPercent} />
               </button>
-              <p style={{ minHeight: '16px', fontSize: '12px', color: item.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
+              <p style={{ minHeight: '16px', fontSize: '12px', color: item.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                 {item.stockQuantity === null || item.stockQuantity === undefined ? 'Available' : item.stockQuantity === 0 ? 'Out of stock' : `${item.stockQuantity} available`}
               </p>
               <ProductRatingBadge productId={item.id} />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '4px' }}>
-                <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
+                <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
                 <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{qtyFor(item.id)}</span>
                 <button
                   onClick={() => onSetQty(merchant, item, qtyFor(item.id) + 1)}
                   disabled={item.stockQuantity !== null && item.stockQuantity !== undefined && qtyFor(item.id) >= item.stockQuantity}
-                  className="toss-btn toss-btn-secondary"
+                  className="itunda-btn itunda-btn-secondary"
                   style={{ padding: '6px 12px' }}
                 >+</button>
               </div>
@@ -18031,7 +18031,7 @@ function ProductCatalogView({
       )}
       {totalCartItems > 0 && (
         <button
-          className="toss-btn toss-btn-primary"
+          className="itunda-btn itunda-btn-primary"
           style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
           onClick={onViewCart}
         >
@@ -18078,17 +18078,17 @@ function BillingPlanRow({ plan, subscription, onChanged }: { plan: MerchantBilli
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '12px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
         <div>
           <p style={{ fontSize: '14px', fontWeight: 700 }}>{plan.name}</p>
-          {plan.description && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>{plan.description}</p>}
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', marginTop: '2px' }}>
+          {plan.description && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>{plan.description}</p>}
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', marginTop: '2px' }}>
             {plan.amount.toLocaleString()} RWF every {plan.intervalDays} day{plan.intervalDays === 1 ? '' : 's'}
           </p>
         </div>
         <button
-          className={subscription ? 'toss-btn toss-btn-secondary' : 'toss-btn toss-btn-primary'}
+          className={subscription ? 'itunda-btn itunda-btn-secondary' : 'itunda-btn itunda-btn-primary'}
           style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
           disabled={busy}
           onClick={subscription ? handleCancel : handleSubscribe}
@@ -18097,11 +18097,11 @@ function BillingPlanRow({ plan, subscription, onChanged }: { plan: MerchantBilli
         </button>
       </div>
       {subscription && (
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
           Next charge {new Date(subscription.nextChargeAt).toLocaleDateString()}
         </p>
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -18173,44 +18173,44 @@ function MultiCartView({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)', padding: '4px' }} aria-label="Back to shop">
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--itunda-grey-700)', padding: '4px' }} aria-label="Back to shop">
           <ArrowLeft size={20} />
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Your cart</h3>
       </div>
       {groups.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Your cart is empty.</p></div>
+        <div className="itunda-card"><p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Your cart is empty.</p></div>
       ) : (
         <form onSubmit={handlePlaceOrders} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {groups.map(([merchantId, group]) => (
-            <div key={merchantId} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div key={merchantId} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <p style={{ fontSize: '14px', fontWeight: 700 }}>{group.businessName}</p>
               {Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => (
                 <div key={productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
                   <span>{l.product.name} x{l.quantity}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span>{(l.product.price * l.quantity).toLocaleString()} RWF</span>
-                    <button type="button" onClick={() => onSetQty(merchantId, productId, 0)} style={{ color: 'var(--toss-grey-500)', fontSize: '12px' }}>Remove</button>
+                    <button type="button" onClick={() => onSetQty(merchantId, productId, 0)} style={{ color: 'var(--itunda-grey-500)', fontSize: '12px' }}>Remove</button>
                   </div>
                 </div>
               ))}
             </div>
           ))}
-          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700 }}>
               <span>Total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
               <span>{grandTotal.toLocaleString()} RWF</span>
             </div>
             <input
               type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
             />
             {needsDeviceVerification ? (
               <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
             ) : (
               <>
-                {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-                <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
+                {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+                <button type="submit" className="itunda-btn itunda-btn-primary" disabled={placing || !address.trim()}>
                   {placing ? 'Placing orders…' : `Place ${groups.length} order${groups.length === 1 ? '' : 's'}`}
                 </button>
               </>
@@ -18225,9 +18225,9 @@ function MultiCartView({
 function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutResult[]; onDone: () => void }) {
   const successCount = results.filter((r) => r.success).length;
   return (
-    <div className="toss-card" style={{ padding: '28px' }}>
+    <div className="itunda-card" style={{ padding: '28px' }}>
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+        <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: '17px', fontWeight: 700 }}>
           {successCount} of {results.length} order{results.length === 1 ? '' : 's'} placed
         </h3>
@@ -18237,14 +18237,14 @@ function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutRe
           <div key={r.merchantId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
             <span style={{ fontWeight: 600 }}>{r.businessName}</span>
             {r.success ? (
-              <span style={{ color: 'var(--toss-green)' }}>{r.order!.totalAmount.toLocaleString()} RWF — placed</span>
+              <span style={{ color: 'var(--itunda-green)' }}>{r.order!.totalAmount.toLocaleString()} RWF — placed</span>
             ) : (
-              <span style={{ color: 'var(--toss-red)' }}>{r.error}</span>
+              <span style={{ color: 'var(--itunda-red)' }}>{r.error}</span>
             )}
           </div>
         ))}
       </div>
-      <button className="toss-btn toss-btn-secondary" style={{ width: '100%' }} onClick={onDone}>
+      <button className="itunda-btn itunda-btn-secondary" style={{ width: '100%' }} onClick={onDone}>
         {results.some((r) => !r.success) ? 'Back to cart' : 'Done'}
       </button>
     </div>
@@ -18285,7 +18285,7 @@ function MyCommerceOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
   if (orders.length === 0) return <EmptyState message="No orders yet — browse a merchant's shop and your first order will show up here." />;
 
   return (
@@ -18298,7 +18298,7 @@ function MyCommerceOrdersView() {
           order={o}
           action={
             o.status === 'PLACED' ? (
-              <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
+              <button className="itunda-btn itunda-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
                 {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
               </button>
             ) : o.status === 'DELIVERED' ? (
@@ -18360,7 +18360,7 @@ function MerchantOrdersView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
   if (orders.length === 0) return null;
 
   return (
@@ -18374,7 +18374,7 @@ function MerchantOrdersView() {
               key={o.id}
               order={o}
               action={next && (
-                <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
+                <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
                   {busyOrderId === o.id ? 'Updating…' : `Mark ${COMMERCE_STATUS_LABEL[next].toLowerCase()}`}
                 </button>
               )}
@@ -18417,13 +18417,13 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (favorites === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   if (favorites.length === 0) return <EmptyState message="No saved items yet -- tap ♡ on any product to save it here." />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {favorites.map((f) => (
-        <div key={f.productId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+        <div key={f.productId} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
           <button
             onClick={() => onOpenMerchant({ merchantId: f.merchantId, businessName: f.businessName, category: null, cashbackRate: '' })}
             style={{ textAlign: 'left', flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}
@@ -18431,17 +18431,17 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
             <ProductImageThumb imageUrl={f.imageUrl} size={44} />
             <div>
               <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.name}</p>
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.businessName}</p>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{f.businessName}</p>
               <ProductPriceBlock price={f.price} originalPrice={f.originalPrice} discountPercent={f.discountPercent} />
               {f.priceDropped && (
-                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-red, var(--toss-red))', marginTop: '2px' }}>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-red, var(--itunda-red))', marginTop: '2px' }}>
                   🔻 Price dropped
                 </p>
               )}
             </div>
           </button>
           <button
-            className="toss-btn toss-btn-secondary"
+            className="itunda-btn itunda-btn-secondary"
             disabled={removingId === f.productId}
             onClick={() => handleRemove(f.productId)}
             style={{ padding: '8px 12px', fontSize: '12px' }}
@@ -18645,15 +18645,15 @@ function ShopView() {
       <MerchantOrdersView />
       <MerchantReturnQueueView />
 
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['BROWSE', 'ORDERS', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+              color: view === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: view === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {v === 'BROWSE' ? 'Merchants' : v === 'ORDERS' ? 'My orders' : '♡ Wishlist'}
@@ -18668,13 +18668,13 @@ function ShopView() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search products across every merchant"
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={searching || !searchQuery.trim()}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={searching || !searchQuery.trim()}>
             {searching ? '…' : 'Search'}
           </button>
           {searchResults !== null && (
-            <button type="button" className="toss-btn toss-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>
               Clear
             </button>
           )}
@@ -18686,19 +18686,19 @@ function ShopView() {
           minimal-ShoppingMerchant shortcut openSearchResult already uses just above. */}
       {view === 'BROWSE' && searchResults === null && nearbyAds.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '8px' }}>📍 Near you</p>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>📍 Near you</p>
           <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
             {nearbyAds.map((a) => (
               <button
                 key={a.ad.id}
                 onClick={() => setSelected({ merchantId: a.ad.merchantId, businessName: a.businessName, category: null, cashbackRate: '1%' })}
-                className="toss-card"
+                className="itunda-card"
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '160px', flexShrink: 0, gap: '4px' }}
               >
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{a.ad.title}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{a.businessName}</p>
-                {a.ad.description && <p style={{ fontSize: '11px', color: 'var(--toss-grey-700)' }}>{a.ad.description}</p>}
-                <p style={{ fontSize: '11px', color: 'var(--toss-blue)', fontWeight: 600 }}>{a.distanceKm.toFixed(1)} km away</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{a.businessName}</p>
+                {a.ad.description && <p style={{ fontSize: '11px', color: 'var(--itunda-grey-700)' }}>{a.ad.description}</p>}
+                <p style={{ fontSize: '11px', color: 'var(--itunda-blue)', fontWeight: 600 }}>{a.distanceKm.toFixed(1)} km away</p>
               </button>
             ))}
           </div>
@@ -18712,19 +18712,19 @@ function ShopView() {
           the same underlying row shape. */}
       {view === 'BROWSE' && searchResults === null && deals && deals.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '8px' }}>🔥 Deals</p>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>🔥 Deals</p>
           <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
             {deals.map((d) => (
               <button
                 key={d.id}
                 onClick={() => openSearchResult(d)}
-                className="toss-card"
+                className="itunda-card"
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '120px', flexShrink: 0, gap: '4px' }}
               >
                 <ProductImageThumb imageUrl={d.imageUrl} size={96} />
                 <p style={{ fontSize: '12px', fontWeight: 700 }}>{d.name}</p>
                 <ProductPriceBlock price={d.price} originalPrice={d.originalPrice} discountPercent={d.discountPercent} />
-                <p style={{ fontSize: '11px', color: d.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
+                <p style={{ fontSize: '11px', color: d.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                   {d.stockQuantity === null || d.stockQuantity === undefined ? 'Available' : d.stockQuantity === 0 ? 'Out of stock' : `${d.stockQuantity} available`}
                 </p>
               </button>
@@ -18740,13 +18740,13 @@ function ShopView() {
           to the specific product). */}
       {view === 'BROWSE' && searchResults === null && timeDeals && timeDeals.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '8px' }}>⏰ Time Deals</p>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>⏰ Time Deals</p>
           <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
             {timeDeals.map((v) => (
               <button
                 key={v.deal.id}
                 onClick={() => setSelected({ merchantId: v.deal.merchantId, businessName: v.businessName, category: null, cashbackRate: '1%' })}
-                className="toss-card"
+                className="itunda-card"
                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '120px', flexShrink: 0, gap: '4px' }}
               >
                 <ProductImageThumb imageUrl={v.productImageUrl} size={96} />
@@ -18758,8 +18758,8 @@ function ShopView() {
                 {/* Real Coupang badge system (2026-08-05) -- see Badge.tsx's own doc
                     comment. Matches Android ShopScreen.kt's own identical StatusBadge
                     treatment (this was plain <p> text on bank-mfe until now). */}
-                <Badge text={formatDealCountdown(v.deal.endsAt)} filled={false} tint="var(--toss-blue)" />
-                <Badge text={`${v.deal.remainingQuantity} left`} tint="var(--toss-red)" />
+                <Badge text={formatDealCountdown(v.deal.endsAt)} filled={false} tint="var(--itunda-blue)" />
+                <Badge text={`${v.deal.remainingQuantity} left`} tint="var(--itunda-red)" />
               </button>
             ))}
           </div>
@@ -18783,22 +18783,22 @@ function ShopView() {
         <WishlistView onOpenMerchant={setSelected} />
       ) : view === 'BROWSE' && searchResults !== null ? (
         searchResults.length === 0 ? (
-          <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products matched "{searchQuery}".</p></div>
+          <div className="itunda-card"><p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>No products matched "{searchQuery}".</p></div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {searchResults.map((r) => (
               <button
                 key={r.id}
                 onClick={() => openSearchResult(r)}
-                className="toss-card"
+                className="itunda-card"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', width: '100%', gap: '12px' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <ProductImageThumb imageUrl={r.imageUrl} size={44} />
                   <div>
                     <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.name}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Sold by {r.merchantName}</p>
-                    <p style={{ fontSize: '11px', color: r.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Sold by {r.merchantName}</p>
+                    <p style={{ fontSize: '11px', color: r.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                       {r.stockQuantity === null || r.stockQuantity === undefined ? 'Available' : r.stockQuantity === 0 ? 'Out of stock' : `${r.stockQuantity} available`}
                     </p>
                   </div>
@@ -18811,14 +18811,14 @@ function ShopView() {
       ) : error ? (
         <ErrorCard message={error} onRetry={load} />
       ) : merchants === null ? (
-        <div className="toss-card skeleton" style={{ height: '220px' }} />
+        <div className="itunda-card skeleton" style={{ height: '220px' }} />
       ) : merchants.length === 0 ? (
-        <div className="toss-card">
+        <div className="itunda-card">
           {/* Real copy-voice fix (item 244, round 5 of the empty-state pass, ported
               from the same-day Android/iOS fix): "registered yet" is honest about
               whose gap this is -- no merchant has joined yet, not something the
               reader is missing a step on. */}
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
             {selectedCategory || debouncedMerchantSearch ? 'No merchants match your search — try a different category or search term.' : 'No merchants registered yet — check back once merchants in your area join itunda Shop.'}
           </p>
         </div>
@@ -18828,15 +18828,15 @@ function ShopView() {
             <button
               key={m.merchantId}
               onClick={() => setSelected(m)}
-              className="toss-card"
+              className="itunda-card"
               style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
             >
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <ShoppingBag size={20} color="var(--toss-blue)" />
+              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <ShoppingBag size={20} color="var(--itunda-blue)" />
               </div>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{m.businessName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Real cart checkout, real delivery tracking</p>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{m.businessName}</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Real cart checkout, real delivery tracking</p>
               </div>
             </button>
           ))}
@@ -18844,7 +18844,7 @@ function ShopView() {
       )}
       {view === 'BROWSE' && totalItems > 0 && (
         <button
-          className="toss-btn toss-btn-primary"
+          className="itunda-btn itunda-btn-primary"
           style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
           onClick={() => setShowCart(true)}
         >
@@ -18887,29 +18887,29 @@ function DevicesView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (devices === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (devices === null) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', padding: '0 4px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', padding: '0 4px' }}>
         Devices that have signed in to your account. A device must be verified before it can send money.
       </p>
       {devices.length === 0 ? (
         <EmptyState message="No other devices yet — this is the only one signed in right now." />
       ) : (
         devices.map((d) => (
-          <div key={d.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div key={d.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
-                {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--toss-blue)' }}>(this device)</span>}
+              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+                {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-blue)' }}>(this device)</span>}
               </p>
-              <p style={{ fontSize: '12px', color: d.trusted ? 'var(--toss-green)' : 'var(--toss-red)' }}>
+              <p style={{ fontSize: '12px', color: d.trusted ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
                 {d.trusted ? '✓ Verified — can send money' : '⚠ Not verified — sign-in only'}
               </p>
-              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
+              <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
             </div>
             <button
-              className="toss-btn toss-btn-danger"
+              className="itunda-btn itunda-btn-danger"
               disabled={revokingId === d.deviceId}
               onClick={() => handleRevoke(d.deviceId)}
               style={{ padding: '8px 12px', fontSize: '12px' }}
@@ -19024,16 +19024,16 @@ function CardView() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (card === undefined) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (card === undefined) return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
 
   if (card === null) {
     return (
-      <div className="toss-card" style={{ textAlign: 'center' }}>
+      <div className="itunda-card" style={{ textAlign: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>You don't have an itunda debit card yet</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
           App-controlled spend limits and one-tap freeze — no branch visit, no waiting.
         </p>
-        <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleIssue}>
+        <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleIssue}>
           {busy ? 'Issuing…' : 'Get your itunda card'}
         </button>
       </div>
@@ -19043,9 +19043,9 @@ function CardView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div
-        className="toss-card"
+        className="itunda-card"
         style={{
-          background: card.frozen ? 'var(--toss-grey-500)' : 'linear-gradient(135deg, var(--toss-blue), #1B64DA)',
+          background: card.frozen ? 'var(--itunda-grey-500)' : 'linear-gradient(135deg, var(--itunda-blue), #1B64DA)',
           color: 'white', padding: '20px',
         }}
       >
@@ -19054,58 +19054,58 @@ function CardView() {
         <p style={{ fontSize: '12px', opacity: 0.85 }}>{card.frozen ? '🔒 Frozen — no purchases can be made' : '✓ Active'}</p>
       </div>
 
-      <button className={`toss-btn ${card.frozen ? 'toss-btn-primary' : 'toss-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze}>
+      <button className={`itunda-btn ${card.frozen ? 'itunda-btn-primary' : 'itunda-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze}>
         {card.frozen ? 'Unfreeze card' : 'Freeze card'}
       </button>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Spend limits</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Today</span>
+          <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Today</span>
           <span style={{ fontSize: '12px' }}>{card.spentToday.toLocaleString()} / {card.dailyLimit.toLocaleString()} RWF</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>This month</span>
+          <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>This month</span>
           <span style={{ fontSize: '12px' }}>{card.spentThisMonth.toLocaleString()} / {card.monthlyLimit.toLocaleString()} RWF</span>
         </div>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
           <input
             type="number" placeholder="Daily limit" value={dailyLimitInput} onChange={(e) => setDailyLimitInput(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }}
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
           <input
             type="number" placeholder="Monthly limit" value={monthlyLimitInput} onChange={(e) => setMonthlyLimitInput(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }}
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
         </div>
-        <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSaveLimits} style={{ width: '100%' }}>
+        <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleSaveLimits} style={{ width: '100%' }}>
           Save limits
         </button>
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>Pay with your card</p>
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
           itunda has no real card-network partnership yet, so this simulates a real card-present purchase — real money moves, real limits apply.
         </p>
         <form onSubmit={handleCharge} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {chargeError && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{chargeError}</p>}
-          {chargeSuccess && <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>{chargeSuccess}</p>}
+          {chargeError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{chargeError}</p>}
+          {chargeSuccess && <p style={{ fontSize: '12px', color: 'var(--itunda-green)' }}>{chargeSuccess}</p>}
           <input
             placeholder="Merchant name" value={merchantName} onChange={(e) => setMerchantName(e.target.value)} required
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }}
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
           <input
             type="number" placeholder="Amount (RWF)" value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} required min="1"
-            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }}
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy || card.frozen}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy || card.frozen}>
             {card.frozen ? 'Card is frozen' : busy ? 'Paying…' : 'Pay'}
           </button>
         </form>
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Recent card activity</p>
         {transactions.length === 0 ? (
           <EmptyState message="No card purchases yet — once you use your card, they'll show up here." />
@@ -19114,7 +19114,7 @@ function CardView() {
             <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
               <div>
                 <p style={{ fontSize: '13px' }}>{t.merchantName}</p>
-                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{new Date(t.createdAt).toLocaleString()}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{new Date(t.createdAt).toLocaleString()}</p>
               </div>
               <span style={{ fontSize: '13px', fontWeight: 700 }}>{t.amount.toLocaleString()} RWF</span>
             </div>
@@ -19166,30 +19166,30 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
   if (settings === undefined) return null;
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Round-up savings</h3>
         {settings?.enabled && (
-          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => handleToggle(false)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={() => handleToggle(false)} style={{ fontSize: '12px', padding: '6px 10px' }}>
             {busy ? '…' : 'Turn off'}
           </button>
         )}
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
       {settings?.enabled ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
           Every transfer rounds up to the nearest {settings.roundToNearest.toLocaleString()} RWF, saved into your goal.
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
             Round up every transfer to a real RWF increment and auto-save the spare change.
           </p>
           <div style={{ display: 'flex', gap: '6px' }}>
             {ROUND_UP_INCREMENTS.map((v) => (
               <button
                 key={v} type="button" onClick={() => setIncrement(v)}
-                className={increment === v ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                className={increment === v ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
                 style={{ flex: 1, fontSize: '12px', padding: '8px' }}
               >
                 {v} RWF
@@ -19198,12 +19198,12 @@ function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
           </div>
           <select
             value={goalId} onChange={(e) => setGoalId(e.target.value)}
-            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           >
             <option value="">Choose a savings goal</option>
             {goals.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
-          <button className="toss-btn toss-btn-primary" disabled={busy || !goalId} onClick={() => handleToggle(true)}>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy || !goalId} onClick={() => handleToggle(true)}>
             {busy ? 'Turning on…' : 'Turn on round-up'}
           </button>
         </div>
@@ -19250,12 +19250,12 @@ function InterestJarCard() {
       <ErrorCard message={error} onRetry={load} />
     );
   }
-  if (jar === null) return <div className="toss-card skeleton" style={{ height: '140px', marginBottom: '16px' }} />;
+  if (jar === null) return <div className="itunda-card skeleton" style={{ height: '140px', marginBottom: '16px' }} />;
 
   const canClaim = jar.earnedThisMonth > 0;
 
   return (
-    <div className="toss-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--toss-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+    <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
       <p style={{ fontSize: '13px', opacity: 0.85 }}>Safe Box · {jar.rate}% real daily interest</p>
       <p style={{ fontSize: '28px', fontWeight: 800, margin: '6px 0' }}>{jar.balance.toLocaleString()} RWF</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
@@ -19274,10 +19274,10 @@ function InterestJarCard() {
         </div>
       ) : (
         <button
-          className="toss-btn"
+          className="itunda-btn"
           onClick={handleClaim}
           disabled={!canClaim || claiming}
-          style={{ marginTop: '14px', width: '100%', backgroundColor: '#fff', color: 'var(--toss-blue)', fontWeight: 700, opacity: canClaim ? 1 : 0.6 }}
+          style={{ marginTop: '14px', width: '100%', backgroundColor: '#fff', color: 'var(--itunda-blue)', fontWeight: 700, opacity: canClaim ? 1 : 0.6 }}
         >
           {claiming ? 'Claiming…' : canClaim ? `Claim ${jar.earnedThisMonth.toLocaleString()} RWF` : 'Nothing to claim yet'}
         </button>
@@ -19317,26 +19317,26 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
   };
 
   return (
-    <div className="toss-card" style={{ marginBottom: '10px' }}>
+    <div className="itunda-card" style={{ marginBottom: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={{ fontSize: '14px', fontWeight: 700 }}>{goal.name}</p>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
             {goal.currentAmount.toLocaleString()} / {goal.targetAmount.toLocaleString()} RWF
             {goal.status === 'completed' && ' · Completed 🎉'}
           </p>
         </div>
         {goal.status === 'active' && (
-          <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setDepositing((d) => !d)}>
+          <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setDepositing((d) => !d)}>
             Deposit
           </button>
         )}
       </div>
-      <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', marginTop: '10px', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--toss-blue)' }} />
+      <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '10px', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--itunda-blue)' }} />
       </div>
       {goal.monthlyContribution > 0 && (
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '6px' }}>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>
           Auto-saves {goal.monthlyContribution.toLocaleString()} RWF/month
         </p>
       )}
@@ -19350,15 +19350,15 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
             <input
               type="number" min="1" required value={amount} onChange={(e) => setAmount(e.target.value)}
               placeholder="Amount (RWF)"
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
             />
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy} style={{ padding: '8px 14px', fontSize: '13px' }}>
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy} style={{ padding: '8px 14px', fontSize: '13px' }}>
               {busy ? '…' : 'Add'}
             </button>
           </form>
         )
       )}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '6px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '6px' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -19374,7 +19374,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
   if (!open) {
     return (
       <button
-        className="toss-btn toss-btn-secondary"
+        className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setOpen(true)}
       >
@@ -19402,24 +19402,24 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
       <input
         type="text" required placeholder="Goal name (e.g. Emergency Fund)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <input
         type="number" min="1" required placeholder="Target amount (RWF)" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <input
         type="number" min="0" placeholder="Monthly auto-save (optional)" value={monthlyContribution} onChange={(e) => setMonthlyContribution(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -19548,35 +19548,35 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
 
   if (error && !detail) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+        <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
   }
-  if (detail === null) return <div className="toss-card skeleton" style={{ height: '260px' }} />;
+  if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
 
   return (
     <div>
-      <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to group accounts</button>
+      <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to group accounts</button>
 
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{detail.groupAccount.name}</p>
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{detail.groupAccount.name}</p>
         <p style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0' }}>{detail.balance.toLocaleString()} RWF</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{detail.members.length} member{detail.members.length === 1 ? '' : 's'}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{detail.members.length} member{detail.members.length === 1 ? '' : 's'}</p>
       </div>
 
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Members</h3>
         {detail.members.map((m) => (
           <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
             <span>{m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}</span>
-            {m.isOwner && <span style={{ color: 'var(--toss-blue)', fontWeight: 700 }}>Organizer</span>}
+            {m.isOwner && <span style={{ color: 'var(--itunda-blue)', fontWeight: 700 }}>Organizer</span>}
           </div>
         ))}
       </div>
 
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Monthly dues</h3>
         {dues === null ? (
           <div className="skeleton" style={{ height: '40px', borderRadius: '8px' }} />
@@ -19586,12 +19586,12 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
               <input
                 type="number" min="1" required value={duesAmountInput} onChange={(e) => setDuesAmountInput(e.target.value)}
                 placeholder="Monthly dues (RWF)"
-                style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+                style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
               />
-              <button type="submit" className="toss-btn toss-btn-primary" disabled={duesBusy}>{duesBusy ? '…' : 'Set'}</button>
+              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={duesBusy}>{duesBusy ? '…' : 'Set'}</button>
             </form>
           ) : (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>The organizer hasn't set a monthly dues amount.</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>The organizer hasn't set a monthly dues amount.</p>
           )
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -19601,7 +19601,7 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
               return (
                 <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                   <span>{m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}</span>
-                  <span style={{ color: m.paid ? '#1E8E4F' : 'var(--toss-grey-500)', fontWeight: m.paid ? 700 : 400 }}>
+                  <span style={{ color: m.paid ? '#1E8E4F' : 'var(--itunda-grey-500)', fontWeight: m.paid ? 700 : 400 }}>
                     {m.paid ? '✓ Paid' : `${m.contributedAmount.toLocaleString()} / ${duesAmount.toLocaleString()}`}
                   </span>
                 </div>
@@ -19609,14 +19609,14 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
             })}
             {isOwner && (
               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={duesBusy} onClick={handleRemindUnpaid}>
+                <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={duesBusy} onClick={handleRemindUnpaid}>
                   {duesBusy ? '…' : 'Remind unpaid members'}
                 </button>
-                <button className="toss-btn toss-btn-secondary" disabled={duesBusy} onClick={handleClearDues}>Clear</button>
+                <button className="itunda-btn itunda-btn-secondary" disabled={duesBusy} onClick={handleClearDues}>Clear</button>
               </div>
             )}
             {remindedCount !== null && (
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
                 {remindedCount === 0 ? 'Everyone has already paid or been reminded this month.' : `Reminded ${remindedCount} member${remindedCount === 1 ? '' : 's'}.`}
               </p>
             )}
@@ -19629,20 +19629,20 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
           <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700 }}>{isOwner ? 'Deposit or withdraw' : 'Deposit'}</h3>
           <input
             type="number" min="1" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="button" onClick={handleDeposit} className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy || !amount}>
+            <button type="button" onClick={handleDeposit} className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy || !amount}>
               {busy ? '…' : 'Deposit'}
             </button>
             {isOwner && (
               // Real Kakao Bank behavior: only the organizer can withdraw/settle --
               // this button is only rendered for the owner, not just disabled.
-              <button type="button" onClick={handleWithdraw} className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy || !amount}>
+              <button type="button" onClick={handleWithdraw} className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={busy || !amount}>
                 {busy ? '…' : 'Withdraw'}
               </button>
             )}
@@ -19651,19 +19651,19 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       )}
 
       {isOwner && (
-        <form onSubmit={handleInvite} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <form onSubmit={handleInvite} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Invite a member</h3>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
               type="tel" required value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone number"
-              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
             />
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
           </div>
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -19677,7 +19677,7 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
   if (!open) {
     return (
       <button
-        className="toss-btn toss-btn-secondary"
+        className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setOpen(true)}
       >
@@ -19703,16 +19703,16 @@ function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
       <input
         type="text" required placeholder="Group name (e.g. Roommates)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -19737,12 +19737,12 @@ function GroupAccountsSection() {
       <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>Group accounts</h3>
       <CreateGroupAccountForm onCreated={load} />
       {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         </div>
       )}
       {accounts === null ? (
-        <div className="toss-card skeleton" style={{ height: '64px' }} />
+        <div className="itunda-card skeleton" style={{ height: '64px' }} />
       ) : accounts.length === 0 ? (
         <EmptyState message="No group accounts yet -- start one to save or split expenses with others." />
       ) : (
@@ -19750,11 +19750,11 @@ function GroupAccountsSection() {
           <button
             key={a.id}
             onClick={() => setOpenId(a.id)}
-            className="toss-card"
+            className="itunda-card"
             style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
           >
             <p style={{ fontSize: '14px', fontWeight: 700 }}>{a.name}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Tap to view balance and members</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Tap to view balance and members</p>
           </button>
         ))
       )}
@@ -19785,17 +19785,17 @@ function IkiminaSection() {
   return (
     <div>
       <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>Ikimina (rotating savings)</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '0 4px 10px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: '0 4px 10px' }}>
         Everyone contributes the same amount each round; one member takes home the full pot, in turn.
       </p>
       <CreateIkiminaForm onCreated={load} />
       {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         </div>
       )}
       {ikiminas === null ? (
-        <div className="toss-card skeleton" style={{ height: '64px' }} />
+        <div className="itunda-card skeleton" style={{ height: '64px' }} />
       ) : ikiminas.length === 0 ? (
         <EmptyState message="No ikimina groups yet -- start one with people you trust." />
       ) : (
@@ -19803,11 +19803,11 @@ function IkiminaSection() {
           <button
             key={k.id}
             onClick={() => setOpenId(k.id)}
-            className="toss-card"
+            className="itunda-card"
             style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
           >
             <p style={{ fontSize: '14px', fontWeight: 700 }}>{k.name}</p>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
               {k.status === 'FORMING' ? 'Forming — invite members before starting' : k.status === 'ACTIVE' ? `Round ${k.currentRound}` : 'Completed'}
             </p>
           </button>
@@ -19829,7 +19829,7 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
   if (!open) {
     return (
       <button
-        className="toss-btn toss-btn-secondary"
+        className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setOpen(true)}
       >
@@ -19855,33 +19855,33 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
       <input
         type="text" required placeholder="Group name (e.g. Umuryango)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <input
         type="number" min="1" required placeholder="Contribution per round (RWF)" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <div style={{ display: 'flex', gap: '8px' }}>
         <select
           value={cycleFrequencyDays} onChange={(e) => setCycleFrequencyDays(e.target.value)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         >
           <option value="7">Weekly</option>
           <option value="30">Monthly</option>
         </select>
         <input
           type="number" min="2" max="15" required placeholder="Max members" value={memberCap} onChange={(e) => setMemberCap(e.target.value)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -19902,13 +19902,13 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
 
   if (error && !detail) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+        <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
   }
-  if (detail === null) return <div className="toss-card skeleton" style={{ height: '260px' }} />;
+  if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
 
   const { ikimina, balance, members, currentRoundContributions } = detail;
   const isOrganizer = ikimina.organizerId === myUserId;
@@ -19982,12 +19982,12 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
 
   return (
     <div>
-      <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to ikimina</button>
+      <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to ikimina</button>
 
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{ikimina.name}</p>
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{ikimina.name}</p>
         <p style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0' }}>{balance.toLocaleString()} RWF</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           {ikimina.status === 'FORMING'
             ? `Forming — ${members.length} of up to ${ikimina.memberCap} members`
             : ikimina.status === 'ACTIVE'
@@ -19996,7 +19996,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
         </p>
       </div>
 
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Rotation order</h3>
         {members.map((m) => {
           const contributed = currentRoundContributions.find((c) => c.userId === m.userId)?.contributed ?? false;
@@ -20005,7 +20005,7 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
               <span>
                 #{m.payoutOrder} {m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}{m.isOrganizer ? ' · Organizer' : ''}
               </span>
-              <span style={{ color: m.hasReceivedPayout ? '#1E8E4F' : ikimina.status === 'ACTIVE' && contributed ? '#1E8E4F' : 'var(--toss-grey-500)', fontWeight: 700 }}>
+              <span style={{ color: m.hasReceivedPayout ? '#1E8E4F' : ikimina.status === 'ACTIVE' && contributed ? '#1E8E4F' : 'var(--itunda-grey-500)', fontWeight: 700 }}>
                 {m.hasReceivedPayout ? '✓ Paid' : ikimina.status === 'ACTIVE' ? (contributed ? '✓ Contributed' : 'Pending') : ''}
               </span>
             </div>
@@ -20014,20 +20014,20 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       </div>
 
       {ikimina.status === 'FORMING' && isOrganizer && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} disabled={busy || members.length < 2} onClick={handleStart}>
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} disabled={busy || members.length < 2} onClick={handleStart}>
             {busy ? '…' : members.length < 2 ? 'Invite at least 1 more member to start' : 'Start the cycle'}
           </button>
         </div>
       )}
 
       {ikimina.status === 'ACTIVE' && myMember && (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Round {ikimina.currentRound}</h3>
-          <button className="toss-btn toss-btn-primary" disabled={busy || iContributed} onClick={handleContribute}>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy || iContributed} onClick={handleContribute}>
             {busy ? '…' : iContributed ? '✓ You contributed this round' : `Contribute ${ikimina.contributionAmount.toLocaleString()} RWF`}
           </button>
-          <button className="toss-btn toss-btn-secondary" disabled={busy || !allContributed} onClick={handlePayout}>
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy || !allContributed} onClick={handlePayout}>
             {busy ? '…' : allContributed ? 'Release this round\'s payout' : 'Waiting for everyone to contribute'}
           </button>
           {payoutMessage && <p style={{ fontSize: '12px', color: '#1E8E4F' }}>{payoutMessage}</p>}
@@ -20035,19 +20035,19 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       )}
 
       {ikimina.status === 'FORMING' && isOrganizer && (
-        <form onSubmit={handleInvite} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <form onSubmit={handleInvite} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Invite a member</h3>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
               type="tel" required value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone number"
-              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
             />
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
           </div>
         </form>
       )}
 
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -20109,37 +20109,37 @@ function SaccoSection() {
   return (
     <div>
       <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>SACCO shares</h3>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '0 4px 10px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: '0 4px 10px' }}>
         Buy real shares in itunda's own SACCO pool and earn periodic dividends, the same real cooperative model as Rwanda's 416 Umurenge SACCOs.
       </p>
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
         {shareholding === undefined ? (
           <div style={{ height: '48px' }} />
         ) : (
           <>
-            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Shares held</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Shares held</p>
             <p style={{ fontSize: '22px', fontWeight: 700 }}>{(shareholding?.sharesHeld ?? 0).toLocaleString()} RWF</p>
             {currentValue != null && (
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Total contributed: {(shareholding?.totalContributed ?? 0).toLocaleString()} RWF</p>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Total contributed: {(shareholding?.totalContributed ?? 0).toLocaleString()} RWF</p>
             )}
           </>
         )}
-        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginTop: '8px' }} role="alert">{error}</p>}
+        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
           <input
             type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleBuy}>Buy</button>
-          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleRedeem}>Redeem</button>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleBuy}>Buy</button>
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleRedeem}>Redeem</button>
         </div>
       </div>
       {dividends && dividends.length > 0 && (
-        <div className="toss-card">
+        <div className="itunda-card">
           <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Dividend history</p>
           {dividends.map((d) => (
             <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0' }}>
-              <span style={{ color: 'var(--toss-grey-500)' }}>{new Date(d.createdAt).toLocaleDateString()}</span>
+              <span style={{ color: 'var(--itunda-grey-500)' }}>{new Date(d.createdAt).toLocaleDateString()}</span>
               <span style={{ fontWeight: 700 }}>+{d.amount.toLocaleString()} RWF</span>
             </div>
           ))}
@@ -20210,13 +20210,13 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
   if (error && !detail) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
-        <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+        <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
       </div>
     );
   }
-  if (detail === null) return <div className="toss-card skeleton" style={{ height: '260px' }} />;
+  if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
 
   const { plan, walletBalance, installments } = detail;
   const pct = Math.min(100, Math.round((plan.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
@@ -20224,9 +20224,9 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 
   return (
     <div>
-      <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to 26-week savings</button>
+      <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to 26-week savings</button>
 
-      <div className="toss-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--toss-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+      <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
         <p style={{ fontSize: '13px', opacity: 0.85 }}>{plan.name} · Week {plan.weeksElapsed} of {WEEKLY_SAVINGS_TERM_WEEKS}</p>
         <p style={{ fontSize: '28px', fontWeight: 800, margin: '6px 0' }}>{walletBalance.toLocaleString()} RWF</p>
         <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
@@ -20242,7 +20242,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
         </p>
       </div>
 
-      <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Plan details</h3>
         <Row label="Status" value={plan.status} />
         <Row label="Base weekly amount" value={`${plan.baseWeeklyAmount.toLocaleString()} RWF`} />
@@ -20253,38 +20253,38 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       </div>
 
       {installments.length > 0 && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Installments</h3>
           {installments.map((inst) => (
             <div key={inst.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: '13px' }}>
-              <span style={{ color: 'var(--toss-grey-500)' }}>Week {inst.weekNumber}</span>
+              <span style={{ color: 'var(--itunda-grey-500)' }}>Week {inst.weekNumber}</span>
               <span style={{ fontWeight: 600 }}>{inst.amount.toLocaleString()} RWF</span>
             </div>
           ))}
         </div>
       )}
 
-      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)', marginBottom: '10px' }}>{message}</p>}
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', marginBottom: '10px' }}>{message}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
 
       {needsDeviceVerification ? (
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => { setNeedsDeviceVerification(false); setConfirmingCancel(false); }} />
       ) : (
         <>
           {plan.status === 'ACTIVE' && (
-            <div className="toss-card">
+            <div className="itunda-card">
               {confirmingCancel ? (
                 <div>
                   <p style={{ fontSize: '13px', marginBottom: '10px' }}>
                     Cancelling now pays out your principal plus base-rate interest, but permanently forfeits the +{plan.bonusRate}% streak bonus. Continue?
                   </p>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmingCancel(false)} disabled={busy}>Keep saving</button>
-                    <button className="toss-btn toss-btn-danger" style={{ flex: 1 }} onClick={handleCancel} disabled={busy}>{busy ? '…' : 'Cancel plan'}</button>
+                    <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmingCancel(false)} disabled={busy}>Keep saving</button>
+                    <button className="itunda-btn itunda-btn-danger" style={{ flex: 1 }} onClick={handleCancel} disabled={busy}>{busy ? '…' : 'Cancel plan'}</button>
                   </div>
                 </div>
               ) : (
-                <button className="toss-btn toss-btn-secondary" style={{ width: '100%' }} onClick={() => setConfirmingCancel(true)} disabled={busy}>
+                <button className="itunda-btn itunda-btn-secondary" style={{ width: '100%' }} onClick={() => setConfirmingCancel(true)} disabled={busy}>
                   Cancel plan (early withdrawal)
                 </button>
               )}
@@ -20292,7 +20292,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
           )}
 
           {plan.status === 'MATURED' && !plan.withdrawnAt && (
-            <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={busy}>
+            <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={busy}>
               {busy ? '…' : `Withdraw ${walletBalance.toLocaleString()} RWF to main wallet`}
             </button>
           )}
@@ -20305,7 +20305,7 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '13px' }}>
-      <span style={{ color: 'var(--toss-grey-500)' }}>{label}</span>
+      <span style={{ color: 'var(--itunda-grey-500)' }}>{label}</span>
       <span style={{ fontWeight: 600 }}>{value}</span>
     </div>
   );
@@ -20322,7 +20322,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
   if (!open) {
     return (
       <button
-        className="toss-btn toss-btn-secondary"
+        className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         onClick={() => setOpen(true)}
       >
@@ -20350,28 +20350,28 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main wallet
         and can step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks. Stay unbroken all 26 weeks to earn a bonus interest rate on top of the base rate.
       </p>
       <input
         type="text" required placeholder="Plan name (e.g. New Laptop Fund)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <input
         type="number" min="1" required placeholder="Base weekly amount (RWF)" value={baseWeeklyAmount} onChange={(e) => setBaseWeeklyAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <div>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '6px' }}>Escalation rate (steps up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks)</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>Escalation rate (steps up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks)</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           {WEEKLY_SAVINGS_ESCALATION_RATES.map((rate) => (
             <button
               key={rate}
               type="button"
               onClick={() => setEscalationRate(rate)}
-              className={escalationRate === rate ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+              className={escalationRate === rate ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
               style={{ padding: '6px 12px', fontSize: '12px' }}
             >
               {rate === 0 ? 'Flat' : `+${Math.round(rate * 100)}%`}
@@ -20380,10 +20380,10 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }
@@ -20408,12 +20408,12 @@ function WeeklySavingsSection() {
       <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>26-week savings</h3>
       <CreateWeeklySavingsPlanForm onCreated={load} />
       {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         </div>
       )}
       {plans === null ? (
-        <div className="toss-card skeleton" style={{ height: '64px' }} />
+        <div className="itunda-card skeleton" style={{ height: '64px' }} />
       ) : plans.length === 0 ? (
         <EmptyState message="No 26-week savings plans yet — start one with an escalating weekly auto-debit and a streak-gated bonus rate." />
       ) : (
@@ -20423,19 +20423,19 @@ function WeeklySavingsSection() {
             <button
               key={p.id}
               onClick={() => setOpenId(p.id)}
-              className="toss-card"
+              className="itunda-card"
               style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: '14px', fontWeight: 700 }}>{p.name}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{p.status}</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{p.status}</p>
               </div>
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
                 {p.currentAmount.toLocaleString()} RWF · week {p.weeksElapsed}/{WEEKLY_SAVINGS_TERM_WEEKS}
                 {p.streakBroken ? ' · streak broken' : ' · on streak'}
               </p>
-              <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: p.streakBroken ? 'var(--toss-grey-500)' : 'var(--toss-blue)' }} />
+              <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: p.streakBroken ? 'var(--itunda-grey-500)' : 'var(--itunda-blue)' }} />
               </div>
             </button>
           );
@@ -20464,12 +20464,12 @@ function UpfrontDepositSection() {
       <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>12-month deposit</h3>
       <OpenUpfrontDepositForm onOpened={load} />
       {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         </div>
       )}
       {deposits === null ? (
-        <div className="toss-card skeleton" style={{ height: '64px' }} />
+        <div className="itunda-card skeleton" style={{ height: '64px' }} />
       ) : deposits.length === 0 ? (
         <EmptyState message="No 12-month deposits yet — open one to get a full year's interest paid today, principal locked for 12 months." />
       ) : (
@@ -20500,8 +20500,8 @@ function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
         {UPFRONT_DEPOSIT_ANNUAL_RATE}% interest for the full year, paid to your wallet today. Principal is locked for 12 months — no early withdrawal.
       </p>
       <input
@@ -20512,10 +20512,10 @@ function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
         onChange={(e) => setPrincipal(e.target.value)}
         placeholder={`Principal (${UPFRONT_DEPOSIT_MIN_PRINCIPAL.toLocaleString()} - ${UPFRONT_DEPOSIT_MAX_PRINCIPAL.toLocaleString()} RWF)`}
         required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
       />
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>}
-      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
+      <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
         {submitting ? 'Opening…' : 'Open deposit'}
       </button>
     </form>
@@ -20541,17 +20541,17 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
   };
 
   return (
-    <div className="toss-card" style={{ marginBottom: '10px' }}>
+    <div className="itunda-card" style={{ marginBottom: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <p style={{ fontSize: '14px', fontWeight: 700 }}>{deposit.principal.toLocaleString()} RWF</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{deposit.withdrawnAt ? 'WITHDRAWN' : deposit.status}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{deposit.withdrawnAt ? 'WITHDRAWN' : deposit.status}</p>
       </div>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         +{deposit.interestPaid.toLocaleString()} RWF interest already paid · matures {new Date(deposit.maturesAt).toLocaleDateString()}
       </p>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', marginTop: '6px' }} role="alert">{error}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '6px' }} role="alert">{error}</p>}
       {matured && !deposit.withdrawnAt && (
-        <button className="toss-btn toss-btn-secondary" style={{ marginTop: '10px' }} disabled={withdrawing} onClick={handleWithdraw}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ marginTop: '10px' }} disabled={withdrawing} onClick={handleWithdraw}>
           {withdrawing ? 'Withdrawing…' : 'Withdraw principal'}
         </button>
       )}
@@ -20575,12 +20575,12 @@ function SavingsView() {
       <RoundUpCard goals={goals ?? []} />
       <CreateGoalForm onCreated={load} />
       {error && (
-        <div className="toss-card" style={{ marginBottom: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
         </div>
       )}
       {goals === null ? (
-        <div className="toss-card skeleton" style={{ height: '100px' }} />
+        <div className="itunda-card skeleton" style={{ height: '100px' }} />
       ) : goals.length === 0 ? (
         <EmptyState message="No savings goals yet — set one to start putting money aside for something specific." />
       ) : (
@@ -20681,34 +20681,34 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         animate={{ opacity: 1 }}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', padding: '0 8px' }}
       >
-        <h2 style={{ color: 'var(--toss-grey-900)', margin: 0, fontSize: '24px', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
+        <h2 style={{ color: 'var(--itunda-grey-900)', margin: 0, fontSize: '24px', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {user && <span style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{user.firstName}</span>}
+          {user && <span style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{user.firstName}</span>}
           <select
             value={locale}
             onChange={(e) => setLocale(e.target.value as 'en' | 'rw')}
             aria-label="Language"
-            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--toss-grey-200)', color: 'var(--toss-grey-700)', background: 'var(--toss-white)' }}
+            style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: 'var(--itunda-white)' }}
           >
             {LOCALES.map((l) => (
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
-          <button onClick={handleLogout} style={{ color: 'var(--toss-grey-500)', display: 'flex', padding: '4px' }} aria-label="Sign out">
+          <button onClick={handleLogout} style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }} aria-label="Sign out">
             <LogOut size={18} />
           </button>
         </div>
       </motion.div>
 
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {TABS.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: tab === id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: tab === id ? 'var(--toss-blue)' : 'transparent',
+              color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: tab === id ? 'var(--itunda-blue)' : 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >

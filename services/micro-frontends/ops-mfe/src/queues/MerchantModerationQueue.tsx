@@ -22,17 +22,17 @@ function MerchantCard({ merchant, onDecided }: { merchant: UncategorizedMerchant
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div>
-        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{merchant.businessName}</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Merchant {merchant.merchantId}</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{merchant.businessName}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Merchant {merchant.merchantId}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           {merchant.kybVerified ? 'KYB verified' : 'KYB not verified'} · Created {new Date(merchant.createdAt).toLocaleString()}
         </p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-orange, #FF9500)' }}>No category set — not browsable to real buyers yet.</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-orange, #FF9500)' }}>No category set — not browsable to real buyers yet.</p>
       </div>
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
-      <button className="toss-btn toss-btn-danger" disabled={pending} onClick={suspend}>
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      <button className="itunda-btn itunda-btn-danger" disabled={pending} onClick={suspend}>
         {pending ? 'Suspending…' : 'Suspend'}
       </button>
     </div>
@@ -69,21 +69,21 @@ function ReactivateByIdForm() {
   };
 
   return (
-    <form onSubmit={submit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>Reactivate a suspended merchant</p>
+    <form onSubmit={submit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>Reactivate a suspended merchant</p>
       <div style={{ display: 'flex', gap: '8px' }}>
         <input
           value={merchantId}
           onChange={(e) => setMerchantId(e.target.value)}
           placeholder="Merchant ID"
-          style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-secondary" disabled={pending || !merchantId.trim()}>
+        <button type="submit" className="itunda-btn itunda-btn-secondary" disabled={pending || !merchantId.trim()}>
           {pending ? 'Reactivating…' : 'Reactivate'}
         </button>
       </div>
-      {result && <p style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>{result}</p>}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {result && <p style={{ fontSize: '12px', color: 'var(--itunda-blue)' }}>{result}</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </form>
   );
 }

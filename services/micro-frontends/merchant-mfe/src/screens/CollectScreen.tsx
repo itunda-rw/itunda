@@ -12,7 +12,7 @@ export default function CollectScreen() {
 
   return (
     <div style={{ maxWidth: '400px' }}>
-      <div className="toss-card" style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px' }}>
+      <div className="itunda-card" style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px' }}>
         {(['QR', 'STATIC', 'CARD', 'VOUCHER'] as const).map((m) => (
           <button
             key={m}
@@ -23,8 +23,8 @@ export default function CollectScreen() {
               borderRadius: '10px',
               fontSize: '13px',
               fontWeight: 700,
-              color: mode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === m ? 'var(--toss-blue)' : 'transparent',
+              color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: mode === m ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {m === 'QR' ? 'QR code' : m === 'STATIC' ? 'Static QR' : m === 'CARD' ? 'Card' : 'Voucher'}
@@ -58,24 +58,24 @@ function StaticQrCollect() {
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
       </div>
     );
   }
 
   if (!qrDataUrl || !merchantId) {
-    return <div className="toss-card skeleton" style={{ height: '320px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '320px' }} />;
   }
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
       <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Your permanent QR code</h2>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         Print this once and display it at your till -- a customer scans it, enters their own amount, and pays. No app needed on your end at sale time.
       </p>
       <img src={qrDataUrl} alt="Static merchant QR code" width={240} height={240} style={{ borderRadius: '16px' }} />
-      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', fontFamily: 'monospace' }}>{merchantId}</p>
+      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', fontFamily: 'monospace' }}>{merchantId}</p>
     </div>
   );
 }
@@ -118,13 +118,13 @@ function VoucherRedeem() {
 
   if (result) {
     return (
-      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
-        <Ticket size={40} color="var(--toss-blue)" />
+      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
+        <Ticket size={40} color="var(--itunda-blue)" />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Voucher redeemed</h2>
-        <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+        <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
           {result.productNameSnapshot ?? `${result.amount.toLocaleString()} RWF`}
         </p>
-        <button className="toss-btn toss-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
           <RefreshCw size={14} /> Redeem another voucher
         </button>
       </div>
@@ -132,33 +132,33 @@ function VoucherRedeem() {
   }
 
   return (
-    <div className="toss-card">
+    <div className="itunda-card">
       {needsDeviceVerification ? (
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
       ) : (
         <>
           <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Redeem a gift voucher</h2>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
             Ask the customer to show you their voucher, then enter its id here.
           </p>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Voucher id</span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Voucher id</span>
               <input
                 type="text"
                 value={voucherId}
                 onChange={(e) => setVoucherId(e.target.value)}
                 placeholder="giftvoucher_..."
                 required
-                style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+                style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
               />
             </label>
             {error && (
-              <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
+              <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
                 {error}
               </p>
             )}
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !voucherId.trim()}>
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting || !voucherId.trim()}>
               {submitting ? 'Redeeming…' : 'Redeem'}
             </button>
           </form>
@@ -203,17 +203,17 @@ function QrCollect() {
 
   if (intent && qrDataUrl) {
     return (
-      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
+      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Show this to your customer</h2>
         <img src={qrDataUrl} alt="Payment QR code" width={240} height={240} style={{ borderRadius: '16px' }} />
-        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
           {intent.amount.toLocaleString()} RWF
         </p>
-        <p style={{ fontSize: '14px', color: 'var(--toss-grey-500)' }}>{intent.description}</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>{intent.description}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           Expires {new Date(intent.expiresAt).toLocaleTimeString()}
         </p>
-        <button className="toss-btn toss-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
           <RefreshCw size={14} /> New QR code
         </button>
       </div>
@@ -221,11 +221,11 @@ function QrCollect() {
   }
 
   return (
-    <div className="toss-card">
+    <div className="itunda-card">
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Collect a payment</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Amount (RWF)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Amount (RWF)</span>
           <input
             type="number"
             min="1"
@@ -234,26 +234,26 @@ function QrCollect() {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="8000"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Description</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Description</span>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="2x Coffee"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
         </label>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
             {error}
           </p>
         )}
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
           {submitting ? 'Generating…' : 'Generate QR code'}
         </button>
       </form>
@@ -313,16 +313,16 @@ function CardCollect() {
 
   if (result) {
     return (
-      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
-        <CreditCard size={40} color="var(--toss-blue)" />
+      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
+        <CreditCard size={40} color="var(--itunda-blue)" />
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Card charged</h2>
-        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
           {result.amount.toLocaleString()} RWF
         </p>
-        <p style={{ fontSize: '14px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>
           •••• {result.cardLast4} · fee {result.fee.toLocaleString()} RWF
         </p>
-        <button className="toss-btn toss-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
           <RefreshCw size={14} /> Charge another card
         </button>
       </div>
@@ -330,14 +330,14 @@ function CardCollect() {
   }
 
   return (
-    <div className="toss-card">
+    <div className="itunda-card">
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Charge a card</h2>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
         Demo authorization only — try 4242 4242 4242 4242 (approves) or 4000 0000 0000 0002 (declines).
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Amount (RWF)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Amount (RWF)</span>
           <input
             type="number"
             min="1"
@@ -346,22 +346,22 @@ function CardCollect() {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="8000"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Description</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Description</span>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="2x Coffee"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Card number</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Card number</span>
           <input
             type="text"
             inputMode="numeric"
@@ -369,44 +369,44 @@ function CardCollect() {
             onChange={(e) => setCardNumber(e.target.value)}
             placeholder="4242 4242 4242 4242"
             required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
         </label>
         <div style={{ display: 'flex', gap: '12px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Expiry month</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Expiry month</span>
             <input
               type="number" min="1" max="12" value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)}
               placeholder="12" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Expiry year</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Expiry year</span>
             <input
               type="number" min="2026" value={expiryYear} onChange={(e) => setExpiryYear(e.target.value)}
               placeholder="2030" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>CVC</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>CVC</span>
             <input
               type="text" inputMode="numeric" value={cvc} onChange={(e) => setCvc(e.target.value)}
               placeholder="123" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
         </div>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
             {error}
           </p>
         )}
         {needsDeviceVerification ? (
           <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
         ) : (
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
             {submitting ? 'Charging…' : 'Charge card'}
           </button>
         )}

@@ -20,7 +20,7 @@ function IncidentCard({ incident, onResolved }: { incident: Incident; onResolved
 
   return (
     <div
-      className="toss-card"
+      className="itunda-card"
       style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', opacity: isOpen ? 1 : 0.65 }}
     >
       <div style={{ flex: 1 }}>
@@ -30,24 +30,24 @@ function IncidentCard({ incident, onResolved }: { incident: Incident; onResolved
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: isOpen ? 'var(--toss-red)' : 'var(--toss-green)',
+              backgroundColor: isOpen ? 'var(--itunda-red)' : 'var(--itunda-green)',
               display: 'inline-block',
             }}
           />
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{incident.railDisplayName}</p>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{incident.railDisplayName}</p>
         </div>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{incident.description}</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{incident.description}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           {incident.failureCount} failures · Opened {new Date(incident.openedAt).toLocaleString()}
           {incident.resolvedAt && ` · Resolved ${new Date(incident.resolvedAt).toLocaleString()}`}
         </p>
       </div>
       {isOpen ? (
-        <button className="toss-btn toss-btn-primary" style={{ padding: '10px 18px', gap: '6px' }} disabled={pending} onClick={resolve}>
+        <button className="itunda-btn itunda-btn-primary" style={{ padding: '10px 18px', gap: '6px' }} disabled={pending} onClick={resolve}>
           <CheckCircle2 size={16} /> Resolve
         </button>
       ) : (
-        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-green)' }}>Resolved</span>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-green)' }}>Resolved</span>
       )}
     </div>
   );

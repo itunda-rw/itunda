@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2): that
   // #04C065 itself measures 2.40:1 against white, failing even the lenient 3.0:1
   // AA-large/UI threshold for this text. Darkened to #05804A (5.01:1), matching
-  // the same fix applied to packages/design-tokens/tokens.css --toss-green and
+  // the same fix applied to packages/design-tokens/tokens.css --itunda-green and
   // the Android/iOS semantic `success` token.
   rewardAmount: { fontSize: 14, fontWeight: '700', color: '#05804A', marginRight: 12 },
   claimButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },

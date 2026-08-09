@@ -103,12 +103,12 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'measure-line', type: 'line', source: 'measure',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': 'var(--toss-red)', 'line-width': 3, 'line-dasharray': [2, 1.5] },
+      paint: { 'line-color': 'var(--itunda-red)', 'line-width': 3, 'line-dasharray': [2, 1.5] },
     },
     {
       id: 'measure-points', type: 'circle', source: 'measure',
       filter: ['==', ['geometry-type'], 'Point'],
-      paint: { 'circle-radius': 5, 'circle-color': 'var(--toss-red)', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
+      paint: { 'circle-radius': 5, 'circle-color': 'var(--itunda-red)', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
     },
     // Real text labels (2026-07-19) -- item 5, the last item on the Maps "100%"
     // roadmap. Real OSM name data already baked into the tile archive (see the
@@ -172,10 +172,10 @@ const RECENT_SEARCHES_KEY = 'itunda_map_recent_searches';
 // own doc comment on the backend for DEFAULT_BOOKMARK_FOLDER/DEFAULT_BOOKMARK_COLOR
 // (kept in sync by hand, not imported, since this is a plain frontend literal the same
 // way CATEGORY_ICONS below already is). A small fixed palette rather than a full color
-// picker -- matches this app's own toss-* palette, not an arbitrary hex input a user
+// picker -- matches this app's own itunda-* palette, not an arbitrary hex input a user
 // could fat-finger into an unreadable pin color.
 const DEFAULT_BOOKMARK_FOLDER = 'Saved places';
-const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', 'var(--toss-red)', '#22B07D', '#4E5968'];
+const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', 'var(--itunda-red)', '#22B07D', '#4E5968'];
 
 const CATEGORY_ICONS: Record<string, string> = {
   RESTAURANT: '🍽️', CAFE: '☕', HOSPITAL: '🏥', PHARMACY: '💊',
@@ -187,9 +187,9 @@ const CATEGORY_ICONS: Record<string, string> = {
 // Real fixed (non-theme-reactive) text colors for this component's own deliberately-
 // white map chrome (search pill, chip row, results dropdown, bottom sheet) -- found as a
 // real bug 2026-07-21 while verifying the redesign live in a real dark-mode browser
-// session: `var(--toss-grey-900)` resolves to #ffffff in this app's dark theme (correct
+// session: `var(--itunda-grey-900)` resolves to #ffffff in this app's dark theme (correct
 // for text on the app's own dark page background), but every one of these panels uses a
-// literal `background: '#fff'`, not the theme-reactive `--toss-white` token `.toss-card`
+// literal `background: '#fff'`, not the theme-reactive `--itunda-white` token `.itunda-card`
 // uses -- so grey-900 text on them was rendering fully invisible (white-on-white), not
 // just low-contrast. This affected the pre-existing bottom sheet ("Around you" heading,
 // selected-place name, bookmark/nearby-result rows) as well as this pass's new zoom
@@ -197,14 +197,14 @@ const CATEGORY_ICONS: Record<string, string> = {
 const MAP_CARD_TEXT = '#191F28';
 const MAP_CARD_TEXT_SECONDARY = '#4E5968';
 // Real WCAG AA contrast fix (item 244, web accessibility sweep): this was a
-// hardcoded, independent copy of --toss-grey-500's OLD, pre-fix value -- the
+// hardcoded, independent copy of --itunda-grey-500's OLD, pre-fix value -- the
 // exact drift class packages/design-tokens/tokens.css's own header comment
 // already warns about (a file keeping its own literal copy instead of the
 // shared token, so it silently misses future fixes). #8B95A1 measured 2.76:1
 // against this map card's background / 3.04:1 against white, both failing
 // 4.5:1 AA-normal-text -- real, live text on 11 real call sites (Recent
 // searches, saved-place captions, route-step distances, etc.), not decorative.
-// Updated to match the same #636E7C already applied to --toss-grey-500 /
+// Updated to match the same #636E7C already applied to --itunda-grey-500 /
 // Android's IdsSemanticColors.textTertiary / iOS's IDS.Colors.textTertiary.
 const MAP_CARD_TEXT_TERTIARY = '#636E7C';
 const MAP_CARD_DIVIDER = '#D1D6DB';
@@ -593,7 +593,7 @@ export default function MapView() {
     if (!map) return;
     map.flyTo({ center: [place.longitude, place.latitude], zoom: 15 });
     destinationMarkerRef.current?.remove();
-    destinationMarkerRef.current = new maplibregl.Marker({ color: 'var(--toss-red)' })
+    destinationMarkerRef.current = new maplibregl.Marker({ color: 'var(--itunda-red)' })
       .setLngLat([place.longitude, place.latitude])
       .setPopup(new maplibregl.Popup({ offset: 12 }).setText(place.displayName))
       .addTo(map);
@@ -915,7 +915,7 @@ export default function MapView() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
           }}
         >
-          <span style={{ fontSize: '15px', color: searching ? 'var(--toss-grey-400)' : 'var(--toss-blue)' }}>🔍</span>
+          <span style={{ fontSize: '15px', color: searching ? 'var(--itunda-grey-400)' : 'var(--itunda-blue)' }}>🔍</span>
           <input
             type="text"
             value={query}
@@ -930,7 +930,7 @@ export default function MapView() {
               type="button"
               onClick={() => { setQuery(''); setSearchResults(null); }}
               aria-label="Clear search"
-              style={{ fontSize: '13px', color: 'var(--toss-grey-400)', padding: '4px' }}
+              style={{ fontSize: '13px', color: 'var(--itunda-grey-400)', padding: '4px' }}
             >
               ✕
             </button>
@@ -967,21 +967,21 @@ export default function MapView() {
         </div>
 
         {(searchResults !== null || error) && (
-          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+          <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
             {searchResults !== null && (searchResults.length === 0 ? (
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', padding: '8px' }}>No real places found for that search.</p>
+              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '8px' }}>No real places found for that search.</p>
             ) : (
               searchResults.map((place, i) => (
                 <button
                   key={`${place.latitude}-${place.longitude}-${i}`}
                   onClick={() => selectSearchResult(place)}
-                  style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)' }}
+                  style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--itunda-grey-900)' }}
                 >
                   {place.displayName}
                 </button>
               ))
             ))}
-            {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', padding: '8px' }} role="alert">{error}</p>}
+            {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', padding: '8px' }} role="alert">{error}</p>}
           </div>
         )}
 
@@ -990,10 +990,10 @@ export default function MapView() {
             before typing anything to see what you searched for before), never competing
             with live results once a query exists. */}
         {searchFocused && query.trim() === '' && recentSearches.length > 0 && (
-          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+          <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px' }}>
               <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>Recent searches</p>
-              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={clearRecentSearches} style={{ fontSize: '11px', color: 'var(--toss-blue)', fontWeight: 700 }}>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={clearRecentSearches} style={{ fontSize: '11px', color: 'var(--itunda-blue)', fontWeight: 700 }}>
                 Clear
               </button>
             </div>
@@ -1002,7 +1002,7 @@ export default function MapView() {
                 key={`${place.latitude}-${place.longitude}-${i}`}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => selectSearchResult(place)}
-                style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)', display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '8px' }}
               >
                 <span style={{ color: MAP_CARD_TEXT_TERTIARY }}>🕐</span>
                 {place.displayName}
@@ -1053,7 +1053,7 @@ export default function MapView() {
             width: '46px', height: '46px', borderRadius: '50%',
             background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
             fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: locating ? 'var(--toss-grey-400)' : 'var(--toss-blue)',
+            color: locating ? 'var(--itunda-grey-400)' : 'var(--itunda-blue)',
           }}
         >
           {locating ? '…' : '📍'}
@@ -1069,7 +1069,7 @@ export default function MapView() {
           aria-label={measuring ? 'Stop measuring distance' : 'Measure distance'}
           style={{
             width: '46px', height: '46px', borderRadius: '50%',
-            background: measuring ? 'var(--toss-red)' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+            background: measuring ? 'var(--itunda-red)' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
             fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: measuring ? '#fff' : MAP_CARD_TEXT_SECONDARY,
           }}
@@ -1103,7 +1103,7 @@ export default function MapView() {
             </span>
           )}
           {measurePoints.length > 0 && (
-            <button type="button" onClick={() => { setMeasurePoints((prev) => prev.slice(0, -1)); setLastMeasuredPlaceName(null); }} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700 }}>
+            <button type="button" onClick={() => { setMeasurePoints((prev) => prev.slice(0, -1)); setLastMeasuredPlaceName(null); }} style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700 }}>
               Undo
             </button>
           )}
@@ -1112,7 +1112,7 @@ export default function MapView() {
               type="button"
               disabled={routing}
               onClick={() => handleRouteItinerary()}
-              style={{ fontSize: '12px', color: '#fff', background: 'var(--toss-blue)', borderRadius: '999px', padding: '6px 10px', fontWeight: 700 }}
+              style={{ fontSize: '12px', color: '#fff', background: 'var(--itunda-blue)', borderRadius: '999px', padding: '6px 10px', fontWeight: 700 }}
             >
               {routing ? 'Routing…' : 'Route itinerary'}
             </button>
@@ -1153,7 +1153,7 @@ export default function MapView() {
             <section style={{ padding: '10px', borderRadius: '10px', background: '#EEF6FF', display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                 <strong style={{ fontSize: '13px', color: MAP_CARD_TEXT }}>Itinerary · {itineraryStops.length} stops</strong>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
                   {travelMode === 'DRIVING' ? '🚗' : '🚶'} {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min
                 </span>
               </div>
@@ -1165,7 +1165,7 @@ export default function MapView() {
                 ))}
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" disabled={routing} onClick={() => handleRouteItinerary()} style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+                <button type="button" disabled={routing} onClick={() => handleRouteItinerary()} style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
                   {routing ? 'Refreshing…' : 'Refresh route'}
                 </button>
                 <button type="button" onClick={() => setItineraryStops(null)} style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>
@@ -1204,7 +1204,7 @@ export default function MapView() {
                     {selectedMerchant.phoneNumber && (
                       <a
                         href={`tel:${selectedMerchant.phoneNumber}`}
-                        style={{ fontWeight: 700, color: 'var(--toss-blue)', textDecoration: 'none' }}
+                        style={{ fontWeight: 700, color: 'var(--itunda-blue)', textDecoration: 'none' }}
                       >
                         📞 {selectedMerchant.phoneNumber}
                       </a>
@@ -1265,13 +1265,13 @@ export default function MapView() {
                           // size that actually clears it, keeping this dense
                           // multi-swatch row's visual density close to its original.
                           width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c,
-                          border: folderColorInput === c ? '2px solid var(--toss-grey-900)' : '2px solid transparent',
+                          border: folderColorInput === c ? '2px solid var(--itunda-grey-900)' : '2px solid transparent',
                         }}
                       />
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <button type="button" className="toss-btn toss-btn-primary" disabled={bookmarking} onClick={confirmSaveToFolder} style={{ flex: 1 }}>
+                    <button type="button" className="itunda-btn itunda-btn-primary" disabled={bookmarking} onClick={confirmSaveToFolder} style={{ flex: 1 }}>
                       {bookmarking ? 'Saving…' : 'Save'}
                     </button>
                     <button type="button" disabled={bookmarking} onClick={() => setSavingToFolder(null)} style={{ flex: 1, fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
@@ -1303,7 +1303,7 @@ export default function MapView() {
                     }}
                     style={{
                       flex: 1, padding: '6px 0', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
-                      background: travelMode === m ? 'var(--toss-blue)' : '#F2F4F6',
+                      background: travelMode === m ? 'var(--itunda-blue)' : '#F2F4F6',
                       color: travelMode === m ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                     }}
                   >
@@ -1329,7 +1329,7 @@ export default function MapView() {
                           onClick={() => selectRouteAlternative(i)}
                           style={{
                             flex: 1, padding: '5px 0', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
-                            background: selectedRouteIndex === i ? 'var(--toss-blue)' : '#F2F4F6',
+                            background: selectedRouteIndex === i ? 'var(--itunda-blue)' : '#F2F4F6',
                             color: selectedRouteIndex === i ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                           }}
                         >
@@ -1342,7 +1342,7 @@ export default function MapView() {
                     <button
                       type="button"
                       onClick={() => setShowSteps((s) => !s)}
-                      style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700, marginTop: '4px' }}
+                      style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700, marginTop: '4px' }}
                     >
                       {showSteps ? 'Hide turn-by-turn directions' : `Show turn-by-turn directions (${route.steps.length} steps)`}
                     </button>
@@ -1361,7 +1361,7 @@ export default function MapView() {
                   )}
                 </div>
               ) : (
-                <button className="toss-btn toss-btn-primary" disabled={routing} onClick={() => handleGetDirections()}>
+                <button className="itunda-btn itunda-btn-primary" disabled={routing} onClick={() => handleGetDirections()}>
                   {routing ? 'Finding real route…' : 'Directions'}
                 </button>
               )}
@@ -1491,7 +1491,7 @@ export default function MapView() {
                                     // Best-effort -- leaves the picker open so the user can retry.
                                   }
                                 }}
-                                style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)', alignSelf: 'flex-start' }}
+                                style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)', alignSelf: 'flex-start' }}
                               >
                                 Save
                               </button>

@@ -46,8 +46,8 @@ function RegisterAgentForm({ onRegistered }: { onRegistered: () => void }) {
   };
 
   return (
-    <form onSubmit={submit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>Register a new agent</p>
+    <form onSubmit={submit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>Register a new agent</p>
       <div style={{ display: 'flex', gap: '10px' }}>
         <input
           type="text"
@@ -55,7 +55,7 @@ function RegisterAgentForm({ onRegistered }: { onRegistered: () => void }) {
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Display name (e.g. Kigali Heights Agent)"
           required
-          style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           type="number"
@@ -64,7 +64,7 @@ function RegisterAgentForm({ onRegistered }: { onRegistered: () => void }) {
           placeholder="Daily cash-in limit"
           required
           min={0}
-          style={{ width: '180px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ width: '180px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           type="number"
@@ -72,14 +72,14 @@ function RegisterAgentForm({ onRegistered }: { onRegistered: () => void }) {
           onChange={(e) => setCashOutLimit(e.target.value)}
           placeholder="Daily cash-out limit (defaults to cash-in)"
           min={0}
-          style={{ width: '220px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ width: '220px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
           {submitting ? '…' : 'Register'}
         </button>
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
           {error}
         </p>
       )}
@@ -126,13 +126,13 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
 
   return (
     <>
-    <tr style={{ borderTop: '1px solid var(--toss-grey-100)' }}>
+    <tr style={{ borderTop: '1px solid var(--itunda-grey-100)' }}>
       <td style={{ padding: '12px 16px' }}>
-        <p style={{ fontWeight: 600, color: 'var(--toss-grey-900)' }}>{agent.displayName}</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{agent.id}</p>
+        <p style={{ fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{agent.displayName}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{agent.id}</p>
       </td>
       <td style={{ padding: '12px 16px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: agent.status === 'ACTIVE' ? 'var(--toss-green)' : 'var(--toss-red)' }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: agent.status === 'ACTIVE' ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
           {agent.status}
         </span>
       </td>
@@ -147,31 +147,31 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="Amount"
-              style={{ width: '100px', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              style={{ width: '100px', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
             />
             <input
               type="text"
               value={reference}
               onChange={(e) => setReference(e.target.value)}
               placeholder="Reference"
-              style={{ width: '120px', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              style={{ width: '120px', padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
             />
             {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): "Confirm"
                 doesn't say what happens -- this row funds the agent's till. */}
-            <button className="toss-btn toss-btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={busy !== null || !amount || !reference} onClick={fund}>
+            <button className="itunda-btn itunda-btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={busy !== null || !amount || !reference} onClick={fund}>
               {busy === 'fund' ? '…' : 'Fund till'}
             </button>
-            <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={busy !== null} onClick={() => setFunding(false)}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={busy !== null} onClick={() => setFunding(false)}>
               Cancel
             </button>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: '6px' }}>
-            <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={busy !== null} onClick={() => setFunding(true)}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} disabled={busy !== null} onClick={() => setFunding(true)}>
               Fund till
             </button>
             <button
-              className={agent.status === 'ACTIVE' ? 'toss-btn toss-btn-danger' : 'toss-btn toss-btn-primary'}
+              className={agent.status === 'ACTIVE' ? 'itunda-btn itunda-btn-danger' : 'itunda-btn itunda-btn-primary'}
               style={{ padding: '6px 10px', fontSize: '12px' }}
               disabled={busy !== null}
               onClick={toggleStatus}
@@ -179,7 +179,7 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
               {busy === 'status' ? '…' : agent.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
             </button>
             <button
-              className="toss-btn toss-btn-secondary"
+              className="itunda-btn itunda-btn-secondary"
               style={{ padding: '6px 10px', fontSize: '12px' }}
               disabled={busy !== null}
               onClick={() => setShowingOperators((v) => !v)}
@@ -189,7 +189,7 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
           </div>
         )}
         {error && (
-          <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: '6px 0 0' }} role="alert">
+          <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: '6px 0 0' }} role="alert">
             {error}
           </p>
         )}
@@ -241,7 +241,7 @@ function OperatorsPanel({ agentId }: { agentId: string }) {
 
   return (
     <tr>
-      <td colSpan={4} style={{ padding: '0 16px 16px', backgroundColor: 'var(--toss-grey-100)' }}>
+      <td colSpan={4} style={{ padding: '0 16px 16px', backgroundColor: 'var(--itunda-grey-100)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '12px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
@@ -249,29 +249,29 @@ function OperatorsPanel({ agentId }: { agentId: string }) {
               value={newUserId}
               onChange={(e) => setNewUserId(e.target.value)}
               placeholder="User id to assign as an operator"
-              style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
             />
-            <button className="toss-btn toss-btn-primary" style={{ padding: '8px 12px', fontSize: '12px' }} disabled={assigning || !newUserId.trim()} onClick={assign}>
+            <button className="itunda-btn itunda-btn-primary" style={{ padding: '8px 12px', fontSize: '12px' }} disabled={assigning || !newUserId.trim()} onClick={assign}>
               {assigning ? '…' : 'Assign'}
             </button>
           </div>
-          {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }}>{error}</p>}
-          {assignError && <p style={{ fontSize: '12px', color: 'var(--toss-red)', margin: 0 }}>{assignError}</p>}
+          {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }}>{error}</p>}
+          {assignError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }}>{assignError}</p>}
           {items === null ? (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading operators…</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading operators…</p>
           ) : items.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No operators assigned to this agent yet.</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>No operators assigned to this agent yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {items.map((operator) => (
-                <div key={operator.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', backgroundColor: 'var(--toss-white)', borderRadius: '8px' }}>
+                <div key={operator.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', backgroundColor: 'var(--itunda-white)', borderRadius: '8px' }}>
                   <span style={{ fontSize: '13px' }}>{operator.userId}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: operator.isActive ? 'var(--toss-green)' : 'var(--toss-red)' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: operator.isActive ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
                       {operator.isActive ? 'Active' : 'Inactive'}
                     </span>
                     <button
-                      className="toss-btn toss-btn-secondary"
+                      className="itunda-btn itunda-btn-secondary"
                       style={{ padding: '4px 8px', fontSize: '11px' }}
                       disabled={togglingId === operator.userId}
                       onClick={() => toggle(operator)}
@@ -302,12 +302,12 @@ export default function AgentsManagementView() {
           back to the real registration form right above. */}
       {!error && items !== null && items.length === 0 && <QueueEmpty label="No agents registered yet — use the form above to register your first one." />}
       {!error && items !== null && items.length > 0 && (
-        <div className="toss-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
-              <tr style={{ backgroundColor: 'var(--toss-grey-100)', textAlign: 'left' }}>
+              <tr style={{ backgroundColor: 'var(--itunda-grey-100)', textAlign: 'left' }}>
                 {['Agent', 'Status', 'Daily limits (in / out)', 'Actions'].map((h) => (
-                  <th key={h} style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>
+                  <th key={h} style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
                     {h}
                   </th>
                 ))}

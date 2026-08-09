@@ -69,14 +69,14 @@ function AvailabilityEditor() {
   };
 
   return (
-    <div className="toss-card" style={{ padding: '20px' }}>
+    <div className="itunda-card" style={{ padding: '20px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Weekly availability</h3>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
         Customers can only request an appointment inside these windows.
       </p>
 
       {windows === null ? (
-        <div className="toss-card skeleton" style={{ height: '80px' }} />
+        <div className="itunda-card skeleton" style={{ height: '80px' }} />
       ) : windows.length === 0 ? (
         <EmptyState message="No availability set yet — add a window below." icon={CalendarClock} />
       ) : (
@@ -87,7 +87,7 @@ function AvailabilityEditor() {
               <button
                 onClick={() => save(windows.filter((_, j) => j !== i))}
                 disabled={saving}
-                style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-red)' }}
+                style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-red)' }}
               >
                 Remove
               </button>
@@ -105,8 +105,8 @@ function AvailabilityEditor() {
               onClick={() => setDay(d)}
               style={{
                 padding: '6px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
-                color: day === d ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: day === d ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                color: day === d ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                backgroundColor: day === d ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
               }}
             >
               {DAY_LABEL[d]}
@@ -116,15 +116,15 @@ function AvailabilityEditor() {
         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
           <input
             type="time" value={start} onChange={(e) => setStart(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
           <input
             type="time" value={end} onChange={(e) => setEnd(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
         </div>
-        {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{error}</p>}
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={saving} style={{ width: '100%' }}>
+        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={saving} style={{ width: '100%' }}>
           {saving ? 'Saving…' : 'Add window'}
         </button>
       </form>
@@ -187,7 +187,7 @@ function BookingQueue() {
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '10px' }}>Bookings</h3>
       {error && <ErrorCard message={error} onRetry={refresh} />}
       {bookings === null ? (
-        <div className="toss-card skeleton" style={{ height: '120px' }} />
+        <div className="itunda-card skeleton" style={{ height: '120px' }} />
       ) : (
         (() => {
           const active = bookings.filter((b) => b.status === 'REQUESTED' || b.status === 'CONFIRMED');
@@ -197,17 +197,17 @@ function BookingQueue() {
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {active.map((booking) => (
-                <div key={booking.id} className="toss-card" style={{ padding: '16px 18px' }}>
+                <div key={booking.id} className="itunda-card" style={{ padding: '16px 18px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                     <BookingStatusBadge status={booking.status} />
                     <span style={{ fontWeight: 700, fontSize: '13px' }}>{booking.bookingDate} {booking.startTime.slice(0, 5)}</span>
                   </div>
                   <p style={{ fontSize: '13px' }}>{booking.serviceName}</p>
-                  {booking.notes && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Note: {booking.notes}</p>}
+                  {booking.notes && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Note: {booking.notes}</p>}
                   {booking.status === 'REQUESTED' ? (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                       <button
-                        className="toss-btn toss-btn-primary"
+                        className="itunda-btn itunda-btn-primary"
                         onClick={() => handleRespond(booking.id, true)}
                         disabled={busyId === booking.id}
                         style={{ flex: 1 }}
@@ -215,7 +215,7 @@ function BookingQueue() {
                         Confirm
                       </button>
                       <button
-                        className="toss-btn"
+                        className="itunda-btn"
                         onClick={() => handleRespond(booking.id, false)}
                         disabled={busyId === booking.id}
                       >
@@ -224,7 +224,7 @@ function BookingQueue() {
                     </div>
                   ) : booking.status === 'CONFIRMED' ? (
                     <button
-                      className="toss-btn toss-btn-primary"
+                      className="itunda-btn itunda-btn-primary"
                       onClick={() => handleComplete(booking.id)}
                       disabled={busyId === booking.id}
                       style={{ width: '100%', marginTop: '10px' }}
@@ -250,7 +250,7 @@ function BookingStatusBadge({ status }: { status: string }) {
     : status === 'COMPLETED' ? 'Completed'
     : status;
   return (
-    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--toss-grey-100)', color: 'var(--toss-grey-700)' }}>
+    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)' }}>
       {label}
     </span>
   );

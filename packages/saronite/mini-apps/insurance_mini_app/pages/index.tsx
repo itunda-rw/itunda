@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
   // Real WCAG AA contrast fix (item 240, docs/ACCESSIBILITY.md finding #2): #04C065
   // measures 2.40:1 against this card's white background, failing even the lenient
   // 3.0:1 AA-large/UI threshold. Darkened to #05804A (5.01:1), matching the same fix
-  // applied to packages/design-tokens/tokens.css --toss-green and the Android/iOS
+  // applied to packages/design-tokens/tokens.css --itunda-green and the Android/iOS
   // semantic `success` token.
   policyStatus: { fontSize: 12, color: '#05804A', fontWeight: '700', textTransform: 'capitalize' },
   claimStatusPending: { color: '#636E7C' },

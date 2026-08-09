@@ -2,31 +2,31 @@
  * Real CSS classes replacing KycDashboard.tsx's inline styles -- those hardcoded hex
  * values (#F2F4F6, #3182F6, #333D4B, #191F28, #8B95A1, #E5E8EB) had already
  * independently drifted from a single source of truth once (see
- * packages/design-tokens/tokens.css's own header for the --toss-green example);
+ * packages/design-tokens/tokens.css's own header for the --itunda-green example);
  * inline-styled hex in a third file was the same risk waiting to happen again, and
  * had zero dark-mode support (a hardcoded white modal sheet on a dark host shell).
  */
 
 .kyc-card {
   padding: 20px;
-  background-color: var(--toss-grey-100);
-  border-radius: var(--toss-radius-md);
+  background-color: var(--itunda-grey-100);
+  border-radius: var(--itunda-radius-md);
 }
 
 .kyc-card__title {
-  color: var(--toss-blue);
+  color: var(--itunda-blue);
   margin: 0 0 8px 0;
 }
 
 .kyc-card__subtitle {
-  color: var(--toss-grey-800);
+  color: var(--itunda-grey-800);
   font-size: 14px;
   margin-bottom: 16px;
 }
 
 .kyc-card__cta {
-  background-color: var(--toss-blue);
-  color: var(--toss-white);
+  background-color: var(--itunda-blue);
+  color: var(--itunda-white);
   padding: 14px 24px;
   border: none;
   border-radius: 12px;
@@ -45,11 +45,11 @@
 }
 
 .kyc-modal-sheet {
-  background-color: var(--toss-white);
+  background-color: var(--itunda-white);
   width: 100%;
   min-height: 400px;
-  border-top-left-radius: var(--toss-radius-lg);
-  border-top-right-radius: var(--toss-radius-lg);
+  border-top-left-radius: var(--itunda-radius-lg);
+  border-top-right-radius: var(--itunda-radius-lg);
   padding: 24px;
   box-sizing: border-box;
   animation: kyc-slide-up 0.3s ease-out forwards;
@@ -68,11 +68,11 @@
 
 .kyc-step__title {
   margin: 0 0 16px 0;
-  color: var(--toss-grey-900);
+  color: var(--itunda-grey-900);
 }
 
 .kyc-step__subtitle {
-  color: var(--toss-grey-500);
+  color: var(--itunda-grey-500);
   margin: 0 0 24px 0;
 }
 
@@ -80,12 +80,12 @@
   font-size: 24px;
   padding: 16px;
   border-radius: 12px;
-  border: 1px solid var(--toss-grey-200);
+  border: 1px solid var(--itunda-grey-200);
   width: 100%;
   box-sizing: border-box;
   margin-bottom: auto;
-  background-color: var(--toss-white);
-  color: var(--toss-grey-900);
+  background-color: var(--itunda-white);
+  color: var(--itunda-grey-900);
 }
 
 .kyc-step__input--otp {
@@ -96,7 +96,7 @@
 
 .kyc-step__next {
   padding: 18px;
-  border-radius: var(--toss-radius-md);
+  border-radius: var(--itunda-radius-md);
   border: none;
   font-weight: bold;
   font-size: 16px;
@@ -104,14 +104,14 @@
 }
 
 .kyc-step__next--enabled {
-  background-color: var(--toss-blue);
-  color: var(--toss-white);
+  background-color: var(--itunda-blue);
+  color: var(--itunda-white);
   cursor: pointer;
 }
 
 .kyc-step__next--disabled {
-  background-color: var(--toss-grey-200);
-  color: var(--toss-grey-500);
+  background-color: var(--itunda-grey-200);
+  color: var(--itunda-grey-500);
   cursor: default;
 }
 
@@ -127,7 +127,7 @@
 .kyc-success__badge {
   width: 64px;
   height: 64px;
-  background-color: var(--toss-blue);
+  background-color: var(--itunda-blue);
   border-radius: 32px;
   display: flex;
   align-items: center;
@@ -136,21 +136,21 @@
 }
 
 .kyc-success__check {
-  color: var(--toss-white);
+  color: var(--itunda-white);
   font-size: 32px;
 }
 
 .kyc-success__body {
-  color: var(--toss-grey-500);
+  color: var(--itunda-grey-500);
   margin: 0 0 40px 0;
   text-align: center;
 }
 
 .kyc-success__done {
-  background-color: var(--toss-blue);
-  color: var(--toss-white);
+  background-color: var(--itunda-blue);
+  color: var(--itunda-white);
   padding: 18px;
-  border-radius: var(--toss-radius-md);
+  border-radius: var(--itunda-radius-md);
   border: none;
   font-weight: bold;
   font-size: 16px;
@@ -162,7 +162,7 @@
 
 .kyc-error {
   font-size: 13px;
-  color: var(--toss-red);
+  color: var(--itunda-red);
   margin: 0 0 12px 0;
 }
 
@@ -183,8 +183,8 @@
 }
 
 .kyc-status-badge--pending {
-  background-color: var(--toss-grey-200);
-  color: var(--toss-grey-800);
+  background-color: var(--itunda-grey-200);
+  color: var(--itunda-grey-800);
 }
 
 .kyc-status-badge--verified {
@@ -199,7 +199,7 @@
 
 .kyc-status-detail {
   font-size: 13px;
-  color: var(--toss-grey-500);
+  color: var(--itunda-grey-500);
 }
 
 .kyc-doctype-row {
@@ -212,16 +212,16 @@
   flex: 1;
   padding: 10px;
   border-radius: 10px;
-  border: 1px solid var(--toss-grey-200);
-  background-color: var(--toss-white);
-  color: var(--toss-grey-800);
+  border: 1px solid var(--itunda-grey-200);
+  background-color: var(--itunda-white);
+  color: var(--itunda-grey-800);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .kyc-doctype-btn--active {
-  background-color: var(--toss-blue);
-  border-color: var(--toss-blue);
-  color: var(--toss-white);
+  background-color: var(--itunda-blue);
+  border-color: var(--itunda-blue);
+  color: var(--itunda-white);
 }

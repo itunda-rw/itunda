@@ -2,14 +2,14 @@
    android/core/designsystem and ios/Core/DesignSystem's real values, real dark mode
    included. Previously this file hand-copied its own :root block, independently from
    bank-mfe's identical copy -- see the package's own header for the drift that
-   caused (bank-mfe's --toss-green had silently diverged to Apple's system green). */
+   caused (bank-mfe's --itunda-green had silently diverged to Apple's system green). */
 @import "@itunda/design-tokens/tokens.css";
 
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-900);
+  background-color: var(--itunda-grey-100);
+  color: var(--itunda-grey-900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -19,7 +19,7 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100svh;
-  background-color: var(--toss-grey-100);
+  background-color: var(--itunda-grey-100);
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
   position: relative;
   overflow-x: hidden;
@@ -45,16 +45,16 @@ button:active {
 /* Shared card/button primitives BankDashboard already relies on (bank-mfe's own
    copy of these classes, since Module Federation doesn't share CSS across remotes
    automatically). */
-.toss-card {
-  background: var(--toss-white);
-  border-radius: var(--toss-radius-md);
+.itunda-card {
+  background: var(--itunda-white);
+  border-radius: var(--itunda-radius-md);
   padding: 24px;
-  box-shadow: var(--toss-shadow);
+  box-shadow: var(--itunda-shadow);
   margin-bottom: 16px;
-  transition: var(--toss-transition);
+  transition: var(--itunda-transition);
 }
 
-.toss-btn {
+.itunda-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,14 +65,14 @@ button:active {
   width: 100%;
 }
 
-.toss-btn-primary {
-  background-color: var(--toss-blue);
-  color: var(--toss-white);
+.itunda-btn-primary {
+  background-color: var(--itunda-blue);
+  color: var(--itunda-white);
 }
 
-.toss-btn-secondary {
-  background-color: var(--toss-grey-100);
-  color: var(--toss-grey-800);
+.itunda-btn-secondary {
+  background-color: var(--itunda-grey-100);
+  color: var(--itunda-grey-800);
 }
 
 @keyframes shimmer {
@@ -95,9 +95,9 @@ button:active {
 /* Host shell tab bar, switching between the federated bank_mfe and kyc_mfe remotes. */
 .host-tabbar {
   display: flex;
-  border-bottom: 1px solid var(--toss-grey-200);
+  border-bottom: 1px solid var(--itunda-grey-200);
   padding: 0 20px;
-  background: var(--toss-white);
+  background: var(--itunda-white);
 }
 
 .host-tab {
@@ -105,11 +105,11 @@ button:active {
   padding: 16px 0;
   font-size: 15px;
   font-weight: 600;
-  color: var(--toss-grey-500);
+  color: var(--itunda-grey-500);
   border-bottom: 2px solid transparent;
 }
 
 .host-tab-active {
-  color: var(--toss-blue);
-  border-bottom-color: var(--toss-blue);
+  color: var(--itunda-blue);
+  border-bottom-color: var(--itunda-blue);
 }

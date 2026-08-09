@@ -34,13 +34,13 @@ export default function AdsScreen() {
   useEffect(load, []);
 
   if (merchant === undefined) {
-    return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+    return <div className="itunda-card skeleton" style={{ height: '160px' }} />;
   }
 
   if (error) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
       </div>
     );
   }
@@ -50,11 +50,11 @@ export default function AdsScreen() {
   return (
     <div style={{ maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {ad && new Date(ad.activeUntil).getTime() > Date.now() && (
-        <div className="toss-card">
+        <div className="itunda-card">
           <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Your active ad</h2>
           <p style={{ fontSize: '14px', fontWeight: 700, marginTop: '8px' }}>{ad.title}</p>
-          {ad.description && <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{ad.description}</p>}
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', marginTop: '4px' }}>
+          {ad.description && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{ad.description}</p>}
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', marginTop: '4px' }}>
             {ad.radiusMeters}m radius · runs until {new Date(ad.activeUntil).toLocaleDateString()}
           </p>
         </div>
@@ -97,13 +97,13 @@ function LocationSetupCard({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <div className="toss-card">
+    <div className="itunda-card">
       <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Set your business location</h2>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
         A radius-targeted ad needs your business's real location to match nearby customers.
       </p>
-      {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '10px' }} role="alert">{error}</p>}
-      <button className="toss-btn toss-btn-primary" onClick={handleShare} disabled={busy}>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
+      <button className="itunda-btn itunda-btn-primary" onClick={handleShare} disabled={busy}>
         {busy ? 'Getting location…' : 'Share my location'}
       </button>
     </div>
@@ -137,36 +137,36 @@ function CreateOrExtendAdCard({ onCreated }: { onCreated: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Run a local ad</h2>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Title</span>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Title</span>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Fresh bread every morning"
           required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
         />
       </label>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Description (optional)</span>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Description (optional)</span>
         <input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Stop by for 10% off this week"
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
         />
       </label>
       <div style={{ display: 'flex', gap: '10px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Radius</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Radius</span>
           <select
             value={radiusMeters}
             onChange={(e) => setRadiusMeters(Number(e.target.value))}
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           >
             {AD_VALID_RADII_METERS.map((r) => (
               <option key={r} value={r}>{r >= 1000 ? `${(r / 1000).toFixed(1)}km` : `${r}m`}</option>
@@ -174,11 +174,11 @@ function CreateOrExtendAdCard({ onCreated }: { onCreated: () => void }) {
           </select>
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Duration</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Duration</span>
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           >
             {AD_DURATION_TIERS.map((t) => (
               <option key={t.days} value={t.days}>{t.days} days — {t.price.toLocaleString()} RWF</option>
@@ -186,13 +186,13 @@ function CreateOrExtendAdCard({ onCreated }: { onCreated: () => void }) {
           </select>
         </label>
       </div>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: 0 }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: 0 }}>
         {selectedTier.price.toLocaleString()} RWF will be charged from your wallet. If you already have an active ad, this extends it.
       </p>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
       )}
-      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+      <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
         {submitting ? 'Starting…' : `Pay ${selectedTier.price.toLocaleString()} RWF & run ad`}
       </button>
     </form>

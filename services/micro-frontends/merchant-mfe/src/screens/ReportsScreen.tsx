@@ -85,21 +85,21 @@ export default function ReportsScreen() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Collections report</h2>
-          <p style={{ color: 'var(--toss-grey-500)', fontSize: '13px', marginTop: '4px' }}>{rangeLabel} · settled collections</p>
+          <p style={{ color: 'var(--itunda-grey-500)', fontSize: '13px', marginTop: '4px' }}>{rangeLabel} · settled collections</p>
         </div>
-        <button className="toss-btn toss-btn-secondary" style={{ padding: '8px 14px' }} disabled={refreshing} onClick={reload}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 14px' }} disabled={refreshing} onClick={reload}>
           Refresh
         </button>
       </div>
 
       <form
-        className="toss-card"
+        className="itunda-card"
         onSubmit={(event) => { event.preventDefault(); applyRange(); }}
         style={{ display: 'flex', gap: '12px', alignItems: 'end', flexWrap: 'wrap' }}
       >
         <div style={{ display: 'flex', gap: '8px' }} aria-label="Report period shortcuts">
           {[7, 30].map((days) => (
-            <button key={days} type="button" className="toss-btn toss-btn-secondary" style={{ padding: '8px 12px' }} onClick={() => selectPreset(days)}>
+            <button key={days} type="button" className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 12px' }} onClick={() => selectPreset(days)}>
               Last {days} days
             </button>
           ))}
@@ -112,39 +112,39 @@ export default function ReportsScreen() {
           To
           <input type="date" value={draftTo} min={draftFrom} max={isoDate(new Date())} onChange={(event) => setDraftTo(event.target.value)} />
         </label>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ padding: '9px 14px' }}>Apply</button>
-        {validationError && <p role="alert" style={{ width: '100%', fontSize: '13px', color: 'var(--toss-red)' }}>{validationError}</p>}
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ padding: '9px 14px' }}>Apply</button>
+        {validationError && <p role="alert" style={{ width: '100%', fontSize: '13px', color: 'var(--itunda-red)' }}>{validationError}</p>}
       </form>
 
-      <div className="toss-card" style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+      <div className="itunda-card" style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
         <Metric label="Collections" value={totals.collections.toLocaleString()} />
         <Metric label="Gross" value={`${totals.gross.toLocaleString()} RWF`} />
         <Metric label="Fees" value={`${totals.fees.toLocaleString()} RWF`} />
         <Metric label="Net settled" value={`${totals.net.toLocaleString()} RWF`} highlighted />
       </div>
 
-      <div className="toss-card">
+      <div className="itunda-card">
         <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Collection channels</h3>
         {totals.channels.length === 0 ? (
-          <p style={{ color: 'var(--toss-grey-500)', fontSize: '14px' }}>No settled collections in this range.</p>
+          <p style={{ color: 'var(--itunda-grey-500)', fontSize: '14px' }}>No settled collections in this range.</p>
         ) : totals.channels.map(([channel, count]) => (
           <div key={channel} style={{ display: 'grid', gridTemplateColumns: '88px 1fr auto', gap: '10px', alignItems: 'center', marginTop: '10px', fontSize: '14px' }}>
             <span style={{ fontWeight: 600 }}>{channel.replace('_', ' ')}</span>
-            <div aria-hidden="true" style={{ height: '8px', borderRadius: '99px', background: 'var(--toss-grey-200)', overflow: 'hidden' }}>
-              <div style={{ width: `${(count / totals.collections) * 100}%`, height: '100%', background: 'var(--toss-blue)', borderRadius: 'inherit' }} />
+            <div aria-hidden="true" style={{ height: '8px', borderRadius: '99px', background: 'var(--itunda-grey-200)', overflow: 'hidden' }}>
+              <div style={{ width: `${(count / totals.collections) * 100}%`, height: '100%', background: 'var(--itunda-blue)', borderRadius: 'inherit' }} />
             </div>
-            <span style={{ color: 'var(--toss-grey-500)' }}>{count} ({Math.round((count / totals.collections) * 100)}%)</span>
+            <span style={{ color: 'var(--itunda-grey-500)' }}>{count} ({Math.round((count / totals.collections) * 100)}%)</span>
           </div>
         ))}
       </div>
 
-      <div className="toss-card" style={{ padding: 0, overflow: 'auto' }}>
+      <div className="itunda-card" style={{ padding: 0, overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '640px' }}>
-          <thead><tr style={{ backgroundColor: 'var(--toss-grey-100)' }}>
+          <thead><tr style={{ backgroundColor: 'var(--itunda-grey-100)' }}>
             {['Date', 'Collections', 'Gross', 'Fees', 'Net'].map((heading, index) => <th key={heading} style={{ textAlign: index === 0 ? 'left' : 'right', padding: '12px 16px' }}>{heading}</th>)}
           </tr></thead>
           <tbody>{items.map((day) => (
-            <tr key={day.date} style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
+            <tr key={day.date} style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
               <td style={{ padding: '12px 16px' }}>{day.date}</td><td style={{ textAlign: 'right', padding: '12px 16px' }}>{day.collectionCount}</td>
               <td style={{ textAlign: 'right', padding: '12px 16px' }}>{day.grossAmount.toLocaleString()}</td><td style={{ textAlign: 'right', padding: '12px 16px' }}>{day.fees.toLocaleString()}</td>
               <td style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 600 }}>{day.netAmount.toLocaleString()}</td>
@@ -157,5 +157,5 @@ export default function ReportsScreen() {
 }
 
 function Metric({ label, value, highlighted = false }: { label: string; value: string; highlighted?: boolean }) {
-  return <div><p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{label}</p><p style={{ fontSize: '20px', fontWeight: 700, color: highlighted ? 'var(--toss-blue)' : undefined }}>{value}</p></div>;
+  return <div><p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{label}</p><p style={{ fontSize: '20px', fontWeight: 700, color: highlighted ? 'var(--itunda-blue)' : undefined }}>{value}</p></div>;
 }

@@ -29,14 +29,14 @@ function PropertyOwnershipCard({ submission, onDecided }: { submission: Property
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div>
-        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>Listing {submission.listingId}</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>User {submission.userId}</p>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>Listing {submission.listingId}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>User {submission.userId}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
           Submitted {new Date(submission.submittedAt).toLocaleString()}
         </p>
-        <a href={submission.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>
+        <a href={submission.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>
           View ownership document
         </a>
       </div>
@@ -47,26 +47,26 @@ function PropertyOwnershipCard({ submission, onDecided }: { submission: Property
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (optional)"
           rows={2}
-          style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+          style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', resize: 'vertical' }}
         />
       )}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         {!rejecting ? (
           <>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setRejecting(true)}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setRejecting(true)}>
               Reject
             </button>
-            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={pending} onClick={approve}>
+            <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={pending} onClick={approve}>
               Approve
             </button>
           </>
         ) : (
           <>
-            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setRejecting(false)}>
+            <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={pending} onClick={() => setRejecting(false)}>
               Cancel
             </button>
-            <button className="toss-btn toss-btn-danger" style={{ flex: 1 }} disabled={pending} onClick={reject}>
+            <button className="itunda-btn itunda-btn-danger" style={{ flex: 1 }} disabled={pending} onClick={reject}>
               Confirm reject
             </button>
           </>

@@ -82,11 +82,11 @@ export default function EatsOrdersScreen() {
   if (error) {
     return <ErrorCard message={error} onRetry={load} />;
   }
-  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (orders === null) return <div className="itunda-card skeleton" style={{ height: '180px' }} />;
   if (orders.length === 0) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
           No Eats orders yet. Orders placed against your restaurant will show up here.
         </p>
       </div>
@@ -99,27 +99,27 @@ export default function EatsOrdersScreen() {
         const next = nextInChain(o.status);
         const readyForPickupHandoff = o.fulfillmentType === 'PICKUP' && o.status === 'READY_FOR_PICKUP';
         return (
-          <div key={o.id} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div key={o.id} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+                <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
                   {EATS_STATUS_LABEL[o.status]}{o.fulfillmentType === 'PICKUP' ? ' · Pickup' : ''}
                 </p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{o.deliveryAddress}</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{o.deliveryAddress}</p>
               </div>
-              <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{o.totalAmount.toLocaleString()} RWF</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{o.totalAmount.toLocaleString()} RWF</span>
             </div>
             {o.deliveryNotes && (
-              <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)', backgroundColor: 'var(--toss-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
                 Note: {o.deliveryNotes}
               </p>
             )}
             {readyForPickupHandoff ? (
-              <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleCompletePickup(o)}>
+              <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleCompletePickup(o)}>
                 {busyOrderId === o.id ? 'Updating…' : 'Mark picked up'}
               </button>
             ) : next && (
-              <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
+              <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
                 {busyOrderId === o.id ? 'Updating…' : `Mark ${EATS_STATUS_LABEL[next].toLowerCase()}`}
               </button>
             )}

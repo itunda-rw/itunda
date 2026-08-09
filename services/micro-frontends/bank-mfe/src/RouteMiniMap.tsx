@@ -60,7 +60,7 @@ export default function RouteMiniMap({
     });
 
     new maplibregl.Marker({ color: '#3182F6' }).setLngLat([fromLng, fromLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(fromLabel)).addTo(map);
-    new maplibregl.Marker({ color: 'var(--toss-red)' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
+    new maplibregl.Marker({ color: 'var(--itunda-red)' }).setLngLat([toLng, toLat]).setPopup(new maplibregl.Popup({ offset: 12 }).setText(toLabel)).addTo(map);
 
     getDirections(fromLat, fromLng, toLat, toLng)
       .then((result) => {
@@ -97,10 +97,10 @@ export default function RouteMiniMap({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div ref={containerRef} style={{ width: '100%', height: '160px', borderRadius: '12px', overflow: 'hidden' }} />
-      {loading && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Finding the real road route…</p>}
-      {error && <p style={{ fontSize: '12px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
+      {loading && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Finding the real road route…</p>}
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {route && (
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)' }}>
           🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
         </p>
       )}

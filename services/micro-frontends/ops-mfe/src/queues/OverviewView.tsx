@@ -17,9 +17,9 @@ function useSingle<T>(fetcher: () => Promise<T>) {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="toss-card" style={{ flex: 1, minWidth: '180px' }}>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '6px' }}>{label}</p>
-      <p style={{ fontSize: '22px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{value}</p>
+    <div className="itunda-card" style={{ flex: 1, minWidth: '180px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>{label}</p>
+      <p style={{ fontSize: '22px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{value}</p>
     </div>
   );
 }
@@ -28,7 +28,7 @@ function RailRow({ rail }: { rail: PaymentRail }) {
   const isHealthy = rail.status === 'HEALTHY';
   return (
     <div
-      className="toss-card"
+      className="itunda-card"
       style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
@@ -37,16 +37,16 @@ function RailRow({ rail }: { rail: PaymentRail }) {
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            backgroundColor: isHealthy ? 'var(--toss-green)' : 'var(--toss-red)',
+            backgroundColor: isHealthy ? 'var(--itunda-green)' : 'var(--itunda-red)',
             display: 'inline-block',
           }}
         />
-        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{rail.displayName}</p>
+        <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{rail.displayName}</p>
       </div>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
         {rail.totalAttempts} attempts · {(rail.successRate * 100).toFixed(1)}% success · {rail.avgLatencyMs}ms avg
       </p>
-      <span style={{ fontSize: '13px', fontWeight: 600, color: isHealthy ? 'var(--toss-green)' : 'var(--toss-red)' }}>
+      <span style={{ fontSize: '13px', fontWeight: 600, color: isHealthy ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
         {isHealthy ? 'Healthy' : 'Incident'}
       </span>
     </div>
@@ -79,7 +79,7 @@ export default function OverviewView() {
         </div>
       )}
 
-      <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '12px' }}>Payment rail health</h3>
+      <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '12px' }}>Payment rail health</h3>
       {rails.error && <QueueError message={rails.error} onRetry={rails.reload} />}
       {!rails.error && rails.items === null && <QueueSkeleton />}
       {!rails.error && rails.items !== null && rails.items.length === 0 && <QueueEmpty label="No rail activity recorded yet." />}

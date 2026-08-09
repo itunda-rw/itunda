@@ -17,29 +17,29 @@ function DisputeCard({ dispute, onResolved }: { dispute: MarketplaceEscrowDisput
   };
 
   return (
-    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>Listing {dispute.listingId}</p>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>Listing {dispute.listingId}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
             Buyer {dispute.buyerId} · Seller {dispute.sellerId}
           </p>
         </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
           {dispute.amount.toLocaleString()} RWF
         </span>
       </div>
       {dispute.disputeReason && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', background: 'var(--toss-grey-100)', padding: '10px', borderRadius: '8px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', background: 'var(--itunda-grey-100)', padding: '10px', borderRadius: '8px' }}>
           "{dispute.disputeReason}"
         </p>
       )}
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         Disputed {new Date(dispute.updatedAt).toLocaleString()} · Escrow fee {dispute.fee.toLocaleString()} RWF
       </p>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className="toss-btn toss-btn-secondary"
+          className="itunda-btn itunda-btn-secondary"
           style={{ flex: 1 }}
           disabled={pending !== null}
           onClick={() => resolve(false)}
@@ -47,7 +47,7 @@ function DisputeCard({ dispute, onResolved }: { dispute: MarketplaceEscrowDisput
           {pending === 'refund' ? '…' : 'Refund buyer'}
         </button>
         <button
-          className="toss-btn toss-btn-primary"
+          className="itunda-btn itunda-btn-primary"
           style={{ flex: 1 }}
           disabled={pending !== null}
           onClick={() => resolve(true)}

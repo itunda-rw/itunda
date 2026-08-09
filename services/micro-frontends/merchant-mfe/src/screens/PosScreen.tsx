@@ -44,7 +44,7 @@ export default function PosScreen() {
 
   return (
     <div style={{ maxWidth: '900px' }}>
-      <div className="toss-card" style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', maxWidth: '300px' }}>
+      <div className="itunda-card" style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', maxWidth: '300px' }}>
         {(['REGISTER', 'CATALOG'] as Mode[]).map((m) => (
           <button
             key={m}
@@ -55,8 +55,8 @@ export default function PosScreen() {
               borderRadius: '10px',
               fontSize: '14px',
               fontWeight: 700,
-              color: mode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: mode === m ? 'var(--toss-blue)' : 'transparent',
+              color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: mode === m ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {m === 'REGISTER' ? 'Register' : 'Catalog'}
@@ -122,11 +122,11 @@ function RegisterView() {
 
   if (loadError) {
     return (
-      <div className="toss-card">
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">
           {loadError}
         </p>
-        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>
           Retry
         </button>
       </div>
@@ -134,14 +134,14 @@ function RegisterView() {
   }
 
   if (products === null) {
-    return <div className="toss-card">Loading…</div>;
+    return <div className="itunda-card">Loading…</div>;
   }
 
   return (
     <div style={{ display: 'flex', gap: '20px' }}>
       <div style={{ flex: 2 }}>
         {products.length === 0 ? (
-          <div className="toss-card">
+          <div className="itunda-card">
             <EmptyState message="No products yet — add some in the Catalog tab first." />
           </div>
         ) : (
@@ -151,15 +151,15 @@ function RegisterView() {
                 key={product.id}
                 onClick={() => addToCart(product)}
                 disabled={product.stockQuantity === 0}
-                className="toss-card"
+                className="itunda-card"
                 style={{ padding: '16px', textAlign: 'left', cursor: 'pointer', opacity: product.stockQuantity === 0 ? 0.55 : 1 }}
               >
                 {product.imageUrl && <img src={product.imageUrl} alt="" style={{ width: '100%', aspectRatio: '1.5', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
-                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{product.name}</p>
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{product.name}</p>
+                <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
                   {product.price.toLocaleString()} RWF
                 </p>
-                {product.stockQuantity !== null && <p style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)', marginTop: '4px' }}>{product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} available`}</p>}
+                {product.stockQuantity !== null && <p style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)', marginTop: '4px' }}>{product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} available`}</p>}
               </button>
             ))}
           </div>
@@ -167,13 +167,13 @@ function RegisterView() {
       </div>
 
       <div style={{ flex: 1 }}>
-        <div className="toss-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Store size={18} color="var(--toss-blue)" />
+            <Store size={18} color="var(--itunda-blue)" />
             <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Cart</h2>
           </div>
           {cart.length === 0 ? (
-            <p style={{ padding: '0 20px 20px', fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            <p style={{ padding: '0 20px 20px', fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
               Tap a product to add it.
             </p>
           ) : (
@@ -181,11 +181,11 @@ function RegisterView() {
               {cart.map((line) => (
                 <div
                   key={line.product.id}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', borderTop: '1px solid var(--toss-grey-200)' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', borderTop: '1px solid var(--itunda-grey-200)' }}
                 >
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: 600 }}>{line.product.name}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
                       {(line.product.price * line.quantity).toLocaleString()} RWF
                     </p>
                   </div>
@@ -196,11 +196,11 @@ function RegisterView() {
                         CSS-pixel AA minimum. Real POS use (a merchant tapping fast
                         through a checkout), so this is a real usability risk, not
                         just a compliance checkbox. */}
-                    <button type="button" aria-label={`Decrease quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, -1)} style={{ color: 'var(--toss-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                    <button type="button" aria-label={`Decrease quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, -1)} style={{ color: 'var(--itunda-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <Minus size={14} />
                     </button>
                     <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '16px', textAlign: 'center' }}>{line.quantity}</span>
-                    <button type="button" aria-label={`Increase quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, 1)} style={{ color: 'var(--toss-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                    <button type="button" aria-label={`Increase quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, 1)} style={{ color: 'var(--itunda-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <Plus size={14} />
                     </button>
                   </div>
@@ -208,13 +208,13 @@ function RegisterView() {
               ))}
             </div>
           )}
-          <div style={{ padding: '16px 20px', borderTop: '1px solid var(--toss-grey-200)' }}>
+          <div style={{ padding: '16px 20px', borderTop: '1px solid var(--itunda-grey-200)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Total</span>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Total</span>
               <span style={{ fontSize: '18px', fontWeight: 700 }}>{total.toLocaleString()} RWF</span>
             </div>
             <button
-              className="toss-btn toss-btn-primary"
+              className="itunda-btn itunda-btn-primary"
               style={{ width: '100%' }}
               disabled={cart.length === 0}
               onClick={() => setCheckingOut(true)}
@@ -234,20 +234,20 @@ function CheckoutView({
   const [checkoutMode, setCheckoutMode] = useState<'QR' | 'CARD'>('QR');
 
   return (
-    <div className="toss-card" style={{ maxWidth: '400px' }}>
+    <div className="itunda-card" style={{ maxWidth: '400px' }}>
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Checkout</h2>
       <p style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{total.toLocaleString()} RWF</p>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>{description}</p>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>{description}</p>
 
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
         {(['QR', 'CARD'] as const).map((m) => (
           <button
             key={m}
             onClick={() => setCheckoutMode(m)}
             style={{
               flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: checkoutMode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-              backgroundColor: checkoutMode === m ? 'var(--toss-blue)' : 'transparent',
+              color: checkoutMode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: checkoutMode === m ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
             {m === 'QR' ? 'QR code' : 'Card'}
@@ -261,7 +261,7 @@ function CheckoutView({
         <CardCheckout amount={total} description={description} onDone={onDone} />
       )}
 
-      <button className="toss-btn toss-btn-secondary" style={{ width: '100%', marginTop: '12px' }} onClick={onCancel}>
+      <button className="itunda-btn itunda-btn-secondary" style={{ width: '100%', marginTop: '12px' }} onClick={onCancel}>
         Back to cart
       </button>
     </div>
@@ -294,7 +294,7 @@ function QrCheckout({ amount, description, onDone }: { amount: number; descripti
     return (
       <div style={{ textAlign: 'center' }}>
         <img src={qrDataUrl} alt="Payment QR code" width={220} height={220} style={{ borderRadius: '16px', marginBottom: '12px' }} />
-        <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} onClick={onDone}>
+        <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={onDone}>
           Done — new sale
         </button>
       </div>
@@ -304,11 +304,11 @@ function QrCheckout({ amount, description, onDone }: { amount: number; descripti
   return (
     <div style={{ textAlign: 'center' }}>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', marginBottom: '12px' }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">
           {error}
         </p>
       )}
-      <button className="toss-btn toss-btn-secondary" onClick={generate} disabled={submitting} style={{ gap: '6px' }}>
+      <button className="itunda-btn itunda-btn-secondary" onClick={generate} disabled={submitting} style={{ gap: '6px' }}>
         <RefreshCw size={14} /> {submitting ? 'Generating…' : 'Retry'}
       </button>
     </div>
@@ -348,9 +348,9 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
   if (result) {
     return (
       <div style={{ textAlign: 'center' }}>
-        <CreditCard size={32} color="var(--toss-blue)" style={{ marginBottom: '8px' }} />
+        <CreditCard size={32} color="var(--itunda-blue)" style={{ marginBottom: '8px' }} />
         <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px' }}>Card charged — •••• {result.cardLast4}</p>
-        <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} onClick={onDone}>
+        <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={onDone}>
           Done — new sale
         </button>
       </div>
@@ -362,34 +362,34 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
       <input
         type="text" inputMode="numeric" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)}
         placeholder="4242 4242 4242 4242" required
-        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
       <div style={{ display: 'flex', gap: '8px' }}>
         <input
           type="number" min="1" max="12" value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)}
           placeholder="MM" required
-          style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           type="number" min="2026" value={expiryYear} onChange={(e) => setExpiryYear(e.target.value)}
           placeholder="YYYY" required
-          style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
         <input
           type="text" inputMode="numeric" value={cvc} onChange={(e) => setCvc(e.target.value)}
           placeholder="CVC" required
-          style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
       </div>
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">
           {error}
         </p>
       )}
       {needsDeviceVerification ? (
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
       ) : (
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
           {submitting ? 'Charging…' : `Charge ${amount.toLocaleString()} RWF`}
         </button>
       )}
@@ -485,89 +485,89 @@ function CatalogView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div className="toss-card">
+      <div className="itunda-card">
         <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Add a product</h2>
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '160px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Name</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Name</span>
             <input
               type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Latte" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '120px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Price (RWF)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Price (RWF)</span>
             <input
               type="number" min="1" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="2500" required
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '150px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Stock (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Stock (optional)</span>
             <input
               type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="Unlimited"
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '120px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Original price (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Original price (optional)</span>
             <input
               type="number" min="1" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} placeholder="3000"
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '220px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Image URL (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Image URL (optional)</span>
             <input
               type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…/latte.jpg"
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexBasis: '100%' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Description (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Description (optional)</span>
             <textarea
               value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} rows={2} placeholder="What customers should know about this item"
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px', resize: 'vertical' }}
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px', resize: 'vertical' }}
             />
           </label>
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ height: '46px' }}>
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ height: '46px' }}>
             {submitting ? 'Adding…' : 'Add'}
           </button>
         </form>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: '12px 0 0' }} role="alert">
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '12px 0 0' }} role="alert">
             {error}
           </p>
         )}
       </div>
 
       {lowStock.length > 0 && (
-        <div className="toss-card" role="status" style={{ borderLeft: '4px solid #F59E0B', background: '#FFFBEB' }}>
-          <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+        <div className="itunda-card" role="status" style={{ borderLeft: '4px solid #F59E0B', background: '#FFFBEB' }}>
+          <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
             {lowStock.length} product{lowStock.length === 1 ? '' : 's'} need stock attention
           </p>
-          <p style={{ marginTop: '4px', fontSize: '13px', color: 'var(--toss-grey-700)' }}>
+          <p style={{ marginTop: '4px', fontSize: '13px', color: 'var(--itunda-grey-700)' }}>
             {lowStock.map((product) => `${product.name} (${product.stockQuantity === 0 ? 'out of stock' : `${product.stockQuantity} left`})`).join(', ')}
           </p>
         </div>
       )}
 
       {products === null ? (
-        <div className="toss-card">Loading…</div>
+        <div className="itunda-card">Loading…</div>
       ) : products.length === 0 ? (
-        <div className="toss-card">
+        <div className="itunda-card">
           {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): points
               to the real Catalog tab, which has the actual add-product form -- this
               REGISTER-mode checkout view has no add mechanism of its own. */}
           <EmptyState message='No products yet — switch to Catalog above to add your first one.' />
         </div>
       ) : (
-        <div className="toss-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
-              <tr style={{ backgroundColor: 'var(--toss-grey-100)', textAlign: 'left' }}>
+              <tr style={{ backgroundColor: 'var(--itunda-grey-100)', textAlign: 'left' }}>
                 {['Product', 'Price', ''].map((h) => (
-                  <th key={h} style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>{h}</th>
+                  <th key={h} style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -578,17 +578,17 @@ function CatalogView() {
                 const isTimeDealExpanded = expandedTimeDealProductId === product.id;
                 return (
                   <Fragment key={product.id}>
-                    <tr style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
+                    <tr style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
                       <td style={{ padding: '10px 20px', fontWeight: 600 }}>
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                           {product.imageUrl && <img src={product.imageUrl} alt="" width={36} height={36} style={{ borderRadius: '6px', objectFit: 'cover' }} />}
-                          <div><div>{product.name}</div>{product.description && <div style={{ fontWeight: 400, fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>{product.description}</div>}</div>
+                          <div><div>{product.name}</div>{product.description && <div style={{ fontWeight: 400, fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>{product.description}</div>}</div>
                         </div>
                       </td>
                       <td style={{ padding: '10px 20px' }}>
                         <div>{product.price.toLocaleString()} RWF</div>
-                        {product.originalPrice && product.discountPercent && <div style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '2px' }}><s>{product.originalPrice.toLocaleString()} RWF</s> · {product.discountPercent}% off</div>}
-                        <div style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--toss-red)' : 'var(--toss-grey-500)', marginTop: '2px' }}>
+                        {product.originalPrice && product.discountPercent && <div style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}><s>{product.originalPrice.toLocaleString()} RWF</s> · {product.discountPercent}% off</div>}
+                        <div style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)', marginTop: '2px' }}>
                           {product.stockQuantity === null ? 'Unlimited stock' : product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} in stock`}
                         </div>
                       </td>
@@ -596,31 +596,31 @@ function CatalogView() {
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '14px' }}>
                           <button
                             onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
-                            style={{ color: 'var(--toss-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             Options {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => setExpandedPricingProductId(isPricingExpanded ? null : product.id)}
-                            style={{ color: 'var(--toss-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             Pricing {isPricingExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => setExpandedTimeDealProductId(isTimeDealExpanded ? null : product.id)}
-                            style={{ color: 'var(--toss-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             Time deal {isTimeDealExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => adjustStock(product)}
-                            style={{ color: 'var(--toss-blue)', fontSize: '13px', fontWeight: 600 }}
+                            style={{ color: 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
                           >
                             Adjust stock
                           </button>
                           <button
                             onClick={() => removeProduct(product.id).then(load)}
-                            style={{ color: 'var(--toss-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
+                            style={{ color: 'var(--itunda-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
                           >
                             <Trash2 size={14} /> Remove
                           </button>
@@ -628,21 +628,21 @@ function CatalogView() {
                       </td>
                     </tr>
                     {isExpanded && (
-                      <tr style={{ borderTop: '1px solid var(--toss-grey-200)', backgroundColor: 'var(--toss-grey-100)' }}>
+                      <tr style={{ borderTop: '1px solid var(--itunda-grey-200)', backgroundColor: 'var(--itunda-grey-100)' }}>
                         <td colSpan={3} style={{ padding: '16px 20px' }}>
                           <ProductOptionsPanel productId={product.id} />
                         </td>
                       </tr>
                     )}
                     {isPricingExpanded && (
-                      <tr style={{ borderTop: '1px solid var(--toss-grey-200)', backgroundColor: 'var(--toss-grey-100)' }}>
+                      <tr style={{ borderTop: '1px solid var(--itunda-grey-200)', backgroundColor: 'var(--itunda-grey-100)' }}>
                         <td colSpan={3} style={{ padding: '16px 20px' }}>
                           <PriceTiersPanel productId={product.id} regularPrice={product.price} />
                         </td>
                       </tr>
                     )}
                     {isTimeDealExpanded && (
-                      <tr style={{ borderTop: '1px solid var(--toss-grey-200)', backgroundColor: 'var(--toss-grey-100)' }}>
+                      <tr style={{ borderTop: '1px solid var(--itunda-grey-200)', backgroundColor: 'var(--itunda-grey-100)' }}>
                         <td colSpan={3} style={{ padding: '16px 20px' }}>
                           <TimeDealPanel productId={product.id} regularPrice={product.price} />
                         </td>
@@ -729,26 +729,26 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
       <div>
         <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Existing option groups</p>
         {groups === null ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
         ) : groups.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
             No option groups yet -- a buyer will see a plain +/- stepper for this item until you add one (e.g. "Size" with Small/Regular/Large choices).
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {groups.map((group) => (
-              <div key={group.id} className="toss-card" style={{ padding: '12px 16px' }}>
+              <div key={group.id} className="itunda-card" style={{ padding: '12px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{group.name}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
                       {group.choices.map((c) => `${c.name}${c.priceDelta > 0 ? ` (+${c.priceDelta.toLocaleString()} RWF)` : ''}`).join(', ')}
                     </p>
                   </div>
                   <button
                     onClick={() => handleRemoveGroup(group.id)}
                     disabled={removingId === group.id}
-                    style={{ color: 'var(--toss-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                    style={{ color: 'var(--itunda-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
                   >
                     <Trash2 size={12} /> {removingId === group.id ? 'Removing…' : 'Remove'}
                   </button>
@@ -759,11 +759,11 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
         )}
       </div>
 
-      <form onSubmit={handleAddGroup} style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid var(--toss-grey-200)', paddingTop: '14px' }}>
+      <form onSubmit={handleAddGroup} style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid var(--itunda-grey-200)', paddingTop: '14px' }}>
         <p style={{ fontSize: '13px', fontWeight: 700 }}>Add an option group</p>
         <input
           type="text" value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Group name (e.g. Size)" required
-          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', maxWidth: '320px' }}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', maxWidth: '320px' }}
         />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {choices.map((choice, i) => (
@@ -771,27 +771,27 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
               <input
                 type="text" value={choice.name} onChange={(e) => updateChoice(i, 'name', e.target.value)}
                 placeholder={`Choice ${i + 1} (e.g. ${i === 0 ? 'Small' : 'Large'})`}
-                style={{ flex: 2, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ flex: 2, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               <input
                 type="number" value={choice.priceDelta} onChange={(e) => updateChoice(i, 'priceDelta', e.target.value)}
-                placeholder="+RWF" style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                placeholder="+RWF" style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               {choices.length > 2 && (
-                <button type="button" onClick={() => removeChoiceRow(i)} style={{ color: 'var(--toss-grey-500)', padding: '5px' }} aria-label="Remove choice">
+                <button type="button" onClick={() => removeChoiceRow(i)} style={{ color: 'var(--itunda-grey-500)', padding: '5px' }} aria-label="Remove choice">
                   <Minus size={14} />
                 </button>
               )}
             </div>
           ))}
-          <button type="button" onClick={addChoiceRow} style={{ alignSelf: 'flex-start', color: 'var(--toss-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <button type="button" onClick={addChoiceRow} style={{ alignSelf: 'flex-start', color: 'var(--itunda-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <Plus size={12} /> Add another choice
           </button>
         </div>
         {error && (
-          <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
         )}
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ alignSelf: 'flex-start' }}>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ alignSelf: 'flex-start' }}>
           {submitting ? 'Adding…' : 'Add option group'}
         </button>
       </form>
@@ -879,11 +879,11 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <p style={{ fontSize: '13px', fontWeight: 700 }}>Bulk/wholesale pricing</p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         A buyer ordering at least the minimum quantity automatically pays the lower unit price at checkout -- real pricing, not a label. Leave empty for no bulk discount.
       </p>
       {tiers === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {tiers.map((tier, i) => (
@@ -891,30 +891,30 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
               <input
                 type="number" min="1" step="1" value={tier.minQuantity} onChange={(e) => updateTier(i, 'minQuantity', e.target.value)}
                 placeholder="Min quantity (e.g. 10)"
-                style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               <input
                 type="number" min="1" value={tier.unitPrice} onChange={(e) => updateTier(i, 'unitPrice', e.target.value)}
                 placeholder="Unit price (RWF)"
-                style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
-              <button type="button" onClick={() => removeTierRow(i)} style={{ color: 'var(--toss-grey-500)', padding: '5px' }} aria-label="Remove tier">
+              <button type="button" onClick={() => removeTierRow(i)} style={{ color: 'var(--itunda-grey-500)', padding: '5px' }} aria-label="Remove tier">
                 <Minus size={14} />
               </button>
             </div>
           ))}
-          <button type="button" onClick={addTierRow} style={{ alignSelf: 'flex-start', color: 'var(--toss-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <button type="button" onClick={addTierRow} style={{ alignSelf: 'flex-start', color: 'var(--itunda-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <Plus size={12} /> Add a tier
           </button>
         </div>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
       )}
       {saved && !error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: 0 }}>Saved.</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>Saved.</p>
       )}
-      <button type="button" className="toss-btn toss-btn-primary" disabled={saving || tiers === null} onClick={handleSave} style={{ alignSelf: 'flex-start' }}>
+      <button type="button" className="itunda-btn itunda-btn-primary" disabled={saving || tiers === null} onClick={handleSave} style={{ alignSelf: 'flex-start' }}>
         {saving ? 'Saving…' : 'Save price tiers'}
       </button>
     </div>
@@ -1003,17 +1003,17 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <p style={{ fontSize: '13px', fontWeight: 700 }}>⏰ Time deal</p>
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
         A real time-boxed, quantity-capped discount -- checkout automatically charges the deal price while it's live and stock remains, then reverts to the regular price.
       </p>
       {activeDeals.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {activeDeals.map((d) => (
-            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--toss-grey-200)' }}>
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--itunda-grey-200)' }}>
               <span style={{ fontSize: '13px' }}>
                 {d.dealPrice.toLocaleString()} RWF · {d.remainingQuantity}/{d.totalQuantity} left · ends {new Date(d.endsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
-              <button type="button" onClick={() => handleEnd(d.id)} disabled={busyDealId === d.id} style={{ color: 'var(--toss-grey-500)', fontSize: '12px' }}>
+              <button type="button" onClick={() => handleEnd(d.id)} disabled={busyDealId === d.id} style={{ color: 'var(--itunda-grey-500)', fontSize: '12px' }}>
                 {busyDealId === d.id ? '…' : 'End now'}
               </button>
             </div>
@@ -1023,32 +1023,32 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <input
             type="number" min="1" value={dealPrice} onChange={(e) => setDealPrice(e.target.value)} placeholder="Deal price (RWF)"
-            style={{ flex: 1, minWidth: '140px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, minWidth: '140px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="number" min="1" step="1" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} placeholder="Quantity"
-            style={{ flex: 1, minWidth: '100px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, minWidth: '100px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)}
-            style={{ flex: 1, minWidth: '160px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, minWidth: '160px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
             type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)}
-            style={{ flex: 1, minWidth: '160px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            style={{ flex: 1, minWidth: '160px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
         </div>
       )}
       {error && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-red)', margin: 0 }} role="alert">{error}</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
       )}
       {activeDeals.length === 0 && (
-        <button type="button" className="toss-btn toss-btn-primary" disabled={submitting} onClick={handleCreate} style={{ alignSelf: 'flex-start' }}>
+        <button type="button" className="itunda-btn itunda-btn-primary" disabled={submitting} onClick={handleCreate} style={{ alignSelf: 'flex-start' }}>
           {submitting ? 'Creating…' : 'Start a time deal'}
         </button>
       )}
       {pastDeals.length > 0 && (
-        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
           {pastDeals.length} past deal{pastDeals.length === 1 ? '' : 's'} for this product.
         </p>
       )}

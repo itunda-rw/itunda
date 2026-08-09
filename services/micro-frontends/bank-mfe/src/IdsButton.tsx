@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 // local button composables that never touched the shared file). Web never got the
 // equivalent: found via a fresh Toss Simplicity research pass (docs/
 // DESIGN_REFERENCES.md Section 14) that every real button across bank-mfe/merchant-mfe/
-// ops-mfe/kyc-mfe is a raw <button className="toss-btn ..."> -- 415+ occurrences in
+// ops-mfe/kyc-mfe is a raw <button className="itunda-btn ..."> -- 415+ occurrences in
 // bank-mfe's own BankDashboard.tsx alone, not a real shared component, so real
 // accessibility/disabled-state/type="button" behavior gets hand-duplicated (or
 // silently skipped) at every one of those call sites independently.
@@ -26,12 +26,12 @@ const PADDING: Record<IdsButtonSize, string> = { large: '16px 20px', medium: '12
 
 // Mirrors Android's real Filled/Tinted color mapping exactly (Ids.colors.brand /
 // Ids.colors.pressed+textBrand), plus a real `danger` variant matching the existing
-// .toss-btn-danger class this component replaces -- not a new shape, the same one
+// .itunda-btn-danger class this component replaces -- not a new shape, the same one
 // itunda's own destructive actions (device remove, cancel plan) already use.
 const COLORS: Record<IdsButtonVariant, { background: string; color: string }> = {
-  filled: { background: 'var(--toss-blue)', color: 'var(--toss-white)' },
-  tinted: { background: 'var(--toss-blue-light)', color: 'var(--toss-blue)' },
-  danger: { background: 'var(--toss-red)', color: 'var(--toss-white)' },
+  filled: { background: 'var(--itunda-blue)', color: 'var(--itunda-white)' },
+  tinted: { background: 'var(--itunda-blue-light)', color: 'var(--itunda-blue)' },
+  danger: { background: 'var(--itunda-red)', color: 'var(--itunda-white)' },
 };
 
 export function IdsButton({
@@ -80,9 +80,9 @@ export function IdsButton({
         fontSize: FONT_SIZE[size],
         border: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        backgroundColor: disabled ? 'var(--toss-grey-200)' : background,
-        color: disabled ? 'var(--toss-grey-400)' : color,
-        transition: 'var(--toss-transition)',
+        backgroundColor: disabled ? 'var(--itunda-grey-200)' : background,
+        color: disabled ? 'var(--itunda-grey-400)' : color,
+        transition: 'var(--itunda-transition)',
         ...style,
       }}
     >

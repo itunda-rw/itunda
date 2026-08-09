@@ -33,18 +33,18 @@ function TableQrGenerator({ restaurantId }: { restaurantId: string }) {
   };
 
   return (
-    <div className="toss-card" style={{ padding: '20px' }}>
+    <div className="itunda-card" style={{ padding: '20px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Table QR codes</h3>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
         Print this and leave it on a table -- a customer scans it to order straight to that table.
       </p>
       <form onSubmit={handleGenerate} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
         <input
           value={tableNumber} onChange={(e) => setTableNumber(e.target.value.slice(0, 50))}
           placeholder="Table number"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={!tableNumber.trim()}>Generate</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={!tableNumber.trim()}>Generate</button>
       </form>
       {qrDataUrl && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -102,7 +102,7 @@ function DineInOrdersQueue() {
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '10px' }}>Table orders</h3>
       {error && <ErrorCard message={error} onRetry={refresh} />}
       {orders === null ? (
-        <div className="toss-card skeleton" style={{ height: '120px' }} />
+        <div className="itunda-card skeleton" style={{ height: '120px' }} />
       ) : (
         (() => {
           const active = orders.filter((o) => o.status === 'PLACED' || o.status === 'ACCEPTED' || o.status === 'PREPARING');
@@ -114,18 +114,18 @@ function DineInOrdersQueue() {
               {active.map((order) => {
                 const action = NEXT_ACTION[order.status];
                 return (
-                  <div key={order.id} className="toss-card" style={{ padding: '16px 18px' }}>
+                  <div key={order.id} className="itunda-card" style={{ padding: '16px 18px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--toss-grey-100)', color: 'var(--toss-grey-700)' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)' }}>
                         {STATUS_LABEL[order.status]}
                       </span>
                       <span style={{ fontWeight: 700, fontSize: '13px' }}>{order.totalAmount.toLocaleString()} RWF</span>
                     </div>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>Table {order.tableNumber}</p>
-                    {order.notes && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Note: {order.notes}</p>}
+                    {order.notes && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Note: {order.notes}</p>}
                     {action && (
                       <button
-                        className="toss-btn toss-btn-primary"
+                        className="itunda-btn itunda-btn-primary"
                         onClick={() => handleAdvance(order)}
                         disabled={busyId === order.id}
                         style={{ width: '100%', marginTop: '10px' }}

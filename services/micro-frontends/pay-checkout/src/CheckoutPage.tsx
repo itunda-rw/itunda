@@ -87,8 +87,8 @@ export default function CheckoutPage() {
 
   if (error) {
     return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-        <p style={{ fontSize: '15px', color: 'var(--toss-red)' }}>{error}</p>
+      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px' }}>
+        <p style={{ fontSize: '15px', color: 'var(--itunda-red)' }}>{error}</p>
       </div>
     );
   }
@@ -98,29 +98,29 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="toss-card" style={{ textAlign: 'center', padding: '28px', width: '100%' }}>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Pay with itunda</p>
+    <div className="itunda-card" style={{ textAlign: 'center', padding: '28px', width: '100%' }}>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>Pay with itunda</p>
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '2px' }}>{info.merchantName}</h2>
-      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>{info.description}</p>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>{info.description}</p>
       <p style={{ fontSize: '32px', fontWeight: 700, marginBottom: '20px' }}>{info.amount.toLocaleString()} RWF</p>
 
       {info.status === 'PENDING' && (
         <>
           {qrDataUrl && <img src={qrDataUrl} alt="Scan with the itunda app to pay" width={240} height={240} />}
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '16px' }}>
             Scan this with the itunda app to complete payment
           </p>
         </>
       )}
 
       {info.status === 'COMPLETED' && (
-        <p style={{ fontSize: '15px', color: 'var(--toss-green)', fontWeight: 700 }}>
+        <p style={{ fontSize: '15px', color: 'var(--itunda-green)', fontWeight: 700 }}>
           ✓ Payment complete{info.successUrl ? ' — returning to the merchant…' : ''}
         </p>
       )}
 
       {info.status === 'EXPIRED' && (
-        <p style={{ fontSize: '15px', color: 'var(--toss-red)', fontWeight: 700 }}>
+        <p style={{ fontSize: '15px', color: 'var(--itunda-red)', fontWeight: 700 }}>
           This payment link has expired{info.failUrl ? ' — returning to the merchant…' : ''}
         </p>
       )}

@@ -36,7 +36,7 @@ export default function App() {
         </button>
       </nav>
 
-      <Suspense fallback={<div className="toss-card skeleton" style={{ height: '300px', margin: '20px' }} />}>
+      <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '300px', margin: '20px' }} />}>
         {tab === 'bank' ? <BankDashboard /> : <div style={{ padding: '20px' }}><KycDashboard /></div>}
       </Suspense>
     </div>
