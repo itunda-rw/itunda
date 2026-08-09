@@ -4274,3 +4274,36 @@ actually confusing users. Left as-is; worth a second look if it comes up again.
 `:app:compileDebugKotlin` compiled clean, then the full `:app:assembleDebug` build succeeded.
 Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
 live app process. Not yet tapped through by the user on the real screen.
+
+## 39. Real friction fix, all 3 clients -- pre-fill the known phone number for a MoMo link
+
+**Added 2026-08-10**, direct user follow-up: "we need to still work on simplicity since like toss
+we want convenient for our users." Rather than chase more still-gated Simplicity24/25 session
+content (this session's own WebSearch budget was already exhausted), picked up a real, already-
+sourced, already-documented gap this same research thread named and deliberately left unfixed in
+Section 17: "the account-link form doesn't pre-fill the user's own known phone number for MoMo
+providers... real but smaller UX gaps, not bugs -- left as documented, not fixed."
+
+### The real friction, and the real fix
+For a MoMo provider (MTN Mobile Money, Airtel Money), the "account number" field IS the caller's
+own real phone number -- the exact same number they're already logged in with. Making them
+retype a number itunda already knows is unnecessary friction with a real, already-known answer --
+precisely the shape Simplicity21 session 2-1's own title ("신은 디테일에 있다" / God is in the
+details) names. Fixed on all 3 clients: selecting a MoMo provider now pre-fills the account-number
+field with the real logged-in user's own phone number (fetched from the real, already-existing
+`/api/v1/auth/profile` endpoint -- `getStoredUser()` on web, `NetworkClient.authApi.getProfile()`
+on Android, `NetworkClient.shared.getProfile()` on iOS), while staying fully editable in case
+someone wants to link a different MoMo number. Deliberately left blank for a real bank provider,
+where the account number is genuinely a different, unknown value -- pre-filling there would be
+actively wrong, not just unhelpful.
+
+### Verification status
+bank-mfe: `yarn workspace bank-mfe run build` (`tsc -b && vite build`) succeeded clean. Android:
+`:app:compileDebugKotlin` succeeded clean (first attempt used the wrong client --
+`NetworkClient.apiService.getProfile()` doesn't exist, `getProfile` lives on the separate
+`NetworkClient.authApi` -- caught immediately by the compiler, not shipped). iOS: no available iOS
+Simulator runtime in this environment right now (`xcrun simctl list devices available` returned
+none), so `xcodebuild` couldn't fully build/run this pass -- but the touched file itself compiled
+with zero errors attributed to it; the only build failures were the already-documented,
+pre-existing CocoaPods gaps (MapLibre/BrickModule/React, named in Section 18) unrelated to this
+change. None of the three platforms has been tapped through by a real human yet.

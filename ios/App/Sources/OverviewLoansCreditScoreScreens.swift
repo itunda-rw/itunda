@@ -10,6 +10,12 @@ import CoreNetwork
 // docs/TOSS_PARITY_MATRIX.md's own per-row notes for the full account of each gap.
 
 private let linkProviders = ["MTN Mobile Money", "Airtel Money", "Bank of Kigali", "Equity Bank Rwanda"]
+// Real friction point found live via Toss Simplicity21 research (2026-08-08, session 2-1
+// "신은 디테일에 있다" -- eliminating friction from a real bank-linking flow): for a MoMo
+// provider, the "account number" IS the caller's own real phone number -- the same number
+// they're already logged in with. Making them retype it is unnecessary friction with a
+// real, already-known answer, the exact shape that session's own title names.
+private let momoLinkProviders: Set<String> = ["MTN Mobile Money", "Airtel Money"]
 
 // Real second iOS screen localized (2026-08-08), following web/Android's own identical
 // "phase content outward from login into wallet overview" step (docs/DESIGN_REFERENCES.md
@@ -73,6 +79,7 @@ struct OverviewScreenView: View {
     @State private var showLinkForm = false
     @State private var provider = ""
     @State private var accountNumber = ""
+    @State private var myPhoneNumber = ""
 
     private func t(_ key: String) -> String {
         overviewStrings[locale]?[key] ?? overviewStrings[.en]?[key] ?? key
@@ -142,7 +149,17 @@ struct OverviewScreenView: View {
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         ForEach(linkProviders, id: \.self) { p in
-                                            Button(p) { provider = p }.font(.caption).bold()
+                                            Button(p) {
+                                                provider = p
+                                                // Real friction fix (2026-08-10) -- pre-fill with the
+                                                // caller's own already-known phone number for a MoMo
+                                                // provider, still editable in case they want to link a
+                                                // different number. Left blank for a real bank, where
+                                                // the account number is genuinely a different value.
+                                                if momoLinkProviders.contains(p) && accountNumber.isEmpty {
+                                                    accountNumber = myPhoneNumber
+                                                }
+                                            }.font(.caption).bold()
                                         }
                                     }
                                     IdsTextField(t("providerNamePlaceholder"), text: $provider)
@@ -164,6 +181,10 @@ struct OverviewScreenView: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await refresh() }
+        .task {
+            // Non-critical -- the pre-fill just won't happen; typing it manually still works.
+            myPhoneNumber = (try? await NetworkClient.shared.getProfile().user.phoneNumber) ?? ""
+        }
     }
 
     private func refresh() async {

@@ -46,6 +46,12 @@ import rw.itunda.core.network.OverviewResponse
 // asset) and LinkedAccount.kt's for why linked balances are honestly labeled demo --
 // itunda has no live Open Banking access to fetch a real one.
 private val COMMON_LINK_PROVIDERS = listOf("MTN Mobile Money", "Airtel Money", "Bank of Kigali", "Equity Bank Rwanda")
+// Real friction point found live via Toss Simplicity21 research (2026-08-08, session 2-1
+// "신은 디테일에 있다" -- eliminating friction from a real bank-linking flow): for a MoMo
+// provider, the "account number" IS the caller's own real phone number -- the same number
+// they're already logged in with. Making them retype it is unnecessary friction with a
+// real, already-known answer, the exact shape that session's own title names.
+private val MOMO_LINK_PROVIDERS = setOf("MTN Mobile Money", "Airtel Money")
 
 @Composable
 fun OverviewScreen(onBack: () -> Unit) {
@@ -58,6 +64,7 @@ fun OverviewScreen(onBack: () -> Unit) {
     var showLinkForm by remember { mutableStateOf(false) }
     var providerText by remember { mutableStateOf("") }
     var accountNumberText by remember { mutableStateOf("") }
+    var myPhoneNumber by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     suspend fun refresh() {
@@ -70,6 +77,11 @@ fun OverviewScreen(onBack: () -> Unit) {
         }
     }
     LaunchedEffect(Unit) { refresh() }
+    LaunchedEffect(Unit) {
+        try { myPhoneNumber = NetworkClient.authApi.getProfile().user.phoneNumber } catch (_: Exception) {
+            // Non-critical -- the pre-fill just won't happen; typing it manually still works.
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(20.dp)) {
@@ -137,7 +149,17 @@ fun OverviewScreen(onBack: () -> Unit) {
                                         text = name,
                                         variant = IdsButtonVariant.Tinted,
                                         size = IdsButtonSize.Small,
-                                        onClick = { providerText = name },
+                                        onClick = {
+                                            providerText = name
+                                            // Real friction fix (2026-08-10) -- pre-fill with the
+                                            // caller's own already-known phone number for a MoMo
+                                            // provider, still editable in case they want to link a
+                                            // different number. Left blank for a real bank, where
+                                            // the account number is genuinely a different value.
+                                            if (name in MOMO_LINK_PROVIDERS && accountNumberText.isBlank()) {
+                                                accountNumberText = myPhoneNumber
+                                            }
+                                        },
                                     )
                                 }
                             }

@@ -1610,6 +1610,12 @@ function VerifyCertificateCard() {
 // why linked balances are honestly labeled demo -- itunda has no live Open Banking
 // access to fetch a real one.
 const LINK_PROVIDERS = ['MTN Mobile Money', 'Airtel Money', 'Bank of Kigali', 'Equity Bank Rwanda'];
+// Real friction point found live via Toss Simplicity21 research (2026-08-08, session 2-1
+// "신은 디테일에 있다" -- eliminating friction from a real bank-linking flow): for a MoMo
+// provider, the "account number" IS the caller's own real phone number -- the same number
+// they're already logged in with. Making them retype it is unnecessary friction with a
+// real, already-known answer, the exact shape that session's own title names.
+const MOMO_PROVIDERS = ['MTN Mobile Money', 'Airtel Money'];
 
 function OverviewView() {
   const { t } = useI18n();
@@ -1620,6 +1626,7 @@ function OverviewView() {
   const [showLinkForm, setShowLinkForm] = useState(false);
   const [provider, setProvider] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
+  const myPhoneNumber = getStoredUser()?.phoneNumber ?? '';
 
   const refresh = () => {
     setError(null);
@@ -1712,7 +1719,17 @@ function OverviewView() {
           <form onSubmit={handleLink} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {LINK_PROVIDERS.map((p) => (
-                <button type="button" key={p} className="toss-btn toss-btn-secondary" onClick={() => setProvider(p)}>{p}</button>
+                <button
+                  type="button" key={p} className="toss-btn toss-btn-secondary"
+                  onClick={() => {
+                    setProvider(p);
+                    // Real friction fix (2026-08-10) -- pre-fill with the caller's own
+                    // already-known phone number for a MoMo provider, still editable in
+                    // case they want to link a different number. Left blank for a real
+                    // bank, where the account number is genuinely a different, unknown value.
+                    if (MOMO_PROVIDERS.includes(p) && !accountNumber) setAccountNumber(myPhoneNumber);
+                  }}
+                >{p}</button>
               ))}
             </div>
             <input
