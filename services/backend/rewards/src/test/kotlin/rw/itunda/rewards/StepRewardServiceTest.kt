@@ -32,7 +32,14 @@ class StepRewardServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService)
+        // Real flaky test found live (2026-08-10) -- this Given block previously left
+        // `random` at its default SecureRandom(), so "verify(exactly = 3)" below would
+        // spuriously fail with 4 calls whenever the real lottery draw actually won.
+        // Stubbed to guarantee a loss, same "above every tier's real odds" value the
+        // dedicated loss-path Given block below already established.
+        val random = mockk<java.util.Random>()
+        every { random.nextDouble() } returns 0.99
+        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         every { dailyStepRewardRepository.findByUserIdAndRewardDate("user_1", "2026-07-27") } returns null
@@ -98,7 +105,12 @@ class StepRewardServiceTest : BehaviorSpec({
         val dailyStepRewardRepository = mockk<DailyStepRewardRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService)
+        // Same real flaky-test fix as the first Given block above -- the third When
+        // below crosses TIER_5000 and asserts an exact call count, which the real
+        // unseeded SecureRandom default could spuriously break on a lottery win.
+        val random = mockk<java.util.Random>()
+        every { random.nextDouble() } returns 0.99
+        val service = StepRewardService(dailyStepRewardRepository, walletRepository, ledgerService, random)
         val today = LocalDate.of(2026, 7, 27)
 
         val existing = DailyStepReward(id = "stepreward_1", userId = "user_1", rewardDate = "2026-07-27", steps = 1200, claimedTier1000 = true)
