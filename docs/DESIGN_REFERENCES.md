@@ -4307,3 +4307,43 @@ none), so `xcodebuild` couldn't fully build/run this pass -- but the touched fil
 with zero errors attributed to it; the only build failures were the already-documented,
 pre-existing CocoaPods gaps (MapLibre/BrickModule/React, named in Section 18) unrelated to this
 change. None of the three platforms has been tapped through by a real human yet.
+
+## 40. Real bug: device-verify password field missing KeyboardType.Password
+
+**Added 2026-08-10**, direct live user report while trying to test sending money: "device
+verification is blocking me asking to put password but when i try it it's incorrect." A real,
+severe, live-blocking bug, found and fixed same-session.
+
+### Root cause
+`DeviceStepUpDialog`'s password `BasicTextField` (`features/payments/impl/.../TransferFlow.kt`)
+had no `KeyboardOptions` at all -- it silently fell back to `KeyboardType.Text`. Unlike
+`KeyboardType.Password`, plain `Text` does NOT tell the platform IME to suppress autocorrect/
+auto-capitalize-first-letter, so the device's own keyboard (confirmed live: Samsung Keyboard on
+this exact SM-A165N test device) is free to silently mutate what's typed before it ever reaches
+the app. Because the field is masked with `PasswordVisualTransformation()`, the user has no visual
+way to notice a mutated character -- a genuinely correct password could reach the server altered
+and real-401 as "Incorrect password," exactly the reported symptom. `LoginScreen.kt`'s own
+password field already gets this right (`IdsTextField(..., isPassword = true, keyboardType =
+KeyboardType.Password)`) -- `DeviceStepUpDialog` just never matched that established convention.
+This dialog is the single shared component behind every money-moving step-up across the whole
+app (transfer, Gift send/claim, Commerce/Eats checkout, Stocks buy/sell, per its own doc comment),
+so this one bug blocked the step-up gate in front of literally every real money-moving flow.
+
+### Fixed
+Added `keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)` to the field.
+
+### Same-class bug also found, not yet fixed
+`android/merchantapp/.../DeviceStepUpDialog.kt` calls `IdsTextField(..., visualTransformation =
+PasswordVisualTransformation())` without also passing `isPassword = true` or `keyboardType =
+KeyboardType.Password` -- `IdsTextField`'s own `keyboardType` parameter defaults to
+`KeyboardType.Text` (confirmed by reading its signature), so the merchant app's own device-verify
+dialog has the identical real bug, just via a different code path (a manually-passed visual
+transformation instead of the component's own built-in `isPassword` mode, which WOULD have set
+this correctly). Not fixed this pass -- the customer app was the active, live-blocking report;
+this is named as a real, concrete, ready-to-fix follow-up, not silently skipped.
+
+### Verification status
+`:features:payments:impl:compileDebugKotlin` and the full `:app:assembleDebug` both built clean.
+Installed on the physical device over the live wireless ADB connection; the app launched with an
+empty `logcat -b crash` buffer and a live process -- the fix is live on the device the bug was
+reported from. The user's own next real password attempt is the actual confirmation this needed.

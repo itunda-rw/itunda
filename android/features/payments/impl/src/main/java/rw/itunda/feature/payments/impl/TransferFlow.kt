@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -428,6 +430,19 @@ fun DeviceStepUpDialog(
                         textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
                         visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        // Real bug found live (2026-08-10), directly from the user hitting
+                        // it while trying to send money: this field had no KeyboardOptions
+                        // at all, so it fell back to a plain KeyboardType.Text field. The
+                        // device's own keyboard (autocorrect/auto-capitalize-first-letter,
+                        // real Samsung Keyboard behavior on this exact test device) is then
+                        // free to silently mutate what's typed -- invisible here since the
+                        // field is masked with dots, so a genuinely-correct password could
+                        // reach the server altered and real-401 as "Incorrect password."
+                        // KeyboardType.Password is what actually tells the platform IME to
+                        // suppress autocorrect/suggestions for this field, matching the
+                        // real, already-correct convention LoginScreen.kt's own password
+                        // field (via IdsTextField's isPassword mode) already established.
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 12.dp, horizontal = 12.dp)
