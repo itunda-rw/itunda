@@ -6,6 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import jakarta.persistence.EntityManager
+import jakarta.persistence.LockModeType
 import rw.itunda.core.domain.LedgerAccount
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -39,7 +41,11 @@ class LedgerServiceTest : BehaviorSpec({
         // publishing (see EventPublisherTest / LedgerService's own wiring comment) --
         // a relaxed mock lets publishAfterCommit calls no-op without stubbing each one.
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
-        val service = LedgerService(walletRepository, ledgerAccountRepository, ledgerEntryRepository, eventPublisher)
+        // relaxed: refresh() is a real call this class now makes (see LedgerService's
+        // own doc comment on the 2026-08-09 lost-update fix) but has nothing meaningful
+        // to verify against a mocked, already-fully-stubbed entity in these tests.
+        val entityManager = mockk<EntityManager>(relaxed = true)
+        val service = LedgerService(walletRepository, ledgerAccountRepository, ledgerEntryRepository, eventPublisher, entityManager)
 
         val sourceWallet = wallet("wallet_1", "1000")
         val feeAccount = LedgerAccount(id = "fee_revenue", name = "Fee Revenue")
@@ -66,6 +72,23 @@ class LedgerServiceTest : BehaviorSpec({
             Then("both entries are persisted under the same transaction id") {
                 result.entries.map { it.transactionId }.toSet().size shouldBe 1
                 verify(exactly = 1) { ledgerEntryRepository.saveAll(any<List<rw.itunda.core.domain.LedgerEntry>>()) }
+            }
+            // Real bug found live (2026-08-09): a caller elsewhere in the same
+            // transaction (e.g. P2pService.sendDirect's own unlocked pre-check read)
+            // can leave a wallet/account already managed in Hibernate's persistence
+            // context before this method's own locked fetch runs -- the real SQL lock
+            // is still acquired (confirmed live via information_schema.innodb_trx), but
+            // without a LOCKING refresh, the already-managed instance keeps its stale
+            // field values, so concurrent transfers can silently lose money (three real
+            // concurrent transfers reproduced this twice: once with no refresh at all,
+            // and again with a plain unlocked refresh() -- which still returns stale
+            // data under MySQL's REPEATABLE READ, since a non-locking read stays bound
+            // to the transaction's original consistent-read snapshot no matter when it
+            // runs. Only PESSIMISTIC_WRITE on the refresh call itself actually closes
+            // the gap). This asserts the fix's real mechanism, not just its symptom.
+            Then("every locked wallet and clearing account is refreshed with the same lock mode, not a plain unlocked read") {
+                verify(exactly = 1) { entityManager.refresh(sourceWallet, LockModeType.PESSIMISTIC_WRITE) }
+                verify(exactly = 1) { entityManager.refresh(feeAccount, LockModeType.PESSIMISTIC_WRITE) }
             }
         }
 
@@ -109,7 +132,11 @@ class LedgerServiceTest : BehaviorSpec({
         val ledgerAccountRepository = mockk<LedgerAccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
-        val service = LedgerService(walletRepository, ledgerAccountRepository, ledgerEntryRepository, eventPublisher)
+        // relaxed: refresh() is a real call this class now makes (see LedgerService's
+        // own doc comment on the 2026-08-09 lost-update fix) but has nothing meaningful
+        // to verify against a mocked, already-fully-stubbed entity in these tests.
+        val entityManager = mockk<EntityManager>(relaxed = true)
+        val service = LedgerService(walletRepository, ledgerAccountRepository, ledgerEntryRepository, eventPublisher, entityManager)
 
         val frozenWallet = wallet("wallet_frozen", "1000").apply { isActive = false }
         val feeAccount = LedgerAccount(id = "fee_revenue", name = "Fee Revenue")

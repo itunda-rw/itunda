@@ -1,5 +1,7 @@
 package rw.itunda.core.ledger
 
+import jakarta.persistence.EntityManager
+import jakarta.persistence.LockModeType
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
@@ -41,6 +43,7 @@ class LedgerService(
     private val ledgerAccountRepository: LedgerAccountRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val eventPublisher: EventPublisher,
+    private val entityManager: EntityManager,
 ) {
     @Transactional
     fun postLedgerTransaction(currency: String, rawLegs: List<LedgerLeg>): LedgerPostResult {
@@ -60,11 +63,41 @@ class LedgerService(
         val walletIds = legs.filter { it.accountType == LedgerAccountType.WALLET }.map { it.accountId }.distinct().sorted()
         val clearingIds = legs.filter { it.accountType != LedgerAccountType.WALLET }.map { it.accountId }.distinct().sorted()
 
+        // Real lost-update bug found live (2026-08-09): a caller that reads a wallet
+        // WITHOUT a lock earlier in the SAME transaction (e.g. P2pService.sendDirect's
+        // own pre-check `walletRepository.findByUserIdAndType(...)` before ever calling
+        // here) leaves that entity managed in the shared persistence context. Hibernate
+        // genuinely acquires the real row lock below (confirmed live via
+        // information_schema.innodb_trx showing real LOCK WAIT states between
+        // concurrent transfers) -- but since the entity is ALREADY loaded by identity,
+        // it returns the SAME cached instance with its OLD field values instead of
+        // refreshing them from the just-locked row, a well-documented JPA/Hibernate
+        // pitfall (a lock mode escalates the lock, it does not by itself refresh
+        // already-managed state).
+        //
+        // A first attempt fixed this with a bare `entityManager.refresh(wallet)` --
+        // still wrong, confirmed live via SQL trace: a plain (unlocked) refresh() issues
+        // a plain SELECT with no `for update`, and under MySQL's default REPEATABLE READ
+        // isolation, a PLAIN read anywhere in an already-open transaction is still bound
+        // to that transaction's original consistent-read snapshot (taken at its very
+        // first read -- here, the same early unlocked pre-check), no matter how late in
+        // the transaction it runs. Only a LOCKING read bypasses the snapshot and reads
+        // the true latest committed row -- which is exactly why the `for update` select
+        // just above this already works correctly on its own; refresh() must carry the
+        // same lock mode to get the same guarantee. Reproduced and confirmed the actual
+        // fix live both times: concurrent transfers all acquired the row lock in
+        // sequence (real LOCK WAIT entries), but without a LOCKING refresh every one of
+        // them still computed its new balance from the same stale pre-transaction
+        // snapshot value, so only one of several concurrent debits actually persisted --
+        // a real, silent lost transfer with no error surfaced anywhere, on both the
+        // first (wrong) fix attempt and the original bug.
         val lockedWallets = walletIds.associateWith {
             walletRepository.findByIdForUpdate(it).orElseThrow { IllegalStateException("Unknown wallet account $it") }
+                .also { wallet -> entityManager.refresh(wallet, LockModeType.PESSIMISTIC_WRITE) }
         }
         val lockedAccounts = clearingIds.associateWith {
             ledgerAccountRepository.findByIdForUpdate(it).orElseThrow { IllegalStateException("Unknown ledger account $it") }
+                .also { account -> entityManager.refresh(account, LockModeType.PESSIMISTIC_WRITE) }
         }
 
         for (leg in legs) {
