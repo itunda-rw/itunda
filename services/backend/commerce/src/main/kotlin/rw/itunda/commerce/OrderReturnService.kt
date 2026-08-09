@@ -125,8 +125,18 @@ class OrderReturnService(
         orderReturnRequestRepository.findByBuyerIdOrderByCreatedAtDesc(buyerId, pageable)
 
     fun getMerchantReturnQueue(ownerUserId: String, pageable: Pageable): Page<OrderReturnRequest> {
+        // Real fix (2026-08-09), found live on a physical device: this used to throw
+        // ReturnOrderNotFoundException, which OrderController maps to ApiError("ORDER_NOT_FOUND",
+        // ...) -- the wrong code for "not a merchant." Every client (Android/iOS/web) checks
+        // specifically for "MERCHANT_NOT_FOUND" to silently hide this section for buyer-only
+        // accounts (see ShopScreen.kt's MerchantReturnQueueView doc comment); the mismatched code
+        // meant every ordinary customer saw a visible "That couldn't be found." error card
+        // instead of the section silently not rendering, exactly the alarming-the-common-case
+        // outcome that design was meant to avoid. MerchantNotFoundException (used by this same
+        // service's sibling getMerchantOrders-equivalent checks in OrderService.kt) is the
+        // correct type -- already mapped to the right code.
         val merchant = merchantRepository.findByOwnerUserId(ownerUserId)
-            ?: throw ReturnOrderNotFoundException("This account is not registered as a merchant")
+            ?: throw MerchantNotFoundException("This account is not registered as a merchant")
         return orderReturnRequestRepository.findByMerchantIdAndStatusOrderByCreatedAtAsc(merchant.id, OrderReturnStatus.REQUESTED, pageable)
     }
 
@@ -139,8 +149,9 @@ class OrderReturnService(
     fun decide(ownerUserId: String, returnRequestId: String, approve: Boolean): OrderReturnRequest {
         val request = orderReturnRequestRepository.findById(returnRequestId)
             .orElseThrow { ReturnRequestNotFoundException("Return request not found") }
+        // Same wrong-exception-type bug as getMerchantReturnQueue above, same fix.
         val merchant = merchantRepository.findByOwnerUserId(ownerUserId)
-            ?: throw ReturnOrderNotFoundException("This account is not registered as a merchant")
+            ?: throw MerchantNotFoundException("This account is not registered as a merchant")
         if (request.merchantId != merchant.id) {
             // Real 404 (not 403) -- found live in a 2026-08-02 audit pass: this used to
             // throw a distinct ReturnRequestNotSellerException mapped to 403 FORBIDDEN,

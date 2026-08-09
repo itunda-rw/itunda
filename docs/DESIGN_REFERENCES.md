@@ -3398,7 +3398,59 @@ against specific known toss.tech URLs remained available and was used instead.
   (e.g. a temporary in-app toast/on-screen error detail instead of `Log.d`) to actually see the
   real exception type on a non-debuggable release build, since this device's OEM appears to
   suppress app-level logcat output for release-signed apps.
-- Jank measurement should be re-run against HomeTab/Hood/Shop (the originally-intended scroll-
-  heavy screens) once a path exists to reach them without defeating the (correctly working)
-  biometric app-lock gate — e.g. a dedicated test account with biometrics never enrolled on the
-  test device, or the product decision above resolved toward a real opt-in default.
+- ~~Jank measurement should be re-run against HomeTab/Hood/Shop...~~ **Done, same day, after the
+  user unlocked the device via real fingerprint** — see below. HomeTab specifically: excellent,
+  genuinely Toss-level real numbers.
+
+## 21. Customer-oriented: real error/empty states, and a genuine backend bug found live
+
+**Added 2026-08-09**, continuing the same pass once the user unlocked the physical device with a
+real fingerprint (the automated biometric gate above correctly cannot be bypassed any other way).
+
+### Real HomeTab scroll jank (`dumpsys gfxinfo`, 786 real frames from real swipe gestures)
+- 0.76% janky frames (modern metric), legacy metric 8.14% (much lower than the earlier
+  login-transition-only measurement, and legacy is known to over-count on modern devices anyway).
+- P50 12ms / P90 15ms / P95 20ms — comfortably inside the 16.67ms/frame budget for 60fps almost
+  the whole time. One P99 outlier at 69ms (a single async image-load/recomposition spike, not a
+  systemic problem) and 4 missed vsyncs out of 786 frames. **This is genuinely Toss-level
+  smoothness for the bulk of the real scrolling experience** — the earlier, much worse
+  login-transition numbers (27-31% janky) were specific to that screen's `AnimatedContent`
+  slide+fade transition, not representative of the app as a whole.
+
+### A real backend bug, found live via the Shop tab's own error-recovery UI, not invented
+- Real device screenshot showed a genuine customer-facing error card: **"That couldn't be
+  found." + a "Retry" button**, on the Shop tab, visible to an ordinary buyer-only test account.
+  `ShopScreen.kt`'s own doc comment says this section should **self-hide silently** for any
+  buyer-only account (`MERCHANT_NOT_FOUND` is documented as "a real, expected, silent case, not
+  an error") — so a visible error card here is a direct contradiction of the code's own stated
+  design intent, not ambiguous.
+- Root-caused with a temporary diagnostic log (added, used, then removed — never shipped):
+  `GET /api/v1/orders/returns/merchant-queue` really does return HTTP 404 with the CORRECT
+  message text ("This account is not registered as a merchant") but the WRONG `code` field --
+  `"ORDER_NOT_FOUND"` instead of `"MERCHANT_NOT_FOUND"`. The Android client (and, structurally,
+  iOS/web — all 3 share the same `MERCHANT_NOT_FOUND`-checking convention) correctly checks for
+  the specific code string and correctly falls through to the visible-error branch when it
+  doesn't match — the bug was entirely server-side, a wrong exception type.
+- **Real fix**: `OrderReturnService.kt`'s `getMerchantReturnQueue()` and `decide()` both threw
+  `ReturnOrderNotFoundException` (mapped by `OrderController`'s own `@ExceptionHandler` to
+  `ApiError("ORDER_NOT_FOUND", ...)`) for a merchant-lookup failure, instead of
+  `MerchantNotFoundException` (already correctly mapped to `MERCHANT_NOT_FOUND`, and already used
+  by this exact codebase's sibling `getMerchantOrders()`/`getMerchantOrdersInternal()` checks in
+  `OrderService.kt` for the identical "not registered as a merchant" case — a real, existing,
+  correct pattern this code just didn't reuse). Fixed both call sites to throw the right
+  exception type. **Verified live, not just compiled**: restarted the real backend process,
+  confirmed via direct `curl` that the endpoint now returns the correct `MERCHANT_NOT_FOUND` code.
+- This is a genuine "customer-oriented" finding in the fullest sense of this section's brief: not
+  a cosmetic copy issue, but every ordinary buyer-only customer on itunda seeing a real,
+  alarming-looking error card on the Shop tab, for a merchant-only feature they were never
+  supposed to know exists, purely because of a backend exception-type mismatch.
+
+### Unresolved / worth a follow-up
+- The same wrong-exception-type class of bug (`ReturnOrderNotFoundException` reused for a
+  merchant-lookup failure) was found and fixed at exactly 2 call sites in one file
+  (`OrderReturnService.kt`) — worth a broader grep across the rest of `commerce`/`merchant`
+  modules for the same reused-wrong-exception-for-a-different-failure-reason pattern; not done
+  this pass, this was a targeted fix for the one bug actually observed live on-device, not a full
+  sweep.
+- The release-build runtime Gson-correctness check (Section 20's own unresolved item) is still
+  open — unrelated to this section's fix.
