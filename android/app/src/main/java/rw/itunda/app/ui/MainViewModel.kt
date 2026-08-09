@@ -424,7 +424,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             NetworkClient.authApi.verifyDevice(rw.itunda.core.network.VerifyDeviceRequest(password))
             MoneyActionResult.Success("Device verified")
         } catch (e: retrofit2.HttpException) {
-            val message = if (e.code() == 400) "Incorrect password." else "Something went wrong. Please try again."
+            // Real backend message pass-through first (2026-08-10), same fix as
+            // backendErrorMessage/DeviceStepUpHost: this was discarding any specific
+            // backend decline in favor of a hardcoded bucket.
+            val message = rw.itunda.core.network.apiErrorMessage(e) ?: when (e.code()) {
+                400 -> "Incorrect password."
+                503, 504 -> "itunda is having a brief hiccup on our end -- not your password. Try again in a moment."
+                else -> "Something went wrong. Please try again."
+            }
             MoneyActionResult.Failure(message)
         } catch (e: IOException) {
             MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
@@ -474,7 +481,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 fetchDevices()
                 onResult(true, null)
             } catch (e: retrofit2.HttpException) {
-                onResult(false, if (e.code() == 400) "Incorrect password." else "Something went wrong. Please try again.")
+                // Real backend message pass-through first (2026-08-10), same fix as
+                // backendErrorMessage/DeviceStepUpHost: this was discarding any specific
+                // backend decline in favor of a hardcoded bucket.
+                val message = rw.itunda.core.network.apiErrorMessage(e) ?: when (e.code()) {
+                    400 -> "Incorrect password."
+                    503, 504 -> "itunda is having a brief hiccup on our end -- not your password. Try again in a moment."
+                    else -> "Something went wrong. Please try again."
+                }
+                onResult(false, message)
             } catch (_: IOException) {
                 onResult(false, "Couldn't reach itunda. Check your connection and try again.")
             }

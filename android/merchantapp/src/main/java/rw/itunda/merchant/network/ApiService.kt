@@ -52,6 +52,18 @@ fun isDeviceNotVerifiedError(e: retrofit2.HttpException): Boolean {
     }
 }
 
+// Same real backend-message pass-through rw.itunda.core.network.apiErrorMessage
+// establishes for the consumer app -- DeviceStepUpDialog here was still discarding a
+// real, specific backend message (e.g. a device-verification-specific decline) in
+// favor of a hardcoded bucket. Standalone copy since merchantapp doesn't depend on
+// :core:network, same as isDeviceNotVerifiedError above.
+fun apiErrorMessage(e: retrofit2.HttpException): String? = try {
+    val body = e.response()?.errorBody()?.string() ?: return null
+    com.google.gson.JsonParser.parseString(body).asJsonObject.get("message")?.asString
+} catch (_: Exception) {
+    null
+}
+
 // Mirrors rw.itunda.merchant's real Merchant/MerchantProduct/PaymentIntent entities
 // exactly (same field names merchant-mfe's own lib/merchant.ts already uses).
 data class MerchantDto(

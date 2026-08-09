@@ -13,6 +13,7 @@ import rw.itunda.core.identity.DeviceKeyManager
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.VerifyDeviceRequest
 import rw.itunda.core.network.VerifyDeviceSignatureRequest
+import rw.itunda.core.network.apiErrorMessage
 import java.io.IOException
 import java.util.Base64
 
@@ -93,7 +94,11 @@ fun DeviceStepUpHost(
                     onVerified()
                 } catch (e: HttpException) {
                     busy = false
-                    error = when (e.code()) {
+                    // Real backend message pass-through first (2026-08-10), same fix as
+                    // superAppErrorMessage/SessionManager.httpErrorMessage: this was
+                    // discarding any specific backend decline in favor of a hardcoded
+                    // bucket.
+                    error = apiErrorMessage(e) ?: when (e.code()) {
                         400 -> "Incorrect password."
                         // Real gap found live (2026-08-10), same fix as
                         // superAppErrorMessage's own: a 503/504 here is itunda's

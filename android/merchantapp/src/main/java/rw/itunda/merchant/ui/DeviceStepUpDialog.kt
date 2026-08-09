@@ -80,7 +80,11 @@ fun DeviceStepUpDialog(onVerified: () -> Unit, onCancel: () -> Unit) {
                             onVerified()
                         } catch (e: HttpException) {
                             busy = false
-                            error = when (e.code()) {
+                            // Real backend message pass-through first (2026-08-10), same
+                            // fix as SessionManager.httpErrorMessage/superAppErrorMessage:
+                            // this was discarding any specific backend decline in favor
+                            // of a hardcoded bucket.
+                            error = rw.itunda.merchant.network.apiErrorMessage(e) ?: when (e.code()) {
                                 400 -> "Incorrect password."
                                 // Real gap found live (2026-08-10), matching the
                                 // consumer app's own same fix: a 503/504 is itunda's
