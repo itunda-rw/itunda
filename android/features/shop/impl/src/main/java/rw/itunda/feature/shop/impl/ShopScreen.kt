@@ -2782,12 +2782,41 @@ private fun PayAMerchantSection(
         }
         return
     }
+    // Real "one thing, one page" fix (2026-08-09) -- found via a real-screen audit prompted
+    // by the same direct user feedback that fixed Maps ("flower of info, you can't just put
+    // everything on one page"): this section stacked two genuinely competing, fully-formed
+    // payment forms (Pay by code, Pay by static QR) at once, plus a settings toggle. Face Pay
+    // is kept always-visible -- it's a real account SETTING, not a competing "how do I pay"
+    // action (it changes how Pay-by-code itself behaves, per that card's own copy) -- but
+    // Code vs. static QR are now mutually exclusive via a real mode picker, matching Toss's
+    // own resolution for this exact class of violation.
+    var payMode by remember { mutableStateOf(PayMerchantMode.CODE) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         FacePaySettingsCard(enrolled = facePayEnrolled, onChanged = ::loadFacePayStatus)
-        PayByCodeCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
-        PayByStaticQrCard(onPaid = { paymentResult = it })
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf(PayMerchantMode.CODE to "Pay by code", PayMerchantMode.STATIC_QR to "Pay by merchant ID").forEach { (mode, label) ->
+                val active = payMode == mode
+                Text(
+                    label, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
+                        .clickable { payMode = mode }
+                        .padding(vertical = 10.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+            }
+        }
+        when (payMode) {
+            PayMerchantMode.CODE -> PayByCodeCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
+            PayMerchantMode.STATIC_QR -> PayByStaticQrCard(onPaid = { paymentResult = it })
+        }
     }
 }
+
+private enum class PayMerchantMode { CODE, STATIC_QR }
 
 /**
  * Real Face Pay enroll/disable toggle -- see rw.itunda.merchant.FacePayService's own

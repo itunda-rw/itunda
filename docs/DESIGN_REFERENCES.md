@@ -4171,3 +4171,32 @@ Installed on the physical device; the app launched with an empty `logcat -b cras
 live app process. The follow/unfollow data path was confirmed live against the real backend
 before building; the pill's on-screen appearance/toggle behavior hasn't been tapped through by
 the user yet.
+
+## 36. "One thing, one page" beyond Maps -- Shop's "Pay a Merchant" section
+
+**Added 2026-08-09.** The user's original feedback ("flower of info... let's improve a whole
+itunda") named the whole app, not just Maps. Ran a real code-level audit of itunda's other large
+Android screens (TalkScreen.kt, ShopScreen.kt, ItundaAppScreen.kt, EatsScreen.kt,
+MarketplaceScreen.kt) for the same class of violation. Most were already fine --
+`ChatThreadView`'s several toggleable modes each `return@Column`, making them genuinely mutually
+exclusive already; `ItundaAppScreen.kt` turned out to already have a *second* sealed-step flow
+(`SavingsFlowStep`) beyond the previously-known `TransferStep`, meaning a prior doc recommendation
+to apply that pattern to Savings was already done, just never marked as such; Eats and
+Marketplace's structure was clean. One real violation found: `ShopScreen.kt`'s
+`PayAMerchantSection` (~line 2748) unconditionally stacked **three** things at once -- a Face Pay
+settings toggle, a full "Pay by code" form (code field, preview, coupon radio picker, submit), and
+a full "Pay by static QR" form (merchant-ID field, amount field, submit) -- every single time a
+user opened "Pay a Merchant," not an edge case.
+
+### What was built
+Face Pay stays always-visible -- it's a real account *setting* that changes how Pay-by-code
+itself behaves (per that card's own existing copy), not a competing "how do I pay" action, so it
+isn't the same class of violation. Added a real mode picker (`PayMerchantMode.CODE` /
+`STATIC_QR`, defaulting to `CODE`) so Pay-by-code and Pay-by-static-QR are now mutually
+exclusive -- only one full form renders at a time, switched via two pill-style tabs, matching the
+same resolution already applied to Maps.
+
+### Verification status
+`:features:shop:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
+Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
+live app process. Not yet tapped through by the user on the real screen.
