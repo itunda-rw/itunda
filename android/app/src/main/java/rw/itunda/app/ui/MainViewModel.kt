@@ -193,42 +193,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Real stale-session crash (found 2026-07-22): a cached access token
                 // that's no longer valid against the backend (e.g. after a DB reset or
                 // redeploy) makes this function's first call, getWallets() above, come
-                // back with a genuine 401. Every other HttpException status here still
-                // propagates and surfaces as a real crash on purpose (see the
-                // IOException comment below) -- but a 401 specifically just means "this
-                // session is dead," so the correct response is a real logout back to
-                // the login screen, not letting it fall through unhandled.
+                // back with a genuine 401 -- the correct response is a real logout
+                // back to the login screen.
+                //
+                // Real crash found live (2026-08-10): every OTHER status used to
+                // `throw e` uncaught inside viewModelScope.launch, crashing the whole
+                // app -- including on a real, genuinely possible 503 from the backend
+                // having a bad moment (this is Home's own very first launch call).
+                // "Surface a real error, don't silently fabricate data" was the right
+                // intent, but a crash isn't a surfaced error, it's the absence of one
+                // -- same reasoning getInterestJar's own 404 handling above already
+                // applies. Routed into the same offline-placeholder path IOException
+                // below uses: from the user's perspective, "the server replied but
+                // something's wrong" and "couldn't reach it at all" are the same lived
+                // experience -- see something honest, not a crash.
                 if (e.code() == 401) {
                     SessionManager.logout()
                 } else {
-                    throw e
+                    showOfflinePlaceholder()
                 }
             } catch (e: IOException) {
                 // Genuinely can't reach the backend at all (no connectivity, wrong
-                // host) -- this is the only case that should show placeholder data,
-                // and it's now labeled as such via isOffline rather than presented as
-                // real. A 401/403/5xx (retrofit2.HttpException) is NOT caught here --
-                // those are real backend responses and should surface as real errors,
-                // not get silently swallowed into fake numbers.
-                _isOffline.value = true
-                _primaryWallet.value = Wallet(
-                    id = "w_offline_placeholder",
-                    userId = "",
-                    accountNumber = "----",
-                    accountName = "Offline",
-                    type = "MAIN",
-                    balance = 0.0,
-                    availableBalance = 0.0,
-                    currency = "RWF",
-                    isActive = false,
-                )
-                _discoverItems.value = listOf(
-                    DiscoverItem("d_1", "government", "Irembo Services", "Pay government fees instantly", "Access 100+ services", "#0066FF", false, null),
-                    DiscoverItem("d_3", "rewards", "itunda Points", "Earn on every transaction", "Earn 1 point per 100 RWF spent", "#FFB300", false, "1,240 pts"),
-                    DiscoverItem("d_5", "lifestyle", "Yego Vouchers", "Exclusive partner deals", "Discounts at partners", "#E91E63", true, "Hot")
-                )
+                // host) -- labeled via isOffline rather than presented as real.
+                showOfflinePlaceholder()
             }
         }
+    }
+
+    private fun showOfflinePlaceholder() {
+        _isOffline.value = true
+        _primaryWallet.value = Wallet(
+            id = "w_offline_placeholder",
+            userId = "",
+            accountNumber = "----",
+            accountName = "Offline",
+            type = "MAIN",
+            balance = 0.0,
+            availableBalance = 0.0,
+            currency = "RWF",
+            isActive = false,
+        )
+        _discoverItems.value = listOf(
+            DiscoverItem("d_1", "government", "Irembo Services", "Pay government fees instantly", "Access 100+ services", "#0066FF", false, null),
+            DiscoverItem("d_3", "rewards", "itunda Points", "Earn on every transaction", "Earn 1 point per 100 RWF spent", "#FFB300", false, "1,240 pts"),
+            DiscoverItem("d_5", "lifestyle", "Yego Vouchers", "Exclusive partner deals", "Discounts at partners", "#E91E63", true, "Hot")
+        )
     }
 
     fun retry() = fetchData()
