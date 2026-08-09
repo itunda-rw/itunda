@@ -144,41 +144,41 @@ fun SaccoScreen(onBack: () -> Unit) {
             item {
                 Text(
                     "Buy real cooperative shares and earn a real periodic dividend, matching Rwanda's own Umurenge SACCO model.",
-                    color = TossSecondary, fontSize = 12.sp,
+                    color = Ids.colors.textSecondary, fontSize = 12.sp,
                 )
             }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Text("Shares held", color = TossSecondary, fontSize = 13.sp)
-                        Text("${formatMoneySacco(sharesHeld ?: BigDecimal.ZERO)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                        Text("Total contributed: ${formatMoneySacco(totalContributed ?: BigDecimal.ZERO)} RWF", color = TossSecondary, fontSize = 12.sp)
+                        Text("Shares held", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Text("${formatMoneySacco(sharesHeld ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        Text("Total contributed: ${formatMoneySacco(totalContributed ?: BigDecimal.ZERO)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                 }
             }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = !busy && amount.toBigDecimalOrNull()?.signum() == 1) { buy() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Buy shares", color = Color.White, fontWeight = FontWeight.Bold) }
                             Box(
-                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                     .clickable(enabled = !busy && amount.toBigDecimalOrNull()?.signum() == 1) { redeem() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Redeem", color = TossText, fontWeight = FontWeight.Bold) }
+                            ) { Text(if (busy) "…" else "Redeem", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
             }
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
-            item { Text("Dividend history", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Dividend history", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             when {
                 dividends == null -> item {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
@@ -187,9 +187,9 @@ fun SaccoScreen(onBack: () -> Unit) {
                     EmptyState("No dividends declared yet.")
                 }
                 else -> items(dividends!!) { d ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(d.createdAt.take(10), color = TossSecondary, fontSize = 12.sp)
+                            Text(d.createdAt.take(10), color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Text("+${formatMoneySacco(d.amount)} RWF", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }

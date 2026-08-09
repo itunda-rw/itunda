@@ -196,30 +196,30 @@ fun StudentLoanScreen(onBack: () -> Unit) {
         ) {
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("BRD Student Loan", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("BRD Student Loan", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Text(
                             "Rwanda's national higher-education student loan, run by the Development Bank of Rwanda (BRD) since 2016 -- 11% undergraduate / 12% postgraduate, " +
                                 "with a grace period after graduation before repayment starts. Declared household income is self-declared -- not verified against BRD's real " +
                                 "Financial Means Testing process. Repayment here is user-initiated from your wallet -- itunda cannot deduct from your paycheck like the real " +
                                 "8%-of-income scheme BRD uses.",
-                            color = TossSecondary, fontSize = 12.sp,
+                            color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )
                         if (hasActiveLoan) {
-                            Text("You already have an active student loan -- repay it before applying for another.", color = TossSecondary, fontSize = 12.sp)
+                            Text("You already have an active student loan -- repay it before applying for another.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         } else {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf("UNDERGRADUATE" to "Undergraduate (11%)", "POSTGRADUATE" to "Postgraduate (12%)").forEach { (value, label) ->
                                     val selected = value == level
                                     Text(
                                         label,
-                                        color = if (selected) Color.White else TossText,
+                                        color = if (selected) Color.White else Ids.colors.textPrimary,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(999.dp))
-                                            .background(if (selected) TossBlue else TossCardSoft)
+                                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
                                             .clickable { level = value }
                                             .padding(horizontal = 12.dp, vertical = 6.dp),
                                     )
@@ -229,7 +229,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Loan amount (RWF, up to 2,000,000)", modifier = Modifier.fillMaxWidth())
                             IdsTextField(value = yearsToGraduation, onValueChange = { yearsToGraduation = it }, label = "Years until you graduate", modifier = Modifier.fillMaxWidth())
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = busyId != "apply") { apply() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
@@ -239,7 +239,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                 }
             }
 
-            item { Text("My student loans", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("My student loans", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             when {
                 loans == null -> item {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {}
@@ -248,21 +248,21 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                     EmptyState("No student loans yet.")
                 }
                 else -> items(loans!!) { loan ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${formatMoneyStudentLoan(loan.principalAmount)} RWF · ${loan.level}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                Text(loan.status, color = if (loan.status == "OVERDUE") Ids.colors.danger else TossBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("${formatMoneyStudentLoan(loan.principalAmount)} RWF · ${loan.level}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(loan.status, color = if (loan.status == "OVERDUE") Ids.colors.danger else Ids.colors.brand, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             Text(
                                 "Outstanding: ${formatMoneyStudentLoan(loan.outstandingBalance)} RWF" +
                                     (loan.graceEndsAt?.let { " · Grace ends ${it.take(10)}" } ?: ""),
-                                color = TossSecondary, fontSize = 11.sp,
+                                color = Ids.colors.textSecondary, fontSize = 11.sp,
                             )
                             if (loan.status == "REQUESTED") {
-                                Text("Demo: instantly approved -- stands in for the real BRD/MINEDUC approval step.", color = TossTertiary, fontSize = 10.sp)
+                                Text("Demo: instantly approved -- stands in for the real BRD/MINEDUC approval step.", color = Ids.colors.textTertiary, fontSize = 10.sp)
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                         .clickable(enabled = busyId != loan.id) { disburse(loan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
@@ -270,29 +270,29 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                             }
                             if (loan.status == "DISBURSED") {
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = busyId != loan.id) { declareGraduated(loan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
-                                ) { Text(if (busyId == loan.id) "Updating…" else "Declare graduated", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                ) { Text(if (busyId == loan.id) "Updating…" else "Declare graduated", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
                             if (loan.status == "IN_GRACE_PERIOD") {
-                                Text("In your grace period -- repayment isn't due yet.", color = TossSecondary, fontSize = 11.sp)
+                                Text("In your grace period -- repayment isn't due yet.", color = Ids.colors.textSecondary, fontSize = 11.sp)
                             }
                             if (loan.status == "REPAYING" || loan.status == "OVERDUE") {
                                 suggested[loan.id]?.let { s ->
                                     Text(
                                         "Suggested: ${formatMoneyStudentLoan(s.suggestedMonthlyPayment)} RWF/mo · ${s.note}",
-                                        color = TossSecondary, fontSize = 11.sp,
+                                        color = Ids.colors.textSecondary, fontSize = 11.sp,
                                     )
                                 }
                                 IdsTextField(value = repayAmounts[loan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (loan.id to it) }, label = "Repayment amount (RWF)", modifier = Modifier.fillMaxWidth())
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = busyId != loan.id) { repay(loan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
-                                ) { Text(if (busyId == loan.id) "Repaying…" else "Repay", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                ) { Text(if (busyId == loan.id) "Repaying…" else "Repay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
                         }
                     }

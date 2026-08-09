@@ -70,17 +70,17 @@ fun ParkingScreen(onBack: () -> Unit) {
         BackTopBar(title = "Parking", onBack = onBack)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
+                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(ParkingTab.FIND to "Find a spot", ParkingTab.MINE to "My spots").forEach { (value, label) ->
                 val selected = tab == value
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) TossBlue else Color.Transparent)
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
                         .clickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -182,13 +182,13 @@ private fun ParkingFindContent() {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         val session = activeSession
         if (session != null) {
-            item { Text("Parked now", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Parked now", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Checked in -- billed by elapsed hours", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Checked in -- billed by elapsed hours", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = !ending) { endSession(session.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (ending) "Checking out…" else "Check out (end session)", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -199,22 +199,22 @@ private fun ParkingFindContent() {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                             .clickable(enabled = !locating) { requestLocation() }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (locating) "Locating…" else "Find nearby spots", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             if (lat != null && nearbySpots.isEmpty()) {
-                item { Text("No parking spots available nearby.", color = TossSecondary, fontSize = 13.sp) }
+                item { Text("No parking spots available nearby.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             }
             items(nearbySpots, key = { it.id }) { spot ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(spot.address, color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = TossSecondary, fontSize = 12.sp)
+                        Text(spot.address, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = busySpotId != spot.id) { startSession(spot.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busySpotId == spot.id) "…" else "Check in", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -223,7 +223,7 @@ private fun ParkingFindContent() {
             }
         }
         if (pastSessions.isNotEmpty()) {
-            item { Text("Past sessions", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Past sessions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(pastSessions, key = { it.id }) { session -> ParkingSessionCard(session) }
         }
     }
@@ -311,14 +311,14 @@ private fun ParkingMineContent() {
     ) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("List a spot you own", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Any itunda user can list a driveway or private lot space into the shared rental pool.", color = TossSecondary, fontSize = 12.sp)
+                    Text("List a spot you own", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Any itunda user can list a driveway or private lot space into the shared rental pool.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     IdsTextField(value = address, onValueChange = { address = it }, label = "Address", modifier = Modifier.fillMaxWidth())
                     IdsTextField(value = hourlyRate, onValueChange = { hourlyRate = it }, label = "Hourly rate (RWF)", modifier = Modifier.fillMaxWidth())
                     Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                             .clickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (registering) "Registering…" else "List at my current location", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -328,21 +328,21 @@ private fun ParkingMineContent() {
         if (!loaded) {
             item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
         } else if (mySpots.isEmpty()) {
-            item { Text("You haven't listed any spots yet.", color = TossSecondary, fontSize = 13.sp) }
+            item { Text("You haven't listed any spots yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         } else {
-            item { Text("Your spots", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Your spots", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(mySpots, key = { it.id }) { spot ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(spot.address, color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(spot.address, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                    .background(if (spot.available) Ids.colors.success else TossCardSoft)
+                                    .background(if (spot.available) Ids.colors.success else Ids.colors.surfaceSoft)
                                     .clickable(enabled = busySpotId != spot.id) { toggleAvailable(spot) }.padding(horizontal = 14.dp, vertical = 10.dp),
-                            ) { Text(if (spot.available) "Available" else "Unavailable", color = if (spot.available) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            ) { Text(if (spot.available) "Available" else "Unavailable", color = if (spot.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
-                        Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = TossSecondary, fontSize = 12.sp)
+                        Text("${formatMoneyParking(spot.hourlyRate)} RWF / hour", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                 }
             }
@@ -352,12 +352,12 @@ private fun ParkingMineContent() {
 
 @Composable
 private fun ParkingSessionCard(session: ParkingSessionDto) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("${session.durationMinutes ?: 0} min parked", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("${session.durationMinutes ?: 0} min parked", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             val fare = session.totalFare
             if (fare != null) {
-                Text("${formatMoneyParking(fare)} RWF", color = TossSecondary, fontSize = 12.sp)
+                Text("${formatMoneyParking(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
         }
     }

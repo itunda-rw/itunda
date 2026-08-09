@@ -195,7 +195,7 @@ fun CardScreen(onBack: () -> Unit) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
                             "App-controlled spend limits and one-tap freeze -- no branch visit, no waiting.",
-                            color = TossSecondary, fontSize = 13.sp,
+                            color = Ids.colors.textSecondary, fontSize = 13.sp,
                         )
                         CardActionButton(if (busy) "Issuing…" else "Get your itunda card", enabled = !busy) { issue() }
                     }
@@ -272,7 +272,7 @@ fun CardScreen(onBack: () -> Unit) {
 private fun CardActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .background(if (enabled) TossBlue else Ids.colors.textTertiary).clickable(enabled = enabled, onClick = onClick)
+            .background(if (enabled) Ids.colors.brand else Ids.colors.textTertiary).clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {

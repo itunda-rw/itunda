@@ -91,17 +91,17 @@ fun RequestMoneyScreen(onBack: () -> Unit) {
             item { CreateRequestCard(onCreated = { created = it; refreshKey++ }) }
             created?.let { req ->
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Share this code -- expires in 15 minutes", color = TossSecondary, fontSize = 12.sp)
-                            Text(req.id, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("Share this code -- expires in 15 minutes", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Text(req.id, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         }
                     }
                 }
             }
             item { PayRequestCard(onPaid = { refreshKey++ }) }
             error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
-            item { Text("My requests", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+            item { Text("My requests", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
             val list = requests
             if (list == null) {
                 item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(60.dp)) {} }
@@ -109,19 +109,19 @@ fun RequestMoneyScreen(onBack: () -> Unit) {
                 item { EmptyState("No requests yet — ask someone to pay you above.") }
             } else {
                 items(list, key = { it.id }) { req ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column {
-                                Text("${formatMoneyRequest(req.amount.toDouble())} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                if (req.description.isNotBlank()) Text(req.description, color = TossSecondary, fontSize = 12.sp)
+                                Text("${formatMoneyRequest(req.amount.toDouble())} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                if (req.description.isNotBlank()) Text(req.description, color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                             Text(
                                 when (req.status) { "COMPLETED" -> "Paid"; "EXPIRED" -> "Expired"; else -> "Pending" },
-                                color = if (req.status == "COMPLETED") Ids.colors.success else if (req.status == "EXPIRED") TossSecondary else TossBlue,
+                                color = if (req.status == "COMPLETED") Ids.colors.success else if (req.status == "EXPIRED") Ids.colors.textSecondary else Ids.colors.brand,
                                 fontWeight = FontWeight.Bold, fontSize = 13.sp,
                             )
                         }
@@ -140,15 +140,15 @@ private fun CreateRequestCard(onCreated: (P2pPaymentRequestDto) -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("New request", color = TossText, fontWeight = FontWeight.Bold)
+            Text("New request", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
             IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = description, onValueChange = { description = it }, label = "What's it for? (optional)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                    .background(if (submitting) Ids.colors.textTertiary else TossBlue)
+                    .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
                     .clickable(enabled = !submitting) {
                         val amountBd = amount.trim().toBigDecimalOrNull()
                         if (amountBd == null || amountBd <= java.math.BigDecimal.ZERO) {
@@ -215,14 +215,14 @@ private fun PayRequestCard(onPaid: () -> Unit) {
         }
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Pay a request", color = TossText, fontWeight = FontWeight.Bold)
+            Text("Pay a request", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
             IdsTextField(value = code, onValueChange = { code = it }, label = "Request code", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                    .background(if (paying) Ids.colors.textTertiary else TossBlue)
+                    .background(if (paying) Ids.colors.textTertiary else Ids.colors.brand)
                     .clickable(enabled = !paying && code.isNotBlank()) { coroutineScope.launch { pay() } }
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,

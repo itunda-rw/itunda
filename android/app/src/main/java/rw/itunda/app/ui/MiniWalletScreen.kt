@@ -158,14 +158,14 @@ fun MiniWalletScreen(onBack: () -> Unit) {
                         Text(
                             "A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF " +
                                 "daily and 2,000,000 RWF monthly deposit limits.",
-                            color = TossSecondary, fontSize = 13.sp,
+                            color = Ids.colors.textSecondary, fontSize = 13.sp,
                         )
                         MiniWalletActionButton(if (busy) "Opening…" else "Open a Mini account", enabled = !busy) { openWallet() }
                     }
                 }
                 MiniWalletMode.NEEDS_BIRTH_DATE -> item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Enter your birth date to check eligibility.", color = TossSecondary, fontSize = 13.sp)
+                        Text("Enter your birth date to check eligibility.", color = Ids.colors.textSecondary, fontSize = 13.sp)
                         IdsTextField(value = birthDate, onValueChange = { birthDate = it }, label = "Birth date (YYYY-MM-DD)", modifier = Modifier.fillMaxWidth())
                         // Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11),
                         // matching the identical fix on web's own MiniWalletCard the same day:
@@ -178,12 +178,12 @@ fun MiniWalletScreen(onBack: () -> Unit) {
                     item {
                         Card(
                             shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                            colors = CardDefaults.cardColors(containerColor = TossCard),
+                            colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
-                                Text("${formatMoneyMini(wallet?.balance ?: 0.0)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                                Text(wallet?.accountNumber ?: "", color = TossSecondary, fontSize = 12.sp)
+                                Text("${formatMoneyMini(wallet?.balance ?: 0.0)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                                Text(wallet?.accountNumber ?: "", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                         }
                     }
@@ -205,7 +205,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
 private fun MiniWalletActionButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .background(TossBlue).clickable(enabled = enabled, onClick = onClick)
+            .background(Ids.colors.brand).clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {

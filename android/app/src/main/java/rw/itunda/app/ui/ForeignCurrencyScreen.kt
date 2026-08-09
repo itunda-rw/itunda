@@ -116,7 +116,7 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                 items(list, key = { it.id }) { wallet ->
                     Card(
                         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                        colors = CardDefaults.cardColors(containerColor = TossCard),
+                        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Row(
@@ -124,8 +124,8 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(wallet.currency, color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text("${formatFx(wallet.balance)} ${wallet.currency}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(wallet.currency, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("${formatFx(wallet.balance)} ${wallet.currency}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
                     }
                 }
@@ -138,7 +138,7 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(if (openingCurrency == code) Ids.colors.textTertiary else TossBlue)
+                                        .background(if (openingCurrency == code) Ids.colors.textTertiary else Ids.colors.brand)
                                         .clickable(enabled = openingCurrency == null) { openWallet(code) }
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
                                 ) { Text("+ Open $code", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -151,7 +151,7 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
             if (!wallets.isNullOrEmpty()) {
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Convert", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Convert", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
                 item { ConvertPanel(wallets = wallets.orEmpty(), onConverted = { refreshKey++ }) }
             }
@@ -160,13 +160,13 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
             if (!history.isNullOrEmpty()) {
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Recent conversions", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Recent conversions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
                 items(history, key = { it.id }) { c ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp)) {
-                            Text("${formatFx(c.fromAmount)} ${c.fromCurrency} → ${formatFx(c.toAmount)} ${c.toCurrency}", color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text("Rate ${c.rate} · itunda fee ${formatFx(c.marginAmount)} ${c.toCurrency}", color = TossSecondary, fontSize = 12.sp)
+                            Text("${formatFx(c.fromAmount)} ${c.fromCurrency} → ${formatFx(c.toAmount)} ${c.toCurrency}", color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text("Rate ${c.rate} · itunda fee ${formatFx(c.marginAmount)} ${c.toCurrency}", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
                 }
@@ -199,7 +199,7 @@ private fun ConvertPanel(wallets: List<WalletDto>, onConverted: () -> Unit) {
 
     val previewAmount = amountText.trim().toDoubleOrNull()?.let { amt -> rate?.let { r -> amt * r * 0.985 } }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft),
@@ -207,24 +207,24 @@ private fun ConvertPanel(wallets: List<WalletDto>, onConverted: () -> Unit) {
                 listOf(true to "RWF → foreign", false to "Foreign → RWF").forEach { (v, label) ->
                     val selected = v == direction
                     Box(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (selected) TossBlue else Color.Transparent)
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (selected) Ids.colors.brand else Color.Transparent)
                             .clickable { direction = v }.padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center,
-                    ) { Text(label, color = if (selected) Color.White else TossSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 wallets.map { it.currency }.forEach { code ->
                     val selected = code == foreignCurrency
                     Box(
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) TossBlue else Ids.colors.surfaceSoft)
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
                             .clickable { foreignCurrency = code }.padding(horizontal = 14.dp, vertical = 8.dp),
-                    ) { Text(code, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(code, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount ($fromCurrency)", modifier = Modifier.fillMaxWidth())
             rate?.let { r ->
-                Text("Live rate: 1 $fromCurrency = ${"%.4f".format(r)} $toCurrency", color = TossSecondary, fontSize = 12.sp)
+                Text("Live rate: 1 $fromCurrency = ${"%.4f".format(r)} $toCurrency", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             previewAmount?.let {
                 Text("You'll receive ~${formatFx(it)} $toCurrency (after itunda's 1.5% fee)", color = Ids.colors.success, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
@@ -233,7 +233,7 @@ private fun ConvertPanel(wallets: List<WalletDto>, onConverted: () -> Unit) {
             success?.let { Text(it, color = Ids.colors.success, fontSize = 12.sp) }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                    .background(if (submitting) Ids.colors.textTertiary else TossBlue)
+                    .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
                     .clickable(enabled = !submitting) {
                         val amount = amountText.trim().toDoubleOrNull()
                         if (amount == null || amount <= 0.0) {

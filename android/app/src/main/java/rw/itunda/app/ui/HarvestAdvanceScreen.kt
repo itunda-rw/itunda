@@ -215,7 +215,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
             item {
                 Text(
                     "Real input-financing and post-harvest advances for coffee cooperative members, matching Rwanda's own real coffee-sector financing gap.",
-                    color = TossSecondary, fontSize = 12.sp,
+                    color = Ids.colors.textSecondary, fontSize = 12.sp,
                 )
             }
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
@@ -223,25 +223,25 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
             val hasMembership = !memberships.isNullOrEmpty()
             if (!hasMembership) {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Register a cooperative", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Register a cooperative", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             IdsTextField(value = coopName, onValueChange = { coopName = it }, label = "Cooperative name", modifier = Modifier.fillMaxWidth())
                             IdsTextField(value = coopCrop, onValueChange = { coopCrop = it }, label = "Crop (e.g. COFFEE)", modifier = Modifier.fillMaxWidth())
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = !busy && coopName.isNotBlank()) { registerCooperative() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Register & join", color = Color.White, fontWeight = FontWeight.Bold) }
-                            Text("Already have a cooperative ID?", color = TossSecondary, fontSize = 12.sp)
+                            Text("Already have a cooperative ID?", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             IdsTextField(value = coopId, onValueChange = { coopId = it }, label = "Cooperative ID", modifier = Modifier.fillMaxWidth())
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                     .clickable(enabled = !busy && coopId.isNotBlank()) { joinCooperative() }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(if (busy) "…" else "Join", color = TossText, fontWeight = FontWeight.Bold) }
+                            ) { Text(if (busy) "…" else "Join", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
@@ -249,26 +249,26 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                 val membershipId = memberships!!.first().id
                 overview?.let { o ->
                     item {
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCardSoft), modifier = Modifier.fillMaxWidth()) {
+                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft), modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(o.cooperative.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text(o.cooperative.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 Text(
                                     "${o.cooperative.cropType} · ${o.memberCount} member${if (o.memberCount == 1) "" else "s"} · member since ${o.myMembership.memberSince.take(10)}",
-                                    color = TossSecondary, fontSize = 12.sp,
+                                    color = Ids.colors.textSecondary, fontSize = 12.sp,
                                 )
                             }
                         }
                     }
                 }
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Request an advance", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Request an advance", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             IdsTextField(value = advanceAmount, onValueChange = { advanceAmount = it }, label = "Amount (RWF, max 500,000)", modifier = Modifier.fillMaxWidth())
                             IdsTextField(value = advancePurpose, onValueChange = { advancePurpose = it }, label = "Purpose (INPUT_FINANCING / POST_HARVEST)", modifier = Modifier.fillMaxWidth())
                             IdsTextField(value = harvestMonthsAway, onValueChange = { harvestMonthsAway = it }, label = "Expected harvest (months from now)", modifier = Modifier.fillMaxWidth())
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = !busy && advanceAmount.toBigDecimalOrNull()?.signum() == 1 && harvestMonthsAway.toLongOrNull() != null) { requestAdvance(membershipId) }
                                     .padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
@@ -278,7 +278,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                 }
             }
 
-            item { Text("My advances", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("My advances", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             when {
                 advances == null -> item {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
@@ -287,16 +287,16 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                     EmptyState("No advances yet.")
                 }
                 else -> items(advances!!) { a ->
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${formatMoneyHarvest(a.principalAmount)} RWF · ${a.purpose}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                Text(a.status, color = TossSecondary, fontSize = 12.sp)
+                                Text("${formatMoneyHarvest(a.principalAmount)} RWF · ${a.purpose}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(a.status, color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
-                            Text("Repay by ${a.repaymentDueDate.take(10)}", color = TossSecondary, fontSize = 11.sp)
+                            Text("Repay by ${a.repaymentDueDate.take(10)}", color = Ids.colors.textSecondary, fontSize = 11.sp)
                             if (a.status == "REQUESTED") {
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                         .clickable(enabled = !busy) { disburse(a.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
@@ -304,11 +304,11 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                             }
                             if (a.status == "DISBURSED" || a.status == "OVERDUE") {
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = !busy) { repayInFull(a) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
-                                ) { Text(if (busy) "…" else "Repay in full (${formatMoneyHarvest(a.principalAmount)} RWF)", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                ) { Text(if (busy) "…" else "Repay in full (${formatMoneyHarvest(a.principalAmount)} RWF)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
                         }
                     }

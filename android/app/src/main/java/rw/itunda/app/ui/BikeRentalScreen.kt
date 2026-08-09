@@ -68,17 +68,17 @@ fun BikeRentalScreen(onBack: () -> Unit) {
         BackTopBar(title = "Bike rental", onBack = onBack)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
+                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(BikeRentalTab.RENT to "Rent a bike", BikeRentalTab.MINE to "My bikes").forEach { (value, label) ->
                 val selected = tab == value
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) TossBlue else Color.Transparent)
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
                         .clickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -189,13 +189,13 @@ private fun BikeRentContent() {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         val rental = activeRental
         if (rental != null) {
-            item { Text("Riding now", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Riding now", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Bike unlocked -- billed by elapsed time", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Bike unlocked -- billed by elapsed time", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = !ending) { endRental(rental.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (ending) "Ending…" else "End rental (park here)", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -206,22 +206,22 @@ private fun BikeRentContent() {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Box(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                             .clickable(enabled = !locating) { requestLocation() }.padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (locating) "Locating…" else "Find nearby bikes", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             if (lat != null && nearbyBikes.isEmpty()) {
-                item { Text("No bikes available nearby.", color = TossSecondary, fontSize = 13.sp) }
+                item { Text("No bikes available nearby.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             }
             items(nearbyBikes, key = { it.id }) { bike ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(if (bike.type == "ELECTRIC") "⚡ Electric bike" else "🚲 Regular bike", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(if (bike.type == "ELECTRIC") "150 RWF/minute" else "80 RWF/minute", color = TossSecondary, fontSize = 12.sp)
+                        Text(if (bike.type == "ELECTRIC") "⚡ Electric bike" else "🚲 Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(if (bike.type == "ELECTRIC") "150 RWF/minute" else "80 RWF/minute", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = busyBikeId != bike.id) { startRental(bike.id) }.padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busyBikeId == bike.id) "…" else "Unlock", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -230,7 +230,7 @@ private fun BikeRentContent() {
             }
         }
         if (pastRentals.isNotEmpty()) {
-            item { Text("Past rides", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Past rides", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(pastRentals, key = { it.id }) { session -> BikeRentalSessionCard(session) }
         }
     }
@@ -306,22 +306,22 @@ private fun BikeMineContent() {
     ) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Register a bike you own", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Any itunda user can list a bike or scooter into the shared rental pool.", color = TossSecondary, fontSize = 12.sp)
+                    Text("Register a bike you own", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Any itunda user can list a bike or scooter into the shared rental pool.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("ELECTRIC" to "⚡ Electric", "REGULAR" to "🚲 Regular").forEach { (value, label) ->
                             Box(
                                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                                    .background(if (bikeType == value) TossBlue else TossCardSoft)
+                                    .background(if (bikeType == value) Ids.colors.brand else Ids.colors.surfaceSoft)
                                     .clickable { bikeType = value }.padding(vertical = 10.dp),
                                 contentAlignment = Alignment.Center,
-                            ) { Text(label, color = if (bikeType == value) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            ) { Text(label, color = if (bikeType == value) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
                     Box(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                             .clickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) { Text(if (registering) "Registering…" else "Register at my current location", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -331,18 +331,18 @@ private fun BikeMineContent() {
         if (!loaded) {
             item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
         } else if (myBikes.isEmpty()) {
-            item { Text("You haven't registered any bikes yet.", color = TossSecondary, fontSize = 13.sp) }
+            item { Text("You haven't registered any bikes yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         } else {
-            item { Text("Your bikes", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Your bikes", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(myBikes, key = { it.id }) { bike ->
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (bike.type == "ELECTRIC") "⚡ Electric bike" else "🚲 Regular bike", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(if (bike.type == "ELECTRIC") "⚡ Electric bike" else "🚲 Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                .background(if (bike.available) Ids.colors.success else TossCardSoft)
+                                .background(if (bike.available) Ids.colors.success else Ids.colors.surfaceSoft)
                                 .clickable(enabled = busyBikeId != bike.id) { toggleAvailable(bike) }.padding(horizontal = 14.dp, vertical = 10.dp),
-                        ) { Text(if (bike.available) "Available" else "Unavailable", color = if (bike.available) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        ) { Text(if (bike.available) "Available" else "Unavailable", color = if (bike.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
@@ -352,12 +352,12 @@ private fun BikeMineContent() {
 
 @Composable
 private fun BikeRentalSessionCard(session: BikeRentalSessionDto) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("${session.durationMinutes ?: 0} min ride", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("${session.durationMinutes ?: 0} min ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             val fare = session.totalFare
             if (fare != null) {
-                Text("${formatMoneyBike(fare)} RWF", color = TossSecondary, fontSize = 12.sp)
+                Text("${formatMoneyBike(fare)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
         }
     }

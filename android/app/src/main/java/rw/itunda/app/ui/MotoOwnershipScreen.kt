@@ -217,7 +217,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                     "Save toward a 30% down payment on your own moto-taxi bike (itunda's own down-payment policy), then convert the rest into an unsecured loan. " +
                         "A real entry-level bike costs around 600,000 RWF -- this fills the gap left since Rwanda's taxi-moto cooperatives, which used to help " +
                         "drivers become owner-operators, were dissolved.",
-                    color = TossSecondary, fontSize = 12.sp,
+                    color = Ids.colors.textSecondary, fontSize = 12.sp,
                 )
             }
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
@@ -228,22 +228,22 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                 }
             } else {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Moto-Taxi Ownership Plan", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Moto-Taxi Ownership Plan", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             if (hasActivePlan) {
                                 Text(
                                     "You already have an active moto-taxi ownership plan -- complete or cancel it before starting another.",
-                                    color = TossSecondary, fontSize = 12.sp,
+                                    color = Ids.colors.textSecondary, fontSize = 12.sp,
                                 )
                             } else {
                                 IdsTextField(value = bikePrice, onValueChange = { bikePrice = it }, label = "Bike price (RWF, 300,000-2,500,000)", modifier = Modifier.fillMaxWidth())
                                 IdsTextField(value = dailyContribution, onValueChange = { dailyContribution = it }, label = "Daily contribution (RWF)", modifier = Modifier.fillMaxWidth())
                                 previewDownPayment?.let {
-                                    Text("Down payment target (30%): ${formatMoneyMoto(it)} RWF", color = TossSecondary, fontSize = 11.sp)
+                                    Text("Down payment target (30%): ${formatMoneyMoto(it)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
                                 }
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                         .clickable(enabled = busyId != "create") { create() }
                                         .padding(vertical = 14.dp),
                                     contentAlignment = Alignment.Center,
@@ -254,7 +254,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                 }
             }
 
-            item { Text("My moto-taxi ownership plans", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("My moto-taxi ownership plans", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             when {
                 plans == null -> item {}
                 plans!!.isEmpty() -> item {
@@ -264,35 +264,35 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                     val progressPct = if (plan.downPaymentTarget.signum() > 0) {
                         (plan.savedAmount.divide(plan.downPaymentTarget, 4, java.math.RoundingMode.HALF_UP).toDouble() * 100).coerceIn(0.0, 100.0)
                     } else 0.0
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${formatMoneyMoto(plan.bikePrice)} RWF bike", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                Text(plan.status, color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                Text("${formatMoneyMoto(plan.bikePrice)} RWF bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(plan.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             }
                             if (plan.status == "SAVING") {
                                 Text(
                                     "Saved ${formatMoneyMoto(plan.savedAmount)} / ${formatMoneyMoto(plan.downPaymentTarget)} RWF down payment",
-                                    color = TossSecondary, fontSize = 11.sp,
+                                    color = Ids.colors.textSecondary, fontSize = 11.sp,
                                 )
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(TossCardSoft),
+                                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(Ids.colors.surfaceSoft),
                                 ) {
                                     Box(
                                         modifier = Modifier.fillMaxWidth(progressPct.toFloat() / 100f).height(6.dp)
-                                            .clip(RoundedCornerShape(3.dp)).background(TossBlue),
+                                            .clip(RoundedCornerShape(3.dp)).background(Ids.colors.brand),
                                     )
                                 }
                                 IdsTextField(value = contributeAmounts[plan.id] ?: "", onValueChange = { contributeAmounts = contributeAmounts + (plan.id to it) }, label = "Contribution amount (RWF)", modifier = Modifier.fillMaxWidth())
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(
-                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                             .clickable(enabled = busyId == null) { contribute(plan.id) }
                                             .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
-                                    ) { Text(if (busyId == plan.id) "Saving…" else "Contribute", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                    ) { Text(if (busyId == plan.id) "Saving…" else "Contribute", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                     Box(
-                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                             .clickable(enabled = busyId == null) { cancel(plan.id) }
                                             .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
@@ -301,10 +301,10 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                 if (plan.savedAmount >= plan.downPaymentTarget) {
                                     Text(
                                         "This releases your full ${formatMoneyMoto(plan.bikePrice)} RWF bike price to your wallet (your saved down payment plus a new unsecured loan for the rest) -- itunda cannot repossess the bike if you stop repaying.",
-                                        color = TossSecondary, fontSize = 10.sp,
+                                        color = Ids.colors.textSecondary, fontSize = 10.sp,
                                     )
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                             .clickable(enabled = busyId == null) { convert(plan.id) }
                                             .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
@@ -312,17 +312,17 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                 }
                             }
                             if (plan.status == "LOAN_ACTIVE") {
-                                Text("Loan outstanding: ${formatMoneyMoto(plan.loanOutstanding)} RWF", color = TossSecondary, fontSize = 11.sp)
+                                Text("Loan outstanding: ${formatMoneyMoto(plan.loanOutstanding)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
                                 IdsTextField(value = repayAmounts[plan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (plan.id to it) }, label = "Repayment amount (RWF)", modifier = Modifier.fillMaxWidth())
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = busyId == null) { repay(plan.id) }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
-                                ) { Text(if (busyId == plan.id) "Repaying…" else "Repay", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                ) { Text(if (busyId == plan.id) "Repaying…" else "Repay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                             }
                             if (plan.status == "COMPLETED") {
-                                Text("Paid off -- this bike is now fully yours.", color = TossSecondary, fontSize = 11.sp)
+                                Text("Paid off -- this bike is now fully yours.", color = Ids.colors.textSecondary, fontSize = 11.sp)
                             }
                         }
                     }

@@ -107,17 +107,17 @@ fun InvestScreen(onBack: () -> Unit) {
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
+                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(InvestMode.MARKET to "Market", InvestMode.PORTFOLIO to "Portfolio", InvestMode.WATCHLIST to "Watchlist").forEach { (m, label) ->
                 val selected = mode == m
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) TossBlue else Color.Transparent)
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
                         .clickable { mode = m }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -169,7 +169,7 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
                     val selected = marketFilter == id
                     Text(
                         label, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (selected) Ids.colors.brand else TossSecondary,
+                        color = if (selected) Ids.colors.brand else Ids.colors.textSecondary,
                         modifier = Modifier
                             .clip(RoundedCornerShape(999.dp))
                             .background(if (selected) Ids.colors.brand.copy(alpha = 0.12f) else Color.Transparent)
@@ -200,15 +200,15 @@ private fun StockRow(stock: StockDto, isWatched: Boolean, onClick: () -> Unit) {
     val positive = stock.changePercent >= 0
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-            .background(TossCard).clickable(onClick = onClick).padding(16.dp),
+            .background(Ids.colors.surface).clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stock.symbol, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(stock.symbol, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 if (stock.market != "RSE") {
                     Text(
-                        stock.market, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TossSecondary,
+                        stock.market, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary,
                         modifier = Modifier
                             .padding(start = 6.dp)
                             .clip(RoundedCornerShape(4.dp))
@@ -217,14 +217,14 @@ private fun StockRow(stock: StockDto, isWatched: Boolean, onClick: () -> Unit) {
                     )
                 }
             }
-            Text(stock.name, color = TossSecondary, fontSize = 12.sp)
+            Text(stock.name, color = Ids.colors.textSecondary, fontSize = 12.sp)
         }
         if (isWatched) {
             Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("${formatMoney(stock.price)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("${formatMoney(stock.price)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     if (positive) Icons.Outlined.TrendingUp else Icons.Outlined.TrendingDown,
@@ -273,10 +273,10 @@ private fun PortfolioContent() {
             val p = portfolio!!
             val positive = p.totalReturn >= 0
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp)) {
-                        Text("Total value", color = TossSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        Text("${formatMoney(p.totalValue)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                        Text("Total value", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${formatMoney(p.totalValue)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
                         Text(
                             "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${"%.2f".format(p.totalReturnPercent)}%)",
                             color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
@@ -287,14 +287,14 @@ private fun PortfolioContent() {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 "Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction",
-                                color = TossSecondary, fontSize = 11.sp,
+                                color = Ids.colors.textSecondary, fontSize = 11.sp,
                             )
                         }
                     }
                 }
                 AddFundsCard(onFunded = ::load)
                 if (p.holdings.isEmpty()) {
-                    Text("You don't hold any real shares yet. Browse the Market tab to buy some.", color = TossSecondary, fontSize = 14.sp)
+                    Text("You don't hold any real shares yet. Browse the Market tab to buy some.", color = Ids.colors.textSecondary, fontSize = 14.sp)
                 } else {
                     p.holdings.forEach { HoldingRow(it) }
                 }
@@ -339,17 +339,17 @@ private fun AddFundsCard(onFunded: () -> Unit) {
         }
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Investment cash", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("Investment cash", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Text(
                     if (expanded) "Cancel" else "Add funds",
-                    color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                     modifier = Modifier.clickable { expanded = !expanded; error = null },
                 )
             }
-            Text("Move money from your main wallet into your investment account.", color = TossSecondary, fontSize = 12.sp)
+            Text("Move money from your main wallet into your investment account.", color = Ids.colors.textSecondary, fontSize = 12.sp)
             if (expanded) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -357,7 +357,7 @@ private fun AddFundsCard(onFunded: () -> Unit) {
                     Spacer(modifier = Modifier.width(10.dp))
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                            .background(TossBlue)
+                            .background(Ids.colors.brand)
                             .clickable(enabled = !busy) { coroutineScope.launch { doFund() } }
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                     ) {
@@ -378,14 +378,14 @@ private fun AddFundsCard(onFunded: () -> Unit) {
 @Composable
 private fun HoldingRow(holding: StockHoldingDto) {
     val positive = holding.`return` >= 0
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(holding.symbol, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Text("${formatMoney(holding.value)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(holding.symbol, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("${formatMoney(holding.value)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${holding.shares} shares @ ${formatMoney(holding.avgPrice)} avg", color = TossSecondary, fontSize = 12.sp)
+                Text("${holding.shares} shares @ ${formatMoney(holding.avgPrice)} avg", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 Text(
                     "${if (positive) "+" else ""}${"%.2f".format(holding.`return`)}%",
                     color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.Bold,
@@ -464,16 +464,16 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("${stock.symbol} · ${stock.marketCap}", color = TossSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text("${stock.symbol} · ${stock.marketCap}", color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Icon(
                 if (watching) Icons.Filled.Star else Icons.Outlined.Star,
                 contentDescription = "Toggle watch",
-                tint = if (watching) Color(0xFFFFC107) else TossSecondary,
+                tint = if (watching) Color(0xFFFFC107) else Ids.colors.textSecondary,
                 modifier = Modifier.size(24.dp).clickable { toggleWatch() },
             )
         }
-        Text(stock.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Text("${formatMoney(stock.price)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+        Text(stock.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Text("${formatMoney(stock.price)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 if (positive) Icons.Outlined.TrendingUp else Icons.Outlined.TrendingDown,
@@ -490,22 +490,22 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
         } else if (history!!.isNotEmpty()) {
             Sparkline(history!!.map { it.price }, positive = positive)
-            Text("Last 14 days -- real deterministic simulation, not live RSE data", color = TossSecondary, fontSize = 11.sp)
+            Text("Last 14 days -- real deterministic simulation, not live RSE data", color = Ids.colors.textSecondary, fontSize = 11.sp)
         }
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(true to "Buy", false to "Sell").forEach { (isBuy, label) ->
                 val selected = buyMode == isBuy
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) (if (isBuy) TossBlue else Ids.colors.danger) else Color.Transparent)
+                        .background(if (selected) (if (isBuy) Ids.colors.brand else Ids.colors.danger) else Color.Transparent)
                         .clickable { buyMode = isBuy }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -515,7 +515,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             Spacer(modifier = Modifier.width(10.dp))
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                    .background(if (buyMode) TossBlue else Ids.colors.danger)
+                    .background(if (buyMode) Ids.colors.brand else Ids.colors.danger)
                     .clickable(enabled = !submitting) { trade() }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {

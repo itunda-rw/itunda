@@ -68,17 +68,17 @@ fun DesignatedDriverScreen(onBack: () -> Unit) {
         BackTopBar(title = "Designated driver", onBack = onBack)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
+                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(DesignatedDriverTab.REQUEST to "Get a driver", DesignatedDriverTab.DRIVE to "Drive").forEach { (value, label) ->
                 val selected = tab == value
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) TossBlue else Color.Transparent)
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
                         .clickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -189,7 +189,7 @@ private fun DesignatedDriverRequestContent() {
     ) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         if (activeTrip != null) {
-            item { Text("Your driver", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Your driver", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             item {
                 DesignatedDriverTripCard(activeTrip) {
                     if (activeTrip.status == "REQUESTED") {
@@ -203,17 +203,17 @@ private fun DesignatedDriverRequestContent() {
             }
         } else {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Get a designated driver", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Get a designated driver", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text(
                             "A real professional driver comes to you and drives YOUR OWN CAR home.",
-                            color = TossSecondary, fontSize = 12.sp,
+                            color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = pickupAddress, onValueChange = { pickupAddress = it }, label = "Pickup", modifier = Modifier.weight(1f))
                             Box(
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                     .clickable(enabled = !locating) { requestLocation() }
                                     .padding(horizontal = 14.dp, vertical = 14.dp),
                             ) { Text(if (locating) "…" else "Use my location", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
@@ -228,7 +228,7 @@ private fun DesignatedDriverRequestContent() {
                         IdsTextField(value = vehiclePlate, onValueChange = { vehiclePlate = it }, label = "License plate", modifier = Modifier.fillMaxWidth())
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .background(TossBlue)
+                                .background(Ids.colors.brand)
                                 .clickable(
                                     enabled = !requesting && pickupLat != null && dropoffAddress.isNotBlank() &&
                                         vehicleMake.isNotBlank() && vehicleModel.isNotBlank() && vehiclePlate.isNotBlank(),
@@ -241,7 +241,7 @@ private fun DesignatedDriverRequestContent() {
             }
         }
         if (pastTrips.isNotEmpty()) {
-            item { Text("Past trips", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Past trips", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(pastTrips, key = { it.id }) { trip -> DesignatedDriverTripCard(trip) }
         }
     }
@@ -366,19 +366,19 @@ private fun DesignatedDriverDriveContent() {
         when {
             !loaded -> item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
             current == null -> item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Become a designated driver", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Become a designated driver", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             "Any itunda user can register. License number is self-declared, not verified against a real registry.",
-                            color = TossSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = Ids.colors.textSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         )
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
                         IdsTextField(value = licenseNumber, onValueChange = { licenseNumber = it }, label = "License number", modifier = Modifier.fillMaxWidth())
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(12.dp))
                         Box(
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = !registering && licenseNumber.isNotBlank()) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
                         ) { Text(if (registering) "Registering…" else "Register", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -386,19 +386,19 @@ private fun DesignatedDriverDriveContent() {
             }
             else -> {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(if (current.available) "You're online" else "You're offline", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(if (current.available) "You're online" else "You're offline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                    .background(if (current.available) Ids.colors.danger else TossBlue)
+                                    .background(if (current.available) Ids.colors.danger else Ids.colors.brand)
                                     .clickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
                             ) { Text(if (current.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         }
                     }
                 }
                 if (activeDriverTrips.isNotEmpty()) {
-                    item { Text("Active", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    item { Text("Active", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(activeDriverTrips, key = { it.id }) { trip ->
                         DesignatedDriverTripCard(trip) {
                             val nextAction: (suspend (String) -> DesignatedDriverTripDto)? = when (trip.status) {
@@ -408,7 +408,7 @@ private fun DesignatedDriverDriveContent() {
                             }
                             nextAction?.let { action ->
                                 Box(
-                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                         .clickable(enabled = busyTripId != trip.id) { act(trip.id, action) }.padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
@@ -422,11 +422,11 @@ private fun DesignatedDriverDriveContent() {
                     }
                 }
                 if (availableTrips.isNotEmpty()) {
-                    item { Text("Nearby requests", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    item { Text("Nearby requests", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(availableTrips, key = { it.id }) { trip ->
                         DesignatedDriverTripCard(trip) {
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptDesignatedDriverTrip(id).trip } }
                                     .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center,
@@ -435,7 +435,7 @@ private fun DesignatedDriverDriveContent() {
                     }
                 }
                 if (pastDriverTrips.isNotEmpty()) {
-                    item { Text("Completed", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    item { Text("Completed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(pastDriverTrips, key = { it.id }) { trip -> DesignatedDriverTripCard(trip) }
                 }
             }
@@ -445,14 +445,14 @@ private fun DesignatedDriverDriveContent() {
 
 @Composable
 private fun DesignatedDriverTripCard(trip: DesignatedDriverTripDto, action: (@Composable () -> Unit)? = null) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(trip.pickupAddress, color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text("→ ${trip.dropoffAddress}", color = TossSecondary, fontSize = 13.sp)
-            Text("${trip.vehicleMake} ${trip.vehicleModel} · ${trip.vehiclePlate}", color = TossSecondary, fontSize = 12.sp)
+            Text(trip.pickupAddress, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("→ ${trip.dropoffAddress}", color = Ids.colors.textSecondary, fontSize = 13.sp)
+            Text("${trip.vehicleMake} ${trip.vehicleModel} · ${trip.vehiclePlate}", color = Ids.colors.textSecondary, fontSize = 12.sp)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(designatedDriverStatusLabel(trip.status), color = designatedDriverStatusColor(trip.status), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Text("${formatMoneyDesignatedDriver(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = TossSecondary, fontSize = 12.sp)
+                Text("${formatMoneyDesignatedDriver(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             action?.let {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
@@ -475,7 +475,7 @@ private fun designatedDriverStatusLabel(status: String): String = when (status) 
 private fun designatedDriverStatusColor(status: String): Color = when (status) {
     "COMPLETED" -> Ids.colors.success
     "CANCELLED" -> Ids.colors.danger
-    else -> TossBlue
+    else -> Ids.colors.brand
 }
 
 private fun formatMoneyDesignatedDriver(value: java.math.BigDecimal): String {

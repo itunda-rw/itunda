@@ -101,7 +101,7 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
             item {
                 Text(
                     "Automatically top up your wallet from a linked account whenever it drops below a threshold you set.",
-                    color = TossSecondary,
+                    color = Ids.colors.textSecondary,
                     fontSize = 13.sp,
                 )
             }
@@ -112,10 +112,10 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
                 item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
             } else if (accounts.none { it.status == "LINKED" }) {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Text(
                             "Link an external account first -- see My > Linked accounts.",
-                            color = TossSecondary,
+                            color = Ids.colors.textSecondary,
                             fontSize = 13.sp,
                             modifier = Modifier.padding(16.dp),
                         )
@@ -134,7 +134,7 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
                     item {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .background(TossCard)
+                                .background(Ids.colors.surface)
                                 .clickable {
                                     coroutineScope.launch {
                                         try {
@@ -149,7 +149,7 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
                                 }
                                 .padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
-                        ) { Text("Check now", color = TossBlue, fontWeight = FontWeight.Bold) }
+                        ) { Text("Check now", color = Ids.colors.brand, fontWeight = FontWeight.Bold) }
                     }
                 }
             }
@@ -172,10 +172,10 @@ private fun AutoTopUpConfigCard(
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(if (setting == null) "Set up auto top-up" else "Auto top-up settings", color = TossText, fontWeight = FontWeight.Bold)
+                Text(if (setting == null) "Set up auto top-up" else "Auto top-up settings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
                 if (setting != null) {
                     Switch(checked = enabled, onCheckedChange = { enabled = it })
                 }
@@ -185,30 +185,30 @@ private fun AutoTopUpConfigCard(
                     linkedAccounts.forEach { account ->
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                .background(if (selectedAccountId == account.id) TossBlue else Ids.colors.textTertiary)
+                                .background(if (selectedAccountId == account.id) Ids.colors.brand else Ids.colors.textTertiary)
                                 .clickable { selectedAccountId = account.id }
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
                             Text(
                                 "${account.provider} ${account.externalAccountNumberMasked}",
-                                color = if (selectedAccountId == account.id) Color.White else TossText,
+                                color = if (selectedAccountId == account.id) Color.White else Ids.colors.textPrimary,
                                 fontSize = 12.sp,
                             )
                         }
                     }
                 }
             } else {
-                Text("${linkedAccounts.first().provider} ${linkedAccounts.first().externalAccountNumberMasked}", color = TossSecondary, fontSize = 13.sp)
+                Text("${linkedAccounts.first().provider} ${linkedAccounts.first().externalAccountNumberMasked}", color = Ids.colors.textSecondary, fontSize = 13.sp)
             }
             IdsTextField(value = threshold, onValueChange = { threshold = it }, label = "Top up when wallet drops below (RWF)", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = topUpAmount, onValueChange = { topUpAmount = it }, label = "Amount to top up (RWF)", modifier = Modifier.fillMaxWidth())
             if (setting != null) {
-                Text("Triggered ${setting.triggersToday}/${setting.dailyTriggerCap} times today.", color = TossSecondary, fontSize = 12.sp)
+                Text("Triggered ${setting.triggersToday}/${setting.dailyTriggerCap} times today.", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                    .background(if (saving) Ids.colors.textTertiary else TossBlue)
+                    .background(if (saving) Ids.colors.textTertiary else Ids.colors.brand)
                     .clickable(enabled = !saving) {
                         val thresholdBd = threshold.trim().toBigDecimalOrNull()
                         val topUpBd = topUpAmount.trim().toBigDecimalOrNull()

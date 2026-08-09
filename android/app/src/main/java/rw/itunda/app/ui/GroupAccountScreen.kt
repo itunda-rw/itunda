@@ -141,12 +141,12 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                     IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Roommates)", modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                 .clickable { showCreate = false; name = "" }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
-                        ) { Text("Cancel", color = TossText, fontWeight = FontWeight.Bold) }
+                        ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                         Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (creating) "Creating…" else "Create", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -165,13 +165,13 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
             else -> items(accounts!!) { account ->
                 Card(
                     shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = TossCard),
+                    colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
                     modifier = Modifier.fillMaxWidth().clickable { onOpen(account.id) },
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(account.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(account.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         account.monthlyDuesAmount?.let {
-                            Text("${formatMoneyGroup(it)} RWF / month dues", color = TossSecondary, fontSize = 12.sp)
+                            Text("${formatMoneyGroup(it)} RWF / month dues", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
                 }
@@ -341,22 +341,22 @@ private fun GroupAccountDetailContent(id: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text(current.groupAccount.name, color = TossSecondary, fontSize = 13.sp)
-                    Text("${formatMoneyGroup(current.balance)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                    Text("${current.members.size} member${if (current.members.size == 1) "" else "s"}", color = TossSecondary, fontSize = 12.sp)
+                    Text(current.groupAccount.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    Text("${formatMoneyGroup(current.balance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                    Text("${current.members.size} member${if (current.members.size == 1) "" else "s"}", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
             }
         }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Members", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Members", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     current.members.forEach { m ->
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", fontSize = 13.sp)
-                            if (m.isOwner) Text("Organizer", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            if (m.isOwner) Text("Organizer", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -372,11 +372,11 @@ private fun GroupAccountDetailContent(id: String) {
                     val active = actionMode == m
                     Text(
                         label, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                        color = if (active) Color.White else TossText,
+                        color = if (active) Color.White else Ids.colors.textPrimary,
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(if (active) TossBlue else TossCardSoft)
+                            .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
                             .clickable { actionMode = m }
                             .padding(vertical = 10.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -386,21 +386,21 @@ private fun GroupAccountDetailContent(id: String) {
         }
         if (actionMode == GroupAccountActionMode.DUES) {
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Monthly dues", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Monthly dues", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     val currentDues = dues
                     when {
                         currentDues == null -> Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().height(40.dp)) {}
                         currentDues.duesAmount == null && isOwner -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = duesAmountInput, onValueChange = { duesAmountInput = it }, label = "Monthly dues (RWF)", modifier = Modifier.weight(1f))
                             Box(
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = !duesBusy) { duesAmountInput.toBigDecimalOrNull()?.let { setDues(it) } }
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
                             ) { Text(if (duesBusy) "…" else "Set", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
-                        currentDues.duesAmount == null -> Text("The organizer hasn't set a monthly dues amount.", color = TossSecondary, fontSize = 13.sp)
+                        currentDues.duesAmount == null -> Text("The organizer hasn't set a monthly dues amount.", color = Ids.colors.textSecondary, fontSize = 13.sp)
                         else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             val duesAmount = currentDues.duesAmount!!
                             Text("${formatMoneyGroup(duesAmount)} RWF / month · ${currentDues.cycleMonth}", fontSize = 13.sp)
@@ -409,7 +409,7 @@ private fun GroupAccountDetailContent(id: String) {
                                     Text("${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", fontSize = 13.sp)
                                     Text(
                                         if (m.paid) "✓ Paid" else "${formatMoneyGroup(m.contributedAmount)} / ${formatMoneyGroup(duesAmount)}",
-                                        color = if (m.paid) Ids.colors.success else TossSecondary,
+                                        color = if (m.paid) Ids.colors.success else Ids.colors.textSecondary,
                                         fontWeight = if (m.paid) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp,
                                     )
                                 }
@@ -417,12 +417,12 @@ private fun GroupAccountDetailContent(id: String) {
                             if (isOwner) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Box(
-                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                             .clickable(enabled = !duesBusy) { remindUnpaid() }.padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) { Text(if (duesBusy) "…" else "Remind unpaid members", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                     Box(
-                                        modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                        modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                             .clickable(enabled = !duesBusy) { setDues(null) }.padding(horizontal = 16.dp, vertical = 12.dp),
                                     ) { Text("Clear", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
                                 }
@@ -430,7 +430,7 @@ private fun GroupAccountDetailContent(id: String) {
                             remindedCount?.let {
                                 Text(
                                     if (it == 0) "Everyone has already paid or been reminded this month." else "Reminded $it member${if (it == 1) "" else "s"}.",
-                                    color = TossSecondary, fontSize = 12.sp,
+                                    color = Ids.colors.textSecondary, fontSize = 12.sp,
                                 )
                             }
                         }
@@ -448,18 +448,18 @@ private fun GroupAccountDetailContent(id: String) {
                     onVerified = { needsDeviceVerification = false; if (amount.isNotBlank()) deposit() },
                 )
             } else {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(if (isOwner) "Deposit or withdraw" else "Deposit", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(if (isOwner) "Deposit or withdraw" else "Deposit", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             GroupAccountActionButton(title = if (busy) "…" else "Deposit", enabled = !busy && amount.isNotBlank(), modifier = Modifier.weight(1f)) { deposit() }
                             if (isOwner) {
                                 Box(
-                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = !busy && amount.isNotBlank()) { withdraw() }.padding(vertical = 14.dp),
                                     contentAlignment = Alignment.Center,
-                                ) { Text(if (busy) "…" else "Withdraw", color = TossText, fontWeight = FontWeight.Bold) }
+                                ) { Text(if (busy) "…" else "Withdraw", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
@@ -469,13 +469,13 @@ private fun GroupAccountDetailContent(id: String) {
         }
         if (isOwner && actionMode == GroupAccountActionMode.INVITE) {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Invite a member", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Invite a member", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
                             Box(
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
                                     .padding(horizontal = 20.dp, vertical = 14.dp),
                             ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -493,7 +493,7 @@ private fun GroupAccountDetailContent(id: String) {
 private fun GroupAccountActionButton(title: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-            .background(TossBlue).clickable(enabled = enabled, onClick = onClick)
+            .background(Ids.colors.brand).clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center,
     ) {

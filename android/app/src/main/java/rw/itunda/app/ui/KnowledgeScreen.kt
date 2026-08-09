@@ -111,30 +111,30 @@ fun KnowledgeScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Your reputation", color = TossSecondary, fontSize = 13.sp)
+                        Text("Your reputation", color = Ids.colors.textSecondary, fontSize = 13.sp)
                         val count = reputation
                         Text(
                             if (count == null) "…" else "$count adopted answer${if (count == 1) "" else "s"}",
-                            color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                            color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         )
                     }
                 }
             }
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
                 ) {
                     listOf(KnowledgeTab.BROWSE to "Browse", KnowledgeTab.MINE to "Mine").forEach { (value, label) ->
                         val selected = tab == value
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                                .background(if (selected) TossBlue else Color.Transparent)
+                                .background(if (selected) Ids.colors.brand else Color.Transparent)
                                 .clickable { tab = value }.padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -144,9 +144,9 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                .background(if (activeCategory == null) TossBlue else TossCardSoft)
+                                .background(if (activeCategory == null) Ids.colors.brand else Ids.colors.surfaceSoft)
                                 .clickable { activeCategory = null }.padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) { Text("All", color = if (activeCategory == null) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        ) { Text("All", color = if (activeCategory == null) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
                 item {
@@ -155,9 +155,9 @@ fun KnowledgeScreen(onBack: () -> Unit) {
                             val selected = activeCategory == c.id
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                                    .background(if (selected) TossBlue else TossCardSoft)
+                                    .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
                                     .clickable { activeCategory = c.id }.padding(horizontal = 12.dp, vertical = 6.dp),
-                            ) { Text(c.label, color = if (selected) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            ) { Text(c.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
@@ -168,21 +168,21 @@ fun KnowledgeScreen(onBack: () -> Unit) {
             error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
             val list = questions
             if (list == null) {
-                item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
+                item { Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             } else if (list.isEmpty()) {
                 item { EmptyState("No questions yet — be the first to ask.") }
             } else {
                 items(list, key = { it.id }) { q ->
                     Card(
-                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard),
+                        shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
                         modifier = Modifier.fillMaxWidth().clickable { openQuestionId = q.id },
                     ) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(
                                 (if (q.adoptedAnswerId != null) "✅ " else "") + q.title,
-                                color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                                color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                             )
-                            Text(categories.find { it.id == q.category }?.label ?: q.category, color = TossSecondary, fontSize = 12.sp)
+                            Text(categories.find { it.id == q.category }?.label ?: q.category, color = Ids.colors.textSecondary, fontSize = 12.sp)
                         }
                     }
                 }
@@ -190,12 +190,12 @@ fun KnowledgeScreen(onBack: () -> Unit) {
             if (tab == KnowledgeTab.MINE) {
                 val answers = myAnswers
                 if (answers != null && answers.isNotEmpty()) {
-                    item { Text("Your answers", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    item { Text("Your answers", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(answers, key = { it.id }) { a ->
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(if (a.isAdopted) "✅ Adopted" else "Pending", color = TossSecondary, fontSize = 12.sp)
-                                Text(a.body, color = TossText, fontSize = 13.sp)
+                                Text(if (a.isAdopted) "✅ Adopted" else "Pending", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                Text(a.body, color = Ids.colors.textPrimary, fontSize = 13.sp)
                             }
                         }
                     }
@@ -217,23 +217,23 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
 
     if (!open) {
         Box(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                 .clickable { open = true }.padding(vertical = 14.dp),
             contentAlignment = Alignment.Center,
-        ) { Text("+ Ask a question", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        ) { Text("+ Ask a question", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
         return
     }
 
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 categories.forEach { c ->
                     val selected = category == c.id
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            .background(if (selected) TossBlue else TossCardSoft)
+                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
                             .clickable { category = c.id }.padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) { Text(c.label, color = if (selected) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                    ) { Text(c.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             IdsTextField(value = title, onValueChange = { title = it }, label = "Your question", modifier = Modifier.fillMaxWidth())
@@ -241,7 +241,7 @@ private fun KnowledgeAskCard(categories: List<KnowledgeCategory>, onAsked: () ->
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                    .background(if (category.isNotEmpty() && title.isNotBlank() && body.isNotBlank()) TossBlue else TossCardSoft)
+                    .background(if (category.isNotEmpty() && title.isNotBlank() && body.isNotBlank()) Ids.colors.brand else Ids.colors.surfaceSoft)
                     .clickable(enabled = !submitting && category.isNotEmpty() && title.isNotBlank() && body.isNotBlank()) {
                         submitting = true
                         error = null
@@ -305,33 +305,33 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
             val q = question
             if (q != null) {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(q.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                            Text(q.body, color = TossSecondary, fontSize = 14.sp)
+                            Text(q.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                            Text(q.body, color = Ids.colors.textSecondary, fontSize = 14.sp)
                         }
                     }
                 }
             }
-            item { Text("Answers", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Answers", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             val list = answers
             if (list == null) {
-                item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
+                item { Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             } else if (list.isEmpty()) {
                 item { EmptyState("No answers yet — be the first to help.") }
             } else {
                 items(list, key = { it.id }) { a ->
                     Card(
                         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                        colors = CardDefaults.cardColors(containerColor = TossCard),
+                        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            if (a.isAdopted) Text("✅ Adopted answer", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            Text(a.body, color = TossText, fontSize = 13.sp)
+                            if (a.isAdopted) Text("✅ Adopted answer", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text(a.body, color = Ids.colors.textPrimary, fontSize = 13.sp)
                             if (isAsker && q?.adoptedAnswerId == null) {
                                 Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(TossCardSoft)
+                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = busyAnswerId != a.id) {
                                             busyAnswerId = a.id
                                             error = null
@@ -348,7 +348,7 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
                                                 }
                                             }
                                         }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                ) { Text(if (busyAnswerId == a.id) "…" else "Adopt this answer", color = TossText, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                ) { Text(if (busyAnswerId == a.id) "…" else "Adopt this answer", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                             }
                         }
                     }
@@ -360,7 +360,7 @@ private fun KnowledgeQuestionDetailScreen(questionId: String, onBack: () -> Unit
                         IdsTextField(value = answerBody, onValueChange = { answerBody = it }, label = "Write an answer", modifier = Modifier.weight(1f))
                         Box(
                             modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                .background(if (answerBody.isNotBlank()) TossBlue else TossCardSoft)
+                                .background(if (answerBody.isNotBlank()) Ids.colors.brand else Ids.colors.surfaceSoft)
                                 .clickable(enabled = !answering && answerBody.isNotBlank()) {
                                     answering = true
                                     error = null

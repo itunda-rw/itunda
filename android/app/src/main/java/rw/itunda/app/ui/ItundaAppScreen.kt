@@ -139,38 +139,17 @@ import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
 import rw.itunda.core.designsystem.theme.Ids
 
-// Aliased to the real theme-reactive design-system tokens (see
-// core/designsystem/theme/IdsSemanticColors.kt) rather than the ad-hoc,
-// half dark-mode-aware set this file used to hand-roll -- kept as thin
-// aliases (not a full rename) since this file's Composables all reference
-// these names throughout; the fix was making the values real, not renaming
-// every call site.
-// internal (not private): SuperAppTabs.kt (Talk/Hood/Shop -- the new
-// Messaging/Marketplace/Commerce tabs, 2026-07-18) shares this exact same visual
-// language rather than hand-rolling a second palette.
-internal val TossBlue: Color
-    @Composable get() = Ids.colors.brand
-private val TossBackground: Color
-    @Composable get() = Ids.colors.background
-internal val TossCard: Color
-    @Composable get() = Ids.colors.surface
-internal val TossCardSoft: Color
-    @Composable get() = Ids.colors.surfaceSoft
-internal val TossText: Color
-    @Composable get() = Ids.colors.textPrimary
-internal val TossSecondary: Color
-    @Composable get() = Ids.colors.textSecondary
-internal val TossTertiary: Color
-    @Composable get() = Ids.colors.textTertiary
-internal val TossLine: Color
-    @Composable get() = Ids.colors.divider
-private val TossChip: Color
-    @Composable get() = Ids.colors.chip
+// Real gap found live (2026-08-10), user-flagged: this file used to alias the real
+// theme-reactive design-system tokens (core/designsystem/theme/IdsSemanticColors.kt)
+// under Toss-branded names (TossBlue, TossCard, ...) -- itunda's own screens naming
+// their own colors after a different company's product read exactly like an
+// unfinished fork, not a real product with its own identity. Every call site across
+// this module now references Ids.colors.* directly; no alias layer left to name.
 
 // Fixed vivid accent colors for the small product-icon badges in
 // FlatSection rows (갈아타기/서비스/외화/목돈굴리기/연금/대출 등) -- these are
 // brand/product colors in real Toss, not semantic theme colors, so unlike
-// TossBlue etc. above they intentionally stay constant across light/dark.
+// Ids.colors.brand etc. above they intentionally stay constant across light/dark.
 internal val AccentBlue = Color(0xFF3182F6)
 internal val AccentTeal = Color(0xFF14AE85)
 internal val AccentPurple = Color(0xFF7C5CFC)
@@ -187,7 +166,7 @@ internal val AccentGray = Color(0xFF6B7684)
 // never-wired QR button (Pay -- HomeTopBar's own scan icon has no onClick either) --
 // and are now reachable as real rows inside My instead of losing their reachability
 // outright.
-internal enum class TossTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+internal enum class ItundaTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Home("Home", Icons.Outlined.Home),
     Shop("Shop", Icons.Outlined.ShoppingBag),
     Hood("Hood", Icons.Outlined.LocationOn),
@@ -236,7 +215,7 @@ fun ItundaAppScreen(
     onMapDeepLinkConsumed: () -> Unit = {},
 ) {
     IdsTheme {
-        var selectedTab by rememberSaveable { mutableStateOf(TossTab.Home) }
+        var selectedTab by rememberSaveable { mutableStateOf(ItundaTab.Home) }
         var transferStep by rememberSaveable { mutableStateOf<TransferStep?>(null) }
         var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }
         var showTransactionHistory by rememberSaveable { mutableStateOf(false) }
@@ -378,6 +357,9 @@ fun ItundaAppScreen(
         // real returned conversation id here, so TalkTab opens straight into that real
         // chat thread instead of dropping the buyer on a conversation list.
         var pendingConversationId by rememberSaveable { mutableStateOf<String?>(null) }
+        // Real deep-link from the menu's "Property" row into Hood's real
+        // HoodMode.PROPERTY chip (2026-08-10) -- see HoodTab's own doc comment.
+        var pendingHoodMode by remember { mutableStateOf<HoodMode?>(null) }
         var biometricError by remember { mutableStateOf<String?>(null) }
         val activity = LocalRealActivity.current
         val biometricAuth = remember(activity) { rw.itunda.core.identity.NIDABiometricAuth(activity) }
@@ -795,7 +777,7 @@ fun ItundaAppScreen(
                     pendingEatsMerchantId = merchantId
                     pendingEatsMerchantName = businessName
                     showMap = false
-                    selectedTab = TossTab.Shop
+                    selectedTab = ItundaTab.Shop
                 },
             )
             return@IdsTheme
@@ -1008,8 +990,8 @@ fun ItundaAppScreen(
         if (showMyTab) {
             MyTab(
                 onBack = { showMyTab = false },
-                onSwitchToShop = { showMyTab = false; selectedTab = TossTab.Shop },
-                onSwitchToHood = { showMyTab = false; selectedTab = TossTab.Hood },
+                onSwitchToShop = { showMyTab = false; selectedTab = ItundaTab.Shop },
+                onSwitchToHood = { showMyTab = false; selectedTab = ItundaTab.Hood },
             )
             return@IdsTheme
         }
@@ -1032,7 +1014,7 @@ fun ItundaAppScreen(
                     onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient },
                     onOpenAutoTransfers = { showAutoTransfers = true },
                     onOpenScheduledTransfers = { showScheduledTransfers = true },
-                    onSplitBill = { showTransferHub = false; selectedTab = TossTab.Talk },
+                    onSplitBill = { showTransferHub = false; selectedTab = ItundaTab.Talk },
                     onOpenHistory = { showTransferHub = false; showTransactionHistory = true },
                 )
             }
@@ -1042,7 +1024,7 @@ fun ItundaAppScreen(
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
-                TossBottomBar(selectedTab = selectedTab, onSelect = { selectedTab = it })
+                ItundaBottomBar(selectedTab = selectedTab, onSelect = { selectedTab = it })
             }
         ) { paddingValues ->
             Box(
@@ -1052,7 +1034,7 @@ fun ItundaAppScreen(
                     .padding(paddingValues)
             ) {
                 when (selectedTab) {
-                    TossTab.Home -> HomeTab(
+                    ItundaTab.Home -> HomeTab(
                         viewModel,
                         onSend = { transferStep = TransferStep.Recipient },
                         onDepositToGoal = { goalId, goalName -> savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
@@ -1063,23 +1045,25 @@ fun ItundaAppScreen(
                         onOpenPay = { showPay = true },
                         onOpenNotifications = { showSettings = true },
                     )
-                    TossTab.Shop -> ShopTab(
+                    ItundaTab.Shop -> ShopTab(
                         pendingEatsMerchantId = pendingEatsMerchantId,
                         pendingEatsMerchantName = pendingEatsMerchantName,
                         onPendingEatsConsumed = { pendingEatsMerchantId = null; pendingEatsMerchantName = null },
                     )
-                    TossTab.Hood -> HoodTab(
+                    ItundaTab.Hood -> HoodTab(
                         onMessageSeller = { conversationId ->
                             pendingConversationId = conversationId
-                            selectedTab = TossTab.Talk
+                            selectedTab = ItundaTab.Talk
                         },
                         onOpenSettings = { showSettings = true },
+                        initialMode = pendingHoodMode ?: HoodMode.MARKETPLACE,
+                        onConsumedInitialMode = { pendingHoodMode = null },
                     )
                     // Seventh and final Feature extraction (2026-07-23) -- see
                     // TalkScreen.kt's own header comment for why deviceStepUpHost is
                     // injected (DeviceStepUpHost.kt wraps :features:payments:impl's
                     // dialog, so it can't become a direct Feature-to-Feature dependency).
-                    TossTab.Talk -> TalkTab(
+                    ItundaTab.Talk -> TalkTab(
                         initialConversationId = pendingConversationId,
                         onConsumedInitial = { pendingConversationId = null },
                         deviceStepUpHost = { visible, onDismiss, onVerified ->
@@ -1087,8 +1071,8 @@ fun ItundaAppScreen(
                         },
                     )
                     // Real 전체 (All services) primary bottom tab (2026-07-24) -- see
-                    // TossTab.All's own doc comment for why this replaced My here.
-                    TossTab.All -> {
+                    // ItundaTab.All's own doc comment for why this replaced My here.
+                    ItundaTab.All -> {
                         val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
                         MenuScreen(
                             onOpenMyTab = { showMyTab = true },
@@ -1133,7 +1117,8 @@ fun ItundaAppScreen(
                             onOpenMotoOwnership = { showMotoOwnership = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
-                            onSwitchToTalk = { selectedTab = TossTab.Talk },
+                            onSwitchToTalk = { selectedTab = ItundaTab.Talk },
+                            onOpenProperty = { pendingHoodMode = HoodMode.PROPERTY; selectedTab = ItundaTab.Hood },
                             partnerMiniApps = partnerMiniApps,
                         )
                     }
@@ -1151,18 +1136,18 @@ fun ItundaAppScreen(
  * against real Toss screenshots, 2026-07-10).
  */
 @Composable
-private fun TossBottomBar(selectedTab: TossTab, onSelect: (TossTab) -> Unit) {
+private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Unit) {
     Column {
-        Divider(color = TossLine, thickness = 0.5.dp)
+        Divider(color = Ids.colors.divider, thickness = 0.5.dp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(TossCard)
+                .background(Ids.colors.surface)
                 .padding(top = 8.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TossTab.entries.forEach { tab ->
+            ItundaTab.entries.forEach { tab ->
                 val selected = tab == selectedTab
                 Column(
                     modifier = Modifier
@@ -1175,14 +1160,14 @@ private fun TossBottomBar(selectedTab: TossTab, onSelect: (TossTab) -> Unit) {
                         imageVector = tab.icon,
                         contentDescription = tab.label,
                         modifier = Modifier.size(24.dp),
-                        tint = if (selected) TossBlue else TossTertiary
+                        tint = if (selected) Ids.colors.brand else Ids.colors.textTertiary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = tab.label,
                         fontSize = 11.sp,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (selected) TossBlue else TossTertiary
+                        color = if (selected) Ids.colors.brand else Ids.colors.textTertiary
                     )
                 }
             }
@@ -1397,7 +1382,7 @@ private fun RoundUpSettingsDialog(
         title = { Text(stringResource(R.string.home_round_up_title)) },
         text = {
             Column {
-                Text(stringResource(R.string.home_round_up_body), color = TossSecondary, fontSize = 13.sp)
+                Text(stringResource(R.string.home_round_up_body), color = Ids.colors.textSecondary, fontSize = 13.sp)
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.home_round_up_enable), modifier = Modifier.weight(1f))
@@ -1405,7 +1390,7 @@ private fun RoundUpSettingsDialog(
                 }
                 if (enabled) {
                     Spacer(Modifier.height(12.dp))
-                    Text(stringResource(R.string.home_round_up_nearest), color = TossSecondary, fontSize = 13.sp)
+                    Text(stringResource(R.string.home_round_up_nearest), color = Ids.colors.textSecondary, fontSize = 13.sp)
                     Row(modifier = Modifier.fillMaxWidth()) {
                         listOf(100L, 500L, 1000L).forEach { option ->
                             Row(
@@ -1418,7 +1403,7 @@ private fun RoundUpSettingsDialog(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text(stringResource(R.string.home_round_up_save_into), color = TossSecondary, fontSize = 13.sp)
+                    Text(stringResource(R.string.home_round_up_save_into), color = Ids.colors.textSecondary, fontSize = 13.sp)
                     goals.forEach { goal ->
                         Row(
                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
@@ -1443,7 +1428,7 @@ private fun RoundUpSettingsDialog(
 @Composable
 private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
     Column {
-        Text(stringResource(R.string.home_discover), color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
+        Text(stringResource(R.string.home_discover), color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
         items.forEach { discoverItem ->
             val accentColor = try {
                 Color(android.graphics.Color.parseColor(discoverItem.color))
@@ -1459,13 +1444,13 @@ private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(discoverItem.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TossText)
+                            Text(discoverItem.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
                             if (discoverItem.isNew) {
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(stringResource(R.string.home_new_badge), color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
-                        Text(discoverItem.subtitle, fontSize = 14.sp, color = TossSecondary)
+                        Text(discoverItem.subtitle, fontSize = 14.sp, color = Ids.colors.textSecondary)
                     }
                     discoverItem.badge?.let { badge ->
                         Text(badge, color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -1493,10 +1478,10 @@ private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Un
             modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(16.dp))
-                .background(TossCardSoft)
+                .background(Ids.colors.surfaceSoft)
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            Text(stringResource(R.string.home_search), color = TossSecondary, fontSize = 15.sp)
+            Text(stringResource(R.string.home_search), color = Ids.colors.textSecondary, fontSize = 15.sp)
         }
         // Both icons were real no-op taps (found 2026-07-22 audit) despite their own
         // real destinations already existing elsewhere in this file: QR scan opens
@@ -1536,7 +1521,7 @@ private fun WalletHeroCard(
             // with nothing earned yet keeps the plain label rather than a "+RWF 0"
             // that reads as broken.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.home_wallet), fontSize = 14.sp, color = TossSecondary)
+                Text(stringResource(R.string.home_wallet), fontSize = 14.sp, color = Ids.colors.textSecondary)
                 if (earnedThisMonth > 0.0) {
                     Text(
                         "  +RWF %,.0f".format(earnedThisMonth),
@@ -1553,7 +1538,7 @@ private fun WalletHeroCard(
             // is unchanged; this just makes the hero wallet balance -- itunda's own
             // most important number on the Home tab -- use the real token instead of
             // a number that happens to currently match it.
-            Text(balanceText, style = IdsTypography.LargeAmount, color = TossText)
+            Text(balanceText, style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
             // Real Toss reference (user-provided, 2026-08-03): the real Home wallet
             // card's own two buttons ("+ 채우기" / "↗ 보내기") both carry a leading
             // glyph -- IdsButton's icon param is new this pass (see its own doc
@@ -1571,7 +1556,7 @@ private fun WalletHeroCard(
             // exist, matching the Savings section's own "don't show an empty
             // section" discipline.
             if (recentTransactions.isNotEmpty()) {
-                Divider(color = TossLine)
+                Divider(color = Ids.colors.divider)
                 recentTransactions.forEach { tx ->
                     WalletMiniRow(
                         transaction = tx,
@@ -1588,7 +1573,7 @@ private fun WalletHeroCard(
             Text(
                 stringResource(R.string.home_see_all),
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onSeeAll),
-                color = TossSecondary,
+                color = Ids.colors.textSecondary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -1604,7 +1589,7 @@ private fun WalletMiniRow(transaction: rw.itunda.core.network.TransactionDto, is
     // real Toss transaction rows use, instead of every row showing an unsigned,
     // uncolored amount regardless of direction.
     val amountText = "${if (isOutgoing) "-" else "+"}${transaction.currency} %,.0f".format(transaction.amount)
-    val amountColor = if (isOutgoing) TossText else Ids.colors.success
+    val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.success
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
@@ -1613,19 +1598,19 @@ private fun WalletMiniRow(transaction: rw.itunda.core.network.TransactionDto, is
             modifier = Modifier
                 .size(38.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(TossChip),
+                .background(Ids.colors.chip),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 if (isOutgoing) Icons.Outlined.ArrowUpward else Icons.Outlined.ArrowDownward,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = TossText,
+                tint = Ids.colors.textPrimary,
             )
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(transaction.description, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
+            Text(transaction.description, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
         }
         Text(amountText, color = amountColor, fontWeight = FontWeight.Bold, fontSize = 15.sp)
     }
@@ -1651,7 +1636,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
             if (title.isNotEmpty()) {
-                Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TossText)
+                Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
                 Spacer(modifier = Modifier.height(8.dp))
             }
             rows.forEachIndexed { index, row ->
@@ -1674,7 +1659,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                         // not a placeholder; it also rendered a second time below
                         // via the row's own action button whenever longer than one character.
                         // Then briefly row.first's initial as a stopgap, then a
-                        // real icon but on a flat muted TossChip background --
+                        // real icon but on a flat muted Ids.colors.chip background --
                         // real Toss's card-list icon badges (송금/자산 reference
                         // screenshots) are vivid per-item brand colors, not one
                         // neutral gray tone reused everywhere.
@@ -1682,19 +1667,19 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TossText)
+                        Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Ids.colors.textPrimary)
                         if (row.subtitle.isNotEmpty()) {
-                            Text(row.subtitle, fontSize = 14.sp, color = TossSecondary)
+                            Text(row.subtitle, fontSize = 14.sp, color = Ids.colors.textSecondary)
                         }
                     }
                     if (row.action == ">") {
-                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TossTertiary)
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                     } else if (row.action.isNotBlank()) {
                         IdsButton(row.action, onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                     }
                 }
                 if (index != rows.lastIndex) {
-                    Divider(color = TossLine)
+                    Divider(color = Ids.colors.divider)
                 }
             }
         }
@@ -1734,7 +1719,7 @@ private fun PayTab(onBack: () -> Unit = {}) {
 }
 
 // Real 전체 (All services) primary bottom tab (2026-07-24, promoted from a My-tab-nested
-// overlay) -- see TossTab.All's own doc comment for the full history: separated from My
+// overlay) -- see ItundaTab.All's own doc comment for the full history: separated from My
 // at the user's own direct request in an earlier pass ("My and All screen should be
 // separated like KakaoPay"), then brought back to the bottom nav directly once mini-apps
 // and (planned) games meant this exhaustive service catalog needed to be one tap away,
@@ -1786,6 +1771,7 @@ private fun MenuScreen(
     onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
+    onOpenProperty: () -> Unit = {},
     partnerMiniApps: List<rw.itunda.core.network.PartnerMiniAppDto>,
 ) {
     // No BackHandler here (2026-07-24): this is now a persistent bottom-nav
@@ -1876,67 +1862,123 @@ private fun MenuScreen(
             }
         }
         item {
+            // Real gap found live (2026-08-10): titled "Recent services" but nothing
+            // here was ever actually tracked as recent -- a static, hardcoded list,
+            // which is its own small honesty problem on top of the bigger one: 6 of
+            // its 8 icons were dead taps (tap ripple fires, nothing happens). Renamed
+            // to "Shortcuts" (what it actually is) and wired to the same real
+            // destinations the rest of this screen already uses. "Photo transfer" is
+            // dropped outright, not wired -- grepping this app for any OCR/photo-based
+            // transfer feature turns up nothing; same "don't fake a destination that
+            // doesn't exist" call already made for QuickActions' Scan-to-Pay icon.
             IconGridSection(
-                "Recent services",
+                "Shortcuts",
                 listOf(
-                    "Open acct" to Icons.Outlined.AddCircleOutline,
-                    "Photo transfer" to Icons.Outlined.CameraAlt,
+                    "Open account" to Icons.Outlined.AddCircleOutline,
                     "Verify" to Icons.Outlined.VerifiedUser,
                     "Send" to Icons.Outlined.Send,
                     "Group" to Icons.Outlined.Group,
                     "Property" to Icons.Outlined.HomeWork,
                     "Insurance" to Icons.Outlined.Shield,
-                    "More" to Icons.Outlined.MoreHoriz
                 ),
-                // Real KYC submission screen (found 2026-07-22 fully built on the
-                // backend with zero UI anywhere) -- "Verify" was previously a
-                // decorative icon with no click behavior at all, same as every other
-                // item in this grid; only this one now has a real destination.
-                onItemClick = { label -> if (label == "Verify") onOpenIdentity() },
+                onItemClick = { label ->
+                    when (label) {
+                        "Open account" -> onOpenOverview()
+                        "Verify" -> onOpenIdentity()
+                        "Send" -> onOpenTransferHub()
+                        "Group" -> onOpenGroupAccounts()
+                        "Property" -> onOpenProperty()
+                        "Insurance" -> context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
+                    }
+                },
             )
         }
+        // Real gap found live (2026-08-10): this used to be one 33-row "Financial
+        // services" section -- everything from savings to bus tickets to vehicle
+        // inspection dumped under a single label that was actively wrong for most of
+        // what it contained. This read as unorganized because it WAS unorganized: a
+        // supply-side dump (whatever got built, in build order) rather than a
+        // demand-side grouping (what the user is actually trying to do), the exact
+        // anti-pattern Toss Tech's own 내 문서함 rewrite names and fixes (toss.tech/
+        // article/mydoc, "화면 내에서 우선순위 정리가 되지 않았" -- "priorities weren't
+        // organized within the screen"; they restructured around real user intent
+        // instead of internal product structure). Same real rows, same real
+        // onClick callbacks -- only the grouping and two previously-dead rows changed.
         item {
-            FlatSection("Financial services", listOf(
-                FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue),
+            FlatSection("Accounts & cards", listOf(
+                // "Open account" was a dead tap (no onClick at all) despite its own
+                // subtitle describing exactly what OverviewScreen's real "Link
+                // account" flow already does -- wired to the same real destination
+                // "My assets" already uses.
+                FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue, onClick = onOpenOverview),
                 FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
-                // Real Transfer full page (2026-07-24), matching real Toss's own 송금
-                // row here ("자동이체 · 더치페이" subtitle) -- groups Send money/
-                // Auto-transfer/history in one place instead of Home's Send button
-                // (which stays a quick recipient-picker, unchanged) being the only
-                // entry point.
+                FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
+                FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),
+                FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
+                FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
+                FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
+                FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue, onClick = onOpenSubscriptions),
+                FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
+            ))
+        }
+        item {
+            FlatSection("Send & pay", listOf(
                 FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentBlue, onClick = onOpenTransferHub),
                 FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentBlue, onClick = onOpenRequestMoney),
                 FlatRow("Auto top-up", subtitle = "Refill your wallet automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentBlue, onClick = onOpenAutoTopUp),
-                FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
-                FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
-                FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenTrustScore),
-                FlatRow("Agent till", subtitle = "For assigned cash-agent operators: cash-in, cash-out, till count", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onOpenAgentOperator),
-                FlatRow("Float marketplace", subtitle = "For assigned cash-agents: offer or request float from nearby agents", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenFloatMarketplace),
-                FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),
-                FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
+                // "Mobile plan" was also a dead tap (no onClick) -- MTN/Airtel airtime
+                // and broadband are real billers inside the Pay Bills mini-app
+                // (packages/saronite/mini-apps/pay-bills), the same real destination
+                // MiniAppsSection's own "Bills" quick-access icon launches.
+                FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal, onClick = {
+                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
+                }),
+            ))
+        }
+        item {
+            FlatSection("Save & grow", listOf(
                 FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
                 FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
                 FlatRow("Mini account", subtitle = "Capped starter wallet, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniWallet),
-                FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
-                FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
                 FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenIkimina),
                 FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
+            ))
+        }
+        item {
+            FlatSection("Borrow", listOf(
+                FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
+                FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
                 FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
                 FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenVupLoan),
                 FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", icon = Icons.Outlined.School, iconColor = AccentPurple, onClick = onOpenStudentLoan),
                 FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
+            ))
+        }
+        item {
+            FlatSection("Transport", listOf(
                 FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
                 FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
                 FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentBlue, onClick = onOpenBikeRental),
                 FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", icon = Icons.Outlined.LocalParking, iconColor = AccentPurple, onClick = onOpenParking),
                 FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", icon = Icons.Outlined.DirectionsBus, iconColor = AccentTeal, onClick = onOpenBus),
-                FlatRow("Q&A", subtitle = "Ask a question, answer one, get adopted", icon = Icons.Outlined.HelpOutline, iconColor = AccentPurple, onClick = onOpenKnowledge),
                 FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
                 FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", icon = Icons.Outlined.DirectionsCar, iconColor = AccentTeal, onClick = onOpenVehicleValuation),
-                FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
-                FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue, onClick = onOpenSubscriptions),
-                FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
-                FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
+            ))
+        }
+        item {
+            FlatSection("Community & trust", listOf(
+                FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenTrustScore),
+                FlatRow("Q&A", subtitle = "Ask a question, answer one, get adopted", icon = Icons.Outlined.HelpOutline, iconColor = AccentPurple, onClick = onOpenKnowledge),
+            ))
+        }
+        // Kept last and separately labeled, not blended into the rows above: these two
+        // are role-gated (only assigned cash-agent operators can use them), so grouping
+        // them with everyday-user rows would itself be the same "wrong category" problem
+        // this whole section just got fixed for.
+        item {
+            FlatSection("Cash agent tools", listOf(
+                FlatRow("Agent till", subtitle = "For assigned cash-agent operators: cash-in, cash-out, till count", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onOpenAgentOperator),
+                FlatRow("Float marketplace", subtitle = "For assigned cash-agents: offer or request float from nearby agents", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenFloatMarketplace),
             ))
         }
 
@@ -2136,19 +2178,19 @@ private fun MyTab(
                 val totalEarned = affiliateCommissions.sumOf { it.commissionAmount }
                 IdsCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Partner earnings", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("Earn 3% on any purchase made through a product link you've shared.", color = TossSecondary, fontSize = 12.sp)
+                        Text("Partner earnings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Earn 3% on any purchase made through a product link you've shared.", color = Ids.colors.textSecondary, fontSize = 12.sp)
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Links shared", color = TossSecondary, fontSize = 13.sp)
-                            Text("${affiliateLinks.size}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Links shared", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                            Text("${affiliateLinks.size}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Total clicks", color = TossSecondary, fontSize = 13.sp)
-                            Text("$totalClicks", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Total clicks", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                            Text("$totalClicks", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Total earned", color = TossSecondary, fontSize = 13.sp)
-                            Text("${"%,.0f".format(totalEarned)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Total earned", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                            Text("${"%,.0f".format(totalEarned)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
@@ -2159,17 +2201,17 @@ private fun MyTab(
         // recent orders per product; tapping switches to that product's own tab where
         // the full MyCommerceOrdersView/MyEatsOrdersView already lives.
         if (shopOrders.isNotEmpty() || eatsOrders.isNotEmpty()) {
-            item { Text("My orders", color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            item { Text("My orders", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
             items(shopOrders.take(3)) { order ->
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToShop).padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column {
-                        Text("Shop order", color = TossText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                        Text(order.status, color = TossSecondary, fontSize = 13.sp)
+                        Text("Shop order", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(order.status, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
-                    Text("RWF %,.0f".format(order.totalAmount), color = TossText, fontSize = 15.sp)
+                    Text("RWF %,.0f".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
                 }
             }
             items(eatsOrders.take(3)) { order ->
@@ -2178,10 +2220,10 @@ private fun MyTab(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column {
-                        Text("Eats order", color = TossText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                        Text(order.status, color = TossSecondary, fontSize = 13.sp)
+                        Text("Eats order", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(order.status, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
-                    Text("RWF %,.0f".format(order.totalAmount), color = TossText, fontSize = 15.sp)
+                    Text("RWF %,.0f".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
                 }
             }
         }
@@ -2190,7 +2232,7 @@ private fun MyTab(
         // own tab where its dedicated WISHLIST view already lives (Marketplace/Jobs/
         // Property under Hood, restaurants under Shop's Eats toggle) -- an honest,
         // one-more-tap scope, not a full deep link into the nested sub-view.
-        item { Text("My favorites", color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+        item { Text("My favorites", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
         item {
             FlatSection(
                 "",
@@ -2321,7 +2363,7 @@ private fun VerificationCard() {
 
     IdsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Verify your account", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("Verify your account", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             if (!phoneVerified) VerificationRow(kind = "phone", hasEmail = true, onVerified = ::load)
             if (!emailVerified) VerificationRow(kind = "email", hasEmail = email != null, onVerified = ::load)
         }
@@ -2337,16 +2379,16 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
     val coroutineScope = rememberCoroutineScope()
 
     if (kind == "email" && !hasEmail) {
-        Text("No email address on file to verify.", color = TossSecondary, fontSize = 12.sp)
+        Text("No email address on file to verify.", color = Ids.colors.textSecondary, fontSize = 12.sp)
         return
     }
 
     Column(modifier = Modifier.padding(vertical = 6.dp)) {
         if (!sent) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(if (kind == "email") "Email not verified" else "Phone number not verified", color = TossText, fontSize = 13.sp)
+                Text(if (kind == "email") "Email not verified" else "Phone number not verified", color = Ids.colors.textPrimary, fontSize = 13.sp)
                 Box(
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy) Ids.colors.textTertiary else TossBlue)
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy) Ids.colors.textTertiary else Ids.colors.brand)
                         .clickable(enabled = !busy) {
                             busy = true
                             error = null
@@ -2407,7 +2449,7 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
                 // shipped autoFocus on this exact field.
                 IdsTextField(value = code, onValueChange = { code = it }, label = "Enter code", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, autoFocus = true, modifier = Modifier.weight(1f))
                 Box(
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy || code.isBlank()) Ids.colors.textTertiary else TossBlue)
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy || code.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
                         .clickable(enabled = !busy && code.isNotBlank()) { confirm() }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                 ) { Text(if (busy) "…" else "Confirm", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
@@ -2485,7 +2527,7 @@ internal fun FlatSection(title: String, rows: List<FlatRow>) {
     Column {
         Text(
             title,
-            color = TossText,
+            color = Ids.colors.textPrimary,
             fontSize = 19.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 6.dp)
@@ -2511,22 +2553,22 @@ internal fun FlatSection(title: String, rows: List<FlatRow>) {
                         Spacer(modifier = Modifier.width(14.dp))
                     }
                     Column {
-                        Text(row.title, color = TossText, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                        Text(row.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Medium)
                         if (row.subtitle != null) {
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(row.subtitle, color = TossTertiary, fontSize = 13.sp)
+                            Text(row.subtitle, color = Ids.colors.textTertiary, fontSize = 13.sp)
                         }
                     }
                 }
                 if (row.trailing != null) {
                     Text(
                         row.trailing,
-                        color = if (row.trailingIsLink) TossBlue else TossSecondary,
+                        color = if (row.trailingIsLink) Ids.colors.brand else Ids.colors.textSecondary,
                         fontSize = 15.sp,
                         fontWeight = if (row.trailingIsLink) FontWeight.SemiBold else FontWeight.Normal
                     )
                 } else if (row.showChevron && onClick != null) {
-                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TossTertiary)
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                 }
             }
         }
@@ -2536,8 +2578,8 @@ internal fun FlatSection(title: String, rows: List<FlatRow>) {
 @Composable
 internal fun PlainTopBar(title: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(title, color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        Text("...", color = TossText, fontSize = 24.sp)
+        Text(title, color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("...", color = Ids.colors.textPrimary, fontSize = 24.sp)
     }
 }
 
@@ -2576,10 +2618,10 @@ private fun PointPill(label: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(TossChip)
+            .background(Ids.colors.chip)
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        Text(label, color = TossText, fontWeight = FontWeight.Bold)
+        Text(label, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -2587,7 +2629,7 @@ private fun PointPill(label: String) {
 private fun BenefitsVisitCard() {
     IdsCard {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Text("Visit 3 of 4 services and earn points", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text("Visit 3 of 4 services and earn points", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             listOf(
                 "Happy lottery" to Icons.Outlined.Casino,
                 "Push the button" to Icons.Outlined.TouchApp,
@@ -2595,11 +2637,11 @@ private fun BenefitsVisitCard() {
                 "Bring friends" to Icons.Outlined.PersonAddAlt
             ).forEach { (title, icon) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossText)
+                    Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
                     }
                     Spacer(modifier = Modifier.width(14.dp))
-                    Text(title, modifier = Modifier.weight(1f), color = TossText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text(title, modifier = Modifier.weight(1f), color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     IdsButton("Visit", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                 }
             }
@@ -2613,12 +2655,12 @@ private fun CashbackChanceCard() {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
                 "🍀 3 chances to get money back",
-                color = TossText,
+                color = Ids.colors.textPrimary,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = rw.itunda.core.designsystem.theme.TossFaceFontFamily
             )
-            Text("We will notify you when new chances are available", color = TossSecondary, fontSize = 15.sp)
+            Text("We will notify you when new chances are available", color = Ids.colors.textSecondary, fontSize = 15.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF246BFF)), contentAlignment = Alignment.Center) {
                     // Was the Korean Won symbol ("₩") -- wrong currency
@@ -2627,8 +2669,8 @@ private fun CashbackChanceCard() {
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("RWF 5,000", color = TossText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text("BK account -> TUYIZERE Eric", color = TossSecondary)
+                    Text("RWF 5,000", color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("BK account -> TUYIZERE Eric", color = Ids.colors.textSecondary)
                 }
                 IdsButton("Get back", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
             }
@@ -2641,10 +2683,10 @@ private fun SearchBar(placeholder: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(TossCardSoft)
+            .background(Ids.colors.surfaceSoft)
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Text(placeholder, color = TossSecondary, fontSize = 16.sp)
+        Text(placeholder, color = Ids.colors.textSecondary, fontSize = 16.sp)
     }
 }
 
@@ -2661,7 +2703,7 @@ private fun MapPlaceholder() {
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.BottomCenter) {
             Box(modifier = Modifier.padding(bottom = 18.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF202228)).padding(horizontal = 20.dp, vertical = 10.dp)) {
-                Text("5 nearby stores", color = TossText, fontWeight = FontWeight.Bold)
+                Text("5 nearby stores", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -2672,27 +2714,27 @@ private fun PayFeatureCard() {
     IdsCard {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossBlue)
+                Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.brand)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("itunda pay", color = TossSecondary)
-                    Text("30% rewards at partner stores", color = TossBlue, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                    Text("itunda pay", color = Ids.colors.textSecondary)
+                    Text("30% rewards at partner stores", color = Ids.colors.brand, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 }
                 IdsButton("Find store", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
             }
-            Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(TossCardSoft).padding(18.dp)) {
-                Text("Apply pay money and points automatically", color = TossSecondary, fontSize = 16.sp)
+            Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft).padding(18.dp)) {
+                Text("Apply pay money and points automatically", color = Ids.colors.textSecondary, fontSize = 16.sp)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Language, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossText)
+                Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Language, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("How to pay online", color = TossText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("Use Itunda Pay on e-commerce and partner stores", color = TossSecondary)
+                    Text("How to pay online", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Use Itunda Pay on e-commerce and partner stores", color = Ids.colors.textSecondary)
                 }
                 IdsButton("See", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
             }
@@ -2707,10 +2749,10 @@ private fun PayFeatureCard() {
 @Composable
 private fun AllTopBar(onOpenSettings: () -> Unit = {}, onOpenMyTab: (() -> Unit)? = null) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text("TUYIZERE ERIC", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+        Text("TUYIZERE ERIC", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
         Row {
             // Real My-activity screen (2026-07-24, inverted from Menu) -- see
-            // TossTab.All's own doc comment: the profile icon now leads to the
+            // ItundaTab.All's own doc comment: the profile icon now leads to the
             // personal-activity screen (orders/favorites/listings), the exact reverse
             // of this bar's old Menu icon. Optional/nil so HomeTopBar's own reuse of a
             // similar bar isn't affected.
@@ -2735,7 +2777,7 @@ private fun IconGridSection(
     onItemClick: (String) -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(title, color = TossSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(title, color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         val chunked = items.chunked(4)
         chunked.forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -2744,11 +2786,11 @@ private fun IconGridSection(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.weight(1f).clickable { onItemClick(label) },
                     ) {
-                        Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
-                            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = TossText)
+                        Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.textPrimary)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(label, color = TossSecondary, fontSize = 13.sp)
+                        Text(label, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
                 }
             }

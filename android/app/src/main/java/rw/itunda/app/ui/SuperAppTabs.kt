@@ -236,7 +236,7 @@ import java.util.UUID
 
 // ============================== HOOD (Marketplace) ==============================
 
-private enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
+internal enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
 
 // Real 당근-style neighborhood-services hub (2026-07-19), given a real 당근 top bar
 // and pill-chip category row 2026-08-03 (user-provided real 당근마켓 screenshots,
@@ -246,8 +246,24 @@ private enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
 // (당근부동산) still fold into this one tab via the same chip row (no free bottom-nav
 // slot for each), now styled the way Karrot's own 전체/부동산/중고거래/... row is.
 @Composable
-internal fun HoodTab(onMessageSeller: (String) -> Unit, onOpenSettings: () -> Unit = {}) {
-    var mode by remember { mutableStateOf(HoodMode.MARKETPLACE) }
+internal fun HoodTab(
+    onMessageSeller: (String) -> Unit,
+    onOpenSettings: () -> Unit = {},
+    // Real deep-link into a specific chip (2026-08-10) -- the menu's "Property" row
+    // used to just be a dead icon (see ItundaAppScreen.kt's MenuScreen), even though
+    // this real HoodMode.PROPERTY chip already existed; same initial-value + consume-
+    // once pattern TalkTab's own initialConversationId/onConsumedInitial already
+    // establishes, so switching tabs again afterward doesn't keep forcing Property.
+    initialMode: HoodMode = HoodMode.MARKETPLACE,
+    onConsumedInitialMode: () -> Unit = {},
+) {
+    var mode by remember { mutableStateOf(initialMode) }
+    LaunchedEffect(initialMode) {
+        if (initialMode != HoodMode.MARKETPLACE) {
+            mode = initialMode
+            onConsumedInitialMode()
+        }
+    }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodVerificationCount by remember { mutableStateOf(0) }
     // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own
@@ -690,7 +706,7 @@ internal fun ShopTab(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { mode = m }) {
                     Text(
                         label,
-                        color = if (selected) Ids.colors.textPrimary else TossSecondary,
+                        color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         fontSize = 15.sp,
                         modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
@@ -699,7 +715,7 @@ internal fun ShopTab(
                         modifier = Modifier
                             .height(2.dp)
                             .width(18.dp)
-                            .background(if (selected) TossBlue else Color.Transparent, RoundedCornerShape(1.dp)),
+                            .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
                     )
                 }
             }

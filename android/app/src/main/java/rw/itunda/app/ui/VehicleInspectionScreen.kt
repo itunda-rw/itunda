@@ -70,17 +70,17 @@ fun VehicleInspectionScreen(onBack: () -> Unit) {
         BackTopBar(title = "Vehicle inspection", onBack = onBack)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
+                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(InspectionTab.BUYER to "Get a car inspected", InspectionTab.MECHANIC to "Mechanic").forEach { (value, label) ->
                 val selected = tab == value
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) TossBlue else Color.Transparent)
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
                         .clickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -166,32 +166,32 @@ private fun InspectionBuyerContent() {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Book an inspection", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text(
                         "Pay a local mechanic to inspect a used car before you buy it -- held until they deliver their findings.",
-                        fontSize = 12.sp, color = TossSecondary,
+                        fontSize = 12.sp, color = Ids.colors.textSecondary,
                     )
                     IdsTextField(value = listingId, onValueChange = { listingId = it }, label = "Listing ID", modifier = Modifier.fillMaxWidth())
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Mechanic", fontSize = 12.sp, color = TossSecondary)
+                        Text("Mechanic", fontSize = 12.sp, color = Ids.colors.textSecondary)
                         (mechanics ?: emptyList()).forEach { m ->
                             val selected = m.id == selectedMechanicId
                             Row(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
-                                    .background(if (selected) TossBlue.copy(alpha = 0.12f) else Color.Transparent)
+                                    .background(if (selected) Ids.colors.brand.copy(alpha = 0.12f) else Color.Transparent)
                                     .clickable { selectedMechanicId = m.id }.padding(10.dp),
                             ) { Text(m.businessName, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) }
                         }
-                        if (mechanics?.isEmpty() == true) Text("No mechanics available right now.", fontSize = 12.sp, color = TossSecondary)
+                        if (mechanics?.isEmpty() == true) Text("No mechanics available right now.", fontSize = 12.sp, color = Ids.colors.textSecondary)
                     }
                     IdsTextField(value = fee, onValueChange = { fee = it }, label = "Inspection fee (RWF)", modifier = Modifier.fillMaxWidth())
                     IdsTextField(value = scheduleHours, onValueChange = { scheduleHours = it }, label = "Hours from now", modifier = Modifier.fillMaxWidth())
                     error?.let { Text(it, color = Color(0xFFE53935), fontSize = 12.sp) }
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(if (requesting) TossBlue.copy(alpha = 0.5f) else TossBlue)
+                            .background(if (requesting) Ids.colors.brand.copy(alpha = 0.5f) else Ids.colors.brand)
                             .clickable(enabled = !requesting) { requestInspection() }.padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) { Text(if (requesting) "Booking…" else "Book & pay", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
@@ -200,15 +200,15 @@ private fun InspectionBuyerContent() {
         }
         val bookings = myBookings
         if (bookings == null) {
-            item { Text("Loading…", fontSize = 13.sp, color = TossSecondary, modifier = Modifier.padding(8.dp)) }
+            item { Text("Loading…", fontSize = 13.sp, color = Ids.colors.textSecondary, modifier = Modifier.padding(8.dp)) }
         } else if (bookings.isEmpty()) {
             item { EmptyState("No inspections booked yet — book one to get a real used car checked before you buy.") }
         } else {
             items(bookings, key = { it.id }) { b ->
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Listing ${b.listingId}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text("${"%,.0f".format(b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = TossSecondary)
+                        Text("${"%,.0f".format(b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = Ids.colors.textSecondary)
                         b.findings?.let { Text(it, fontSize = 13.sp) }
                         if (b.status == "REQUESTED" || b.status == "ACCEPTED") {
                             Row(
@@ -308,22 +308,22 @@ private fun InspectionMechanicContent() {
     }
 
     if (!loaded) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Loading…", color = TossSecondary) }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Loading…", color = Ids.colors.textSecondary) }
         return
     }
 
     val current = profile
     if (current == null) {
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Become an inspection mechanic", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Get booked and paid to inspect used cars for real buyers before they purchase.", fontSize = 12.sp, color = TossSecondary)
+                    Text("Get booked and paid to inspect used cars for real buyers before they purchase.", fontSize = 12.sp, color = Ids.colors.textSecondary)
                     IdsTextField(value = businessName, onValueChange = { businessName = it }, label = "Business name", modifier = Modifier.fillMaxWidth())
                     error?.let { Text(it, color = Color(0xFFE53935), fontSize = 12.sp) }
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(if (registering) TossBlue.copy(alpha = 0.5f) else TossBlue)
+                            .background(if (registering) Ids.colors.brand.copy(alpha = 0.5f) else Ids.colors.brand)
                             .clickable(enabled = !registering) { register() }.padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.Center,
                     ) { Text(if (registering) "Registering…" else "Register", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
@@ -339,7 +339,7 @@ private fun InspectionMechanicContent() {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -347,11 +347,11 @@ private fun InspectionMechanicContent() {
                 ) {
                     Column {
                         Text(current.businessName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(if (current.available) "Visible for new bookings" else "Not accepting bookings", fontSize = 12.sp, color = TossSecondary)
+                        Text(if (current.available) "Visible for new bookings" else "Not accepting bookings", fontSize = 12.sp, color = Ids.colors.textSecondary)
                     }
                     Row(
                         modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            .background(if (current.available) Color(0xFFE53935) else TossBlue)
+                            .background(if (current.available) Color(0xFFE53935) else Ids.colors.brand)
                             .clickable { toggleAvailable() }.padding(horizontal = 14.dp, vertical = 8.dp),
                     ) { Text(if (current.available) "Go unavailable" else "Go available", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                 }
@@ -363,20 +363,20 @@ private fun InspectionMechanicContent() {
             item { EmptyState("No bookings yet — they'll show up here once a buyer books an inspection.") }
         } else {
             items(list, key = { it.id }) { b ->
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = TossCardSoft)) {
+                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft)) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Listing ${b.listingId}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text("${"%,.0f".format(b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = TossSecondary)
+                        Text("${"%,.0f".format(b.fee)} RWF · ${b.status}", fontSize = 12.sp, color = Ids.colors.textSecondary)
                         if (b.status == "REQUESTED") {
                             Row(
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(TossBlue)
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = busyBookingId != b.id) { accept(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
                             ) { Text(if (busyBookingId == b.id) "Accepting…" else "Accept", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }
                         if (b.status == "ACCEPTED") {
                             IdsTextField(value = findingsByBooking[b.id] ?: "", onValueChange = { findingsByBooking = findingsByBooking + (b.id to it) }, label = "Inspection findings", modifier = Modifier.fillMaxWidth())
                             Row(
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(TossBlue)
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = busyBookingId != b.id) { complete(b.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
                             ) { Text(if (busyBookingId == b.id) "Completing…" else "Mark complete", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
                         }

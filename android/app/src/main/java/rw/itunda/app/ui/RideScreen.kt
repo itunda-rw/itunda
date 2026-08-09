@@ -86,17 +86,17 @@ fun RideScreen(onBack: () -> Unit) {
         BackTopBar(title = "Rides", onBack = onBack)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
+                .clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
         ) {
             listOf(RideTab.RIDE to "Get a ride", RideTab.DRIVE to "Drive").forEach { (value, label) ->
                 val selected = tab == value
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) TossBlue else Color.Transparent)
+                        .background(if (selected) Ids.colors.brand else Color.Transparent)
                         .clickable { tab = value }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -241,7 +241,7 @@ private fun RidePassengerContent() {
     ) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         if (activeTrip != null) {
-            item { Text("Your ride", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Your ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             item {
                 RideTripCard(activeTrip, stops = activeTripStops) {
                     activeTrip.driverId?.let { DriverRatingSection(it) }
@@ -256,13 +256,13 @@ private fun RidePassengerContent() {
             }
         } else {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Request a ride", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Request a ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = pickupAddress, onValueChange = { pickupAddress = it }, label = "Pickup", modifier = Modifier.weight(1f))
                             Box(
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                     .clickable(enabled = !locating) { requestLocation() }
                                     .padding(horizontal = 14.dp, vertical = 14.dp),
                             ) { Text(if (locating) "…" else "Use my location", fontSize = 12.sp, fontWeight = FontWeight.Bold) }
@@ -273,10 +273,10 @@ private fun RidePassengerContent() {
                             IdsTextField(value = dropoffLng, onValueChange = { dropoffLng = it }, label = "Dropoff longitude", modifier = Modifier.weight(1f))
                         }
                         stops.forEachIndexed { index, stop ->
-                            Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = TossCardSoft), modifier = Modifier.fillMaxWidth()) {
+                            Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = Ids.colors.surfaceSoft), modifier = Modifier.fillMaxWidth()) {
                                 Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Stop ${index + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossSecondary)
+                                        Text("Stop ${index + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
                                         Text("Remove", fontSize = 12.sp, color = Ids.colors.danger, modifier = Modifier.clickable { stops.removeAt(index) })
                                     }
                                     IdsTextField(value = stop.address, onValueChange = { stops[index] = stop.copy(address = it) }, label = "Address", modifier = Modifier.fillMaxWidth())
@@ -289,14 +289,14 @@ private fun RidePassengerContent() {
                         }
                         if (stops.size < 3) {
                             Text(
-                                "+ Add a stop", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossBlue,
+                                "+ Add a stop", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
                                 modifier = Modifier.clickable { stops.add(StopInput()) },
                             )
                         }
                         IdsTextField(value = scheduleHours, onValueChange = { scheduleHours = it }, label = "Schedule for later (hours from now, optional)", modifier = Modifier.fillMaxWidth())
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .background(TossBlue)
+                                .background(Ids.colors.brand)
                                 .clickable(enabled = !requesting && pickupLat != null && dropoffAddress.isNotBlank()) { requestRide() }
                                 .padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
@@ -306,7 +306,7 @@ private fun RidePassengerContent() {
             }
         }
         if (pastTrips.isNotEmpty()) {
-            item { Text("Past rides", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            item { Text("Past rides", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(pastTrips, key = { it.id }) { trip ->
                 RideTripCard(trip) {
                     if (trip.status == "COMPLETED" && trip.driverId != null && trip.id !in reviewedTripIds) {
@@ -325,11 +325,11 @@ private fun RideReviewRow(busy: Boolean, onSubmit: (Int, String) -> Unit) {
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Rate your driver", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText)
+        Text("Rate your driver", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (n in 1..5) {
                 Text(
-                    "★", fontSize = 20.sp, color = if (n <= rating) Color(0xFFFFC107) else TossSecondary,
+                    "★", fontSize = 20.sp, color = if (n <= rating) Color(0xFFFFC107) else Ids.colors.textSecondary,
                     modifier = Modifier.clickable { rating = n },
                 )
             }
@@ -337,7 +337,7 @@ private fun RideReviewRow(busy: Boolean, onSubmit: (Int, String) -> Unit) {
         if (rating > 0) {
             IdsTextField(value = comment, onValueChange = { comment = it }, label = "Comment (optional)", modifier = Modifier.fillMaxWidth())
             Box(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                     .clickable(enabled = !busy) { onSubmit(rating, comment) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (busy) "Submitting…" else "Submit rating", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
@@ -498,17 +498,17 @@ private fun RideDriverContent() {
         when {
             !loaded -> item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
             current == null -> item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Drive with Itunda", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Drive with Itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             "Earn a real fare for every trip you complete, paid straight to your wallet.",
-                            color = TossSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = Ids.colors.textSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         )
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(16.dp))
                         Box(
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = !registering) { register() }.padding(horizontal = 24.dp, vertical = 14.dp),
                         ) { Text(if (registering) "Registering…" else "Become a driver", color = Color.White, fontWeight = FontWeight.Bold) }
                     }
@@ -516,13 +516,13 @@ private fun RideDriverContent() {
             }
             else -> {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column {
-                                Text(if (current.available) "You're online" else "You're offline", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text(if (current.available) "You're online" else "You're offline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 Text(
                                     if (current.available) "Visible for new trip requests" else "Go online to see trip requests",
-                                    color = TossSecondary, fontSize = 12.sp,
+                                    color = Ids.colors.textSecondary, fontSize = 12.sp,
                                 )
                                 val rating = driverRating
                                 if (rating != null && rating.count > 0) {
@@ -534,14 +534,14 @@ private fun RideDriverContent() {
                             }
                             Box(
                                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                    .background(if (current.available) Ids.colors.danger else TossBlue)
+                                    .background(if (current.available) Ids.colors.danger else Ids.colors.brand)
                                     .clickable { toggleAvailable() }.padding(horizontal = 16.dp, vertical = 10.dp),
                             ) { Text(if (current.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                         }
                     }
                 }
                 if (activeDriverTrips.isNotEmpty()) {
-                    item { Text("Active trips", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    item { Text("Active trips", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(activeDriverTrips, key = { it.id }) { trip ->
                         val tripStops = activeTripStops[trip.id]
                         val nextStop = tripStops?.firstOrNull { it.arrivedAt == null }
@@ -549,10 +549,10 @@ private fun RideDriverContent() {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (trip.status == "IN_PROGRESS" && nextStop != null) {
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                             .clickable(enabled = busyTripId != trip.id) { arriveAtStop(trip.id) }.padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
-                                    ) { Text(if (busyTripId == trip.id) "…" else "Arrived at ${nextStop.address}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                    ) { Text(if (busyTripId == trip.id) "…" else "Arrived at ${nextStop.address}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                 }
                                 val nextAction: (suspend (String) -> RideTripDto)? = when (trip.status) {
                                     "DRIVER_ASSIGNED" -> { id -> NetworkClient.apiService.startRideTrip(id).trip }
@@ -561,7 +561,7 @@ private fun RideDriverContent() {
                                 }
                                 nextAction?.let { action ->
                                     Box(
-                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                             .clickable(enabled = busyTripId != trip.id) { act(trip.id, action) }.padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
@@ -576,18 +576,18 @@ private fun RideDriverContent() {
                     }
                 }
                 if (availableTrips.isNotEmpty()) {
-                    item { Text("Available trips", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    item { Text("Available trips", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(availableTrips, key = { it.id }) { trip ->
                         RideTripCard(trip) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(
-                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.declineRideTrip(id).trip } }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
-                                ) { Text("Decline", color = TossText, fontWeight = FontWeight.Bold) }
+                                ) { Text("Decline", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                                 Box(
-                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                         .clickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.acceptRideTrip(id).trip } }
                                         .padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
@@ -597,7 +597,7 @@ private fun RideDriverContent() {
                     }
                 }
                 if (pastDriverTrips.isNotEmpty()) {
-                    item { Text("Past trips", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    item { Text("Past trips", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
                     items(pastDriverTrips, key = { it.id }) { trip -> RideTripCard(trip) }
                 }
             }
@@ -607,23 +607,23 @@ private fun RideDriverContent() {
 
 @Composable
 private fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = null, action: (@Composable () -> Unit)? = null) {
-    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(trip.pickupAddress, color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(trip.pickupAddress, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             stops?.forEach { stop ->
                 Text(
                     "${if (stop.arrivedAt != null) "✓" else "→"} ${stop.address}", fontSize = 12.sp,
-                    color = if (stop.arrivedAt != null) TossSecondary else TossText,
+                    color = if (stop.arrivedAt != null) Ids.colors.textSecondary else Ids.colors.textPrimary,
                 )
             }
-            Text("→ ${trip.dropoffAddress}", color = TossSecondary, fontSize = 13.sp)
+            Text("→ ${trip.dropoffAddress}", color = Ids.colors.textSecondary, fontSize = 13.sp)
             val scheduledFor = trip.scheduledFor
             if (scheduledFor != null) {
-                Text("🕒 Scheduled for ${scheduledFor.take(16).replace("T", " ")}", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text("🕒 Scheduled for ${scheduledFor.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(rideTripStatusLabel(trip), color = rideTripStatusColor(trip.status), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Text("${formatMoneyRide(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = TossSecondary, fontSize = 12.sp)
+                Text("${formatMoneyRide(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             action?.let {
                 androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
@@ -668,9 +668,9 @@ private fun DriverRatingSection(driverId: String) {
         if (expanded) {
             val list = reviews
             if (list == null) {
-                Text("Loading reviews…", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                Text("Loading reviews…", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             } else if (list.isEmpty()) {
-                Text("No written reviews yet.", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                Text("No written reviews yet.", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
             } else {
                 Column(modifier = Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     list.forEach { review ->
@@ -679,7 +679,7 @@ private fun DriverRatingSection(driverId: String) {
                                 .background(Ids.colors.surface).padding(horizontal = 10.dp, vertical = 8.dp),
                         ) {
                             Text("⭐".repeat(review.rating), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            review.comment?.let { Text(it, color = TossText, fontSize = 12.sp) }
+                            review.comment?.let { Text(it, color = Ids.colors.textPrimary, fontSize = 12.sp) }
                         }
                     }
                 }
@@ -704,7 +704,7 @@ private fun rideTripStatusLabel(trip: RideTripDto): String {
 private fun rideTripStatusColor(status: String): Color = when (status) {
     "COMPLETED" -> Ids.colors.success
     "CANCELLED" -> Ids.colors.danger
-    else -> TossBlue
+    else -> Ids.colors.brand
 }
 
 private fun formatMoneyRide(value: java.math.BigDecimal): String {

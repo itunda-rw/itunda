@@ -146,16 +146,16 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
         item {
             Text(
                 "Everyone contributes the same amount each round; one member takes home the full pot, in turn.",
-                color = TossSecondary, fontSize = 12.sp,
+                color = Ids.colors.textSecondary, fontSize = 12.sp,
             )
         }
         item {
             if (!showCreate) {
                 Box(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                         .clickable { showCreate = true }.padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center,
-                ) { Text("+ New ikimina", color = TossText, fontWeight = FontWeight.Bold) }
+                ) { Text("+ New ikimina", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     IdsTextField(value = name, onValueChange = { name = it }, label = "Group name (e.g. Umuryango)", modifier = Modifier.fillMaxWidth())
@@ -163,7 +163,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                     .clickable { frequencyMenuOpen = true }.padding(vertical = 14.dp, horizontal = 12.dp),
                             ) { Text(if (cycleFrequencyDays == 7) "Weekly" else "Monthly", fontSize = 14.sp) }
                             DropdownMenu(expanded = frequencyMenuOpen, onDismissRequest = { frequencyMenuOpen = false }) {
@@ -175,12 +175,12 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                 .clickable { showCreate = false }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
-                        ) { Text("Cancel", color = TossText, fontWeight = FontWeight.Bold) }
+                        ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
                         Box(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (creating) "Creating…" else "Create", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -199,18 +199,18 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
             else -> items(ikiminas!!) { k ->
                 Card(
                     shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = TossCard),
+                    colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
                     modifier = Modifier.fillMaxWidth().clickable { onOpen(k.id) },
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(k.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(k.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         Text(
                             when (k.status) {
                                 "FORMING" -> "Forming — invite members before starting"
                                 "ACTIVE" -> "Round ${k.currentRound}"
                                 else -> "Completed"
                             },
-                            color = TossSecondary, fontSize = 12.sp,
+                            color = Ids.colors.textSecondary, fontSize = 12.sp,
                         )
                     }
                 }
@@ -334,25 +334,25 @@ private fun IkiminaDetailContent(id: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text(current.ikimina.name, color = TossSecondary, fontSize = 13.sp)
-                    Text("${formatMoneyGroup(current.balance)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                    Text(current.ikimina.name, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    Text("${formatMoneyGroup(current.balance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
                     Text(
                         when (current.ikimina.status) {
                             "FORMING" -> "Forming · ${current.members.size} member${if (current.members.size == 1) "" else "s"}"
                             "ACTIVE" -> "Round ${current.ikimina.currentRound} · pot ${formatMoneyGroup(pot)} RWF"
                             else -> "Completed"
                         },
-                        color = TossSecondary, fontSize = 12.sp,
+                        color = Ids.colors.textSecondary, fontSize = 12.sp,
                     )
                 }
             }
         }
         item {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Members & payout order", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Members & payout order", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     current.members.sortedBy { it.payoutOrder }.forEach { m ->
                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column {
@@ -361,12 +361,12 @@ private fun IkiminaDetailContent(id: String) {
                                     val contributed = current.currentRoundContributions.find { it.userId == m.userId }?.contributed ?: false
                                     Text(
                                         if (contributed) "✓ Contributed this round" else "Not yet contributed",
-                                        color = if (contributed) Ids.colors.success else TossSecondary, fontSize = 11.sp,
+                                        color = if (contributed) Ids.colors.success else Ids.colors.textSecondary, fontSize = 11.sp,
                                     )
                                 }
                             }
                             if (m.hasReceivedPayout) Text("✓ Paid", color = Ids.colors.success, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            else if (m.isOrganizer) Text("Organizer", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            else if (m.isOrganizer) Text("Organizer", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -374,19 +374,19 @@ private fun IkiminaDetailContent(id: String) {
         }
         if (current.ikimina.status == "FORMING" && isOrganizer) {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Invite a member", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Invite a member", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             IdsTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = "Phone number", modifier = Modifier.weight(1f))
                             Box(
-                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
                                     .padding(horizontal = 20.dp, vertical = 14.dp),
                             ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold) }
                         }
                         Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                 .clickable(enabled = !busy && current.members.size >= 2) { start() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) { Text(if (busy) "…" else "Start the cycle", color = Color.White, fontWeight = FontWeight.Bold) }
@@ -396,22 +396,22 @@ private fun IkiminaDetailContent(id: String) {
         }
         if (current.ikimina.status == "ACTIVE") {
             item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .background(if (iContributed) TossCardSoft else TossBlue)
+                                .background(if (iContributed) Ids.colors.surfaceSoft else Ids.colors.brand)
                                 .clickable(enabled = !busy && !iContributed) { contribute() }.padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 if (iContributed) "✓ You've contributed this round" else if (busy) "…" else "Contribute ${formatMoneyGroup(current.ikimina.contributionAmount)} RWF",
-                                color = if (iContributed) TossText else Color.White, fontWeight = FontWeight.Bold,
+                                color = if (iContributed) Ids.colors.textPrimary else Color.White, fontWeight = FontWeight.Bold,
                             )
                         }
                         if (allContributed) {
                             Box(
-                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                                     .clickable(enabled = !busy) { triggerPayout() }.padding(vertical = 14.dp),
                                 contentAlignment = Alignment.Center,
                             ) { Text(if (busy) "…" else "Trigger this round's payout", color = Color.White, fontWeight = FontWeight.Bold) }

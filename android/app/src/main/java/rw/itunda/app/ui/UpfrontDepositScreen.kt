@@ -101,7 +101,7 @@ fun UpfrontDepositScreen(onBack: () -> Unit) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(TossBlue).clickable { mode = UpfrontDepositMode.NEW }
+                            .background(Ids.colors.brand).clickable { mode = UpfrontDepositMode.NEW }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -118,7 +118,7 @@ fun UpfrontDepositScreen(onBack: () -> Unit) {
                             "No deposits yet. Open one and get the full $TERM_MONTHS months' interest " +
                                 "($ANNUAL_RATE% per year) paid to your main wallet immediately -- the principal " +
                                 "stays locked for the full term.",
-                            color = TossSecondary, fontSize = 14.sp,
+                            color = Ids.colors.textSecondary, fontSize = 14.sp,
                         )
                     }
                     else -> items(deposits!!) { deposit -> UpfrontDepositRow(deposit, onChanged = { refreshKey++ }) }
@@ -136,24 +136,24 @@ private fun UpfrontDepositRow(deposit: UpfrontDepositDto, onChanged: () -> Unit)
 
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
+        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${formatMoneyUpfront(deposit.principal)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text("${formatMoneyUpfront(deposit.principal)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                 Text(depositStatusLabel(deposit), color = depositStatusColor(deposit), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Text("Interest paid upfront: ${formatMoneyUpfront(deposit.interestPaid)} RWF at ${deposit.interestRate}%/yr", color = Ids.colors.success, fontSize = 13.sp)
             Text(
                 if (deposit.status == "ACTIVE") "Locked until ${formatUpfrontDate(deposit.maturesAt)}" else "Matured ${formatUpfrontDate(deposit.maturesAt)}",
-                color = TossSecondary, fontSize = 12.sp,
+                color = Ids.colors.textSecondary, fontSize = 12.sp,
             )
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             if (deposit.status == "MATURED" && deposit.withdrawnAt == null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Box(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
                         .clickable(enabled = !withdrawing) {
                             withdrawing = true
                             coroutineScope.launch {
@@ -186,9 +186,9 @@ private fun depositStatusLabel(deposit: UpfrontDepositDto): String = when {
 
 @Composable
 private fun depositStatusColor(deposit: UpfrontDepositDto): Color = when {
-    deposit.status == "MATURED" && deposit.withdrawnAt != null -> TossSecondary
+    deposit.status == "MATURED" && deposit.withdrawnAt != null -> Ids.colors.textSecondary
     deposit.status == "MATURED" -> Ids.colors.success
-    else -> TossBlue
+    else -> Ids.colors.brand
 }
 
 @Composable
@@ -232,7 +232,7 @@ private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
             "Unlike a regular fixed deposit, you get the full $TERM_MONTHS months' interest paid to your main " +
                 "wallet the moment you open this -- not at maturity. In exchange, the principal is locked for " +
                 "the full $TERM_MONTHS months with no early withdrawal.",
-            color = TossSecondary, fontSize = 13.sp,
+            color = Ids.colors.textSecondary, fontSize = 13.sp,
         )
         IdsTextField(value = principal, onValueChange = { principal = it }, label = "Deposit amount (RWF)", modifier = Modifier.fillMaxWidth())
         previewInterest?.let {
@@ -242,7 +242,7 @@ private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         Box(
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                .background(TossBlue)
+                .background(Ids.colors.brand)
                 .clickable(enabled = !submitting) { submit() }
                 .padding(vertical = 14.dp),
             contentAlignment = Alignment.Center,

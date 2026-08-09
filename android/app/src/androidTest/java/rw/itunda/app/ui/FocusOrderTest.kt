@@ -23,7 +23,7 @@ class FocusOrderTest {
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     /**
-     * TossBottomBar's five tabs (ItundaAppScreen.kt) should read left to right in
+     * ItundaBottomBar's five tabs (ItundaAppScreen.kt) should read left to right in
      * on-screen X order -- the exact taxonomy fixed this session on iOS to match
      * (Home/Benefits/Shop/Pay/All). If TalkBack's swipe-right traversal order ever
      * diverged from visual left-to-right position, a user would land on a tab that

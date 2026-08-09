@@ -125,7 +125,7 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                            .background(TossBlue).clickable { mode = WeeklySavingsMode.NEW }
+                            .background(Ids.colors.brand).clickable { mode = WeeklySavingsMode.NEW }
                             .padding(vertical = 14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -155,16 +155,16 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
 private fun WeeklySavingsPlanRow(plan: WeeklySavingsPlanDto, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
+        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(plan.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Text(planStatusLabel(plan), color = planStatusColor(plan), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
-            Text("${formatMoneyWeekly(plan.currentAmount)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text("Week ${plan.weeksElapsed.coerceAtMost(TERM_WEEKS)}/$TERM_WEEKS", color = TossSecondary, fontSize = 12.sp)
+            Text("${formatMoneyWeekly(plan.currentAmount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+            Text("Week ${plan.weeksElapsed.coerceAtMost(TERM_WEEKS)}/$TERM_WEEKS", color = Ids.colors.textSecondary, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(8.dp))
             WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
             Spacer(modifier = Modifier.height(8.dp))
@@ -186,19 +186,19 @@ private fun planStatusLabel(plan: WeeklySavingsPlanDto): String = when (plan.sta
 
 @Composable
 private fun planStatusColor(plan: WeeklySavingsPlanDto): Color = when (plan.status) {
-    "ACTIVE" -> TossBlue
-    "MATURED" -> if (plan.withdrawnAt != null) TossSecondary else Ids.colors.success
+    "ACTIVE" -> Ids.colors.brand
+    "MATURED" -> if (plan.withdrawnAt != null) Ids.colors.textSecondary else Ids.colors.success
     "CANCELLED" -> Ids.colors.danger
-    else -> TossSecondary
+    else -> Ids.colors.textSecondary
 }
 
 @Composable
 private fun WeeklyProgressBar(progress: Float) {
     val clamped = progress.coerceIn(0f, 1f)
-    Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(TossCardSoft)) {
+    Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Ids.colors.surfaceSoft)) {
         Box(
             modifier = Modifier.fillMaxWidth(clamped).fillMaxHeight()
-                .clip(RoundedCornerShape(4.dp)).background(TossBlue),
+                .clip(RoundedCornerShape(4.dp)).background(Ids.colors.brand),
         )
     }
 }
@@ -251,11 +251,11 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
             "The weekly amount steps up automatically every $ESCALATION_STEP_WEEKS weeks by your chosen rate, " +
                 "and keeping an unbroken streak all the way to week $TERM_WEEKS earns a bonus interest rate on " +
                 "top of the base rate.",
-            color = TossSecondary, fontSize = 13.sp,
+            color = Ids.colors.textSecondary, fontSize = 13.sp,
         )
         IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
         IdsTextField(value = baseAmount, onValueChange = { baseAmount = it }, label = "Base weekly amount (RWF)", modifier = Modifier.fillMaxWidth())
-        Text("Escalation rate", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("Escalation rate", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             escalationOptions.chunked(3).forEach { rowOptions ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -263,12 +263,12 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
                         val selected = option.rate == selectedRate.rate
                         Box(
                             modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
-                                .background(if (selected) TossBlue else TossCardSoft)
+                                .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
                                 .clickable { selectedRate = option }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(option.label, color = if (selected) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(option.label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -278,7 +278,7 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         Box(
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                .background(TossBlue)
+                .background(Ids.colors.brand)
                 .clickable(enabled = !submitting) { submit() }
                 .padding(vertical = 14.dp),
             contentAlignment = Alignment.Center,
@@ -363,19 +363,19 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                 item {
                     Card(
                         shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                        colors = CardDefaults.cardColors(containerColor = TossCard),
+                        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Column(modifier = Modifier.padding(20.dp)) {
-                            Text(plan.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("${formatMoneyWeekly(current.walletBalance)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                            Text("Wallet balance", color = TossSecondary, fontSize = 12.sp)
+                            Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("${formatMoneyWeekly(current.walletBalance)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                            Text("Wallet balance", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(12.dp))
                             WeeklyProgressBar(progress = plan.weeksElapsed.toFloat() / TERM_WEEKS.toFloat())
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 "Week ${plan.weeksElapsed.coerceAtMost(TERM_WEEKS)} of $TERM_WEEKS -- amount steps up every $ESCALATION_STEP_WEEKS weeks",
-                                color = TossSecondary, fontSize = 12.sp,
+                                color = Ids.colors.textSecondary, fontSize = 12.sp,
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
@@ -391,11 +391,11 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                             )
                             if (plan.status == "ACTIVE") {
                                 Spacer(modifier = Modifier.height(6.dp))
-                                Text("Next installment due ${formatWeeklyDate(plan.nextInstallmentDueAt)}", color = TossSecondary, fontSize = 12.sp)
+                                Text("Next installment due ${formatWeeklyDate(plan.nextInstallmentDueAt)}", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                             plan.totalInterestPaid?.let {
                                 Spacer(modifier = Modifier.height(6.dp))
-                                Text("Total interest paid: ${formatMoneyWeekly(it)} RWF", color = TossSecondary, fontSize = 12.sp)
+                                Text("Total interest paid: ${formatMoneyWeekly(it)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                             }
                         }
                     }
@@ -410,15 +410,15 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                             Text(
                                 "Cancelling now forfeits your streak bonus -- you'll only get principal plus " +
                                     "base-rate interest, paid out immediately. This can't be undone.",
-                                color = TossSecondary, fontSize = 13.sp,
+                                color = Ids.colors.textSecondary, fontSize = 13.sp,
                             )
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Box(
-                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = !submitting) { confirmingCancel = false }.padding(vertical = 14.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Text("Keep plan", color = TossText, fontWeight = FontWeight.Bold)
+                                    Text("Keep plan", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
                                 }
                                 Box(
                                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.danger)
@@ -430,15 +430,15 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                             }
                         }
                         plan.status == "MATURED" && plan.withdrawnAt == null -> ActionButtonWeekly(
-                            "Withdraw to main wallet", color = TossBlue, enabled = !submitting,
+                            "Withdraw to main wallet", color = Ids.colors.brand, enabled = !submitting,
                         ) { withdraw() }
                         else -> Text(
                             if (plan.status == "CANCELLED") "This plan was cancelled." else "This plan has been withdrawn to your main wallet.",
-                            color = TossSecondary, fontSize = 13.sp,
+                            color = Ids.colors.textSecondary, fontSize = 13.sp,
                         )
                     }
                 }
-                item { Text("Installments", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                item { Text("Installments", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                 if (current.installments.isEmpty()) {
                     item { EmptyState("No installments collected yet.") }
                 } else {
@@ -466,11 +466,11 @@ private fun ActionButtonWeekly(label: String, color: Color, enabled: Boolean, on
 private fun InstallmentRowWeekly(installment: WeeklySavingsInstallmentDto) {
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-            .background(TossCard).padding(16.dp),
+            .background(Ids.colors.surface).padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text("Week ${installment.weekNumber}", color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        Text("${formatMoneyWeekly(installment.amount)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text("Week ${installment.weekNumber}", color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text("${formatMoneyWeekly(installment.amount)} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }
 
