@@ -1044,6 +1044,10 @@ fun ItundaAppScreen(
                         onCashOutAtAgent = { showAgentCash = true },
                         onOpenPay = { showPay = true },
                         onOpenNotifications = { showSettings = true },
+                        onOpenSacco = { showSacco = true },
+                        onOpenIkimina = { showIkimina = true },
+                        onOpenMotoOwnership = { showMotoOwnership = true },
+                        onOpenHarvestAdvance = { showHarvestAdvance = true },
                     )
                     ItundaTab.Shop -> ShopTab(
                         pendingEatsMerchantId = pendingEatsMerchantId,
@@ -1186,6 +1190,10 @@ private fun HomeTab(
     onCashOutAtAgent: () -> Unit,
     onOpenPay: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
+    onOpenSacco: () -> Unit = {},
+    onOpenIkimina: () -> Unit = {},
+    onOpenMotoOwnership: () -> Unit = {},
+    onOpenHarvestAdvance: () -> Unit = {},
 ) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
@@ -1218,6 +1226,45 @@ private fun HomeTab(
                 currentUserId = primaryWallet?.userId,
                 onSeeAll = onOpenTransactionHistory,
                 earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
+            )
+        }
+        // Real product-positioning fix (2026-08-10, see the "itunda: the wedge, not
+        // the mirror" strategy memo from this same session, and the identical fix on
+        // bank-mfe's HomeView): SACCO shares, Ikimina, Moto-Taxi Ownership, and
+        // Harvest advance are itunda's only real Rwanda-specific products -- the ones
+        // MTN MoMo's own roadmap can't trivially replicate -- yet all four lived only
+        // inside MenuScreen's "Borrow"/"Save & grow" categories, same visual weight as
+        // "Foreign currency". This doesn't add a feature; it gives four real, already-
+        // shipped, genuinely differentiated screens a Home presence that matches what
+        // they're worth, with real explanatory copy instead of a bare label. Unlike
+        // bank-mfe (which only has scroll-sections/buried buttons to route to),
+        // Android already has a dedicated full screen for each -- so this deep-links
+        // precisely, not just to a parent tab.
+        item {
+            ShellSection(
+                title = stringResource(R.string.home_coop_rail_title),
+                rows = listOf(
+                    ShellRow(
+                        stringResource(R.string.home_coop_rail_sacco_title),
+                        stringResource(R.string.home_coop_rail_sacco_subtitle),
+                        ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco,
+                    ),
+                    ShellRow(
+                        stringResource(R.string.home_coop_rail_ikimina_title),
+                        stringResource(R.string.home_coop_rail_ikimina_subtitle),
+                        ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina,
+                    ),
+                    ShellRow(
+                        stringResource(R.string.home_coop_rail_moto_title),
+                        stringResource(R.string.home_coop_rail_moto_subtitle),
+                        ">", Icons.Outlined.DirectionsBike, AccentBlue, onClick = onOpenMotoOwnership,
+                    ),
+                    ShellRow(
+                        stringResource(R.string.home_coop_rail_harvest_title),
+                        stringResource(R.string.home_coop_rail_harvest_subtitle),
+                        ">", Icons.Outlined.AccountBalanceWallet, AccentOrange, onClick = onOpenHarvestAdvance,
+                    ),
+                )
             )
         }
         // Real Toss-style spending insight (2026-08-03) -- replaces a hardcoded

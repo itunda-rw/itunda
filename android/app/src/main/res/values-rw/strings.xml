@@ -118,6 +118,15 @@
     <string name="home_promo_pay_cashback">Garura amafaranga buri gihe wishyuye</string>
     <string name="home_promo_face_id">Ishyura ukoresheje mu isura</string>
     <string name="home_promo_gov_alerts">Kwakira amakuru ya Leta</string>
+    <string name="home_coop_rail_title">Byakorewe uko Abanyarwanda babika amafaranga</string>
+    <string name="home_coop_rail_sacco_title">Imigabane ya SACCO</string>
+    <string name="home_coop_rail_sacco_subtitle">Gura imigabane ya koperative, wakire inyungu nyayo</string>
+    <string name="home_coop_rail_ikimina_title">Ikimina</string>
+    <string name="home_coop_rail_ikimina_subtitle">Injira mu kimina n\'abo wizera</string>
+    <string name="home_coop_rail_moto_title">Kugura moto y\'ubwoko bwa Moto-Taxi</string>
+    <string name="home_coop_rail_moto_subtitle">Bika kugira ngo ugure moto yawe, hanyuma bihinduke inguzanyo</string>
+    <string name="home_coop_rail_harvest_title">Inguzanyo yo gutera imbere isarura</string>
+    <string name="home_coop_rail_harvest_subtitle">Inguzanyo y\'ibikoresho biva kuri koperative y\'ikawa</string>
     <string name="home_savings">Ubwizigame</string>
     <string name="home_interest_jar">Ubwizigame bw\'inyungu</string>
     <string name="home_earned_this_month">Wabonye muri uku kwezi</string>
