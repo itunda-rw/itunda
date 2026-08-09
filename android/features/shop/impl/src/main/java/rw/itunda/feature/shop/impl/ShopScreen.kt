@@ -91,6 +91,8 @@ import rw.itunda.core.network.BookingSlotDto
 import rw.itunda.core.network.CreateBookingRequest
 import rw.itunda.core.network.CreateProductSubscriptionRequest
 import rw.itunda.core.network.DealProductDto
+import rw.itunda.core.network.RecentlyViewedProductDto
+import rw.itunda.core.network.RecentlyViewedProductsStore
 import rw.itunda.core.network.TimeDealViewDto
 import rw.itunda.core.network.MembershipDayStatusResponse
 import rw.itunda.core.network.ProductSubscriptionDto
@@ -205,6 +207,12 @@ fun CommerceShopContent(
     // recommendation #8. Every entry is a real merchant-set discount, never a
     // fabricated promo -- see backend MerchantProductRepository.findDeals's own doc
     // comment.
+    // Real "Recently viewed" rail (2026-08-10) -- see RecentlyViewedProductsStore.kt's
+    // own doc comment. Purely local, same as Maps' recent searches.
+    val recentlyViewedContext = LocalContext.current
+    val recentlyViewedStore = remember { RecentlyViewedProductsStore(recentlyViewedContext) }
+    var recentlyViewed by remember { mutableStateOf(recentlyViewedStore.getAll()) }
+
     var deals by remember { mutableStateOf<List<DealProductDto>?>(null) }
     LaunchedEffect(Unit) {
         try {
@@ -466,6 +474,11 @@ fun CommerceShopContent(
     }
     val product = selectedProduct
     if (merchant != null && product != null) {
+        LaunchedEffect(product.id) {
+            recentlyViewed = recentlyViewedStore.add(
+                RecentlyViewedProductDto(product.id, merchant.merchantId, merchant.businessName, product.name, product.price, product.imageUrl, product.discountPercent),
+            )
+        }
         ProductDetailScreen(
             merchant = merchant,
             product = product,
@@ -645,6 +658,37 @@ fun CommerceShopContent(
                                     Text(a.businessName, color = Ids.colors.textSecondary, fontSize = 12.sp)
                                     a.ad.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 11.sp) }
                                     Text("%.1f km away".format(a.distanceKm), color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Real "Recently viewed" rail (2026-08-10) -- Coupang/Naver/Toss/Kakao
+            // Shopping all show this on the landing surface; itunda had none. Same
+            // "hidden once the user starts filtering" discipline as the Deals rail
+            // below. Tapping a card jumps back to the real merchant (same shortcut
+            // the Deals/Time Deals rails use) rather than reopening a possibly-stale
+            // cached product snapshot.
+            if (selectedCategory == null && searchInput.isBlank() && recentlyViewed.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("🕐 Recently viewed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            recentlyViewed.forEach { rv ->
+                                Column(
+                                    modifier = Modifier.width(120.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
+                                        .clickable { openMerchant(ShoppingMerchantDto(merchantId = rv.merchantId, businessName = rv.merchantName, category = null, cashbackRate = "1%")) }
+                                        .padding(10.dp),
+                                ) {
+                                    ProductImageThumb(rv.imageUrl, size = 96.dp, corner = 10.dp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(rv.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2)
+                                    val discountPercent = rv.discountPercent
+                                    if (discountPercent != null && discountPercent > 0) {
+                                        Text("$discountPercent% off", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                    }
+                                    Text("%,.0f RWF".format(rv.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                             }
                         }
