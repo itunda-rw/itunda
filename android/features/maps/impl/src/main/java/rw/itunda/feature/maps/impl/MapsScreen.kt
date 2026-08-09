@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
@@ -323,7 +324,46 @@ private enum class PlaceTab { HOME, MENU, REVIEWS, INFO }
 // Declares the real, empty-until-populated `route` source the directions feature below
 // writes into (the merchants/my-location/destination sources are added at runtime once
 // the style loads, same as before).
-private val MAP_STYLE_JSON: String get() = """
+// Real dark map style (2026-08-10) -- Google Maps/Apple Maps/Naver Maps all switch
+// their own tile rendering to a dark variant under system dark mode; itunda's
+// self-hosted style was hard-coded light-only (#f2efe9 background), a real, likely
+// highly visible mismatch given this session's own device defaults to system dark
+// mode. Chosen once at map-open time (MapScreen reads isSystemInDarkTheme() below) --
+// deliberately not live-reactive to a theme change while the map is already open,
+// since every source/layer for merchants/route/destination/etc. is added inside the
+// same setStyle() callback this JSON feeds; making that also survive a live style swap
+// would mean restructuring where that setup runs, real extra risk this session's own
+// "can't visually verify rendering" constraint (FLAG_SECURE blocks screenshots) isn't
+// the moment to take on for a system setting a user changes rarely, not mid-session.
+private fun mapStyleJson(dark: Boolean): String {
+    val c = if (dark) {
+        MapStyleColors(
+            background = "#1d2330", landcover = "#26301f", landcoverOpacity = 0.5,
+            park = "#1f3018", parkOpacity = 0.45, water = "#16222e",
+            residential = "#232838", residentialOpacity = 0.4,
+            building = "#2a2f40", buildingOutline = "#3a4058",
+            roadMinor = "#3a4058", roadMajor = "#c9974f",
+            boundary = "#7a68a0", waterLabel = "#7fa8c9", waterLabelHalo = "#0e1620",
+            roadLabel = "#c9b98a", roadLabelHalo = "#000000",
+            poiLabel = "#a8a296", poiLabelHalo = "#000000",
+            placeMinor = "#c8c8c8", placeMinorHalo = "#000000",
+            placeMajor = "#f0f0f0", placeMajorHalo = "#000000",
+        )
+    } else {
+        MapStyleColors(
+            background = "#f2efe9", landcover = "#d8e8c8", landcoverOpacity = 0.6,
+            park = "#c8e0b0", parkOpacity = 0.5, water = "#a8d0e6",
+            residential = "#e6e1d8", residentialOpacity = 0.5,
+            building = "#dcd4c6", buildingOutline = "#c8bfae",
+            roadMinor = "#ffffff", roadMajor = "#f5c96b",
+            boundary = "#a08ccb", waterLabel = "#3d6e8f", waterLabelHalo = "#ffffff",
+            roadLabel = "#6b5a2a", roadLabelHalo = "#ffffff",
+            poiLabel = "#5a5044", poiLabelHalo = "#ffffff",
+            placeMinor = "#3d3d3d", placeMinorHalo = "#ffffff",
+            placeMajor = "#1f1f1f", placeMajorHalo = "#ffffff",
+        )
+    }
+    return """
 {
   "version": 8,
   "glyphs": "$GLYPHS_URL",
@@ -331,49 +371,63 @@ private val MAP_STYLE_JSON: String get() = """
     "rwanda": { "type": "vector", "tiles": ["$TILES_URL"], "minzoom": 0, "maxzoom": 14 }
   },
   "layers": [
-    { "id": "background", "type": "background", "paint": { "background-color": "#f2efe9" } },
+    { "id": "background", "type": "background", "paint": { "background-color": "${c.background}" } },
     { "id": "landcover", "type": "fill", "source": "rwanda", "source-layer": "landcover",
-      "paint": { "fill-color": "#d8e8c8", "fill-opacity": 0.6 } },
+      "paint": { "fill-color": "${c.landcover}", "fill-opacity": ${c.landcoverOpacity} } },
     { "id": "park", "type": "fill", "source": "rwanda", "source-layer": "park",
-      "paint": { "fill-color": "#c8e0b0", "fill-opacity": 0.5 } },
+      "paint": { "fill-color": "${c.park}", "fill-opacity": ${c.parkOpacity} } },
     { "id": "water", "type": "fill", "source": "rwanda", "source-layer": "water",
-      "paint": { "fill-color": "#a8d0e6" } },
+      "paint": { "fill-color": "${c.water}" } },
     { "id": "landuse-residential", "type": "fill", "source": "rwanda", "source-layer": "landuse",
       "filter": ["==", ["get", "class"], "residential"],
-      "paint": { "fill-color": "#e6e1d8", "fill-opacity": 0.5 } },
+      "paint": { "fill-color": "${c.residential}", "fill-opacity": ${c.residentialOpacity} } },
     { "id": "building", "type": "fill", "source": "rwanda", "source-layer": "building", "minzoom": 13,
-      "paint": { "fill-color": "#dcd4c6", "fill-outline-color": "#c8bfae" } },
+      "paint": { "fill-color": "${c.building}", "fill-outline-color": "${c.buildingOutline}" } },
     { "id": "transportation-minor", "type": "line", "source": "rwanda", "source-layer": "transportation",
       "filter": ["!", ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary"], true, false]],
-      "paint": { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 16, 3] } },
+      "paint": { "line-color": "${c.roadMinor}", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 16, 3] } },
     { "id": "transportation-major", "type": "line", "source": "rwanda", "source-layer": "transportation",
       "filter": ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary"], true, false],
-      "paint": { "line-color": "#f5c96b", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1, 16, 5] } },
+      "paint": { "line-color": "${c.roadMajor}", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1, 16, 5] } },
     { "id": "boundary", "type": "line", "source": "rwanda", "source-layer": "boundary",
       "filter": ["<=", ["get", "admin_level"], 4],
-      "paint": { "line-color": "#a08ccb", "line-width": 1, "line-dasharray": [2, 1] } },
+      "paint": { "line-color": "${c.boundary}", "line-width": 1, "line-dasharray": [2, 1] } },
     { "id": "water-label", "type": "symbol", "source": "rwanda", "source-layer": "water_name", "minzoom": 7,
       "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12 },
-      "paint": { "text-color": "#3d6e8f", "text-halo-color": "#ffffff", "text-halo-width": 1 } },
+      "paint": { "text-color": "${c.waterLabel}", "text-halo-color": "${c.waterLabelHalo}", "text-halo-width": 1 } },
     { "id": "road-label", "type": "symbol", "source": "rwanda", "source-layer": "transportation_name", "minzoom": 12,
       "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12,
         "symbol-placement": "line", "text-letter-spacing": 0.05 },
-      "paint": { "text-color": "#6b5a2a", "text-halo-color": "#ffffff", "text-halo-width": 1.2 } },
+      "paint": { "text-color": "${c.roadLabel}", "text-halo-color": "${c.roadLabelHalo}", "text-halo-width": 1.2 } },
     { "id": "poi-label", "type": "symbol", "source": "rwanda", "source-layer": "poi", "minzoom": 14,
       "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 11 },
-      "paint": { "text-color": "#5a5044", "text-halo-color": "#ffffff", "text-halo-width": 1 } },
+      "paint": { "text-color": "${c.poiLabel}", "text-halo-color": "${c.poiLabelHalo}", "text-halo-width": 1 } },
     { "id": "place-label-minor", "type": "symbol", "source": "rwanda", "source-layer": "place", "minzoom": 10,
       "filter": ["!", ["match", ["get", "class"], ["city", "town"], true, false]],
       "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12 },
-      "paint": { "text-color": "#3d3d3d", "text-halo-color": "#ffffff", "text-halo-width": 1.2 } },
+      "paint": { "text-color": "${c.placeMinor}", "text-halo-color": "${c.placeMinorHalo}", "text-halo-width": 1.2 } },
     { "id": "place-label-major", "type": "symbol", "source": "rwanda", "source-layer": "place",
       "filter": ["match", ["get", "class"], ["city", "town"], true, false],
       "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Bold"],
         "text-size": ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 18] },
-      "paint": { "text-color": "#1f1f1f", "text-halo-color": "#ffffff", "text-halo-width": 1.5 } }
+      "paint": { "text-color": "${c.placeMajor}", "text-halo-color": "${c.placeMajorHalo}", "text-halo-width": 1.5 } }
   ]
 }
 """.trimIndent()
+}
+
+private data class MapStyleColors(
+    val background: String, val landcover: String, val landcoverOpacity: Double,
+    val park: String, val parkOpacity: Double, val water: String,
+    val residential: String, val residentialOpacity: Double,
+    val building: String, val buildingOutline: String,
+    val roadMinor: String, val roadMajor: String,
+    val boundary: String, val waterLabel: String, val waterLabelHalo: String,
+    val roadLabel: String, val roadLabelHalo: String,
+    val poiLabel: String, val poiLabelHalo: String,
+    val placeMinor: String, val placeMinorHalo: String,
+    val placeMajor: String, val placeMajorHalo: String,
+)
 
 /**
  * Real interactive Rwanda map -- itunda's own self-hosted Kakao Maps/Naver Maps-style
@@ -405,6 +459,10 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    // Real dark map style (2026-08-10) -- see mapStyleJson's own doc comment. Read once
+    // at map-open time via `remember`, matching every one-shot MapView setup below.
+    val isDarkMap = isSystemInDarkTheme()
+    val styleJson = remember(isDarkMap) { mapStyleJson(isDarkMap) }
     // The cash-out flow deliberately arrives with the public agent network selected.
     // Keep that intent visible while the customer explores the general-purpose map.
     val isAgentCashDiscovery = initialCategory == "ITUNDA_AGENT"
@@ -1129,7 +1187,7 @@ fun MapScreen(
                 // extract), and OSM's ODbL license requires real credit; only the logo
                 // mark (MapLibre's own branding, not a data-license requirement) is hidden.
                 map.uiSettings.isLogoEnabled = false
-                map.setStyle(Style.Builder().fromJson(MAP_STYLE_JSON)) { style ->
+                map.setStyle(Style.Builder().fromJson(styleJson)) { style ->
                     val pinDensity = context.resources.displayMetrics.density
                     style.addImage(MERCHANT_ICON_ID, createPinBitmap(pinDensity, "#3182F6"))
                     // Real per-category merchant pin (2026-08-09) -- see merchantPinIconId's
