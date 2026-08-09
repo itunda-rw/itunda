@@ -22,14 +22,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.rider.network.NetworkClient
+import rw.itunda.rider.network.parseApiError
 import java.io.IOException
 
 /**
- * Shown once for any logged-in itunda user who hasn't registered as a rider yet --
- * registerRider() is a real, cheap, idempotent-on-repeat-visit call (RiderService
- * throws RiderAlreadyRegisteredException on a second attempt, which this screen
- * never triggers since MainActivity only shows it before a real rider profile
- * exists).
+ * Shown for any logged-in itunda user MainActivity doesn't yet know is a rider.
+ *
+ * Real bug found live (2026-08-10): the doc comment here used to claim this screen
+ * "never triggers" a second registerRider() call, but that's only true of
+ * MainActivity's own *local* rider-profile check -- a fresh install/reinstall (or any
+ * state loss) has no memory of a real prior registration until the server says so, so
+ * this screen can absolutely be reached by an account that's already a real registered
+ * rider. Before this fix, that real, specific RIDER_ALREADY_REGISTERED backend error
+ * was being caught by the generic `catch (e: Exception)` below and replaced with a
+ * hard-coded, unhelpful "couldn't register... try again" message that a user would
+ * hit on every retry, forever, with no way forward -- exactly the friction Toss's own
+ * error-handling philosophy is about eliminating (resolve it for the user when the
+ * "failure" isn't actually one from their perspective, rather than leaving them
+ * stuck on a technicality the way a plain OS-level error dialog would).
  */
 @Composable
 fun BecomeRiderScreen(onRegistered: () -> Unit, onLogout: () -> Unit) {
@@ -62,10 +72,19 @@ fun BecomeRiderScreen(onRegistered: () -> Unit, onLogout: () -> Unit) {
                     try {
                         NetworkClient.apiService.registerRider()
                         onRegistered()
+                    } catch (e: retrofit2.HttpException) {
+                        val parsed = parseApiError(e)
+                        if (parsed.code == "RIDER_ALREADY_REGISTERED") {
+                            // Real Toss-style resolution, not a dead-end error: the
+                            // account genuinely IS already a registered rider, so move
+                            // them forward instead of showing an error for something
+                            // that isn't actually wrong.
+                            onRegistered()
+                        } else {
+                            error = parsed.message ?: "Couldn't register as a rider right now. Try again."
+                        }
                     } catch (e: IOException) {
                         error = "Couldn't reach itunda. Check your connection and try again."
-                    } catch (e: Exception) {
-                        error = "Couldn't register as a rider right now. Try again."
                     } finally {
                         busy = false
                     }

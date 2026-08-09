@@ -231,3 +231,18 @@ object NetworkClient {
     val apiService: ApiService by lazy { retrofit.create(ApiService::class.java) }
     val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
 }
+
+// Real backend-message pass-through (2026-08-10), mirroring core/network's own
+// apiErrorMessage -- riderapp is a standalone module with its own ApiService, so it
+// doesn't share that one. Real Toss-style discipline: a specific backend error (a real
+// stated reason, or a stable code a screen can act on) beats a generic bucket string
+// every time.
+data class ParsedApiError(val code: String?, val message: String?)
+
+fun parseApiError(e: retrofit2.HttpException): ParsedApiError = try {
+    val body = e.response()?.errorBody()?.string() ?: return ParsedApiError(null, null)
+    val json = com.google.gson.JsonParser.parseString(body).asJsonObject
+    ParsedApiError(json.get("code")?.asString, json.get("message")?.asString)
+} catch (_: Exception) {
+    ParsedApiError(null, null)
+}

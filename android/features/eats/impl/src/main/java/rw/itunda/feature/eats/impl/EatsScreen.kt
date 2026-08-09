@@ -1977,7 +1977,18 @@ private fun DeliverContent() {
                                     val res = NetworkClient.apiService.registerRider()
                                     if (res.success) rider = res.rider
                                 } catch (e: HttpException) {
-                                    error = superAppErrorMessage(e)
+                                    // Real Toss-style resolution (2026-08-10), matching
+                                    // riderapp's own BecomeRiderScreen fix: registerRider's
+                                    // only real 409 is RiderAlreadyRegisteredException --
+                                    // the account genuinely IS already a rider, so load
+                                    // their real profile and move forward instead of
+                                    // showing an error for something that isn't actually
+                                    // wrong.
+                                    if (e.code() == 409) {
+                                        loadRider()
+                                    } else {
+                                        error = superAppErrorMessage(e)
+                                    }
                                 } finally {
                                     registering = false
                                 }
