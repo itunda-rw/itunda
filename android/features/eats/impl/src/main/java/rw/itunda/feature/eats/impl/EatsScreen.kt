@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
@@ -145,6 +146,60 @@ private val DINE_IN_STATUS_LABEL = mapOf(
 )
 
 private val RIDER_STATUS_CHAIN = listOf("RIDER_ASSIGNED", "PICKED_UP", "DELIVERED")
+
+// Real order-status stepper (2026-08-10) -- Uber Eats/Coupang Eats/배민 all render the
+// pipeline as a visual progress track, not just a status word, so a customer can see at
+// a glance how close their food is without reading. Two variants because the real
+// backend pipeline forks at READY_FOR_PICKUP (EatsOrderService.kt): a delivery order
+// gets a rider hop (RIDER_ASSIGNED -> PICKED_UP), a pickup order goes straight to
+// DELIVERED with no rider -- order.riderId being null throughout a pickup order's life
+// is what distinguishes the two without needing a client-side fulfillmentType field.
+private val EATS_DELIVERY_STEPS = listOf(
+    "PLACED" to "Placed",
+    "ACCEPTED" to "Accepted",
+    "PREPARING" to "Preparing",
+    "READY_FOR_PICKUP" to "Ready",
+    "RIDER_ASSIGNED" to "Rider assigned",
+    "PICKED_UP" to "On the way",
+    "DELIVERED" to "Delivered",
+)
+private val EATS_PICKUP_STEPS = listOf(
+    "PLACED" to "Placed",
+    "ACCEPTED" to "Accepted",
+    "PREPARING" to "Preparing",
+    "READY_FOR_PICKUP" to "Ready for pickup",
+    "DELIVERED" to "Picked up",
+)
+
+@Composable
+private fun EatsStatusStepper(status: String, hasRider: Boolean) {
+    val steps = if (hasRider) EATS_DELIVERY_STEPS else EATS_PICKUP_STEPS
+    val currentIndex = steps.indexOfFirst { it.first == status }
+    if (currentIndex < 0) return
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        steps.forEachIndexed { i, (_, label) ->
+            val reached = i <= currentIndex
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(if (reached) Ids.colors.brand else Ids.colors.surfaceSoft),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(label, fontSize = 10.sp, color = if (reached) Ids.colors.textPrimary else Ids.colors.textSecondary, textAlign = TextAlign.Center, maxLines = 2)
+            }
+            if (i < steps.lastIndex) {
+                Box(
+                    modifier = Modifier
+                        .weight(0.6f)
+                        .height(2.dp)
+                        .background(if (i < currentIndex) Ids.colors.brand else Ids.colors.surfaceSoft),
+                )
+            }
+        }
+    }
+}
 
 private fun nextRiderStatus(current: String): String? {
     val idx = RIDER_STATUS_CHAIN.indexOf(current)
@@ -1603,6 +1658,13 @@ private fun EatsOrderRow(
                     Text(order.deliveryAddress, color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
                 Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+            if (order.status != "DELIVERED" && order.status != "CANCELLED") {
+                // A PICKUP order's deliveryLatitude/Longitude are unconditionally null
+                // (EatsOrderService.placeOrder) from creation on -- a real, always-present
+                // signal, unlike riderId which is null for a DELIVERY order too until a
+                // rider actually gets assigned partway through.
+                EatsStatusStepper(order.status, hasRider = order.deliveryLatitude != null || order.riderId != null)
             }
             if (!order.deliveryNotes.isNullOrBlank()) {
                 Text(
