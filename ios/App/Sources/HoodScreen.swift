@@ -265,6 +265,12 @@ private struct HoodFeedSkeleton: View {
 struct HoodScreen: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
+    // Real deep-link into the Property chip (2026-08-10) -- see EntireMenuScreen's own
+    // "Property" row, which used to be a dead icon even though this real
+    // HoodMode.property chip already existed; same real binding pattern
+    // pendingConversationId above already establishes. Defaults false so every other
+    // caller (there is only one, ContentView.swift) is unaffected.
+    var openToProperty: Binding<Bool> = .constant(false)
 
     private enum HoodMode { case marketplace, community, jobs, property }
     @State private var mode: HoodMode = .marketplace
@@ -322,6 +328,12 @@ struct HoodScreen: View {
                 neighborhoodName = profile.user.neighborhood
                 neighborhoodVerificationCount = profile.user.neighborhoodVerificationCount ?? 0
                 secondNeighborhoodName = profile.user.secondNeighborhood
+            }
+        }
+        .onChange(of: openToProperty.wrappedValue) { isOpen in
+            if isOpen {
+                mode = .property
+                openToProperty.wrappedValue = false
             }
         }
         .overlay {

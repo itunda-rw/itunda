@@ -172,6 +172,7 @@ struct EntireMenuScreen: View {
     var onClaimInterest: () -> Void = {}
     var onSwitchToTalk: () -> Void = {}
     var onOpenTransferHub: () -> Void = {}
+    var onOpenProperty: () -> Void = {}
 
     // Real granite mini-app launch, closing this file's own "MiniAppsSection... plain,
     // non-functional list rows" gap for real -- the CocoaPods/Tuist bridge plus the real
@@ -344,26 +345,56 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Reward tasks", showChevron: true, action: { showRewardTasksMiniApp = true }),
                         FlatRow(title: "Insurance", showChevron: true, action: { showInsuranceMiniApp = true }),
                     ])
-                    // "Verify" now opens the real Identity screen (found 2026-07-22
-                    // fully built on the backend with zero UI); every other item here
-                    // stays purely decorative, unchanged.
+                    // Real gap found live (2026-08-10), same fix as Android's identical
+                    // grid: titled "Recent services" but nothing here was ever actually
+                    // tracked as recent, and 6 of its 8 icons were dead taps (tap
+                    // highlight fires, nothing happens). Renamed "Shortcuts" (what it
+                    // actually is) and wired to the same real destinations the rest of
+                    // this screen uses. "Photo transfer" dropped outright, not wired --
+                    // no OCR/photo-based transfer feature exists anywhere in this app,
+                    // same "don't fake a destination that doesn't exist" call already
+                    // made for QuickActions' Scan-to-Pay icon.
                     IconGridSection(
-                        title: "Recent services",
+                        title: "Shortcuts",
                         items: [
-                            ("Open acct", "plus.circle"),
-                            ("Photo transfer", "camera.fill"),
+                            ("Open account", "plus.circle"),
                             ("Verify", "checkmark.seal.fill"),
                             ("Send", "paperplane.fill"),
                             ("Group", "person.2.fill"),
                             ("Property", "house.fill"),
                             ("Insurance", "shield.fill"),
-                            ("More", "ellipsis"),
                         ],
-                        onItemClick: { label in if label == "Verify" { showIdentity = true } }
+                        onItemClick: { label in
+                            switch label {
+                            case "Open account": showOverview = true
+                            case "Verify": showIdentity = true
+                            case "Send": onOpenTransferHub()
+                            case "Group": showGroupAccounts = true
+                            case "Property": onOpenProperty()
+                            case "Insurance": showInsuranceMiniApp = true
+                            default: break
+                            }
+                        }
                     )
-                    FlatSection(title: "Financial services", rows: [
-                        FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue),
+                    // Real gap found live (2026-08-10), user-flagged: this used to be one
+                    // 25-row "Financial services" section mixing loans, savings, bus
+                    // tickets, and vehicle inspection under one label -- the exact
+                    // supply-side-dump anti-pattern Toss Tech's own product-restructuring
+                    // writeup names and fixes (toss.tech/article/mydoc), and the same one
+                    // Android's MenuScreen just got fixed for (see ItundaAppScreen.kt's
+                    // own doc comment). Split into the same real, user-intent-based
+                    // sections Android now uses, for consistency across platforms. Also
+                    // fixes 2 dead taps found the same way Android's were: "Open account"
+                    // and "Mobile plan" had no `action:` at all.
+                    FlatSection(title: "Accounts & cards", rows: [
+                        FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue, action: { showOverview = true }),
                         FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
+                        FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
+                        FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
+                        FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", symbol: "calendar", tint: .accentBlue, action: { showSubscriptions = true }),
+                        FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
+                    ])
+                    FlatSection(title: "Send & pay", rows: [
                         // Real Transfer full page (2026-07-24 port), matching real Toss's
                         // own 송금 row here ("자동이체 · 더치페이" subtitle) -- groups Send
                         // money/Auto-transfer/history in one place instead of Home's Send
@@ -372,43 +403,64 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentBlue, action: onOpenTransferHub),
                         FlatRow(title: "Request money", subtitle: "Generate a real payment request code", symbol: "text.badge.plus", tint: .accentBlue, action: { showRequestMoney = true }),
                         FlatRow(title: "Auto top-up", subtitle: "Refill your wallet automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentBlue, action: { showAutoTopUp = true }),
+                        // MTN/Airtel airtime and broadband are real billers inside the Pay
+                        // Bills mini-app -- same real destination "REG & WASAC bills" below
+                        // already uses, same fix as Android's identical dead tap.
+                        FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal, action: { showPayBillsMiniApp = true }),
+                    ])
+                    FlatSection(title: "Save & grow", rows: [
+                        FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
+                        FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
+                    ])
+                    FlatSection(title: "Borrow", rows: [
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
-                        FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
-                        FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentBlue, action: { showAgentOperator = true }),
-                        FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
                         FlatRow(title: "Moto-Taxi Ownership", subtitle: "Save a 30% down payment, then convert to a loan for your own bike", symbol: "bicycle", tint: .accentTeal, action: { showMotoOwnership = true }),
-                        FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
+                    ])
+                    FlatSection(title: "Transport", rows: [
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
                         FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
                         FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", symbol: "bicycle", tint: .accentBlue, action: { showBikeRental = true }),
                         FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", symbol: "parkingsign.circle.fill", tint: .accentPurple, action: { showParking = true }),
                         FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", symbol: "bus.fill", tint: .accentTeal, action: { showBus = true }),
-                        FlatRow(title: "Q&A", subtitle: "Ask a question, answer one, get adopted", symbol: "questionmark.circle.fill", tint: .accentPurple, action: { showKnowledge = true }),
                         FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
                         FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", symbol: "car.fill", tint: .accentTeal, action: { showVehicleValuation = true }),
-                        FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
-                        FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", symbol: "calendar", tint: .accentBlue, action: { showSubscriptions = true }),
-                        FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
-                        FlatRow(title: "Foreign currency", subtitle: "Hold and convert USD, EUR, GBP", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
-                        FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
-                        FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
-                        FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
+                    ])
+                    FlatSection(title: "Community & trust", rows: [
+                        FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
+                        FlatRow(title: "Q&A", subtitle: "Ask a question, answer one, get adopted", symbol: "questionmark.circle.fill", tint: .accentPurple, action: { showKnowledge = true }),
+                    ])
+                    // Kept last and separately labeled, not blended into the rows above:
+                    // these two are role-gated (only assigned cash-agent operators can use
+                    // them), same reasoning as Android's identical split.
+                    FlatSection(title: "Cash agent tools", rows: [
+                        FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentBlue, action: { showAgentOperator = true }),
+                        FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
                     ])
                     // Everything below is modeled directly on the real Toss Bank
                     // reference screens (see ItundaAppScreen.kt's own identical note),
                     // adapted to Rwanda rails (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel
                     // Money, RSE tickers, RSSB pension) the same way Android already was.
+                    // Real fix (2026-08-10, matching Android's own 2026-08-03 fix, never
+                    // ported to iOS until now): this whole section was 3 dead taps --
+                    // these are real Toss 갈아타기 entry points into the existing loan
+                    // refinance flow (LoansScreen's own "Refinance to a lower rate"
+                    // button), not a separate feature, so they route to the same real
+                    // Loans screen every other loan row on this screen already uses.
                     FlatSection(title: "Switch & save", rows: [
-                        FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue),
-                        FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal),
-                        FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal),
+                        FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                        FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal, action: { showLoans = true }),
+                        FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal, action: { showLoans = true }),
                     ])
                 }
                 Group {
+                    // Real fix (2026-08-10, matching Android's 2026-08-03 fix): both rows
+                    // point at the same real Card screen "Card" already opens elsewhere on
+                    // this screen -- a second, previously-dead entry point into it, not a
+                    // separate feature.
                     FlatSection(title: "Cards", rows: [
-                        FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed),
-                        FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray),
+                        FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed, action: { showCard = true }),
+                        FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray, action: { showCard = true }),
                     ])
                     FlatSection(title: "Services", rows: [
                         FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentBlue),
@@ -425,15 +477,21 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentBlue),
                         FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
                     ])
+                    // Real fix (2026-08-10, matching Android's 2026-08-03 fix): both rows
+                    // are the same real foreign-currency wallet "Mobile plan"/Send & pay's
+                    // own routing doesn't cover -- this is its own real screen.
                     FlatSection(title: "Foreign currency", rows: [
-                        FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple),
-                        FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue),
+                        FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
+                        FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
                     ])
+                    // Real fix (2026-08-10, matching Android's 2026-08-03 fix): all 4 rows
+                    // are the same real RSE investing screen ("Invest" quick link already
+                    // opens) -- routed there instead of sitting dead.
                     FlatSection(title: "Grow your money", rows: [
-                        FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal),
-                        FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentBlue),
-                        FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed),
-                        FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal),
+                        FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal, action: { showInvest = true }),
+                        FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentBlue, action: { showInvest = true }),
+                        FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed, action: { showInvest = true }),
+                        FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal, action: { showInvest = true }),
                     ])
                     FlatSection(title: "Pension", rows: [
                         FlatRow(title: "Check my RSSB pension", symbol: "building.columns.fill", tint: .accentBlue),

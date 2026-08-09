@@ -37,6 +37,9 @@ struct ContentView: View {
     // mechanism (mirrors bank-mfe's BankDashboard.tsx pendingConversationId/
     // onConsumedInitial pattern and Android's identical ItundaAppScreen.kt state).
     @State private var pendingConversationId: String?
+    // Real deep-link from the menu's "Property" row into Hood's real HoodMode.property
+    // chip (2026-08-10) -- see HoodScreen's own doc comment.
+    @State private var pendingHoodOpenProperty = false
     // Real wallet/savings data (2026-07-11) -- see BankViewModel.swift for why this
     // lives here rather than inside BankView's own module.
     @StateObject private var bankViewModel = BankViewModel()
@@ -159,7 +162,7 @@ struct ContentView: View {
                 }
                 .tag(1)
 
-            HoodScreen(pendingConversationId: $pendingConversationId, onSwitchToTalk: { selectedTab = 3 })
+            HoodScreen(pendingConversationId: $pendingConversationId, onSwitchToTalk: { selectedTab = 3 }, openToProperty: $pendingHoodOpenProperty)
                 .tabItem {
                     Image(systemName: "location.fill")
                     Text("Hood")
@@ -182,7 +185,8 @@ struct ContentView: View {
                 onOpenMyTab: { showMyTab = true },
                 onClaimInterest: { savingsFlowStep = .claimInterest },
                 onSwitchToTalk: { selectedTab = 3 },
-                onOpenTransferHub: { showTransferHub = true }
+                onOpenTransferHub: { showTransferHub = true },
+                onOpenProperty: { pendingHoodOpenProperty = true; selectedTab = 2 }
             )
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsScreen(onDone: { showSettings = false })
