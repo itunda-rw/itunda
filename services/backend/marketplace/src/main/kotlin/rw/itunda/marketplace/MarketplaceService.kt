@@ -52,6 +52,7 @@ class BuyerNoWalletException(message: String) : RuntimeException(message)
 class MarketplaceEscrowNotFoundException(message: String) : RuntimeException(message)
 class InvalidEscrowStatusException(message: String) : RuntimeException(message)
 class InvalidDisputeReasonException(message: String) : RuntimeException(message)
+class ListingBumpCooldownException(message: String) : RuntimeException(message)
 
 /**
  * A real 당근마켓 (Danggeun/Karrot Market)-style secondhand marketplace -- the second
@@ -98,6 +99,11 @@ class MarketplaceService(
             7 to BigDecimal("1000"),
             14 to BigDecimal("1800"),
         )
+
+        // Real 당근마켓 bump cadence -- once per listing per day, the same real cadence
+        // 당근's own 끌어올리기 enforces to keep it a genuine "still available, still
+        // want to sell this" signal rather than a way to spam the top of the feed.
+        val BUMP_COOLDOWN: Duration = Duration.ofHours(24)
     }
 
     private fun requireOwner(sellerId: String, listingId: String): Listing {
@@ -338,6 +344,29 @@ class MarketplaceService(
         val now = Instant.now()
         val currentBoostedUntil = listing.boostedUntil?.takeIf { it.isAfter(now) } ?: now
         listing.boostedUntil = currentBoostedUntil.plus(Duration.ofDays(days.toLong()))
+        return listingRepository.save(listing)
+    }
+
+    // Real 당근마켓 끌어올리기 (bump to top of feed) -- see Listing.bumpedAt's own doc
+    // comment. Free and self-serve, unlike boostListing above (a real paid, guaranteed
+    // top-of-feed placement) -- a different, complementary mechanic real 당근 also
+    // keeps separate: bump only reorders you above other organic (non-boosted)
+    // listings, a boosted listing still sorts first regardless (see the repository's
+    // CASE-first ordering). Once-per-24h cooldown against real spam, measured from
+    // whichever of createdAt/bumpedAt is more recent -- a freshly created listing
+    // can't be immediately bumped again either.
+    fun bumpListing(sellerId: String, listingId: String): Listing {
+        val listing = requireOwner(sellerId, listingId)
+        if (listing.status != ListingStatus.ACTIVE) {
+            throw ListingNotActiveException("Only an ACTIVE listing can be bumped")
+        }
+        val now = Instant.now()
+        val lastBump = listing.bumpedAt ?: listing.createdAt
+        val nextEligible = lastBump.plus(BUMP_COOLDOWN)
+        if (nextEligible.isAfter(now)) {
+            throw ListingBumpCooldownException("You can bump this listing again in ${Duration.between(now, nextEligible).toMinutes()} minutes")
+        }
+        listing.bumpedAt = now
         return listingRepository.save(listing)
     }
 

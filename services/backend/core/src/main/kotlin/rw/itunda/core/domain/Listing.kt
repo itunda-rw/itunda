@@ -132,6 +132,15 @@ class Listing(
     // established -- see ListingLike.kt for the (listing, user) row this counts.
     @Column(name = "like_count", nullable = false)
     var likeCount: Long = 0,
+
+    // Real 당근마켓 끌어올리기 (bump to top of feed), 2026-08-10 -- see
+    // MarketplaceService.bumpListing's own doc comment. Null means never bumped, the
+    // pre-existing default for every listing; feed queries order by
+    // COALESCE(bumpedAt, createdAt) DESC so an unbumped listing sorts exactly as it
+    // always did. Deliberately separate from createdAt, which stays the real,
+    // immutable creation time.
+    @Column(name = "bumped_at", nullable = true)
+    var bumpedAt: Instant? = null,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

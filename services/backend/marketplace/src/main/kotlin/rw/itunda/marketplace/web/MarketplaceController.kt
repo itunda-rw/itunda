@@ -46,6 +46,7 @@ import rw.itunda.marketplace.InvalidListingException
 import rw.itunda.marketplace.InvalidOfferAmountException
 import rw.itunda.marketplace.KeywordAlertService
 import rw.itunda.marketplace.ListingFavoriteService
+import rw.itunda.marketplace.ListingBumpCooldownException
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
 import rw.itunda.marketplace.MarketplaceEscrowNotFoundException
@@ -194,6 +195,19 @@ class MarketplaceController(
     ): ResponseEntity<Map<String, Any?>> {
         val liked = marketplaceService.toggleLike(currentUser.userId, listingId)
         return ResponseEntity.ok(mapOf("success" to true, "liked" to liked))
+    }
+
+    // Real 당근마켓 끌어올리기 (bump to top of feed) -- see MarketplaceService
+    // .bumpListing's own doc comment. Free and self-serve (unlike boost below), so no
+    // real money moves and no Idempotency-Key is required, same simpler discipline
+    // toggleLike above already follows.
+    @PostMapping("/listings/{listingId}/bump")
+    fun bumpListing(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val listing = marketplaceService.bumpListing(currentUser.userId, listingId)
+        return ResponseEntity.ok(mapOf("success" to true, "listing" to listing))
     }
 
     // Real seller-paid sponsored placement -- see MarketplaceService.boostListing's own
@@ -406,6 +420,10 @@ class MarketplaceController(
     @ExceptionHandler(OwnListingException::class)
     fun handleOwnListing(ex: OwnListingException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("OWN_LISTING", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(ListingBumpCooldownException::class)
+    fun handleBumpCooldown(ex: ListingBumpCooldownException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("BUMP_COOLDOWN", ex.message ?: "Too many requests"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

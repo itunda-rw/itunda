@@ -711,6 +711,9 @@ data class ListingDto(
     // separate concept from favoriteIds' personal wishlist -- this is a public
     // engagement count, matching real 당근마켓's heart count on every listing row.
     val likeCount: Long = 0,
+    // Real 당근마켓 끌어올리기 (bump to top of feed), 2026-08-10 -- see backend
+    // Listing.kt's own doc comment. Null means never bumped.
+    val bumpedAt: String? = null,
 )
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class BoostListingRequest(val days: Int)
@@ -2424,6 +2427,12 @@ interface ApiService {
 
     @POST("api/v1/marketplace/listings/{id}/mark-sold")
     suspend fun markListingSold(@Path("id") listingId: String, @Body request: MarkSoldRequest = MarkSoldRequest()): ListingResponse
+
+    // Real 당근마켓 끌어올리기 (bump to top of feed), 2026-08-10 -- see
+    // rw.itunda.marketplace.web.MarketplaceController.bumpListing. Free, no real money
+    // moves, so no Idempotency-Key, unlike boostListing below.
+    @POST("api/v1/marketplace/listings/{id}/bump")
+    suspend fun bumpListing(@Path("id") listingId: String): ListingResponse
 
     // Real seller-paid sponsored placement (2026-07-25) -- see
     // rw.itunda.marketplace.web.MarketplaceController.boostListing.

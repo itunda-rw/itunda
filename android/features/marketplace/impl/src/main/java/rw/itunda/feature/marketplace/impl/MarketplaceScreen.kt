@@ -1424,6 +1424,25 @@ private fun ListingDetailScreen(
                 if (isMine) {
                     if (listing.status == "ACTIVE" && !markingSold) {
                         ListingActionButton("Mark sold", busy) { markingSold = true }
+                        // Real 당근마켓 끌어올리기 (bump to top of feed), 2026-08-10 --
+                        // see backend MarketplaceService.bumpListing's own doc comment.
+                        // Free and self-serve, unlike Boost below -- a real, once-per-24h
+                        // cooldown-gated organic action a seller can use to refresh
+                        // visibility with no cost, same as real 당근.
+                        ListingActionButton(if (busy) "Bumping…" else "🔼 Bump", busy) {
+                            busy = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.bumpListing(listing.id)
+                                    onChanged()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        }
                         ListingActionButton("Boost", busy) {
                             showBoostPicker = true
                             if (boostTiers == null) {

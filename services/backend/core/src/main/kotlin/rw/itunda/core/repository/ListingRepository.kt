@@ -22,15 +22,19 @@ interface ListingRepository : JpaRepository<Listing, String> {
     // queries above -- this is the only real ranking signal `browse()` uses now, not a
     // separate endpoint, since real Coupang/Baemin sponsored placement always surfaces
     // inside the same search results a buyer already sees, never a separate feed.
+    // Real bump-to-top input (2026-08-10, see MarketplaceService.bumpListing) --
+    // COALESCE(l.bumpedAt, l.createdAt) is the same "effective recency" every real
+    // 당근마켓 feed sorts by; a never-bumped listing (bumpedAt null) sorts by its real
+    // createdAt exactly as before.
     @Query(
         "SELECT l FROM Listing l WHERE l.status = :status " +
-            "ORDER BY CASE WHEN l.boostedUntil IS NOT NULL AND l.boostedUntil > :now THEN 0 ELSE 1 END, l.createdAt DESC",
+            "ORDER BY CASE WHEN l.boostedUntil IS NOT NULL AND l.boostedUntil > :now THEN 0 ELSE 1 END, COALESCE(l.bumpedAt, l.createdAt) DESC",
     )
     fun findByStatusOrderByBoostedThenCreatedAtDesc(@Param("status") status: ListingStatus, @Param("now") now: Instant, pageable: Pageable): Page<Listing>
 
     @Query(
         "SELECT l FROM Listing l WHERE l.status = :status AND l.category = :category " +
-            "ORDER BY CASE WHEN l.boostedUntil IS NOT NULL AND l.boostedUntil > :now THEN 0 ELSE 1 END, l.createdAt DESC",
+            "ORDER BY CASE WHEN l.boostedUntil IS NOT NULL AND l.boostedUntil > :now THEN 0 ELSE 1 END, COALESCE(l.bumpedAt, l.createdAt) DESC",
     )
     fun findByStatusAndCategoryOrderByBoostedThenCreatedAtDesc(
         @Param("status") status: ListingStatus,
@@ -58,12 +62,25 @@ interface ListingRepository : JpaRepository<Listing, String> {
 
     // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own
     // doc comment. `In` variants so a caller with a second neighborhood set sees listings
-    // from either real place, not just their primary one.
-    fun findByStatusAndNeighborhoodInOrderByCreatedAtDesc(status: ListingStatus, neighborhoods: Collection<String>, pageable: Pageable): Page<Listing>
+    // from either real place, not just their primary one. Converted from derived
+    // queries to @Query (2026-08-10) so this feed -- the real default landing feed for
+    // Hood, per SuperAppTabs.kt -- also respects a real bump, same as browse() above;
+    // COALESCE isn't expressible via Spring Data's method-name convention.
+    @Query("SELECT l FROM Listing l WHERE l.status = :status AND l.neighborhood IN :neighborhoods ORDER BY COALESCE(l.bumpedAt, l.createdAt) DESC")
+    fun findByStatusAndNeighborhoodInOrderByCreatedAtDesc(
+        @Param("status") status: ListingStatus,
+        @Param("neighborhoods") neighborhoods: Collection<String>,
+        pageable: Pageable,
+    ): Page<Listing>
+
+    @Query(
+        "SELECT l FROM Listing l WHERE l.status = :status AND l.neighborhood IN :neighborhoods AND l.category = :category " +
+            "ORDER BY COALESCE(l.bumpedAt, l.createdAt) DESC",
+    )
     fun findByStatusAndNeighborhoodInAndCategoryOrderByCreatedAtDesc(
-        status: ListingStatus,
-        neighborhoods: Collection<String>,
-        category: String,
+        @Param("status") status: ListingStatus,
+        @Param("neighborhoods") neighborhoods: Collection<String>,
+        @Param("category") category: String,
         pageable: Pageable,
     ): Page<Listing>
 

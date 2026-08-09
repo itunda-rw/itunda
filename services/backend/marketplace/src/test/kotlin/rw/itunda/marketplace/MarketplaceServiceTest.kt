@@ -209,6 +209,65 @@ class MarketplaceServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        // Real 당근마켓 끌어올리기 (bump to top of feed), 2026-08-10. Backdated
+        // createdAt in both bump tests below -- a truly brand-new listing (createdAt =
+        // now) is still inside its own 24h freshness window, so the cooldown correctly
+        // blocks bumping it immediately too (it's already at the top; see
+        // bumpListing's own doc comment). These tests are about an older listing that
+        // genuinely wants a visibility refresh.
+        When("the real owner bumps an older listing never bumped before") {
+            val freshListing = Listing(
+                id = "listing_6", sellerId = "seller_1", title = "Bicycle", description = "desc",
+                price = BigDecimal("15000"), category = "sports",
+                createdAt = java.time.Instant.now().minus(Duration.ofDays(2)),
+            )
+            every { listingRepository.findById("listing_6") } returns Optional.of(freshListing)
+            every { listingRepository.save(any()) } answers { firstArg() }
+
+            val before = java.time.Instant.now()
+            val result = service.bumpListing("seller_1", "listing_6")
+
+            Then("it sets bumpedAt to now") {
+                val bumpedAt = result.bumpedAt ?: error("expected bumpedAt to be set")
+                bumpedAt.isBefore(before).shouldBe(false)
+            }
+        }
+
+        When("the real owner tries to bump the same listing again within the real 24h cooldown") {
+            val recentlyBumped = Listing(
+                id = "listing_7", sellerId = "seller_1", title = "Bicycle", description = "desc",
+                price = BigDecimal("15000"), category = "sports",
+                bumpedAt = java.time.Instant.now().minus(Duration.ofHours(1)),
+            )
+            every { listingRepository.findById("listing_7") } returns Optional.of(recentlyBumped)
+
+            Then("it throws ListingBumpCooldownException before ever saving") {
+                try {
+                    service.bumpListing("seller_1", "listing_7")
+                    error("expected ListingBumpCooldownException")
+                } catch (e: ListingBumpCooldownException) {
+                    io.mockk.verify(exactly = 0) { listingRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a stranger tries to bump someone else's listing") {
+            val freshListing = Listing(
+                id = "listing_8", sellerId = "seller_1", title = "Bicycle", description = "desc",
+                price = BigDecimal("15000"), category = "sports",
+            )
+            every { listingRepository.findById("listing_8") } returns Optional.of(freshListing)
+
+            Then("it throws ListingNotFoundException, not a 403 that would confirm the listing exists") {
+                try {
+                    service.bumpListing("stranger", "listing_8")
+                    error("expected ListingNotFoundException")
+                } catch (e: ListingNotFoundException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("browsing the real marketplace") {
