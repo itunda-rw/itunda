@@ -4118,3 +4118,56 @@ live app process. The sheet-settle fix addresses the mechanism most consistent w
 symptom based on reading the real gesture-library API, but wasn't reproduced interactively before
 the fix (the device was mid-use by the user at the time it was reported) -- needs the user's own
 next open of the Maps screen to confirm it actually resolves.
+
+## 35. "알림받기" (Notify me) pill -- real backend, zero Android UI until now
+
+**Added 2026-08-09**, from 16 more real Naver Maps reference screenshots (a full-screen place
+page and a real transit-directions flow). **Note on this pass's process**: the user asked to
+"search online everything about naver maps" -- this session had already used its full WebSearch
+budget (200/200 calls) earlier the same day, so no new web search was possible. Worked instead
+from the real screenshots themselves (first-party evidence, arguably stronger than search
+snippets) plus itunda's own existing Toss/Naver research already in this document.
+
+### What the new screenshots showed
+The pill row's full 6 items, previously only partially visible: 출발(Depart)/도착(Arrive)/
+배달(Delivery)/공유(Share)/전화(Call)/**알림받기(Notify me)**. Also: a 소식(News) tab (merchant-
+posted announcements), a structured "이런 점이 좋았어요" review-keyword-vote system (real Naver
+feature, not just star+text), a 정보(Info) tab with an owner-written bio and an amenities list,
+and multi-modal transit directions with real bus numbers/fares/live arrivals.
+
+### What was checked and actually buildable
+Grepped the Android network client before building anything: `followMerchant`/
+`unfollowMerchant`/`getMyFollowedMerchants` **already existed**, real Retrofit-wired endpoints
+against a real backend feature (ported for bank-mfe's own follow UI) -- but `grep`ing every
+Android feature module found **zero call sites** anywhere. Real, already-built functionality that
+had simply never been wired to an Android screen. Verified live against the real backend before
+writing UI code: `POST .../follow` → `GET .../follows` → `DELETE .../follow` round-tripped
+correctly (follow appeared in the list with real `merchantId`/`businessName`/`category`/
+`followedAt`; unfollow removed it).
+
+### What was built
+A "🔔 Following" / "🔕 Notify me" pill, filled solid when followed (same visual convention as the
+Save pill), added to the existing pill row -- only rendered when a real matched merchant exists
+(`selectedMerchant?.merchantId`), reusing the exact three endpoints above.
+
+### Named, not built this pass
+- **배달 (Delivery) pill** -- itunda has real Eats delivery infrastructure, but `MapScreen`'s own
+  signature (`onBack`, `initialCategory`, `initialSearchQuery`) has no navigation callback into
+  Eats at all; wiring this needs a new cross-feature-module navigation contract (itunda's Toss
+  Microfeature module-isolation architecture, with real CI enforcement, means this isn't a same-
+  file wire-up like Follow was) -- a real, larger, well-scoped next step, not attempted here.
+- **소식 (News) tab, structured review-keyword voting, owner bio/amenities list** -- genuinely new
+  backend data models (merchant-posted announcements, a keyword-tag vote schema, a bio field, a
+  structured amenities field) that don't exist anywhere in itunda today -- named honestly as real
+  gaps, not invented with fake data, same discipline as every other "not attempted" note in this
+  document.
+- **Bike routing / real transit (bus numbers, fares, live arrivals)** -- already-documented
+  structural limits (Section 20/27): itunda's self-hosted OSRM has no bike profile configured, and
+  no transit data source exists for Rwanda in this project's scope.
+
+### Verification status
+`:features:maps:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
+Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
+live app process. The follow/unfollow data path was confirmed live against the real backend
+before building; the pill's on-screen appearance/toggle behavior hasn't been tapped through by
+the user yet.

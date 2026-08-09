@@ -482,6 +482,13 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
     var categoryResults by remember { mutableStateOf<List<NearbyPlaceDto>?>(null) }
     var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
     var bookmarking by remember { mutableStateOf(false) }
+    // Real "알림받기" (Notify/Follow) pill (2026-08-09) -- from the full-screen Naver Maps
+    // reference screenshots. The backend + Retrofit endpoints already existed
+    // (followMerchant/unfollowMerchant/getMyFollowedMerchants, ported for bank-mfe) but had
+    // zero Android UI anywhere -- real, already-built functionality, just never wired to a
+    // screen on this platform.
+    var followedMerchantIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var following by remember { mutableStateOf(false) }
     // Real Naver Map-style public/private folder + share (2026-08-04) -- see
     // SetMapFolderVisibilityRequest's own doc comment on the backend.
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -725,6 +732,31 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
         } catch (e: Exception) {
             // Honest partial failure -- bookmarks are a real-nice-to-have, never block the
             // rest of the Maps feature set from loading.
+        }
+    }
+    LaunchedEffect(Unit) {
+        try {
+            followedMerchantIds = NetworkClient.apiService.getMyFollowedMerchants().follows.map { it.merchantId }.toSet()
+        } catch (e: Exception) {
+            // Honest partial failure, same as bookmarks above.
+        }
+    }
+    fun toggleFollow(merchantId: String) {
+        coroutineScope.launch {
+            following = true
+            try {
+                if (merchantId in followedMerchantIds) {
+                    NetworkClient.apiService.unfollowMerchant(merchantId)
+                    followedMerchantIds = followedMerchantIds - merchantId
+                } else {
+                    NetworkClient.apiService.followMerchant(merchantId)
+                    followedMerchantIds = followedMerchantIds + merchantId
+                }
+            } catch (_: Exception) {
+                // Best-effort -- the pill just stays at its pre-tap state on failure.
+            } finally {
+                following = false
+            }
         }
     }
     val currentMerchants by rememberUpdatedState(merchants)
@@ -1959,6 +1991,17 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         filled = false,
                                         enabled = true,
                                         onClick = { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$callNumber"))) },
+                                    )
+                                }
+                                val followMerchantId = selectedMerchant?.merchantId
+                                if (followMerchantId != null) {
+                                    val followed = followMerchantId in followedMerchantIds
+                                    PlaceActionPill(
+                                        icon = if (followed) "🔔" else "🔕",
+                                        label = if (followed) "Following" else "Notify me",
+                                        filled = followed,
+                                        enabled = !following,
+                                        onClick = { toggleFollow(followMerchantId) },
                                     )
                                 }
                             }
