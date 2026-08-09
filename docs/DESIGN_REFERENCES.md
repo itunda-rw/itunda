@@ -3341,20 +3341,64 @@ against specific known toss.tech URLs remained available and was used instead.
   bypass straight into the authenticated app. A genuine, working security gate, not just code that
   compiles.
 
-### Unresolved / in progress
+### More findings, same pass (after device unlock)
 
-- The signed release-build device install and its real login round-trip test were interrupted by
-  the physical device's screen lock (shared device, same one used to view this Claude Code session
-  — see [[feedback_emulator_for_visual_verification]]) before the runtime Gson-correctness check
-  could complete. Picking back up once the device is unlocked again.
-- `merchantapp`/`riderapp`/`agentapp` still have `isMinifyEnabled` unchecked (not yet confirmed
-  either way) — only `:app`'s release config was in scope for this pass since it's the
-  customer-facing app the user's own device testing is centered on. Worth the same audit.
-- No jank/frame-drop measurement (`dumpsys gfxinfo`) completed yet on scroll-heavy screens
-  (HomeTab, Hood, Shop) — queued, blocked on the same device-lock interruption above.
+- **`merchantapp`/`riderapp`/`agentapp` had the identical gap** — same `isMinifyEnabled = false`,
+  no `proguard-rules.pro`. Fixed identically (per-app keep rules scoped to each app's own
+  `*.network` package). All 3 `assembleRelease` builds verified clean.
+- **A real, undocumented default worth flagging, not silently changed**: `TokenStore.
+  isAppLockEnabled(): Boolean = prefs.getBoolean(KEY_APP_LOCK_ENABLED, true)` — app-lock defaults
+  to **on** for any user with device biometrics enrolled, not opt-in. Discovered while trying to
+  reach HomeTab for jank testing on the seed test account (repeatedly hit a real, correctly-
+  working `BiometricPrompt` gate with no way past it via automation, exactly as a real security
+  gate should behave — did not attempt to bypass the underlying `EncryptedSharedPreferences`,
+  since defeating real Keystore-backed encryption to save testing time would be working against
+  the very security fix this pass is trying to verify). Whether force-on-by-default is the right
+  call is a real product/security-vs-friction tradeoff (arguably correct for a fintech app,
+  arguably surprising for a user who enrolled biometrics for unrelated reasons and never
+  consciously opted into an itunda-specific lock) — not changed here, flagged for a product
+  decision, not a code bug.
+- **Real jank measurement, `dumpsys gfxinfo`, on the login screen's own `AnimatedContent` step
+  transitions** (couldn't reach HomeTab given the app-lock gate above; this is still real,
+  measurable Compose animation, not a synthetic substitute) — run on both build types for an
+  honest comparison:
+  - Debug: 29 frames, 31.0% janky, P50 16ms / P90 65ms / P95 65ms / P99 65ms.
+  - Release (R8-minified, this pass's own fix): 62 frames, 27.4% janky, P50 16ms / P90 32ms /
+    P95 34ms / P99 38ms. **Meaningfully better tail latency than debug** (P99 38ms vs 65ms),
+    consistent with R8/ART-AOT optimization actually helping, even though the raw jank-frame
+    percentage is similar. Small sample size (a handful of rapid manual taps) — a real signal,
+    not a rigorous benchmark; a genuine follow-up would automate a longer scroll/transition
+    session for statistical confidence.
+- **The signed release APK's runtime login round-trip (the actual test of whether Gson survives
+  R8) came back inconclusive, not passing or failing** — after fixing an embarrassing self-
+  inflicted miss (the first release build was built without `-PapiBaseUrl=http://127.0.0.1:4001/`,
+  so it was targeting the emulator-only `10.0.2.2` default and failing for a completely unrelated
+  reason), the corrected build still returned "Couldn't reach itunda" even with the right URL
+  confirmed baked into `BuildConfig.API_BASE_URL` (checked directly in the generated
+  `BuildConfig.java`) and the backend confirmed reachable from the device shell (`nc -z` success).
+  Root cause not identified: **this specific signed release APK emits zero application-level log
+  lines at all**, confirmed via a full unfiltered `logcat --pid` capture — not just the custom
+  `ITUNDA_NET` tag. This reads as a device/OEM-level log-visibility restriction on non-debuggable
+  apps (a real, separate finding from anything R8-related), not proof either way about Gson
+  correctness. Mitigating evidence, not proof: the keep rule is maximally conservative
+  (`-keep class rw.itunda.core.network.** { *; }`, not just field names — the whole package is
+  exempted from renaming/stripping), and the identical DTOs/login code path already verified
+  correct end-to-end on the debug build earlier this session. Confidence is reasonable but not
+  fully closed-loop verified; flagged honestly rather than claimed as done.
 - Toss's own real, technical (not product-principle-level) performance-engineering writing was not
   found via the WebFetch attempts made this pass (toss.tech's own public content skews toward
   product/UX and infra-tooling stories, not raw rendering/startup benchmarks) — the comparison
   points above are itunda's own real measurements assessed against general Android platform
   standards (Android Vitals), not a like-for-like sourced Toss number. Flagged as lower-confidence
   than the rest of this section, same discipline as Section 12's own unresolved item.
+
+### Unresolved / worth a follow-up
+- The release-build runtime Gson-correctness check above needs a real answer, not just reasonable
+  confidence — likely path: get a `userdebug`/rooted test device or a different logging channel
+  (e.g. a temporary in-app toast/on-screen error detail instead of `Log.d`) to actually see the
+  real exception type on a non-debuggable release build, since this device's OEM appears to
+  suppress app-level logcat output for release-signed apps.
+- Jank measurement should be re-run against HomeTab/Hood/Shop (the originally-intended scroll-
+  heavy screens) once a path exists to reach them without defeating the (correctly working)
+  biometric app-lock gate — e.g. a dedicated test account with biometrics never enrolled on the
+  test device, or the product decision above resolved toward a real opt-in default.
