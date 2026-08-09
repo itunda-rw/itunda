@@ -276,6 +276,13 @@ fun TransferAmountScreen(
     var digits by rememberSaveable { mutableStateOf("") }
     val amount = digits.toLongOrNull() ?: 0L
     val availableBalanceLong = availableBalance.toLong()
+    // Real gap found live (2026-08-10), applying Toss Tech's own "the best error is
+    // one that never occurs" principle (toss.tech/article/21021): this screen already
+    // knows the real balance (it renders it right above and even offers a "Max" chip
+    // that fills it in exactly), yet previously let a too-large amount round-trip to
+    // the backend's 422 before saying anything -- catch it here instead of after a
+    // wasted network call.
+    val insufficientBalance = amount > 0 && amount > availableBalanceLong
 
     Column(
         modifier = Modifier
@@ -349,6 +356,15 @@ fun TransferAmountScreen(
                 color = if (digits.isEmpty()) Ids.colors.textTertiary else Ids.colors.textPrimary,
                 textAlign = TextAlign.Center
             )
+            if (insufficientBalance) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.transfer_amount_insufficient, rwfFormatter.format(availableBalanceLong)),
+                    color = Ids.colors.danger,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
         Row(
@@ -365,7 +381,7 @@ fun TransferAmountScreen(
                 androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
             }
         } else {
-            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = stringResource(R.string.transfer_send)) { onConfirm(amount) }
+            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0 && !insufficientBalance, label = stringResource(R.string.transfer_send)) { onConfirm(amount) }
             NumericKeypad(
                 onDigit = { d -> if (digits.length < 9) digits += d },
                 onDelete = { if (digits.isNotEmpty()) digits = digits.dropLast(1) }

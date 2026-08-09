@@ -61,6 +61,7 @@ private let paymentsStrings: [PaymentsLocale: [String: String]] = [
         "reportScam": "Report this number as a scam",
         "amountQuestion": "How much to send?",
         "amountMax": "Max",
+        "amountInsufficient": "Not enough balance -- you have RWF %@",
         "send": "Send",
         "deleteDigit": "Delete",
     ],
@@ -88,6 +89,7 @@ private let paymentsStrings: [PaymentsLocale: [String: String]] = [
         "reportScam": "Tanga raporo kuri iyi numero",
         "amountQuestion": "Ni angahe ushaka kohereza?",
         "amountMax": "Byose",
+        "amountInsufficient": "Amafaranga ntahagije -- ufite RWF %@",
         "send": "Ohereza",
         "deleteDigit": "Siba",
     ],
@@ -298,6 +300,7 @@ public struct TransferAmountScreen: View {
     }
 
     private var amount: Int { Int(digits) ?? 0 }
+    private var insufficientBalance: Bool { amount > 0 && Double(amount) > availableBalance }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -342,6 +345,17 @@ public struct TransferAmountScreen: View {
                 Text(digits.isEmpty ? "0 RWF" : "\(formatAmount(amount)) RWF")
                     .font(.system(size: digits.isEmpty ? 32 : 42, weight: .bold))
                     .foregroundColor(digits.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
+                // Real gap found live (2026-08-10), applying Toss Tech's own "the best
+                // error is one that never occurs" principle (toss.tech/article/21021):
+                // this screen already knows the real balance (rendered above, and the
+                // "Max" chip fills it in exactly), yet previously let a too-large amount
+                // round-trip to the backend's 422 before saying anything. Same fix as
+                // Android's TransferFlow.kt.
+                if insufficientBalance {
+                    Text(pt("amountInsufficient", formatAmount(Int(availableBalance))))
+                        .font(.system(size: 13))
+                        .foregroundColor(.red)
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(maxHeight: .infinity)
@@ -359,7 +373,7 @@ public struct TransferAmountScreen: View {
                     .tint(IDS.Colors.brand)
                     .padding(.vertical, 24)
             } else {
-                FlowNextBar(enabled: !digits.isEmpty && amount > 0, label: pt("send")) { onConfirm(amount) }
+                FlowNextBar(enabled: !digits.isEmpty && amount > 0 && !insufficientBalance, label: pt("send")) { onConfirm(amount) }
                 NumericKeypad(
                     onDigit: { d in if digits.count < 9 { digits += d } },
                     onDelete: { if !digits.isEmpty { digits.removeLast() } }
@@ -409,6 +423,7 @@ public struct SavingsAmountScreen: View {
     }
 
     private var amount: Int { Int(digits) ?? 0 }
+    private var insufficientBalance: Bool { mode == .deposit && amount > 0 && Double(amount) > availableBalance }
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -430,6 +445,15 @@ public struct SavingsAmountScreen: View {
                 Text(digits.isEmpty ? "0 RWF" : "\(formatAmount(amount)) RWF")
                     .font(.system(size: digits.isEmpty ? 32 : 42, weight: .bold))
                     .foregroundColor(digits.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.textPrimary)
+                // Same "the best error is one that never occurs" fix (2026-08-10) as
+                // TransferAmountScreen above -- a deposit larger than the real wallet
+                // balance (already known here) previously only surfaced after a
+                // wasted round trip to the backend's 422.
+                if insufficientBalance {
+                    Text("Not enough balance -- you have RWF \(formatAmount(Int(availableBalance)))")
+                        .font(.system(size: 13))
+                        .foregroundColor(.red)
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(maxHeight: .infinity)
@@ -451,7 +475,7 @@ public struct SavingsAmountScreen: View {
             } else if mode == .claimInterest {
                 FlowNextBar(enabled: true, label: "Claim") { onConfirm(0) }
             } else {
-                FlowNextBar(enabled: !digits.isEmpty && amount > 0, label: "Deposit") { onConfirm(amount) }
+                FlowNextBar(enabled: !digits.isEmpty && amount > 0 && !insufficientBalance, label: "Deposit") { onConfirm(amount) }
                 NumericKeypad(
                     onDigit: { d in if digits.count < 9 { digits += d } },
                     onDelete: { if !digits.isEmpty { digits.removeLast() } }

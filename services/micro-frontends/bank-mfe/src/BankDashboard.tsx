@@ -363,7 +363,7 @@ function ReportScamLink({ identifier }: { identifier: string }) {
   );
 }
 
-function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => void; onSuccess: () => void; walletBalance: number }) {
   const { t } = useI18n();
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
@@ -403,9 +403,20 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     }
   };
 
+  // Real gap found live (2026-08-10), applying Toss Tech's own "the best error is
+  // one that never occurs" principle (toss.tech/article/21021, "좋은 에러 메시지를
+  // 만드는 6가지 원칙"): walletBalance is already known here (AccountBalance renders
+  // it right above this form), yet an amount larger than it previously round-tripped
+  // to the backend's 422 before saying anything. Same fix as Android/iOS.
+  const insufficientBalance = Number(amount) > 0 && Number(amount) > walletBalance;
+
   const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (insufficientBalance) {
+      setError(t('transfer.insufficientBalance', { amount: walletBalance.toLocaleString() }));
+      return;
+    }
     setScamCheck(null);
     setReviewing(true);
     checkScamStatus(recipient.trim()).then(setScamCheck).catch(() => {
@@ -493,9 +504,14 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
       />
       <input
-        type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t('transfer.amountPlaceholder')} required min="1"
+        type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t('transfer.amountPlaceholder')} required min="1" max={walletBalance}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
       />
+      {insufficientBalance && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-red)' }}>
+          {t('transfer.insufficientBalance', { amount: walletBalance.toLocaleString() })}
+        </p>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)' }}>{t('transfer.contactsLabel')}</p>
         <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700, background: 'none', border: 'none' }}>
@@ -532,7 +548,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
       ))}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose}>{t('transfer.cancel')}</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }}>{t('transfer.continue')}</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={insufficientBalance}>{t('transfer.continue')}</button>
       </div>
       {error && <p style={{ fontSize: '13px', color: 'var(--toss-red)' }} role="alert">{error}</p>}
     </form>
@@ -682,6 +698,7 @@ function HomeView({ onNavigateToCard }: { onNavigateToCard: () => void }) {
       <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} />
       {showTransfer && (
         <TransferFlow
+          walletBalance={wallet?.balance ?? 0}
           onClose={() => setShowTransfer(false)}
           onSuccess={() => {
             setShowTransfer(false);

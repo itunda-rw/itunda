@@ -90,6 +90,7 @@ export type TranslationKey =
   | 'transfer.done'
   | 'transfer.saveContactError'
   | 'transfer.sendError'
+  | 'transfer.insufficientBalance'
   // The real entry point INTO the transfer flow above -- a separate component
   // (AccountBalance, the wallet card), found while verifying the transfer screen live:
   // translating the flow itself but leaving its own trigger button in English would
@@ -281,6 +282,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.done': 'Done',
     'transfer.saveContactError': 'Could not save that contact.',
     'transfer.sendError': 'Could not complete this transfer.',
+    'transfer.insufficientBalance': 'Not enough balance — you have {{amount}} RWF.',
     'dashboard.mainAccount': 'Main Account',
     'dashboard.transfer': 'Transfer',
     'dashboard.topUp': 'Top up',
@@ -455,6 +457,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.done': 'Byarangiye',
     'transfer.saveContactError': 'Ntibishoboka kubika uwo muntu.',
     'transfer.sendError': 'Ntibishoboka kurangiza kohereza amafaranga.',
+    'transfer.insufficientBalance': 'Amafaranga ntahagije — ufite {{amount}} RWF.',
     'dashboard.mainAccount': 'Konti nyamukuru',
     'dashboard.transfer': 'Kohereza',
     'dashboard.topUp': 'Ongera amafaranga',

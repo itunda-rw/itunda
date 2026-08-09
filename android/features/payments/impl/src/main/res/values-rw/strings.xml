@@ -30,6 +30,7 @@
     <string name="transfer_report_scam">Tanga raporo kuri iyi numero</string>
     <string name="transfer_amount_question">Ni angahe ushaka kohereza?</string>
     <string name="transfer_amount_max">Byose</string>
+    <string name="transfer_amount_insufficient">Amafaranga ntahagije — ufite RWF %1$s</string>
     <string name="transfer_send">Ohereza</string>
     <string name="transfer_device_verify_title">🔒 Emeza iyi terefoni</string>
     <string name="transfer_device_verify_body">Iyi ni terefoni nshya kuri konti yawe. Ongera wandike ijambo ry\'ibanga kugira ngo wemeze ko ishobora kohereza amafaranga, hanyuma ugerageze nanone.</string>
