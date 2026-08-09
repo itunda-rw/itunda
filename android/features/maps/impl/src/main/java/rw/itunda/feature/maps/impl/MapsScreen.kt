@@ -2038,13 +2038,28 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         }
                                         val phoneNumber = matchedMerchant.phoneNumber
                                         if (phoneNumber != null) {
-                                            Text(
-                                                "📞 $phoneNumber",
-                                                fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
-                                                modifier = Modifier.padding(top = 2.dp).clickable {
-                                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phoneNumber")))
-                                                },
-                                            )
+                                            // Real "call + copy" row (2026-08-09) -- the full-
+                                            // screen Naver Maps reference showed a real 복사
+                                            // (Copy) action sitting right next to the phone
+                                            // number, not just a tap-to-dial. Same real number,
+                                            // just a second, equally cheap real action.
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 2.dp)) {
+                                                Text(
+                                                    "📞 $phoneNumber",
+                                                    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
+                                                    modifier = Modifier.clickable {
+                                                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phoneNumber")))
+                                                    },
+                                                )
+                                                Text(
+                                                    "Copy",
+                                                    fontSize = 11.sp, color = Ids.colors.textTertiary,
+                                                    modifier = Modifier.clickable {
+                                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Phone number", phoneNumber))
+                                                    },
+                                                )
+                                            }
                                         }
                                     }
                                 }

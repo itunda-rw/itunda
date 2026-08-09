@@ -3985,3 +3985,28 @@ Installed on the physical device; the app launched with an empty `logcat -b cras
 live app process. The underlying driving/walking endpoint split was confirmed live against the
 real backend before building; the on-screen rendering of both numbers side by side in the
 selector row still needs the user's own eyes on the physical device.
+
+## 32. "Copy" phone action -- from a real full-screen reference screenshot
+
+**Added 2026-08-09.** The user shared two more real Naver Maps screenshots -- the same
+호미스피자 판교점 place page from Section 27, but the full-screen expanded view this time
+(scrolled up past the peek sheet), showing detail this session hadn't seen before: a real "복사"
+(Copy) text button sitting immediately next to the phone number, distinct from tapping the number
+itself to dial.
+
+### What was checked before building
+Looked for a merchant website field (Naver's full-screen view also showed a website link) --
+`Merchant.kt` and `ShoppingMerchantDto` have no such field anywhere in the backend or Android
+client. Not built -- itunda has no real data to back it, same reasoning as every other named gap
+in Sections 27/28. Same for the amenities list (포장/배달/예약/화장실 구분/주차) and the
+subway-line-distance badges -- no structured data source for either exists.
+
+### What was built
+A "Copy" text action next to the existing tappable phone number in the Home tab, using Android's
+`ClipboardManager` -- the exact same real phone number already displayed, just a second cheap
+real action alongside dialing, matching the reference screenshot's own pattern exactly.
+
+### Verification status
+`:features:maps:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
+Installed on the physical device; the app launched with an empty `logcat -b crash` buffer and a
+live app process.
