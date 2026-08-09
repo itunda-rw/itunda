@@ -6399,7 +6399,7 @@ function StocksView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {([{ id: 'MARKET', label: 'Market' }, { id: 'PORTFOLIO', label: 'Portfolio' }, { id: 'WATCHLIST', label: 'Watchlist' }] as const).map(({ id, label }) => (
           <button
             key={id}
@@ -9478,7 +9478,7 @@ function MessagesView({ initialConversationId, onConsumedInitial }: { initialCon
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['DIRECT', 'GROUPS', 'FRIENDS'] as const).map((v) => (
           <button
             key={v}
@@ -10386,7 +10386,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST', 'ALERTS', 'INSPECTIONS'] as const).map((v) => (
           <button
             key={v}
@@ -10606,7 +10606,7 @@ function VehicleInspectionsView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BUYER', 'MECHANIC'] as const).map((t) => (
           <button
             key={t} onClick={() => setTab(t)}
@@ -11270,7 +11270,7 @@ function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string)
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
           <button
             key={v}
@@ -11933,7 +11933,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WORKED', 'APPLICATIONS', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
@@ -12598,7 +12598,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'ACQUIRED', 'WISHLIST', 'VALUATION'] as const).map((v) => (
           <button
             key={v}
@@ -13836,7 +13836,7 @@ function OrderFoodView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BROWSE', 'FAVORITES', 'ORDERS'] as const).map((v) => (
           <button
             key={v}
@@ -14676,7 +14676,7 @@ function RidesView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['RIDE', 'DRIVE'] as const).map((v) => (
           <button
             key={v} onClick={() => setSubTab(v)}
@@ -16661,7 +16661,7 @@ function DineInCustomerView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BROWSE', 'ORDERS'] as const).map((v) => (
           <button
             key={v}
@@ -16709,7 +16709,7 @@ function EatsView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['ORDER', 'DELIVER', 'DINE_IN'] as const).map((v) => (
           <button
             key={v}
@@ -18648,7 +18648,7 @@ function ShopView() {
       <MerchantOrdersView />
       <MerchantReturnQueueView />
 
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BROWSE', 'ORDERS', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
