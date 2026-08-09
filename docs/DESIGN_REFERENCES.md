@@ -4231,13 +4231,13 @@ backend work, zero duplicated menu-loading logic.
 - The pending-target state is consumed exactly once (`onPendingMerchantConsumed`), so returning to
   Shop later via the bottom nav doesn't reopen the same restaurant.
 
-### Verification status, honestly incomplete this pass
+### Verification status
 `:features:maps:impl`, `:features:eats:impl`, and `:app:compileDebugKotlin` all compiled clean
 individually, then the full `:app:assembleDebug` build succeeded -- the entire cross-module wiring
-type-checks end to end. **The physical device disconnected partway through this pass** (confirmed
-via `adb devices` returning empty after a server restart, a real external state this session
-doesn't control) -- unlike every other entry in this document, this one could NOT be installed or
-crash-checked on the real device before being committed. This is a real, named gap, not silently
-skipped: the next session/turn with device access needs to install, launch, and actually tap
-Delivery from a real merchant's Maps card before this can be called done the way every other
-Section in this document means it.
+type-checks end to end. **Update**: the physical device (it had briefly disconnected -- real
+wireless ADB debugging, `adb connect <lan-ip>:<port>` after the wireless session dropped, not USB)
+reconnected and the just-built APK installed and launched cleanly: empty `logcat -b crash` buffer,
+live app process, real foreground activity. The one thing still outstanding is the actual real
+device tap-through (open a merchant with a real menu, tap Delivery, confirm it lands in Eats
+ordering) -- the app is currently sitting at its own real biometric step-up gate, which only the
+user's own fingerprint/face can pass, so that specific interaction needs their hands next.
