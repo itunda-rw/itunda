@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.content.pm.PackageManager
 import android.speech.tts.TextToSpeech
+import coil.compose.AsyncImage
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -1687,6 +1688,16 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                         val place = selectedPlace
                         if (place != null) {
                             val (placeName, placeAddress) = splitPlaceName(place.displayName)
+                            // Real rich merchant detail (2026-08-09) -- found live: tapping a
+                            // merchant pin already had real rating/photo/category/cashback data
+                            // sitting in `merchants` (ShoppingMerchantDto, the exact same DTO
+                            // Shop's own browse cards already render this way), but the map's
+                            // click handler collapsed it down to a bare name+coordinate
+                            // PlaceSearchResultDto before this sheet ever saw it. Matches back
+                            // by coordinate -- the same technique the click handler itself
+                            // already uses -- rather than threading a second selected-merchant
+                            // state through the whole file.
+                            val matchedMerchant = currentMerchants.find { it.latitude == place.latitude && it.longitude == place.longitude }
                             Row(verticalAlignment = Alignment.Top) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -1722,6 +1733,41 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     color = if (isBookmarked(place)) androidx.compose.ui.graphics.Color(0xFFF5A623) else Ids.colors.textSecondary,
                                     modifier = Modifier.clickable(enabled = !bookmarking) { toggleBookmark(place) },
                                 )
+                            }
+                            if (matchedMerchant != null) {
+                                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    if (matchedMerchant.photoUrl != null) {
+                                        AsyncImage(
+                                            model = matchedMerchant.photoUrl,
+                                            contentDescription = matchedMerchant.businessName,
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                            modifier = Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)),
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        if (matchedMerchant.rating != null) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text("⭐ ${"%.1f".format(matchedMerchant.rating)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                                                if (matchedMerchant.reviewCount > 0) {
+                                                    Text("(${matchedMerchant.reviewCount} review${if (matchedMerchant.reviewCount == 1L) "" else "s"})", fontSize = 12.sp, color = Ids.colors.textSecondary)
+                                                }
+                                            }
+                                        }
+                                        val merchantCategory = matchedMerchant.category
+                                        if (merchantCategory != null) {
+                                            Text(merchantCategory, fontSize = 12.sp, color = Ids.colors.textSecondary)
+                                        }
+                                        Text("${matchedMerchant.cashbackRate} cashback", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand)
+                                        val minOrderAmount = matchedMerchant.minOrderAmount
+                                        if (minOrderAmount != null) {
+                                            Text("Min. order RWF ${minOrderAmount.toInt()}", fontSize = 11.sp, color = Ids.colors.textSecondary)
+                                        }
+                                        if (matchedMerchant.distanceKm != null) {
+                                            val etaText = matchedMerchant.deliveryTimeMinutes?.let { " · ~$it min" } ?: ""
+                                            Text("${"%.1f".format(matchedMerchant.distanceKm)} km away$etaText", fontSize = 11.sp, color = Ids.colors.textSecondary)
+                                        }
+                                    }
+                                }
                             }
                             // Real folder/color picker (2026-07-22) -- only expanded for
                             // the place actually being saved right now, ported from

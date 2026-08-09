@@ -3594,5 +3594,42 @@ without a crash. Voice guidance, rerouting-on-deviation, and itinerary-flow navi
 still need the same real physical movement to verify as Section 21's original live-tracking
 claim -- not yet confirmed by the user trying it. Not scoped into this pass: transit
 directions (itunda's self-hosted OSRM has driving + foot profiles only, no transit data source
-exists to route against), and a richer POI detail sheet (hours/ratings/photos) — worth their
-own dedicated look now that the core navigation experience is real.
+exists to route against).
+
+## 23. Richer merchant detail sheet -- data itunda already had, just never shown on the map
+
+**Added 2026-08-09**, continuing the same "take it seriously" directive, picking the next item
+this section's own Section 22 named: "a richer POI detail sheet (hours/ratings/photos)."
+
+- **Real finding**: `ShoppingMerchantDto` (the exact DTO `merchants` on the Maps screen already
+  loads, and the same one Shop's own browse cards already render richly) carries real
+  `rating`/`reviewCount`/`photoUrl`/`category`/`cashbackRate`/`minOrderAmount`/`distanceKm`/
+  `deliveryTimeMinutes` -- all real, itunda-native data (batch-aggregated ratings, merchant-set
+  photos, real cashback rates). The map's own tap handler already had this exact object in
+  scope (`currentMerchants.find { it.latitude == lat && it.longitude == lng }`) but discarded
+  everything except `businessName` when building the generic `PlaceSearchResultDto` the detail
+  sheet actually renders from.
+- **Fixed, not just found**: the detail sheet now re-matches `selectedPlace` back to the loaded
+  merchant list by coordinate (same technique the tap handler itself already established) and,
+  when matched, renders a real photo (`AsyncImage`/Coil, added as a new dependency to
+  `:features:maps:impl` -- same version `:features:shop:impl` already uses elsewhere), star
+  rating + review count, category, cashback rate, minimum order, and distance/delivery-time
+  estimate.
+- **A real, honest scope boundary, not a gap**: category-browse results (Restaurants, Cafes,
+  Hospitals, Pharmacies -- OSM-sourced via Nominatim, not itunda's own merchant database) use
+  `NearbyPlaceDto`, which genuinely only has `displayName`/coordinates/`distanceKm` in itunda's
+  backend today -- no rating/photo/hours exist to show for these, so showing distance-only there
+  is correct, not an oversight. A real richer OSM-tag pass (Nominatim's own `extratags` field
+  sometimes carries `opening_hours`/`phone`) would be a genuinely separate, larger backend
+  investigation, not a client-side rendering fix like this one.
+- **A real cross-module Kotlin gotcha hit and fixed while building this**: `matchedMerchant.
+  category != null` followed by using `matchedMerchant.category` directly failed to compile
+  ("Smart cast... impossible, because 'category' is declared in a different module") -- a known
+  Kotlin limitation for nullable properties from a class in a different Gradle module. Fixed by
+  capturing into a local `val` before the null check, the standard workaround.
+- **Verification status, same honesty as Sections 21/22**: `:features:maps:impl` and the full
+  `:app` compile clean; the built APK installs, launches, and reaches Maps without a crash.
+  Actually tapping a specific merchant pin on the live map canvas to visually confirm the rich
+  card renders correctly needs a real device tap at real, non-deterministic pin coordinates --
+  not reliably automatable the way earlier text-field/button taps in this same session were, so
+  this is handed to the user to check directly rather than claimed as visually verified.

@@ -40,4 +40,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("org.maplibre.gl:android-sdk:13.3.1")
+    // Real merchant-photo rendering in the place-detail sheet (2026-08-09) -- same version
+    // :features:shop:impl already uses elsewhere in this codebase.
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }
