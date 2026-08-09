@@ -10,6 +10,8 @@ import io.mockk.verify
 import jakarta.persistence.LockModeType
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.kafka.core.KafkaTemplate
+import org.springframework.transaction.annotation.Isolation
+import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
@@ -35,6 +37,27 @@ class OutboxRelayTest : BehaviorSpec({
 
             Then("it requests an exclusive database lock for its selected rows") {
                 lock.value shouldBe LockModeType.PESSIMISTIC_WRITE
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-09): PESSIMISTIC_WRITE above takes real InnoDB
+    // next-key (row + GAP) locks under MySQL's default REPEATABLE READ isolation, since
+    // `processed_at IS NULL` is an unbounded range, not a single row. During a
+    // sustained Kafka outage (39 real pending rows accumulated in the incident that
+    // found this), that gap lock blocked a real, unrelated P2P transfer's own new
+    // outbox-event insert until it failed with "Lock wait timeout exceeded" -- a real
+    // money transfer 500'ing because of this relay's lock scope, not anything wrong
+    // with the transfer itself. READ_COMMITTED drops gap-locking for locking reads
+    // while keeping the real per-row lock this class needs (see the test above).
+    Given("the outbox relay's own transaction") {
+        When("its isolation level is inspected") {
+            val transactional = OutboxRelay::class.java
+                .getMethod("relay")
+                .getAnnotation(Transactional::class.java)
+
+            Then("it runs under READ_COMMITTED, not the DB default, so it cannot gap-lock unrelated inserts") {
+                transactional.isolation shouldBe Isolation.READ_COMMITTED
             }
         }
     }
