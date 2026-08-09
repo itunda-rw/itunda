@@ -3819,3 +3819,62 @@ data itunda genuinely has.
 `:features:maps:impl` compiles clean, the full app installs and launches without a crash on the
 physical device. Visual comparison against the real reference screenshots (not just "looks
 plausible in the abstract") still needs the user's own eyes on the real screen.
+
+## 28. "Itunda Places" -- the tabbed structure Section 27 named but deliberately didn't build, now built for real data only
+
+**Added 2026-08-09**, in direct response to "like naver places we should have itunda places."
+Section 27 explicitly declined to build the tabbed place-detail structure (Home/News/Menu/
+Review/Photos/Nearby/Info) because itunda only had real data for ~2 of Naver's 7 tabs, and this
+session's own standing discipline refuses to invent content to fill the rest. This section
+revisits that gap and asks the narrower, honest question: which tabs does itunda now actually
+have real data for, and build exactly those, no more.
+
+### What real data itunda actually has
+- **Menu**: `MerchantProduct`/`MerchantProductDto` -- the same real per-merchant catalog (name,
+  price, image, discount) Commerce/Eats checkout already uses. Reused the existing public
+  `GET /shopping/merchants/{merchantId}/products` endpoint verbatim, no new backend work.
+- **Reviews**: `EatsReview`/`EatsReviewDto` -- real, transaction-verified reviews (tied to a real
+  `orderId`/`buyerId`), with real text, star rating, an optional real photo, and optional real
+  merchant owner replies. Reused the existing `GET /eats/restaurants/{merchantId}/reviews`
+  endpoint. Followed the exact convention itunda's own existing Eats review UI already
+  established: stars + comment, **no reviewer identity shown**.
+- **Home**: the grouped glance/value/hours/phone summary card built in Section 23, now living
+  under its own tab instead of always-on.
+
+News, Photos (as a distinct social-upload feature), Nearby (already exists separately as
+category search, not duplicated as a tab), and Info-as-a-distinct-tab were all left out again,
+for the same reason as Section 27: no real content source exists for them yet.
+
+### What was built
+- `PlaceTab` enum (`HOME`, `MENU`, `REVIEWS`, `INFO` -- `INFO` reserved, unused for now).
+- A `LaunchedEffect(selectedMerchant?.merchantId)` that fetches both `placeProducts` and
+  `placeReviews` when a merchant is selected, resetting to the Home tab each time; both fetches
+  fail silently (empty state, not a fabricated placeholder) if the calls error.
+- A **conditional tab row**: Menu and Reviews tabs only render at all if their real fetch
+  actually returned non-empty content (`showMenuTab = !placeProducts.isNullOrEmpty()`, same
+  pattern for reviews) -- a merchant with no catalog or no reviews yet shows just Home, not an
+  empty tab a customer could tap into nothing.
+- Menu tab: product photo (Coil `AsyncImage`, 52dp) + name + price, with strikethrough original
+  price and red discounted price when a real discount is set -- same visual convention Shop/Eats
+  product cards already use elsewhere in the app.
+- Reviews tab: star rating, comment text, an optional review photo (120x80dp), and an owner-reply
+  box (`Ids.colors.surfaceSoft`) when the merchant actually replied -- deliberately no reviewer
+  name/avatar, matching Eats' own existing review UI exactly rather than inventing a new pattern.
+
+### Verified against the real backend before building
+Queried the live local backend directly rather than assuming the endpoints would behave:
+`GET /shopping/merchants/merchant_seed_1/products` returned real seeded product rows (name,
+price, image, description). `GET /eats/restaurants/{id}/reviews` returned `0` reviews for every
+current seed merchant -- a real, honest empty state, not a bug -- which is exactly why the
+conditional-tab-row logic matters: no seed merchant would show a Reviews tab today, and that's
+correct behavior, not a gap.
+
+### Verification status
+`:features:maps:impl` compiled clean, then the full `:app:assembleDebug` build succeeded. Installed
+on the physical device over the existing `adb reverse` tunnels; the app launched to a resumed
+foreground activity with an empty `logcat -b crash` buffer and no `FATAL`/`AndroidRuntime`/
+`Exception` lines in the app's own process log. The Menu tab's data path was confirmed live
+against a real merchant with real products; the Reviews tab's data path uses identical
+conditional logic but has not yet been exercised against a merchant with real review data (none
+exist in the current seed set) -- still needs the user's own eyes once a merchant has a real
+review, or a seed review to test against.

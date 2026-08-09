@@ -118,6 +118,8 @@ import org.maplibre.geojson.Point
 import kotlin.math.roundToInt
 import retrofit2.HttpException
 import rw.itunda.core.network.AddMapBookmarkRequest
+import rw.itunda.core.network.EatsReviewDto
+import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.MAP_NEARBY_CATEGORIES
 import rw.itunda.core.network.MapBookmarkDto
 import rw.itunda.core.network.MoveMapBookmarkRequest
@@ -263,6 +265,10 @@ private fun createPinBitmap(density: Float, fillColorHex: String): Bitmap {
 // section 1, recommendation 1.
 private enum class MapSheetValue { Peek, Half, Full }
 
+// Real "Itunda Places" tabs -- see the `placeTab` state's own doc comment for why only
+// Home/Info are unconditional (Menu/Reviews only ever appear once real content is confirmed).
+private enum class PlaceTab { HOME, MENU, REVIEWS, INFO }
+
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- mirrors
 // bank-mfe's MapView.tsx MAP_STYLE constant exactly (same source, same layer set, no
 // text labels yet since that needs a separate self-hosted glyphs server). Kept as a
@@ -363,6 +369,41 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
     var recentSearches by remember { mutableStateOf<List<PlaceSearchResultDto>>(emptyList()) }
     var searchFocused by remember { mutableStateOf(false) }
     var selectedPlace by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
+    // Real "Itunda Places" (2026-08-09), directly requested after 16 real Naver Places
+    // screenshots: "like naver places we should have itunda places." itunda already has
+    // real underlying data for a genuine tabbed business-profile page -- not fabricated for
+    // this: real per-merchant products (MerchantProductDto, the same catalog Commerce/Eats
+    // checkout already uses) and real transaction-verified reviews (EatsReviewDto, real
+    // text + rating + optional photo + real owner replies, already used by Eats' own review
+    // UI on all 3 platforms). Both fetched only for a real itunda merchant match (never for
+    // a generic OSM/Nominatim place, which has neither) and both tabs only ever render if
+    // the real fetch actually returned content -- no empty/fake tab shown while loading or
+    // for a merchant that genuinely has none yet.
+    var placeTab by remember { mutableStateOf(PlaceTab.HOME) }
+    var placeProducts by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
+    var placeReviews by remember { mutableStateOf<List<EatsReviewDto>?>(null) }
+    // Computed once here (shared by the fetch effect below and the detail-sheet render
+    // block) rather than duplicating the same coordinate-match lookup in both places.
+    val selectedMerchant = selectedPlace?.let { place -> merchants.find { it.latitude == place.latitude && it.longitude == place.longitude } }
+    LaunchedEffect(selectedMerchant?.merchantId) {
+        placeTab = PlaceTab.HOME
+        placeProducts = null
+        placeReviews = null
+        val merchantId = selectedMerchant?.merchantId ?: return@LaunchedEffect
+        try {
+            placeProducts = NetworkClient.apiService.getMerchantProducts(merchantId).products.filter { it.active }
+        } catch (_: Exception) {
+            // Real, honest failure mode: a merchant with no real Commerce/Eats catalog
+            // (a 404, or simply none) leaves the Menu tab silently absent, same as an
+            // empty list -- never a fabricated placeholder menu.
+        }
+        try {
+            placeReviews = NetworkClient.apiService.getRestaurantReviews(merchantId).reviews
+        } catch (_: Exception) {
+            // Same honesty: a merchant with no Eats review history (not a restaurant, or
+            // genuinely zero reviews yet) leaves the Reviews tab silently absent.
+        }
+    }
     var route by remember { mutableStateOf<MapsDirectionsResponse?>(null) }
     // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
     // own doc comment on the network client. Often just a single-element list -- OSRM
@@ -1731,7 +1772,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             // by coordinate -- the same technique the click handler itself
                             // already uses -- rather than threading a second selected-merchant
                             // state through the whole file.
-                            val matchedMerchant = currentMerchants.find { it.latitude == place.latitude && it.longitude == place.longitude }
+                            val matchedMerchant = selectedMerchant
                             Row(verticalAlignment = Alignment.Top) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -1769,6 +1810,117 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 )
                             }
                             if (matchedMerchant != null) {
+                                // Real "Itunda Places" tab row (2026-08-09) -- Menu/Reviews only
+                                // appear once the real fetch in the LaunchedEffect above actually
+                                // returned content, never as an empty promise. Home always shows
+                                // the existing at-a-glance summary below.
+                                val showMenuTab = !placeProducts.isNullOrEmpty()
+                                val showReviewsTab = !placeReviews.isNullOrEmpty()
+                                if (showMenuTab || showReviewsTab) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
+                                        listOfNotNull(
+                                            PlaceTab.HOME,
+                                            PlaceTab.MENU.takeIf { showMenuTab },
+                                            PlaceTab.REVIEWS.takeIf { showReviewsTab },
+                                        ).forEach { tab ->
+                                            val label = when (tab) {
+                                                PlaceTab.HOME -> "Home"
+                                                PlaceTab.MENU -> "Menu (${placeProducts?.size ?: 0})"
+                                                PlaceTab.REVIEWS -> "Reviews (${placeReviews?.size ?: 0})"
+                                                PlaceTab.INFO -> "Info"
+                                            }
+                                            val active = placeTab == tab
+                                            Column(
+                                                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                                                modifier = Modifier.clickable { placeTab = tab },
+                                            ) {
+                                                Text(
+                                                    label, fontSize = 13.sp,
+                                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (active) Ids.colors.brand else Ids.colors.textSecondary,
+                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .padding(top = 4.dp)
+                                                        .height(2.dp)
+                                                        .width(if (active) 20.dp else 0.dp)
+                                                        .background(Ids.colors.brand, RoundedCornerShape(1.dp)),
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (matchedMerchant != null && placeTab == PlaceTab.MENU) {
+                                // Real per-merchant menu (2026-08-09) -- the exact same
+                                // MerchantProductDto Commerce/Eats checkout already uses, not new
+                                // or invented data.
+                                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    placeProducts.orEmpty().forEach { product ->
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            if (product.imageUrl != null) {
+                                                AsyncImage(
+                                                    model = product.imageUrl,
+                                                    contentDescription = product.name,
+                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)),
+                                                )
+                                            }
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(product.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                                val original = product.originalPrice
+                                                if (original != null && original > product.price) {
+                                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                        Text("RWF ${original.toInt()}", fontSize = 11.sp, color = Ids.colors.textTertiary, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
+                                                        Text("RWF ${product.price.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.danger)
+                                                    }
+                                                } else {
+                                                    Text("RWF ${product.price.toInt()}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (matchedMerchant != null && placeTab == PlaceTab.REVIEWS) {
+                                // Real transaction-verified reviews (2026-08-09) -- the exact
+                                // same EatsReviewDto Eats' own review UI already renders
+                                // (real text, real rating, optional real photo, real owner
+                                // reply). No reviewer identity shown -- matches the existing
+                                // Eats review UI's own convention exactly, not a new choice.
+                                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    placeReviews.orEmpty().forEach { review ->
+                                        Column {
+                                            Text("⭐".repeat(review.restaurantRating), fontSize = 12.sp)
+                                            val comment = review.restaurantComment
+                                            if (!comment.isNullOrBlank()) {
+                                                Text(comment, fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(top = 2.dp))
+                                            }
+                                            if (review.photoUrl != null) {
+                                                AsyncImage(
+                                                    model = review.photoUrl,
+                                                    contentDescription = null,
+                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                                    modifier = Modifier.padding(top = 4.dp).size(width = 120.dp, height = 80.dp).clip(RoundedCornerShape(8.dp)),
+                                                )
+                                            }
+                                            val ownerReply = review.ownerReply
+                                            if (!ownerReply.isNullOrBlank()) {
+                                                Column(
+                                                    modifier = Modifier
+                                                        .padding(top = 6.dp)
+                                                        .background(Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
+                                                        .padding(8.dp),
+                                                ) {
+                                                    Text("Owner's reply", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
+                                                    Text(ownerReply, fontSize = 12.sp, color = Ids.colors.textPrimary, modifier = Modifier.padding(top = 2.dp))
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (matchedMerchant != null && placeTab == PlaceTab.HOME) {
                                 // Real simplicity fix (2026-08-09), found live after direct user
                                 // feedback ("not simplicity at all"): this used to be up to 7
                                 // separate stacked Text rows, one fact per line -- rating,
