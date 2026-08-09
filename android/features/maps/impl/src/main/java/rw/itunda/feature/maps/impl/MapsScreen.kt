@@ -217,6 +217,24 @@ private val TILES_URL: String get() = "${MapConfig.tilesBaseUrl}/rwanda/{z}/{x}/
 private val GLYPHS_URL: String get() = "${MapConfig.glyphsBaseUrl}/{fontstack}/{range}.pbf"
 private const val MERCHANTS_SOURCE_ID = "merchants"
 private const val MERCHANTS_LAYER_ID = "merchants-circle"
+private const val MERCHANT_FOOD_ICON_ID = "merchant-pin-food"
+// Real per-category merchant pin color (2026-08-09) -- the last item named in Section 27's
+// "deliberately not attempted" list. itunda's real merchant `category` field is merchant-set
+// free text (confirmed live against the backend: "Coffee & Bakery", "Fast Food", "Rwandan",
+// "Electronics", "Fashion" today), not a fixed enum -- so this is a small, honestly-labeled
+// keyword bucket rather than a clean enum switch, same spirit as MAP_CATEGORY_ICONS' own
+// curated client-side lookup above. Matches the real reference screenshots' own orange-for-
+// food/cafe convention (Section 27); every other category keeps the existing default blue
+// rather than guessing more buckets from 5 real observed values.
+private val MERCHANT_FOOD_KEYWORDS = listOf("food", "coffee", "bakery", "rwandan", "restaurant", "cafe", "grill", "kitchen")
+private fun isFoodMerchantCategory(category: String?): Boolean =
+    category != null && MERCHANT_FOOD_KEYWORDS.any { category.contains(it, ignoreCase = true) }
+private fun merchantPinIconId(category: String?): String =
+    if (isFoodMerchantCategory(category)) MERCHANT_FOOD_ICON_ID else MERCHANT_ICON_ID
+private fun merchantFeature(m: ShoppingMerchantDto): Feature {
+    val props = com.google.gson.JsonObject().apply { addProperty("pinIcon", merchantPinIconId(m.category)) }
+    return Feature.fromGeometry(Point.fromLngLat(m.longitude!!, m.latitude!!), props)
+}
 private const val MY_LOCATION_SOURCE_ID = "my-location"
 private const val MY_LOCATION_LAYER_ID = "my-location-circle"
 private const val DESTINATION_SOURCE_ID = "destination"
@@ -1057,6 +1075,9 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                 map.setStyle(Style.Builder().fromJson(MAP_STYLE_JSON)) { style ->
                     val pinDensity = context.resources.displayMetrics.density
                     style.addImage(MERCHANT_ICON_ID, createPinBitmap(pinDensity, "#3182F6"))
+                    // Real per-category merchant pin (2026-08-09) -- see merchantPinIconId's
+                    // own doc comment above for why this is a keyword bucket, not an enum.
+                    style.addImage(MERCHANT_FOOD_ICON_ID, createPinBitmap(pinDensity, "#FFA000"))
                     style.addImage(DESTINATION_ICON_ID, createPinBitmap(pinDensity, "#E53935"))
                     // Real fix (2026-08-09), same UI/UX cleanup as the category chips: this was
                     // the same stray purple (#8B5CF6), not itunda's real palette anywhere --
@@ -1070,7 +1091,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     style.addSource(GeoJsonSource(MERCHANTS_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
                     style.addLayer(
                         SymbolLayer(MERCHANTS_LAYER_ID, MERCHANTS_SOURCE_ID).withProperties(
-                            iconImage(MERCHANT_ICON_ID), iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                            iconImage(org.maplibre.android.style.expressions.Expression.get("pinIcon")),
+                            iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                             iconAllowOverlap(true), iconSize(0.85f),
                         ),
                     )
@@ -1115,9 +1137,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             iconAllowOverlap(true), iconSize(0.85f),
                         ),
                     )
-                    val featureCollection = FeatureCollection.fromFeatures(
-                        currentMerchants.map { m -> Feature.fromGeometry(Point.fromLngLat(m.longitude!!, m.latitude!!)) },
-                    )
+                    val featureCollection = FeatureCollection.fromFeatures(currentMerchants.map { m -> merchantFeature(m) })
                     (style.getSourceAs<GeoJsonSource>(MERCHANTS_SOURCE_ID))?.setGeoJson(featureCollection)
 
                     // Real distance-measurement (ruler) tool line -- dashed, and a
@@ -1214,11 +1234,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
             mapView.getMapAsync { map ->
                 val style = map.style ?: return@getMapAsync
                 val source = style.getSourceAs<GeoJsonSource>(MERCHANTS_SOURCE_ID) ?: return@getMapAsync
-                source.setGeoJson(
-                    FeatureCollection.fromFeatures(
-                        merchants.map { m -> Feature.fromGeometry(Point.fromLngLat(m.longitude!!, m.latitude!!)) },
-                    ),
-                )
+                source.setGeoJson(FeatureCollection.fromFeatures(merchants.map { m -> merchantFeature(m) }))
             }
         }
         LaunchedEffect(myLocation) {

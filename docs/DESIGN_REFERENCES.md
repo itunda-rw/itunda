@@ -3908,3 +3908,43 @@ empty `logcat -b crash` buffer and no `FATAL`/`AndroidRuntime`/`Exception` lines
 process log. Same as Section 28: functionally verified (compiles, launches, doesn't crash), but
 the actual pill visual against the real Naver reference screenshots hasn't been eyeballed by the
 user on the physical screen yet.
+
+## 30. Per-category merchant pin color -- the last item on Section 27's deferred list
+
+**Added 2026-08-09.** Closes the final named-but-not-built item from Section 27: "itunda already
+has real per-merchant `category` data that could drive per-category pin colors, matching Naver's
+own approach more closely than the current single-blue-dot-for-all-merchants treatment."
+
+### Checked the real data before building, not assumed
+Queried the live backend's `GET /shopping/merchants/categories` directly: today's real merchant
+categories are free text, merchant-set at signup -- `"Coffee & Bakery"`, `"Electronics"`,
+`"Fashion"`, `"Fast Food"`, `"Rwandan"` -- not a fixed enum. This matters: it means per-category
+pin coloring can't be a clean `match()` on a small closed set the way `MAP_CATEGORY_ICONS` (the
+existing nearby-POI-search icon lookup) already does. Rather than invent a false enum or skip the
+feature, used a small, explicitly-labeled keyword bucket (`MERCHANT_FOOD_KEYWORDS`) over the real
+category string -- 3 of today's 5 real categories are food-related (`Fast Food`, `Rwandan`,
+`Coffee & Bakery`), 2 aren't (`Electronics`, `Fashion`), so a food/other split is a real, visible
+improvement without guessing more buckets than the real data supports.
+
+### What was built
+- `merchantPinIconId(category)`: real-category-keyword match -> `MERCHANT_FOOD_ICON_ID` (amber
+  `#FFA000`, matching the same Naver-orange-for-food convention documented in Section 27) or the
+  existing default `MERCHANT_ICON_ID` (blue) for everything else -- unmatched/unknown categories
+  keep today's exact existing behavior, nothing regresses.
+- `merchantFeature(m)`: builds each merchant's GeoJSON `Feature` with a `pinIcon` string property
+  set client-side from the real category, rather than duplicating icon-selection logic at both of
+  the two call sites that populate the merchants map layer (initial style load, and the
+  `LaunchedEffect(merchants)` live-update effect).
+- The merchants `SymbolLayer`'s `iconImage` property changed from a fixed constant to a
+  data-driven `Expression.get("pinIcon")`, so MapLibre reads each pin's own real category-derived
+  icon straight off its GeoJSON feature instead of one icon for the whole layer.
+
+### Verification status
+`:features:maps:impl` compiled clean, then the full `:app:assembleDebug` build succeeded.
+Installed on the physical device; the app launched (through to its real biometric step-up gate,
+per Section on device security -- not a crash, expected) with an empty `logcat -b crash` buffer
+and a live app process. Visual confirmation that food-category merchants (e.g. any of the real
+"Coffee & Bakery"/"Fast Food"/"Rwandan" merchants) actually render amber on the real map, and
+non-food merchants stay blue, still needs the user's own eyes -- this closes out every item
+Section 27 named, but the whole "100% Naver Maps" visual-parity thread stays open pending real
+on-screen comparison against the reference screenshots.
