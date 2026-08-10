@@ -298,6 +298,13 @@ struct EntireMenuScreen: View {
     // Real fix (2026-08-10) -- see IdsSearchBar's own doc comment for the full
     // account of the fake-search-bar bug this closes.
     @State private var menuSearchQuery: String = ""
+    // Real fix (2026-08-10): matches Android/web's identical collapse-by-default fix
+    // (see CollapsibleFlatSection's own doc comment for the full Hick's Law account).
+    // "Quick links"/"Mini apps" stay always-visible; only the 16 heavier categories
+    // below them collapse. Safe to add without touching the two Group{} blocks' own
+    // child count -- collapsing is internal to each CollapsibleFlatSection's own
+    // rendering, not a change in how many views the parent Group receives.
+    @State private var expandedMenuSection: String? = nil
 
     // Real fix (2026-08-10): a second, independent list of the exact same 17
     // sections/rows rendered below, built purely so search can filter across all of
@@ -532,15 +539,15 @@ struct EntireMenuScreen: View {
                     // sections Android now uses, for consistency across platforms. Also
                     // fixes 2 dead taps found the same way Android's were: "Open account"
                     // and "Mobile plan" had no `action:` at all.
-                    FlatSection(title: "Accounts & cards", rows: [
+                    CollapsibleFlatSection(title: "Accounts & cards", rows: [
                         FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue, action: { showOverview = true }),
                         FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
                         FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", symbol: "calendar", tint: .accentBlue, action: { showSubscriptions = true }),
                         FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
-                    ])
-                    FlatSection(title: "Send & pay", rows: [
+                    ], isExpanded: expandedMenuSection == "Accounts & cards", onToggle: { expandedMenuSection = (expandedMenuSection == "Accounts & cards") ? nil : "Accounts & cards" })
+                    CollapsibleFlatSection(title: "Send & pay", rows: [
                         // Real Transfer full page (2026-07-24 port), matching real Toss's
                         // own 송금 row here ("자동이체 · 더치페이" subtitle) -- groups Send
                         // money/Auto-transfer/history in one place instead of Home's Send
@@ -553,17 +560,17 @@ struct EntireMenuScreen: View {
                         // Bills mini-app -- same real destination "REG & WASAC bills" below
                         // already uses, same fix as Android's identical dead tap.
                         FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal, action: { showPayBillsMiniApp = true }),
-                    ])
-                    FlatSection(title: "Save & grow", rows: [
+                    ], isExpanded: expandedMenuSection == "Send & pay", onToggle: { expandedMenuSection = (expandedMenuSection == "Send & pay") ? nil : "Send & pay" })
+                    CollapsibleFlatSection(title: "Save & grow", rows: [
                         FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
                         FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
-                    ])
-                    FlatSection(title: "Borrow", rows: [
+                    ], isExpanded: expandedMenuSection == "Save & grow", onToggle: { expandedMenuSection = (expandedMenuSection == "Save & grow") ? nil : "Save & grow" })
+                    CollapsibleFlatSection(title: "Borrow", rows: [
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                         FlatRow(title: "Moto-Taxi Ownership", subtitle: "Save a 30% down payment, then convert to a loan for your own bike", symbol: "bicycle", tint: .accentTeal, action: { showMotoOwnership = true }),
-                    ])
-                    FlatSection(title: "Transport", rows: [
+                    ], isExpanded: expandedMenuSection == "Borrow", onToggle: { expandedMenuSection = (expandedMenuSection == "Borrow") ? nil : "Borrow" })
+                    CollapsibleFlatSection(title: "Transport", rows: [
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
                         FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
                         FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", symbol: "bicycle", tint: .accentBlue, action: { showBikeRental = true }),
@@ -571,18 +578,18 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", symbol: "bus.fill", tint: .accentTeal, action: { showBus = true }),
                         FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
                         FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", symbol: "car.fill", tint: .accentTeal, action: { showVehicleValuation = true }),
-                    ])
-                    FlatSection(title: "Community & trust", rows: [
+                    ], isExpanded: expandedMenuSection == "Transport", onToggle: { expandedMenuSection = (expandedMenuSection == "Transport") ? nil : "Transport" })
+                    CollapsibleFlatSection(title: "Community & trust", rows: [
                         FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
                         FlatRow(title: "Q&A", subtitle: "Ask a question, answer one, get adopted", symbol: "questionmark.circle.fill", tint: .accentPurple, action: { showKnowledge = true }),
-                    ])
+                    ], isExpanded: expandedMenuSection == "Community & trust", onToggle: { expandedMenuSection = (expandedMenuSection == "Community & trust") ? nil : "Community & trust" })
                     // Kept last and separately labeled, not blended into the rows above:
                     // these two are role-gated (only assigned cash-agent operators can use
                     // them), same reasoning as Android's identical split.
-                    FlatSection(title: "Cash agent tools", rows: [
+                    CollapsibleFlatSection(title: "Cash agent tools", rows: [
                         FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentBlue, action: { showAgentOperator = true }),
                         FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
-                    ])
+                    ], isExpanded: expandedMenuSection == "Cash agent tools", onToggle: { expandedMenuSection = (expandedMenuSection == "Cash agent tools") ? nil : "Cash agent tools" })
                     // Everything below is modeled directly on the real Toss Bank
                     // reference screens (see ItundaAppScreen.kt's own identical note),
                     // adapted to Rwanda rails (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel
@@ -593,22 +600,22 @@ struct EntireMenuScreen: View {
                     // refinance flow (LoansScreen's own "Refinance to a lower rate"
                     // button), not a separate feature, so they route to the same real
                     // Loans screen every other loan row on this screen already uses.
-                    FlatSection(title: "Switch & save", rows: [
+                    CollapsibleFlatSection(title: "Switch & save", rows: [
                         FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal, action: { showLoans = true }),
                         FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal, action: { showLoans = true }),
-                    ])
+                    ], isExpanded: expandedMenuSection == "Switch & save", onToggle: { expandedMenuSection = (expandedMenuSection == "Switch & save") ? nil : "Switch & save" })
                 }
                 Group {
                     // Real fix (2026-08-10, matching Android's 2026-08-03 fix): both rows
                     // point at the same real Card screen "Card" already opens elsewhere on
                     // this screen -- a second, previously-dead entry point into it, not a
                     // separate feature.
-                    FlatSection(title: "Cards", rows: [
+                    CollapsibleFlatSection(title: "Cards", rows: [
                         FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed, action: { showCard = true }),
                         FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray, action: { showCard = true }),
-                    ])
-                    FlatSection(title: "Services", rows: [
+                    ], isExpanded: expandedMenuSection == "Cards", onToggle: { expandedMenuSection = (expandedMenuSection == "Cards") ? nil : "Cards" })
+                    CollapsibleFlatSection(title: "Services", rows: [
                         FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentBlue),
                         FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentBlue),
                         FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
@@ -622,31 +629,31 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentBlue, action: onSwitchToTalk),
                         FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentBlue),
                         FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
-                    ])
+                    ], isExpanded: expandedMenuSection == "Services", onToggle: { expandedMenuSection = (expandedMenuSection == "Services") ? nil : "Services" })
                     // Real fix (2026-08-10, matching Android's 2026-08-03 fix): both rows
                     // are the same real foreign-currency wallet "Mobile plan"/Send & pay's
                     // own routing doesn't cover -- this is its own real screen.
-                    FlatSection(title: "Foreign currency", rows: [
+                    CollapsibleFlatSection(title: "Foreign currency", rows: [
                         FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
                         FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
-                    ])
+                    ], isExpanded: expandedMenuSection == "Foreign currency", onToggle: { expandedMenuSection = (expandedMenuSection == "Foreign currency") ? nil : "Foreign currency" })
                     // Real fix (2026-08-10, matching Android's 2026-08-03 fix): all 4 rows
                     // are the same real RSE investing screen ("Invest" quick link already
                     // opens) -- routed there instead of sitting dead.
-                    FlatSection(title: "Grow your money", rows: [
+                    CollapsibleFlatSection(title: "Grow your money", rows: [
                         FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal, action: { showInvest = true }),
                         FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentBlue, action: { showInvest = true }),
                         FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed, action: { showInvest = true }),
                         FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal, action: { showInvest = true }),
-                    ])
-                    FlatSection(title: "Pension", rows: [
+                    ], isExpanded: expandedMenuSection == "Grow your money", onToggle: { expandedMenuSection = (expandedMenuSection == "Grow your money") ? nil : "Grow your money" })
+                    CollapsibleFlatSection(title: "Pension", rows: [
                         FlatRow(title: "Check my RSSB pension", symbol: "building.columns.fill", tint: .accentBlue),
                         FlatRow(title: "Pension products", symbol: "percent", tint: .accentBlue),
-                    ])
-                    FlatSection(title: "Loans", rows: [
+                    ], isExpanded: expandedMenuSection == "Pension", onToggle: { expandedMenuSection = (expandedMenuSection == "Pension") ? nil : "Pension" })
+                    CollapsibleFlatSection(title: "Loans", rows: [
                         FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showLoans = true }),
                         FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
-                    ])
+                    ], isExpanded: expandedMenuSection == "Loans", onToggle: { expandedMenuSection = (expandedMenuSection == "Loans") ? nil : "Loans" })
                     // Real fix: "Notifications" now opens Settings, which already has a
                     // real notifications list + mark-as-read (SettingsScreen.swift) --
                     // reusing existing real infrastructure instead of leaving this row
@@ -654,26 +661,26 @@ struct EntireMenuScreen: View {
                     // this codebase (no legal-copy source, no credit-data-usage-policy
                     // endpoint) -- honestly left as plain labels (no chevron, no tap
                     // affordance) rather than a fake destination.
-                    FlatSection(title: "Notifications & consent", rows: [
+                    CollapsibleFlatSection(title: "Notifications & consent", rows: [
                         FlatRow(title: "Notifications", showChevron: true, action: onOpenSettings),
                         FlatRow(title: "Credit data usage policy"),
                         FlatRow(title: "Privacy policy"),
                         FlatRow(title: "Terms & consent"),
-                    ])
+                    ], isExpanded: expandedMenuSection == "Notifications & consent", onToggle: { expandedMenuSection = (expandedMenuSection == "Notifications & consent") ? nil : "Notifications & consent" })
                     // FAQ/Live chat/Call support/Announcements have no real backend
                     // behind them either (confirmed via Android's SupportScreen.kt doc
                     // comment, same real gap on this same screen's Android port) -- same
                     // honest no-chevron treatment. The 2 rows that DO have a real
                     // destination (transaction-ticket support, already shipped
                     // 2026-07-22) keep theirs.
-                    FlatSection(title: "Support", rows: [
+                    CollapsibleFlatSection(title: "Support", rows: [
                         FlatRow(title: "FAQ"),
                         FlatRow(title: "Live chat"),
                         FlatRow(title: "Call support"),
                         FlatRow(title: "Report an issue with a transaction", showChevron: true, action: { showSupport = true }),
                         FlatRow(title: "My support tickets", showChevron: true, action: { showSupport = true }),
                         FlatRow(title: "Announcements"),
-                    ])
+                    ], isExpanded: expandedMenuSection == "Support", onToggle: { expandedMenuSection = (expandedMenuSection == "Support") ? nil : "Support" })
                 }
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
@@ -1399,6 +1406,74 @@ struct FlatSection: View {
                 // the gesture recognizer itself -- gating those two is the real fix.
                 .onTapGesture { row.action?() }
                 .accessibilityAddTraits(row.action != nil ? [.isButton] : [])
+            }
+        }
+    }
+}
+
+// Real fix (2026-08-10): matches Android's identical fix to ItundaAppScreen.kt (see
+// its own CollapsibleFlatSection doc comment for the full Hick's Law citation) --
+// EntireMenuScreen showed every one of its non-"Quick links"/"Mini apps" categories
+// fully expanded, always. Collapsed by default, one open at a time, real item count
+// in the header so collapsing doesn't hide that the content exists. Row rendering
+// below is a literal copy of FlatSection's own body -- only the header gained a tap
+// target and a chevron.up/chevron.down icon, and the rows are wrapped in `if isExpanded`.
+struct CollapsibleFlatSection: View {
+    let title: String
+    let rows: [FlatRow]
+    let isExpanded: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("\(title)  ·  \(rows.count)")
+                    .font(IDS.scaledFont(size: 19, weight: .bold, relativeTo: .title2))
+                    .foregroundColor(IDS.Colors.textPrimary)
+                Spacer()
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .foregroundColor(IDS.Colors.textTertiary)
+            }
+            .padding(.bottom, isExpanded ? 6 : 0)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onToggle)
+            if isExpanded {
+                ForEach(rows, id: \.title) { row in
+                    HStack {
+                        if let symbol = row.symbol {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10).fill(row.tint)
+                                Image(systemName: symbol)
+                                    .font(IDS.scaledFont(size: 19, weight: .regular, relativeTo: .body))
+                                    .foregroundColor(.white)
+                            }
+                            .frame(width: 34, height: 34)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.title)
+                                .font(IDS.scaledFont(size: 17, weight: .medium, relativeTo: .body))
+                                .foregroundColor(IDS.Colors.textPrimary)
+                            if let subtitle = row.subtitle {
+                                Text(subtitle)
+                                    .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1))
+                                    .foregroundColor(IDS.Colors.textTertiary)
+                            }
+                        }
+                        Spacer()
+                        if let trailing = row.trailing {
+                            Text(trailing)
+                                .font(IDS.scaledFont(size: 15, weight: row.trailingIsLink ? .semibold : .regular, relativeTo: .subheadline))
+                                .foregroundColor(row.trailingIsLink ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                        } else if row.showChevron && row.action != nil {
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(IDS.Colors.textTertiary)
+                        }
+                    }
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+                    .onTapGesture { row.action?() }
+                    .accessibilityAddTraits(row.action != nil ? [.isButton] : [])
+                }
             }
         }
     }
