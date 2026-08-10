@@ -192,8 +192,6 @@ import rw.itunda.feature.marketplace.impl.MarketplaceContent
 import rw.itunda.feature.jobs.impl.JobsContent
 import rw.itunda.feature.property.impl.PropertyContent
 import rw.itunda.feature.community.impl.CommunityContent
-import rw.itunda.feature.shop.impl.CommerceShopContent
-import rw.itunda.feature.eats.impl.EatsContent
 import java.io.IOException
 import java.time.Instant
 import java.util.UUID
@@ -674,77 +672,11 @@ internal fun HoodTab(
 // CommunityPostDetailScreen) moved 2026-07-23 to :features:community:impl, same pattern
 // -- all four Hood-mode sections are now Feature modules.
 
-// ============================== SHOP (Commerce + Eats) ==============================
-
-private enum class ShopMode { SHOP, EATS }
-
-@Composable
-internal fun ShopTab(
-    pendingEatsMerchantId: String? = null,
-    pendingEatsMerchantName: String? = null,
-    onPendingEatsConsumed: () -> Unit = {},
-) {
-    var mode by remember { mutableStateOf(ShopMode.SHOP) }
-    // Real "Delivery" pill deep-link from Maps (2026-08-09) -- see ItundaAppScreen.kt's
-    // own doc comment on pendingEatsMerchantId for the full account. Switches this tab's
-    // own local mode toggle to EATS the moment a pending target arrives.
-    LaunchedEffect(pendingEatsMerchantId) {
-        if (pendingEatsMerchantId != null) mode = ShopMode.EATS
-    }
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Flat category strip (2026-07-24), same treatment as HoodTab's own
-        // Market/Life/Jobs/Home row -- see that composable's own comment for
-        // the full reasoning.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Ids.layout.screenHorizontal, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp),
-        ) {
-            listOf(ShopMode.SHOP to "Shop", ShopMode.EATS to "Eats").forEach { (m, label) ->
-                val selected = m == mode
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { mode = m }) {
-                    Text(
-                        label,
-                        color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 15.sp,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
-                    )
-                    Box(
-                        modifier = Modifier
-                            .height(2.dp)
-                            .width(18.dp)
-                            .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
-                    )
-                }
-            }
-        }
-        when (mode) {
-            // Fifth Feature extraction (2026-07-23) -- see ShopScreen.kt's own header
-            // comment for why deviceStepUpHost is injected rather than owned directly
-            // (DeviceStepUpHost.kt wraps :features:payments:impl's dialog, so it can't
-            // become a dependency of :features:shop:impl without a forbidden sideways
-            // Feature-to-Feature dependency).
-            ShopMode.SHOP -> CommerceShopContent(
-                deviceStepUpHost = { visible, onDismiss, onVerified ->
-                    DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
-                },
-            )
-            // Sixth Feature extraction (2026-07-23) -- folds Deliver (rider role) in too;
-            // see EatsScreen.kt's own header comment for why they share one module and
-            // for the deviceStepUpHost injection reasoning.
-            ShopMode.EATS -> EatsContent(
-                deviceStepUpHost = { visible, onDismiss, onVerified ->
-                    DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
-                },
-                pendingMerchantId = pendingEatsMerchantId,
-                pendingMerchantName = pendingEatsMerchantName,
-                onPendingMerchantConsumed = onPendingEatsConsumed,
-            )
-        }
-    }
-}
+// ShopTab (the Shop/Eats segmented-toggle wrapper around CommerceShopContent/
+// EatsContent) was retired 2026-08-10: real user correction -- nesting Shop/Eats
+// behind one Explore row with its own internal toggle is a tab bar inside a tab,
+// noise a flat catalog shouldn't have. ItundaAppScreen.kt now calls
+// CommerceShopContent/EatsContent directly as two separate flat Explore rows.
 
 // Commerce (CommerceView/CommerceShopContent/CartFab/ProductImageThumb/ProductPriceRow/
 // MerchantDetailView/QtyButton/MultiCartView/MultiCartResultsView/CommerceOrderRow/

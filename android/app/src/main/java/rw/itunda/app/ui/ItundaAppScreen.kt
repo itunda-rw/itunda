@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.Fastfood
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DirectionsBike
@@ -139,6 +140,8 @@ import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.feature.maps.impl.MapScreen
+import rw.itunda.feature.shop.impl.CommerceShopContent
+import rw.itunda.feature.eats.impl.EatsContent
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
@@ -166,29 +169,28 @@ internal val AccentRed = Color(0xFFFF5B5B)
 private val AccentPink = Color(0xFFEC5F8C)
 internal val AccentGray = Color(0xFF6B7684)
 
-// Real super-app bottom nav (2026-07-18): Home/Shop/Hood/Talk/My, replacing the
-// previous Home/Benefits/Shop/Pay/All layout now that itunda has real Coupang-style
-// commerce (Shop), 당근마켓-style marketplace (Hood), and Kakao-style messaging (Talk)
-// backends to put behind top-level tabs. Benefits and Pay lose their own tabs -- both
-// were already either fully static/promotional (Benefits) or backed by a dead,
-// never-wired QR button (Pay -- HomeTopBar's own scan icon has no onClick either) --
-// and are now reachable as real rows inside My instead of losing their reachability
-// outright.
+// Real super-app bottom nav: Home/Pay/Explore/Messages/You (2026-08-10), replacing
+// the previous Home/Shop/Hood/Talk/All layout -- an explicit product decision after
+// directly comparing both against each other (see docs/DESIGN_REFERENCES.md Section
+// 41 in the web repo for the full comparison; bank-mfe's BankDashboard.tsx already
+// shipped this same five). itunda is bank-first, so Pay and You (profile/account)
+// get dedicated primary slots instead of being nested a tap into Explore/My the way
+// the previous layout had them. Shop and Hood lose their own tabs -- both are real,
+// fully-built features, not demoted for being weak -- and are now reachable as real
+// full-screen entry points from Explore (`showShop`/`showHood`, same established
+// pattern this file already used for Benefits/Pay/Map before those existed as tabs),
+// exactly mirroring how ShopTab/HoodTab moved on web (BankDashboard.tsx's
+// ShopHub/HoodHub, reached from ExploreHub instead of their own primary tabs).
 internal enum class ItundaTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Home("Home", Icons.Outlined.Home),
-    Shop("Shop", Icons.Outlined.ShoppingBag),
-    Hood("Hood", Icons.Outlined.LocationOn),
-    Talk("Talk", Icons.Outlined.Chat),
-    // Real 전체 (All services) bottom tab (2026-07-24) -- previously nested two taps
-    // deep (Home -> My -> Menu icon), at the user's own direct request to bring it
-    // back to a first-class bottom-nav slot now that mini-apps/games need to be one
-    // tap away, matching real Toss's own bottom nav (홈/혜택/쇼핑/페이/전체 -- no
-    // separate "My" tab at all; personal info lives at the top of 전체 instead). The
-    // previous My tab's own real content (orders/favorites/listings tracking, a
-    // genuine itunda addition beyond Toss parity) isn't dropped -- it's reachable one
-    // tap in via the profile icon at the top of this screen, the exact same nesting
-    // this tab used to have with Menu, just inverted.
-    All("All", Icons.Outlined.Apps)
+    Pay("Pay", Icons.Outlined.Payments),
+    Explore("Explore", Icons.Outlined.Apps),
+    Messages("Messages", Icons.Outlined.Chat),
+    // Profile/account as its own primary tab (2026-08-10) -- previously nested one
+    // tap into All via a profile icon (see the old ItundaTab.All doc comment this
+    // replaced). MyTab's own real content (orders/favorites/listings tracking) is
+    // completely unchanged, just reached directly instead of via a nested icon.
+    You("You", Icons.Outlined.Person)
 }
 
 /**
@@ -229,15 +231,25 @@ fun ItundaAppScreen(
         var showTransactionHistory by rememberSaveable { mutableStateOf(false) }
         var showSettings by rememberSaveable { mutableStateOf(false) }
         var showBenefits by rememberSaveable { mutableStateOf(false) }
-        var showPay by rememberSaveable { mutableStateOf(false) }
+        // Shop/Hood lost their own primary tabs (2026-08-10, see ItundaTab's own doc
+        // comment) -- same real full-screen-entry-point pattern showBenefits/showMap
+        // already established for non-primary destinations.
+        // Shop and Eats are two flat, independent Explore rows (2026-08-10, real user
+        // correction: nesting them behind one "Shop" entry with its own Shop/Eats
+        // toggle -- ShopTab's real shape, correct when Shop was a primary tab -- is
+        // noise once inside a catalog screen; each real feature/impl content
+        // composable is called directly instead, no wrapper toggle).
+        var showShop by rememberSaveable { mutableStateOf(false) }
+        var showEats by rememberSaveable { mutableStateOf(false) }
+        var showHood by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
         var mapSearchQueryForScreen by rememberSaveable { mutableStateOf<String?>(null) }
         // Real "Delivery" pill deep-link, Maps -> Eats (2026-08-09) -- itunda's
         // Feature-module isolation forbids Maps depending on Eats directly, so this
         // shell (the only thing that can see both) carries a small, plain (not
         // rememberSaveable -- an in-flight navigation intent has no reason to survive
-        // process death) pending-target across the tab switch. Cleared by ShopTab once
-        // consumed, so returning to Shop later doesn't re-trigger the same restaurant.
+        // process death) pending-target across the tab switch. Cleared by EatsContent
+        // once consumed, so returning to Eats later doesn't re-trigger the same restaurant.
         var pendingEatsMerchantId by remember { mutableStateOf<String?>(null) }
         var pendingEatsMerchantName by remember { mutableStateOf<String?>(null) }
         var showAgentCash by rememberSaveable { mutableStateOf(false) }
@@ -331,9 +343,6 @@ fun ItundaAppScreen(
         // bank-mfe shipped first (commits cf9d72fe/808a7ce4); this is the first
         // native client.
         var showMotoOwnership by rememberSaveable { mutableStateOf(false) }
-        // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
-        // user's direct request; see MenuScreen's own doc comment.
-        var showMyTab by rememberSaveable { mutableStateOf(false) }
         // Real Toss Bank 송금 (Transfer) full page (2026-07-24) -- reachable from the
         // 전체/Menu screen's own "Financial services" section, matching real Toss where
         // Home's own Send button stays a quick recipient-picker (unchanged, confirmed
@@ -766,10 +775,50 @@ fun ItundaAppScreen(
             }
             return@IdsTheme
         }
-        if (showPay) {
-            BackHandler { showPay = false }
+        if (showShop) {
+            BackHandler { showShop = false }
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
-                Box(modifier = Modifier.fillMaxSize().padding(padding)) { PayTab(onBack = { showPay = false }) }
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    CommerceShopContent(
+                        deviceStepUpHost = { visible, onDismiss, onVerified ->
+                            DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
+                        },
+                    )
+                }
+            }
+            return@IdsTheme
+        }
+        if (showEats) {
+            BackHandler { showEats = false }
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    EatsContent(
+                        deviceStepUpHost = { visible, onDismiss, onVerified ->
+                            DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
+                        },
+                        pendingMerchantId = pendingEatsMerchantId,
+                        pendingMerchantName = pendingEatsMerchantName,
+                        onPendingMerchantConsumed = { pendingEatsMerchantId = null; pendingEatsMerchantName = null },
+                    )
+                }
+            }
+            return@IdsTheme
+        }
+        if (showHood) {
+            BackHandler { showHood = false }
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    HoodTab(
+                        onMessageSeller = { conversationId ->
+                            pendingConversationId = conversationId
+                            showHood = false
+                            selectedTab = ItundaTab.Messages
+                        },
+                        onOpenSettings = { showSettings = true },
+                        initialMode = pendingHoodMode ?: HoodMode.MARKETPLACE,
+                        onConsumedInitialMode = { pendingHoodMode = null },
+                    )
+                }
             }
             return@IdsTheme
         }
@@ -785,7 +834,7 @@ fun ItundaAppScreen(
                     pendingEatsMerchantId = merchantId
                     pendingEatsMerchantName = businessName
                     showMap = false
-                    selectedTab = ItundaTab.Shop
+                    showEats = true
                 },
             )
             return@IdsTheme
@@ -991,18 +1040,6 @@ fun ItundaAppScreen(
             AutoTopUpScreen(onBack = { showAutoTopUp = false })
             return@IdsTheme
         }
-        // Real My-activity overlay (2026-07-24) -- the exact inverse of the old
-        // showMenu overlay: My's own real content (orders/favorites/listings) is now
-        // reached one tap in from the All tab's profile icon, instead of All being
-        // nested under My.
-        if (showMyTab) {
-            MyTab(
-                onBack = { showMyTab = false },
-                onSwitchToShop = { showMyTab = false; selectedTab = ItundaTab.Shop },
-                onSwitchToHood = { showMyTab = false; selectedTab = ItundaTab.Hood },
-            )
-            return@IdsTheme
-        }
         if (showTransferHub) {
             if (showAutoTransfers) {
                 AutoTransferListScreen(
@@ -1022,7 +1059,7 @@ fun ItundaAppScreen(
                     onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient },
                     onOpenAutoTransfers = { showAutoTransfers = true },
                     onOpenScheduledTransfers = { showScheduledTransfers = true },
-                    onSplitBill = { showTransferHub = false; selectedTab = ItundaTab.Talk },
+                    onSplitBill = { showTransferHub = false; selectedTab = ItundaTab.Messages },
                     onOpenHistory = { showTransferHub = false; showTransactionHistory = true },
                 )
             }
@@ -1050,46 +1087,43 @@ fun ItundaAppScreen(
                         onOpenTransactionHistory = { showTransactionHistory = true },
                         onOpenSpendingInsight = { showSpending = true },
                         onCashOutAtAgent = { showAgentCash = true },
-                        onOpenPay = { showPay = true },
+                        onOpenPay = { selectedTab = ItundaTab.Pay },
                         onOpenNotifications = { showSettings = true },
                         onOpenSacco = { showSacco = true },
                         onOpenIkimina = { showIkimina = true },
                         onOpenMotoOwnership = { showMotoOwnership = true },
                         onOpenHarvestAdvance = { showHarvestAdvance = true },
                     )
-                    ItundaTab.Shop -> ShopTab(
-                        pendingEatsMerchantId = pendingEatsMerchantId,
-                        pendingEatsMerchantName = pendingEatsMerchantName,
-                        onPendingEatsConsumed = { pendingEatsMerchantId = null; pendingEatsMerchantName = null },
-                    )
-                    ItundaTab.Hood -> HoodTab(
-                        onMessageSeller = { conversationId ->
-                            pendingConversationId = conversationId
-                            selectedTab = ItundaTab.Talk
-                        },
-                        onOpenSettings = { showSettings = true },
-                        initialMode = pendingHoodMode ?: HoodMode.MARKETPLACE,
-                        onConsumedInitialMode = { pendingHoodMode = null },
-                    )
+                    // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
+                    // comment) -- previously PayTab was only reachable via a showPay
+                    // overlay from Home's QR icon or a Menu row. No BackHandler here,
+                    // same as Explore/You below: a persistent bottom-nav destination,
+                    // not a screen pushed on top of one.
+                    ItundaTab.Pay -> PayTab()
                     // Seventh and final Feature extraction (2026-07-23) -- see
                     // TalkScreen.kt's own header comment for why deviceStepUpHost is
                     // injected (DeviceStepUpHost.kt wraps :features:payments:impl's
                     // dialog, so it can't become a direct Feature-to-Feature dependency).
-                    ItundaTab.Talk -> TalkTab(
+                    ItundaTab.Messages -> TalkTab(
                         initialConversationId = pendingConversationId,
                         onConsumedInitial = { pendingConversationId = null },
                         deviceStepUpHost = { visible, onDismiss, onVerified ->
                             DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                         },
                     )
-                    // Real 전체 (All services) primary bottom tab (2026-07-24) -- see
-                    // ItundaTab.All's own doc comment for why this replaced My here.
-                    ItundaTab.All -> {
+                    // Real Explore tab (2026-08-10, renamed from All) -- see
+                    // ItundaTab's own doc comment. Same MenuScreen this file has used
+                    // since 2026-07-24, just reached via a differently-named tab; Shop
+                    // and Hood are new rows here (onOpenShop/onOpenHood below) since
+                    // they lost their own primary tabs. Pay and My aren't rows here
+                    // anymore -- both are their own primary tabs now.
+                    ItundaTab.Explore -> {
                         val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
                         MenuScreen(
-                            onOpenMyTab = { showMyTab = true },
+                            onOpenShop = { showShop = true },
+                            onOpenEats = { showEats = true },
+                            onOpenHood = { showHood = true },
                             onOpenSettings = { showSettings = true },
-                            onOpenPay = { showPay = true },
                             onOpenBenefits = { showBenefits = true },
                             onOpenInvest = { showInvest = true },
                             onOpenMap = { showMap = true },
@@ -1129,11 +1163,22 @@ fun ItundaAppScreen(
                             onOpenMotoOwnership = { showMotoOwnership = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
-                            onSwitchToTalk = { selectedTab = ItundaTab.Talk },
-                            onOpenProperty = { pendingHoodMode = HoodMode.PROPERTY; selectedTab = ItundaTab.Hood },
+                            onSwitchToTalk = { selectedTab = ItundaTab.Messages },
+                            onOpenProperty = { pendingHoodMode = HoodMode.PROPERTY; showHood = true },
                             partnerMiniApps = partnerMiniApps,
                         )
                     }
+                    // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
+                    // comment) -- MyTab's own real content (orders/favorites/listings)
+                    // is completely unchanged, just reached directly instead of via
+                    // Explore's profile icon. No BackHandler, same persistent-tab
+                    // reasoning as Pay/Explore above.
+                    ItundaTab.You -> MyTab(
+                        onBack = {},
+                        onSwitchToShop = { showShop = true },
+                        onSwitchToEats = { showEats = true },
+                        onSwitchToHood = { showHood = true },
+                    )
                 }
             }
         }
@@ -1783,19 +1828,20 @@ private fun PayTab(onBack: () -> Unit = {}) {
     }
 }
 
-// Real 전체 (All services) primary bottom tab (2026-07-24, promoted from a My-tab-nested
-// overlay) -- see ItundaTab.All's own doc comment for the full history: separated from My
-// at the user's own direct request in an earlier pass ("My and All screen should be
-// separated like KakaoPay"), then brought back to the bottom nav directly once mini-apps
-// and (planned) games meant this exhaustive service catalog needed to be one tap away,
-// not nested two taps under My. MyTab is now the secondary, profile-icon-reachable
-// screen for the personal-activity content (orders/favorites/listings) that doesn't
+// Real Explore primary bottom tab (renamed 2026-08-10 from All -- see ItundaTab's own
+// doc comment for the full history: separated from My at the user's own direct
+// request in an earlier pass ("My and All screen should be separated like KakaoPay"),
+// then brought back to the bottom nav directly once mini-apps and (planned) games
+// meant this exhaustive service catalog needed to be one tap away, not nested two
+// taps under My; My is now its own primary tab (ItundaTab.You) instead of a
+// profile-icon-reachable screen from here. Content that doesn't
 // belong in an exhaustive product catalog.
 @Composable
 private fun MenuScreen(
-    onOpenMyTab: () -> Unit = {},
+    onOpenShop: () -> Unit = {},
+    onOpenEats: () -> Unit = {},
+    onOpenHood: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
-    onOpenPay: () -> Unit = {},
     onOpenBenefits: () -> Unit = {},
     onOpenInvest: () -> Unit = {},
     onOpenMap: () -> Unit = {},
@@ -1864,8 +1910,20 @@ private fun MenuScreen(
     // 16 heavier categories below them collapse.
     var expandedMenuSection by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
+    // Shop/Eats added here as two separate flat rows (2026-08-10, real user
+    // correction) -- both lost their own primary tab (see ItundaTab's own doc
+    // comment), and nesting them behind one "Shop" row with its own internal
+    // Shop/Eats toggle would be a tab bar inside a tab: real noise a flat catalog
+    // shouldn't have. Each opens its real feature/impl content directly. Pay's own
+    // row removed since Pay is now a primary tab itself, not something Explore needs
+    // to surface. Hood stays one row for now -- Marketplace/Community/Jobs/Property
+    // share real, deliberately Karrot-sourced top-bar/chip-row/FAB state inside
+    // HoodTab (not a simple toggle like Shop/Eats was), so splitting it the same way
+    // needs a real decision on that shared UI, not a mechanical change.
     val quickLinksRows = listOf(
-        FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
+        FlatRow("Shop", subtitle = "Coupang-style commerce", icon = Icons.Outlined.ShoppingBag, iconColor = AccentBlue, onClick = onOpenShop),
+        FlatRow("Eats", subtitle = "Food delivery, order or deliver", icon = Icons.Outlined.Fastfood, iconColor = AccentOrange, onClick = onOpenEats),
+        FlatRow("Hood", subtitle = "Marketplace, community, jobs, property", icon = Icons.Outlined.LocationOn, iconColor = AccentTeal, onClick = onOpenHood),
         FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
         FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
         FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
@@ -2003,7 +2061,7 @@ private fun MenuScreen(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
-        item { AllTopBar(onOpenSettings = onOpenSettings, onOpenMyTab = onOpenMyTab) }
+        item { AllTopBar(onOpenSettings = onOpenSettings) }
         item {
             SearchBar(
                 query = menuSearchQuery,
@@ -2296,6 +2354,7 @@ private fun MenuScreen(
 private fun MyTab(
     onBack: () -> Unit,
     onSwitchToShop: () -> Unit = {},
+    onSwitchToEats: () -> Unit = {},
     onSwitchToHood: () -> Unit = {},
 ) {
     var shopOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.OrderDto>>(emptyList()) }
@@ -2380,7 +2439,7 @@ private fun MyTab(
             }
             items(eatsOrders.take(3)) { order ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToShop).padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToEats).padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column {
@@ -2404,7 +2463,7 @@ private fun MyTab(
                     FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
                     FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
                     FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
-                    FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToShop),
+                    FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToEats),
                 ),
             )
         }
@@ -3010,25 +3069,19 @@ private fun PayFeatureCard() {
 
 // Was a text navbar -- "ID | Support | Settings" with pipe separators --
 // a website convention with no equivalent anywhere in real Toss. The
-// 전체 (All) tab top bar is just the user's name plus a single settings
+// Explore tab top bar is just the user's name plus a single settings
 // icon button; support/ID live as rows further down the list, not up here.
+// The profile icon this bar used to show (2026-07-24 - 2026-08-10) is gone --
+// You is its own primary tab now (see ItundaTab's own doc comment), so a
+// second way to reach the same screen from here would be a real duplicate,
+// not a convenience.
 @Composable
-private fun AllTopBar(onOpenSettings: () -> Unit = {}, onOpenMyTab: (() -> Unit)? = null) {
+private fun AllTopBar(onOpenSettings: () -> Unit = {}) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("TUYIZERE ERIC", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-        Row {
-            // Real My-activity screen (2026-07-24, inverted from Menu) -- see
-            // ItundaTab.All's own doc comment: the profile icon now leads to the
-            // personal-activity screen (orders/favorites/listings), the exact reverse
-            // of this bar's old Menu icon. Optional/nil so HomeTopBar's own reuse of a
-            // similar bar isn't affected.
-            if (onOpenMyTab != null) {
-                IdsIconButton(Icons.Outlined.Person, contentDescription = "My activity", onClick = onOpenMyTab)
-            }
-            // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
-            // wired directly to logout with no screen behind it at all.
-            IdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
-        }
+        // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
+        // wired directly to logout with no screen behind it at all.
+        IdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
     }
 }
 
