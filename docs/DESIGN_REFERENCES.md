@@ -4402,10 +4402,53 @@ research-body finding** (NN/g, Apple HIG); nothing here is `inferred`.
    works end-to-end in this codebase, extending the same real pattern to Home's own section
    ordering is a proven, low-risk next step, not a new capability to invent.
    *Target: `HomeView` -- not yet built.*
-3. **[partially-sourced] Search is not a first-class navigation entry point.** It currently only
-   exists inside the `All` tab. Real large apps increasingly treat search as a persistent,
-   always-reachable affordance (a header icon, not something buried one tab-switch away) precisely
-   because users who know what they want shouldn't have to browse a taxonomy to find it -- this is
-   implied by the JTBD framing above (support the goal directly) but no single named product's
-   exact placement was verified this pass; flagged for a follow-up search before building.
-   *Target: header row, `BankDashboard.tsx` -- not yet built, not fully sourced.*
+3. **[sourced, re-verified 2026-08-10] Search is not a first-class navigation entry point.** It
+   currently only exists inside the `All` tab. Re-searched specifically (previous pass only had a
+   partial source): the real, named-product decision rule is that a **visible, always-present**
+   search field belongs in a persistent header when search is central to the product (Netflix's
+   header search is the cited example); an **icon that expands** is the correct choice when search
+   is secondary but still needs to be reachable without a tab switch -- "hiding search behind an
+   icon saves space but adds a tap and reduces visibility." For a super-app the size of itunda
+   (34 real destinations behind one `All` tab, per Section 41's own tab audit), search is secondary
+   to browsing but genuinely needed for the "I know exactly what I want" case -- the icon-in-header
+   pattern is the correct fit, not the always-visible field a single-purpose search product would use.
+   *Target: header row (next to the language switcher / sign-out icon), `BankDashboard.tsx` --
+   not yet built.*
+
+### Three more real, verified gaps found while researching search/badges/dashboards (2026-08-10)
+
+4. **[sourced] No unread badge anywhere on the primary tab bar**, despite the data already
+   existing. `ConversationSummary.unreadCount`/`GroupSummary.unreadCount` are already fetched and
+   rendered *per conversation* inside the Talk tab's own list (`BankDashboard.tsx` ~8710/9375), and
+   a separate real in-app notification inbox (`NotificationsCard`, ~4979) already tracks its own
+   `unreadCount` -- but neither total ever reaches `PRIMARY_TABS`'s render (~20039), so a user gets
+   zero ambient signal that something needs attention without opening Talk or My first. Real,
+   named-product rule for exactly this case: use a **numeric badge, not a dot**, on the Talk icon,
+   because "the precise quantity drives the user's next action" for messages -- and cap the display
+   at two digits with a "99+" overflow so a large count never pushes neighboring tab labels around.
+   Do **not** also put a numeric badge on `All` for the general-notifications count -- mixing dot and
+   numeric styles on the same bar is the one explicitly-named anti-pattern here ("don't mix dot and
+   numeric badge designs on the same navigation bar"); a plain dot on `All` (not a number) is the
+   correct choice for "something changed" vs. "here's exactly how many."
+   *Target: `PRIMARY_TABS` render, `BankDashboard.tsx` -- not yet built.*
+5. **[sourced] Home's actual section order roughly matches the real Cash App pattern already**
+   (balance prominent at top, `AccountBalance` first in `HomeView`) -- this part of Section 41's
+   item 1 finding was too pessimistic; re-checked against Cash App's own documented layout
+   (balance display top, Money/Activity/Pay-Request below) and itunda's order is directionally
+   right. The real remaining gap is narrower than "no hierarchy at all": it's that all nine sections
+   render with equal visual weight (same card style, same spacing) with nothing collapsed or
+   deprioritized, so scrolling past `AccountBalance`+`QuickActions` still means passing five more
+   full-weight cards before reaching anything skippable. Section 41 item 1's fix (progressive
+   disclosure / de-emphasize or collapse the secondary five) still stands; just not "flat from the
+   top" as originally stated.
+6. **[sourced, itunda's own SPA architecture, not a named product] No deep-linkable state.**
+   `BankDashboard.tsx` holds `tab` in local `useState`, not a router -- there is no
+   `react-router`/URL-based navigation anywhere in this file or `App.tsx` (checked directly).
+   Refreshing the page, or sharing a link to a specific screen (a specific Insurance policy, a
+   specific chat), always lands back on Home. This isn't from the researched sources above (it's
+   this codebase's own real state, confirmed by grep, not a cited product finding) but it's the
+   same category of gap the deep-linking research flags as standard practice (Android's real
+   Navigation-component back-stack, iOS Universal Links) -- itunda's *native* apps already have a
+   real `itunda://` deep-link scheme (see Section 1's Maps entry); bank-mfe web has none at all.
+   *Target: `App.tsx`/`BankDashboard.tsx` -- real architectural gap, larger scope than the others
+   above, not yet scoped into a concrete plan.*
