@@ -484,7 +484,12 @@ function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => vo
           </div>
         )}
         {needsDeviceVerification ? (
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={onClose} />
+          // Real fix (2026-08-10): re-entering a password to verify the device already
+          // proves who's asking -- making the user then tap "Send" a second time for
+          // the exact transfer they just reviewed and confirmed adds friction, not
+          // security. handleConfirm resets needsDeviceVerification itself, so calling
+          // it directly both clears the prompt and retries the same transfer.
+          <DeviceStepUpPrompt onVerified={handleConfirm} onCancel={onClose} />
         ) : (
           <>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -1287,8 +1292,8 @@ function RequestMoneyCard() {
     }
   };
 
-  const handlePay = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePay = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setPaying(true);
     setError(null);
     setNeedsDeviceVerification(false);
@@ -1338,7 +1343,9 @@ function RequestMoneyCard() {
       )}
 
       {needsDeviceVerification ? (
-        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        // Real fix (2026-08-10) -- see TransferFlow's own identical fix for the full
+        // account. handlePay resets needsDeviceVerification itself.
+        <DeviceStepUpPrompt onVerified={() => handlePay()} onCancel={() => setNeedsDeviceVerification(false)} />
       ) : (
         <form onSubmit={handlePay} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <input
@@ -5989,7 +5996,9 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
           : 'No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.'}
       </p>
       {needsDeviceVerification ? (
-        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        // Real fix (2026-08-10) -- see TransferFlow's own identical fix for the full
+        // account. handleConfirm -> payDirect resets needsDeviceVerification itself.
+        <DeviceStepUpPrompt onVerified={handleConfirm} onCancel={() => setNeedsDeviceVerification(false)} />
       ) : preview ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <p style={{ fontSize: '14px', fontWeight: 700 }}>{preview.businessName}</p>
@@ -6236,8 +6245,8 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
     fetchStockHistory(stock.id, 14).then(setHistory).catch(() => setHistory([]));
   }, [stock.id]);
 
-  const handleTrade = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleTrade = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setError(null);
     setNeedsDeviceVerification(false);
     const shareCount = Number(shares);
@@ -6338,7 +6347,9 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
       </form>
       {needsDeviceVerification ? (
         <div style={{ marginTop: '10px' }}>
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+          {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the
+              full account. handleTrade resets needsDeviceVerification itself. */}
+          <DeviceStepUpPrompt onVerified={() => handleTrade()} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
         error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
@@ -6357,8 +6368,8 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
-  const handleFund = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFund = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setError(null);
     setNeedsDeviceVerification(false);
     const value = Number(amount);
@@ -6406,7 +6417,9 @@ function AddFundsCard({ onFunded }: { onFunded: () => void }) {
       )}
       {needsDeviceVerification ? (
         <div style={{ marginTop: '10px' }}>
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+          {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the
+              full account. handleFund resets needsDeviceVerification itself. */}
+          <DeviceStepUpPrompt onVerified={() => handleFund()} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
         error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
@@ -7378,6 +7391,13 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [searching, setSearching] = useState(false);
   // Real device binding step-up (2026-07-21) -- covers Gift send/claim below.
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real fix (2026-08-10): two different actions (send gift / claim gift) share this
+  // one flag+prompt, so re-verifying couldn't just re-call "the" handler like
+  // TransferFlow's own identical fix -- it has to retry whichever one was actually
+  // pending. See TransferFlow's own doc comment for the base account of why retrying
+  // at all matters: re-entering a password already proves who's asking, so making the
+  // user redo the original action by hand afterward is friction, not security.
+  const pendingDeviceRetryRef = useRef<(() => void) | null>(null);
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
   // Real screen-reader accessibility fix (docs/DESIGN_REFERENCES.md §14 -- Toss's own
@@ -7543,8 +7563,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     finally { setSearching(false); }
   };
 
-  const handleSendGift = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendGift = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     const amount = Number(giftAmount);
     if (!amount || amount <= 0) return;
     setSendingGift(true);
@@ -7562,6 +7582,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
       // showed only a generic error, same fix already applied to Transfer/Savings.
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = () => handleSendGift();
         setNeedsDeviceVerification(true);
       } else {
         setError(err instanceof ApiError ? err.message : 'Could not send this gift.');
@@ -7578,6 +7599,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       loadGifts();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = () => handleClaimGift(giftId);
         setNeedsDeviceVerification(true);
       } else {
         setError(err instanceof ApiError ? err.message : 'Could not open this gift.');
@@ -7902,7 +7924,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
 
       {needsDeviceVerification ? (
         <div style={{ marginBottom: '8px' }}>
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+          <DeviceStepUpPrompt
+            onVerified={() => { const retry = pendingDeviceRetryRef.current; pendingDeviceRetryRef.current = null; retry?.(); }}
+            onCancel={() => { pendingDeviceRetryRef.current = null; setNeedsDeviceVerification(false); }}
+          />
         </div>
       ) : (
         error && (
@@ -13444,8 +13469,8 @@ function MenuView({
     setExpandedProductId(null);
   };
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePlaceOrder = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!menu) return;
     setPlacing(true);
     setError(null);
@@ -13476,7 +13501,9 @@ function MenuView({
   if (needsDeviceVerification) {
     return (
       <div className="itunda-card">
-        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the full
+            account. handlePlaceOrder resets needsDeviceVerification itself. */}
+        <DeviceStepUpPrompt onVerified={() => handlePlaceOrder()} onCancel={() => setNeedsDeviceVerification(false)} />
       </div>
     );
   }
@@ -18233,6 +18260,15 @@ function MultiCartView({
   // hitting this once means every remaining order would fail identically -- the loop
   // below stops at the first one rather than collecting N duplicate failures.
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real fix (2026-08-10): this loop places one real order per merchant sequentially
+  // and used to stop dead at the first DEVICE_NOT_VERIFIED, requiring the buyer to
+  // resubmit the whole cart by hand -- which, naively retried, would have RE-PLACED
+  // every order that already succeeded before the failing one (a real duplicate-order
+  // bug, not just friction). These two refs let a retry resume from exactly the
+  // merchant that failed, keeping every already-placed order's result instead of
+  // restarting the loop from scratch.
+  const checkoutResultsRef = useRef<CommerceCheckoutResult[]>([]);
+  const checkoutResumeIndexRef = useRef(0);
 
   const groups = Object.entries(cart).filter(([, g]) => Object.values(g.lines).some((l) => l.quantity > 0));
   const grandTotal = groups.reduce(
@@ -18247,28 +18283,29 @@ function MultiCartView({
   // more honest than a swallowed Promise.allSettled. A failure on one merchant's
   // order does not block or roll back any other -- exactly how a real multi-seller
   // checkout behaves (each seller is charged/fulfilled independently in real life).
-  const handlePlaceOrders = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePlaceOrders = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setPlacing(true);
     setError(null);
     setNeedsDeviceVerification(false);
-    const results: CommerceCheckoutResult[] = [];
-    for (const [merchantId, group] of groups) {
+    for (let i = checkoutResumeIndexRef.current; i < groups.length; i++) {
+      const [merchantId, group] = groups[i];
       const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
       try {
         const result = await placeOrder(merchantId, items, address.trim(), getStoredReferralCode());
-        results.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
+        checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
       } catch (err) {
         if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+          checkoutResumeIndexRef.current = i;
           setNeedsDeviceVerification(true);
           setPlacing(false);
           return;
         }
-        results.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : 'Could not place this order.' });
+        checkoutResultsRef.current.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : 'Could not place this order.' });
       }
     }
     setPlacing(false);
-    onCheckedOut(results);
+    onCheckedOut(checkoutResultsRef.current);
   };
 
   return (
@@ -18307,7 +18344,10 @@ function MultiCartView({
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
             />
             {needsDeviceVerification ? (
-              <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+              // Real fix (2026-08-10) -- see checkoutResumeIndexRef's own doc comment.
+              // Resumes the remaining orders from where the loop stopped instead of
+              // re-placing every already-succeeded one.
+              <DeviceStepUpPrompt onVerified={() => handlePlaceOrders()} onCancel={() => setNeedsDeviceVerification(false)} />
             ) : (
               <>
                 {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
@@ -19371,7 +19411,9 @@ function InterestJarCard() {
       </div>
       {needsDeviceVerification ? (
         <div style={{ marginTop: '14px' }}>
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+          {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the
+              full account. handleClaim resets needsDeviceVerification itself. */}
+          <DeviceStepUpPrompt onVerified={handleClaim} onCancel={() => setNeedsDeviceVerification(false)} />
         </div>
       ) : (
         <button
@@ -19396,8 +19438,8 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
   const pct = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100));
 
-  const handleDeposit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDeposit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setBusy(true);
     setError(null);
     setNeedsDeviceVerification(false);
@@ -19444,7 +19486,9 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
       {depositing && (
         needsDeviceVerification ? (
           <div style={{ marginTop: '10px' }}>
-            <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setDepositing(false)} />
+            {/* Real fix (2026-08-10) -- see TransferFlow's own identical fix for the
+                full account. handleDeposit resets needsDeviceVerification itself. */}
+            <DeviceStepUpPrompt onVerified={() => handleDeposit()} onCancel={() => setDepositing(false)} />
           </div>
         ) : (
           <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
@@ -19536,6 +19580,10 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
   const [phoneNumber, setPhoneNumber] = useState('');
   const [busy, setBusy] = useState(false);
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real fix (2026-08-10) -- see the Talk conversation view's own identical
+  // pendingDeviceRetryRef for the full account: deposit and withdraw share this one
+  // flag+prompt, so retrying has to redo whichever one was actually pending.
+  const pendingDeviceRetryRef = useRef<(() => void) | null>(null);
   const myUserId = getStoredUser()?.id;
 
   // Real KakaoBank 회비 (dues) management (2026-07-26) -- see
@@ -19609,8 +19657,10 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       setAmount('');
       load();
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
-      else setError(err instanceof ApiError ? err.message : 'Could not deposit.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = handleDeposit;
+        setNeedsDeviceVerification(true);
+      } else setError(err instanceof ApiError ? err.message : 'Could not deposit.');
     } finally {
       setBusy(false);
     }
@@ -19625,8 +19675,10 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
       setAmount('');
       load();
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
-      else setError(err instanceof ApiError ? err.message : 'Could not withdraw.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = handleWithdraw;
+        setNeedsDeviceVerification(true);
+      } else setError(err instanceof ApiError ? err.message : 'Could not withdraw.');
     } finally {
       setBusy(false);
     }
@@ -19727,7 +19779,10 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
 
       {needsDeviceVerification ? (
         <div style={{ marginBottom: '16px' }}>
-          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+          <DeviceStepUpPrompt
+            onVerified={() => { const retry = pendingDeviceRetryRef.current; pendingDeviceRetryRef.current = null; retry?.(); }}
+            onCancel={() => { pendingDeviceRetryRef.current = null; setNeedsDeviceVerification(false); }}
+          />
         </div>
       ) : (
         <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
@@ -20273,6 +20328,10 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   const [message, setMessage] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real fix (2026-08-10) -- see the Talk conversation view's own identical
+  // pendingDeviceRetryRef for the full account: cancel and withdraw share this one
+  // flag+prompt, so retrying has to redo whichever one was actually pending.
+  const pendingDeviceRetryRef = useRef<(() => void) | null>(null);
 
   const load = () => {
     setError(null);
@@ -20293,8 +20352,10 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       setConfirmingCancel(false);
       load();
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
-      else setError(err instanceof ApiError ? err.message : 'Could not cancel this plan.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = handleCancel;
+        setNeedsDeviceVerification(true);
+      } else setError(err instanceof ApiError ? err.message : 'Could not cancel this plan.');
     } finally {
       setBusy(false);
     }
@@ -20309,8 +20370,10 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       setMessage(result.message);
       load();
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
-      else setError(err instanceof ApiError ? err.message : 'Could not withdraw this plan.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = handleWithdraw;
+        setNeedsDeviceVerification(true);
+      } else setError(err instanceof ApiError ? err.message : 'Could not withdraw this plan.');
     } finally {
       setBusy(false);
     }
@@ -20376,7 +20439,10 @@ function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
 
       {needsDeviceVerification ? (
-        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => { setNeedsDeviceVerification(false); setConfirmingCancel(false); }} />
+        <DeviceStepUpPrompt
+          onVerified={() => { const retry = pendingDeviceRetryRef.current; pendingDeviceRetryRef.current = null; retry?.(); }}
+          onCancel={() => { pendingDeviceRetryRef.current = null; setNeedsDeviceVerification(false); setConfirmingCancel(false); }}
+        />
       ) : (
         <>
           {plan.status === 'ACTIVE' && (
