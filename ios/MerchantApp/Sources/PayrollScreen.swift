@@ -110,8 +110,13 @@ private struct RosterCard: View {
         if needsDeviceVerification {
             ZStack {
                 Color.black.opacity(0.3).ignoresSafeArea()
+                // Real fix (2026-08-10): found live-testing bank-mfe's identical device
+                // verification flow -- onVerified used to just clear the flag, so
+                // completing the password prompt did nothing; the merchant still had to
+                // find and tap "Run payroll" a second time for the batch they'd already
+                // confirmed.
                 DeviceStepUpDialog(
-                    onVerified: { needsDeviceVerification = false },
+                    onVerified: { if let roster { Task { await runPayroll(roster: roster) } } else { needsDeviceVerification = false } },
                     onCancel: { needsDeviceVerification = false }
                 )
             }
@@ -149,6 +154,7 @@ private struct RosterCard: View {
     private func runPayroll(roster: [PayrollEmployeeDto]) async {
         running = true
         runError = nil
+        needsDeviceVerification = false
         defer { running = false }
         do {
             let result = try await MerchantNetworkClient.shared.runPayroll()

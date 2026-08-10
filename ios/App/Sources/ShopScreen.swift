@@ -1133,6 +1133,17 @@ private struct MultiCartView: View {
     // collecting N duplicate failures, same fix already applied to bank-mfe's
     // MultiCartView/Android's MultiCartView.
     @State private var needsDeviceVerification = false
+    // Real fix (2026-08-10): found live-testing bank-mfe's identical checkout screen
+    // -- retrying after device verification here used to just clear the flag with no
+    // retry at all, and even a naive "just call placeOrders() again" retry would have
+    // RE-PLACED every order that already succeeded before the failure (a real
+    // duplicate-order bug). `groups` below is a Dictionary(grouping:) computed
+    // property with no guaranteed stable iteration order, so resuming by index into a
+    // freshly recomputed `groups` on retry could point at the wrong merchant entirely
+    // -- these snapshot the ordered list once, on the first attempt, and reuse it.
+    @State private var checkoutGroups: [(merchantId: String, businessName: String, lines: [CommerceCartLine])]?
+    @State private var checkoutResults: [CommerceCheckoutResult] = []
+    @State private var checkoutResumeIndex = 0
 
     private var groups: [(merchantId: String, businessName: String, lines: [CommerceCartLine])] {
         Dictionary(grouping: cart.values, by: { $0.merchantId })
@@ -1212,7 +1223,7 @@ private struct MultiCartView: View {
             DeviceStepUpHost(
                 visible: needsDeviceVerification,
                 onDismiss: { needsDeviceVerification = false },
-                onVerified: { needsDeviceVerification = false }
+                onVerified: { await placeOrders() }
             )
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
@@ -1223,25 +1234,28 @@ private struct MultiCartView: View {
         error = nil
         needsDeviceVerification = false
         defer { submitting = false }
-        var results: [CommerceCheckoutResult] = []
-        for group in groups {
+        let orderedGroups = checkoutGroups ?? groups
+        checkoutGroups = orderedGroups
+        for i in checkoutResumeIndex..<orderedGroups.count {
+            let group = orderedGroups[i]
             do {
                 let res = try await NetworkClient.shared.placeOrder(PlaceOrderRequest(
                     merchantId: group.merchantId,
                     items: group.lines.map { OrderItemRequest(productId: $0.product.id, quantity: $0.quantity) },
                     deliveryAddress: address.trimmingCharacters(in: .whitespaces)
                 ))
-                results.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: res.order, error: nil))
+                checkoutResults.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: res.order, error: nil))
             } catch NetworkError.deviceNotVerified {
+                checkoutResumeIndex = i
                 needsDeviceVerification = true
                 return
             } catch let NetworkError.httpError(statusCode) {
-                results.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: nil, error: TalkScreen.errorMessage(statusCode)))
+                checkoutResults.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: nil, error: TalkScreen.errorMessage(statusCode)))
             } catch {
-                results.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: nil, error: "Couldn't reach itunda. Check your connection and try again."))
+                checkoutResults.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: nil, error: "Couldn't reach itunda. Check your connection and try again."))
             }
         }
-        onOrderPlaced(results)
+        onOrderPlaced(checkoutResults)
     }
 }
 
@@ -2765,7 +2779,9 @@ private struct PayByCodeCard: View {
             }
         }
         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
-        DeviceStepUpHost(visible: needsDeviceVerification, onDismiss: { needsDeviceVerification = false }, onVerified: { needsDeviceVerification = false })
+        // Real fix (2026-08-10) -- see MultiCartView's own identical fix above for the
+        // full account. payDirect resets needsDeviceVerification itself.
+        DeviceStepUpHost(visible: needsDeviceVerification, onDismiss: { needsDeviceVerification = false }, onVerified: { await payDirect(couponId: selectedCouponId) })
     }
 
     private func payDirect(couponId: String? = nil) async {

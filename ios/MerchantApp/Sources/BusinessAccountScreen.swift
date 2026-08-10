@@ -133,14 +133,21 @@ private struct MoveMoneyCard: View {
     @State private var moving = false
     @State private var error: String?
     @State private var needsDeviceVerification = false
+    // Real fix (2026-08-10): found live-testing bank-mfe's identical Group account
+    // deposit/withdraw bug -- "To business" and "To personal" move money in opposite
+    // directions but shared this one flag+dialog, and onVerified just cleared the
+    // flag with no retry at all. Worse than the pure-friction version of this bug:
+    // moveToBusiness/moveToPersonal are genuinely different real transfers, so this
+    // tracks which direction was actually pending rather than guessing.
+    @State private var pendingMoveAction: (() async -> Void)?
 
     var body: some View {
         if needsDeviceVerification {
             ZStack {
                 Color.black.opacity(0.3).ignoresSafeArea()
                 DeviceStepUpDialog(
-                    onVerified: { needsDeviceVerification = false },
-                    onCancel: { needsDeviceVerification = false }
+                    onVerified: { let action = pendingMoveAction; pendingMoveAction = nil; if let action { Task { await action() } } else { needsDeviceVerification = false } },
+                    onCancel: { pendingMoveAction = nil; needsDeviceVerification = false }
                 )
             }
         } else {
@@ -178,6 +185,7 @@ private struct MoveMoneyCard: View {
         }
         moving = true
         error = nil
+        needsDeviceVerification = false
         defer { moving = false }
         do {
             _ = toBusiness
@@ -186,6 +194,7 @@ private struct MoveMoneyCard: View {
             amountText = ""
             onMoved()
         } catch NetworkError.deviceNotVerified {
+            pendingMoveAction = { await self.move(toBusiness: toBusiness) }
             needsDeviceVerification = true
         } catch {
             self.error = "Couldn't move this money. Check your balance."

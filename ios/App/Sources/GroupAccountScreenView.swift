@@ -142,6 +142,13 @@ private struct GroupAccountDetailContent: View {
     @State private var duesBusy = false
     @State private var remindedCount: Int?
     @State private var needsDeviceVerification = false
+    // Real fix (2026-08-10): found live-testing bank-mfe's identical Group account
+    // screen -- deposit and withdraw share this one flag+dialog, but onVerified below
+    // unconditionally called deposit(). If a user was actually WITHDRAWING and hit
+    // deviceNotVerified, verifying would silently DEPOSIT the same amount instead --
+    // the opposite of what they asked for, not just a friction gap. Tracks which
+    // action was actually pending so the retry redoes the right one.
+    @State private var pendingDeviceAction: (() async -> Void)?
 
     private var isOwner: Bool {
         guard let detail, let myUserId = KeychainTokenStore.shared.getUserId() else { return false }
@@ -230,10 +237,11 @@ private struct GroupAccountDetailContent: View {
             }
             DeviceStepUpHost(
                 visible: needsDeviceVerification,
-                onDismiss: { needsDeviceVerification = false },
+                onDismiss: { pendingDeviceAction = nil; needsDeviceVerification = false },
                 onVerified: {
-                    needsDeviceVerification = false
-                    if !amount.isEmpty { await deposit() }
+                    let action = pendingDeviceAction
+                    pendingDeviceAction = nil
+                    await action?()
                 }
             )
         }
@@ -326,6 +334,7 @@ private struct GroupAccountDetailContent: View {
             error = nil
             await load()
         } catch NetworkError.deviceNotVerified {
+            pendingDeviceAction = { await self.deposit() }
             needsDeviceVerification = true
         } catch {
             self.error = "Could not deposit."
@@ -343,6 +352,7 @@ private struct GroupAccountDetailContent: View {
             error = nil
             await load()
         } catch NetworkError.deviceNotVerified {
+            pendingDeviceAction = { await self.withdraw() }
             needsDeviceVerification = true
         } catch {
             self.error = "Could not withdraw."

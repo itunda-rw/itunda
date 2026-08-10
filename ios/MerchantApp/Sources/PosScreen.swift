@@ -211,8 +211,12 @@ private struct CardCheckoutView: View {
         if needsDeviceVerification {
             ZStack {
                 Color.black.opacity(0.3).ignoresSafeArea()
+                // Real fix (2026-08-10) -- see PayrollScreen.swift's own identical fix
+                // for the full account. Card fields are unchanged while the dialog is
+                // up, so re-reading them via charge() on retry is the same charge the
+                // merchant already confirmed.
                 DeviceStepUpDialog(
-                    onVerified: { needsDeviceVerification = false },
+                    onVerified: { Task { await charge() } },
                     onCancel: { needsDeviceVerification = false }
                 )
             }
@@ -254,6 +258,7 @@ private struct CardCheckoutView: View {
         }
         submitting = true
         error = nil
+        needsDeviceVerification = false
         defer { submitting = false }
         do {
             let charge = try await MerchantNetworkClient.shared.chargeCard(
