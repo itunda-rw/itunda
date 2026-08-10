@@ -295,9 +295,155 @@ struct EntireMenuScreen: View {
     // bank-mfe shipped first (commits cf9d72fe/808a7ce4); this is the first native
     // client.
     @State private var showMotoOwnership = false
+    // Real fix (2026-08-10) -- see IdsSearchBar's own doc comment for the full
+    // account of the fake-search-bar bug this closes.
+    @State private var menuSearchQuery: String = ""
+
+    // Real fix (2026-08-10): a second, independent list of the exact same 17
+    // sections/rows rendered below, built purely so search can filter across all of
+    // them without touching the two `Group { }` blocks below -- those are a real,
+    // version-sensitive Swift ViewBuilder child-count workaround (see this struct's
+    // own header comment on why 15 children needed splitting for Xcode 14.3.1/Swift
+    // 5.8.1), and this file has no way to `xcodebuild` verify a restructuring of
+    // them (App target CocoaPods/RN-bridge gap, documented elsewhere in this repo).
+    // Duplicating the row list is a small, deliberate trade against a real risk of a
+    // silent, unverifiable break in the one iOS screen most repeatedly identified as
+    // needing "organized, not a data dump" -- not touching that structure at all is
+    // the safer failure mode. Every title/action pair below is a literal copy of the
+    // matching row two Groups down; if one changes, the other must too.
+    private var searchableMenuSections: [(title: String, rows: [FlatRow])] {
+        [
+            ("Quick links", [
+                FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
+                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
+                FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
+                FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
+                FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
+                FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentBlue, action: { showCard = true }),
+                FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
+                FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
+                FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "chart.pie.fill", tint: .accentPurple, action: { showSacco = true }),
+                FlatRow(title: "Harvest advance", subtitle: "Coffee cooperative input financing", symbol: "leaf.fill", tint: .accentTeal, action: { showHarvestAdvance = true }),
+                FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "banknote.fill", tint: .accentBlue, action: { showVupLoan = true }),
+                FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
+            ]),
+            ("Mini apps", [
+                FlatRow(title: "Wallet balance", showChevron: true, action: { showWalletBalanceMiniApp = true }),
+                FlatRow(title: "Pay bills", showChevron: true, action: { showPayBillsMiniApp = true }),
+                FlatRow(title: "Reward tasks", showChevron: true, action: { showRewardTasksMiniApp = true }),
+                FlatRow(title: "Insurance", showChevron: true, action: { showInsuranceMiniApp = true }),
+            ]),
+            ("Accounts & cards", [
+                FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue, action: { showOverview = true }),
+                FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
+                FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
+                FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
+                FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", symbol: "calendar", tint: .accentBlue, action: { showSubscriptions = true }),
+                FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
+            ]),
+            ("Send & pay", [
+                FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentBlue, action: onOpenTransferHub),
+                FlatRow(title: "Request money", subtitle: "Generate a real payment request code", symbol: "text.badge.plus", tint: .accentBlue, action: { showRequestMoney = true }),
+                FlatRow(title: "Auto top-up", subtitle: "Refill your wallet automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentBlue, action: { showAutoTopUp = true }),
+                FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal, action: { showPayBillsMiniApp = true }),
+            ]),
+            ("Save & grow", [
+                FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
+                FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
+            ]),
+            ("Borrow", [
+                FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
+                FlatRow(title: "Moto-Taxi Ownership", subtitle: "Save a 30% down payment, then convert to a loan for your own bike", symbol: "bicycle", tint: .accentTeal, action: { showMotoOwnership = true }),
+            ]),
+            ("Transport", [
+                FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
+                FlatRow(title: "Designated driver", subtitle: "A driver takes you and your own car home", symbol: "arrow.left.arrow.right", tint: .accentTeal, action: { showDesignatedDriver = true }),
+                FlatRow(title: "Bike rental", subtitle: "Rent a nearby bike or scooter, billed by the minute", symbol: "bicycle", tint: .accentBlue, action: { showBikeRental = true }),
+                FlatRow(title: "Parking", subtitle: "Rent a nearby parking spot, billed by the hour", symbol: "parkingsign.circle.fill", tint: .accentPurple, action: { showParking = true }),
+                FlatRow(title: "Bus", subtitle: "Book intercity bus seats or post your own route", symbol: "bus.fill", tint: .accentTeal, action: { showBus = true }),
+                FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
+                FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", symbol: "car.fill", tint: .accentTeal, action: { showVehicleValuation = true }),
+            ]),
+            ("Community & trust", [
+                FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
+                FlatRow(title: "Q&A", subtitle: "Ask a question, answer one, get adopted", symbol: "questionmark.circle.fill", tint: .accentPurple, action: { showKnowledge = true }),
+            ]),
+            ("Cash agent tools", [
+                FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentBlue, action: { showAgentOperator = true }),
+                FlatRow(title: "Float marketplace", subtitle: "For assigned cash-agents: offer or request float from nearby agents", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentTeal, action: { showFloatMarketplace = true }),
+            ]),
+            ("Switch & save", [
+                FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal, action: { showLoans = true }),
+                FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal, action: { showLoans = true }),
+            ]),
+            ("Cards", [
+                FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed, action: { showCard = true }),
+                FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray, action: { showCard = true }),
+            ]),
+            ("Services", [
+                FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentBlue),
+                FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentBlue),
+                FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
+                FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentBlue, action: { showPayBillsMiniApp = true }),
+                FlatRow(title: "Claim interest now", symbol: "bolt.fill", tint: .accentPurple, action: onClaimInterest),
+                FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
+                FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentBlue, action: onSwitchToTalk),
+                FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentBlue),
+                FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
+            ]),
+            ("Foreign currency", [
+                FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple, action: { showForeignCurrency = true }),
+                FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
+            ]),
+            ("Grow your money", [
+                FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal, action: { showInvest = true }),
+                FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentBlue, action: { showInvest = true }),
+                FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed, action: { showInvest = true }),
+                FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal, action: { showInvest = true }),
+            ]),
+            ("Pension", [
+                FlatRow(title: "Check my RSSB pension", symbol: "building.columns.fill", tint: .accentBlue),
+                FlatRow(title: "Pension products", symbol: "percent", tint: .accentBlue),
+            ]),
+            ("Loans", [
+                FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showLoans = true }),
+                FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+            ]),
+            ("Notifications & consent", [
+                FlatRow(title: "Notifications", showChevron: true, action: onOpenSettings),
+                FlatRow(title: "Credit data usage policy"),
+                FlatRow(title: "Privacy policy"),
+                FlatRow(title: "Terms & consent"),
+            ]),
+            ("Support", [
+                FlatRow(title: "FAQ"),
+                FlatRow(title: "Live chat"),
+                FlatRow(title: "Call support"),
+                FlatRow(title: "Report an issue with a transaction", showChevron: true, action: { showSupport = true }),
+                FlatRow(title: "My support tickets", showChevron: true, action: { showSupport = true }),
+                FlatRow(title: "Announcements"),
+            ]),
+        ]
+    }
+
+    private var matchingSearchSections: [(title: String, rows: [FlatRow])] {
+        let query = menuSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return [] }
+        return searchableMenuSections.compactMap { section in
+            let matches = section.rows.filter { $0.title.localizedCaseInsensitiveContains(query) }
+            return matches.isEmpty ? nil : (section.title, matches)
+        }
+    }
 
     var body: some View {
         ScrollView {
+            // Real fix (2026-08-10): menuSearchQuery.isEmpty branch below is the
+            // pre-existing browse view, completely unchanged. The non-empty branch
+            // is new and independent -- see searchableMenuSections's own doc comment
+            // for why this doesn't touch the Group split below at all.
+            if menuSearchQuery.isEmpty {
             VStack(spacing: IDS.Layout.sectionSpacing) {
                 // Split across two Group blocks (2026-07-11, found via a real
                 // xcodebuild against Xcode 14.3.1/Swift 5.8.1 -- see this file's
@@ -330,7 +476,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "VUP Financial Services", subtitle: "Means-tested government microloan for farming, livestock, business", symbol: "banknote.fill", tint: .accentBlue, action: { showVupLoan = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
-                    IdsSearchBar(placeholder: "Search")
+                    IdsSearchBar(text: $menuSearchQuery, placeholder: "Search everything else")
                     IconGridSection(title: "Quick access", items: [
                         ("Mini", "square.grid.2x2.fill"),
                         ("Games", "gamecontroller.fill"),
@@ -533,6 +679,24 @@ struct EntireMenuScreen: View {
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, IDS.Layout.screenTop)
             .padding(.bottom, IDS.Layout.sectionSpacing)
+            } else {
+                VStack(alignment: .leading, spacing: IDS.Layout.sectionSpacing) {
+                    IdsAllTopBar(onOpenSettings: onOpenSettings, onOpenMyTab: onOpenMyTab)
+                    IdsSearchBar(text: $menuSearchQuery, placeholder: "Search everything else")
+                    if matchingSearchSections.isEmpty {
+                        Text("No match for \"\(menuSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines))\".")
+                            .font(IDS.scaledFont(size: 14, weight: .regular, relativeTo: .body))
+                            .foregroundColor(IDS.Colors.textTertiary)
+                    } else {
+                        ForEach(matchingSearchSections, id: \.title) { section in
+                            FlatSection(title: section.title, rows: section.rows)
+                        }
+                    }
+                }
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                .padding(.top, IDS.Layout.screenTop)
+                .padding(.bottom, IDS.Layout.sectionSpacing)
+            }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .sheet(isPresented: $showPayBillsMiniApp) {
@@ -1082,17 +1246,34 @@ struct IdsPlainTopBar: View {
     }
 }
 
+// Real fix (2026-08-10, matching Android's identical fix to ItundaAppScreen.kt's
+// own SearchBar): this was pure decoration -- a Text label, no TextField, nothing
+// typed into it ever did anything. Worse than no search bar at all: it promised a
+// feature that wasn't there. Now a real bound text field; EntireMenuScreen wires it
+// to actually filter every FlatSection row by title.
 struct IdsSearchBar: View {
+    @Binding var text: String
     let placeholder: String
     var body: some View {
-        Text(placeholder)
-            .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .body))
-            .foregroundColor(IDS.Colors.textSecondary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(IDS.Colors.chipBackground)
-            .cornerRadius(14)
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(IDS.Colors.textTertiary)
+                .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .body))
+            TextField(placeholder, text: $text)
+                .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .body))
+                .foregroundColor(IDS.Colors.textPrimary)
+            if !text.isEmpty {
+                Button(action: { text = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(IDS.Colors.textTertiary)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(IDS.Colors.chipBackground)
+        .cornerRadius(14)
     }
 }
 
