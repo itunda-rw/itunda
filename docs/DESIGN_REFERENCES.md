@@ -4486,3 +4486,52 @@ headless-Chrome click-throughs. iOS's App target has a pre-existing, independent
 CocoaPods/React-Native-bridge gap that blocks `xcodebuild` here entirely (unrelated to these
 changes); iOS was verified instead via `swift -frontend -parse` (clean) plus an exhaustive manual
 grep sweep confirming no orphaned references to any retired symbol.
+
+## 42. itunda Bank split from itunda Pay as a distinct product identity
+
+**2026-08-11.** Mid-session naming near-miss: the user asked "wait what is itunda wallet I thought
+we have itunda bank?" -- the switcher's "itunda wallet" label was briefly (and wrongly) renamed to
+"Itunda Bank" on the strength of `TOSS_FEATURE_SPECIFICATION.md`'s aspirational "Pillar 3: Digital
+Banking" roadmap entry, before checking `TOSS_PARITY_MATRIX.md` (the doc that tracks what's
+actually built/verified) confirmed zero real licensed-banking implementation exists anywhere in
+the codebase. The user corrected this directly: "wallet is deference from bank, kakao have both
+wallet and bank right?" and asked for real research before any further naming change.
+
+`WebSearch` confirmed: KakaoPay is a real, unlicensed e-wallet embedded in KakaoTalk; KakaoBank is
+a real, separately-licensed digital bank -- genuinely distinct regulated products, not a
+generic/specific naming pair as first assumed. Toss keeps Bank, Securities, and Payments as
+distinct product identities inside one single app/account, not separate installs -- closer to
+itunda's own already-committed single-super-app model (Section 41's Home/Pay/Explore/Messages/You)
+than Kakao's separate-app split. The "itunda wallet" rename was reverted back to correct.
+
+Follow-up, same session: the user asked for itunda Bank and itunda Pay to actually exist as
+**separate products**, matching that real Toss/Kakao precedent. itunda Pay already had its own
+primary tab (`ItundaTab.Pay` / bank-mfe's `PayHub`); itunda Bank did not -- its real, already-built
+savings/SACCO/Ikimina/loans/investment features were scattered as flat rows competing with itunda
+Pay's own `WalletHeroCard` for the same visual weight, with no shared front door of their own (the
+"feels like code not product" complaint this whole doc traces back to). Real Toss's own bottom nav
+doesn't put Toss Bank there either despite it being a distinct product -- it's a surface reached
+from Home, not a 6th primary tab, so this didn't reopen Section 41's tab-count decision.
+
+Shipped same session, all 3 platforms, every row a real already-built screen (this only adds a
+shared entry point, no new feature implementations):
+- **Android**: new `BankSummaryCard` on Home (real aggregate total-saved figure) entering a new
+  `BankHubScreen` -- "Save & grow" (interest jar/goals/round-up/SACCO/Ikimina/weekly savings/
+  upfront deposit/investments) and "Borrow" (loans/VUP/student loan/Moto-Taxi Ownership), same
+  category names `MenuScreen`'s own "Real Toss Bank reference mapping" already uses. Live-verified
+  end to end on the physical device via `uiautomator`: Home -> Bank card -> hub (real RWF
+  1,330,000 total) -> Get a loan -> `LoansScreen` -> back -> hub -> back -> Home. Caught and fixed
+  a real bug during this: `ItundaAppScreen.kt`'s top-level `if (showX)` chain is sequential and
+  first-match-wins, so `showBank`'s block had to be ordered *after* every screen it deep-links into
+  (Sacco/Ikimina/Loans/etc.) -- checked first, it would just re-render the hub on every tap inside
+  it instead of opening what was tapped.
+- **Web** (`bank-mfe`): `SAVINGS` tab relabeled "itunda Bank"; `SavingsView` gets a real header
+  plus new "Borrow"/"Grow your money" rows navigating to the existing `LOANS`/`STOCKS` tabs (real
+  cross-tab navigation via `onNavigateToTab`, not a duplicate implementation); Home's
+  `CooperativeSavingsRail` rebranded from "Built for how Rwanda saves" to "itunda Bank" with a new
+  "See all in itunda Bank" row. en/rw translations added. Typecheck + `vite build` both clean.
+- **iOS**: `BankView`'s coop rail section rebranded from "Built for how Rwanda saves" to "itunda
+  Bank" (en/rw), with 2 new rows (Get a loan / Grow your money) wired to the existing
+  `LoansScreenView`/`InvestScreenView` via new `showLoans`/`showInvest` state in `ContentView`,
+  matching the `showSacco`/`showIkimina` precedent already there. Not build-verified (see Section
+  41's iOS `xcodebuild` gap note) -- syntax/reference-consistency only.
