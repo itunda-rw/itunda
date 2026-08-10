@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon, X } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -20705,6 +20705,32 @@ function SavingsView() {
   );
 }
 
+// Real IA fix (2026-08-10) -- see MORE_TAB_GROUPS's own doc comment for the full
+// account of how the More panel got here. Showing all 8 categories expanded at once
+// (32 items visible simultaneously) is the exact anti-pattern Hick's Law describes --
+// decision time rises with visible choice count, and UX research puts 1-5 visible
+// options as the target when speed matters. This tracks which of the 32 non-primary
+// tabs a user actually opens, most-recent-first, so the panel can surface what THEY
+// use instead of a static alphabetical/enum-order dump every time.
+const RECENT_TABS_KEY = 'itunda_bank_recent_more_tabs';
+const loadRecentTabs = (): Tab[] => {
+  try {
+    const raw = localStorage.getItem(RECENT_TABS_KEY);
+    return raw ? (JSON.parse(raw) as Tab[]) : [];
+  } catch {
+    return [];
+  }
+};
+const saveRecentTab = (id: Tab, current: Tab[]): Tab[] => {
+  const next = [id, ...current.filter((t) => t !== id)].slice(0, 6);
+  try {
+    localStorage.setItem(RECENT_TABS_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage unavailable (private browsing, quota) -- recent row just stays empty, not fatal
+  }
+  return next;
+};
+
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
@@ -20815,6 +20841,19 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const moreTabIds = MORE_TAB_GROUPS.flatMap((g) => g.ids);
   const isMoreTabActive = moreTabIds.includes(tab);
   const [showMoreTabs, setShowMoreTabs] = useState(false);
+  const [moreSearch, setMoreSearch] = useState('');
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [recentMoreTabs, setRecentMoreTabs] = useState<Tab[]>([]);
+  useEffect(() => { setRecentMoreTabs(loadRecentTabs()); }, []);
+  const selectMoreTab = (id: Tab) => {
+    setTab(id);
+    setShowMoreTabs(false);
+    setMoreSearch('');
+    setRecentMoreTabs(saveRecentTab(id, recentMoreTabs));
+  };
+  const moreSearchMatches = moreSearch.trim()
+    ? moreTabIds.filter((id) => tabLabel(id).toLowerCase().includes(moreSearch.trim().toLowerCase()))
+    : [];
 
   return (
     <div style={{ padding: '20px', paddingBottom: '100px', maxWidth: '480px', margin: '0 auto' }}>
@@ -20876,26 +20915,40 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         {showMoreTabs && (
           <>
             <div
-              onClick={() => setShowMoreTabs(false)}
+              onClick={() => { setShowMoreTabs(false); setMoreSearch(''); }}
               style={{ position: 'fixed', inset: 0, zIndex: 20, background: 'rgba(0,0,0,0.15)' }}
             />
             <div
               className="itunda-card"
               style={{
                 position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 21,
-                maxHeight: '70svh', overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '18px',
+                maxHeight: '70svh', overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px',
               }}
             >
-              {MORE_TAB_GROUPS.map((group) => (
-                <div key={group.title}>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 8px' }}>
-                    {group.title}
-                  </p>
+              <div style={{ position: 'relative' }}>
+                <Search size={15} color="var(--itunda-grey-500)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  value={moreSearch}
+                  onChange={(e) => setMoreSearch(e.target.value)}
+                  placeholder="Search everything else"
+                  aria-label="Search more features"
+                  style={{ width: '100%', padding: '9px 32px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', background: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-900)' }}
+                />
+                {moreSearch && (
+                  <button onClick={() => setMoreSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--itunda-grey-500)', display: 'flex' }}>
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+
+              {moreSearch.trim() ? (
+                moreSearchMatches.length > 0 ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {group.ids.map((id) => (
+                    {moreSearchMatches.map((id) => (
                       <button
                         key={id}
-                        onClick={() => { setTab(id); setShowMoreTabs(false); }}
+                        onClick={() => selectMoreTab(id)}
                         style={{
                           padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
                           color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-800)',
@@ -20906,8 +20959,73 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
                       </button>
                     ))}
                   </div>
-                </div>
-              ))}
+                ) : (
+                  <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '4px 0' }}>No match for "{moreSearch.trim()}".</p>
+                )
+              ) : (
+                <>
+                  {recentMoreTabs.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Clock size={12} /> Recently used
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {recentMoreTabs.map((id) => (
+                          <button
+                            key={id}
+                            onClick={() => selectMoreTab(id)}
+                            style={{
+                              padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
+                              color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-800)',
+                              backgroundColor: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                            }}
+                          >
+                            {tabLabel(id)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {MORE_TAB_GROUPS.map((group) => {
+                    const isOpen = expandedGroup === group.title;
+                    return (
+                      <div key={group.title}>
+                        <button
+                          onClick={() => setExpandedGroup(isOpen ? null : group.title)}
+                          aria-expanded={isOpen}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '2px 0', background: 'transparent', color: 'var(--itunda-grey-700)',
+                          }}
+                        >
+                          <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                            {group.title} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 500 }}>· {group.ids.length}</span>
+                          </span>
+                          <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                        </button>
+                        {isOpen && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                            {group.ids.map((id) => (
+                              <button
+                                key={id}
+                                onClick={() => selectMoreTab(id)}
+                                style={{
+                                  padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
+                                  color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-800)',
+                                  backgroundColor: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+                                }}
+                              >
+                                {tabLabel(id)}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </>
         )}
