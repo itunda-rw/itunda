@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -226,7 +226,10 @@ import {
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
+// Consumer navigation is deliberately organised around jobs, not the repository's
+// feature inventory. Specialist screens remain addressable as child destinations,
+// but only these five jobs belong in the primary navigation.
+type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'ACTIVITY' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   const { t } = useI18n();
@@ -797,6 +800,204 @@ function HomeView({ onNavigateToCard, onNavigateToTab, onNavigateToLoansMode, on
       <RequestMoneyCard />
       <MiniWalletCard />
       <DiscoverSection />
+    </div>
+  );
+}
+
+function ProductPageHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div style={{ margin: '4px 0 16px' }}>
+      <h1 style={{ margin: 0, color: 'var(--itunda-grey-900)', fontSize: '24px', letterSpacing: '-0.5px' }}>{title}</h1>
+      <p style={{ margin: '5px 0 0', color: 'var(--itunda-grey-500)', fontSize: '13px', lineHeight: 1.45 }}>{subtitle}</p>
+    </div>
+  );
+}
+
+// The pay surface brings the real, existing money-moving flows into one predictable
+// place. It does not create another payment implementation: every action below uses
+// the established transfer, bill, merchant-code, and payment-intent components.
+function PayHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
+  const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
+  const [facePayEnrolled, setFacePayEnrolled] = useState(false);
+
+  const loadWallet = () => {
+    fetchWallets().then((wallets) => setWallet(wallets.find((item) => item.type === 'MAIN') ?? wallets[0] ?? null)).catch(() => setWallet(null));
+  };
+
+  useEffect(() => {
+    loadWallet();
+    fetchFacePayStatus().then((result) => setFacePayEnrolled(result.enrolled)).catch(() => setFacePayEnrolled(false));
+  }, []);
+
+  if (paymentResult) return <PaymentConfirmation result={paymentResult} onDone={() => { setPaymentResult(null); loadWallet(); }} />;
+
+  return (
+    <div>
+      <ProductPageHeader title="Pay" subtitle="Send, receive, or pay with a clear confirmation before money moves." />
+      <div className="itunda-card" style={{ padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => setShowTransfer(true)} disabled={!wallet} style={{ minHeight: '52px' }}>
+          <Send size={17} /> Send money
+        </button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => onNavigateToTab('BILLS')} style={{ minHeight: '52px' }}>
+          <Receipt size={17} /> Bills & airtime
+        </button>
+      </div>
+      {showTransfer && wallet && (
+        <TransferFlow
+          walletBalance={wallet.balance}
+          onClose={() => setShowTransfer(false)}
+          onSuccess={() => { setShowTransfer(false); loadWallet(); }}
+        />
+      )}
+      <RequestMoneyCard />
+      <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled} />
+      <PayByStaticQrCard onPaid={setPaymentResult} />
+    </div>
+  );
+}
+
+// A lightweight hub, not a page that stacks three full views -- matches the
+// nav-card pattern used by ExploreHub/YouHub below instead of forcing every
+// visitor to load and scroll past Overview + Spending + Subscriptions at once.
+function ActivityHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
+  const sections: { label: string; description: string; tab: Tab }[] = [
+    { label: 'Overview', description: 'Balances and account summary.', tab: 'OVERVIEW' },
+    { label: 'Spending insights', description: 'Where your money went this month.', tab: 'SPENDING' },
+    { label: 'Subscriptions', description: 'Recurring payments you have active.', tab: 'SUBSCRIPTIONS' },
+  ];
+  return (
+    <div>
+      <ProductPageHeader title="Activity" subtitle="See what happened, what is due, and where your money is going." />
+      {sections.map((section) => (
+        <button
+          key={section.tab}
+          className="itunda-card"
+          onClick={() => onNavigateToTab(section.tab)}
+          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '16px', marginBottom: '10px' }}
+        >
+          <h2 style={{ margin: 0, fontSize: '15px', color: 'var(--itunda-grey-900)' }}>{section.label}</h2>
+          <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{section.description}</p>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// groups/tabLabel/recentTabs/onSelect all come from BankDashboard's single
+// EXPLORE_TAB_GROUPS source of truth -- one grouping of "everything else" for both
+// browsing and search, so a service always lands in the same category either way.
+function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
+  groups: { title: string; ids: Tab[] }[];
+  tabLabel: (id: Tab) => string;
+  recentTabs: Tab[];
+  onSelect: (id: Tab) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const allIds = groups.flatMap((g) => g.ids);
+  const matches = search.trim()
+    ? allIds.filter((id) => tabLabel(id).toLowerCase().includes(search.trim().toLowerCase()))
+    : [];
+
+  return (
+    <div>
+      <ProductPageHeader title="Explore" subtitle="Services beyond your everyday money tasks, grouped by what you are trying to do." />
+      <div style={{ position: 'relative', marginBottom: '14px' }}>
+        <Search size={15} color="var(--itunda-grey-500)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search all services"
+          aria-label="Search all services"
+          style={{ width: '100%', padding: '10px 32px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', background: 'var(--itunda-white)', color: 'var(--itunda-grey-900)' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--itunda-grey-500)', display: 'flex' }}>
+            <X size={15} />
+          </button>
+        )}
+      </div>
+
+      {search.trim() ? (
+        matches.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {matches.map((id) => (
+              <button key={id} className="itunda-btn itunda-btn-secondary" style={{ fontSize: '13px', padding: '8px 12px', borderRadius: '999px' }} onClick={() => onSelect(id)}>
+                {tabLabel(id)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '4px 0' }}>No match for "{search.trim()}".</p>
+        )
+      ) : (
+        <>
+          {recentTabs.length > 0 && (
+            <section className="itunda-card" style={{ padding: '16px', marginBottom: '12px' }}>
+              <h2 style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', textTransform: 'uppercase', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Clock size={12} /> Recently used
+              </h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {recentTabs.map((id) => (
+                  <button key={id} className="itunda-btn itunda-btn-secondary" style={{ fontSize: '13px', padding: '8px 12px', borderRadius: '999px' }} onClick={() => onSelect(id)}>
+                    {tabLabel(id)}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          {groups.map((group) => {
+            const isOpen = expandedGroup === group.title;
+            return (
+              <section key={group.title} className="itunda-card" style={{ padding: '16px', marginBottom: '12px' }}>
+                <button
+                  onClick={() => setExpandedGroup(isOpen ? null : group.title)}
+                  aria-expanded={isOpen}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'transparent', color: 'var(--itunda-grey-900)' }}
+                >
+                  <span style={{ fontSize: '15px', fontWeight: 700 }}>{group.title} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 500, fontSize: '12px' }}>· {group.ids.length}</span></span>
+                  <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                </button>
+                {isOpen && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                    {group.ids.map((id) => (
+                      <button key={id} className="itunda-btn itunda-btn-secondary" style={{ fontSize: '13px', padding: '8px 12px', borderRadius: '999px' }} onClick={() => onSelect(id)}>
+                        {tabLabel(id)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
+
+function YouHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
+  return (
+    <div>
+      <ProductPageHeader title="You" subtitle="Manage your account, security, and support in one place." />
+      <MyView />
+      <div className="itunda-card" style={{ padding: '16px', marginTop: '12px' }}>
+        <h2 style={{ margin: 0, fontSize: '16px' }}>Account & security</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+          {[
+            { label: 'Insights & activity', tab: 'ACTIVITY' as Tab },
+            { label: 'Cards', tab: 'CARD' as Tab },
+            { label: 'Devices', tab: 'DEVICES' as Tab },
+            { label: 'Verify identity', tab: 'IDENTITY' as Tab },
+            { label: 'Get support', tab: 'SUPPORT' as Tab },
+          ].map((item) => (
+            <button key={item.tab} className="itunda-btn itunda-btn-secondary" style={{ fontSize: '13px', padding: '8px 10px' }} onClick={() => onNavigateToTab(item.tab)}>{item.label}</button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -20801,13 +21002,14 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget }: { i
   );
 }
 
-// Real IA fix (2026-08-10) -- see MORE_TAB_GROUPS's own doc comment for the full
-// account of how the More panel got here. Showing all 8 categories expanded at once
-// (32 items visible simultaneously) is the exact anti-pattern Hick's Law describes --
+// Real IA fix (2026-08-10) -- see PRIMARY_TABS/EXPLORE_TAB_GROUPS's own doc comment
+// (BankDashboard) for the full account of how ExploreHub got here. Showing every
+// category expanded at once is the exact anti-pattern Hick's Law describes --
 // decision time rises with visible choice count, and UX research puts 1-5 visible
-// options as the target when speed matters. This tracks which of the 32 non-primary
-// tabs a user actually opens, most-recent-first, so the panel can surface what THEY
-// use instead of a static alphabetical/enum-order dump every time.
+// options as the target when speed matters, which is why ExploreHub's groups start
+// collapsed. This tracks which of the non-primary tabs a user actually opens,
+// most-recent-first, so Explore can surface what THEY use instead of a static
+// alphabetical/enum-order dump every time.
 const RECENT_TABS_KEY = 'itunda_bank_recent_more_tabs';
 const loadRecentTabs = (): Tab[] => {
   try {
@@ -20865,6 +21067,10 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'HOME', label: 'Home' },
+    { id: 'PAY', label: 'Pay' },
+    { id: 'EXPLORE', label: 'Explore' },
+    { id: 'ACTIVITY', label: 'Activity' },
+    { id: 'YOU', label: 'You' },
     { id: 'MY', label: 'My' },
     { id: 'SHOP', label: 'Shop' },
     { id: 'EATS', label: 'Eats' },
@@ -20906,53 +21112,56 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // a real CDP device-metrics capture, not code review): all 36 entries in TABS above
   // rendered as one `display:flex` row with `flex:1` on every button and no
   // overflow-x/wrap -- at any real viewport width, the buttons hit their own text's
-  // intrinsic minimum width and the row silently overflowed with NO scroll affordance
-  // (default `overflow: visible`, not `auto`), so roughly 29 of the 36 tabs -- including
-  // real, fully-built features like Marketplace/Jobs/Property/Rides/Loans -- were
-  // completely unreachable through this nav on any device that isn't an unrealistically
-  // wide desktop window. Same root problem the mobile apps' "All" tab just got fixed for
-  // (see ItundaAppScreen.kt's own doc comment) -- a supply-side flat dump instead of a
-  // demand-side grouping (toss.tech/article/mydoc) -- applied here as a primary row of
-  // the 7 most-used tabs plus a categorized "More" panel for the rest, using the same
-  // category names the mobile fix established for consistency. Every tab id and its
-  // `{tab === 'X' && <XView />}` routing below is completely unchanged -- this only
-  // changes how a tab gets selected, not what selecting it does.
-  // Kept to just 4 + the More button itself (2026-08-10, corrected same day): an
-  // earlier version of this fix used 7 primary tabs and still silently overflowed at a
-  // real 390px width -- "Savings"/"Messages" are long enough words that even flex:1
-  // across just 8 buttons ran out of room. Verified via a real CDP screenshot that 4 +
-  // More fits with room to spare; `overflow-x: auto` below is a real safety net either
-  // way, so a future addition degrades to a scrollable row instead of silently
-  // vanishing off-screen again.
-  const PRIMARY_TAB_IDS: Tab[] = ['HOME', 'SHOP', 'EATS', 'MESSAGES'];
-  const MORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
-    { title: 'Accounts', ids: ['MY', 'OVERVIEW', 'CARD', 'DEVICES', 'IDENTITY', 'CERTIFICATE', 'SUBSCRIPTIONS', 'SPENDING', 'FOREIGN_CURRENCY'] },
-    { title: 'Save & grow', ids: ['STOCKS', 'SAVINGS'] },
-    { title: 'Hood', ids: ['MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY'] },
-    { title: 'Transport', ids: ['RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS'] },
-    { title: 'Borrow', ids: ['LOANS', 'CREDIT_SCORE'] },
-    { title: 'Community & trust', ids: ['TRUST_SCORE', 'KNOWLEDGE'] },
-    { title: 'Cash agent tools', ids: ['AGENT'] },
-    { title: 'More', ids: ['MAP', 'SHOPPING', 'REWARDS', 'INSURANCE', 'BILLS', 'USSD', 'SUPPORT'] },
+  // intrinsic minimum width and the row silently overflowed with NO scroll affordance,
+  // so most tabs -- including real, fully-built features like Marketplace/Jobs/
+  // Property/Rides/Loans -- were completely unreachable on any realistic device width.
+  // A 4-primary-tabs-plus-a-"More"-button fix landed the same day, but it was still a
+  // supply-side dump wearing a search box: users had to know a "More" button existed,
+  // then either search or open an accordion, before reaching 32 of the app's 36 real
+  // destinations. That is the itunda-feels-like-code-not-product complaint made
+  // structural, not a one-off bug.
+  //
+  // Replaced 2026-08-10 with a demand-side, jobs-to-be-done nav -- the same shape real
+  // proven products converge on for a broad app: Cash App's real bottom bar is Money /
+  // Banking / Investing / Activity / Profile (5 job-based tabs, confirmed via Cash
+  // App's own help docs); Karrot/당근마켓, itunda's real reference for chat-driven local
+  // commerce, keeps 채팅(Chat) as a primary tab rather than burying it, because chat is
+  // core to how the product is actually used -- itunda's Marketplace/Community/Jobs/
+  // Property flows lean on the same "message the other person" mechanic. Revolut is
+  // called out in the same research pass for handling a broad feature set "without
+  // feeling cluttered" via tab structure plus progressive disclosure *within* each tab,
+  // not by flattening everything into one row.
+  //
+  // itunda's 5 primary tabs: HOME (balance + recent activity, unchanged), PAY (every
+  // money-moving action in one place), MESSAGES (kept primary, Karrot-style), EXPLORE
+  // (every other real feature, grouped by what a user is trying to do, not by which
+  // module happened to ship it), YOU (account, security, and support). Every one of
+  // the 36 original tab ids and its `{tab === 'X' && <XView />}` routing further below
+  // is completely unchanged -- this only changes how a destination is reached, not what
+  // reaching it does. EXPLORE_TAB_GROUPS is the single source of truth for "everything
+  // else," used by both ExploreHub's browsable groups and its search box, so a service
+  // can't be filed under one category when browsed and a different one when searched.
+  const PRIMARY_TABS: { id: Tab; label: string; icon: typeof HomeIcon }[] = [
+    { id: 'HOME', label: 'Home', icon: HomeIcon },
+    { id: 'PAY', label: 'Pay', icon: WalletIcon },
+    { id: 'MESSAGES', label: 'Messages', icon: MessageCircle },
+    { id: 'EXPLORE', label: 'Explore', icon: LayoutGrid },
+    { id: 'YOU', label: 'You', icon: User },
   ];
-  const primaryTabs = TABS.filter((t) => PRIMARY_TAB_IDS.includes(t.id));
+  const EXPLORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
+    { title: 'Everyday services', ids: ['SHOP', 'EATS', 'RIDES', 'MAP'] },
+    { title: 'Get around', ids: ['DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS'] },
+    { title: 'Money tools', ids: ['SAVINGS', 'STOCKS', 'LOANS', 'CREDIT_SCORE', 'INSURANCE', 'FOREIGN_CURRENCY'] },
+    { title: 'Your neighbourhood', ids: ['MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY', 'KNOWLEDGE', 'TRUST_SCORE'] },
+    { title: 'More', ids: ['CERTIFICATE', 'SHOPPING', 'REWARDS', 'AGENT', 'USSD'] },
+  ];
   const tabLabel = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
-  const moreTabIds = MORE_TAB_GROUPS.flatMap((g) => g.ids);
-  const isMoreTabActive = moreTabIds.includes(tab);
-  const [showMoreTabs, setShowMoreTabs] = useState(false);
-  const [moreSearch, setMoreSearch] = useState('');
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [recentMoreTabs, setRecentMoreTabs] = useState<Tab[]>([]);
   useEffect(() => { setRecentMoreTabs(loadRecentTabs()); }, []);
-  const selectMoreTab = (id: Tab) => {
+  const navigateFromExplore = (id: Tab) => {
     setTab(id);
-    setShowMoreTabs(false);
-    setMoreSearch('');
     setRecentMoreTabs(saveRecentTab(id, recentMoreTabs));
   };
-  const moreSearchMatches = moreSearch.trim()
-    ? moreTabIds.filter((id) => tabLabel(id).toLowerCase().includes(moreSearch.trim().toLowerCase()))
-    : [];
 
   return (
     <div style={{ padding: '20px', paddingBottom: '100px', maxWidth: '480px', margin: '0 auto' }}>
@@ -20980,157 +21189,30 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </motion.div>
 
-      <div style={{ position: 'relative' }}>
-        <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
-          {primaryTabs.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => { setTab(id); setShowMoreTabs(false); }}
-              style={{
-                flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-                color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-                backgroundColor: tab === id ? 'var(--itunda-blue)' : 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+      <div style={{ display: 'flex', gap: '2px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+        {PRIMARY_TABS.map(({ id, label, icon: Icon }) => (
           <button
-            onClick={() => setShowMoreTabs((v) => !v)}
-            aria-label="More"
-            aria-expanded={showMoreTabs}
+            key={id}
+            onClick={() => setTab(id)}
+            aria-current={tab === id ? 'page' : undefined}
             style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-              color: (isMoreTabActive || showMoreTabs) ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: (isMoreTabActive || showMoreTabs) ? 'var(--itunda-blue)' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+              flex: 1, padding: '7px 2px', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
+              color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: tab === id ? 'var(--itunda-blue)' : 'transparent',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
             }}
           >
-            <LayoutGrid size={14} /> More
+            <Icon size={18} />
+            {label}
           </button>
-        </div>
-
-        {showMoreTabs && (
-          <>
-            <div
-              onClick={() => { setShowMoreTabs(false); setMoreSearch(''); }}
-              style={{ position: 'fixed', inset: 0, zIndex: 20, background: 'rgba(0,0,0,0.15)' }}
-            />
-            <div
-              className="itunda-card"
-              style={{
-                position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 21,
-                maxHeight: '70svh', overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px',
-              }}
-            >
-              <div style={{ position: 'relative' }}>
-                <Search size={15} color="var(--itunda-grey-500)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input
-                  type="text"
-                  value={moreSearch}
-                  onChange={(e) => setMoreSearch(e.target.value)}
-                  placeholder="Search everything else"
-                  aria-label="Search more features"
-                  style={{ width: '100%', padding: '9px 32px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', background: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-900)' }}
-                />
-                {moreSearch && (
-                  <button onClick={() => setMoreSearch('')} aria-label="Clear search" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--itunda-grey-500)', display: 'flex' }}>
-                    <X size={15} />
-                  </button>
-                )}
-              </div>
-
-              {moreSearch.trim() ? (
-                moreSearchMatches.length > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {moreSearchMatches.map((id) => (
-                      <button
-                        key={id}
-                        onClick={() => selectMoreTab(id)}
-                        style={{
-                          padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
-                          color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-800)',
-                          backgroundColor: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
-                        }}
-                      >
-                        {tabLabel(id)}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', padding: '4px 0' }}>No match for "{moreSearch.trim()}".</p>
-                )
-              ) : (
-                <>
-                  {recentMoreTabs.length > 0 && (
-                    <div>
-                      <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)', textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <Clock size={12} /> Recently used
-                      </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {recentMoreTabs.map((id) => (
-                          <button
-                            key={id}
-                            onClick={() => selectMoreTab(id)}
-                            style={{
-                              padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
-                              color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-800)',
-                              backgroundColor: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
-                            }}
-                          >
-                            {tabLabel(id)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {MORE_TAB_GROUPS.map((group) => {
-                    const isOpen = expandedGroup === group.title;
-                    return (
-                      <div key={group.title}>
-                        <button
-                          onClick={() => setExpandedGroup(isOpen ? null : group.title)}
-                          aria-expanded={isOpen}
-                          style={{
-                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '2px 0', background: 'transparent', color: 'var(--itunda-grey-700)',
-                          }}
-                        >
-                          <span style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                            {group.title} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 500 }}>· {group.ids.length}</span>
-                          </span>
-                          <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-                        </button>
-                        {isOpen && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
-                            {group.ids.map((id) => (
-                              <button
-                                key={id}
-                                onClick={() => selectMoreTab(id)}
-                                style={{
-                                  padding: '8px 12px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
-                                  color: tab === id ? 'var(--itunda-white)' : 'var(--itunda-grey-800)',
-                                  backgroundColor: tab === id ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
-                                }}
-                              >
-                                {tabLabel(id)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          </>
-        )}
+        ))}
       </div>
 
       {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} onNavigateToLoansMode={setPendingLoansMode} onNavigateToSavingsTarget={setPendingSavingsTarget} />}
+      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} />}
+      {tab === 'EXPLORE' && <ExploreHub groups={EXPLORE_TAB_GROUPS} tabLabel={tabLabel} recentTabs={recentMoreTabs} onSelect={navigateFromExplore} />}
+      {tab === 'ACTIVITY' && <ActivityHub onNavigateToTab={setTab} />}
+      {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
       {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
