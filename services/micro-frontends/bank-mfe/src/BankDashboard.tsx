@@ -20185,13 +20185,20 @@ function SaccoSection() {
           </>
         )}
         {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+        {/* Real gap found live (2026-08-10) via an actual CDP screenshot of this exact
+            section (just promoted to Home this session): three real elements --
+            an input plus two buttons ("Buy" and "Redeem") -- in one unwrapped flex
+            row with no overflow handling. "Redeem" was cut off past the visible
+            edge on a real 390px viewport. flexWrap lets Buy/Redeem drop to their own
+            row on a narrow screen instead of vanishing -- better here than a
+            horizontal scroll, since these are primary form actions, not a nav list. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
           <input
             type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+            style={{ flex: '1 1 140px', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleBuy}>Buy</button>
-          <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleRedeem}>Redeem</button>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleBuy} style={{ flexShrink: 0 }}>Buy</button>
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy} onClick={handleRedeem} style={{ flexShrink: 0 }}>Redeem</button>
         </div>
       </div>
       {dividends && dividends.length > 0 && (
