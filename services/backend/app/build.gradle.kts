@@ -23,6 +23,7 @@ dependencies {
     implementation(project(":savings"))
     implementation(project(":notifications"))
     implementation(project(":discover"))
+    implementation(project(":analytics"))
     implementation(project(":insurance"))
     implementation(project(":system"))
     implementation(project(":merchant"))

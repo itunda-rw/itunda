@@ -141,6 +141,13 @@ class SecurityConfig(
                     // there's no self-service promotion flow yet, see
                     // V4__user_role.sql's comment.
                     .requestMatchers("/api/v1/system/**").hasRole("ADMIN")
+                    // Real product-analytics summary (2026-08-10) -- exposes aggregate
+                    // usage/retention data, same protection level as /api/v1/system/**
+                    // above. Recording an event (POST /api/v1/analytics/events) stays
+                    // under the generic authenticated() catch-all below -- any real
+                    // logged-in user can report their own usage, same as every other
+                    // write endpoint in this backend.
+                    .requestMatchers("/api/v1/analytics/summary").hasRole("ADMIN")
                     .anyRequest().authenticated()
             }
             // Spring Security's default for an unauthenticated request with no configured
