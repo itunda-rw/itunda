@@ -681,11 +681,11 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
 // in (SAVINGS for the two cooperative-savings products, LOANS for the two credit
 // products) -- not a deep link to the exact scroll position, but real, honest, and a
 // large improvement over not being reachable from Home at all.
-function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode }: { onNavigateToTab: (tab: Tab) => void; onNavigateToLoansMode: (mode: LoansMode) => void }) {
+function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavigateToSavingsTarget }: { onNavigateToTab: (tab: Tab) => void; onNavigateToLoansMode: (mode: LoansMode) => void; onNavigateToSavingsTarget: (target: 'sacco' | 'ikimina') => void }) {
   const { t } = useI18n();
-  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; tab: Tab; loansMode?: LoansMode }[] = [
-    { key: 'sacco', title: t('coopRail.sacco.title'), subtitle: t('coopRail.sacco.subtitle'), icon: <Landmark size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', tab: 'SAVINGS' },
-    { key: 'ikimina', title: t('coopRail.ikimina.title'), subtitle: t('coopRail.ikimina.subtitle'), icon: <Users size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', tab: 'SAVINGS' },
+  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; tab: Tab; loansMode?: LoansMode; savingsTarget?: 'sacco' | 'ikimina' }[] = [
+    { key: 'sacco', title: t('coopRail.sacco.title'), subtitle: t('coopRail.sacco.subtitle'), icon: <Landmark size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', tab: 'SAVINGS', savingsTarget: 'sacco' },
+    { key: 'ikimina', title: t('coopRail.ikimina.title'), subtitle: t('coopRail.ikimina.subtitle'), icon: <Users size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', tab: 'SAVINGS', savingsTarget: 'ikimina' },
     // Real gap found live (2026-08-10) while checking these two links for the first
     // time: onNavigateToTab alone only lands on LoansView's generic Offers catalog --
     // its own `mode` is separate internal state. loansMode threads the real specific
@@ -708,6 +708,11 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode }: { on
             onClick={() => {
               recordEvent('coop_rail_tap', item.key);
               if (item.loansMode) onNavigateToLoansMode(item.loansMode);
+              // Real gap found live (2026-08-10), same investigation that found the
+              // loansMode gap above: SACCO/Ikimina are sections ~45-55% of the way
+              // down SavingsView's long page, not a separate mode -- see SavingsView's
+              // own initialScrollTarget doc comment for the measured offsets.
+              if (item.savingsTarget) onNavigateToSavingsTarget(item.savingsTarget);
               onNavigateToTab(item.tab);
             }}
             style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
@@ -726,7 +731,7 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode }: { on
   );
 }
 
-function HomeView({ onNavigateToCard, onNavigateToTab, onNavigateToLoansMode }: { onNavigateToCard: () => void; onNavigateToTab: (tab: Tab) => void; onNavigateToLoansMode: (mode: LoansMode) => void }) {
+function HomeView({ onNavigateToCard, onNavigateToTab, onNavigateToLoansMode, onNavigateToSavingsTarget }: { onNavigateToCard: () => void; onNavigateToTab: (tab: Tab) => void; onNavigateToLoansMode: (mode: LoansMode) => void; onNavigateToSavingsTarget: (target: 'sacco' | 'ikimina') => void }) {
   const { t } = useI18n();
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -784,7 +789,7 @@ function HomeView({ onNavigateToCard, onNavigateToTab, onNavigateToLoansMode }: 
         />
       )}
       <QuickActions onCardsClick={onNavigateToCard} />
-      <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} onNavigateToLoansMode={onNavigateToLoansMode} />
+      <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} onNavigateToLoansMode={onNavigateToLoansMode} onNavigateToSavingsTarget={onNavigateToSavingsTarget} />
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <ScheduledTransfersCard />
       <AutoTransfersCard />
@@ -20733,7 +20738,7 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
   );
 }
 
-function SavingsView() {
+function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget }: { initialScrollTarget?: 'sacco' | 'ikimina' | null; onConsumedInitialScrollTarget?: () => void } = {}) {
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -20742,6 +20747,23 @@ function SavingsView() {
     fetchGoals().then(setGoals).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your goals.'));
   };
   useEffect(load, []);
+
+  // Real gap found live (2026-08-10), same investigation that found LoansView's own
+  // missing deep-link: the Home coop rail's "SACCO shares"/"Ikimina" links landed on
+  // this whole SavingsView, but SACCO/Ikimina are static sections roughly 45-55% of
+  // the way down a long single scrolling page (measured live: SACCO's heading sits at
+  // 1465px on a 2658px-tall page) -- behind Safe Box, Round-up savings, goals, and
+  // Group accounts. Not "wrong screen" like Loans was, but the same "not convenient"
+  // gap: landing at the top and making the user scroll past everything else to reach
+  // what they actually tapped for.
+  useEffect(() => {
+    if (!initialScrollTarget) return;
+    const id = initialScrollTarget === 'sacco' ? 'savings-sacco-section' : 'savings-ikimina-section';
+    const el = document.getElementById(id);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    onConsumedInitialScrollTarget?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialScrollTarget]);
 
   return (
     <div>
@@ -20763,10 +20785,10 @@ function SavingsView() {
       <div style={{ marginTop: '24px' }}>
         <GroupAccountsSection />
       </div>
-      <div style={{ marginTop: '24px' }}>
+      <div id="savings-ikimina-section" style={{ marginTop: '24px' }}>
         <IkiminaSection />
       </div>
-      <div style={{ marginTop: '24px' }}>
+      <div id="savings-sacco-section" style={{ marginTop: '24px' }}>
         <SaccoSection />
       </div>
       <div style={{ marginTop: '24px' }}>
@@ -20811,6 +20833,9 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // Real deep-link from the Home coop rail into LoansView's own specific mode
   // (2026-08-10) -- see LoansView's own initialMode doc comment for the full account.
   const [pendingLoansMode, setPendingLoansMode] = useState<LoansMode | null>(null);
+  // Real deep-link from the Home coop rail into SavingsView's own SACCO/Ikimina
+  // sections (2026-08-10) -- see SavingsView's own initialScrollTarget doc comment.
+  const [pendingSavingsTarget, setPendingSavingsTarget] = useState<'sacco' | 'ikimina' | null>(null);
   const user = getStoredUser();
   // Real gap caught while adding Android/iOS's 4th localization screen (2026-08-08,
   // docs/DESIGN_REFERENCES.md Section 19): LoginPage.tsx's own switcher only renders
@@ -21105,12 +21130,17 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         )}
       </div>
 
-      {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} onNavigateToLoansMode={setPendingLoansMode} />}
+      {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} onNavigateToLoansMode={setPendingLoansMode} onNavigateToSavingsTarget={setPendingSavingsTarget} />}
       {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
       {tab === 'STOCKS' && <StocksView />}
-      {tab === 'SAVINGS' && <SavingsView />}
+      {tab === 'SAVINGS' && (
+        <SavingsView
+          initialScrollTarget={pendingSavingsTarget}
+          onConsumedInitialScrollTarget={() => setPendingSavingsTarget(null)}
+        />
+      )}
       {tab === 'MESSAGES' && (
         <MessagesView
           initialConversationId={pendingConversationId}
