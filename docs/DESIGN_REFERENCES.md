@@ -4347,3 +4347,65 @@ this is named as a real, concrete, ready-to-fix follow-up, not silently skipped.
 Installed on the physical device over the live wireless ADB connection; the app launched with an
 empty `logcat -b crash` buffer and a live process -- the fix is live on the device the bug was
 reported from. The user's own next real password attempt is the actual confirmation this needed.
+
+## 41. Top-level navigation & IA organization — real research synthesis, plus what's still open
+
+**Added 2026-08-10**, prompted by direct, repeated user feedback ("itunda still feels like code
+not product... no organization... same features using UI/UX that doesn't suit them") and an
+explicit ask to research real, proven navigation-organization practice rather than invent one.
+This section is the synthesis; the immediate fix it justified (bank-mfe's web nav) is already
+shipped -- see `agent/itunda-agent-network` commits `f99e0eb4` and `3ad1dbc1` for the full account.
+Everything below is either **sourced** (a named real product's documented practice) or a **named
+research-body finding** (NN/g, Apple HIG); nothing here is `inferred`.
+
+### What real products converge on for a broad, multi-service app
+
+| Finding | Source |
+|---|---|
+| A super app anchors on ONE high-frequency daily action (pay, message, or ride) and expands outward from there -- "pay, ride, message, then expand." Cross-selling every other service happens *from* that anchor, not alongside it as an equal peer. | WeChat/Alipay architecture analysis, dashdevs.com 2026 |
+| Apple's own HIG: tab bars should hold **3-5 tabs**. Broader UX guidance (SubUX, CXL) puts the outer bound at 5-7, with 3-5 explicitly preferred on mobile. | Apple HIG; nngroup.com-adjacent guidance via SubUX/CXL, both 2026 |
+| **Never wrap tabs to a second row.** NN/G: "multiple rows create jumping UI elements that destroy spatial memory and are a sure symptom of excessive complexity -- if you need more tabs than fit in one row, simplify the design," not add a row. | nngroup.com, "Tabs, Used Right" |
+| A catch-all "everything else" tab is real, standard practice for apps with more real destinations than fit in a single row -- Toss's own bottom nav is 홈/혜택/쇼핑/페이/**전체** (Home/Benefits/Shop/Pay/**All**), not an attempt to flatten every feature into the primary row. | toss.im navigation, cited already in `ItundaAppScreen.kt`'s own `ItundaTab.All` doc comment |
+| Dashboards with many competing elements (balance, transactions, investments, recurring payments, rewards) need **progressive disclosure at the information-hierarchy level**: summary first, detail on demand -- e.g. balance at the top, recent transactions below that, investment detail *below that*, not all three given equal weight on one screen. | webstacks.com / g-co.agency fintech UX guides, 2026 |
+| Personalization should reorder/surface based on real behavioral data (what a user actually does), not judge or predict -- McKinsey found this can cut churn up to 15% in financial apps. | webstacks.com, citing McKinsey 2024 |
+| Jobs-to-be-done framing organizes navigation around what a user is trying to *accomplish* ("when X happens, I want to Y so I can Z"), not which module or team happened to build a feature -- this is the frame `PRIMARY_TABS`'s own doc comment in `BankDashboard.tsx` already invokes. | userinterviews.com JTBD field guide; productplan.com |
+
+### Cross-checked against what itunda just shipped (web nav rebuild)
+
+- **5 tabs, single row, no wrapping** -- matches the Apple/NN-G ceiling exactly, and matches
+  Android/iOS's own already-proven `Home/Shop/Hood/Talk/All`.
+- **A real 전체-style catch-all (`All`)** for the long tail -- matches Toss's own practice
+  directly, not an invented pattern.
+- **Shop and Hood use segmented toggles for their sub-choices** (Shop/Eats;
+  Marketplace/Community/Jobs/Property) instead of either flattening them into more primary tabs
+  (would have broken the 5-tab ceiling) or hiding them behind unlabeled gestures. This is the
+  correct middle path per Apple's own segmented-control guidance for "one screen, several
+  sub-views of the same job."
+- **`AllHub` already does real, not superficial, personalization**: a "Recently used" section
+  sourced from actual `localStorage`-tracked navigation history, not a static list -- this is
+  the McKinsey-cited pattern (behavior-driven surfacing) already correctly applied to the All tab.
+
+### What's genuinely still open (ranked, not yet built)
+
+1. **[sourced] Home's own internal hierarchy is flat, not progressive.** `HomeView` currently
+   stacks `AccountBalance` → `QuickActions` → `CooperativeSavingsRail` → `TransactionHistory` →
+   `ScheduledTransfersCard` → `AutoTransfersCard` → `AutoTopUpCard` → `RequestMoneyCard` →
+   `MiniWalletCard` → `DiscoverSection` -- nine full-weight sections with no summary-first
+   structure and no way to collapse anything. This directly contradicts the progressive-disclosure
+   fintech-dashboard finding above (balance → recent activity → deeper detail, not nine peers at
+   once). Real risk: this is precisely the kind of "everything competing for attention" screen the
+   sourced fintech UX guides call out as the anti-pattern.
+   *Target: `HomeView`, `BankDashboard.tsx` -- not yet built.*
+2. **[sourced] No behavior-driven personalization on Home**, unlike `AllHub`'s real recents
+   tracking. `QuickActions`/the section order is static for every user regardless of what they
+   actually use. Since `AllHub` already proves the mechanism (localStorage-backed usage tracking)
+   works end-to-end in this codebase, extending the same real pattern to Home's own section
+   ordering is a proven, low-risk next step, not a new capability to invent.
+   *Target: `HomeView` -- not yet built.*
+3. **[partially-sourced] Search is not a first-class navigation entry point.** It currently only
+   exists inside the `All` tab. Real large apps increasingly treat search as a persistent,
+   always-reachable affordance (a header icon, not something buried one tab-switch away) precisely
+   because users who know what they want shouldn't have to browse a taxonomy to find it -- this is
+   implied by the JTBD framing above (support the goal directly) but no single named product's
+   exact placement was verified this pass; flagged for a follow-up search before building.
+   *Target: header row, `BankDashboard.tsx` -- not yet built, not fully sourced.*
