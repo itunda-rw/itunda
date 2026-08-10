@@ -172,7 +172,11 @@ final class BankViewModel: ObservableObject {
             // same discipline as the interest-jar 404 handling above: a Discover
             // hiccup must never block the rest of Home from loading real data.
             if let discoverRes = try? await NetworkClient.shared.getDiscoverItems(), discoverRes.success {
-                discoverRows = discoverRes.items.map {
+                // Real server-side ranking (2026-08-11) -- see DiscoverItem's own doc
+                // comment (Toss Intelligence-banner research). Backend already returns
+                // items sorted by priority; sorting here too makes that explicit,
+                // matching Android's/web's identical defensive re-sort.
+                discoverRows = discoverRes.items.sorted { $0.priority > $1.priority }.map {
                     DiscoverRowData(title: $0.title, subtitle: $0.subtitle, badge: $0.badge, isNew: $0.isNew)
                 }
             }

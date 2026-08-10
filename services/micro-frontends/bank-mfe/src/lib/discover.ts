@@ -13,6 +13,12 @@ export interface DiscoverItem {
   color: string;
   isNew: boolean;
   badge: string | null;
+  // Real server-side ranking (2026-08-11) -- see backend DiscoverService's own doc
+  // comment (Toss Intelligence-banner research, toss.tech/article/intelligence_banner):
+  // the backend now computes real per-user eligibility and priority (KYC prompts
+  // outrank a static promo, etc.) instead of returning the same static list to every
+  // caller. Higher shows first.
+  priority: number;
 }
 
 export const fetchDiscoverItems = () =>

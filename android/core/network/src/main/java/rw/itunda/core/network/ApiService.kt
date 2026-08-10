@@ -307,7 +307,13 @@ data class DiscoverItem(
     val description: String,
     val color: String,
     val isNew: Boolean,
-    val badge: String?
+    val badge: String?,
+    // Real server-side ranking (2026-08-11) -- see backend DiscoverService's own doc
+    // comment (Toss Intelligence-banner research): the backend now decides which
+    // item is most worth a user's attention (KYC/compliance highest, cross-sell into
+    // an untried real product next, static catalog lowest), not the client. Default
+    // 0 only matters if an old cached response without this field ever deserializes.
+    val priority: Int = 0
 )
 
 data class DiscoverResponse(

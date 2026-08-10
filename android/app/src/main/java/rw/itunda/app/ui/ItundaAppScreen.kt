@@ -1371,11 +1371,17 @@ private fun HomeTab(
         // already fetched (GET /api/v1/discover) -- DiscoverSection further down just
         // rendered every item at the same small, unpersonalized weight regardless of
         // real fields like isNew/badge that exist specifically to signal priority.
-        // Promotes the single highest-priority real item (isNew first, else the
-        // first real item) to hero treatment instead of inventing new fabricated
-        // content; DiscoverSection below excludes it from its own list so nothing
-        // renders twice.
-        val heroDiscoverItem = discoverItems.sortedByDescending { it.isNew }.firstOrNull()
+        // Promotes the single highest-priority real item to hero treatment instead of
+        // inventing new fabricated content; DiscoverSection below excludes it from its
+        // own list so nothing renders twice.
+        // Sorted by `priority`, not `isNew` (2026-08-11) -- see backend
+        // DiscoverService's own doc comment (Toss Intelligence-banner research): the
+        // backend now does real per-user eligibility + ranking (KYC prompts outrank a
+        // static "Yego Vouchers" promo, etc.), the same "server-side decision, not
+        // exposed to the client" principle that article's own architecture is built
+        // around. Client-side `isNew` sorting was itunda's own invented substitute
+        // before the backend had any real ranking signal to sort by.
+        val heroDiscoverItem = discoverItems.sortedByDescending { it.priority }.firstOrNull()
         if (heroDiscoverItem != null) {
             item { PersonalRecommendationCard(heroDiscoverItem) }
         }

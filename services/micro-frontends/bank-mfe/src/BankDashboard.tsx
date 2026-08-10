@@ -1014,7 +1014,13 @@ function DiscoverSection() {
   const [items, setItems] = useState<DiscoverItem[]>([]);
 
   useEffect(() => {
-    fetchDiscoverItems().then(setItems).catch(() => {});
+    // Real server-side ranking (2026-08-11) -- see DiscoverItem's own doc comment.
+    // Backend already returns items sorted by priority; re-sorting here just makes
+    // that explicit and correct even if a future backend response ever isn't
+    // pre-sorted, same defensive-but-cheap sort Android's heroDiscoverItem uses.
+    fetchDiscoverItems()
+      .then((fetched) => setItems([...fetched].sort((a, b) => b.priority - a.priority)))
+      .catch(() => {});
   }, []);
 
   if (items.length === 0) return null;

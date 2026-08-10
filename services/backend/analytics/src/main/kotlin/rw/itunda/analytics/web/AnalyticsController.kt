@@ -44,6 +44,13 @@ class AnalyticsController(private val repository: AnalyticsEventRepository) {
             // this session -- see the "itunda: the wedge, not the mirror" memo,
             // recommendation (ii). `metadata` carries which of the 4 was tapped.
             "coop_rail_tap",
+            // Real Toss Intelligence-banner-style frequency capping (2026-08-11) --
+            // see DiscoverService's own doc comment. `metadata` carries the specific
+            // banner id shown, not a free-text description -- DiscoverService's
+            // AnalyticsEventRepository.countByUserIdAndEventNameAndMetadataJson query
+            // depends on this being the exact same id string every time the same
+            // banner is shown, so a banner can be capped independently of every other.
+            "discover_banner_impression",
         )
     }
 

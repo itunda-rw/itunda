@@ -1037,6 +1037,10 @@ public struct DiscoverItem: Decodable, Identifiable {
     public let color: String
     public let isNew: Bool
     public let badge: String?
+    // Real server-side ranking (2026-08-11) -- see backend DiscoverService's own doc
+    // comment (Toss Intelligence-banner research). Default 0 only matters for a
+    // hypothetical old cached response missing this field.
+    public let priority: Int
 }
 public struct DiscoverResponse: Decodable { public let success: Bool; public let items: [DiscoverItem] }
 

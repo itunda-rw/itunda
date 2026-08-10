@@ -27,4 +27,12 @@ interface AnalyticsEventRepository : JpaRepository<AnalyticsEvent, String> {
 
     @Query("SELECT DISTINCT e.userId FROM AnalyticsEvent e WHERE e.eventName = :eventName AND e.createdAt >= :since")
     fun findDistinctUserIdsByEventNameSince(eventName: String, since: Instant): List<String>
+
+    // Real frequency-capping primitive (2026-08-11) -- see DiscoverService's own doc
+    // comment for the full account: this is the same "has this user already seen X
+    // enough times" question the coop-rail retention query above already answers for
+    // one event, just parameterized by metadataJson (itunda's per-banner id) so a
+    // single event name ("discover_banner_impression") can frequency-cap many
+    // distinct banners without a new column or event name per banner.
+    fun countByUserIdAndEventNameAndMetadataJson(userId: String, eventName: String, metadataJson: String): Long
 }
