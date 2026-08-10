@@ -38,9 +38,18 @@ struct ContentView: View {
     // mechanism (mirrors bank-mfe's BankDashboard.tsx pendingConversationId/
     // onConsumedInitial pattern and Android's identical ItundaAppScreen.kt state).
     @State private var pendingConversationId: String?
-    // Real deep-link from the menu's "Property" row into Hood's real HoodMode.property
-    // chip (2026-08-10) -- see HoodScreen's own doc comment.
-    @State private var pendingHoodOpenProperty = false
+    // Shop/Eats/Marketplace/Community/Jobs/Property all lost their own primary tab
+    // (2026-08-10, see the TabView's own doc comment below) -- each reached as a real
+    // full-screen-cover entry point from Explore instead, same established pattern
+    // showSacco/showIkimina/etc. below already use. Property previously used a
+    // pendingHoodOpenProperty deep-link into Hood's own chip; no longer needed now
+    // that Property is its own direct destination.
+    @State private var showShop = false
+    @State private var showEats = false
+    @State private var showMarketplace = false
+    @State private var showCommunity = false
+    @State private var showJobs = false
+    @State private var showProperty = false
     // Real wallet/savings data (2026-07-11) -- see BankViewModel.swift for why this
     // lives here rather than inside BankView's own module.
     @StateObject private var bankViewModel = BankViewModel()
@@ -55,10 +64,8 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showMapFromDeepLink = false
     @State private var mapSearchFromDeepLink: String?
-    // Real My-activity overlay (2026-07-24, inverted from Menu) -- see EntireMenuScreen's
-    // own doc comment: My's own real content (orders/favorites/listings) is now reached
-    // one tap in from the All tab's profile icon, instead of All being nested under My.
-    @State private var showMyTab = false
+    // My's own real content (orders/favorites/listings) is its own primary tab now
+    // (ItundaTab.You, 2026-08-10) -- no overlay state needed to reach it anymore.
     // Real Toss Bank 송금 (Transfer) full page (2026-07-24) -- reachable from the
     // 전체/All tab's own "Financial services" section, matching real Toss where Home's
     // own Send button stays a quick recipient-picker (unchanged) while the full grouped
@@ -201,57 +208,44 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            // Real super-app bottom nav (2026-07-18): Home/Shop/Hood/Talk/My, replacing
-            // the previous Home/Benefits/Shop/Pay/All layout now that itunda has real
-            // Coupang-style commerce (Shop), 당근마켓-style marketplace (Hood), and
-            // Kakao-style messaging (Talk) backends to put behind top-level tabs.
-            // Tab 4 promoted from My to All (2026-07-24) -- see EntireMenuScreen's own
-            // doc comment for the full reasoning (mini-apps/games need to be one tap
-            // away, matching real Toss's own bottom nav) -- same restructure Android's
-            // ItundaAppScreen.kt just went through, see that file's own header comment
-            // for the identical history.
-            ShopScreen()
+            // Real super-app bottom nav: Home/Pay/Explore/Messages/You (2026-08-10),
+            // replacing the previous Home/Shop/Hood/Talk/All layout -- an explicit
+            // product decision after directly comparing both, matching bank-mfe's
+            // BankDashboard.tsx and Android's ItundaAppScreen.kt the same session (see
+            // docs/DESIGN_REFERENCES.md Section 41 in the web repo for the full
+            // comparison). itunda is bank-first, so Pay and You (profile/account) get
+            // dedicated primary slots instead of being nested a tap into Explore/My the
+            // way the previous layout had them. Shop, Eats, Marketplace, Community,
+            // Jobs, and Property all lose their own tabs -- none demoted for being
+            // weak, all real, fully-built features -- and are each their own flat,
+            // individually reachable Explore entry point (same established
+            // full-screen-cover pattern showSacco/showIkimina/etc. already use). Real
+            // same-day correction: an earlier pass nested Shop+Eats behind
+            // ShopScreen's own Picker and Marketplace+Community+Jobs+Property behind
+            // HoodScreen's own Picker -- a tab bar inside a tab, noise a flat catalog
+            // shouldn't have -- so each is flat instead; see HoodSectionScreen's own
+            // doc comment (HoodScreen.swift) for the fuller account.
+            PayScreen()
                 .tabItem {
-                    Image(systemName: "bag.fill")
-                    Text("Shop")
+                    Image(systemName: "creditcard.fill")
+                    Text("Pay")
                 }
                 .tag(1)
 
-            HoodScreen(pendingConversationId: $pendingConversationId, onSwitchToTalk: { selectedTab = 3 }, openToProperty: $pendingHoodOpenProperty)
-                .tabItem {
-                    Image(systemName: "location.fill")
-                    Text("Hood")
-                }
-                .tag(2)
-
-            TalkScreen(pendingConversationId: $pendingConversationId)
-                .tabItem {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                    Text("Talk")
-                }
-                .tag(3)
-
-            // Real 전체 (All services) primary bottom tab (2026-07-24) -- see
-            // EntireMenuScreen's own doc comment for the full history: this used to be
-            // MyTabView's own tab content, reached from All via a hamburger icon; now
-            // inverted, with My reached one tap in from this tab's own profile icon.
             EntireMenuScreen(
                 onOpenSettings: { showSettings = true },
-                onOpenMyTab: { showMyTab = true },
                 onClaimInterest: { savingsFlowStep = .claimInterest },
                 onSwitchToTalk: { selectedTab = 3 },
                 onOpenTransferHub: { showTransferHub = true },
-                onOpenProperty: { pendingHoodOpenProperty = true; selectedTab = 2 }
+                onOpenShop: { showShop = true },
+                onOpenEats: { showEats = true },
+                onOpenMarketplace: { showMarketplace = true },
+                onOpenCommunity: { showCommunity = true },
+                onOpenJobs: { showJobs = true },
+                onOpenProperty: { showProperty = true }
             )
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsScreen(onDone: { showSettings = false })
-                }
-                .fullScreenCover(isPresented: $showMyTab) {
-                    MyTabView(
-                        onBack: { showMyTab = false },
-                        onSwitchToShop: { showMyTab = false; selectedTab = 1 },
-                        onSwitchToHood: { showMyTab = false; selectedTab = 2 }
-                    )
                 }
                 .fullScreenCover(isPresented: $showTransferHub) {
                     TransferHubContainer(
@@ -261,9 +255,51 @@ struct ContentView: View {
                         onOpenHistory: { showTransferHub = false; showTransactionHistory = true }
                     )
                 }
+                .fullScreenCover(isPresented: $showShop) {
+                    CommerceShopContent()
+                }
+                .fullScreenCover(isPresented: $showEats) {
+                    EatsContent()
+                }
+                .fullScreenCover(isPresented: $showMarketplace) {
+                    HoodSectionScreen(mode: .marketplace, pendingConversationId: $pendingConversationId, onSwitchToTalk: { showMarketplace = false; selectedTab = 3 })
+                }
+                .fullScreenCover(isPresented: $showCommunity) {
+                    HoodSectionScreen(mode: .community, pendingConversationId: $pendingConversationId, onSwitchToTalk: { showCommunity = false; selectedTab = 3 })
+                }
+                .fullScreenCover(isPresented: $showJobs) {
+                    HoodSectionScreen(mode: .jobs, pendingConversationId: $pendingConversationId, onSwitchToTalk: { showJobs = false; selectedTab = 3 })
+                }
+                .fullScreenCover(isPresented: $showProperty) {
+                    HoodSectionScreen(mode: .property, pendingConversationId: $pendingConversationId, onSwitchToTalk: { showProperty = false; selectedTab = 3 })
+                }
                 .tabItem {
                     Image(systemName: "square.grid.2x2.fill")
-                    Text("All")
+                    Text("Explore")
+                }
+                .tag(2)
+
+            TalkScreen(pendingConversationId: $pendingConversationId)
+                .tabItem {
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                    Text("Messages")
+                }
+                .tag(3)
+
+            // Real, dedicated primary tab (2026-08-10, see this TabView's own doc
+            // comment) -- MyTabView's own real content (orders/favorites/listings) is
+            // completely unchanged, just reached directly instead of via Explore's
+            // profile icon.
+            MyTabView(
+                onSwitchToShop: { showShop = true },
+                onSwitchToEats: { showEats = true },
+                onSwitchToMarketplace: { showMarketplace = true },
+                onSwitchToJobs: { showJobs = true },
+                onSwitchToProperty: { showProperty = true }
+            )
+                .tabItem {
+                    Image(systemName: "person.fill")
+                    Text("You")
                 }
                 .tag(4)
         }
@@ -297,10 +333,10 @@ private extension URL {
 // file's own header for why. (DiscoverScreen, the old "Shop" tab, was removed
 // 2026-07-18 -- see BenefitsShopAllScreens.swift's own note on why.)
 //
-// PayScreen stays defined here and is now reached from My (EntireMenuScreen's real
-// "Quick links" row), not its own top-level tab -- same fold-in Android's AllTab
-// went through. Still real-UI-only (no real backend quote/confirm wired -- see this
-// struct's own header comment below), that scope gap is unrelated to the nav move.
+// PayScreen stays defined here and is a real primary bottom tab again (2026-08-10,
+// ContentView.body's own Home/Pay/Explore/Messages/You). Still real-UI-only (no real
+// backend quote/confirm wired -- see this struct's own header comment below), that
+// scope gap is unrelated to the nav move.
 struct PayScreen: View {
     // Wires the real, ported TransferQuoteScreen (ios/Features/Payments/
     // Sources/TransferScreen.swift) in for the first time -- it had zero call

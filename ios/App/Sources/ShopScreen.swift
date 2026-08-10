@@ -42,37 +42,18 @@ private final class SilentLocationFetcher: NSObject, ObservableObject, CLLocatio
 }
 
 /// Real Coupang-style multi-item checkout (2026-07-18) -- iOS mirror of Android's
-/// (new) ShopTab (SuperAppTabs.kt), replacing the old Toss-Shopping-cashback
+/// CommerceShopContent (:features:shop:impl), replacing the old Toss-Shopping-cashback
 /// DiscoverScreen entirely. See NetworkClient.swift's Commerce extension and
 /// rw.itunda.commerce.OrderService's own doc comment for the full backend account,
 /// including the honest "self-declared fulfillment, no real courier network" scope.
 ///
-/// Folds in real Coupang Eats-style food delivery (2026-07-18) via a Shop/Eats segmented
-/// control -- the bottom nav has no free tab slot, mirrors Android's identical fold-in
-/// in ShopTab (SuperAppTabs.kt). See EatsContent's own doc comment below.
-private enum ShopMode { case shop, eats }
-
-struct ShopScreen: View {
-    @State private var mode: ShopMode = .shop
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Picker("", selection: $mode) {
-                Text("Shop").tag(ShopMode.shop)
-                Text("Eats").tag(ShopMode.eats)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, 8)
-
-            switch mode {
-            case .shop: CommerceShopContent()
-            case .eats: EatsContent()
-            }
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-    }
-}
+/// ShopScreen's own Shop/Eats segmented control was retired 2026-08-10: real user
+/// correction, same fix applied to HoodScreen's Marketplace/Community/Jobs/Property
+/// Picker and to Android's identical ShopTab/HoodTab chip rows -- nesting Shop and
+/// Eats behind one Explore row with an internal switcher is a tab bar inside a tab,
+/// noise a flat catalog shouldn't have. CommerceShopContent/EatsContent are each
+/// their own flat ContentView.swift destination now (see ContentView.swift's
+/// showShop/showEats).
 
 private enum CommerceView { case browse, orders, wishlist, subscriptions }
 
@@ -95,7 +76,7 @@ private struct CommerceCheckoutResult: Identifiable {
     let error: String?
 }
 
-private struct CommerceShopContent: View {
+struct CommerceShopContent: View {
     @State private var view: CommerceView = .browse
     @State private var merchants: [ShoppingMerchantDto]?
     @State private var categories: [String] = []

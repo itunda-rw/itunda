@@ -258,42 +258,33 @@ private struct HoodFeedSkeleton: View {
 /// Marketplace extension and rw.itunda.marketplace.MarketplaceService's own doc
 /// comment for the full backend account, including the honest "no real location data"
 /// scope this screen inherits unchanged.
-// Real 당근-style neighborhood-services hub (2026-07-19) -- Marketplace, Community
-// (동네생활), Jobs (당근알바), and Property (당근부동산) all fold into this one screen
-// via a segmented Picker, matching the exact "no free bottom-nav slot, fold into an
-// existing tab" pattern ShopScreen's own Shop/Eats toggle already established.
-struct HoodScreen: View {
+// HoodScreen's own segmented Picker (Market/Life/Jobs/Home) was retired 2026-08-10:
+// real user correction -- nesting Marketplace/Community/Jobs/Property behind one
+// Explore row with an internal switcher is a tab bar inside a tab, noise a flat
+// catalog shouldn't have (same fix applied to ShopScreen's Shop/Eats toggle and to
+// Android's identical HoodTab chip row -- see SuperAppTabs.kt's HoodSectionScreen
+// doc comment for the full account). The shared 당근-style shell below (neighborhood
+// name row, switcher overlay, dual-neighborhood prompt) is real, deliberately
+// Karrot-sourced UI, not a simple toggle -- kept, just parameterized by a fixed
+// `mode` instead of internal switchable state, mounted once per flat destination
+// (ContentView.swift's showMarketplace/showCommunity/showJobs/showProperty).
+enum HoodMode { case marketplace, community, jobs, property }
+
+struct HoodSectionScreen: View {
+    let mode: HoodMode
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
-    // Real deep-link into the Property chip (2026-08-10) -- see EntireMenuScreen's own
-    // "Property" row, which used to be a dead icon even though this real
-    // HoodMode.property chip already existed; same real binding pattern
-    // pendingConversationId above already establishes. Defaults false so every other
-    // caller (there is only one, ContentView.swift) is unaffected.
-    var openToProperty: Binding<Bool> = .constant(false)
 
-    private enum HoodMode { case marketplace, community, jobs, property }
-    @State private var mode: HoodMode = .marketplace
     @State private var neighborhoodName: String?
     @State private var neighborhoodVerificationCount = 0
     // Real dual-neighborhood support (2026-08-04) -- see NetworkClient.setSecondNeighborhood's
-    // own doc comment; mirrors Android SuperAppTabs.kt's HoodTab exactly.
+    // own doc comment; mirrors Android SuperAppTabs.kt's HoodSectionScreen exactly.
     @State private var secondNeighborhoodName: String?
     @State private var showNeighborhoodSwitcher = false
     @State private var showSecondNeighborhoodPrompt = false
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $mode) {
-                Text("Market").tag(HoodMode.marketplace)
-                Text("Life").tag(HoodMode.community)
-                Text("Jobs").tag(HoodMode.jobs)
-                Text("Home").tag(HoodMode.property)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, IDS.Layout.screenTop)
-
             HStack(spacing: 6) {
                 Text("📍")
                 Text(
@@ -307,7 +298,8 @@ struct HoodScreen: View {
                 Spacer()
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.vertical, 10)
+            .padding(.top, IDS.Layout.screenTop)
+            .padding(.bottom, 10)
             .contentShape(Rectangle())
             .onTapGesture { showNeighborhoodSwitcher = true }
 
@@ -328,12 +320,6 @@ struct HoodScreen: View {
                 neighborhoodName = profile.user.neighborhood
                 neighborhoodVerificationCount = profile.user.neighborhoodVerificationCount ?? 0
                 secondNeighborhoodName = profile.user.secondNeighborhood
-            }
-        }
-        .onChange(of: openToProperty.wrappedValue) { isOpen in
-            if isOpen {
-                mode = .property
-                openToProperty.wrappedValue = false
             }
         }
         .overlay {

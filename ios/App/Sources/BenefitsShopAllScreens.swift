@@ -153,25 +153,25 @@ private struct CashbackChanceCard: View {
 // its own old ShopTab (and ShopTopBar/CategoryTabsRow/ShopPromoCard/PointActionsCard)
 // were deleted for the same reason.
 
-// MARK: - All tab
+// MARK: - Explore tab
 
-// Real 전체 (All services) primary bottom tab (2026-07-24) -- separated from the My tab
-// at the user's own direct request in an earlier pass ("My and All screen should be
-// separated like KakaoPay... accessed by click on menu icon in app bar"), then brought
-// back to the bottom nav directly once mini-apps and (planned) games meant this
-// exhaustive service catalog needed to be one tap away, not nested two taps under My --
-// matching real Toss's own bottom nav (홈/혜택/쇼핑/페이/전체, no separate "My" tab at
-// all; personal info lives at the top of 전체 instead). Mirrors Android's MenuScreen
-// exactly (see ItundaAppScreen.kt's own doc comment on ItundaTab.All for the full history).
-// MyTabView's own real content (orders/favorites/listings tracking) isn't dropped -- it's
-// reachable one tap in via the profile icon this screen's own IdsAllTopBar now points at,
-// the exact same nesting this tab used to have with Menu, just inverted.
+// Real Explore primary bottom tab (renamed 2026-08-10 from All -- see
+// ContentView.swift's own doc comment for the full history: My is its own primary
+// tab now, ItundaTab.You, not reached via a profile icon here anymore). Mirrors
+// Android's MenuScreen exactly (see ItundaAppScreen.kt's own doc comment on
+// ItundaTab for the full history). Shop/Eats/Marketplace/Community/Jobs are real
+// flat rows here (2026-08-10) since they lost their own primary tabs; Property
+// already had its own Shortcuts-grid entry.
 struct EntireMenuScreen: View {
     var onOpenSettings: () -> Void = {}
-    var onOpenMyTab: () -> Void = {}
     var onClaimInterest: () -> Void = {}
     var onSwitchToTalk: () -> Void = {}
     var onOpenTransferHub: () -> Void = {}
+    var onOpenShop: () -> Void = {}
+    var onOpenEats: () -> Void = {}
+    var onOpenMarketplace: () -> Void = {}
+    var onOpenCommunity: () -> Void = {}
+    var onOpenJobs: () -> Void = {}
     var onOpenProperty: () -> Void = {}
 
     // Real granite mini-app launch, closing this file's own "MiniAppsSection... plain,
@@ -185,12 +185,21 @@ struct EntireMenuScreen: View {
     @State private var showWalletBalanceMiniApp = false
     @State private var showRewardTasksMiniApp = false
     @State private var showInsuranceMiniApp = false
-    // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level tab
-    // when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as reachable
-    // as a real row instead of being dropped, same fix Android's own AllTab went
-    // through (see ItundaAppScreen.kt's "Quick links" FlatSection).
+    // Benefits folded in here (2026-07-18) -- lost its own top-level tab when the
+    // bottom nav became Home/Shop/Hood/Talk/My, but stays just as reachable as a real
+    // row instead of being dropped, same fix Android's own AllTab went through (see
+    // ItundaAppScreen.kt's "Quick links" FlatSection). Pay itself is a real primary
+    // tab again (2026-08-10, ContentView.swift's Home/Pay/Explore/Messages/You).
     @State private var showBenefits = false
-    @State private var showPay = false
+    // Shop/Eats lost their own primary tab the same day (2026-08-10, real user
+    // correction: nesting them behind one row with an internal Shop/Eats toggle --
+    // ShopScreen's own retired Picker -- is noise a flat catalog shouldn't have).
+    // Self-contained local sheets here, not routed through ContentView, since
+    // neither needs the cross-tab "message seller -> Talk" hop Marketplace/
+    // Community/Jobs/Property do (hence those four stay ContentView-level callbacks,
+    // matching onOpenProperty's own existing pattern).
+    @State private var showShop = false
+    @State private var showEats = false
     // Real self-hosted Rwanda map (2026-07-19) -- same Quick-links pattern as Pay/
     // Benefits above, since the 5-tab bottom nav has no free slot for a Map tab.
     @State private var showMap = false
@@ -321,7 +330,12 @@ struct EntireMenuScreen: View {
     private var searchableMenuSections: [(title: String, rows: [FlatRow])] {
         [
             ("Quick links", [
-                FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
+                FlatRow(title: "Shop", subtitle: "Coupang-style commerce", symbol: "bag.fill", tint: .accentBlue, action: { showShop = true }),
+                FlatRow(title: "Eats", subtitle: "Food delivery, order or deliver", symbol: "fork.knife", tint: .accentOrange, action: { showEats = true }),
+                FlatRow(title: "Marketplace", subtitle: "당근마켓-style neighborhood buy/sell", symbol: "storefront.fill", tint: .accentTeal, action: onOpenMarketplace),
+                FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", symbol: "person.3.fill", tint: .accentTeal, action: onOpenCommunity),
+                FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", symbol: "briefcase.fill", tint: .accentTeal, action: onOpenJobs),
+                FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", symbol: "house.fill", tint: .accentTeal, action: onOpenProperty),
                 FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
                 FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                 FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
@@ -464,13 +478,16 @@ struct EntireMenuScreen: View {
                 Group {
                     // No back button here (2026-07-24): this is now a persistent
                     // bottom-nav destination, not a screen pushed on top of one --
-                    // there's nothing to back out to. My's own real content is one tap
-                    // in via IdsAllTopBar's profile icon instead. Same real name/
-                    // settings/profile top bar MyTabView used to own when All was
-                    // nested under it -- inverted to live here now.
-                    IdsAllTopBar(onOpenSettings: onOpenSettings, onOpenMyTab: onOpenMyTab)
+                    // there's nothing to back out to. My's own real content is its own
+                    // primary tab now (ItundaTab.You), not reached from here.
+                    IdsAllTopBar(onOpenSettings: onOpenSettings)
                     FlatSection(title: "Quick links", rows: [
-                        FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
+                        FlatRow(title: "Shop", subtitle: "Coupang-style commerce", symbol: "bag.fill", tint: .accentBlue, action: { showShop = true }),
+                        FlatRow(title: "Eats", subtitle: "Food delivery, order or deliver", symbol: "fork.knife", tint: .accentOrange, action: { showEats = true }),
+                        FlatRow(title: "Marketplace", subtitle: "당근마켓-style neighborhood buy/sell", symbol: "storefront.fill", tint: .accentTeal, action: onOpenMarketplace),
+                        FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", symbol: "person.3.fill", tint: .accentTeal, action: onOpenCommunity),
+                        FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", symbol: "briefcase.fill", tint: .accentTeal, action: onOpenJobs),
+                        FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", symbol: "house.fill", tint: .accentTeal, action: onOpenProperty),
                         FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                         FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
@@ -688,7 +705,7 @@ struct EntireMenuScreen: View {
             .padding(.bottom, IDS.Layout.sectionSpacing)
             } else {
                 VStack(alignment: .leading, spacing: IDS.Layout.sectionSpacing) {
-                    IdsAllTopBar(onOpenSettings: onOpenSettings, onOpenMyTab: onOpenMyTab)
+                    IdsAllTopBar(onOpenSettings: onOpenSettings)
                     IdsSearchBar(text: $menuSearchQuery, placeholder: "Search everything else")
                     if matchingSearchSections.isEmpty {
                         Text("No match for \"\(menuSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines))\".")
@@ -721,8 +738,11 @@ struct EntireMenuScreen: View {
         .sheet(isPresented: $showBenefits) {
             BenefitsScreen()
         }
-        .sheet(isPresented: $showPay) {
-            PayScreen()
+        .sheet(isPresented: $showShop) {
+            CommerceShopContent()
+        }
+        .sheet(isPresented: $showEats) {
+            EatsContent()
         }
         .sheet(isPresented: $showMap) {
             MapScreenView()
@@ -843,15 +863,16 @@ struct EntireMenuScreen: View {
 //
 // Trimmed down (2026-07-24) to ONLY this unique content -- its old "Quick links" and
 // "My account" sections are deleted, since both now fully duplicate rows already in
-// EntireMenuScreen's own catalog now that All is the primary bottom tab (see that
-// screen's own doc comment). Mirrors Android's trimmed MyTab exactly. No longer this
-// tab's own body: reached instead as a real back-button overlay from the profile icon
-// at the top of EntireMenuScreen (see ContentView.swift's own fullScreenCover), the
-// exact same nesting All used to have under this tab, just inverted.
+// EntireMenuScreen's own catalog. Mirrors Android's trimmed MyTab exactly. This is
+// now its own primary tab (ItundaTab.You, 2026-08-10, see ContentView.swift's own
+// doc comment) -- not reached via EntireMenuScreen's profile icon anymore.
 struct MyTabView: View {
     var onBack: () -> Void = {}
     var onSwitchToShop: () -> Void = {}
-    var onSwitchToHood: () -> Void = {}
+    var onSwitchToEats: () -> Void = {}
+    var onSwitchToMarketplace: () -> Void = {}
+    var onSwitchToJobs: () -> Void = {}
+    var onSwitchToProperty: () -> Void = {}
 
     @State private var shopOrders: [OrderDto] = []
     @State private var eatsOrders: [EatsOrderDto] = []
@@ -915,28 +936,28 @@ struct MyTabView: View {
                             orderRow(label: "Shop order", status: order.status, amount: order.totalAmount, action: onSwitchToShop)
                         }
                         ForEach(eatsOrders.prefix(3)) { order in
-                            orderRow(label: "Eats order", status: order.status, amount: order.totalAmount, action: onSwitchToShop)
+                            orderRow(label: "Eats order", status: order.status, amount: order.totalAmount, action: onSwitchToEats)
                         }
                     }
                 }
                 // Real favorites/wishlist tracking across every product with one --
                 // counts are real (GET .../favorites on each module); tapping switches
-                // to the product's own tab where its dedicated wishlist view already
-                // lives (Marketplace/Jobs/Property under Hood, restaurants under
-                // Shop's Eats toggle) -- an honest one-more-tap scope, not a full deep
-                // link into the nested sub-view.
+                // directly to that real destination's own dedicated wishlist view.
+                // Each of Marketplace/Jobs/Property is its own flat destination now
+                // (2026-08-10, Hood's segmented Picker retired), so this is a real,
+                // direct deep link, not "one more tap" into a shared sub-view.
                 FlatSection(title: "My favorites", rows: [
-                    FlatRow(title: "Marketplace wishlist", trailing: "\(favoriteListingsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToHood),
-                    FlatRow(title: "Jobs wishlist", trailing: "\(favoriteJobPostsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToHood),
-                    FlatRow(title: "Property wishlist", trailing: "\(favoritePropertyListingsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToHood),
-                    FlatRow(title: "Restaurant favorites", trailing: "\(favoriteRestaurantsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToShop),
+                    FlatRow(title: "Marketplace wishlist", trailing: "\(favoriteListingsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToMarketplace),
+                    FlatRow(title: "Jobs wishlist", trailing: "\(favoriteJobPostsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToJobs),
+                    FlatRow(title: "Property wishlist", trailing: "\(favoritePropertyListingsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToProperty),
+                    FlatRow(title: "Restaurant favorites", trailing: "\(favoriteRestaurantsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToEats),
                 ])
                 // Real "my own posts" tracking (Marketplace/Jobs/Property listings I
                 // created) -- same Naver-style "track your own activity" pattern.
                 FlatSection(title: "My listings", rows: [
-                    FlatRow(title: "Marketplace", trailing: "\(myListingsCount)", symbol: "storefront.fill", tint: .accentBlue, action: onSwitchToHood),
-                    FlatRow(title: "Jobs posted", trailing: "\(myJobPostsCount)", symbol: "briefcase.fill", tint: .accentBlue, action: onSwitchToHood),
-                    FlatRow(title: "Property listed", trailing: "\(myPropertyListingsCount)", symbol: "house.fill", tint: .accentTeal, action: onSwitchToHood),
+                    FlatRow(title: "Marketplace", trailing: "\(myListingsCount)", symbol: "storefront.fill", tint: .accentBlue, action: onSwitchToMarketplace),
+                    FlatRow(title: "Jobs posted", trailing: "\(myJobPostsCount)", symbol: "briefcase.fill", tint: .accentBlue, action: onSwitchToJobs),
+                    FlatRow(title: "Property listed", trailing: "\(myPropertyListingsCount)", symbol: "house.fill", tint: .accentTeal, action: onSwitchToProperty),
                 ])
                 // "My account" (My assets/Get a loan/Credit score/etc) deliberately
                 // dropped here (2026-07-24) -- every one of those rows already lives in
@@ -1189,19 +1210,15 @@ private struct VerificationRow: View {
 }
 
 // Was a text navbar -- "ID | Support | Settings" with pipe separators, then a hamburger
-// icon leading to the Menu screen -- neither has an equivalent in real Toss. The 전체
-// (All) tab top bar is just the user's name plus a profile icon (2026-07-24: inverted
-// from a hamburger, since this bar itself now IS the Menu/전체 screen's own top bar --
-// see EntireMenuScreen's own doc comment for the full history) and a settings icon;
-// support/ID live as rows further down the list, not up here.
+// icon leading to the Menu screen -- neither has an equivalent in real Toss. The
+// Explore tab top bar is just the user's name plus a settings icon; support/ID live
+// as rows further down the list, not up here. The profile icon this bar showed
+// 2026-07-24 - 2026-08-10 is gone -- You is its own primary tab now (see
+// ContentView.swift's Home/Pay/Explore/Messages/You), so a second way to reach the
+// same screen from here would be a real duplicate, not a convenience (same fix as
+// Android's AllTopBar).
 private struct IdsAllTopBar: View {
     var onOpenSettings: () -> Void = {}
-    // Real My-activity screen (2026-07-24, inverted from Menu) -- see
-    // EntireMenuScreen's own doc comment: the profile icon now leads to the
-    // personal-activity screen (orders/favorites/listings), the exact reverse of this
-    // bar's old Menu icon. Optional, nil default so this bar's only other real caller
-    // (HomeTopBar-style reuse, if any) is unaffected.
-    var onOpenMyTab: (() -> Void)? = nil
 
     var body: some View {
         HStack {
@@ -1209,14 +1226,6 @@ private struct IdsAllTopBar: View {
                 .font(IDS.scaledFont(size: 26, weight: .bold, relativeTo: .largeTitle))
                 .foregroundColor(IDS.Colors.textPrimary)
             Spacer()
-            if let onOpenMyTab {
-                Button(action: onOpenMyTab) {
-                    Image(systemName: "person.fill")
-                        .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
-                        .foregroundColor(IDS.Colors.textPrimary)
-                }
-                .accessibilityLabel("My activity")
-            }
             // Real Settings screen (2026-07-12, see SettingsScreen.swift) --
             // previously wired directly to logout with no screen behind it at all,
             // same fix as Android's AllTopBar.
