@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, Eye, EyeOff, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
+import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
 import { Badge } from './Badge';
@@ -669,11 +670,11 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
 // large improvement over not being reachable from Home at all.
 function CooperativeSavingsRail({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
   const { t } = useI18n();
-  const items: { title: string; subtitle: string; icon: ReactElement; tint: string; tab: Tab }[] = [
-    { title: t('coopRail.sacco.title'), subtitle: t('coopRail.sacco.subtitle'), icon: <Landmark size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', tab: 'SAVINGS' },
-    { title: t('coopRail.ikimina.title'), subtitle: t('coopRail.ikimina.subtitle'), icon: <Users size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', tab: 'SAVINGS' },
-    { title: t('coopRail.motoOwnership.title'), subtitle: t('coopRail.motoOwnership.subtitle'), icon: <Bike size={20} color="var(--itunda-blue)" />, tint: 'var(--itunda-blue-light)', tab: 'LOANS' },
-    { title: t('coopRail.harvestAdvance.title'), subtitle: t('coopRail.harvestAdvance.subtitle'), icon: <Sprout size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', tab: 'LOANS' },
+  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; tab: Tab }[] = [
+    { key: 'sacco', title: t('coopRail.sacco.title'), subtitle: t('coopRail.sacco.subtitle'), icon: <Landmark size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', tab: 'SAVINGS' },
+    { key: 'ikimina', title: t('coopRail.ikimina.title'), subtitle: t('coopRail.ikimina.subtitle'), icon: <Users size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', tab: 'SAVINGS' },
+    { key: 'moto_ownership', title: t('coopRail.motoOwnership.title'), subtitle: t('coopRail.motoOwnership.subtitle'), icon: <Bike size={20} color="var(--itunda-blue)" />, tint: 'var(--itunda-blue-light)', tab: 'LOANS' },
+    { key: 'harvest_advance', title: t('coopRail.harvestAdvance.title'), subtitle: t('coopRail.harvestAdvance.subtitle'), icon: <Sprout size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', tab: 'LOANS' },
   ];
 
   return (
@@ -686,8 +687,8 @@ function CooperativeSavingsRail({ onNavigateToTab }: { onNavigateToTab: (tab: Ta
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         {items.map((item) => (
           <button
-            key={item.title}
-            onClick={() => onNavigateToTab(item.tab)}
+            key={item.key}
+            onClick={() => { recordEvent('coop_rail_tap', item.key); onNavigateToTab(item.tab); }}
             style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
           >
             <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: item.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -728,6 +729,10 @@ function HomeView({ onNavigateToCard, onNavigateToTab }: { onNavigateToCard: () 
   };
 
   useEffect(load, []);
+  // Real, minimal usage signal (2026-08-10) -- see lib/analytics.ts's own doc comment.
+  // Fired once per real mount of Home, the baseline every retention question in the
+  // "itunda: the wedge, not the mirror" memo is measured against.
+  useEffect(() => { recordEvent('home_view'); }, []);
 
   if (error) {
     return (
