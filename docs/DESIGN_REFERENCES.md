@@ -4452,3 +4452,37 @@ research-body finding** (NN/g, Apple HIG); nothing here is `inferred`.
    real `itunda://` deep-link scheme (see Section 1's Maps entry); bank-mfe web has none at all.
    *Target: `App.tsx`/`BankDashboard.tsx` -- real architectural gap, larger scope than the others
    above, not yet scoped into a concrete plan.*
+
+### Final nav taxonomy: Home/Pay/Explore/Messages/You, shipped on all 3 platforms
+
+**Closed 2026-08-10/11.** After directly comparing this against Home/Shop/Hood/Talk/All (the
+version that had matched Android/iOS's own independent convergence), the user chose
+**Home/Pay/Explore/Messages/You** instead -- itunda is bank-first, so Pay and You get dedicated
+primary slots rather than being nested a tap into Explore/My. Shipped in the same session on all
+3 platforms so the "different app per device" inconsistency this whole section exists to close
+never actually reopened: bank-mfe (`BankDashboard.tsx`, commit `eec17d99`), Android
+(`ItundaAppScreen.kt`'s `ItundaTab` enum, commit `44437202`), iOS (`ContentView.swift`'s TabView,
+commit `36100a5f`).
+
+**Real correction, same day, all 3 platforms:** the first pass on each platform nested Shop+Eats
+behind one Explore row (a Shop/Eats toggle) and Marketplace+Community+Jobs+Property behind
+another (a 4-way toggle) -- direct user feedback: that shape is correct for a *primary* tab
+(mirrors Android's real Shop/Eats row, iOS HoodScreen's real segmented Picker, the exact reason
+that pattern existed at all when Shop/Hood WERE primary tabs), but wrong once nested inside a
+catalog screen -- a tab bar inside a tab is exactly the noise a flat catalog is supposed to avoid.
+Toss's own real 전체 screen is a flat list of individual rows, not nested toggles. Fixed by
+retiring every wrapper toggle (`ShopHub`/`HoodHub` on web, `ShopTab`/`HoodTab` on Android,
+`ShopScreen`/`HoodScreen` on iOS) and making Shop/Eats/Marketplace/Community/Jobs/Property each
+their own flat row (commits `96743991` web, `d9c7fb5e` Android, `36100a5f` iOS). Android and iOS
+both preserved Hood's real, deliberately Karrot-sourced shared shell (neighborhood-name top bar,
+per-mode menu sheet, Marketplace's "Write" FAB) by extracting it into a
+`HoodSectionScreen(mode:)`/`HoodSectionScreen` parameterized by a fixed mode instead of an
+internal switcher, rather than dropping that real UI -- web never had an equivalent shell to
+preserve, so its 4 sections were always going to be simpler flat rows.
+
+All 3 platforms' tab counts were re-verified programmatically/by exhaustive grep to confirm every
+destination is reachable with no orphans and no duplicates. Web was additionally verified live via
+headless-Chrome click-throughs. iOS's App target has a pre-existing, independently-reproduced
+CocoaPods/React-Native-bridge gap that blocks `xcodebuild` here entirely (unrelated to these
+changes); iOS was verified instead via `swift -frontend -parse` (clean) plus an exhaustive manual
+grep sweep confirming no orphaned references to any retired symbol.
