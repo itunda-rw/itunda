@@ -10,4 +10,6 @@ interface VupLoanRepository : JpaRepository<VupLoan, String> {
     // "One active loan at a time" eligibility check -- active means
     // REQUESTED/DISBURSED/OVERDUE, not REPAID.
     fun findByUserIdAndStatusIn(userId: String, statuses: List<VupLoanStatus>): List<VupLoan>
+
+    fun findByStatus(status: VupLoanStatus): List<VupLoan>
 }

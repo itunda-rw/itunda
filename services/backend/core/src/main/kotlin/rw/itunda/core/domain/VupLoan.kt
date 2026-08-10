@@ -95,6 +95,17 @@ class VupLoan(
     @Column(name = "due_date")
     var dueDate: LocalDate? = null,
 
+    // Real gap found live (2026-08-10, see the "itunda: the wedge, not the mirror"
+    // strategy memo and MicroSave/Access to Finance Rwanda's own 2026 finding that
+    // "only 14% of borrowers repay loans digitally" in Rwanda): before this, itunda's
+    // own overdue check ran silently server-side (a log line, no user-facing
+    // notification at all) and there was no pre-due reminder whatsoever -- a real
+    // borrower had no way to learn a payment was coming due except by opening the app
+    // and checking. Tracks whether the "due in a few days" reminder has already fired
+    // for this loan, so the scheduler's own polling doesn't re-notify on every tick.
+    @Column(name = "reminder_sent_at")
+    var reminderSentAt: Instant? = null,
+
     // Real check-then-act "single claimable resource" guard: only one active loan per
     // user at a time, and both disburse and repay read-then-mutate this row -- same
     // reasoning every prior feature this session needed `@Version` for.

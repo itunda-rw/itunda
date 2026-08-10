@@ -5,12 +5,15 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.VupLoan
 import rw.itunda.core.domain.VupLoanPurpose
 import rw.itunda.core.domain.VupLoanStatus
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.VupLoanRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -58,6 +61,8 @@ class VupLoanService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     // Real bug found in this feature's own build-time review (2026-08-02): the
     // "reject a second active loan" check below reads-then-creates a brand-new row, a
@@ -193,5 +198,51 @@ class VupLoanService(
     fun markOverdue(loan: VupLoan) {
         loan.status = VupLoanStatus.OVERDUE
         vupLoanRepository.save(loan)
+        // Real gap found live (2026-08-10) -- see VupLoan.kt's own doc comment: this
+        // used to be visibility-only (a server log line), so a real borrower had no
+        // way to learn their loan had gone overdue short of opening the app and
+        // checking. Same real Notification + push pattern OverdraftService.
+        // openOverdraft already establishes for a credit-product state change.
+        val title = "VUP loan payment overdue"
+        val body = "Your VUP Financial Services loan (${loan.outstandingPrincipal} RWF outstanding) is now overdue. Repay from the Loans tab to avoid further delay."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = loan.userId, type = "VUP_LOAN_OVERDUE",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(loan.userId, title, body, mapOf("loanId" to loan.id))
+    }
+
+    // Real, minimal pre-due reminder (2026-08-10) -- same finding as markOverdue's own
+    // doc comment, the proactive half: a reminder a few days BEFORE a loan goes
+    // overdue is what actually drives real repayment behavior (this is standard real
+    // fintech practice -- Toss/KakaoBank both send a due-date-approaching push, not
+    // just an after-the-fact overdue flag). `reminderSentAt` guards against
+    // re-notifying on every scheduler tick.
+    fun getLoansDueSoonForReminder(withinDays: Long = 3): List<VupLoan> {
+        val today = LocalDate.now()
+        val cutoff = today.plusDays(withinDays)
+        return vupLoanRepository.findByStatus(VupLoanStatus.DISBURSED).filter {
+            it.outstandingPrincipal > BigDecimal.ZERO && it.reminderSentAt == null &&
+                it.dueDate != null && !it.dueDate!!.isBefore(today) && !it.dueDate!!.isAfter(cutoff)
+        }
+    }
+
+    @Transactional
+    fun sendDueReminder(loan: VupLoan) {
+        loan.reminderSentAt = Instant.now()
+        vupLoanRepository.save(loan)
+        val title = "VUP loan payment due soon"
+        val body = "Your VUP Financial Services loan (${loan.outstandingPrincipal} RWF outstanding) is due ${loan.dueDate}. Repay from the Loans tab anytime before then."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = loan.userId, type = "VUP_LOAN_DUE_SOON",
+                title = title, body = body,
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(loan.userId, title, body, mapOf("loanId" to loan.id))
     }
 }

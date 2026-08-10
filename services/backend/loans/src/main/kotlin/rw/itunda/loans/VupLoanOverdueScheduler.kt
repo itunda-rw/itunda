@@ -11,8 +11,11 @@ import org.springframework.stereotype.Component
  * below is demo-speed, same convention as `AutoSaveScheduler`'s own doc comment
  * establishes: checking every 60 seconds for loans whose real due date has already
  * elapsed is cheap and correct; it does not mean loans go overdue every 60 seconds.
- * Visibility only -- no penalty interest is applied, since none is sourced for VUP/FS
- * and this backend doesn't invent one.
+ * No penalty interest is applied, since none is sourced for VUP/FS and this backend
+ * doesn't invent one. Corrected 2026-08-10: this used to be visibility-only (a server
+ * log line) -- `markOverdue` now also sends the borrower a real notification, see its
+ * own doc comment. See `VupLoanReminderScheduler` for the proactive, before-the-fact
+ * half of this same fix.
  */
 @Component
 class VupLoanOverdueScheduler(private val vupLoanService: VupLoanService) {

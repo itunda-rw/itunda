@@ -17,6 +17,8 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.VupLoanRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -46,7 +48,9 @@ class VupLoanServiceTest : BehaviorSpec({
         walletRepository: WalletRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = VupLoanService(vupLoanRepository, walletRepository, ledgerService, rateLimiter)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = VupLoanService(vupLoanRepository, walletRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
 
     Given("a user applying for a VUP loan") {
         val vupLoanRepository = mockk<VupLoanRepository>()
