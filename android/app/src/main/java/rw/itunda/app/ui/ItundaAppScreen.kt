@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Description
@@ -77,6 +79,7 @@ import androidx.compose.material.icons.outlined.Redeem
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
@@ -96,6 +99,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -119,7 +123,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -1838,320 +1844,317 @@ private fun MenuScreen(
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     var partnerLoadError by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var loadingPartnerAppId by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    // Real fix (2026-08-10): direct response to repeated, specific product feedback
+    // ("itunda still feels like code not product... not organized... hard to
+    // navigate") -- traced to a concrete cause: this screen rendered ~17 categories
+    // and 60+ rows fully expanded, always, in one long scroll, below a "Search" box
+    // that was pure decoration (no TextField, nothing typed into it ever did
+    // anything). That's the exact anti-pattern Hick's Law names -- decision time
+    // rises with visible choice count -- and it's a data dump (whatever got built,
+    // in build order) rather than an information architecture. The row content and
+    // every real onClick below is completely unchanged; only how it's found and
+    // shown changed: a real, working search over all of it.
+    var menuSearchQuery by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+
+    val quickLinksRows = listOf(
+        FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
+        FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
+        FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
+        FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
+        FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
+    )
+    val accountsRows = listOf(
+        FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue, onClick = onOpenOverview),
+        FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
+        FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
+        FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),
+        FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
+        FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
+        FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
+        FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue, onClick = onOpenSubscriptions),
+        FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
+    )
+    val sendPayRows = listOf(
+        FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentBlue, onClick = onOpenTransferHub),
+        FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentBlue, onClick = onOpenRequestMoney),
+        FlatRow("Auto top-up", subtitle = "Refill your wallet automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentBlue, onClick = onOpenAutoTopUp),
+        FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal, onClick = {
+            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
+        }),
+    )
+    val saveGrowRows = listOf(
+        FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
+        FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
+        FlatRow("Mini account", subtitle = "Capped starter wallet, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniWallet),
+        FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenIkimina),
+        FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
+    )
+    val borrowRows = listOf(
+        FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
+        FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
+        FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
+        FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenVupLoan),
+        FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", icon = Icons.Outlined.School, iconColor = AccentPurple, onClick = onOpenStudentLoan),
+        FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
+    )
+    val transportRows = listOf(
+        FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
+        FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
+        FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentBlue, onClick = onOpenBikeRental),
+        FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", icon = Icons.Outlined.LocalParking, iconColor = AccentPurple, onClick = onOpenParking),
+        FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", icon = Icons.Outlined.DirectionsBus, iconColor = AccentTeal, onClick = onOpenBus),
+        FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
+        FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", icon = Icons.Outlined.DirectionsCar, iconColor = AccentTeal, onClick = onOpenVehicleValuation),
+    )
+    val communityTrustRows = listOf(
+        FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenTrustScore),
+        FlatRow("Q&A", subtitle = "Ask a question, answer one, get adopted", icon = Icons.Outlined.HelpOutline, iconColor = AccentPurple, onClick = onOpenKnowledge),
+    )
+    val cashAgentRows = listOf(
+        FlatRow("Agent till", subtitle = "For assigned cash-agent operators: cash-in, cash-out, till count", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onOpenAgentOperator),
+        FlatRow("Float marketplace", subtitle = "For assigned cash-agents: offer or request float from nearby agents", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenFloatMarketplace),
+    )
+    val switchSaveRows = listOf(
+        FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
+        FlatRow("Switch your rent deposit loan", trailing = "9% ~ 15%", trailingIsLink = true, icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onOpenLoans),
+        FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, icon = Icons.Outlined.Storefront, iconColor = AccentTeal, onClick = onOpenLoans)
+    )
+    val cardsRows = listOf(
+        FlatRow("Itunda Card", trailing = "5% back on bills", trailingIsLink = true, icon = Icons.Outlined.CreditCard, iconColor = AccentRed, onClick = onOpenCard),
+        FlatRow("Virtual card", trailing = "Instant issue", icon = Icons.Outlined.CreditCard, iconColor = AccentGray, onClick = onOpenCard)
+    )
+    val servicesRows = listOf(
+        FlatRow("Rent deposit protection", icon = Icons.Outlined.HomeWork, iconColor = AccentBlue),
+        FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentBlue, onClick = onOpenSubscriptions),
+        FlatRow("Import recurring payments", icon = Icons.Outlined.LocalShipping, iconColor = AccentGray),
+        FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue, onClick = {
+            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
+        }),
+        FlatRow("Claim interest now", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
+        FlatRow("SME income tax estimate", icon = Icons.Outlined.Savings, iconColor = AccentOrange),
+        FlatRow("Split a bill with friends", icon = Icons.Outlined.Groups, iconColor = AccentBlue, onClick = onSwitchToTalk),
+        FlatRow("Shared calendar", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue),
+        FlatRow("Kids' allowance tasks", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange)
+    )
+    val foreignCurrencyRows = listOf(
+        FlatRow("Foreign currency wallet", trailing = "100% rate preference", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentPurple, onClick = onOpenForeignCurrency),
+        FlatRow("International transfer", icon = Icons.Outlined.AttachMoney, iconColor = AccentBlue, onClick = onOpenForeignCurrency)
+    )
+    val growMoneyRows = listOf(
+        FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", icon = Icons.Outlined.ShowChart, iconColor = AccentTeal, onClick = onOpenInvest),
+        FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue, onClick = onOpenInvest),
+        FlatRow("IPO schedule", icon = Icons.Outlined.TrendingUp, iconColor = AccentRed, onClick = onOpenInvest),
+        FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentTeal, onClick = onOpenInvest)
+    )
+    val pensionRows = listOf(
+        FlatRow("Check my RSSB pension", icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue),
+        FlatRow("Pension products", icon = Icons.Outlined.Percent, iconColor = AccentBlue)
+    )
+    val loansRows = listOf(
+        FlatRow("Check my max limit", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenLoans),
+        FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans)
+    )
+    val notificationsConsentRows = listOf(
+        FlatRow("Notifications", showChevron = true, onClick = onOpenSettings),
+        FlatRow("Credit data usage policy"),
+        FlatRow("Privacy policy"),
+        FlatRow("Terms & consent")
+    )
+    val supportRows = listOf(
+        FlatRow("FAQ"),
+        FlatRow("Live chat"),
+        FlatRow("Call support"),
+        FlatRow("Report an issue with a transaction", showChevron = true, onClick = onOpenSupport),
+        FlatRow("My support tickets", showChevron = true, onClick = onOpenSupport),
+        FlatRow("Announcements")
+    )
+    // Real Toss Bank reference mapping (see the doc comment further down, kept in
+    // place, for the full account of Switch & save/Cards/Services/Foreign
+    // currency/Grow your money/Pension/Loans/Notifications & consent/Support).
+    val allMenuSectionsForSearch = listOf(
+        "Quick links" to quickLinksRows,
+        "Accounts & cards" to accountsRows,
+        "Send & pay" to sendPayRows,
+        "Save & grow" to saveGrowRows,
+        "Borrow" to borrowRows,
+        "Transport" to transportRows,
+        "Community & trust" to communityTrustRows,
+        "Cash agent tools" to cashAgentRows,
+        "Switch & save" to switchSaveRows,
+        "Cards" to cardsRows,
+        "Services" to servicesRows,
+        "Foreign currency" to foreignCurrencyRows,
+        "Grow your money" to growMoneyRows,
+        "Pension" to pensionRows,
+        "Loans" to loansRows,
+        "Notifications & consent" to notificationsConsentRows,
+        "Support" to supportRows,
+    )
+
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { AllTopBar(onOpenSettings = onOpenSettings, onOpenMyTab = onOpenMyTab) }
-        item { SearchBar("Search") }
-        // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
-        // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
-        // reachable as a real row instead of being dropped.
         item {
-            FlatSection(
-                "Quick links",
-                listOf(
-                    FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
-                    FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
-                    FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
-                    FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
-                    FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
-                ),
+            SearchBar(
+                query = menuSearchQuery,
+                onQueryChange = { menuSearchQuery = it },
+                placeholder = "Search everything else",
             )
         }
-        item {
-            IconGridSection("Quick access", listOf(
-                "Mini" to Icons.Outlined.Apps,
-                "Games" to Icons.Outlined.SportsEsports,
-                "Bank" to Icons.Outlined.AccountBalance,
-                "Pick" to Icons.Outlined.Star
-            ))
-        }
-        item {
-            MiniAppsSection(
-                onWalletBalance = {
-                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.WalletBalanceMiniAppActivity::class.java))
-                },
-                onPayBills = {
-                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-                },
-                onRewardTasks = {
-                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
-                },
-                onInsurance = {
-                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
-                }
-            )
-        }
-        // Real Partner SDK section (2026-07-17) -- lists REAL approved third-party
-        // mini-apps from GET /api/v1/mini-apps/catalog (services/backend/partners),
-        // closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner SDK row.
-        // Empty when the catalog has no approved entries yet (a real, honest empty
-        // state, not hidden entirely, so this section's existence is itself visible
-        // proof the mechanism is wired up end to end). Follows the exact same
-        // FlatSection/tap-to-launch pattern as MiniAppsSection above, on purpose --
-        // this is meant to read as a natural extension of first-party mini-apps, not a
-        // separately-styled bolt-on.
-        if (partnerMiniApps.isNotEmpty()) {
+        if (menuSearchQuery.isBlank()) {
+            // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
+            // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
+            // reachable as a real row instead of being dropped.
+            item { FlatSection("Quick links", quickLinksRows) }
             item {
-                FlatSection(
-                    title = "Partner mini-apps",
-                    rows = partnerMiniApps.map { app ->
-                        FlatRow(
-                            title = app.name,
-                            subtitle = if (loadingPartnerAppId == app.id) "Loading..." else app.description,
-                            onClick = {
-                                if (loadingPartnerAppId == null) {
-                                    loadingPartnerAppId = app.id
-                                    coroutineScope.launch {
-                                        rw.itunda.app.miniapps.PartnerMiniAppLoader.launch(
-                                            activity = context as android.app.Activity,
-                                            app = app,
-                                            onError = { message -> partnerLoadError = message },
-                                        )
-                                        loadingPartnerAppId = null
-                                    }
-                                }
-                            }
-                        )
+                IconGridSection("Quick access", listOf(
+                    "Mini" to Icons.Outlined.Apps,
+                    "Games" to Icons.Outlined.SportsEsports,
+                    "Bank" to Icons.Outlined.AccountBalance,
+                    "Pick" to Icons.Outlined.Star
+                ))
+            }
+            item {
+                MiniAppsSection(
+                    onWalletBalance = {
+                        context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.WalletBalanceMiniAppActivity::class.java))
+                    },
+                    onPayBills = {
+                        context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
+                    },
+                    onRewardTasks = {
+                        context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
+                    },
+                    onInsurance = {
+                        context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
                     }
                 )
             }
-        }
-        item {
-            // Real gap found live (2026-08-10): titled "Recent services" but nothing
-            // here was ever actually tracked as recent -- a static, hardcoded list,
-            // which is its own small honesty problem on top of the bigger one: 6 of
-            // its 8 icons were dead taps (tap ripple fires, nothing happens). Renamed
-            // to "Shortcuts" (what it actually is) and wired to the same real
-            // destinations the rest of this screen already uses. "Photo transfer" is
-            // dropped outright, not wired -- grepping this app for any OCR/photo-based
-            // transfer feature turns up nothing; same "don't fake a destination that
-            // doesn't exist" call already made for QuickActions' Scan-to-Pay icon.
-            IconGridSection(
-                "Shortcuts",
-                listOf(
-                    "Open account" to Icons.Outlined.AddCircleOutline,
-                    "Verify" to Icons.Outlined.VerifiedUser,
-                    "Send" to Icons.Outlined.Send,
-                    "Group" to Icons.Outlined.Group,
-                    "Property" to Icons.Outlined.HomeWork,
-                    "Insurance" to Icons.Outlined.Shield,
-                ),
-                onItemClick = { label ->
-                    when (label) {
-                        "Open account" -> onOpenOverview()
-                        "Verify" -> onOpenIdentity()
-                        "Send" -> onOpenTransferHub()
-                        "Group" -> onOpenGroupAccounts()
-                        "Property" -> onOpenProperty()
-                        "Insurance" -> context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
-                    }
-                },
-            )
-        }
-        // Real gap found live (2026-08-10): this used to be one 33-row "Financial
-        // services" section -- everything from savings to bus tickets to vehicle
-        // inspection dumped under a single label that was actively wrong for most of
-        // what it contained. This read as unorganized because it WAS unorganized: a
-        // supply-side dump (whatever got built, in build order) rather than a
-        // demand-side grouping (what the user is actually trying to do), the exact
-        // anti-pattern Toss Tech's own 내 문서함 rewrite names and fixes (toss.tech/
-        // article/mydoc, "화면 내에서 우선순위 정리가 되지 않았" -- "priorities weren't
-        // organized within the screen"; they restructured around real user intent
-        // instead of internal product structure). Same real rows, same real
-        // onClick callbacks -- only the grouping and two previously-dead rows changed.
-        item {
-            FlatSection("Accounts & cards", listOf(
-                // "Open account" was a dead tap (no onClick at all) despite its own
-                // subtitle describing exactly what OverviewScreen's real "Link
-                // account" flow already does -- wired to the same real destination
-                // "My assets" already uses.
-                FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue, onClick = onOpenOverview),
-                FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
-                FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
-                FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),
-                FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
-                FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
-                FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
-                FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue, onClick = onOpenSubscriptions),
-                FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
-            ))
-        }
-        item {
-            FlatSection("Send & pay", listOf(
-                FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentBlue, onClick = onOpenTransferHub),
-                FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentBlue, onClick = onOpenRequestMoney),
-                FlatRow("Auto top-up", subtitle = "Refill your wallet automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentBlue, onClick = onOpenAutoTopUp),
-                // "Mobile plan" was also a dead tap (no onClick) -- MTN/Airtel airtime
-                // and broadband are real billers inside the Pay Bills mini-app
-                // (packages/saronite/mini-apps/pay-bills), the same real destination
-                // MiniAppsSection's own "Bills" quick-access icon launches.
-                FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal, onClick = {
-                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-                }),
-            ))
-        }
-        item {
-            FlatSection("Save & grow", listOf(
-                FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
-                FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
-                FlatRow("Mini account", subtitle = "Capped starter wallet, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniWallet),
-                FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenIkimina),
-                FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
-            ))
-        }
-        item {
-            FlatSection("Borrow", listOf(
-                FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
-                FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
-                FlatRow("Harvest advance", subtitle = "Coffee cooperative input financing", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentTeal, onClick = onOpenHarvestAdvance),
-                FlatRow("VUP Financial Services", subtitle = "Means-tested government microloan for farming, livestock, business", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenVupLoan),
-                FlatRow("Student loan", subtitle = "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", icon = Icons.Outlined.School, iconColor = AccentPurple, onClick = onOpenStudentLoan),
-                FlatRow("Moto-Taxi Ownership", subtitle = "Save a 30% down payment, then convert to a loan for your own bike", icon = Icons.Outlined.DirectionsBike, iconColor = AccentTeal, onClick = onOpenMotoOwnership),
-            ))
-        }
-        item {
-            FlatSection("Transport", listOf(
-                FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
-                FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
-                FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentBlue, onClick = onOpenBikeRental),
-                FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", icon = Icons.Outlined.LocalParking, iconColor = AccentPurple, onClick = onOpenParking),
-                FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", icon = Icons.Outlined.DirectionsBus, iconColor = AccentTeal, onClick = onOpenBus),
-                FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
-                FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", icon = Icons.Outlined.DirectionsCar, iconColor = AccentTeal, onClick = onOpenVehicleValuation),
-            ))
-        }
-        item {
-            FlatSection("Community & trust", listOf(
-                FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenTrustScore),
-                FlatRow("Q&A", subtitle = "Ask a question, answer one, get adopted", icon = Icons.Outlined.HelpOutline, iconColor = AccentPurple, onClick = onOpenKnowledge),
-            ))
-        }
-        // Kept last and separately labeled, not blended into the rows above: these two
-        // are role-gated (only assigned cash-agent operators can use them), so grouping
-        // them with everyday-user rows would itself be the same "wrong category" problem
-        // this whole section just got fixed for.
-        item {
-            FlatSection("Cash agent tools", listOf(
-                FlatRow("Agent till", subtitle = "For assigned cash-agent operators: cash-in, cash-out, till count", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onOpenAgentOperator),
-                FlatRow("Float marketplace", subtitle = "For assigned cash-agents: offer or request float from nearby agents", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenFloatMarketplace),
-            ))
-        }
-
-        // Everything below is modeled directly on the real Toss Bank
-        // 갈아타기/신용카드/체크카드/서비스/외화/목돈굴리기/연금/대출/알림 및 동의/고객센터
-        // reference screens (user-provided, 2026-07-10), adapted to Rwanda
-        // rails per docs/FACT_CHECKED_TOSS_RWANDA_MAP.md's established
-        // mapping (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel Money, RSE tickers,
-        // RSSB pension) rather than left as Korean-market content.
-        item {
-            // Real 대환대출 (loan refinancing) fix, 2026-08-03 -- found fully built on
-            // the backend (LoansService.refinanceLoan, POST /api/v1/loans/refinance)
-            // and already surfaced as a real "Refinance to a lower rate" button inside
-            // LoansScreen.kt -- these 3 rows are real Toss 갈아타기 entry points into
-            // that exact same flow, not a separate feature, so they route to
-            // onOpenLoans like every other loan row on this screen rather than sitting
-            // dead.
-            FlatSection("Switch & save", listOf(
-                FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
-                FlatRow("Switch your rent deposit loan", trailing = "9% ~ 15%", trailingIsLink = true, icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onOpenLoans),
-                FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, icon = Icons.Outlined.Storefront, iconColor = AccentTeal, onClick = onOpenLoans)
-            ))
-        }
-        item {
-            // Real fix, 2026-08-03: both rows point at the same real Card screen
-            // (CardScreen.kt) Financial services' own "Card" row already opens --
-            // these are a second, dead entry point into it, not a separate feature.
-            FlatSection("Cards", listOf(
-                FlatRow("Itunda Card", trailing = "5% back on bills", trailingIsLink = true, icon = Icons.Outlined.CreditCard, iconColor = AccentRed, onClick = onOpenCard),
-                FlatRow("Virtual card", trailing = "Instant issue", icon = Icons.Outlined.CreditCard, iconColor = AccentGray, onClick = onOpenCard)
-            ))
-        }
-        item {
-            FlatSection("Services", listOf(
-                FlatRow("Rent deposit protection", icon = Icons.Outlined.HomeWork, iconColor = AccentBlue),
-                // Real fix, 2026-08-03: this is the real detected-recurring-payments +
-                // billing-subscriptions feature (SubscriptionsScreen.kt,
-                // GET /api/v1/subscriptions/*), already reachable via Financial
-                // services' "Subscriptions" row -- was a second, dead entry point into
-                // the exact same screen.
-                FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentBlue, onClick = onOpenSubscriptions),
-                FlatRow("Import recurring payments", icon = Icons.Outlined.LocalShipping, iconColor = AccentGray),
-                FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue, onClick = {
-                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-                }),
-                FlatRow("Claim interest now", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
-                FlatRow("SME income tax estimate", icon = Icons.Outlined.Savings, iconColor = AccentOrange),
-                // Real split-bill (found 2026-07-22 fully built with zero UI anywhere)
-                // lives inside a specific group's own thread (Talk tab), not a
-                // standalone flow -- this row hands off there rather than duplicating
-                // a group picker.
-                FlatRow("Split a bill with friends", icon = Icons.Outlined.Groups, iconColor = AccentBlue, onClick = onSwitchToTalk),
-                FlatRow("Shared calendar", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue),
-                FlatRow("Kids' allowance tasks", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange)
-            ))
-        }
-        item {
-            // Real fix, 2026-08-03: both rows are the same real foreign-currency
-            // wallet Financial services' own "Foreign currency" row already opens.
-            FlatSection("Foreign currency", listOf(
-                FlatRow("Foreign currency wallet", trailing = "100% rate preference", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentPurple, onClick = onOpenForeignCurrency),
-                FlatRow("International transfer", icon = Icons.Outlined.AttachMoney, iconColor = AccentBlue, onClick = onOpenForeignCurrency)
-            ))
-        }
-        item {
-            // Real fix, 2026-08-03: all 4 rows are the same real RSE investing screen
-            // (InvestScreen.kt, real deterministic-simulation stock data) Quick links'
-            // own "Invest" row already opens -- routed there instead of sitting dead,
-            // same reasoning as Switch & save/Cards/Foreign currency above.
-            FlatSection("Grow your money", listOf(
-                FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", icon = Icons.Outlined.ShowChart, iconColor = AccentTeal, onClick = onOpenInvest),
-                FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue, onClick = onOpenInvest),
-                FlatRow("IPO schedule", icon = Icons.Outlined.TrendingUp, iconColor = AccentRed, onClick = onOpenInvest),
-                FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentTeal, onClick = onOpenInvest)
-            ))
-        }
-        item {
-            FlatSection("Pension", listOf(
-                FlatRow("Check my RSSB pension", icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue),
-                FlatRow("Pension products", icon = Icons.Outlined.Percent, iconColor = AccentBlue)
-            ))
-        }
-        item {
-            FlatSection("Loans", listOf(
-                FlatRow("Check my max limit", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenLoans),
-                FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans)
-            ))
-        }
-        item {
-            // Real fix: "Notifications" now opens Settings, which already has a real
-            // notifications list + mark-as-read (SettingsScreen.kt) -- reusing existing
-            // real infrastructure rather than leaving this row dead. The other 3 rows
-            // have no real backend/content anywhere in this codebase (no legal-copy
-            // source, no credit-data-usage-policy endpoint) -- honestly left as plain
-            // labels (no chevron, no clickable) rather than a fake destination, matching
-            // this project's own "don't fabricate a shortcut" discipline.
-            FlatSection("Notifications & consent", listOf(
-                FlatRow("Notifications", showChevron = true, onClick = onOpenSettings),
-                FlatRow("Credit data usage policy"),
-                FlatRow("Privacy policy"),
-                FlatRow("Terms & consent")
-            ))
-        }
-        item {
-            // FAQ/Live chat/Call support/Announcements have no real backend behind them
-            // either (confirmed via SupportScreen.kt's own doc comment) -- same honest
-            // no-chevron treatment. The 2 rows that DO have a real destination
-            // (transaction-ticket support, already shipped 2026-07-22) keep theirs.
-            FlatSection("Support", listOf(
-                FlatRow("FAQ"),
-                FlatRow("Live chat"),
-                FlatRow("Call support"),
-                FlatRow("Report an issue with a transaction", showChevron = true, onClick = onOpenSupport),
-                FlatRow("My support tickets", showChevron = true, onClick = onOpenSupport),
-                FlatRow("Announcements")
-            ))
+            // Real Partner SDK section (2026-07-17) -- lists REAL approved third-party
+            // mini-apps from GET /api/v1/mini-apps/catalog (services/backend/partners),
+            // closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner SDK row.
+            // Empty when the catalog has no approved entries yet (a real, honest empty
+            // state, not hidden entirely, so this section's existence is itself visible
+            // proof the mechanism is wired up end to end). Follows the exact same
+            // FlatSection/tap-to-launch pattern as MiniAppsSection above, on purpose --
+            // this is meant to read as a natural extension of first-party mini-apps, not a
+            // separately-styled bolt-on.
+            if (partnerMiniApps.isNotEmpty()) {
+                item {
+                    FlatSection(
+                        title = "Partner mini-apps",
+                        rows = partnerMiniApps.map { app ->
+                            FlatRow(
+                                title = app.name,
+                                subtitle = if (loadingPartnerAppId == app.id) "Loading..." else app.description,
+                                onClick = {
+                                    if (loadingPartnerAppId == null) {
+                                        loadingPartnerAppId = app.id
+                                        coroutineScope.launch {
+                                            rw.itunda.app.miniapps.PartnerMiniAppLoader.launch(
+                                                activity = context as android.app.Activity,
+                                                app = app,
+                                                onError = { message -> partnerLoadError = message },
+                                            )
+                                            loadingPartnerAppId = null
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+            item {
+                // Real gap found live (2026-08-10): titled "Recent services" but nothing
+                // here was ever actually tracked as recent -- a static, hardcoded list,
+                // which is its own small honesty problem on top of the bigger one: 6 of
+                // its 8 icons were dead taps (tap ripple fires, nothing happens). Renamed
+                // to "Shortcuts" (what it actually is) and wired to the same real
+                // destinations the rest of this screen already uses. "Photo transfer" is
+                // dropped outright, not wired -- grepping this app for any OCR/photo-based
+                // transfer feature turns up nothing; same "don't fake a destination that
+                // doesn't exist" call already made for QuickActions' Scan-to-Pay icon.
+                IconGridSection(
+                    "Shortcuts",
+                    listOf(
+                        "Open account" to Icons.Outlined.AddCircleOutline,
+                        "Verify" to Icons.Outlined.VerifiedUser,
+                        "Send" to Icons.Outlined.Send,
+                        "Group" to Icons.Outlined.Group,
+                        "Property" to Icons.Outlined.HomeWork,
+                        "Insurance" to Icons.Outlined.Shield,
+                    ),
+                    onItemClick = { label ->
+                        when (label) {
+                            "Open account" -> onOpenOverview()
+                            "Verify" -> onOpenIdentity()
+                            "Send" -> onOpenTransferHub()
+                            "Group" -> onOpenGroupAccounts()
+                            "Property" -> onOpenProperty()
+                            "Insurance" -> context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
+                        }
+                    },
+                )
+            }
+            // Real gap found live (2026-08-10): this used to be one 33-row "Financial
+            // services" section -- everything from savings to bus tickets to vehicle
+            // inspection dumped under a single label that was actively wrong for most of
+            // what it contained. This read as unorganized because it WAS unorganized: a
+            // supply-side dump (whatever got built, in build order) rather than a
+            // demand-side grouping (what the user is actually trying to do), the exact
+            // anti-pattern Toss Tech's own 내 문서함 rewrite names and fixes (toss.tech/
+            // article/mydoc, "화면 내에서 우선순위 정리가 되지 않았" -- "priorities weren't
+            // organized within the screen"; they restructured around real user intent
+            // instead of internal product structure). Same real rows, same real
+            // onClick callbacks -- only the grouping and two previously-dead rows changed.
+            item { FlatSection("Accounts & cards", accountsRows) }
+            item { FlatSection("Send & pay", sendPayRows) }
+            item { FlatSection("Save & grow", saveGrowRows) }
+            item { FlatSection("Borrow", borrowRows) }
+            item { FlatSection("Transport", transportRows) }
+            item { FlatSection("Community & trust", communityTrustRows) }
+            // Kept last and separately labeled, not blended into the rows above: these two
+            // are role-gated (only assigned cash-agent operators can use them), so grouping
+            // them with everyday-user rows would itself be the same "wrong category" problem
+            // this whole section just got fixed for.
+            item { FlatSection("Cash agent tools", cashAgentRows) }
+            // Everything below is modeled directly on the real Toss Bank
+            // 갈아타기/신용카드/체크카드/서비스/외화/목돈굴리기/연금/대출/알림 및 동의/고객센터
+            // reference screens (user-provided, 2026-07-10), adapted to Rwanda
+            // rails per docs/FACT_CHECKED_TOSS_RWANDA_MAP.md's established
+            // mapping (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel Money, RSE tickers,
+            // RSSB pension) rather than left as Korean-market content.
+            item { FlatSection("Switch & save", switchSaveRows) }
+            item { FlatSection("Cards", cardsRows) }
+            item { FlatSection("Services", servicesRows) }
+            item { FlatSection("Foreign currency", foreignCurrencyRows) }
+            item { FlatSection("Grow your money", growMoneyRows) }
+            item { FlatSection("Pension", pensionRows) }
+            item { FlatSection("Loans", loansRows) }
+            item { FlatSection("Notifications & consent", notificationsConsentRows) }
+            item { FlatSection("Support", supportRows) }
+        } else {
+            val query = menuSearchQuery.trim()
+            val matchingSections = allMenuSectionsForSearch.map { (title, rows) ->
+                title to rows.filter { it.title.contains(query, ignoreCase = true) }
+            }.filter { it.second.isNotEmpty() }
+            if (matchingSections.isEmpty()) {
+                item {
+                    Text(
+                        "No match for \"$query\".",
+                        color = Ids.colors.textTertiary,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                }
+            } else {
+                matchingSections.forEach { (title, rows) ->
+                    item { FlatSection(title, rows) }
+                }
+            }
         }
     }
 
@@ -2735,15 +2738,42 @@ private fun CashbackChanceCard() {
     }
 }
 
+// Real fix (2026-08-10): this was pure decoration -- a Box with static text, no
+// TextField, nothing typed into it ever did anything. Worse than no search bar at
+// all: it promised a feature that wasn't there. Now backed by real state (see
+// MenuScreen's own menuSearchQuery) that filters every FlatSection row by title --
+// the ~17-category, 60+-row menu below this bar is a "find X" problem as much as a
+// "browse by category" one.
 @Composable
-private fun SearchBar(placeholder: String) {
-    Box(
+private fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholder: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(Ids.colors.surfaceSoft)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Text(placeholder, color = Ids.colors.textSecondary, fontSize = 16.sp)
+        Icon(Icons.Outlined.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(10.dp))
+        Box(modifier = Modifier.weight(1f)) {
+            if (query.isEmpty()) {
+                Text(placeholder, color = Ids.colors.textSecondary, fontSize = 16.sp)
+            }
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                cursorBrush = SolidColor(Ids.colors.brand),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (query.isNotEmpty()) {
+            IconButton(onClick = { onQueryChange("") }, modifier = Modifier.size(22.dp)) {
+                Icon(Icons.Outlined.Close, contentDescription = "Clear search", tint = Ids.colors.textTertiary, modifier = Modifier.size(16.dp))
+            }
+        }
     }
 }
 
