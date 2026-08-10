@@ -437,13 +437,29 @@ export default function MapView() {
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      style: MAP_STYLE,
-      center: RWANDA_CENTER,
-      zoom: 12,
-      attributionControl: false,
-    });
+    let map: maplibregl.Map;
+    try {
+      // Real fix (2026-08-10): maplibre-gl's Map constructor creates a WebGL context
+      // synchronously and throws if that fails -- confirmed live via a real headless
+      // Chrome run with WebGL disabled (webglcontextcreationerror). The existing
+      // `map.on('error', ...)` handler below only catches async runtime errors (tile
+      // fetch failures); it never runs for this because the throw happens before the
+      // map object -- and therefore that handler -- exists. Uncaught, this crashed the
+      // ENTIRE app (React unmounts the whole tree on an uncaught effect error), not
+      // just this screen. WebGL context creation can legitimately fail on real
+      // low-end/older devices too, not only in a test harness -- a fintech app can't
+      // let one map tile view take down a user's whole session.
+      map = new maplibregl.Map({
+        container: containerRef.current,
+        style: MAP_STYLE,
+        center: RWANDA_CENTER,
+        zoom: 12,
+        attributionControl: false,
+      });
+    } catch {
+      setError('Map could not load on this device.');
+      return;
+    }
     mapRef.current = map;
     // Real custom zoom control (2026-07-21) -- replaces MapLibre's own default
     // `NavigationControl` (a plain white square button pair, visually inconsistent
