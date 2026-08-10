@@ -2095,6 +2095,18 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/auth/devices/challenge", body: EmptyBody())
     }
 
+    @discardableResult
+    public func recordAnalyticsEvent(_ eventName: String, metadata: String? = nil) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/analytics/events", body: RecordAnalyticsEventRequest(eventName: eventName, metadata: metadata))
+    }
+
+    // Real, minimal fire-and-forget analytics helper (2026-08-10) -- same "a failed
+    // best-effort call must never surface to the user or block the real action it's
+    // attached to" reasoning this file's own registerDeviceToken already establishes.
+    public func recordAnalyticsEventBestEffort(_ eventName: String, metadata: String? = nil) {
+        Task { try? await recordAnalyticsEvent(eventName, metadata: metadata) }
+    }
+
     public func verifyDeviceSignature(signature: String) async throws -> VerifyDeviceResponse {
         try await authenticatedPost("api/v1/auth/devices/verify-signature", body: VerifyDeviceSignatureRequest(signature: signature))
     }
@@ -3683,6 +3695,22 @@ public struct FavoriteRestaurantDto: Decodable, Identifiable {
 }
 public struct FavoriteRestaurantsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteRestaurantDto] }
 public struct SuccessResponse: Decodable { public let success: Bool }
+
+// Real, minimal product-analytics event (2026-08-10) -- see the backend's own
+// AnalyticsEvent.kt doc comment and the "itunda: the wedge, not the mirror" strategy
+// memo, recommendation (ii). eventName must be one of AnalyticsController.KNOWN_EVENTS
+// on the backend (currently "home_view"/"coop_rail_tap") -- a mismatched name
+// real-400s rather than silently recording garbage.
+public struct RecordAnalyticsEventRequest: Encodable {
+    public let eventName: String
+    public let platform: String
+    public let metadata: String?
+    public init(eventName: String, platform: String = "ios", metadata: String? = nil) {
+        self.eventName = eventName
+        self.platform = platform
+        self.metadata = metadata
+    }
+}
 public struct UploadResponse: Decodable { public let success: Bool; public let url: String }
 
 // Real Baemin Club (배민클럽)-style free-delivery membership (item 209) -- backend real

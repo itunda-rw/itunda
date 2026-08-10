@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import CoreNetwork
 import FeatureBanking
 import FeaturePayments
 
@@ -75,12 +76,27 @@ struct ContentView: View {
     @State private var showMotoOwnership = false
     @State private var showHarvestAdvance = false
 
+    // Real, minimal usage signal on each tap (2026-08-10) -- same event name/metadata
+    // shape bank-mfe's/Android's identical coop rails already fire, stable keys
+    // (sacco/ikimina/moto_ownership/harvest_advance) rather than the localized title.
     private var coopRows: [CooperativeRowData] {
         [
-            CooperativeRowData(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "building.columns.fill", tint: Color.accentPurple.opacity(0.15), onTap: { showSacco = true }),
-            CooperativeRowData(title: "Ikimina", subtitle: "Join a rotating savings circle with people you trust", symbol: "person.2.fill", tint: Color.accentTeal.opacity(0.15), onTap: { showIkimina = true }),
-            CooperativeRowData(title: "Moto-Taxi Ownership", subtitle: "Save toward your own bike, then convert to a loan", symbol: "bicycle", tint: Color.accentBlue.opacity(0.15), onTap: { showMotoOwnership = true }),
-            CooperativeRowData(title: "Harvest advance", subtitle: "Input financing from your coffee cooperative", symbol: "leaf.fill", tint: Color.accentOrange.opacity(0.15), onTap: { showHarvestAdvance = true }),
+            CooperativeRowData(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "building.columns.fill", tint: Color.accentPurple.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "sacco")
+                showSacco = true
+            }),
+            CooperativeRowData(title: "Ikimina", subtitle: "Join a rotating savings circle with people you trust", symbol: "person.2.fill", tint: Color.accentTeal.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "ikimina")
+                showIkimina = true
+            }),
+            CooperativeRowData(title: "Moto-Taxi Ownership", subtitle: "Save toward your own bike, then convert to a loan", symbol: "bicycle", tint: Color.accentBlue.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "moto_ownership")
+                showMotoOwnership = true
+            }),
+            CooperativeRowData(title: "Harvest advance", subtitle: "Input financing from your coffee cooperative", symbol: "leaf.fill", tint: Color.accentOrange.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "harvest_advance")
+                showHarvestAdvance = true
+            }),
         ]
     }
 
@@ -126,6 +142,13 @@ struct ContentView: View {
                 onOpenTransactionHistory: { showTransactionHistory = true }
             )
                 .task { await bankViewModel.load() }
+                // Real, minimal usage signal (2026-08-10) -- see the "itunda: the
+                // wedge, not the mirror" strategy memo, recommendation (ii), and
+                // NetworkClient.recordAnalyticsEventBestEffort's own doc comment.
+                // Fired once per real appearance of Home, the baseline every
+                // retention question is measured against -- same event name/shape
+                // bank-mfe's/Android's identical Home effects already fire.
+                .onAppear { NetworkClient.shared.recordAnalyticsEventBestEffort("home_view") }
                 .fullScreenCover(isPresented: $showTransferFlow) {
                     TransferFlowContainer(
                         availableBalance: bankViewModel.availableBalance,
