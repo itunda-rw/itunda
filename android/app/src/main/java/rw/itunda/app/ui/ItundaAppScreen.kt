@@ -175,12 +175,16 @@ internal val AccentGray = Color(0xFF6B7684)
 // 41 in the web repo for the full comparison; bank-mfe's BankDashboard.tsx already
 // shipped this same five). itunda is bank-first, so Pay and You (profile/account)
 // get dedicated primary slots instead of being nested a tap into Explore/My the way
-// the previous layout had them. Shop and Hood lose their own tabs -- both are real,
-// fully-built features, not demoted for being weak -- and are now reachable as real
-// full-screen entry points from Explore (`showShop`/`showHood`, same established
-// pattern this file already used for Benefits/Pay/Map before those existed as tabs),
-// exactly mirroring how ShopTab/HoodTab moved on web (BankDashboard.tsx's
-// ShopHub/HoodHub, reached from ExploreHub instead of their own primary tabs).
+// the previous layout had them. Shop, Eats, Marketplace, Community, Jobs, and
+// Property all lose their own tabs -- none demoted for being weak, all real,
+// fully-built features -- and are each their own flat, individually reachable
+// Explore entry point (`showShop`/`showEats`/`showMarketplace`/`showCommunity`/
+// `showJobs`/`showProperty`, same established full-screen-entry-point pattern this
+// file already used for Benefits/Pay/Map before those existed as tabs). Real
+// same-day correction: an earlier pass nested Shop+Eats behind one row and
+// Marketplace+Community+Jobs+Property behind another, each with its own internal
+// mode toggle -- exactly mirroring web's now-retired ShopHub/HoodHub -- but a tab
+// bar inside a tab is noise a flat catalog shouldn't have, so each is flat instead.
 internal enum class ItundaTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Home("Home", Icons.Outlined.Home),
     Pay("Pay", Icons.Outlined.Payments),
@@ -241,7 +245,13 @@ fun ItundaAppScreen(
         // composable is called directly instead, no wrapper toggle).
         var showShop by rememberSaveable { mutableStateOf(false) }
         var showEats by rememberSaveable { mutableStateOf(false) }
-        var showHood by rememberSaveable { mutableStateOf(false) }
+        // Hood's own chip row (Market/Life/Jobs/Home) retired the same way (see
+        // HoodSectionScreen's own doc comment): 4 flat destinations instead of one
+        // Hood entry with an internal switcher.
+        var showMarketplace by rememberSaveable { mutableStateOf(false) }
+        var showCommunity by rememberSaveable { mutableStateOf(false) }
+        var showJobs by rememberSaveable { mutableStateOf(false) }
+        var showProperty by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
         var mapSearchQueryForScreen by rememberSaveable { mutableStateOf<String?>(null) }
         // Real "Delivery" pill deep-link, Maps -> Eats (2026-08-09) -- itunda's
@@ -374,9 +384,6 @@ fun ItundaAppScreen(
         // real returned conversation id here, so TalkTab opens straight into that real
         // chat thread instead of dropping the buyer on a conversation list.
         var pendingConversationId by rememberSaveable { mutableStateOf<String?>(null) }
-        // Real deep-link from the menu's "Property" row into Hood's real
-        // HoodMode.PROPERTY chip (2026-08-10) -- see HoodTab's own doc comment.
-        var pendingHoodMode by remember { mutableStateOf<HoodMode?>(null) }
         var biometricError by remember { mutableStateOf<String?>(null) }
         val activity = LocalRealActivity.current
         val biometricAuth = remember(activity) { rw.itunda.core.identity.NIDABiometricAuth(activity) }
@@ -804,19 +811,69 @@ fun ItundaAppScreen(
             }
             return@IdsTheme
         }
-        if (showHood) {
-            BackHandler { showHood = false }
+        if (showMarketplace) {
+            BackHandler { showMarketplace = false }
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    HoodTab(
+                    HoodSectionScreen(
+                        mode = HoodMode.MARKETPLACE,
                         onMessageSeller = { conversationId ->
                             pendingConversationId = conversationId
-                            showHood = false
+                            showMarketplace = false
                             selectedTab = ItundaTab.Messages
                         },
                         onOpenSettings = { showSettings = true },
-                        initialMode = pendingHoodMode ?: HoodMode.MARKETPLACE,
-                        onConsumedInitialMode = { pendingHoodMode = null },
+                    )
+                }
+            }
+            return@IdsTheme
+        }
+        if (showCommunity) {
+            BackHandler { showCommunity = false }
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    HoodSectionScreen(
+                        mode = HoodMode.COMMUNITY,
+                        onMessageSeller = { conversationId ->
+                            pendingConversationId = conversationId
+                            showCommunity = false
+                            selectedTab = ItundaTab.Messages
+                        },
+                        onOpenSettings = { showSettings = true },
+                    )
+                }
+            }
+            return@IdsTheme
+        }
+        if (showJobs) {
+            BackHandler { showJobs = false }
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    HoodSectionScreen(
+                        mode = HoodMode.JOBS,
+                        onMessageSeller = { conversationId ->
+                            pendingConversationId = conversationId
+                            showJobs = false
+                            selectedTab = ItundaTab.Messages
+                        },
+                        onOpenSettings = { showSettings = true },
+                    )
+                }
+            }
+            return@IdsTheme
+        }
+        if (showProperty) {
+            BackHandler { showProperty = false }
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    HoodSectionScreen(
+                        mode = HoodMode.PROPERTY,
+                        onMessageSeller = { conversationId ->
+                            pendingConversationId = conversationId
+                            showProperty = false
+                            selectedTab = ItundaTab.Messages
+                        },
+                        onOpenSettings = { showSettings = true },
                     )
                 }
             }
@@ -1113,16 +1170,19 @@ fun ItundaAppScreen(
                     )
                     // Real Explore tab (2026-08-10, renamed from All) -- see
                     // ItundaTab's own doc comment. Same MenuScreen this file has used
-                    // since 2026-07-24, just reached via a differently-named tab; Shop
-                    // and Hood are new rows here (onOpenShop/onOpenHood below) since
-                    // they lost their own primary tabs. Pay and My aren't rows here
-                    // anymore -- both are their own primary tabs now.
+                    // since 2026-07-24, just reached via a differently-named tab;
+                    // Shop/Eats/Marketplace/Community/Jobs are new flat rows here since
+                    // they lost their own primary tabs (Property already had its own
+                    // row). Pay and My aren't rows here anymore -- both are their own
+                    // primary tabs now.
                     ItundaTab.Explore -> {
                         val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
                         MenuScreen(
                             onOpenShop = { showShop = true },
                             onOpenEats = { showEats = true },
-                            onOpenHood = { showHood = true },
+                            onOpenMarketplace = { showMarketplace = true },
+                            onOpenCommunity = { showCommunity = true },
+                            onOpenJobs = { showJobs = true },
                             onOpenSettings = { showSettings = true },
                             onOpenBenefits = { showBenefits = true },
                             onOpenInvest = { showInvest = true },
@@ -1164,7 +1224,7 @@ fun ItundaAppScreen(
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                             onSwitchToTalk = { selectedTab = ItundaTab.Messages },
-                            onOpenProperty = { pendingHoodMode = HoodMode.PROPERTY; showHood = true },
+                            onOpenProperty = { showProperty = true },
                             partnerMiniApps = partnerMiniApps,
                         )
                     }
@@ -1177,7 +1237,9 @@ fun ItundaAppScreen(
                         onBack = {},
                         onSwitchToShop = { showShop = true },
                         onSwitchToEats = { showEats = true },
-                        onSwitchToHood = { showHood = true },
+                        onSwitchToMarketplace = { showMarketplace = true },
+                        onSwitchToJobs = { showJobs = true },
+                        onSwitchToProperty = { showProperty = true },
                     )
                 }
             }
@@ -1840,7 +1902,9 @@ private fun PayTab(onBack: () -> Unit = {}) {
 private fun MenuScreen(
     onOpenShop: () -> Unit = {},
     onOpenEats: () -> Unit = {},
-    onOpenHood: () -> Unit = {},
+    onOpenMarketplace: () -> Unit = {},
+    onOpenCommunity: () -> Unit = {},
+    onOpenJobs: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     onOpenBenefits: () -> Unit = {},
     onOpenInvest: () -> Unit = {},
@@ -1910,20 +1974,23 @@ private fun MenuScreen(
     // 16 heavier categories below them collapse.
     var expandedMenuSection by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
-    // Shop/Eats added here as two separate flat rows (2026-08-10, real user
-    // correction) -- both lost their own primary tab (see ItundaTab's own doc
-    // comment), and nesting them behind one "Shop" row with its own internal
-    // Shop/Eats toggle would be a tab bar inside a tab: real noise a flat catalog
-    // shouldn't have. Each opens its real feature/impl content directly. Pay's own
-    // row removed since Pay is now a primary tab itself, not something Explore needs
-    // to surface. Hood stays one row for now -- Marketplace/Community/Jobs/Property
-    // share real, deliberately Karrot-sourced top-bar/chip-row/FAB state inside
-    // HoodTab (not a simple toggle like Shop/Eats was), so splitting it the same way
-    // needs a real decision on that shared UI, not a mechanical change.
+    // Shop/Eats/Marketplace/Community/Jobs added here as separate flat rows
+    // (2026-08-10, real user correction) -- all lost their own primary tab (see
+    // ItundaTab's own doc comment), and nesting them behind one "Shop"/"Hood" row
+    // with an internal toggle would be a tab bar inside a tab: real noise a flat
+    // catalog shouldn't have. Each opens its real feature/impl content directly.
+    // Marketplace/Community/Jobs/Property's real, deliberately Karrot-sourced
+    // top-bar/menu-sheet/FAB shell (previously shared via HoodTab's chip row) now
+    // lives in HoodSectionScreen, parameterized per section instead of switchable --
+    // see that composable's own doc comment. Pay's own row removed since Pay is now
+    // a primary tab itself, not something Explore needs to surface.
     val quickLinksRows = listOf(
         FlatRow("Shop", subtitle = "Coupang-style commerce", icon = Icons.Outlined.ShoppingBag, iconColor = AccentBlue, onClick = onOpenShop),
         FlatRow("Eats", subtitle = "Food delivery, order or deliver", icon = Icons.Outlined.Fastfood, iconColor = AccentOrange, onClick = onOpenEats),
-        FlatRow("Hood", subtitle = "Marketplace, community, jobs, property", icon = Icons.Outlined.LocationOn, iconColor = AccentTeal, onClick = onOpenHood),
+        FlatRow("Marketplace", subtitle = "당근마켓-style neighborhood buy/sell", icon = Icons.Outlined.Storefront, iconColor = AccentTeal, onClick = onOpenMarketplace),
+        FlatRow("Community", subtitle = "Neighborhood life, local questions and posts", icon = Icons.Outlined.Groups, iconColor = AccentTeal, onClick = onOpenCommunity),
+        FlatRow("Jobs", subtitle = "Neighborhood gigs and part-time work", icon = Icons.Outlined.Work, iconColor = AccentTeal, onClick = onOpenJobs),
+        FlatRow("Property", subtitle = "Neighborhood rentals and sales", icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onOpenProperty),
         FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
         FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
         FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
@@ -2355,7 +2422,9 @@ private fun MyTab(
     onBack: () -> Unit,
     onSwitchToShop: () -> Unit = {},
     onSwitchToEats: () -> Unit = {},
-    onSwitchToHood: () -> Unit = {},
+    onSwitchToMarketplace: () -> Unit = {},
+    onSwitchToJobs: () -> Unit = {},
+    onSwitchToProperty: () -> Unit = {},
 ) {
     var shopOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.OrderDto>>(emptyList()) }
     var eatsOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.EatsOrderDto>>(emptyList()) }
@@ -2451,18 +2520,19 @@ private fun MyTab(
             }
         }
         // Real favorites/wishlist tracking across every product with one -- counts are
-        // real (GET .../favorites on each module), tapping switches to the product's
-        // own tab where its dedicated WISHLIST view already lives (Marketplace/Jobs/
-        // Property under Hood, restaurants under Shop's Eats toggle) -- an honest,
-        // one-more-tap scope, not a full deep link into the nested sub-view.
+        // real (GET .../favorites on each module), tapping switches directly to that
+        // real destination's own dedicated WISHLIST view. Each of Marketplace/Jobs/
+        // Property is its own flat Explore destination now (2026-08-10, Hood's chip
+        // row retired), so this is a real, direct deep link, not "one more tap" into
+        // a shared sub-view the way it was when Hood was one nested screen.
         item { Text("My favorites", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
         item {
             FlatSection(
                 "",
                 listOf(
-                    FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
-                    FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
-                    FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
+                    FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToMarketplace),
+                    FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToJobs),
+                    FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToProperty),
                     FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToEats),
                 ),
             )
@@ -2474,9 +2544,9 @@ private fun MyTab(
             FlatSection(
                 "My listings",
                 listOf(
-                    FlatRow("Marketplace", trailing = "$myListingsCount", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onSwitchToHood),
-                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", icon = Icons.Outlined.Work, iconColor = AccentBlue, onClick = onSwitchToHood),
-                    FlatRow("Property listed", trailing = "$myPropertyListingsCount", icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onSwitchToHood),
+                    FlatRow("Marketplace", trailing = "$myListingsCount", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onSwitchToMarketplace),
+                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", icon = Icons.Outlined.Work, iconColor = AccentBlue, onClick = onSwitchToJobs),
+                    FlatRow("Property listed", trailing = "$myPropertyListingsCount", icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onSwitchToProperty),
                 ),
             )
         }

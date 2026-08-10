@@ -243,25 +243,22 @@ internal enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
 // different real product. Marketplace/Community (동네생활)/Jobs (당근알바)/Property
 // (당근부동산) still fold into this one tab via the same chip row (no free bottom-nav
 // slot for each), now styled the way Karrot's own 전체/부동산/중고거래/... row is.
+// HoodTab's own real chip row (Market/Life/Jobs/Home) was retired 2026-08-10: real
+// user correction, same fix applied to Shop/Eats above -- nesting all four behind one
+// Explore row with an internal switcher is noise a flat catalog shouldn't have.
+// Unlike Shop/Eats, though, the four sections share a genuinely rich, deliberately
+// Karrot-sourced shell (neighborhood-name top bar, per-mode personal-view menu sheet,
+// Marketplace's own "Write" FAB, neighborhood switcher/second-neighborhood dialogs) --
+// not a simple toggle -- so that shell is kept, just parameterized by a fixed `mode`
+// instead of internal switchable state, and mounted once per flat Explore
+// destination (see ItundaAppScreen.kt's showMarketplace/showCommunity/showJobs/
+// showProperty) instead of once behind a shared chip row.
 @Composable
-internal fun HoodTab(
+internal fun HoodSectionScreen(
+    mode: HoodMode,
     onMessageSeller: (String) -> Unit,
     onOpenSettings: () -> Unit = {},
-    // Real deep-link into a specific chip (2026-08-10) -- the menu's "Property" row
-    // used to just be a dead icon (see ItundaAppScreen.kt's MenuScreen), even though
-    // this real HoodMode.PROPERTY chip already existed; same initial-value + consume-
-    // once pattern TalkTab's own initialConversationId/onConsumedInitial already
-    // establishes, so switching tabs again afterward doesn't keep forcing Property.
-    initialMode: HoodMode = HoodMode.MARKETPLACE,
-    onConsumedInitialMode: () -> Unit = {},
 ) {
-    var mode by remember { mutableStateOf(initialMode) }
-    LaunchedEffect(initialMode) {
-        if (initialMode != HoodMode.MARKETPLACE) {
-            mode = initialMode
-            onConsumedInitialMode()
-        }
-    }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodVerificationCount by remember { mutableStateOf(0) }
     // Real dual-neighborhood support (2026-08-04) -- see User.secondNeighborhood's own
@@ -395,37 +392,6 @@ internal fun HoodTab(
                     Icons.Outlined.Menu, contentDescription = "Menu",
                     modifier = Modifier.size(24.dp).clickable { showMenuSheet = true }, tint = Ids.colors.textPrimary,
                 )
-            }
-            // Real Karrot pill-chip row (2026-08-03): selected = a solid pill in
-            // Ids.colors.textPrimary (near-black in light mode, near-white in dark --
-            // pixel-matches the real screenshots' #2B3034/#F3F4F8 selected-chip fills
-            // exactly), unselected = Ids.colors.surfaceSoft, both real, already-shared
-            // tokens -- no new colors invented for this row, only the shape (pill,
-            // not underline) changes.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = Ids.layout.screenHorizontal, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                listOf(
-                    HoodMode.MARKETPLACE to "Market", HoodMode.COMMUNITY to "Life",
-                    HoodMode.JOBS to "Jobs", HoodMode.PROPERTY to "Home",
-                ).forEach { (m, label) ->
-                    val selected = m == mode
-                    Text(
-                        label,
-                        color = if (selected) Ids.colors.background else Ids.colors.textPrimary,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (selected) Ids.colors.textPrimary else Ids.colors.surfaceSoft)
-                            .clickable { mode = m }
-                            .padding(horizontal = 16.dp, vertical = 9.dp),
-                    )
-                }
             }
             when (mode) {
                 // Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace now
