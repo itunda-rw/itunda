@@ -85,6 +85,11 @@
   --itunda-radius-sm: 8px;
   --itunda-radius-md: 16px;
   --itunda-radius-lg: 24px;
+  /* Real gap found 2026-08-11 (UI-consistency audit): pill-shaped chips/tags/segmented
+     controls across BankDashboard.tsx already hardcode 999px inline at 12+ real call
+     sites -- a genuinely distinct shape category from sm/md/lg (a full round-end, not
+     a bigger corner radius), just never named as a token before now. */
+  --itunda-radius-pill: 999px;
 }
 
 /*
