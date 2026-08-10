@@ -220,14 +220,20 @@ import {
 // inventory: Home / Pay / Explore / Messages / You (2026-08-10, explicit product
 // decision after directly comparing this against Home/Shop/Hood/Talk/All -- see
 // docs/DESIGN_REFERENCES.md Section 41 for the full research this was weighed
-// against). Pay and You get dedicated primary slots; Shop and Hood are reached one
-// tap in via Explore instead of their own tabs (ShopHub/HoodHub, and their internal
-// Shop/Eats and Marketplace/Community/Jobs/Property toggles, are unchanged -- only
-// how they're reached moved). Android (`ItundaAppScreen.kt`'s `ItundaTab` enum) and
-// iOS (`ContentView.swift`) are being rebuilt to match this same five, in the same
-// pass, specifically so this doesn't reopen the cross-platform "same feature,
-// different UI/UX" inconsistency the previous nav rebuild closed.
-type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'HOOD' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
+// against). Pay and You get dedicated primary slots.
+//
+// Real correction, same day: Shop/Eats and Marketplace/Community/Jobs/Property were
+// first reached through Explore as two entries (Shop, Hood) each opening a
+// segmented-toggle sub-screen -- the ShopHub/HoodHub shape that's the *correct* one
+// for a primary tab (mirrors Android's real Shop/Eats row, iOS HoodScreen's real
+// Picker), but wrong once nested inside Explore: a tab bar inside a tab is exactly
+// the noise a flat catalog is supposed to avoid. Toss's own real 전체 screen is a
+// flat list of individual rows, not nested toggles -- so Shop/Eats/Marketplace/
+// Community/Jobs/Property are each their own flat Tab id and their own flat row in
+// EXPLORE_TAB_GROUPS, same as every other Explore destination. ShopHub/HoodHub are
+// retired; ShopView/EatsView/MarketplaceView/CommunityView/JobsView/PropertyView
+// render directly, exactly as they did before either hub existed.
+type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   const { t } = useI18n();
@@ -856,78 +862,13 @@ function PayHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
   );
 }
 
-// A segmented Shop/Eats toggle inside one primary tab, not two separate top-level
-// tabs -- matches Android's real "ShopTab's own Shop/Eats row" exactly (see
-// features/shop/impl/.../ShopScreen.kt's own comment on the shared StarGold rating
-// row) rather than the web-only split this file used to have.
-function ShopHub() {
-  const [mode, setMode] = useState<'shop' | 'eats'>('shop');
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-        {(['shop', 'eats'] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            style={{
-              padding: '7px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: 700,
-              color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === m ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
-            }}
-          >
-            {m === 'shop' ? 'Shop' : 'Eats'}
-          </button>
-        ))}
-      </div>
-      {mode === 'shop' ? <ShopView /> : <EatsView />}
-    </div>
-  );
-}
-
-// A 4-way segmented toggle inside one primary tab, matching iOS HoodScreen's own
-// real segmented Picker over the same 4 modes (marketplace/community/jobs/property)
-// -- see HoodScreen.swift's own "no free bottom-nav slot, fold into an
-// [enum HoodMode]" comment -- instead of 4 separate top-level tabs on web only.
-function HoodHub({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
-  const MODES = [
-    { id: 'marketplace', label: 'Marketplace' },
-    { id: 'community', label: 'Community' },
-    { id: 'jobs', label: 'Jobs' },
-    { id: 'property', label: 'Property' },
-  ] as const;
-  const [mode, setMode] = useState<(typeof MODES)[number]['id']>('marketplace');
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '14px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => setMode(m.id)}
-            style={{
-              flex: 1, padding: '7px 4px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
-              color: mode === m.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
-              backgroundColor: mode === m.id ? 'var(--itunda-blue)' : 'transparent',
-            }}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-      {mode === 'marketplace' && <MarketplaceView onMessageSeller={onMessageSeller} />}
-      {mode === 'community' && <CommunityView onOpenGroupChat={onMessageSeller} />}
-      {mode === 'jobs' && <JobsView onMessagePoster={onMessageSeller} />}
-      {mode === 'property' && <PropertyView onMessageLister={onMessageSeller} />}
-    </div>
-  );
-}
-
-// The Explore tab -- everything that isn't Home/Pay/Messages/You: Shop and Hood
-// (each its own entry here, rendering the same ShopHub/HoodHub used before, just
-// reached one tap in rather than as their own primary tabs) plus the rest of
-// itunda's real destinations, searchable and grouped. groups/tabLabel/recentTabs/
-// onSelect all come from one EXPLORE_TAB_GROUPS source of truth shared by both
-// browsing and search, so a service can't land in one category when browsed and a
-// different one when searched.
+// The Explore tab -- every real destination beyond Home/Pay/Messages/You, as a flat
+// searchable catalog: no nested toggles or sub-tabs (that shape is correct for a
+// primary tab, per ShopHub/HoodHub's own retired doc comment -- see Tab's own note
+// above for why it was wrong here), matching Toss's real 전체 screen's own flat-list
+// convention instead. groups/tabLabel/recentTabs/onSelect all come from one
+// EXPLORE_TAB_GROUPS source of truth shared by both browsing and search, so a
+// service can't land in one category when browsed and a different one when searched.
 function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
   groups: { title: string; ids: Tab[] }[];
   tabLabel: (id: Tab) => string;
@@ -19941,9 +19882,13 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'PAY', label: 'Pay' },
     { id: 'EXPLORE', label: 'Explore' },
     { id: 'YOU', label: 'You' },
-    { id: 'HOOD', label: 'Hood' },
     { id: 'MY', label: 'My' },
     { id: 'SHOP', label: 'Shop' },
+    { id: 'EATS', label: 'Eats' },
+    { id: 'MARKETPLACE', label: 'Marketplace' },
+    { id: 'COMMUNITY', label: 'Community' },
+    { id: 'JOBS', label: 'Jobs' },
+    { id: 'PROPERTY', label: 'Property' },
     { id: 'STOCKS', label: 'Invest' },
     { id: 'SAVINGS', label: 'Savings' },
     { id: 'MESSAGES', label: 'Messages' },
@@ -19990,10 +19935,12 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // version that stuck, after directly comparing it against Home/Shop/Hood/Talk/All:
   // HOME (unchanged), PAY (dedicated primary slot -- itunda is bank-first, and Pay
   // was judged to deserve first-class visibility Android/iOS currently bury one tap
-  // into All), EXPLORE (Shop and Hood live here now as single entries -- ShopHub's
-  // real Shop/Eats toggle and HoodHub's real Marketplace/Community/Jobs/Property
-  // toggle are completely unchanged, only how they're reached moved -- alongside
-  // every other real destination, searchable and grouped), MESSAGES (itunda's
+  // into All), EXPLORE (Shop/Eats/Marketplace/Community/Jobs/Property each their own
+  // flat row here now, not nested behind a segmented-toggle sub-screen -- a tab bar
+  // inside a tab is real noise a flat catalog shouldn't have; the ShopHub/HoodHub
+  // toggle shape was correct when Shop/Hood were primary tabs, wrong once demoted
+  // into Explore, corrected same day -- alongside every other real destination,
+  // searchable and grouped), MESSAGES (itunda's
   // Marketplace/Community/Jobs/Property flows lean on the same "message the other
   // person" mechanic Karrot/당근마켓 keeps chat primary for), YOU (profile up front,
   // matching where Android/iOS put My inside All, plus Insights and Account &
@@ -20014,7 +19961,8 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'YOU', label: 'You', icon: User },
   ];
   const EXPLORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
-    { title: 'Everyday', ids: ['SHOP', 'HOOD', 'RIDES', 'MAP'] },
+    { title: 'Everyday', ids: ['SHOP', 'EATS', 'RIDES', 'MAP'] },
+    { title: 'Your neighbourhood', ids: ['MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY'] },
     { title: 'Get around', ids: ['DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS'] },
     { title: 'Money tools', ids: ['SAVINGS', 'STOCKS', 'LOANS', 'CREDIT_SCORE', 'INSURANCE', 'FOREIGN_CURRENCY'] },
     { title: 'Trust & community', ids: ['TRUST_SCORE', 'KNOWLEDGE', 'REWARDS'] },
@@ -20075,11 +20023,15 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
       {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} onNavigateToLoansMode={setPendingLoansMode} onNavigateToSavingsTarget={setPendingSavingsTarget} />}
       {tab === 'PAY' && <PayHub onNavigateToTab={setTab} />}
-      {tab === 'HOOD' && <HoodHub onMessageSeller={handleMessageSeller} />}
       {tab === 'EXPLORE' && <ExploreHub groups={EXPLORE_TAB_GROUPS} tabLabel={tabLabel} recentTabs={recentMoreTabs} onSelect={navigateFromExplore} />}
       {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
       {tab === 'MY' && <MyView />}
-      {tab === 'SHOP' && <ShopHub />}
+      {tab === 'SHOP' && <ShopView />}
+      {tab === 'EATS' && <EatsView />}
+      {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
+      {tab === 'COMMUNITY' && <CommunityView onOpenGroupChat={handleMessageSeller} />}
+      {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
+      {tab === 'PROPERTY' && <PropertyView onMessageLister={handleMessageSeller} />}
       {tab === 'STOCKS' && <StocksView />}
       {tab === 'SAVINGS' && (
         <SavingsView
