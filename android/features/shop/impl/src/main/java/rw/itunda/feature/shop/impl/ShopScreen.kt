@@ -1684,7 +1684,49 @@ private fun MultiCartView(
     val coroutineScope = rememberCoroutineScope()
 
     val groups = cart.values.groupBy { it.merchantId }
+    val groupList = remember(groups) { groups.entries.toList() }
     val grandTotal = cart.values.sumOf { it.product.price * it.quantity }
+    // Real fix (2026-08-10): found live-testing bank-mfe's identical checkout screen
+    // -- retrying after device verification here used to just clear the flag with no
+    // retry at all, same original gap, but this loop also places one real order per
+    // merchant sequentially and stops at the first DEVICE_NOT_VERIFIED. A naive retry
+    // would have RE-PLACED every order that already succeeded before the failure -- a
+    // real duplicate-order bug, not just friction. These two let a retry resume from
+    // exactly the merchant that failed.
+    val checkoutResults = remember { mutableListOf<CommerceCheckoutResult>() }
+    var resumeIndex by remember { mutableStateOf(0) }
+
+    suspend fun placeOrders() {
+        submitting = true
+        error = null
+        needsDeviceVerification = false
+        for (i in resumeIndex until groupList.size) {
+            val (merchantId, lines) = groupList[i]
+            try {
+                val res = NetworkClient.apiService.placeOrder(
+                    idempotencyKey = UUID.randomUUID().toString(),
+                    request = PlaceOrderRequest(
+                        merchantId = merchantId,
+                        items = lines.map { OrderItemRequest(it.product.id, it.quantity) },
+                        deliveryAddress = address.trim(),
+                    ),
+                )
+                checkoutResults.add(CommerceCheckoutResult(merchantId, lines.first().businessName, res.order, null))
+            } catch (e: HttpException) {
+                if (isDeviceNotVerifiedError(e)) {
+                    resumeIndex = i
+                    needsDeviceVerification = true
+                    submitting = false
+                    return
+                }
+                checkoutResults.add(CommerceCheckoutResult(merchantId, lines.first().businessName, null, superAppErrorMessage(e)))
+            } catch (e: IOException) {
+                checkoutResults.add(CommerceCheckoutResult(merchantId, lines.first().businessName, null, "Couldn't reach itunda. Check your connection and try again."))
+            }
+        }
+        submitting = false
+        onOrderPlaced(checkoutResults)
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar("Your cart", onBack)
@@ -1730,36 +1772,7 @@ private fun MultiCartView(
                 .clip(RoundedCornerShape(16.dp))
                 .background(if (submitting || address.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
                 .clickable(enabled = !submitting && address.isNotBlank()) {
-                    submitting = true
-                    error = null
-                    needsDeviceVerification = false
-                    coroutineScope.launch {
-                        val results = mutableListOf<CommerceCheckoutResult>()
-                        for ((merchantId, lines) in groups) {
-                            try {
-                                val res = NetworkClient.apiService.placeOrder(
-                                    idempotencyKey = UUID.randomUUID().toString(),
-                                    request = PlaceOrderRequest(
-                                        merchantId = merchantId,
-                                        items = lines.map { OrderItemRequest(it.product.id, it.quantity) },
-                                        deliveryAddress = address.trim(),
-                                    ),
-                                )
-                                results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, res.order, null))
-                            } catch (e: HttpException) {
-                                if (isDeviceNotVerifiedError(e)) {
-                                    needsDeviceVerification = true
-                                    submitting = false
-                                    return@launch
-                                }
-                                results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, null, superAppErrorMessage(e)))
-                            } catch (e: IOException) {
-                                results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, null, "Couldn't reach itunda. Check your connection and try again."))
-                            }
-                        }
-                        submitting = false
-                        onOrderPlaced(results)
-                    }
+                    coroutineScope.launch { placeOrders() }
                 }
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
@@ -1767,7 +1780,7 @@ private fun MultiCartView(
         deviceStepUpHost(
             needsDeviceVerification,
             { needsDeviceVerification = false },
-            { needsDeviceVerification = false },
+            { placeOrders() },
         )
     }
 }
@@ -3048,7 +3061,9 @@ private fun PayByCodeCard(
             }
         }
     }
-    deviceStepUpHost(needsDeviceVerification, { needsDeviceVerification = false }, { needsDeviceVerification = false })
+    // Real fix (2026-08-10) -- see MultiCartView's own identical fix above for the
+    // full account. payDirect resets needsDeviceVerification itself.
+    deviceStepUpHost(needsDeviceVerification, { needsDeviceVerification = false }, { payDirect(selectedCouponId) })
 }
 
 @Composable

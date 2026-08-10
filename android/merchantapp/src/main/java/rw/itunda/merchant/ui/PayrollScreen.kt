@@ -138,9 +138,35 @@ private fun RosterHeaderCard(
     var needsDeviceVerification by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    // Real fix (2026-08-10): found live-testing bank-mfe's identical device-
+    // verification flow -- onVerified below used to just clear the flag, so
+    // completing the password prompt did nothing; the merchant still had to find and
+    // tap "Run payroll" a second time for the exact batch they'd already confirmed.
+    fun runPayroll() {
+        running = true
+        runError = null
+        needsDeviceVerification = false
+        scope.launch {
+            try {
+                val result = NetworkClient.apiService.runPayroll()
+                onRunPayroll(result)
+            } catch (e: retrofit2.HttpException) {
+                if (isDeviceNotVerifiedError(e)) {
+                    needsDeviceVerification = true
+                } else {
+                    runError = "Could not run payroll."
+                }
+            } catch (e: Exception) {
+                runError = "Could not run payroll."
+            } finally {
+                running = false
+            }
+        }
+    }
+
     if (needsDeviceVerification) {
         DeviceStepUpDialog(
-            onVerified = { needsDeviceVerification = false },
+            onVerified = { runPayroll() },
             onCancel = { needsDeviceVerification = false },
         )
     }
@@ -164,26 +190,7 @@ private fun RosterHeaderCard(
             IdsButton(
                 text = if (running) "Running…" else "Run payroll (${"%,.0f".format(total)} RWF)",
                 enabled = !running && roster.isNotEmpty(),
-                onClick = {
-                    running = true
-                    runError = null
-                    scope.launch {
-                        try {
-                            val result = NetworkClient.apiService.runPayroll()
-                            onRunPayroll(result)
-                        } catch (e: retrofit2.HttpException) {
-                            if (isDeviceNotVerifiedError(e)) {
-                                needsDeviceVerification = true
-                            } else {
-                                runError = "Could not run payroll."
-                            }
-                        } catch (e: Exception) {
-                            runError = "Could not run payroll."
-                        } finally {
-                            running = false
-                        }
-                    }
-                },
+                onClick = { runPayroll() },
             )
             if (roster.isEmpty()) {
                 EmptyState("No employees on the roster yet — add one above to start running payroll.", icon = Icons.Outlined.Groups)

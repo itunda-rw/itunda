@@ -61,12 +61,20 @@ fun BusinessAccountTab() {
     // Real device step-up (2026-07-28 port) -- a real 403 DEVICE_NOT_VERIFIED (this
     // device hasn't been step-up-verified yet) gets its own case, not a generic error.
     var needsDeviceVerification by remember { mutableStateOf(false) }
+    // Real fix (2026-08-10): found live-testing bank-mfe's identical Group account
+    // deposit/withdraw bug -- "To business" and "To personal" move money in opposite
+    // directions but shared this one flag+dialog, and onVerified just cleared the
+    // flag with no retry at all. Worse than the pure-friction version of this bug:
+    // moveToBusiness/moveToPersonal are genuinely different real transfers, so this
+    // tracks which one was actually pending rather than guessing (or, as before,
+    // doing nothing and leaving the merchant to redo it by hand).
+    var pendingMoveAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val scope = rememberCoroutineScope()
 
     if (needsDeviceVerification) {
         DeviceStepUpDialog(
-            onVerified = { needsDeviceVerification = false },
-            onCancel = { needsDeviceVerification = false },
+            onVerified = { val action = pendingMoveAction; pendingMoveAction = null; action?.invoke() },
+            onCancel = { pendingMoveAction = null; needsDeviceVerification = false },
         )
     }
 
@@ -83,6 +91,59 @@ fun BusinessAccountTab() {
             }
         }
     }
+
+    fun moveToBusinessAction() {
+        val amount = moveAmount.toDoubleOrNull()
+        if (amount == null || amount <= 0.0) { error = "Enter a real amount."; return }
+        moving = true
+        error = null
+        needsDeviceVerification = false
+        scope.launch {
+            try {
+                NetworkClient.apiService.moveToBusiness(UUID.randomUUID().toString(), MoveBusinessMoneyRequest(amount))
+                moveAmount = ""
+                load()
+            } catch (e: retrofit2.HttpException) {
+                if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
+                    pendingMoveAction = { moveToBusinessAction() }
+                    needsDeviceVerification = true
+                } else {
+                    error = "Couldn't move this money. Check your personal balance."
+                }
+            } catch (e: Exception) {
+                error = "Couldn't move this money. Check your personal balance."
+            } finally {
+                moving = false
+            }
+        }
+    }
+
+    fun moveToPersonalAction() {
+        val amount = moveAmount.toDoubleOrNull()
+        if (amount == null || amount <= 0.0) { error = "Enter a real amount."; return }
+        moving = true
+        error = null
+        needsDeviceVerification = false
+        scope.launch {
+            try {
+                NetworkClient.apiService.moveToPersonal(UUID.randomUUID().toString(), MoveBusinessMoneyRequest(amount))
+                moveAmount = ""
+                load()
+            } catch (e: retrofit2.HttpException) {
+                if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
+                    pendingMoveAction = { moveToPersonalAction() }
+                    needsDeviceVerification = true
+                } else {
+                    error = "Couldn't move this money. Check your business balance."
+                }
+            } catch (e: Exception) {
+                error = "Couldn't move this money. Check your business balance."
+            } finally {
+                moving = false
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         load()
         try { merchant = NetworkClient.apiService.getMyMerchant().merchant } catch (e: Exception) { /* fee-waiver card just stays hidden */ }
@@ -155,58 +216,14 @@ fun BusinessAccountTab() {
                             enabled = !moving,
                             size = IdsButtonSize.Medium,
                             modifier = Modifier.weight(1f),
-                            onClick = {
-                                val amount = moveAmount.toDoubleOrNull()
-                                if (amount == null || amount <= 0.0) { error = "Enter a real amount."; return@IdsButton }
-                                moving = true
-                                error = null
-                                scope.launch {
-                                    try {
-                                        NetworkClient.apiService.moveToBusiness(UUID.randomUUID().toString(), MoveBusinessMoneyRequest(amount))
-                                        moveAmount = ""
-                                        load()
-                                    } catch (e: retrofit2.HttpException) {
-                                        if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
-                                            needsDeviceVerification = true
-                                        } else {
-                                            error = "Couldn't move this money. Check your personal balance."
-                                        }
-                                    } catch (e: Exception) {
-                                        error = "Couldn't move this money. Check your personal balance."
-                                    } finally {
-                                        moving = false
-                                    }
-                                }
-                            },
+                            onClick = { moveToBusinessAction() },
                         )
                         IdsButton(
                             text = "To personal",
                             enabled = !moving,
                             size = IdsButtonSize.Medium,
                             modifier = Modifier.weight(1f),
-                            onClick = {
-                                val amount = moveAmount.toDoubleOrNull()
-                                if (amount == null || amount <= 0.0) { error = "Enter a real amount."; return@IdsButton }
-                                moving = true
-                                error = null
-                                scope.launch {
-                                    try {
-                                        NetworkClient.apiService.moveToPersonal(UUID.randomUUID().toString(), MoveBusinessMoneyRequest(amount))
-                                        moveAmount = ""
-                                        load()
-                                    } catch (e: retrofit2.HttpException) {
-                                        if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
-                                            needsDeviceVerification = true
-                                        } else {
-                                            error = "Couldn't move this money. Check your business balance."
-                                        }
-                                    } catch (e: Exception) {
-                                        error = "Couldn't move this money. Check your business balance."
-                                    } finally {
-                                        moving = false
-                                    }
-                                }
-                            },
+                            onClick = { moveToPersonalAction() },
                         )
                     }
                 }

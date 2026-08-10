@@ -196,6 +196,13 @@ private fun GroupAccountDetailContent(id: String) {
     var duesBusy by remember { mutableStateOf(false) }
     var remindedCount by remember { mutableStateOf<Int?>(null) }
     var needsDeviceVerification by remember { mutableStateOf(false) }
+    // Real fix (2026-08-10): found live-testing bank-mfe's identical Group account
+    // screen -- deposit and withdraw share this one flag+dialog, but onVerified below
+    // unconditionally called deposit(). If a user was actually WITHDRAWING and hit
+    // DEVICE_NOT_VERIFIED, verifying would silently DEPOSIT the same amount instead --
+    // the opposite of what they asked for, not just a friction gap. Tracks which
+    // action was actually pending so the retry redoes the right one.
+    var pendingDeviceAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     // Real "one thing, one page" fix (2026-08-10) -- found via the same
     // audit that already fixed ShopScreen's PayAMerchantSection: this screen
     // unconditionally stacked three unrelated action flows (manage monthly
@@ -245,7 +252,7 @@ private fun GroupAccountDetailContent(id: String) {
                 error = null
                 load()
             } catch (e: HttpException) {
-                if (isDeviceNotVerifiedError(e)) needsDeviceVerification = true else error = superAppErrorMessage(e)
+                if (isDeviceNotVerifiedError(e)) { pendingDeviceAction = { deposit() }; needsDeviceVerification = true } else error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
@@ -266,7 +273,7 @@ private fun GroupAccountDetailContent(id: String) {
                 error = null
                 load()
             } catch (e: HttpException) {
-                if (isDeviceNotVerifiedError(e)) needsDeviceVerification = true else error = superAppErrorMessage(e)
+                if (isDeviceNotVerifiedError(e)) { pendingDeviceAction = { withdraw() }; needsDeviceVerification = true } else error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
@@ -444,8 +451,8 @@ private fun GroupAccountDetailContent(id: String) {
             if (needsDeviceVerification) {
                 DeviceStepUpHost(
                     visible = true,
-                    onDismiss = { needsDeviceVerification = false },
-                    onVerified = { needsDeviceVerification = false; if (amount.isNotBlank()) deposit() },
+                    onDismiss = { pendingDeviceAction = null; needsDeviceVerification = false },
+                    onVerified = { val action = pendingDeviceAction; pendingDeviceAction = null; action?.invoke() },
                 )
             } else {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {

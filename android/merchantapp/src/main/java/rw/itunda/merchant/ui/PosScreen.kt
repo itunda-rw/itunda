@@ -234,9 +234,42 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
     var needsDeviceVerification by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
+    // Real fix (2026-08-10) -- see PayrollScreen.kt's own identical fix for the full
+    // account. Card fields are unchanged while the verify dialog is up, so re-reading
+    // them here on retry is exactly the same charge the merchant already confirmed.
+    fun charge() {
+        val month = expiryMonth.toIntOrNull()
+        val year = expiryYear.toIntOrNull()
+        if (cardNumber.isBlank() || month == null || year == null || cvc.isBlank()) {
+            error = "Fill in every card field."
+            return
+        }
+        submitting = true
+        error = null
+        needsDeviceVerification = false
+        scope.launch {
+            try {
+                val charge = NetworkClient.apiService.chargeCard(
+                    request = ChargeCardRequest(amount, description, cardNumber.replace(" ", ""), month, year, cvc),
+                )
+                result = charge.cardLast4
+            } catch (e: retrofit2.HttpException) {
+                if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
+                    needsDeviceVerification = true
+                } else {
+                    error = "Could not charge this card."
+                }
+            } catch (e: Exception) {
+                error = "Could not charge this card."
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
     if (needsDeviceVerification) {
         rw.itunda.merchant.ui.DeviceStepUpDialog(
-            onVerified = { needsDeviceVerification = false },
+            onVerified = { charge() },
             onCancel = { needsDeviceVerification = false },
         )
     }
@@ -265,34 +298,7 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
         IdsButton(
             text = if (submitting) "Charging…" else "Charge ${"%,.0f".format(amount)} RWF",
             enabled = !submitting,
-            onClick = {
-                val month = expiryMonth.toIntOrNull()
-                val year = expiryYear.toIntOrNull()
-                if (cardNumber.isBlank() || month == null || year == null || cvc.isBlank()) {
-                    error = "Fill in every card field."
-                    return@IdsButton
-                }
-                submitting = true
-                error = null
-                scope.launch {
-                    try {
-                        val charge = NetworkClient.apiService.chargeCard(
-                            request = ChargeCardRequest(amount, description, cardNumber.replace(" ", ""), month, year, cvc),
-                        )
-                        result = charge.cardLast4
-                    } catch (e: retrofit2.HttpException) {
-                        if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
-                            needsDeviceVerification = true
-                        } else {
-                            error = "Could not charge this card."
-                        }
-                    } catch (e: Exception) {
-                        error = "Could not charge this card."
-                    } finally {
-                        submitting = false
-                    }
-                }
-            },
+            onClick = { charge() },
         )
     }
 }
