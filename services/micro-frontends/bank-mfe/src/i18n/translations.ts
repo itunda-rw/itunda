@@ -141,6 +141,7 @@ export type TranslationKey =
   | 'coopRail.motoOwnership.subtitle'
   | 'coopRail.harvestAdvance.title'
   | 'coopRail.harvestAdvance.subtitle'
+  | 'coopRail.seeAll'
   | 'miniWallet.title'
   | 'miniWallet.cancel'
   | 'miniWallet.addMoney'
@@ -317,8 +318,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'home.unusuallyLarge': 'Unusually large',
     'discover.title': 'Discover',
     'discover.new': 'NEW',
-    'coopRail.title': 'Built for how Rwanda saves',
-    'coopRail.subtitle': "Cooperative products a telco wallet doesn't model",
+    'coopRail.title': 'itunda Bank',
+    'coopRail.subtitle': 'Savings, SACCO, Ikimina, loans & investments',
     'coopRail.sacco.title': 'SACCO shares',
     'coopRail.sacco.subtitle': 'Buy cooperative shares, earn a real dividend',
     'coopRail.ikimina.title': 'Ikimina',
@@ -327,6 +328,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coopRail.motoOwnership.subtitle': 'Save toward your own bike, then convert to a loan',
     'coopRail.harvestAdvance.title': 'Harvest advance',
     'coopRail.harvestAdvance.subtitle': 'Input financing from your coffee cooperative',
+    'coopRail.seeAll': 'See all in itunda Bank',
     'miniWallet.title': 'Mini account',
     'miniWallet.cancel': 'Cancel',
     'miniWallet.addMoney': '+ Add money',
@@ -502,8 +504,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'home.unusuallyLarge': 'Menshi kurusha uko bisanzwe',
     'discover.title': 'Menya',
     'discover.new': 'GISHYA',
-    'coopRail.title': 'Byakorewe uko Abanyarwanda babika amafaranga',
-    'coopRail.subtitle': "Ibicuruzwa by'amakoperative izindi porogaramu z'amafaranga zidasobanukirwa",
+    'coopRail.title': 'itunda Bank',
+    'coopRail.subtitle': "Kubika, SACCO, Ikimina, inguzanyo n'ishoramari",
     'coopRail.sacco.title': 'Imigabane ya SACCO',
     'coopRail.sacco.subtitle': 'Gura imigabane ya koperative, wakire inyungu nyayo',
     'coopRail.ikimina.title': 'Ikimina',
@@ -512,6 +514,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coopRail.motoOwnership.subtitle': 'Bika kugira ngo ugure moto yawe, hanyuma bihinduke inguzanyo',
     'coopRail.harvestAdvance.title': 'Inguzanyo yo gutera imbere isarura',
     'coopRail.harvestAdvance.subtitle': "Inguzanyo y'ibikoresho biva kuri koperative y'ikawa",
+    'coopRail.seeAll': 'Reba byose muri itunda Bank',
     'miniWallet.title': 'Konti ntoya',
     'miniWallet.cancel': 'Hagarika',
     'miniWallet.addMoney': '+ Ongeraho amafaranga',

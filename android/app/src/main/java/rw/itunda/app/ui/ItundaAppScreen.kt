@@ -264,6 +264,16 @@ fun ItundaAppScreen(
         var pendingEatsMerchantName by remember { mutableStateOf<String?>(null) }
         var showAgentCash by rememberSaveable { mutableStateOf(false) }
         var showInvest by rememberSaveable { mutableStateOf(false) }
+        // Real itunda Bank product hub (2026-08-11) -- see the "itunda Bank vs itunda
+        // wallet" naming correction earlier this session: KakaoPay/KakaoBank and Toss's
+        // own Payments/Bank are genuinely distinct products, not just a generic/specific
+        // naming pair. itunda's savings, SACCO, Ikimina, loans, and investment features
+        // were real and already built, but scattered as flat rows with no product
+        // identity of their own -- this gives them one, parallel to the itunda Pay tab
+        // (ItundaTab.Pay), the same real split Toss and Kakao both make. Not a 6th
+        // primary tab -- real Toss's own bottom nav doesn't put Toss Bank there either
+        // despite it being a distinct product, it's a surface reached from Home.
+        var showBank by rememberSaveable { mutableStateOf(false) }
         // Real Overview/Loans/Support screens (2026-07-22) -- these three backend
         // modules (rw.itunda.overview, rw.itunda.loans, rw.itunda.support) were fully
         // built with zero client UI anywhere until now; see OverviewScreen.kt/
@@ -1019,6 +1029,33 @@ fun ItundaAppScreen(
             HarvestAdvanceScreen(onBack = { showHarvestAdvance = false })
             return@IdsTheme
         }
+        // Checked after every screen it deep-links into (Sacco/Ikimina/MotoOwnership/
+        // HarvestAdvance/Loans/Invest/WeeklySavings/UpfrontDeposit/VupLoan/StudentLoan
+        // above) -- this sequential if-chain's first match wins and return@IdsTheme's
+        // out, so if showBank were checked first, tapping any row inside the hub would
+        // just keep re-rendering the hub instead of opening what was tapped (both flags
+        // stay true at once: this screen is still "open" underneath the one pushed on
+        // top of it, same relationship Explore has with these same children).
+        if (showBank) {
+            BackHandler { showBank = false }
+            BankHubScreen(
+                viewModel = viewModel,
+                onBack = { showBank = false },
+                onDepositToGoal = { goalId, goalName -> showBank = false; savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
+                onClaimInterest = { showBank = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
+                onOpenSacco = { showSacco = true },
+                onOpenIkimina = { showIkimina = true },
+                onOpenMotoOwnership = { showMotoOwnership = true },
+                onOpenHarvestAdvance = { showHarvestAdvance = true },
+                onOpenLoans = { showLoans = true },
+                onOpenInvest = { showInvest = true },
+                onOpenWeeklySavings = { showWeeklySavings = true },
+                onOpenUpfrontDeposit = { showUpfrontDeposit = true },
+                onOpenVupLoan = { showVupLoan = true },
+                onOpenStudentLoan = { showStudentLoan = true },
+            )
+            return@IdsTheme
+        }
         if (showGroupAccounts) {
             BackHandler { showGroupAccounts = false }
             GroupAccountScreen(onBack = { showGroupAccounts = false })
@@ -1139,17 +1176,13 @@ fun ItundaAppScreen(
                     ItundaTab.Home -> HomeTab(
                         viewModel,
                         onSend = { transferStep = TransferStep.Recipient },
-                        onDepositToGoal = { goalId, goalName -> savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
-                        onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                         onOpenTransactionHistory = { showTransactionHistory = true },
                         onOpenSpendingInsight = { showSpending = true },
                         onCashOutAtAgent = { showAgentCash = true },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
                         onOpenNotifications = { showSettings = true },
-                        onOpenSacco = { showSacco = true },
-                        onOpenIkimina = { showIkimina = true },
-                        onOpenMotoOwnership = { showMotoOwnership = true },
-                        onOpenHarvestAdvance = { showHarvestAdvance = true },
+                        onOpenOverview = { showOverview = true },
+                        onOpenBank = { showBank = true },
                     )
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
                     // comment) -- previously PayTab was only reachable via a showPay
@@ -1298,28 +1331,21 @@ private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Uni
 private fun HomeTab(
     viewModel: MainViewModel,
     onSend: () -> Unit,
-    onDepositToGoal: (goalId: String, goalName: String) -> Unit,
-    onClaimInterest: () -> Unit,
     onOpenTransactionHistory: () -> Unit,
     onOpenSpendingInsight: () -> Unit = {},
     onCashOutAtAgent: () -> Unit,
     onOpenPay: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
-    onOpenSacco: () -> Unit = {},
-    onOpenIkimina: () -> Unit = {},
-    onOpenMotoOwnership: () -> Unit = {},
-    onOpenHarvestAdvance: () -> Unit = {},
+    onOpenOverview: () -> Unit = {},
+    onOpenBank: () -> Unit = {},
 ) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
     val savingsGoals by viewModel.savingsGoals.collectAsState()
     val interestJar by viewModel.interestJar.collectAsState()
     val discoverItems by viewModel.discoverItems.collectAsState()
-    val roundUpSettings by viewModel.roundUpSettings.collectAsState()
     val recentTransactions by viewModel.transactions.collectAsState()
     val spendingInsight by viewModel.spendingInsight.collectAsState()
-    var showRoundUpDialog by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
     // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not the
     // mirror" strategy memo, recommendation (ii), and rw.itunda.core.network.
     // recordAnalyticsEvent's own doc comment. Fired once per real composition of
@@ -1337,7 +1363,22 @@ private fun HomeTab(
         contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, top = 14.dp, end = Ids.layout.screenHorizontal, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
-        item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications) }
+        item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview) }
+        // Real personalized recommendation card (2026-08-11) -- direct comparison
+        // against real Toss Bank reference screenshots (user-provided): Toss leads
+        // Home with a large, illustrated, name-addressed card ("TUYIZERE ERIC님 복권
+        // 열어보기"), not a small generic list entry. discoverItems was already real,
+        // already fetched (GET /api/v1/discover) -- DiscoverSection further down just
+        // rendered every item at the same small, unpersonalized weight regardless of
+        // real fields like isNew/badge that exist specifically to signal priority.
+        // Promotes the single highest-priority real item (isNew first, else the
+        // first real item) to hero treatment instead of inventing new fabricated
+        // content; DiscoverSection below excludes it from its own list so nothing
+        // renders twice.
+        val heroDiscoverItem = discoverItems.sortedByDescending { it.isNew }.firstOrNull()
+        if (heroDiscoverItem != null) {
+            item { PersonalRecommendationCard(heroDiscoverItem) }
+        }
         item {
             WalletHeroCard(
                 balanceText = balanceText,
@@ -1349,47 +1390,19 @@ private fun HomeTab(
                 earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
             )
         }
-        // Real product-positioning fix (2026-08-10, see the "itunda: the wedge, not
-        // the mirror" strategy memo from this same session, and the identical fix on
-        // bank-mfe's HomeView): SACCO shares, Ikimina, Moto-Taxi Ownership, and
-        // Harvest advance are itunda's only real Rwanda-specific products -- the ones
-        // MTN MoMo's own roadmap can't trivially replicate -- yet all four lived only
-        // inside MenuScreen's "Borrow"/"Save & grow" categories, same visual weight as
-        // "Foreign currency". This doesn't add a feature; it gives four real, already-
-        // shipped, genuinely differentiated screens a Home presence that matches what
-        // they're worth, with real explanatory copy instead of a bare label. Unlike
-        // bank-mfe (which only has scroll-sections/buried buttons to route to),
-        // Android already has a dedicated full screen for each -- so this deep-links
-        // precisely, not just to a parent tab.
+        // Real itunda Bank product surface (2026-08-11) -- replaces the coop rail +
+        // Savings section that used to render directly here (SACCO/Ikimina/Moto/
+        // Harvest/interest jar/savings goals/round-up), same real data and real
+        // destinations, just moved into BankHubScreen so they read as one coherent
+        // product ("itunda Bank") instead of loose rows competing with itunda Pay's
+        // own WalletHeroCard for the same visual weight -- the exact real Toss Bank/
+        // Toss Payments and KakaoPay/KakaoBank split researched this session. This
+        // compact summary card is the entry point; BankHubScreen holds the full
+        // breakdown, same relationship WalletHeroCard already has with PayTab.
         item {
-            ShellSection(
-                title = stringResource(R.string.home_coop_rail_title),
-                rows = listOf(
-                    ShellRow(
-                        stringResource(R.string.home_coop_rail_sacco_title),
-                        stringResource(R.string.home_coop_rail_sacco_subtitle),
-                        ">", Icons.Outlined.AccountBalance, AccentPurple,
-                        onClick = { coroutineScope.launch { rw.itunda.core.network.recordAnalyticsEvent("coop_rail_tap", "sacco") }; onOpenSacco() },
-                    ),
-                    ShellRow(
-                        stringResource(R.string.home_coop_rail_ikimina_title),
-                        stringResource(R.string.home_coop_rail_ikimina_subtitle),
-                        ">", Icons.Outlined.Groups, AccentTeal,
-                        onClick = { coroutineScope.launch { rw.itunda.core.network.recordAnalyticsEvent("coop_rail_tap", "ikimina") }; onOpenIkimina() },
-                    ),
-                    ShellRow(
-                        stringResource(R.string.home_coop_rail_moto_title),
-                        stringResource(R.string.home_coop_rail_moto_subtitle),
-                        ">", Icons.Outlined.DirectionsBike, AccentBlue,
-                        onClick = { coroutineScope.launch { rw.itunda.core.network.recordAnalyticsEvent("coop_rail_tap", "moto_ownership") }; onOpenMotoOwnership() },
-                    ),
-                    ShellRow(
-                        stringResource(R.string.home_coop_rail_harvest_title),
-                        stringResource(R.string.home_coop_rail_harvest_subtitle),
-                        ">", Icons.Outlined.AccountBalanceWallet, AccentOrange,
-                        onClick = { coroutineScope.launch { rw.itunda.core.network.recordAnalyticsEvent("coop_rail_tap", "harvest_advance") }; onOpenHarvestAdvance() },
-                    ),
-                )
+            BankSummaryCard(
+                totalSaved = (interestJar?.balance ?: 0.0) + savingsGoals.sumOf { it.currentAmount },
+                onClick = onOpenBank,
             )
         }
         // Real Toss-style spending insight (2026-08-03) -- replaces a hardcoded
@@ -1440,97 +1453,15 @@ private fun HomeTab(
                 )
             )
         }
-        // Real savings goals + interest jar (2026-07-11) -- the first Home tab
-        // content backed by services/backend's savings module rather than static
-        // promotional copy. Rendered only once real data has arrived, so an empty
-        // list before the first fetch resolves doesn't flash a title with nothing
-        // under it.
-        if (savingsGoals.isNotEmpty() || interestJar != null) {
-            item {
-                val roundUpOff = stringResource(R.string.home_round_up_off)
-                val roundUpOn = stringResource(R.string.home_round_up_on)
-                val roundUpSetUp = stringResource(R.string.home_round_up_set_up)
-                val interestJarLabel = stringResource(R.string.home_interest_jar)
-                val earnedThisMonthLabel = stringResource(R.string.home_earned_this_month)
-                val roundUpTitle = stringResource(R.string.home_round_up_title)
-                val roundUpRoundingText = roundUpSettings?.roundToNearest?.let { stringResource(R.string.home_round_up_rounding, "%,.0f".format(it)) }
-                // stringResource() is @Composable and buildList{}'s lambda below isn't, so
-                // the per-goal progress pattern is fetched once here (outside the loop)
-                // and applied with plain Kotlin String.format inside it, same reasoning as
-                // the round-up strings above.
-                val savingsProgressPattern = stringResource(R.string.home_savings_progress)
-                ShellSection(
-                    title = stringResource(R.string.home_savings),
-                    rows = buildList {
-                        interestJar?.let { jar ->
-                            add(
-                                ShellRow(
-                                    interestJarLabel,
-                                    earnedThisMonthLabel,
-                                    "RWF %,.0f".format(jar.earnedThisMonth),
-                                    Icons.Outlined.Savings,
-                                    AccentOrange,
-                                    onClick = onClaimInterest,
-                                )
-                            )
-                        }
-                        savingsGoals.forEach { goal ->
-                            val progressPercent = if (goal.targetAmount > 0) {
-                                (goal.currentAmount / goal.targetAmount * 100).toInt()
-                            } else 0
-                            add(
-                                ShellRow(
-                                    goal.name,
-                                    savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount)),
-                                    "$progressPercent%",
-                                    Icons.Outlined.Savings,
-                                    AccentBlue,
-                                    onClick = { onDepositToGoal(goal.id, goal.name) },
-                                )
-                            )
-                        }
-                        // Real Kakao Pay 머니굴리기 round-up equivalent (2026-07-25) --
-                        // only offered once a goal exists to round into. See
-                        // RoundUpSettings.kt's own doc comment.
-                        if (savingsGoals.isNotEmpty()) {
-                            add(
-                                ShellRow(
-                                    roundUpTitle,
-                                    if (roundUpSettings?.enabled == true) {
-                                        roundUpRoundingText ?: roundUpOff
-                                    } else roundUpOff,
-                                    if (roundUpSettings?.enabled == true) roundUpOn else roundUpSetUp,
-                                    Icons.Outlined.CurrencyExchange,
-                                    AccentPurple,
-                                    onClick = { showRoundUpDialog = true },
-                                )
-                            )
-                        }
-                    }
-                )
-            }
-        }
-        if (showRoundUpDialog) {
-            item {
-                RoundUpSettingsDialog(
-                    settings = roundUpSettings,
-                    goals = savingsGoals,
-                    onDismiss = { showRoundUpDialog = false },
-                    onSave = { enabled, increment, goalId ->
-                        coroutineScope.launch {
-                            viewModel.setRoundUpSettings(enabled, increment, goalId)
-                            showRoundUpDialog = false
-                        }
-                    },
-                )
-            }
-        }
         // Real Discover feed (found 2026-07-22) -- MainViewModel already fetched this
         // from GET /api/v1/discover on every launch, but it was never rendered
         // anywhere in the app: a real, live data flow with no UI consumer. See
         // DiscoverController.kt's own promotional-item catalog on the backend.
-        if (discoverItems.isNotEmpty()) {
-            item { DiscoverSection(discoverItems) }
+        // Excludes heroDiscoverItem (2026-08-11) -- promoted above into
+        // PersonalRecommendationCard, shouldn't also render here at the smaller weight.
+        val remainingDiscoverItems = discoverItems.filter { it.id != heroDiscoverItem?.id }
+        if (remainingDiscoverItems.isNotEmpty()) {
+            item { DiscoverSection(remainingDiscoverItems) }
         }
     }
 }
@@ -1597,6 +1528,235 @@ private fun RoundUpSettingsDialog(
     )
 }
 
+// Real itunda Bank entry point on Home -- see HomeTab's own doc comment at its call
+// site. Deliberately styled like a second hero card, the same visual weight as
+// WalletHeroCard (itunda Pay), not a smaller row -- these are two parallel product
+// identities, not a primary feature and a buried secondary one.
+@Composable
+private fun BankSummaryCard(totalSaved: Double, onClick: () -> Unit) {
+    IdsCard(
+        shape = RoundedCornerShape(28.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.padding(24.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(R.string.bank_title), fontSize = 14.sp, color = Ids.colors.textSecondary)
+                Text("RWF %,.0f".format(totalSaved), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                Text(stringResource(R.string.bank_summary_subtitle), fontSize = 13.sp, color = Ids.colors.textSecondary)
+            }
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+        }
+    }
+}
+
+// Real itunda Bank product hub (2026-08-11) -- see the doc comment on the showBank
+// state var in ItundaAppScreen for the full "itunda Bank vs itunda Pay/wallet"
+// naming research this came out of. Every row here is a real, already-built screen
+// (see LoansScreen.kt/InvestScreen.kt/SaccoScreen.kt/IkiminaScreen.kt/etc.'s own doc
+// comments) -- this just gives them a shared front door with real aggregate data,
+// instead of each living as an unconnected flat row. Sections mirror MenuScreen's
+// own already-researched "Save & grow"/"Borrow" split (see its own "Real Toss Bank
+// reference mapping" comment) rather than inventing a new taxonomy, and Moto-Taxi
+// Ownership/Harvest advance sit under Borrow there (not Save & grow, despite the old
+// Home coop rail grouping them with SACCO/Ikimina) because both convert to a loan --
+// kept consistent with that existing, already-vetted categorization rather than the
+// coop rail's simpler "Rwanda savings products" framing this replaces.
+@Composable
+private fun BankHubScreen(
+    viewModel: MainViewModel,
+    onBack: () -> Unit,
+    onDepositToGoal: (goalId: String, goalName: String) -> Unit,
+    onClaimInterest: () -> Unit,
+    onOpenSacco: () -> Unit,
+    onOpenIkimina: () -> Unit,
+    onOpenMotoOwnership: () -> Unit,
+    onOpenHarvestAdvance: () -> Unit,
+    onOpenLoans: () -> Unit,
+    onOpenInvest: () -> Unit,
+    onOpenWeeklySavings: () -> Unit,
+    onOpenUpfrontDeposit: () -> Unit,
+    onOpenVupLoan: () -> Unit,
+    onOpenStudentLoan: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val savingsGoals by viewModel.savingsGoals.collectAsState()
+    val interestJar by viewModel.interestJar.collectAsState()
+    val roundUpSettings by viewModel.roundUpSettings.collectAsState()
+    var showRoundUpDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val totalSaved = (interestJar?.balance ?: 0.0) + savingsGoals.sumOf { it.currentAmount }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+            BackTopBar(title = stringResource(R.string.bank_title), onBack = onBack)
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
+        ) {
+            item {
+                IdsCard(shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Text(stringResource(R.string.bank_total_saved), fontSize = 14.sp, color = Ids.colors.textSecondary)
+                        Text("RWF %,.0f".format(totalSaved), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                    }
+                }
+            }
+            item {
+                val roundUpOff = stringResource(R.string.home_round_up_off)
+                val roundUpOn = stringResource(R.string.home_round_up_on)
+                val roundUpSetUp = stringResource(R.string.home_round_up_set_up)
+                val interestJarLabel = stringResource(R.string.home_interest_jar)
+                val earnedThisMonthLabel = stringResource(R.string.home_earned_this_month)
+                val roundUpTitle = stringResource(R.string.home_round_up_title)
+                val roundUpRoundingText = roundUpSettings?.roundToNearest?.let { stringResource(R.string.home_round_up_rounding, "%,.0f".format(it)) }
+                val savingsProgressPattern = stringResource(R.string.home_savings_progress)
+                ShellSection(
+                    title = stringResource(R.string.bank_save_grow),
+                    rows = buildList {
+                        interestJar?.let { jar ->
+                            add(
+                                ShellRow(
+                                    interestJarLabel,
+                                    earnedThisMonthLabel,
+                                    "RWF %,.0f".format(jar.earnedThisMonth),
+                                    Icons.Outlined.Savings,
+                                    AccentOrange,
+                                    onClick = onClaimInterest,
+                                )
+                            )
+                        }
+                        savingsGoals.forEach { goal ->
+                            val progressPercent = if (goal.targetAmount > 0) {
+                                (goal.currentAmount / goal.targetAmount * 100).toInt()
+                            } else 0
+                            add(
+                                ShellRow(
+                                    goal.name,
+                                    savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount)),
+                                    "$progressPercent%",
+                                    Icons.Outlined.Savings,
+                                    AccentBlue,
+                                    onClick = { onDepositToGoal(goal.id, goal.name) },
+                                )
+                            )
+                        }
+                        if (savingsGoals.isNotEmpty()) {
+                            add(
+                                ShellRow(
+                                    roundUpTitle,
+                                    if (roundUpSettings?.enabled == true) {
+                                        roundUpRoundingText ?: roundUpOff
+                                    } else roundUpOff,
+                                    if (roundUpSettings?.enabled == true) roundUpOn else roundUpSetUp,
+                                    Icons.Outlined.CurrencyExchange,
+                                    AccentPurple,
+                                    onClick = { showRoundUpDialog = true },
+                                )
+                            )
+                        }
+                        add(ShellRow("26-week savings", "Escalating weekly deposit plan", ">", Icons.Outlined.Savings, AccentBlue, onClick = onOpenWeeklySavings))
+                        add(ShellRow("12-month deposit", "Interest paid upfront, principal locked", ">", Icons.Outlined.Savings, AccentPurple, onClick = onOpenUpfrontDeposit))
+                        add(ShellRow(stringResource(R.string.home_coop_rail_ikimina_title), stringResource(R.string.home_coop_rail_ikimina_subtitle), ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina))
+                        add(ShellRow(stringResource(R.string.home_coop_rail_sacco_title), stringResource(R.string.home_coop_rail_sacco_subtitle), ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco))
+                        add(ShellRow("Investments", "RSE stocks, bonds & fixed income, IPOs", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
+                    }
+                )
+            }
+            item {
+                ShellSection(
+                    title = stringResource(R.string.bank_borrow),
+                    rows = listOf(
+                        ShellRow("Get a loan", "Personal, salary-backed, SME working capital", ">", Icons.Outlined.AccountBalanceWallet, AccentBlue, onClick = onOpenLoans),
+                        ShellRow(stringResource(R.string.home_coop_rail_harvest_title), stringResource(R.string.home_coop_rail_harvest_subtitle), ">", Icons.Outlined.AccountBalanceWallet, AccentTeal, onClick = onOpenHarvestAdvance),
+                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", Icons.Outlined.AccountBalanceWallet, AccentBlue, onClick = onOpenVupLoan),
+                        ShellRow("Student loan", "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", ">", Icons.Outlined.School, AccentPurple, onClick = onOpenStudentLoan),
+                        ShellRow(stringResource(R.string.home_coop_rail_moto_title), "Save a 30% down payment, then convert to a loan for your own bike", ">", Icons.Outlined.DirectionsBike, AccentTeal, onClick = onOpenMotoOwnership),
+                    )
+                )
+            }
+        }
+        if (showRoundUpDialog) {
+            RoundUpSettingsDialog(
+                settings = roundUpSettings,
+                goals = savingsGoals,
+                onDismiss = { showRoundUpDialog = false },
+                onSave = { enabled, increment, goalId ->
+                    coroutineScope.launch {
+                        viewModel.setRoundUpSettings(enabled, increment, goalId)
+                        showRoundUpDialog = false
+                    }
+                },
+            )
+        }
+    }
+}
+
+// Real personalized recommendation card -- see HomeTab's own doc comment on
+// heroDiscoverItem for the full account of what real Toss reference screenshot this
+// was compared against and what it promotes. Real fetch is scoped locally, not
+// through MainViewModel.profile (only ever loaded today by SettingsScreen's own
+// LaunchedEffect), same "each screen fetches its own minimal real data" precedent
+// HoodTab's neighborhoodName fetch already established -- avoids Home also firing
+// loadSettingsData()'s heavier notifications/devices calls just for a first name.
+@Composable
+private fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverItem) {
+    var firstName by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            val profile = rw.itunda.core.network.NetworkClient.authApi.getProfile()
+            if (profile.success) firstName = profile.user.firstName
+        } catch (_: Exception) {
+            // Best-effort -- the card still works with a generic CTA if this fails.
+        }
+    }
+    val accentColor = try {
+        Color(android.graphics.Color.parseColor(item.color))
+    } catch (_: IllegalArgumentException) {
+        AccentBlue
+    }
+    IdsCard(
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accentColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.CardGiftcard, contentDescription = null, modifier = Modifier.size(24.dp), tint = accentColor)
+                }
+                if (item.isNew) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        stringResource(R.string.home_new_badge), color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(accentColor.copy(alpha = 0.12f)).padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
+            }
+            Text(item.title, color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(item.subtitle, color = Ids.colors.textSecondary, fontSize = 14.sp)
+            // Deliberately Text, not IdsButton (2026-08-11): item.description has no
+            // real per-item destination anywhere in this DTO -- an IdsButton with
+            // onClick = {} would be exactly the "button-shaped but does nothing" dead
+            // tap this same file has found and fixed repeatedly elsewhere this
+            // session. Styled with real emphasis (the accent color, semibold) so it
+            // still reads as the card's headline message, matching the rest of
+            // DiscoverSection's own honestly-informational (non-clickable) cards
+            // rather than pretending to be interactive.
+            Text(
+                firstName?.let { stringResource(R.string.home_recommendation_cta_named, it, item.description) } ?: item.description,
+                color = accentColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
 @Composable
 private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
     Column {
@@ -1634,7 +1794,19 @@ private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
 }
 
 @Composable
-private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Unit = {}) {
+private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Unit = {}, onOpenOverview: () -> Unit = {}) {
+    // Real account switcher (2026-08-11) -- direct comparison against real Toss Bank
+    // reference screenshots (user-provided): Toss's own top bar leads with "토스뱅크 >",
+    // a tappable account-identity element, not a bare wordmark -- this bar had nothing
+    // in that position at all. Real backend already exists for this
+    // (rw.itunda.overview.LinkedAccountController, GET/POST /api/v1/accounts/linked,
+    // consumed today only inside AutoTopUpScreen/OverviewScreen, never surfaced as a
+    // top-level switcher). Deliberately does NOT let a linked account's demoBalance
+    // replace Home's own real wallet balance -- LinkedAccount.kt's own doc comment
+    // draws a hard, deliberate line ("Never counted in real netWorth") against
+    // blending real and demo money, so this is a real browse/manage sheet, not a
+    // literal "switch which balance Home shows" control.
+    var showAccountSwitcher by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1642,6 +1814,16 @@ private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Un
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Row(
+            modifier = Modifier.clickable { showAccountSwitcher = true },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("itunda", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Icon(
+                Icons.Outlined.ExpandMore, contentDescription = stringResource(R.string.home_account_switcher),
+                modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary,
+            )
+        }
         // Real search bar, not an empty placeholder box -- the previous
         // version here was a Box() with a background color and no children
         // at all, a genuine leftover bug (found comparing directly against
@@ -1662,6 +1844,94 @@ private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Un
         // real notifications list against GET /api/v1/notifications.
         IdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = stringResource(R.string.home_scan_qr), onClick = onOpenPay)
         IdsIconButton(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.home_notifications), onClick = onOpenNotifications)
+    }
+    if (showAccountSwitcher) {
+        AccountSwitcherSheet(onDismiss = { showAccountSwitcher = false }, onOpenOverview = { showAccountSwitcher = false; onOpenOverview() })
+    }
+}
+
+@Composable
+private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Unit) {
+    var linkedAccounts by remember { mutableStateOf<List<rw.itunda.core.network.LinkedAccountEntityDto>?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            linkedAccounts = rw.itunda.core.network.NetworkClient.apiService.getLinkedAccounts().linkedAccounts
+                .filter { it.status == "LINKED" }
+        } catch (_: Exception) {
+            linkedAccounts = emptyList()
+        }
+    }
+    BackHandler(onBack = onDismiss)
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)).clickable(onClick = onDismiss)) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 64.dp, start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
+                .background(Ids.colors.surface)
+                .clickable(enabled = false) {}
+                .padding(vertical = 8.dp),
+        ) {
+            Text(
+                stringResource(R.string.home_your_accounts),
+                color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.brand)
+                Spacer(modifier = Modifier.width(12.dp))
+                // Real naming decision, checked twice (2026-08-11): TOSS_FEATURE_SPECIFICATION.md
+                // names an aspirational "Itunda Bank" (Pillar 3, RBDB-licensed) as a roadmap
+                // item, which first read as reason to rename this row to match. Corrected after
+                // checking TOSS_PARITY_MATRIX.md -- the doc that tracks what's actually built and
+                // live-verified -- which has zero real banking-license implementation anywhere;
+                // this Wallet(MAIN) row is itunda's real, currently-built general-purpose e-money
+                // wallet. Confirmed against real KakaoPay vs KakaoBank sourcing: KakaoPay is a
+                // real e-wallet embedded in KakaoTalk, KakaoBank a separately, actually-licensed
+                // digital bank -- genuinely distinct regulated products, not a generic/specific
+                // pair. Calling this row "Itunda Bank" would have been a real overclaim of
+                // regulatory status the product doesn't have, not a naming nitpick.
+                Text("itunda wallet", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Icon(Icons.Outlined.CheckCircle, contentDescription = stringResource(R.string.home_current_account), modifier = Modifier.size(18.dp), tint = Ids.colors.brand)
+            }
+            when {
+                linkedAccounts == null -> {}
+                linkedAccounts!!.isEmpty() -> {}
+                else -> linkedAccounts!!.forEach { account ->
+                    Divider(color = Ids.colors.divider, modifier = Modifier.padding(horizontal = 18.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.AccountBalance, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.textSecondary)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("${account.provider} · ${account.externalAccountNumberMasked}", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                            // Real, explicit "Demo" label -- see LinkedAccount.kt's own doc
+                            // comment: no live Open Banking access exists, so this balance is
+                            // honestly labeled rather than presented as if it were real.
+                            Text(
+                                account.demoBalance?.let { "${account.demoBalanceCurrency ?: "RWF"} %,.0f (Demo)".format(it) } ?: stringResource(R.string.home_demo_balance_unavailable),
+                                color = Ids.colors.textSecondary, fontSize = 12.sp,
+                            )
+                        }
+                    }
+                }
+            }
+            Divider(color = Ids.colors.divider, modifier = Modifier.padding(horizontal = 18.dp))
+            Text(
+                stringResource(R.string.home_link_another_account),
+                color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenOverview)
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+            )
+        }
     }
 }
 

@@ -74,7 +74,13 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "rewardsRowSubtitle": "Claim today's cashback and offers",
         "goalSaverTitle": "Goal saver",
         "goalSaverSubtitle": "Rainy day fund progress",
-        "coopRailTitle": "Built for how Rwanda saves",
+        // Real itunda Bank product identity (2026-08-11) -- see Android's identical
+        // BankHubScreen/BankSummaryCard doc comment for the full "itunda Bank vs
+        // itunda wallet/Pay" research (KakaoPay/KakaoBank, Toss's own Payments/Bank)
+        // this rebrand came out of. Same rows as before (SACCO/Ikimina/Moto/Harvest,
+        // now also Loans/Invest -- see ContentView's own coopRows doc comment), just
+        // given the real product identity they were missing.
+        "coopRailTitle": "itunda Bank",
     ],
     .rw: [
         "goodMorning": "Mwaramutse",
@@ -119,7 +125,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "rewardsRowSubtitle": "Saba amafaranga n'ibindi byiza by'uyu munsi",
         "goalSaverTitle": "Umugambi w'ubwizigame",
         "goalSaverSubtitle": "Imigendekere y'ubwizigame bw'ibihe bikomeye",
-        "coopRailTitle": "Byakorewe uko Abanyarwanda babika amafaranga",
+        "coopRailTitle": "itunda Bank",
     ],
 ]
 

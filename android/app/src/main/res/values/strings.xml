@@ -119,6 +119,11 @@
     <string name="home_search">Search</string>
     <string name="home_scan_qr">Scan QR code</string>
     <string name="home_notifications">Notifications</string>
+    <string name="home_account_switcher">Switch account</string>
+    <string name="home_your_accounts">YOUR ACCOUNTS</string>
+    <string name="home_current_account">Current account</string>
+    <string name="home_demo_balance_unavailable">Demo balance unavailable</string>
+    <string name="home_link_another_account">+ Link another account</string>
     <string name="home_wallet">Wallet</string>
     <string name="home_cash_out">Cash out</string>
     <string name="home_send">Send</string>
@@ -132,6 +137,7 @@
     <string name="home_cancel">Cancel</string>
     <string name="home_discover">Discover</string>
     <string name="home_new_badge">NEW</string>
+    <string name="home_recommendation_cta_named">%1$s, %2$s</string>
     <string name="home_spent_period_category">Spent this period -- mostly on %1$s</string>
     <string name="home_spent_period">Spent this period</string>
     <string name="home_promo_cashback_title">Transfer cashback</string>
@@ -160,4 +166,15 @@
     <string name="home_round_up_off">Off</string>
     <string name="home_round_up_on">On</string>
     <string name="home_round_up_set_up">Set up</string>
+    <!-- Real itunda Bank product hub (2026-08-11), see BankHubScreen's own doc
+         comment: KakaoPay/KakaoBank and Toss's own Payments/Bank are genuinely
+         distinct products, researched and confirmed via docs/TOSS_PARITY_MATRIX.md
+         before this was added. "itunda wallet" (see AccountSwitcherSheet) stays the
+         name of itunda's own e-wallet/Pay product; "itunda Bank" is the separate
+         product identity for its savings/SACCO/Ikimina/loans/investment features. -->
+    <string name="bank_title">itunda Bank</string>
+    <string name="bank_total_saved">Total saved</string>
+    <string name="bank_summary_subtitle">Savings, SACCO, Ikimina, loans &amp; investments</string>
+    <string name="bank_save_grow">Save &amp; grow</string>
+    <string name="bank_borrow">Borrow</string>
 </resources>

@@ -61,10 +61,17 @@ class MainActivity : FragmentActivity() {
         // real balance on nearly every tab (see HomeTab's WalletHeroCard), so a per-screen
         // allowlist would be both more fragile and less protective than a blanket flag set once
         // here, before setContent, so it also covers the task-switcher thumbnail.
-        window.setFlags(
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-            android.view.WindowManager.LayoutParams.FLAG_SECURE,
-        )
+        // Skipped in debug builds only (2026-08-11): a live UI-consistency audit against real
+        // Toss reference screenshots needed real on-device screenshots to compare, which
+        // FLAG_SECURE blocks entirely (screencap and even uiautomator's pixel path return solid
+        // black). Release builds are unaffected -- BuildConfig.DEBUG is compiled false there, so
+        // this branch never runs and the real protection stays exactly as it was.
+        if (!BuildConfig.DEBUG) {
+            window.setFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            )
+        }
 
         applyMapsDeepLink(intent)
 

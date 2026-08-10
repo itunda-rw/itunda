@@ -82,6 +82,14 @@ struct ContentView: View {
     @State private var showIkimina = false
     @State private var showMotoOwnership = false
     @State private var showHarvestAdvance = false
+    // Real itunda Bank product identity (2026-08-11) -- see Android's identical
+    // BankHubScreen/BankSummaryCard and bank-mfe's identical SavingsView rebrand for
+    // the full "itunda Bank vs itunda wallet/Pay" research this came out of.
+    // LoansScreenView/InvestScreenView already existed (reachable only from
+    // EntireMenuScreen's own local @State before this) -- same "each presenting view
+    // owns its own sheet state" duplication already used for showSacco above.
+    @State private var showLoans = false
+    @State private var showInvest = false
 
     // Real, minimal usage signal on each tap (2026-08-10) -- same event name/metadata
     // shape bank-mfe's/Android's identical coop rails already fire, stable keys
@@ -103,6 +111,14 @@ struct ContentView: View {
             CooperativeRowData(title: "Harvest advance", subtitle: "Input financing from your coffee cooperative", symbol: "leaf.fill", tint: Color.accentOrange.opacity(0.15), onTap: {
                 NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "harvest_advance")
                 showHarvestAdvance = true
+            }),
+            CooperativeRowData(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: Color.accentBlue.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "loans")
+                showLoans = true
+            }),
+            CooperativeRowData(title: "Grow your money", subtitle: "RSE stocks, bonds & fixed income, IPOs", symbol: "chart.line.uptrend.xyaxis", tint: Color.accentTeal.opacity(0.15), onTap: {
+                NetworkClient.shared.recordAnalyticsEventBestEffort("coop_rail_tap", metadata: "invest")
+                showInvest = true
             }),
         ]
     }
@@ -201,6 +217,12 @@ struct ContentView: View {
                 }
                 .sheet(isPresented: $showHarvestAdvance) {
                     HarvestAdvanceScreenView(onBack: { showHarvestAdvance = false })
+                }
+                .sheet(isPresented: $showLoans) {
+                    LoansScreenView(onBack: { showLoans = false })
+                }
+                .sheet(isPresented: $showInvest) {
+                    InvestScreenView(onBack: { showInvest = false })
                 }
                 .tabItem {
                     Image(systemName: "house.fill")

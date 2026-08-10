@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -733,6 +733,13 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavi
             </div>
           </button>
         ))}
+        <button
+          onClick={() => { recordEvent('coop_rail_tap', 'see_all'); onNavigateToTab('SAVINGS'); }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%', marginTop: '4px' }}
+        >
+          <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--itunda-blue)' }}>{t('coopRail.seeAll')}</span>
+          <ChevronRight size={16} color="var(--itunda-blue)" />
+        </button>
       </div>
     </div>
   );
@@ -19751,7 +19758,7 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
   );
 }
 
-function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget }: { initialScrollTarget?: 'sacco' | 'ikimina' | null; onConsumedInitialScrollTarget?: () => void } = {}) {
+function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNavigateToTab }: { initialScrollTarget?: 'sacco' | 'ikimina' | null; onConsumedInitialScrollTarget?: () => void; onNavigateToTab?: (tab: Tab) => void } = {}) {
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -19778,8 +19785,18 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget }: { i
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScrollTarget]);
 
+  // Real itunda Bank product identity (2026-08-11) -- see Android's identical
+  // BankHubScreen for the full research this came out of: KakaoPay/KakaoBank and
+  // Toss's own Payments/Bank are genuinely distinct products, confirmed via
+  // docs/TOSS_PARITY_MATRIX.md before this was added, not a generic/specific naming
+  // pair. This tab already aggregated itunda's real savings/SACCO/Ikimina/weekly/
+  // upfront-deposit products (everything below); it just had no product identity of
+  // its own before now, and no way to reach the two real product families that live
+  // on their own tabs (Loans, Invest/STOCKS) without leaving through Explore. Kept as
+  // real navigation to those existing tabs, not a duplicate implementation.
   return (
     <div>
+      <ProductPageHeader title="itunda Bank" subtitle="Savings, SACCO, Ikimina, loans & investments" />
       <InterestJarCard />
       <RoundUpCard goals={goals ?? []} />
       <CreateGoalForm onCreated={load} />
@@ -19810,6 +19827,33 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget }: { i
       <div style={{ marginTop: '24px' }}>
         <UpfrontDepositSection />
       </div>
+      {onNavigateToTab && (
+        <div className="itunda-card" style={{ marginTop: '24px', padding: '20px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 12px' }}>More from itunda Bank</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <button
+              onClick={() => onNavigateToTab('LOANS')}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
+            >
+              <div>
+                <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>Borrow</div>
+                <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>Personal loans, VUP, student loans, Moto-Taxi Ownership</div>
+              </div>
+              <ChevronRight size={18} color="var(--itunda-grey-400)" />
+            </button>
+            <button
+              onClick={() => onNavigateToTab('STOCKS')}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
+            >
+              <div>
+                <div style={{ fontSize: '14.5px', fontWeight: 650, color: 'var(--itunda-grey-900)' }}>Grow your money</div>
+                <div style={{ fontSize: '12.5px', color: 'var(--itunda-grey-500)' }}>RSE stocks, bonds & fixed income, IPOs</div>
+              </div>
+              <ChevronRight size={18} color="var(--itunda-grey-400)" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -19890,7 +19934,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'JOBS', label: 'Jobs' },
     { id: 'PROPERTY', label: 'Property' },
     { id: 'STOCKS', label: 'Invest' },
-    { id: 'SAVINGS', label: 'Savings' },
+    { id: 'SAVINGS', label: 'itunda Bank' },
     { id: 'MESSAGES', label: 'Messages' },
     { id: 'RIDES', label: 'Rides' },
     { id: 'DESIGNATED_DRIVER', label: 'Designated driver' },
@@ -20037,6 +20081,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         <SavingsView
           initialScrollTarget={pendingSavingsTarget}
           onConsumedInitialScrollTarget={() => setPendingSavingsTarget(null)}
+          onNavigateToTab={setTab}
         />
       )}
       {tab === 'MESSAGES' && (
