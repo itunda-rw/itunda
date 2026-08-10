@@ -668,13 +668,17 @@ function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions:
 // in (SAVINGS for the two cooperative-savings products, LOANS for the two credit
 // products) -- not a deep link to the exact scroll position, but real, honest, and a
 // large improvement over not being reachable from Home at all.
-function CooperativeSavingsRail({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
+function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode }: { onNavigateToTab: (tab: Tab) => void; onNavigateToLoansMode: (mode: LoansMode) => void }) {
   const { t } = useI18n();
-  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; tab: Tab }[] = [
+  const items: { key: string; title: string; subtitle: string; icon: ReactElement; tint: string; tab: Tab; loansMode?: LoansMode }[] = [
     { key: 'sacco', title: t('coopRail.sacco.title'), subtitle: t('coopRail.sacco.subtitle'), icon: <Landmark size={20} color="#7C5CFC" />, tint: 'rgba(124, 92, 252, 0.12)', tab: 'SAVINGS' },
     { key: 'ikimina', title: t('coopRail.ikimina.title'), subtitle: t('coopRail.ikimina.subtitle'), icon: <Users size={20} color="#14AE85" />, tint: 'rgba(20, 174, 133, 0.12)', tab: 'SAVINGS' },
-    { key: 'moto_ownership', title: t('coopRail.motoOwnership.title'), subtitle: t('coopRail.motoOwnership.subtitle'), icon: <Bike size={20} color="var(--itunda-blue)" />, tint: 'var(--itunda-blue-light)', tab: 'LOANS' },
-    { key: 'harvest_advance', title: t('coopRail.harvestAdvance.title'), subtitle: t('coopRail.harvestAdvance.subtitle'), icon: <Sprout size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', tab: 'LOANS' },
+    // Real gap found live (2026-08-10) while checking these two links for the first
+    // time: onNavigateToTab alone only lands on LoansView's generic Offers catalog --
+    // its own `mode` is separate internal state. loansMode threads the real specific
+    // product through (see LoansView's own initialMode doc comment).
+    { key: 'moto_ownership', title: t('coopRail.motoOwnership.title'), subtitle: t('coopRail.motoOwnership.subtitle'), icon: <Bike size={20} color="var(--itunda-blue)" />, tint: 'var(--itunda-blue-light)', tab: 'LOANS', loansMode: 'MOTO_OWNERSHIP' },
+    { key: 'harvest_advance', title: t('coopRail.harvestAdvance.title'), subtitle: t('coopRail.harvestAdvance.subtitle'), icon: <Sprout size={20} color="#F2A93B" />, tint: 'rgba(242, 169, 59, 0.14)', tab: 'LOANS', loansMode: 'HARVEST_ADVANCE' },
   ];
 
   return (
@@ -688,7 +692,11 @@ function CooperativeSavingsRail({ onNavigateToTab }: { onNavigateToTab: (tab: Ta
         {items.map((item) => (
           <button
             key={item.key}
-            onClick={() => { recordEvent('coop_rail_tap', item.key); onNavigateToTab(item.tab); }}
+            onClick={() => {
+              recordEvent('coop_rail_tap', item.key);
+              if (item.loansMode) onNavigateToLoansMode(item.loansMode);
+              onNavigateToTab(item.tab);
+            }}
             style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 8px', borderRadius: '10px', textAlign: 'left', width: '100%' }}
           >
             <div style={{ width: '38px', height: '38px', borderRadius: '12px', backgroundColor: item.tint, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -705,7 +713,7 @@ function CooperativeSavingsRail({ onNavigateToTab }: { onNavigateToTab: (tab: Ta
   );
 }
 
-function HomeView({ onNavigateToCard, onNavigateToTab }: { onNavigateToCard: () => void; onNavigateToTab: (tab: Tab) => void }) {
+function HomeView({ onNavigateToCard, onNavigateToTab, onNavigateToLoansMode }: { onNavigateToCard: () => void; onNavigateToTab: (tab: Tab) => void; onNavigateToLoansMode: (mode: LoansMode) => void }) {
   const { t } = useI18n();
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -763,7 +771,7 @@ function HomeView({ onNavigateToCard, onNavigateToTab }: { onNavigateToCard: () 
         />
       )}
       <QuickActions onCardsClick={onNavigateToCard} />
-      <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} />
+      <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} onNavigateToLoansMode={onNavigateToLoansMode} />
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <ScheduledTransfersCard />
       <AutoTransfersCard />
@@ -1826,8 +1834,23 @@ function OverviewView() {
 // Real multi-lender loan marketplace (2026-07-22) -- found fully built on the backend
 // (rw.itunda.loans, BNR-licensed partner banks alongside itunda's own book, see
 // LoanOffer.kt's own doc comment) with zero client UI anywhere.
-function LoansView() {
-  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT' | 'HARVEST_ADVANCE' | 'VUP' | 'STUDENT' | 'MOTO_OWNERSHIP'>('OFFERS');
+type LoansMode = 'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT' | 'HARVEST_ADVANCE' | 'VUP' | 'STUDENT' | 'MOTO_OWNERSHIP';
+
+// Real gap found live (2026-08-10) while checking the coop rail's own Loans-tab
+// destinations for the first time (this session just added them to Home): the rail's
+// "Moto-Taxi Ownership"/"Harvest advance" taps only switch the top-level Tab to
+// 'LOANS' -- this view's own `mode` was always pure internal state with no way to set
+// it from outside, so both taps landed on the generic Offers catalog, not the actual
+// product. `initialMode` closes that -- optional, defaults to the pre-existing
+// behavior, so LoansView's other caller (the "Loans" row inside "More") is unaffected.
+function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: LoansMode; onConsumedInitialMode?: () => void } = {}) {
+  const [mode, setMode] = useState<LoansMode>(initialMode ?? 'OFFERS');
+  // Consume once so a later, normal navigation into Loans (e.g. via "More") doesn't
+  // keep landing on the same specific mode -- same pattern Android/iOS's HoodTab
+  // initialMode/onConsumedInitialMode already establishes.
+  useEffect(() => {
+    if (initialMode) onConsumedInitialMode?.();
+  }, []);
   const [offers, setOffers] = useState<LoanOffer[] | null>(null);
   const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
   const [lenders, setLenders] = useState<Lender[] | null>(null);
@@ -1907,15 +1930,20 @@ function LoansView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('OFFERS')}>Offers</button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('MY_LOANS')}>My loans ({myLoans?.length ?? 0})</button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('OVERDRAFT')}>Overdraft</button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('POSTPAID_CREDIT')}>Postpaid credit</button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('HARVEST_ADVANCE')}>Harvest advance</button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('VUP')}>VUP Financial Services</button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('STUDENT')}>BRD Student Loan</button>
-        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('MOTO_OWNERSHIP')}>Moto-Taxi Ownership</button>
+      {/* Real gap found live (2026-08-10) via an actual CDP screenshot: same silent-
+          overflow bug as the 13 sub-tab bars already fixed this session
+          (c6cb9099/78371230/f0903fab) -- 4 of these 8 buttons, including "Harvest
+          advance"/"Moto-Taxi Ownership" (both just linked from Home), were cut off
+          past the visible edge on a real 390px viewport with zero scroll affordance. */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('OFFERS')} style={{ flexShrink: 0 }}>Offers</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('MY_LOANS')} style={{ flexShrink: 0 }}>My loans ({myLoans?.length ?? 0})</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('OVERDRAFT')} style={{ flexShrink: 0 }}>Overdraft</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('POSTPAID_CREDIT')} style={{ flexShrink: 0 }}>Postpaid credit</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('HARVEST_ADVANCE')} style={{ flexShrink: 0 }}>Harvest advance</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('VUP')} style={{ flexShrink: 0 }}>VUP Financial Services</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('STUDENT')} style={{ flexShrink: 0 }}>BRD Student Loan</button>
+        <button className="itunda-btn itunda-btn-secondary" onClick={() => setMode('MOTO_OWNERSHIP')} style={{ flexShrink: 0 }}>Moto-Taxi Ownership</button>
       </div>
       {mode === 'OVERDRAFT' && <OverdraftView />}
       {mode === 'POSTPAID_CREDIT' && <PostpaidCreditView />}
@@ -20675,6 +20703,9 @@ function SavingsView() {
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
+  // Real deep-link from the Home coop rail into LoansView's own specific mode
+  // (2026-08-10) -- see LoansView's own initialMode doc comment for the full account.
+  const [pendingLoansMode, setPendingLoansMode] = useState<LoansMode | null>(null);
   const user = getStoredUser();
   // Real gap caught while adding Android/iOS's 4th localization screen (2026-08-08,
   // docs/DESIGN_REFERENCES.md Section 19): LoginPage.tsx's own switcher only renders
@@ -20877,7 +20908,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         )}
       </div>
 
-      {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} />}
+      {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} onNavigateToLoansMode={setPendingLoansMode} />}
       {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
@@ -20905,7 +20936,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'DEVICES' && <DevicesView />}
       {tab === 'CARD' && <CardView />}
       {tab === 'OVERVIEW' && <OverviewView />}
-      {tab === 'LOANS' && <LoansView />}
+      {tab === 'LOANS' && <LoansView initialMode={pendingLoansMode ?? undefined} onConsumedInitialMode={() => setPendingLoansMode(null)} />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
       {tab === 'TRUST_SCORE' && <TrustScoreView />}
       {tab === 'REWARDS' && <RewardsView />}
