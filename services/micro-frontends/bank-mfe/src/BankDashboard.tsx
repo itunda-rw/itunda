@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactElement } from 'react';
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, Clock, Eye, EyeOff, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon, X } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
@@ -162,7 +162,15 @@ import {
   type AffiliateCommission, type AffiliateLink,
 } from './lib/affiliate';
 import { cancelBooking, createBooking, fetchAvailableSlots, fetchCouponsForCustomer, fetchMerchantReviews, fetchMyBookings, submitBookingReview, type BookingSlot, type MerchantBooking, type MerchantBookingReview, type MerchantCoupon } from './lib/booking';
-import MapView from './MapView';
+// Real fix (2026-08-10): MapView pulls in the full maplibre-gl WebGL engine (+CSS)
+// at module scope -- a static import here meant every user downloaded and parsed
+// that whole library on first load, whether or not they ever open the Map tab. Real
+// fintech UX research is explicit that speed is the #2 factor after security, with
+// users trained to expect sub-3-second interactions -- for a product built around
+// Rwanda's real mobile-network conditions, shipping a full map engine nobody asked
+// for yet on every cold load is a direct, measurable cost against that. Lazy-loaded
+// instead: maplibre-gl now only downloads when a user actually opens Map.
+const MapView = lazy(() => import('./MapView'));
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 import SimpleLiveRiderMap from './SimpleLiveRiderMap';
@@ -21053,7 +21061,11 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'PARKING' && <ParkingView />}
       {tab === 'BUS' && <BusView />}
       {tab === 'KNOWLEDGE' && <KnowledgeView />}
-      {tab === 'MAP' && <MapView />}
+      {tab === 'MAP' && (
+        <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '300px' }} />}>
+          <MapView />
+        </Suspense>
+      )}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
       {tab === 'DEVICES' && <DevicesView />}
