@@ -111,6 +111,14 @@ button:active {
   color: var(--itunda-grey-800);
 }
 
+/* No disabled state existed for .itunda-btn at all -- a disabled button
+   (busy, already submitted, already enrolled) looked pixel-identical to an
+   active one, giving no visual signal that a tap wouldn't do anything. */
+.itunda-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Referenced by DevicesView's "Remove" button and, since 2026-07-21, weekly
    savings' "Cancel plan" button -- both real destructive actions that were
    silently falling back to unstyled default button chrome (no color rule ever

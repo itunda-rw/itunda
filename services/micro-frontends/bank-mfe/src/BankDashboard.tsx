@@ -3529,19 +3529,24 @@ function InsuranceView() {
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Browse plans</h3>
         {plans.map((plan) => (
           <div key={plan.id} style={{ padding: '10px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: '13px', fontWeight: 600 }}>{plan.name}</p>
                 <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString()} RWF/mo · cover {plan.coverageAmount.toLocaleString()} RWF</p>
                 <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{plan.description}</p>
               </div>
-              <button
-                className="itunda-btn itunda-btn-secondary"
-                disabled={enrolledPlanIds.has(plan.id) || enrollingId === plan.id}
-                onClick={() => handleEnroll(plan.id)}
-              >
-                {enrolledPlanIds.has(plan.id) ? 'Enrolled' : enrollingId === plan.id ? '...' : 'Enroll'}
-              </button>
+              {enrolledPlanIds.has(plan.id) ? (
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--itunda-green)', flexShrink: 0, whiteSpace: 'nowrap' }}>✓ Enrolled</span>
+              ) : (
+                <button
+                  className="itunda-btn itunda-btn-secondary"
+                  style={{ width: 'auto', flexShrink: 0, padding: '8px 14px', fontSize: '13px' }}
+                  disabled={enrollingId === plan.id}
+                  onClick={() => handleEnroll(plan.id)}
+                >
+                  {enrollingId === plan.id ? '...' : 'Enroll'}
+                </button>
+              )}
             </div>
           </div>
         ))}
