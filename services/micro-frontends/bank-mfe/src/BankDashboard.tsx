@@ -227,9 +227,18 @@ import {
 } from './lib/vehicleInspection';
 
 // Consumer navigation is deliberately organised around jobs, not the repository's
-// feature inventory. Specialist screens remain addressable as child destinations,
-// but only these five jobs belong in the primary navigation.
-type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'ACTIVITY' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
+// feature inventory, AND deliberately matches the exact 5-tab taxonomy Android
+// (ItundaAppScreen.kt's ItundaTab enum) and iOS (ContentView.swift) already
+// independently converged on: Home / Shop / Hood / Talk / All. Both native clients
+// document the same real Toss reference (홈/혜택/쇼핑/페이/전체) and the same history
+// of promoting 전체 (All) to a first-class tab; a web app with a different taxonomy
+// for the same product is the exact "same feature, different UI/UX" inconsistency
+// real users notice when they switch devices. Eats/Marketplace/Community/Jobs/
+// Property are no longer Tab union members at all -- ShopHub/HoodHub render their
+// views (EatsView, MarketplaceView, etc.) from local toggle state instead, mirroring
+// Android's real Shop/Eats row and iOS HoodScreen's real segmented Picker rather than
+// keeping them as separate web-only top-level tabs.
+type Tab = 'HOME' | 'PAY' | 'HOOD' | 'ALL' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   const { t } = useI18n();
@@ -858,37 +867,81 @@ function PayHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
   );
 }
 
-// A lightweight hub, not a page that stacks three full views -- matches the
-// nav-card pattern used by ExploreHub/YouHub below instead of forcing every
-// visitor to load and scroll past Overview + Spending + Subscriptions at once.
-function ActivityHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
-  const sections: { label: string; description: string; tab: Tab }[] = [
-    { label: 'Overview', description: 'Balances and account summary.', tab: 'OVERVIEW' },
-    { label: 'Spending insights', description: 'Where your money went this month.', tab: 'SPENDING' },
-    { label: 'Subscriptions', description: 'Recurring payments you have active.', tab: 'SUBSCRIPTIONS' },
-  ];
+// A segmented Shop/Eats toggle inside one primary tab, not two separate top-level
+// tabs -- matches Android's real "ShopTab's own Shop/Eats row" exactly (see
+// features/shop/impl/.../ShopScreen.kt's own comment on the shared StarGold rating
+// row) rather than the web-only split this file used to have.
+function ShopHub() {
+  const [mode, setMode] = useState<'shop' | 'eats'>('shop');
   return (
     <div>
-      <ProductPageHeader title="Activity" subtitle="See what happened, what is due, and where your money is going." />
-      {sections.map((section) => (
-        <button
-          key={section.tab}
-          className="itunda-card"
-          onClick={() => onNavigateToTab(section.tab)}
-          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '16px', marginBottom: '10px' }}
-        >
-          <h2 style={{ margin: 0, fontSize: '15px', color: 'var(--itunda-grey-900)' }}>{section.label}</h2>
-          <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{section.description}</p>
-        </button>
-      ))}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+        {(['shop', 'eats'] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            style={{
+              padding: '7px 16px', borderRadius: '999px', fontSize: '13px', fontWeight: 700,
+              color: mode === m ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: mode === m ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+            }}
+          >
+            {m === 'shop' ? 'Shop' : 'Eats'}
+          </button>
+        ))}
+      </div>
+      {mode === 'shop' ? <ShopView /> : <EatsView />}
     </div>
   );
 }
 
-// groups/tabLabel/recentTabs/onSelect all come from BankDashboard's single
-// EXPLORE_TAB_GROUPS source of truth -- one grouping of "everything else" for both
-// browsing and search, so a service always lands in the same category either way.
-function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
+// A 4-way segmented toggle inside one primary tab, matching iOS HoodScreen's own
+// real segmented Picker over the same 4 modes (marketplace/community/jobs/property)
+// -- see HoodScreen.swift's own "no free bottom-nav slot, fold into an
+// [enum HoodMode]" comment -- instead of 4 separate top-level tabs on web only.
+function HoodHub({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
+  const MODES = [
+    { id: 'marketplace', label: 'Marketplace' },
+    { id: 'community', label: 'Community' },
+    { id: 'jobs', label: 'Jobs' },
+    { id: 'property', label: 'Property' },
+  ] as const;
+  const [mode, setMode] = useState<(typeof MODES)[number]['id']>('marketplace');
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '14px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
+        {MODES.map((m) => (
+          <button
+            key={m.id}
+            onClick={() => setMode(m.id)}
+            style={{
+              flex: 1, padding: '7px 4px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
+              color: mode === m.id ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: mode === m.id ? 'var(--itunda-blue)' : 'transparent',
+            }}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+      {mode === 'marketplace' && <MarketplaceView onMessageSeller={onMessageSeller} />}
+      {mode === 'community' && <CommunityView onOpenGroupChat={onMessageSeller} />}
+      {mode === 'jobs' && <JobsView onMessagePoster={onMessageSeller} />}
+      {mode === 'property' && <PropertyView onMessageLister={onMessageSeller} />}
+    </div>
+  );
+}
+
+// The real 전체 (All) tab -- see BankDashboard's own PRIMARY_TABS/ALL_TAB_GROUPS
+// doc comment for the full account of why this exists and what it must contain to
+// match Android's MenuScreen/iOS's EntireMenuScreen: a featured Pay row and a
+// featured My-account row up top (mirroring the native "profile icon" pattern,
+// see ItundaTab.All's own doc comment on where My went), then every other real
+// destination as searchable, collapsed-by-default groups. groups/tabLabel/
+// recentTabs/onSelect all come from one ALL_TAB_GROUPS source of truth shared by
+// both browsing and search, so a service can't land in one category when browsed
+// and a different one when searched.
+function AllHub({ groups, tabLabel, recentTabs, onSelect }: {
   groups: { title: string; ids: Tab[] }[];
   tabLabel: (id: Tab) => string;
   recentTabs: Tab[];
@@ -903,7 +956,19 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
 
   return (
     <div>
-      <ProductPageHeader title="Explore" subtitle="Services beyond your everyday money tasks, grouped by what you are trying to do." />
+      <ProductPageHeader title="All" subtitle="Everything itunda does, in one searchable place." />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+        <button className="itunda-card" onClick={() => onSelect('PAY')} style={{ textAlign: 'left', padding: '14px' }}>
+          <WalletIcon size={18} color="var(--itunda-blue)" />
+          <p style={{ margin: '8px 0 0', fontWeight: 700, fontSize: '14px', color: 'var(--itunda-grey-900)' }}>Pay</p>
+          <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Send, bills, QR</p>
+        </button>
+        <button className="itunda-card" onClick={() => onSelect('MY')} style={{ textAlign: 'left', padding: '14px' }}>
+          <User size={18} color="var(--itunda-blue)" />
+          <p style={{ margin: '8px 0 0', fontWeight: 700, fontSize: '14px', color: 'var(--itunda-grey-900)' }}>My account</p>
+          <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Profile & favorites</p>
+        </button>
+      </div>
       <div style={{ position: 'relative', marginBottom: '14px' }}>
         <Search size={15} color="var(--itunda-grey-500)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
         <input
@@ -975,29 +1040,6 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
           })}
         </>
       )}
-    </div>
-  );
-}
-
-function YouHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
-  return (
-    <div>
-      <ProductPageHeader title="You" subtitle="Manage your account, security, and support in one place." />
-      <MyView />
-      <div className="itunda-card" style={{ padding: '16px', marginTop: '12px' }}>
-        <h2 style={{ margin: 0, fontSize: '16px' }}>Account & security</h2>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
-          {[
-            { label: 'Insights & activity', tab: 'ACTIVITY' as Tab },
-            { label: 'Cards', tab: 'CARD' as Tab },
-            { label: 'Devices', tab: 'DEVICES' as Tab },
-            { label: 'Verify identity', tab: 'IDENTITY' as Tab },
-            { label: 'Get support', tab: 'SUPPORT' as Tab },
-          ].map((item) => (
-            <button key={item.tab} className="itunda-btn itunda-btn-secondary" style={{ fontSize: '13px', padding: '8px 10px' }} onClick={() => onNavigateToTab(item.tab)}>{item.label}</button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -21002,13 +21044,13 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget }: { i
   );
 }
 
-// Real IA fix (2026-08-10) -- see PRIMARY_TABS/EXPLORE_TAB_GROUPS's own doc comment
-// (BankDashboard) for the full account of how ExploreHub got here. Showing every
+// Real IA fix (2026-08-10) -- see PRIMARY_TABS/ALL_TAB_GROUPS's own doc comment
+// (BankDashboard) for the full account of how AllHub got here. Showing every
 // category expanded at once is the exact anti-pattern Hick's Law describes --
 // decision time rises with visible choice count, and UX research puts 1-5 visible
-// options as the target when speed matters, which is why ExploreHub's groups start
+// options as the target when speed matters, which is why AllHub's groups start
 // collapsed. This tracks which of the non-primary tabs a user actually opens,
-// most-recent-first, so Explore can surface what THEY use instead of a static
+// most-recent-first, so All can surface what THEY use instead of a static
 // alphabetical/enum-order dump every time.
 const RECENT_TABS_KEY = 'itunda_bank_recent_more_tabs';
 const loadRecentTabs = (): Tab[] => {
@@ -21068,19 +21110,13 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const TABS: { id: Tab; label: string }[] = [
     { id: 'HOME', label: 'Home' },
     { id: 'PAY', label: 'Pay' },
-    { id: 'EXPLORE', label: 'Explore' },
-    { id: 'ACTIVITY', label: 'Activity' },
-    { id: 'YOU', label: 'You' },
+    { id: 'HOOD', label: 'Hood' },
+    { id: 'ALL', label: 'All' },
     { id: 'MY', label: 'My' },
     { id: 'SHOP', label: 'Shop' },
-    { id: 'EATS', label: 'Eats' },
     { id: 'STOCKS', label: 'Invest' },
     { id: 'SAVINGS', label: 'Savings' },
-    { id: 'MESSAGES', label: 'Messages' },
-    { id: 'MARKETPLACE', label: 'Marketplace' },
-    { id: 'COMMUNITY', label: 'Community' },
-    { id: 'JOBS', label: 'Jobs' },
-    { id: 'PROPERTY', label: 'Property' },
+    { id: 'MESSAGES', label: 'Talk' },
     { id: 'RIDES', label: 'Rides' },
     { id: 'DESIGNATED_DRIVER', label: 'Designated driver' },
     { id: 'BIKESHARE', label: 'Bike' },
@@ -21115,50 +21151,54 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   // intrinsic minimum width and the row silently overflowed with NO scroll affordance,
   // so most tabs -- including real, fully-built features like Marketplace/Jobs/
   // Property/Rides/Loans -- were completely unreachable on any realistic device width.
-  // A 4-primary-tabs-plus-a-"More"-button fix landed the same day, but it was still a
-  // supply-side dump wearing a search box: users had to know a "More" button existed,
-  // then either search or open an accordion, before reaching 32 of the app's 36 real
-  // destinations. That is the itunda-feels-like-code-not-product complaint made
-  // structural, not a one-off bug.
   //
-  // Replaced 2026-08-10 with a demand-side, jobs-to-be-done nav -- the same shape real
-  // proven products converge on for a broad app: Cash App's real bottom bar is Money /
-  // Banking / Investing / Activity / Profile (5 job-based tabs, confirmed via Cash
-  // App's own help docs); Karrot/당근마켓, itunda's real reference for chat-driven local
-  // commerce, keeps 채팅(Chat) as a primary tab rather than burying it, because chat is
-  // core to how the product is actually used -- itunda's Marketplace/Community/Jobs/
-  // Property flows lean on the same "message the other person" mechanic. Revolut is
-  // called out in the same research pass for handling a broad feature set "without
-  // feeling cluttered" via tab structure plus progressive disclosure *within* each tab,
-  // not by flattening everything into one row.
-  //
-  // itunda's 5 primary tabs: HOME (balance + recent activity, unchanged), PAY (every
-  // money-moving action in one place), MESSAGES (kept primary, Karrot-style), EXPLORE
-  // (every other real feature, grouped by what a user is trying to do, not by which
-  // module happened to ship it), YOU (account, security, and support). Every one of
-  // the 36 original tab ids and its `{tab === 'X' && <XView />}` routing further below
-  // is completely unchanged -- this only changes how a destination is reached, not what
-  // reaching it does. EXPLORE_TAB_GROUPS is the single source of truth for "everything
-  // else," used by both ExploreHub's browsable groups and its search box, so a service
-  // can't be filed under one category when browsed and a different one when searched.
+  // A 4-primary-tabs-plus-"More" fix, then a Home/Pay/Explore/Activity/You
+  // jobs-to-be-done fix, both landed and were both reverted the same day (2026-08-10):
+  // both were internally coherent but each invented its own taxonomy instead of
+  // checking what the rest of the product already does. Android's ItundaAppScreen.kt
+  // (`ItundaTab` enum) and iOS's ContentView.swift independently converged, weeks
+  // apart, on the identical real 5-tab bar -- Home / Shop / Hood / Talk / All --
+  // both citing the same real Toss reference (홈/혜택/쇼핑/페이/전체) and the same
+  // 2026-07-24 history of promoting 전체 (All) to a first-class tab so mini-apps are
+  // one tap away. A web nav with a *third*, different taxonomy for the same product
+  // is the "same feature, different UI/UX" complaint made literal -- a user opening
+  // itunda on their phone and then on web would see two different apps. This is the
+  // one that actually matches: HOME (unchanged), PAY (real, kept -- Android/iOS nest
+  // the identical action set one tap into All via onOpenPay, but "Pay" as its own
+  // primary slot doesn't fight the native pattern the way inventing new tab names
+  // did), HOOD (ShopHub/HoodHub give Shop/Eats and Marketplace/Community/Jobs/
+  // Property the same internal segmented-toggle shape as Android's real Shop/Eats
+  // row and iOS HoodScreen's real Picker, instead of flattening them into separate
+  // web-only tabs), MESSAGES (labelled "Talk," matching both native apps -- itunda's
+  // Marketplace/Community/Jobs/Property flows lean on the same "message the other
+  // person" mechanic Karrot/당근마켓 keeps chat primary for), ALL (every other real
+  // destination, searchable and grouped -- matching Android's MenuScreen/iOS's
+  // EntireMenuScreen contents, including Overview/Spending/Subscriptions/Card/
+  // Identity/Support as flat entries the same way the native "전체" screens do, not
+  // tucked behind a separate "You" concept neither native app has). Every one of the
+  // original tab ids and its `{tab === 'X' && <XView />}` routing further below is
+  // unchanged -- this only changes how a destination is reached. ALL_TAB_GROUPS is
+  // the single source of truth for "everything else," used by both AllHub's
+  // browsable groups and its search box, so a service can't be filed under one
+  // category when browsed and a different one when searched.
   const PRIMARY_TABS: { id: Tab; label: string; icon: typeof HomeIcon }[] = [
     { id: 'HOME', label: 'Home', icon: HomeIcon },
-    { id: 'PAY', label: 'Pay', icon: WalletIcon },
-    { id: 'MESSAGES', label: 'Messages', icon: MessageCircle },
-    { id: 'EXPLORE', label: 'Explore', icon: LayoutGrid },
-    { id: 'YOU', label: 'You', icon: User },
+    { id: 'SHOP', label: 'Shop', icon: ShoppingBag },
+    { id: 'HOOD', label: 'Hood', icon: Landmark },
+    { id: 'MESSAGES', label: 'Talk', icon: MessageCircle },
+    { id: 'ALL', label: 'All', icon: LayoutGrid },
   ];
-  const EXPLORE_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
-    { title: 'Everyday services', ids: ['SHOP', 'EATS', 'RIDES', 'MAP'] },
-    { title: 'Get around', ids: ['DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS'] },
+  const ALL_TAB_GROUPS: { title: string; ids: Tab[] }[] = [
     { title: 'Money tools', ids: ['SAVINGS', 'STOCKS', 'LOANS', 'CREDIT_SCORE', 'INSURANCE', 'FOREIGN_CURRENCY'] },
-    { title: 'Your neighbourhood', ids: ['MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY', 'KNOWLEDGE', 'TRUST_SCORE'] },
-    { title: 'More', ids: ['CERTIFICATE', 'SHOPPING', 'REWARDS', 'AGENT', 'USSD'] },
+    { title: 'Get around', ids: ['RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS', 'MAP'] },
+    { title: 'Insights & account', ids: ['OVERVIEW', 'SPENDING', 'SUBSCRIPTIONS', 'CARD', 'DEVICES', 'IDENTITY', 'SUPPORT'] },
+    { title: 'Trust & community', ids: ['TRUST_SCORE', 'KNOWLEDGE', 'REWARDS'] },
+    { title: 'More', ids: ['CERTIFICATE', 'SHOPPING', 'AGENT', 'USSD'] },
   ];
   const tabLabel = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
   const [recentMoreTabs, setRecentMoreTabs] = useState<Tab[]>([]);
   useEffect(() => { setRecentMoreTabs(loadRecentTabs()); }, []);
-  const navigateFromExplore = (id: Tab) => {
+  const navigateFromAll = (id: Tab) => {
     setTab(id);
     setRecentMoreTabs(saveRecentTab(id, recentMoreTabs));
   };
@@ -21210,12 +21250,10 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
       {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} onNavigateToLoansMode={setPendingLoansMode} onNavigateToSavingsTarget={setPendingSavingsTarget} />}
       {tab === 'PAY' && <PayHub onNavigateToTab={setTab} />}
-      {tab === 'EXPLORE' && <ExploreHub groups={EXPLORE_TAB_GROUPS} tabLabel={tabLabel} recentTabs={recentMoreTabs} onSelect={navigateFromExplore} />}
-      {tab === 'ACTIVITY' && <ActivityHub onNavigateToTab={setTab} />}
-      {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
+      {tab === 'HOOD' && <HoodHub onMessageSeller={handleMessageSeller} />}
+      {tab === 'ALL' && <AllHub groups={ALL_TAB_GROUPS} tabLabel={tabLabel} recentTabs={recentMoreTabs} onSelect={navigateFromAll} />}
       {tab === 'MY' && <MyView />}
-      {tab === 'SHOP' && <ShopView />}
-      {tab === 'EATS' && <EatsView />}
+      {tab === 'SHOP' && <ShopHub />}
       {tab === 'STOCKS' && <StocksView />}
       {tab === 'SAVINGS' && (
         <SavingsView
@@ -21229,10 +21267,6 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
           onConsumedInitial={() => setPendingConversationId(null)}
         />
       )}
-      {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
-      {tab === 'COMMUNITY' && <CommunityView onOpenGroupChat={handleMessageSeller} />}
-      {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
-      {tab === 'PROPERTY' && <PropertyView onMessageLister={handleMessageSeller} />}
       {tab === 'RIDES' && <RidesView />}
       {tab === 'DESIGNATED_DRIVER' && <DesignatedDriverView />}
       {tab === 'BIKESHARE' && <BikeShareView />}
