@@ -1205,6 +1205,12 @@ private fun HomeTab(
     val spendingInsight by viewModel.spendingInsight.collectAsState()
     var showRoundUpDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not the
+    // mirror" strategy memo, recommendation (ii), and rw.itunda.core.network.
+    // recordAnalyticsEvent's own doc comment. Fired once per real composition of
+    // Home, the baseline every retention question is measured against -- same event
+    // name/shape bank-mfe's identical HomeView effect already fires.
+    LaunchedEffect(Unit) { rw.itunda.core.network.recordAnalyticsEvent("home_view") }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1247,22 +1253,26 @@ private fun HomeTab(
                     ShellRow(
                         stringResource(R.string.home_coop_rail_sacco_title),
                         stringResource(R.string.home_coop_rail_sacco_subtitle),
-                        ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco,
+                        ">", Icons.Outlined.AccountBalance, AccentPurple,
+                        onClick = { coroutineScope.launch { rw.itunda.core.network.recordAnalyticsEvent("coop_rail_tap", "sacco") }; onOpenSacco() },
                     ),
                     ShellRow(
                         stringResource(R.string.home_coop_rail_ikimina_title),
                         stringResource(R.string.home_coop_rail_ikimina_subtitle),
-                        ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina,
+                        ">", Icons.Outlined.Groups, AccentTeal,
+                        onClick = { coroutineScope.launch { rw.itunda.core.network.recordAnalyticsEvent("coop_rail_tap", "ikimina") }; onOpenIkimina() },
                     ),
                     ShellRow(
                         stringResource(R.string.home_coop_rail_moto_title),
                         stringResource(R.string.home_coop_rail_moto_subtitle),
-                        ">", Icons.Outlined.DirectionsBike, AccentBlue, onClick = onOpenMotoOwnership,
+                        ">", Icons.Outlined.DirectionsBike, AccentBlue,
+                        onClick = { coroutineScope.launch { rw.itunda.core.network.recordAnalyticsEvent("coop_rail_tap", "moto_ownership") }; onOpenMotoOwnership() },
                     ),
                     ShellRow(
                         stringResource(R.string.home_coop_rail_harvest_title),
                         stringResource(R.string.home_coop_rail_harvest_subtitle),
-                        ">", Icons.Outlined.AccountBalanceWallet, AccentOrange, onClick = onOpenHarvestAdvance,
+                        ">", Icons.Outlined.AccountBalanceWallet, AccentOrange,
+                        onClick = { coroutineScope.launch { rw.itunda.core.network.recordAnalyticsEvent("coop_rail_tap", "harvest_advance") }; onOpenHarvestAdvance() },
                     ),
                 )
             )

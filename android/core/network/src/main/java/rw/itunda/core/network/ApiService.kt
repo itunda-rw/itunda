@@ -2082,7 +2082,17 @@ data class WeeklySavingsActionResponse(
 
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
+// Real, minimal product-analytics event (2026-08-10) -- see the backend's own
+// AnalyticsEvent.kt doc comment and the "itunda: the wedge, not the mirror" strategy
+// memo, recommendation (ii). eventName must be one of AnalyticsController.KNOWN_EVENTS
+// on the backend (currently "home_view"/"coop_rail_tap") -- a mismatched name real-400s
+// rather than silently recording garbage.
+data class RecordAnalyticsEventRequest(val eventName: String, val platform: String = "android", val metadata: String? = null)
+
 interface ApiService {
+    @POST("api/v1/analytics/events")
+    suspend fun recordAnalyticsEvent(@Body request: RecordAnalyticsEventRequest): SuccessResponse
+
     @GET("api/v1/wallet")
     suspend fun getWallets(): WalletResponse
 
@@ -4595,6 +4605,17 @@ fun apiErrorMessage(e: retrofit2.HttpException): String? = try {
     com.google.gson.JsonParser.parseString(body).asJsonObject.get("message")?.asString
 } catch (_: Exception) {
     null
+}
+
+// Real, minimal fire-and-forget analytics helper (2026-08-10) -- same "a failed
+// best-effort call must never surface to the user or block the real action it's
+// attached to" reasoning SessionManager.registerDeviceToken already establishes.
+suspend fun recordAnalyticsEvent(eventName: String, metadata: String? = null) {
+    try {
+        NetworkClient.apiService.recordAnalyticsEvent(RecordAnalyticsEventRequest(eventName, metadata = metadata))
+    } catch (_: Exception) {
+        // Best-effort, see doc comment above.
+    }
 }
 
 // Network Client Singleton
