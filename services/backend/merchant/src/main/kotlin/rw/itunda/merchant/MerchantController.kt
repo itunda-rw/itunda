@@ -38,6 +38,9 @@ data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class SetPhoneNumberRequest(val phoneNumber: String?)
 data class SetOpeningHoursRequest(val openingHours: String?)
 data class CollectPaymentRequest(val couponId: String? = null)
+// Real customer-presented payment code (2026-08-11) -- see
+// MerchantService.chargeByCustomerCode's own doc comment.
+data class ChargeByCustomerCodeRequest(val code: String, val amount: BigDecimal)
 // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see MerchantStaticQrService's own
 // doc comment.
 data class StaticQrPayRequest(val amount: BigDecimal, val description: String? = null)
@@ -263,6 +266,32 @@ class MerchantController(
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real customer-presented payment code (2026-08-11) -- see
+    // MerchantService.generateCustomerPaymentCode's own doc comment. Called by the
+    // PAYING customer from their own Pay tab -- any logged-in user, not merchant-role-
+    // specific, same as previewIntent/collect above.
+    @PostMapping("/pay/customer-code")
+    fun generateCustomerPaymentCode(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val paymentCode = merchantService.generateCustomerPaymentCode(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "code" to paymentCode.code, "expiresAt" to paymentCode.expiresAt.toString()))
+    }
+
+    // Real customer-presented payment charge (2026-08-11) -- see
+    // MerchantService.chargeByCustomerCode's own doc comment. Called by the MERCHANT
+    // after scanning the customer's code -- currentUser here is the merchant owner,
+    // resolved to their real Merchant row inside the service.
+    @PostMapping("/pay/charge-by-code")
+    fun chargeByCustomerCode(
+        @RequestBody request: ChargeByCustomerCodeRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/pay/charge-by-code", idempotencyKey, request) {
+            200 to merchantService.chargeByCustomerCode(currentUser.userId, request.code, request.amount)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
     // Real demo card-processing endpoint (2026-07-17) -- see
     // MerchantService.chargeCard's own doc comment. Idempotency-Key required, same
     // convention as every other money-moving endpoint in this backend.
@@ -332,6 +361,14 @@ class MerchantController(
     @ExceptionHandler(PaymentIntentNotPayableException::class)
     fun handleIntentNotPayable(ex: PaymentIntentNotPayableException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PAYMENT_CODE_NOT_PAYABLE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(CustomerPaymentCodeNotFoundException::class)
+    fun handleCustomerCodeNotFound(ex: CustomerPaymentCodeNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CUSTOMER_PAYMENT_CODE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(CustomerPaymentCodeNotPayableException::class)
+    fun handleCustomerCodeNotPayable(ex: CustomerPaymentCodeNotPayableException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CUSTOMER_PAYMENT_CODE_NOT_PAYABLE", ex.message ?: "Conflict"))
 
     @ExceptionHandler(SelfPaymentException::class)
     fun handleSelfPayment(ex: SelfPaymentException) =
