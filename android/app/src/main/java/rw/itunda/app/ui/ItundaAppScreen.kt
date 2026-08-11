@@ -1,8 +1,10 @@
 package rw.itunda.app.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -103,6 +105,7 @@ import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -112,6 +115,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -157,6 +163,7 @@ import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsCard
+import rw.itunda.core.designsystem.components.rememberPressScale
 import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.feature.shop.impl.CommerceShopContent
@@ -1533,6 +1540,7 @@ private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Uni
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeTab(
     viewModel: MainViewModel,
@@ -1559,17 +1567,33 @@ private fun HomeTab(
     // name/shape bank-mfe's identical HomeView effect already fires.
     LaunchedEffect(Unit) { rw.itunda.core.network.recordAnalyticsEvent("home_view") }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        // top/bottom kept as their own literal values, not forced into
-        // screenVertical/sectionGap -- they're genuinely different from the other
-        // 4 tabs' uniform vertical padding, and IdsLayout.kt's own header explains
-        // why this pass doesn't force every value into a token that doesn't
-        // actually fit.
-        contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, top = 14.dp, end = Ids.layout.screenHorizontal, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
-    ) {
-        item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview) }
+    // Real Toss/Kakao pull-to-refresh (2026-08-11 research pass) -- Home had no way
+    // to manually refresh at all beyond leaving and re-entering the tab, despite
+    // being the one screen with the most live, changing data (balance, transactions,
+    // Discover). MainViewModel.isRefreshing already spans the exact duration of the
+    // real fetch (see its own doc comment), so the indicator only hides once fresh
+    // data has actually landed rather than on a fixed timer.
+    val pullToRefreshState = rememberPullToRefreshState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    LaunchedEffect(pullToRefreshState.isRefreshing) {
+        if (pullToRefreshState.isRefreshing) viewModel.retry()
+    }
+    LaunchedEffect(isRefreshing) {
+        if (!isRefreshing) pullToRefreshState.endRefresh()
+    }
+
+    Box(Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            // top/bottom kept as their own literal values, not forced into
+            // screenVertical/sectionGap -- they're genuinely different from the other
+            // 4 tabs' uniform vertical padding, and IdsLayout.kt's own header explains
+            // why this pass doesn't force every value into a token that doesn't
+            // actually fit.
+            contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, top = 14.dp, end = Ids.layout.screenHorizontal, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
+        ) {
+            item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview) }
         // Real personalized recommendation card (2026-08-11) -- direct comparison
         // against real Toss Bank reference screenshots (user-provided): Toss leads
         // Home with a large, illustrated, name-addressed card ("TUYIZERE ERIC님 복권
@@ -1675,6 +1699,8 @@ private fun HomeTab(
         if (remainingDiscoverItems.isNotEmpty()) {
             item { DiscoverSection(remainingDiscoverItems) }
         }
+        }
+        PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
     }
 }
 
@@ -3307,45 +3333,56 @@ internal fun FlatSection(title: String, rows: List<FlatRow>) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 6.dp)
         )
-        rows.forEach { row ->
-            val onClick = row.onClick
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                    .padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    if (row.icon != null) {
-                        Box(
-                            modifier = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(row.iconColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(row.icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = Color.White)
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                    }
-                    Column {
-                        Text(row.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                        if (row.subtitle != null) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(row.subtitle, color = Ids.colors.textTertiary, fontSize = 13.sp)
-                        }
-                    }
+        rows.forEach { row -> FlatSectionRow(row) }
+    }
+}
+
+// Extracted from FlatSection's own forEach body (2026-08-11) so the press-scale
+// state below gets its own composable slot per row instead of sharing one across a
+// loop. Real Toss micro-interaction reference -- see IdsButton.kt's own doc comment;
+// this is the single most-tapped row shape in the app (every Home/Bank hub/Menu
+// list uses it) and had zero press feedback before this.
+@Composable
+private fun FlatSectionRow(row: FlatRow) {
+    val onClick = row.onClick
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressScale = if (onClick != null) rememberPressScale(interactionSource) else 1f
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(pressScale)
+            .then(if (onClick != null) Modifier.clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick) else Modifier)
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            if (row.icon != null) {
+                Box(
+                    modifier = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(row.iconColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(row.icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = Color.White)
                 }
-                if (row.trailing != null) {
-                    Text(
-                        row.trailing,
-                        color = if (row.trailingIsLink) Ids.colors.brand else Ids.colors.textSecondary,
-                        fontSize = 15.sp,
-                        fontWeight = if (row.trailingIsLink) FontWeight.SemiBold else FontWeight.Normal
-                    )
-                } else if (row.showChevron && onClick != null) {
-                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                Spacer(modifier = Modifier.width(14.dp))
+            }
+            Column {
+                Text(row.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                if (row.subtitle != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(row.subtitle, color = Ids.colors.textTertiary, fontSize = 13.sp)
                 }
             }
+        }
+        if (row.trailing != null) {
+            Text(
+                row.trailing,
+                color = if (row.trailingIsLink) Ids.colors.brand else Ids.colors.textSecondary,
+                fontSize = 15.sp,
+                fontWeight = if (row.trailingIsLink) FontWeight.SemiBold else FontWeight.Normal
+            )
+        } else if (row.showChevron && onClick != null) {
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
         }
     }
 }

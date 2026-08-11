@@ -1,12 +1,9 @@
 package rw.itunda.core.designsystem.components
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +15,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,12 +84,7 @@ fun IdsButton(
     // IdsButton is already used, matching this file's own "single Flat props-based API"
     // design-system principle instead of a one-off per screen.
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed && enabled) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
-        label = "buttonPressScale",
-    )
+    val pressScale = rememberPressScale(interactionSource, enabled)
 
     Button(
         onClick = onClick,
@@ -131,10 +122,13 @@ fun IdsIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressScale = rememberPressScale(interactionSource)
     Box(
         modifier = modifier
             .size(Ids.layout.minTouchTarget)
-            .clickable(onClick = onClick)
+            .scale(pressScale)
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick)
             .background(Ids.colors.surfaceSoft, CircleShape),
         contentAlignment = Alignment.Center
     ) {

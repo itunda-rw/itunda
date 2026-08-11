@@ -99,6 +99,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isOffline = MutableStateFlow(false)
     val isOffline: StateFlow<Boolean> = _isOffline
 
+    // Real Toss/Kakao pull-to-refresh support (2026-08-11 research pass) -- Home had
+    // no way to manually refresh at all beyond navigating away and back; this backs
+    // the gesture itself. True for the whole duration of fetchData(), not just the
+    // gesture's own release animation, so the indicator stays visible until real data
+    // has actually landed rather than hiding early and looking like a no-op.
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
     init {
         fetchData()
         // Real replay-on-reconnect (2026-07-13): the moment a validated network
@@ -118,6 +126,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun fetchData() {
         viewModelScope.launch {
+            _isRefreshing.value = true
             try {
                 val walletRes = NetworkClient.apiService.getWallets()
                 if (walletRes.success) {
@@ -216,6 +225,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Genuinely can't reach the backend at all (no connectivity, wrong
                 // host) -- labeled via isOffline rather than presented as real.
                 showOfflinePlaceholder()
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }
