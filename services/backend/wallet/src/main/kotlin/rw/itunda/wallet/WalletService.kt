@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.SpendingBudget
 import rw.itunda.core.domain.Transaction
@@ -88,7 +89,33 @@ class WalletService(
         val debits = walletIds
             .flatMap { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(it) }
             .filter { it.direction == LedgerDirection.DEBIT }
+        return categorizeDebits(debits)
+    }
 
+    // Real business expense summary (2026-08-11) -- see LoanOffer.requiresBusinessAccount's
+    // own doc comment for the broader real business-banking gap this closes alongside.
+    // Toss Bank's real "세금 신고용 이용내역 자동발송" (auto-send tax-filing usage summary,
+    // tossbank.com/articles/selfemployed) periodically compiles a business account's own
+    // categorized spend so a sole proprietor doesn't have to collect receipts by hand.
+    // itunda has no real Rwanda Revenue Authority integration to file INTO (same
+    // genuinely-blocked-external-access category as NIDA/PSP elsewhere in this codebase)
+    // -- this is the real, honest slice: a categorized, period-scoped summary of the
+    // BUSINESS wallet's own real ledger history, reusing getSpendingInsight's exact
+    // categorization (`categorizeDebits` below) so the numbers here always match what the
+    // same transactions would show on a personal spending insight. `sinceMonthsAgo`
+    // defaults to 3 -- itunda's own honest choice; no real Rwandan tax-filing calendar
+    // was sourced to anchor a specific period to (DESIGN_REFERENCES.md's own "Unresolved"
+    // note for this section already flags Rwanda-specific filing dates as unsourced).
+    fun getBusinessExpenseSummary(userId: String, sinceMonthsAgo: Long = 3): SpendingInsightResult {
+        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.BUSINESS)
+            ?: throw WalletNotFoundException("Open an itunda Business account first")
+        val since = Instant.now().minus(java.time.Duration.ofDays(sinceMonthsAgo * 30))
+        val debits = ledgerEntryRepository.findByAccountIdAndCreatedAtAfter(wallet.id, since)
+            .filter { it.direction == LedgerDirection.DEBIT }
+        return categorizeDebits(debits)
+    }
+
+    private fun categorizeDebits(debits: List<LedgerEntry>): SpendingInsightResult {
         // Real N+1 fix (2026-07-19 sweep): one batch findByTransactionIdIn instead of one
         // findByTransactionId call per debit -- a real user's spending insight otherwise
         // cost one query per real debit ever made, growing unboundedly with usage.

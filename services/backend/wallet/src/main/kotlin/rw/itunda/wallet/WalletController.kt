@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.MissingRequestHeaderException
 import rw.itunda.core.idempotency.IdempotencyConflictException
@@ -65,6 +66,18 @@ class WalletController(
     fun getSpendingInsight(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
         val result = walletService.getSpendingInsight(currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true, "categories" to result.categories, "totalSpent" to result.totalSpent))
+    }
+
+    // Real business expense summary (2026-08-11) -- see WalletService.getBusinessExpenseSummary's
+    // own doc comment for the real Toss Bank 세금 신고용 이용내역 자동발송 (tax-filing usage
+    // summary) pattern this closes the honest slice of.
+    @GetMapping("/business-expense-summary")
+    fun getBusinessExpenseSummary(
+        @RequestParam(defaultValue = "3") sinceMonthsAgo: Long,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> {
+        val result = walletService.getBusinessExpenseSummary(currentUser.userId, sinceMonthsAgo)
+        return ResponseEntity.ok(mapOf("success" to true, "categories" to result.categories, "totalSpent" to result.totalSpent, "sinceMonthsAgo" to sinceMonthsAgo))
     }
 
     // Real recurring-payment ("subscription") detection -- see

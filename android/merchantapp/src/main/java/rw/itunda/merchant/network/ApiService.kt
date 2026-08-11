@@ -412,6 +412,13 @@ data class BusinessLedgerEntryDto(
 data class BusinessTransactionsResponse(val success: Boolean, val transactions: List<BusinessLedgerEntryDto>)
 data class MoveBusinessMoneyRequest(val amount: Double)
 
+// Real business expense summary (2026-08-11) -- see backend's
+// WalletService.getBusinessExpenseSummary doc comment for the real Toss Bank
+// 세금 신고용 이용내역 자동발송 (tax-filing usage summary) pattern this closes the
+// honest slice of.
+data class BusinessExpenseCategoryDto(val name: String, val amount: Double)
+data class BusinessExpenseSummaryResponse(val success: Boolean, val categories: List<BusinessExpenseCategoryDto>, val totalSpent: Double, val sinceMonthsAgo: Long)
+
 interface ApiService {
     @POST("api/v1/merchant/register")
     suspend fun registerMerchant(@Body request: RegisterMerchantRequest): MerchantResponse
@@ -544,6 +551,13 @@ interface ApiService {
 
     @GET("api/v1/merchant/business-account/transactions")
     suspend fun getBusinessTransactions(): BusinessTransactionsResponse
+
+    // Real business expense summary (2026-08-11) -- see WalletService.
+    // getBusinessExpenseSummary's own doc comment. Lives under /api/v1/wallet, not
+    // /api/v1/merchant/business-account, since it's WalletController's own endpoint
+    // (real, same-backend, cross-controller call -- Retrofit doesn't care).
+    @GET("api/v1/wallet/business-expense-summary")
+    suspend fun getBusinessExpenseSummary(@Query("sinceMonthsAgo") sinceMonthsAgo: Long = 3): BusinessExpenseSummaryResponse
 
     @POST("api/v1/merchant/business-account/move-to-business")
     suspend fun moveToBusiness(@Header("Idempotency-Key") idempotencyKey: String, @Body request: MoveBusinessMoneyRequest): BusinessWalletResponse

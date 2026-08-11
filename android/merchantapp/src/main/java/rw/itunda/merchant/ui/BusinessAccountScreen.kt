@@ -229,6 +229,7 @@ fun BusinessAccountTab() {
                 }
             }
         }
+        item { BusinessExpenseSummaryCard() }
         item { Text("Business transactions", fontWeight = FontWeight.Bold) }
         val txns = transactions
         if (txns.isNullOrEmpty()) {
@@ -258,6 +259,60 @@ fun BusinessAccountTab() {
             }
         }
         item { Spacer(modifier = Modifier.height(8.dp)) }
+    }
+}
+
+/**
+ * Real business expense summary (2026-08-11) -- see backend's WalletService.
+ * getBusinessExpenseSummary doc comment for the real Toss Bank 세금 신고용 이용내역
+ * 자동발송 (tax-filing usage summary) pattern this closes the honest slice of: a
+ * categorized breakdown of the business wallet's own real spend over the last few
+ * months, so a sole proprietor doesn't have to reconstruct it from raw transactions
+ * by hand. Not a real Rwanda Revenue Authority filing integration -- itunda has no
+ * access to file into (same genuinely-blocked-external-access category as NIDA/PSP
+ * elsewhere), just itunda's own real, categorized numbers.
+ */
+@Composable
+private fun BusinessExpenseSummaryCard() {
+    var summary by remember { mutableStateOf<rw.itunda.merchant.network.BusinessExpenseSummaryResponse?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        try {
+            summary = NetworkClient.apiService.getBusinessExpenseSummary()
+        } catch (e: Exception) {
+            error = "Could not load your expense summary."
+        }
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Expense summary", fontWeight = FontWeight.Bold)
+            Text(
+                "For tax filing -- your business account's own spending, grouped by category, from the last few months.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            val current = summary
+            when {
+                current != null && current.categories.isEmpty() -> {
+                    Text("No business spending yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                current != null -> {
+                    Text("${"%,.0f".format(current.totalSpent)} RWF total", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    current.categories.forEach { cat ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(cat.name, style = MaterialTheme.typography.bodyMedium)
+                            Text("${"%,.0f".format(cat.amount)} RWF", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+                error != null -> Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                else -> CircularProgressIndicator()
+            }
+        }
     }
 }
 

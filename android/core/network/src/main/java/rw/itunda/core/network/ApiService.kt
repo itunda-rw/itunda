@@ -2130,6 +2130,14 @@ interface ApiService {
     @GET("api/v1/wallet/spending")
     suspend fun getSpendingInsight(): SpendingInsightResponse
 
+    // Real business expense summary (2026-08-11) -- see backend's
+    // WalletService.getBusinessExpenseSummary doc comment for the real Toss Bank
+    // 세금 신고용 이용내역 자동발송 (tax-filing usage summary) pattern this closes the
+    // honest slice of: a categorized, period-scoped summary of the BUSINESS wallet's
+    // own real ledger history, same categorization as getSpendingInsight above.
+    @GET("api/v1/wallet/business-expense-summary")
+    suspend fun getBusinessExpenseSummary(@Query("sinceMonthsAgo") sinceMonthsAgo: Long = 3): BusinessExpenseSummaryResponse
+
     // Real Toss budgets/limits equivalent (item 165/172) -- WalletService.setBudget/
     // getBudgets, exposed on the pre-existing WalletController (no dedicated
     // controller). Per-category or overall (category == null) monthly limit, with
@@ -4359,6 +4367,7 @@ data class SetSpendLimitRequest(val dailySpendLimit: java.math.BigDecimal?)
 
 data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
 data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)
+data class BusinessExpenseSummaryResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal, val sinceMonthsAgo: Long)
 
 data class SetBudgetRequest(val category: String? = null, val monthlyLimit: java.math.BigDecimal)
 data class BudgetViewDto(
