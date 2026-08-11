@@ -11,26 +11,21 @@ logging:
 spring:
   application:
     name: itunda
-  # Real startup-time fix (2026-08-11) -- live-measured cold boot was 338 seconds
-  # ("Started ItundaApplicationKt in 338.424 seconds") on this private-cloud node,
-  # found while diagnosing why backend-rollout.yaml's own startupProbe budget (then
-  # 300s) was killing every fresh pod mid-boot. Root cause: this app eagerly
-  # constructs every bean across ~50 feature modules and all 174 JPA repositories at
-  # context refresh, regardless of whether a given request ever touches them.
-  # spring.main.lazy-initialization defers bean creation to first use instead --
-  # Spring Boot's own documented, officially-supported flag for exactly this, not a
-  # workaround. Known, deliberately-accepted tradeoff: the first real request to a
-  # not-yet-used feature is a little slower (that feature's beans get constructed
-  # then, not at boot) -- a fair trade for a single-node deployment where boot time
-  # was actively causing probe kills, over one where steady-state p99 latency is the
-  # constraint. Does NOT affect @Scheduled beans (OutboxRelay.relay() every 2s,
-  # InterestAccrualScheduler, IdempotencyCleanupScheduler, etc.) -- Spring's own
-  # ScheduledAnnotationBeanPostProcessor always eagerly instantiates beans with
-  # @Scheduled methods specifically to register their triggers at startup,
-  # lazy-initialization or not, so the real scheduler-starvation bug this file's own
-  # `task.scheduling.pool.size: 10` fix closed (2026-07-13) isn't reopened.
-  main:
-    lazy-initialization: true
+  # Tried and reverted (2026-08-11) -- live-measured cold boot was 338 seconds under
+  # heavy node contention (Istio sidecar + tight CPU limit), which looked like eager
+  # bean construction across ~50 feature modules being the bottleneck, so
+  # spring.main.lazy-initialization: true was added as a fix. Once the real cause
+  # (Istio removal, see backend-rollout.yaml/infra/k8s's own doc comments) dropped
+  # boot to 95s on its own, lazy-init was re-measured in isolation and made things
+  # WORSE, not better: 165.7s, real log evidence showing the actual dominant cost is
+  # Hibernate/JPA/Flyway/HikariCP/Kafka client bootstrap -- all core infrastructure
+  # that runs eagerly regardless of this flag, not the feature-module beans it
+  # actually defers. The proxy-wrapping overhead for the beans it DOES defer was
+  # measured as pure cost with no corresponding benefit here. Reverted on the real
+  # evidence rather than the original hypothesis -- see docs/DESIGN_REFERENCES.md
+  # for the full account if this gets re-attempted with a different approach (e.g.
+  # AppCDS/class-data-sharing, which Kafka's own bundled JVM already uses via
+  # -XX:SharedArchiveFile, targets class-loading cost specifically instead).
   # Real photo upload (2026-07-24) -- see UploadController's own doc comment. Spring
   # Boot's own defaults (1MB file / 10MB request) are too small for a real phone photo.
   servlet:

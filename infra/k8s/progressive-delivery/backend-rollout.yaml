@@ -85,6 +85,11 @@ spec:
         # after a `docker save`/`multipass transfer`/`docker load` hop -- the build
         # machine's docker daemon (colima, its own isolated VM) couldn't reach this
         # node's registry directly.
+        # Reverted 2026-08-11 -- briefly tried adding spring.main.lazy-initialization:
+        # true (digest f09e1a47...) as a second startup-time lever; live-measured at
+        # 165.7s, slower than this digest's own proven 95s (see application.yml's own
+        # doc comment for the full real-evidence account of why). Back to this digest,
+        # unchanged otherwise.
         image: 192.168.252.4:32000/itunda/backend@sha256:666c1978c2dc75a4843d5d3f4f6294177438e5250164db8a6bfc3713daf83110
         ports:
         - containerPort: 4001
