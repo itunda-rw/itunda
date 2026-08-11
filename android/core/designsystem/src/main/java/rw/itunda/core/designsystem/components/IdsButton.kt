@@ -1,7 +1,12 @@
 package rw.itunda.core.designsystem.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,8 +18,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.theme.Ids
@@ -71,12 +79,29 @@ fun IdsButton(
         IdsButtonVariant.Filled -> Ids.colors.brand to IdsColors.White
         IdsButtonVariant.Tinted -> Ids.colors.pressed to Ids.colors.textBrand
     }
+    // Real Toss micro-interaction reference (2026-08-11) -- "시각적 신호가 탭이 발생하는
+    //정확한 순간에 햅틱/사용자 액션과 동기화되어야 한다" (visual cues synchronized
+    // precisely with the tap): a subtle press-scale on every primary button in the app,
+    // not just the transfer-success moment, so the whole app reads as tactile/alive
+    // rather than one screen having motion and everything else staying flat static.
+    // Applied here (not per call site) so it's automatically consistent everywhere
+    // IdsButton is already used, matching this file's own "single Flat props-based API"
+    // design-system principle instead of a one-off per screen.
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed && enabled) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        label = "buttonPressScale",
+    )
 
     Button(
         onClick = onClick,
         enabled = enabled,
+        interactionSource = interactionSource,
         modifier = modifier
             .then(widthModifier)
+            .scale(pressScale)
             .height(heightDp),
         shape = RoundedCornerShape(if (size == IdsButtonSize.Small) 10.dp else 12.dp),
         contentPadding = horizontalPadding,

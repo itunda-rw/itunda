@@ -1,5 +1,6 @@
 package rw.itunda.app.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.School
@@ -121,17 +123,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+// Real Toss motion research (2026-08-11, toss.im/tossfeed/article/why-motion-in-finance):
+// "움직임이 더해진 그래픽은 글을 읽지 않아도 직관적으로 이해할 수 있다" (movement added to
+// graphics is understood intuitively without reading) and confetti/celebration for real
+// positive moments ("행복한 순간") -- these two composable-scoped animation primitives back
+// TransferSuccessScreen and IdsButton's new press feedback below.
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOutBack
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
 import androidx.compose.ui.unit.sp
 
 import rw.itunda.app.R
@@ -148,6 +167,7 @@ import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
+import rw.itunda.core.designsystem.theme.IdsColors
 import rw.itunda.core.designsystem.theme.Ids
 
 // Real gap found live (2026-08-10), user-flagged: this file used to alias the real
@@ -213,12 +233,172 @@ internal enum class ItundaTab(val label: String, val icon: androidx.compose.ui.g
 private sealed class TransferStep : java.io.Serializable {
     data object Recipient : TransferStep()
     data class Amount(val accountNumber: String) : TransferStep()
+    // Real Toss reference (2026-08-11, toss.im/tossfeed/article/why-motion-in-finance):
+    // Toss's own headline example of motion in a financial product is exactly this
+    // moment -- "송금이 종료된 이후 나오는 체크 애니메이션으로 완료를 직관적으로 표현"
+    // (the check animation shown after a transfer completes intuitively communicates
+    // completion). Before this, a successful transfer here just set transferStep = null
+    // directly -- the sheet silently closed with zero acknowledgment that real money had
+    // actually moved, not even a Toast. See TransferSuccessScreen's own doc comment.
+    data class Success(val message: String, val amountRwf: Long) : TransferStep()
 }
+
+// Real Toss motion research (2026-08-11) -- see TransferStep.Success's own doc comment
+// for the exact gap this closes: a real transfer's own success acknowledgment was
+// previously nonexistent, not just under-designed. Deliberately pure Compose animation
+// (spring-based scale-in, no Lottie/asset pipeline) rather than a full custom vector
+// path-draw -- matches the article's own "resource efficiency" principle ("PNG 시퀀스
+// 이미지를 Lottie로 처리... 성능 차이가 크게 느껴지지 않는 효율적인 결과", efficient
+// results where the performance difference isn't perceptible) at itunda's actual scale,
+// where a full 3D/Lottie asset pipeline for one screen would be disproportionate. Real
+// haptic confirm fires once on entrance, synchronized with the visual pop -- the exact
+// "co-design visual, audio, and haptic effects" principle this session's micro-
+// interaction research (Toss/general UX sources) both independently named.
+@Composable
+private fun TransferSuccessScreen(amountRwf: Long, message: String, onDone: () -> Unit) {
+    MoneySuccessScreen(headline = "RWF %,d sent".format(amountRwf), message = message, onDone = onDone)
+}
+
+// Generalized 2026-08-11 out of TransferSuccessScreen so the same real acknowledgment
+// (previously missing entirely, see TransferStep.Success's own doc comment) covers
+// every real money-movement success in this app, not just transfers -- Savings
+// Deposit/Claim Interest had the identical silent-close gap (savingsFlowStep = null
+// with zero acknowledgment) found in the same sweep. `celebratory` adds the confetti
+// burst below for a real earned-money moment (claiming interest) -- see this session's
+// Toss motion research: "적립금 증가, 월급날 같은 긍정적인 순간에 색종이 효과를 사용해
+// 행복한 순간을 극적으로 만든다" (confetti for positive moments like a credit-score
+// increase or payday, to make the happy moment dramatic). A routine transfer/deposit
+// isn't that moment -- only the genuinely-earned case opts in.
+@Composable
+private fun MoneySuccessScreen(headline: String, message: String, onDone: () -> Unit, celebratory: Boolean = false) {
+    BackHandler(onBack = onDone)
+    val haptics = LocalHapticFeedback.current
+    val checkScale = remember { Animatable(0f) }
+    val confettiProgress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        // HapticFeedbackType.Confirm (the semantically-correct one for this moment)
+        // isn't available in this project's pinned Compose UI version -- LongPress is
+        // the real one every version since Compose UI's initial haptics API supports,
+        // and reads as a single confident buzz here same as Confirm would.
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        checkScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
+        if (celebratory) {
+            confettiProgress.animateTo(1f, animationSpec = tween(durationMillis = 1600, easing = LinearEasing))
+        }
+        // Real Toss-style auto-advance -- the screen is a real acknowledgment moment,
+        // not a dialog someone has to dismiss to get their money moving; "Done" below
+        // still works immediately for anyone who doesn't want to wait it out.
+        delay(if (celebratory) 800 else 2200)
+        onDone()
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Ids.colors.background)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .scale(checkScale.value)
+                    .clip(CircleShape)
+                    .background(Ids.colors.success),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = null,
+                    tint = IdsColors.White,
+                    modifier = Modifier.size(48.dp),
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                headline,
+                style = IdsTypography.LargeAmount,
+                color = Ids.colors.textPrimary,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                message,
+                fontSize = 15.sp,
+                color = Ids.colors.textSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(40.dp))
+            IdsButton(text = "Done", onClick = onDone, modifier = Modifier.fillMaxWidth())
+        }
+        if (celebratory) {
+            ConfettiBurst(progress = confettiProgress.value)
+        }
+    }
+}
+
+// Real, pure-Compose confetti burst (2026-08-11) -- no Lottie/asset pipeline, matching
+// this session's Toss motion research on "resource efficiency" (2D+Lottie in Toss's own
+// app; a Canvas particle burst is itunda's equivalent at this app's actual scale for one
+// screen, not disproportionate). A single shared `progress` (0f-1f) drives every
+// particle's fall/drift/fade -- one Animatable, not one per particle, same efficiency
+// principle applied to the implementation itself.
+@Composable
+private fun ConfettiBurst(progress: Float) {
+    val colors = listOf(Ids.colors.brand, Ids.colors.success, AccentOrange, AccentPurple, AccentTeal)
+    val particles = remember {
+        List(28) {
+            ConfettiParticle(
+                startX = kotlin.random.Random.nextFloat(),
+                fallSpeed = 0.7f + kotlin.random.Random.nextFloat() * 0.6f,
+                drift = (kotlin.random.Random.nextFloat() - 0.5f) * 0.3f,
+                colorIndex = kotlin.random.Random.nextInt(colors.size),
+                rotationSpeed = (kotlin.random.Random.nextFloat() - 0.5f) * 720f,
+                sizeDp = 6f + kotlin.random.Random.nextFloat() * 6f,
+                delay = kotlin.random.Random.nextFloat() * 0.25f,
+            )
+        }
+    }
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        particles.forEach { p ->
+            val localProgress = ((progress - p.delay) / (1f - p.delay)).coerceIn(0f, 1f)
+            if (localProgress <= 0f) return@forEach
+            val fallen = localProgress * p.fallSpeed
+            val x = (p.startX + p.drift * localProgress) * size.width
+            val y = fallen * size.height * 1.1f
+            val alpha = (1f - localProgress).coerceIn(0f, 1f)
+            rotate(degrees = p.rotationSpeed * localProgress, pivot = androidx.compose.ui.geometry.Offset(x, y)) {
+                drawRect(
+                    color = colors[p.colorIndex].copy(alpha = alpha),
+                    topLeft = androidx.compose.ui.geometry.Offset(x - p.sizeDp / 2, y - p.sizeDp / 2),
+                    size = androidx.compose.ui.geometry.Size(p.sizeDp, p.sizeDp),
+                )
+            }
+        }
+    }
+}
+
+private data class ConfettiParticle(
+    val startX: Float,
+    val fallSpeed: Float,
+    val drift: Float,
+    val colorIndex: Int,
+    val rotationSpeed: Float,
+    val sizeDp: Float,
+    val delay: Float,
+)
 
 /** Real savings deposit/claim flow (2026-07-12) -- see SavingsAmountScreen.kt. */
 private sealed class SavingsFlowStep : java.io.Serializable {
     data class Deposit(val goalId: String, val goalName: String) : SavingsFlowStep()
     data object ClaimInterest : SavingsFlowStep()
+    // Real acknowledgment moment (2026-08-11) -- see MoneySuccessScreen's own doc
+    // comment: both deposit and claim previously just set savingsFlowStep = null on
+    // success, same silent-close gap TransferStep.Success closes for transfers.
+    // celebratory = true only for claimed interest -- real earned money, matches
+    // Toss's own confetti-for-positive-moments example; a routine deposit into a goal
+    // you set up yourself isn't that same kind of surprise-and-delight moment.
+    data class Success(val headline: String, val message: String, val celebratory: Boolean) : SavingsFlowStep()
 }
 
 @Composable
@@ -452,6 +632,11 @@ fun ItundaAppScreen(
                 transferStep = when (step) {
                     is TransferStep.Recipient -> null
                     is TransferStep.Amount -> TransferStep.Recipient
+                    // TransferSuccessScreen owns its own BackHandler(onBack = onDone) with
+                    // identical behavior -- this branch just keeps this outer `when`
+                    // exhaustive rather than relying on Compose's BackHandler stacking
+                    // order to be the only thing preventing an unhandled state.
+                    is TransferStep.Success -> null
                 }
             }
             when (step) {
@@ -499,7 +684,7 @@ fun ItundaAppScreen(
                                         when (val result = viewModel.sendTransfer(step.accountNumber, amountRwf)) {
                                             is rw.itunda.app.ui.MoneyActionResult.Success -> {
                                                 isSendingTransfer = false
-                                                transferStep = null
+                                                transferStep = TransferStep.Success(result.message, amountRwf)
                                             }
                                             // sendTransfer never actually returns Queued -- a
                                             // transfer confirm is deliberately never queued
@@ -521,7 +706,7 @@ fun ItundaAppScreen(
                                                     isSendingTransfer = true
                                                     val retryResult = viewModel.sendTransfer(step.accountNumber, amountRwf)
                                                     isSendingTransfer = false
-                                                    if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) transferStep = null
+                                                    if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) transferStep = TransferStep.Success(retryResult.message, amountRwf)
                                                     else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) biometricError = retryResult.message
                                                 }
                                                 showDeviceStepUp = true
@@ -542,6 +727,11 @@ fun ItundaAppScreen(
                         )
                     }
                 }
+                is TransferStep.Success -> TransferSuccessScreen(
+                    amountRwf = step.amountRwf,
+                    message = step.message,
+                    onDone = { transferStep = null },
+                )
             }
             if (showDeviceStepUp) {
                 rw.itunda.feature.payments.impl.DeviceStepUpDialog(
@@ -640,7 +830,7 @@ fun ItundaAppScreen(
                             when (val result = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)) {
                                 is rw.itunda.app.ui.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
-                                    savingsFlowStep = null
+                                    savingsFlowStep = SavingsFlowStep.Success("RWF %,d saved".format(amountRwf), result.message, celebratory = false)
                                 }
                                 // Real offline queueing (2026-07-13, see
                                 // MainViewModel.depositToSavingsGoal): the deposit was
@@ -665,8 +855,15 @@ fun ItundaAppScreen(
                                         isSavingsSubmitting = true
                                         val retryResult = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)
                                         isSavingsSubmitting = false
-                                        if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success || retryResult is rw.itunda.app.ui.MoneyActionResult.Queued) savingsFlowStep = null
-                                        else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) savingsError = retryResult.message
+                                        when (retryResult) {
+                                            is rw.itunda.app.ui.MoneyActionResult.Success -> savingsFlowStep = SavingsFlowStep.Success("RWF %,d saved".format(amountRwf), retryResult.message, celebratory = false)
+                                            is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                                savingsFlowStep = null
+                                                android.widget.Toast.makeText(savingsContext, retryResult.message, android.widget.Toast.LENGTH_LONG).show()
+                                            }
+                                            is rw.itunda.app.ui.MoneyActionResult.Failure -> savingsError = retryResult.message
+                                            else -> {}
+                                        }
                                     }
                                     showDeviceStepUp = true
                                 }
@@ -686,7 +883,10 @@ fun ItundaAppScreen(
                             when (val result = viewModel.claimInterest()) {
                                 is rw.itunda.app.ui.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
-                                    savingsFlowStep = null
+                                    // celebratory = true -- real earned money, matches
+                                    // Toss's own confetti-for-positive-moments example
+                                    // (see MoneySuccessScreen's own doc comment).
+                                    savingsFlowStep = SavingsFlowStep.Success("Interest claimed", result.message, celebratory = true)
                                 }
                                 // claimInterest never actually returns Queued (only
                                 // SAVINGS_DEPOSIT is queued) -- handled only because
@@ -706,7 +906,7 @@ fun ItundaAppScreen(
                                         isSavingsSubmitting = true
                                         val retryResult = viewModel.claimInterest()
                                         isSavingsSubmitting = false
-                                        if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) savingsFlowStep = null
+                                        if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) savingsFlowStep = SavingsFlowStep.Success("Interest claimed", retryResult.message, celebratory = true)
                                         else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) savingsError = retryResult.message
                                     }
                                     showDeviceStepUp = true
@@ -714,6 +914,12 @@ fun ItundaAppScreen(
                             }
                         }
                     }
+                )
+                is SavingsFlowStep.Success -> MoneySuccessScreen(
+                    headline = savingsStep.headline,
+                    message = savingsStep.message,
+                    celebratory = savingsStep.celebratory,
+                    onDone = { savingsFlowStep = null },
                 )
             }
             savingsError?.let { message ->
