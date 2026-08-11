@@ -7,16 +7,17 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.SavingsGoalStatus
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
-import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.InterestJarRepository
-import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SavingsGoalRepository
+import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -27,12 +28,6 @@ import java.util.UUID
 
 private const val AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
 private const val INTEREST_ACCRUAL_INTERVAL_DAYS = 1L
-
-// Real "hidden money" nudge cadence (2026-07-21) -- see maybeNudgeUnclaimed's own doc
-// comment. Weekly, not per-accrual (accrual runs daily): Toss's own real "숨은 돈 찾기"
-// (find hidden money) feature surfaces dormant/uncollected balances periodically, not
-// as a constant nag -- matching that cadence rather than pinging on every accrual cycle.
-private const val UNCLAIMED_INTEREST_NUDGE_INTERVAL_DAYS = 7L
 
 class GoalNotFoundException(message: String) : RuntimeException(message)
 class WalletNotOwnedException(message: String) : RuntimeException(message)
@@ -55,8 +50,7 @@ class SavingsService(
     private val interestJarRepository: InterestJarRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
-    private val notificationRepository: NotificationRepository,
-    private val pushNotificationService: PushNotificationService,
+    private val transactionRepository: TransactionRepository,
 ) {
     private val log = LoggerFactory.getLogger(SavingsService::class.java)
 
@@ -151,22 +145,21 @@ class SavingsService(
         val jar = interestJarRepository.findById(userId).orElseThrow { NoInterestJarException("No interest jar found for this account") }
         if (jar.earnedThisMonth <= BigDecimal.ZERO) throw NoInterestAvailableException("No interest available to claim")
 
+        // Real fix (2026-08-11): interest now auto-credits the real wallet balance
+        // the instant it accrues (see accrueInterest's own doc comment, matching real
+        // Toss Bank passbook interest -- "통장 이자" posts directly, no manual claim
+        // step exists in a real bank). Posting a SECOND ledger credit here for the
+        // same already-arrived money would be a real double-credit bug -- this now
+        // just clears the running "earned this month" display counter, the same
+        // "mark as seen" shape a notification-read flag has, not a real second
+        // transfer. The wallet balance genuinely doesn't change here anymore.
         val claimed = jar.earnedThisMonth
         val wallet = walletRepository.findById(jar.walletId).orElseThrow { NoWalletException("Wallet not found") }
-        ledgerService.postLedgerTransaction(
-            "RWF",
-            listOf(
-                LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, claimed, "Savings interest payout"),
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, claimed, "Savings interest payout"),
-            ),
-        )
-
         jar.earnedThisMonth = BigDecimal.ZERO
         jar.lastPaidAt = Instant.now()
         interestJarRepository.save(jar)
 
-        val updatedWallet = walletRepository.findById(jar.walletId).orElseThrow { NoWalletException("Wallet not found") }
-        return mapOf("claimed" to claimed, "newBalance" to updatedWallet.balance)
+        return mapOf("claimed" to claimed, "newBalance" to wallet.balance)
     }
 
     // Real daily interest accrual (2026-07-20) -- found live: earnedThisMonth/earnedTotal
@@ -180,68 +173,54 @@ class SavingsService(
         return interestJarRepository.findAll().filter { it.nextPayoutAt.isBefore(now) || it.nextPayoutAt == now }
     }
 
-    // Real Kakao Bank SafeBox (세이프박스) semantics: interest accrues daily off the
-    // *actual* savings wallet balance, not a stored snapshot -- jar.balance is kept as a
-    // synced display cache, never the source of truth. nextPayoutAt advances by exactly
-    // one real day (not "now + 1 day") so a scheduler catch-up after downtime doesn't
-    // silently shrink the accrual window.
+    // Real Toss Bank passbook interest semantics (user-provided screenshots,
+    // 2026-08-11 -- "통장 이자" +36원/+19원 posting directly into the real transaction
+    // history the moment it accrues): interest now credits the real wallet balance
+    // and creates a real Transaction row on EVERY accrual, not just a display-only
+    // `earnedThisMonth` counter requiring a separate manual claim. This replaces the
+    // previous "accrue into a jar, then claim into the wallet" two-step flow --
+    // real bank passbook interest has no manual claim step at all, it just appears.
+    // `earnedThisMonth`/`earnedTotal` are kept as running display totals of interest
+    // ALREADY credited (not pending), still useful for the Interest jar summary card.
+    // jar.balance stays a synced display cache of the real wallet balance, never the
+    // source of truth. nextPayoutAt advances by exactly one real day (not "now + 1
+    // day") so a scheduler catch-up after downtime doesn't silently shrink the
+    // accrual window.
     @Transactional
     fun accrueInterest(jar: InterestJar) {
         val wallet = walletRepository.findById(jar.walletId).orElse(null) ?: return
         val dailyRate = BigDecimal.valueOf(jar.rate).divide(BigDecimal(100), 10, RoundingMode.HALF_UP).divide(BigDecimal(365), 10, RoundingMode.HALF_UP)
         val accrued = wallet.balance.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)
-        jar.balance = wallet.balance
         if (accrued > BigDecimal.ZERO) {
+            val ledger = ledgerService.postLedgerTransaction(
+                "RWF",
+                listOf(
+                    LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, accrued, "Savings interest"),
+                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, accrued, "Savings interest"),
+                ),
+            )
+            transactionRepository.save(
+                Transaction(
+                    id = ledger.transactionId,
+                    referenceNumber = "INTEREST${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+                    senderId = "system_interest",
+                    recipientId = jar.userId,
+                    toWalletId = wallet.id,
+                    amount = accrued,
+                    fee = BigDecimal.ZERO,
+                    currency = "RWF",
+                    type = TransactionType.INTEREST,
+                    status = TransactionStatus.COMPLETED,
+                    description = "Savings interest",
+                    completedAt = Instant.now(),
+                ),
+            )
             jar.earnedThisMonth = jar.earnedThisMonth.add(accrued)
             jar.earnedTotal = jar.earnedTotal.add(accrued)
         }
+        val updatedWallet = walletRepository.findById(jar.walletId).orElse(wallet)
+        jar.balance = updatedWallet.balance
         jar.nextPayoutAt = jar.nextPayoutAt.plus(INTEREST_ACCRUAL_INTERVAL_DAYS, ChronoUnit.DAYS)
-        // Mutates jar.lastNudgedAt (if due) and creates the Notification, but doesn't
-        // save the jar itself -- folded into the single save below instead of a second
-        // round-trip.
-        maybeNudgeUnclaimed(jar)
         interestJarRepository.save(jar)
-    }
-
-    // Real "hidden money" nudge (2026-07-21) -- modeled on Toss's own real, published
-    // "숨은 돈 찾기" (find hidden money) feature (toss.tech/tossfeed's "마이데이터로 숨은
-    // 돈 찾는 3가지 방법", tossbank.com's own "숨은 금융자산" articles): Toss proactively
-    // surfaces dormant deposits, unclaimed insurance payouts, and unused card points a
-    // user has but isn't actively looking at. itunda has no external institution
-    // aggregation to mirror the dormant-deposit/insurance half of that (would need a
-    // real MyData-style consent relationship this repo has no path to, the same class of
-    // gap as NIDA/RDB access) -- but the identical PATTERN already exists entirely
-    // within itunda's own ledger: interest accrues daily into `earnedThisMonth`
-    // (see accrueInterest above) with no proactive surface at all before this fix --
-    // silently found via a direct read of this file: only `claimInterest` ever zeroed
-    // it, nothing ever notified a user that it existed to claim. A real user could accrue
-    // real RWF for weeks and never know, unless they happened to open the Savings tab --
-    // the exact "money that exists but isn't surfaced" gap Toss's real feature targets.
-    //
-    // Weekly cadence (not per-accrual, which runs daily): a real Notification every
-    // single day would be spam, not a helpful nudge -- matches how Toss's own feature
-    // surfaces periodically, not constantly. Deliberately silent when there's nothing to
-    // claim (earnedThisMonth <= 0) -- a nudge about zero money isn't a real nudge.
-    private fun maybeNudgeUnclaimed(jar: InterestJar) {
-        if (jar.earnedThisMonth <= BigDecimal.ZERO) return
-        val lastNudgedAt = jar.lastNudgedAt
-        val due = lastNudgedAt == null || Duration.between(lastNudgedAt, Instant.now()).toDays() >= UNCLAIMED_INTEREST_NUDGE_INTERVAL_DAYS
-        if (!due) return
-        val title = "You have interest waiting"
-        val body = "${jar.earnedThisMonth} RWF in savings interest is ready to claim -- it's just sitting there until you do."
-        notificationRepository.save(
-            Notification(
-                id = "notif_${UUID.randomUUID()}",
-                userId = jar.userId,
-                type = "UNCLAIMED_INTEREST",
-                title = title,
-                body = body,
-                isRead = false,
-                createdAt = Instant.now(),
-                dataJson = "{\"earnedThisMonth\":\"${jar.earnedThisMonth}\"}",
-            ),
-        )
-        pushNotificationService.sendToUser(jar.userId, title, body, mapOf("earnedThisMonth" to jar.earnedThisMonth.toPlainString()))
-        jar.lastNudgedAt = Instant.now()
     }
 }

@@ -59,6 +59,23 @@ export const claimInterest = () =>
     headers: { 'Idempotency-Key': randomUUID() },
   });
 
+// Real itunda Deposit Protection Fund (2026-08-11) -- see backend's
+// DepositProtectionFund.kt doc comment for the full honesty framing: real, ledger-
+// backed mechanics, disclosed everywhere as itunda's own internal reserve, not a real
+// BNR-backed deposit insurance scheme. coverageCapPerUser/contributionRateBps are
+// itunda's own chosen policy figures.
+export interface DepositProtectionStatus {
+  fundReserveBalance: number;
+  coverageCapPerUser: number;
+  contributionRateBps: number;
+  lastContributionAt: string | null;
+  yourTotalDeposits: number;
+  yourCoveredBalance: number;
+}
+
+export const fetchDepositProtectionStatus = () =>
+  apiFetch<{ success: boolean; status: DepositProtectionStatus }>('/api/v1/savings/deposit-protection').then((r) => r.status);
+
 // Real Kakao Pay 머니굴리기 ("rolling money") round-up auto-saving (rw.itunda.savings.
 // RoundUpService, real since well before this session) -- first client UI for this
 // feature anywhere (item 112, found via a content-grep sweep: Android has a real

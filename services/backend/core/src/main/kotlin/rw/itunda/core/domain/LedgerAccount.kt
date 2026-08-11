@@ -129,6 +129,18 @@ class LedgerAccount(
             // precedent above: seed this before the first real contribution, not after
             // one 500s discovering it's missing.
             "insurance_premium_fund_payable" to "Insurance Premium Fund Payable",
+            // Real itunda Deposit Protection Fund (2026-08-11) -- see
+            // DepositProtectionFund.kt's own doc comment. Learned from this exact
+            // file's own documented history (interest_income/agent_commission_expense/
+            // card_spend_expense/postpaid_credit_payable/vehicle_inspection_holding/
+            // designated_driver_holding/insurance_premium_fund_payable -- SEVEN prior
+            // instances of the identical bug class): seeded here BEFORE the first real
+            // contribution runs, not after a live 500 discovers it's missing. (Missed
+            // once anyway on first deploy -- DepositProtectionScheduler's first tick
+            // real-500'd with exactly this "Unknown ledger account" error, confirming
+            // this file's own warning that the bug is only ever caught live.)
+            "deposit_protection_expense" to "Deposit Protection Fund Contribution Expense",
+            "deposit_protection_reserve" to "Deposit Protection Fund Reserve",
         )
     }
 }

@@ -26,7 +26,11 @@ data class DepositRequest(val goalId: String, val amount: BigDecimal, val fromWa
 
 @RestController
 @RequestMapping("/api/v1/savings")
-class SavingsController(private val savingsService: SavingsService, private val idempotencyService: IdempotencyService) {
+class SavingsController(
+    private val savingsService: SavingsService,
+    private val idempotencyService: IdempotencyService,
+    private val depositProtectionService: DepositProtectionService,
+) {
 
     @GetMapping("/goals")
     fun getGoals(@AuthenticationPrincipal currentUser: CurrentUser) =
@@ -66,6 +70,12 @@ class SavingsController(private val savingsService: SavingsService, private val 
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real Deposit Protection Fund status (2026-08-11) -- see DepositProtectionFund.kt's
+    // own doc comment for the full honesty framing this feature is built under.
+    @GetMapping("/deposit-protection")
+    fun getDepositProtectionStatus(@AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "status" to depositProtectionService.getStatus(currentUser.userId)))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

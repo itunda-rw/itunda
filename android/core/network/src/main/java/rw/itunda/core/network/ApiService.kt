@@ -299,6 +299,21 @@ data class InterestJar(
 
 data class InterestJarResponse(val success: Boolean, val jar: InterestJar)
 
+// Real Deposit Protection Fund status (2026-08-11) -- see backend's
+// DepositProtectionFund.kt doc comment. coverageCapPerUser/contributionRateBps are
+// itunda's own chosen policy figures, not a claimed real BNR-backed scheme -- every
+// client rendering this must keep that framing, not present it as real deposit
+// insurance.
+data class DepositProtectionStatus(
+    val fundReserveBalance: java.math.BigDecimal,
+    val coverageCapPerUser: java.math.BigDecimal,
+    val contributionRateBps: Int,
+    val lastContributionAt: String?,
+    val yourTotalDeposits: java.math.BigDecimal,
+    val yourCoveredBalance: java.math.BigDecimal,
+)
+data class DepositProtectionStatusResponse(val success: Boolean, val status: DepositProtectionStatus)
+
 data class DiscoverItem(
     val id: String,
     val category: String,
@@ -2157,6 +2172,11 @@ interface ApiService {
 
     @GET("api/v1/savings/interest-jar")
     suspend fun getInterestJar(): InterestJarResponse
+
+    // Real Deposit Protection Fund status (2026-08-11) -- see backend's
+    // DepositProtectionFund.kt doc comment for the full honesty framing.
+    @GET("api/v1/savings/deposit-protection")
+    suspend fun getDepositProtectionStatus(): DepositProtectionStatusResponse
 
     @POST("api/v1/wallet/transfer/quote")
     suspend fun quoteTransfer(@Body request: QuoteTransferRequest): QuoteTransferResponse

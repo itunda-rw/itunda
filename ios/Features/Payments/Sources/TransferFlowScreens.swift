@@ -439,7 +439,12 @@ public struct SavingsAmountScreen: View {
             Spacer().frame(height: 40)
 
             VStack(spacing: 16) {
-                Text(mode == .deposit ? "How much to save?" : "Claim your interest")
+                // Real fix (2026-08-11): interest now auto-credits to the wallet the
+                // instant it accrues (see backend SavingsService.accrueInterest's own
+                // doc comment, matching real Toss Bank passbook interest) -- this
+                // screen no longer moves money, it just acknowledges what already
+                // arrived. Same fix on Android's SavingsAmountScreen the same day.
+                Text(mode == .deposit ? "How much to save?" : "Interest already added to your balance")
                     .font(.system(size: 16))
                     .foregroundColor(IDS.Colors.textSecondary)
                 Text(digits.isEmpty ? "0 RWF" : "\(formatAmount(amount)) RWF")
@@ -473,7 +478,7 @@ public struct SavingsAmountScreen: View {
                     .tint(IDS.Colors.brand)
                     .padding(.vertical, 24)
             } else if mode == .claimInterest {
-                FlowNextBar(enabled: true, label: "Claim") { onConfirm(0) }
+                FlowNextBar(enabled: true, label: "OK") { onConfirm(0) }
             } else {
                 FlowNextBar(enabled: !digits.isEmpty && amount > 0 && !insufficientBalance, label: "Deposit") { onConfirm(amount) }
                 NumericKeypad(

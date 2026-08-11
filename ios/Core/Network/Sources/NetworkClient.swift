@@ -1024,6 +1024,21 @@ public struct InterestJar: Decodable {
 
 public struct InterestJarResponse: Decodable { public let success: Bool; public let jar: InterestJar }
 
+// Real Deposit Protection Fund status (2026-08-11) -- see backend's
+// DepositProtectionFund.kt doc comment. coverageCapPerUser/contributionRateBps are
+// itunda's own chosen policy figures, not a claimed real BNR-backed scheme -- every
+// client rendering this must keep that framing, not present it as real deposit
+// insurance.
+public struct DepositProtectionStatus: Decodable {
+    public let fundReserveBalance: Double
+    public let coverageCapPerUser: Double
+    public let contributionRateBps: Int
+    public let lastContributionAt: String?
+    public let yourTotalDeposits: Double
+    public let yourCoveredBalance: Double
+}
+public struct DepositProtectionStatusResponse: Decodable { public let success: Bool; public let status: DepositProtectionStatus }
+
 // Real curated promo rail -- see the backend's DiscoverController.kt. Purely
 // informational/display, no click-through action or money movement. Android already
 // has this (DiscoverSection in ItundaAppScreen.kt, found real on backend + Android with
@@ -1414,6 +1429,7 @@ extension NetworkClient {
 
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
+    public func getDepositProtectionStatus() async throws -> DepositProtectionStatusResponse { try await get("api/v1/savings/deposit-protection") }
 
     public func getDiscoverItems() async throws -> DiscoverResponse { try await get("api/v1/discover") }
 

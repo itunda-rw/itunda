@@ -86,7 +86,13 @@ fun SavingsAmountScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                if (mode == SavingsAmountMode.deposit) "How much to save?" else "Claim your interest",
+                // Real fix (2026-08-11): interest now auto-credits to the wallet the
+                // instant it accrues (see backend SavingsService.accrueInterest's own
+                // doc comment, matching real Toss Bank passbook interest) -- this
+                // screen no longer moves money, it just acknowledges what already
+                // arrived. "Claim your interest" would overclaim a pending action
+                // that doesn't exist anymore.
+                if (mode == SavingsAmountMode.deposit) "How much to save?" else "Interest already added to your balance",
                 color = Ids.colors.textSecondary,
                 fontSize = 16.sp
             )
@@ -116,7 +122,7 @@ fun SavingsAmountScreen(
                 androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
             }
         } else if (mode == SavingsAmountMode.claimInterest) {
-            FlowNextBar(enabled = true, label = "Claim") { onConfirm(0L) }
+            FlowNextBar(enabled = true, label = "OK") { onConfirm(0L) }
         } else {
             FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = "Deposit") { onConfirm(amount) }
             NumericKeypad(

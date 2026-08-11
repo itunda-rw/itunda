@@ -408,7 +408,7 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentBlue),
                 FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
                 FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentBlue, action: { showPayBillsMiniApp = true }),
-                FlatRow(title: "Claim interest now", symbol: "bolt.fill", tint: .accentPurple, action: onClaimInterest),
+                FlatRow(title: "Interest earned this month", symbol: "bolt.fill", tint: .accentPurple, action: onClaimInterest),
                 FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
                 FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentBlue, action: onSwitchToTalk),
                 FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentBlue),
@@ -637,7 +637,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentBlue),
                         FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
                         FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentBlue, action: { showPayBillsMiniApp = true }),
-                        FlatRow(title: "Claim interest now", symbol: "bolt.fill", tint: .accentPurple, action: onClaimInterest),
+                        FlatRow(title: "Interest earned this month", symbol: "bolt.fill", tint: .accentPurple, action: onClaimInterest),
                         FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
                         // Real split-bill (found 2026-07-22 fully built with zero UI
                         // anywhere) lives inside a specific group's own thread (Talk

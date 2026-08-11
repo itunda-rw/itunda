@@ -11,6 +11,9 @@ import CoreNetwork
 @MainActor
 final class BankViewModel: ObservableObject {
     @Published private(set) var balanceText = "RWF 0"
+    // Real Toss Bank reference (user-provided screenshots, 2026-08-11) -- see
+    // AccountSummaryCard's own doc comment in BankView.swift.
+    @Published private(set) var accountNumber: String?
     @Published private(set) var savingsRows: [SavingsRowData] = []
     @Published private(set) var discoverRows: [DiscoverRowData] = []
     @Published private(set) var isOffline = false
@@ -119,6 +122,7 @@ final class BankViewModel: ObservableObject {
             let walletsRes = try await NetworkClient.shared.getWallets()
             if walletsRes.success, let wallet = walletsRes.wallets.first(where: { $0.type == "MAIN" }) ?? walletsRes.wallets.first {
                 balanceText = formatAmount(wallet.balance, currency: wallet.currency)
+                accountNumber = wallet.accountNumber
                 availableBalance = wallet.availableBalance
                 currentUserId = wallet.userId
             }

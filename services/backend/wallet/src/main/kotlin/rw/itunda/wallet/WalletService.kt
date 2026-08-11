@@ -166,7 +166,12 @@ class WalletService(
                 // LedgerAccountType be handled since this is an exhaustive `when`. INTEREST_INCOME
                 // (2026-07-27) is the same shape -- OverdraftService.accrueInterest's own real
                 // counterpart leg is LOAN_PAYABLE, never a direct WALLET debit.
-                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, LedgerAccountType.AGENT_COMMISSION_EXPENSE, null -> "Other"
+                // DEPOSIT_PROTECTION_RESERVE/DEPOSIT_PROTECTION_EXPENSE (2026-08-11) -- same
+                // shape as this comment's own reasoning above: DepositProtectionService.
+                // accrueContribution posts between itunda's own two internal accounts, never
+                // touching a user's WALLET debit, so this branch is unreachable in practice
+                // but still required for exhaustiveness.
+                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerAccountType.DEPOSIT_PROTECTION_RESERVE, LedgerAccountType.DEPOSIT_PROTECTION_EXPENSE, null -> "Other"
                 LedgerAccountType.WALLET -> "Other"
             }
             totals[category] = (totals[category] ?: BigDecimal.ZERO) + debit.amount

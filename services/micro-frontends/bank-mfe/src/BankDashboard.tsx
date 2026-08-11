@@ -13,7 +13,7 @@ import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type T
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
 import { chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
-import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
+import { claimInterest, createGoal, depositToGoal, fetchDepositProtectionStatus, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type DepositProtectionStatus, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import {
   createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchGroupAccountDues, fetchMyGroupAccounts, inviteGroupAccountMember,
   requestUnpaidGroupAccountDues, setGroupAccountDuesAmount, withdrawFromGroupAccount,
@@ -249,6 +249,19 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
         <p style={{ color: 'var(--itunda-grey-700)', fontSize: '15px', fontWeight: '600' }}>{wallet?.accountName ?? t('dashboard.mainAccount')}</p>
         <ShieldCheck size={20} color="var(--itunda-green)" />
       </div>
+
+      {/* Real Toss Bank reference (user-provided screenshots, 2026-08-11): the real
+          account detail screen leads with the account's own real number ("토스뱅크
+          1000-3058-1980") directly above the balance -- itunda's real, collision-
+          checked AccountNumberGenerator has produced a real accountNumber for every
+          wallet since it was built, but it was never actually shown anywhere except
+          when entering someone ELSE's number to send to. Same fix on Android/iOS the
+          same day. */}
+      {wallet?.accountNumber && (
+        <p style={{ color: 'var(--itunda-grey-500)', fontSize: '12px', margin: '0 0 4px' }}>
+          itunda {wallet.accountNumber.match(/.{1,4}/g)?.join('-')}
+        </p>
+      )}
 
       <h1 style={{ color: 'var(--itunda-grey-900)', fontSize: '36px', fontWeight: '700', margin: '0 0 28px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
         {(wallet?.balance ?? 0).toLocaleString()} <span style={{ fontSize: '20px', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
@@ -18445,7 +18458,11 @@ function InterestJarCard() {
       <p style={{ fontSize: '28px', fontWeight: 800, margin: '6px 0' }}>{jar.balance.toLocaleString()} RWF</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
         <div>
-          <p style={{ fontSize: '11px', opacity: 0.8 }}>Earned, unclaimed</p>
+          {/* Real fix (2026-08-11): interest now auto-credits to the wallet the
+              instant it accrues (see backend SavingsService.accrueInterest's own
+              doc comment, matching real Toss Bank passbook interest) -- this money
+              is already in jar.balance above, not sitting unclaimed. */}
+          <p style={{ fontSize: '11px', opacity: 0.8 }}>Earned this month</p>
           <p style={{ fontSize: '16px', fontWeight: 700 }}>{jar.earnedThisMonth.toLocaleString()} RWF</p>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -18466,10 +18483,44 @@ function InterestJarCard() {
           disabled={!canClaim || claiming}
           style={{ marginTop: '14px', width: '100%', backgroundColor: '#fff', color: 'var(--itunda-blue)', fontWeight: 700, opacity: canClaim ? 1 : 0.6 }}
         >
-          {claiming ? 'Claiming…' : canClaim ? `Claim ${jar.earnedThisMonth.toLocaleString()} RWF` : 'Nothing to claim yet'}
+          {claiming ? 'Clearing…' : canClaim ? `OK, ${jar.earnedThisMonth.toLocaleString()} RWF added` : 'Nothing new this month yet'}
         </button>
       )}
       {claimMsg && <p style={{ fontSize: '12px', marginTop: '8px' }}>{claimMsg}</p>}
+    </div>
+  );
+}
+
+// Real Deposit Protection Fund card (2026-08-11) -- see DepositProtectionFund.kt's own
+// doc comment: rather than just disclosing an absence of real banking protections, this
+// shows the real, working, ledger-backed reserve itunda maintains as its own internal
+// simulation of what real deposit protection could look like -- same "real mechanics,
+// honestly labeled as itunda's own scheme" discipline this codebase already applies to
+// VUP/RSE/SACCO.
+function DepositProtectionCard() {
+  const [status, setStatus] = useState<DepositProtectionStatus | null>(null);
+
+  useEffect(() => {
+    fetchDepositProtectionStatus().then(setStatus).catch(() => {
+      // Non-critical -- the disclosure copy below this card still renders without it.
+    });
+  }, []);
+
+  if (status === null) return null;
+
+  return (
+    <div className="itunda-card" style={{ marginTop: '20px', padding: '16px' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 8px' }}>Deposit Protection Fund (simulation)</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Your covered balance</p>
+        <p style={{ fontSize: '13px', fontWeight: 650 }}>{status.yourCoveredBalance.toLocaleString()} RWF</p>
+      </div>
+      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-400)', marginTop: '4px' }}>
+        Covered up to {status.coverageCapPerUser.toLocaleString()} RWF per user
+      </p>
+      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-400)' }}>
+        itunda&apos;s reserve: {status.fundReserveBalance.toLocaleString()} RWF
+      </p>
     </div>
   );
 }
@@ -19873,18 +19924,19 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
           </div>
         </div>
       )}
-      {/* Real licensed-bank/deposit-insurance disclosure (2026-08-11) -- see
-          docs/TOSS_PARITY_MATRIX.md's own confirmation of "zero real banking-license
-          implementation anywhere" and TOSS_FEATURE_SPECIFICATION.md's Pillar 3
-          listing "itunda Bank... RBDB licensed in Rwanda" as roadmap-only, never
-          built. This exact screen has carried the "itunda Bank" name since the same
-          day the wallet-row naming research above reasoned that label risks a real
-          regulatory overclaim -- with no disclosure anywhere clarifying itunda's
-          actual (unlicensed) status. Same fix on Android's BankHubScreen and iOS's
-          BankView the same day. */}
-      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-400)', marginTop: '20px', padding: '0 4px' }}>
-        itunda is not a licensed bank. Your balance is e-money, not a bank deposit, and isn&apos;t covered
-        by deposit insurance. &quot;itunda Bank&quot; is itunda&apos;s own product name for these savings,
+      {/* Real licensed-bank disclosure (2026-08-11) -- see docs/TOSS_PARITY_MATRIX.md's
+          own confirmation of "zero real banking-license implementation anywhere" and
+          TOSS_FEATURE_SPECIFICATION.md's Pillar 3 listing "itunda Bank... RBDB
+          licensed in Rwanda" as roadmap-only, never built. Rather than just disclosing
+          an absence, DepositProtectionCard above shows the real, working reserve
+          itunda maintains as its own internal simulation of real deposit protection --
+          same "real mechanics, honestly labeled as itunda's own scheme" discipline
+          this codebase already applies to VUP/RSE/SACCO. Same fix on Android's
+          BankHubScreen and iOS's BankView the same day. */}
+      <DepositProtectionCard />
+      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-400)', marginTop: '12px', padding: '0 4px' }}>
+        itunda is not a licensed bank, and this is not real government deposit insurance.
+        &quot;itunda Bank&quot; is itunda&apos;s own product name for these savings,
         SACCO/Ikimina, loan, and investment features — not a separate licensed banking entity.
       </p>
     </div>

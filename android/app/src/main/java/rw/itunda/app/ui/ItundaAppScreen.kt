@@ -1618,6 +1618,7 @@ private fun HomeTab(
         item {
             WalletHeroCard(
                 balanceText = balanceText,
+                accountNumber = primaryWallet?.accountNumber,
                 onSend = onSend,
                 onCashOutAtAgent = onCashOutAtAgent,
                 recentTransactions = recentTransactions.take(2),
@@ -1826,6 +1827,18 @@ private fun BankHubScreen(
     var showRoundUpDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val totalSaved = (interestJar?.balance ?: 0.0) + savingsGoals.sumOf { it.currentAmount }
+    // Real Deposit Protection Fund status (2026-08-11) -- own-screen fetch, same
+    // "each screen fetches its own minimal real data" precedent OverviewScreen's own
+    // getProfile() call already establishes, rather than growing MainViewModel's
+    // Home-load path with a fetch only this screen needs.
+    var depositProtection by remember { mutableStateOf<rw.itunda.core.network.DepositProtectionStatus?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            depositProtection = rw.itunda.core.network.NetworkClient.apiService.getDepositProtectionStatus().status
+        } catch (_: Exception) {
+            // Non-critical -- the disclosure copy below still renders without it.
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
@@ -1932,9 +1945,31 @@ private fun BankHubScreen(
             // on every platform since the same day AccountSwitcherSheet's own doc
             // comment (above) reasoned that label risks a real regulatory overclaim
             // for the wallet row -- with no disclosure anywhere clarifying itunda's
-            // actual (unlicensed) status. Real Toss Bank/KakaoBank both lead with
-            // exactly this kind of small-print status disclosure; itunda's honest
-            // equivalent is the inverse claim, not a copy of theirs.
+            // actual (unlicensed) status.
+            //
+            // Real Deposit Protection Fund card (2026-08-11) -- see
+            // DepositProtectionFund.kt's own doc comment: rather than just disclosing
+            // an absence, this shows the real, working, ledger-backed reserve itunda
+            // maintains as its own internal simulation of what real deposit protection
+            // could look like -- same "real mechanics, honestly labeled as itunda's
+            // own scheme" discipline this codebase already applies to VUP/RSE/SACCO.
+            depositProtection?.let { dp ->
+                item {
+                    IdsCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(stringResource(R.string.bank_deposit_protection_title), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text(stringResource(R.string.bank_deposit_protection_covered), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                                Text("RWF %,.0f".format(dp.yourCoveredBalance), color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(stringResource(R.string.bank_deposit_protection_cap, "%,.0f".format(dp.coverageCapPerUser)), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                            Text(stringResource(R.string.bank_deposit_protection_reserve, "%,.0f".format(dp.fundReserveBalance)), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
             item {
                 Text(
                     stringResource(R.string.bank_status_disclosure),
@@ -2202,6 +2237,7 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
 @Composable
 private fun WalletHeroCard(
     balanceText: String,
+    accountNumber: String?,
     onSend: () -> Unit,
     onCashOutAtAgent: () -> Unit,
     recentTransactions: List<rw.itunda.core.network.TransactionDto>,
@@ -2236,6 +2272,21 @@ private fun WalletHeroCard(
                         color = Ids.colors.success,
                     )
                 }
+            }
+            // Real Toss Bank reference (user-provided screenshots, 2026-08-11): the
+            // real account detail screen leads with the account's own real number
+            // ("토스뱅크 1000-3058-1980") directly above the balance -- itunda's real,
+            // collision-checked AccountNumberGenerator (see its own doc comment) has
+            // produced a real accountNumber for every wallet since it was built, but
+            // it was never actually shown anywhere except when entering someone
+            // ELSE's number to send to. Grouped in 4-digit blocks for readability,
+            // same shape as the reference.
+            if (accountNumber != null) {
+                Text(
+                    "itunda ${accountNumber.chunked(4).joinToString("-")}",
+                    fontSize = 12.sp,
+                    color = Ids.colors.textTertiary,
+                )
             }
             // Real fix, 2026-08-03: was a hardcoded 34.sp literal -- IdsTypography
             // .LargeAmount exists specifically for "the single most important number
@@ -2597,7 +2648,10 @@ private fun MenuScreen(
         FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue, onClick = {
             context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
         }),
-        FlatRow("Claim interest now", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
+        // Real fix (2026-08-11): interest now auto-credits to the wallet the instant
+        // it accrues (see backend SavingsService.accrueInterest's own doc comment) --
+        // "Claim interest now" overclaimed a pending action that no longer exists.
+        FlatRow("Interest earned this month", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
         FlatRow("SME income tax estimate", icon = Icons.Outlined.Savings, iconColor = AccentOrange),
         FlatRow("Split a bill with friends", icon = Icons.Outlined.Groups, iconColor = AccentBlue, onClick = onSwitchToTalk),
         FlatRow("Shared calendar", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue),

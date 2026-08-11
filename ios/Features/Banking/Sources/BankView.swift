@@ -8,6 +8,7 @@
 
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 // Real 2026-08-09 parity fix -- checked whether iOS had the same "translated the
 // wrong screen" mistake just found and fixed on web (HomeView vs OverviewView) and
@@ -81,7 +82,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         // now also Loans/Invest -- see ContentView's own coopRows doc comment), just
         // given the real product identity they were missing.
         "coopRailTitle": "itunda Bank",
-        "bankStatusDisclosure": "itunda is not a licensed bank. Your balance is e-money, not a bank deposit, and isn't covered by deposit insurance. \"itunda Bank\" is itunda's own product name for these savings, SACCO/Ikimina, loan, and investment features -- not a separate licensed banking entity.",
+        "bankStatusDisclosure": "itunda is not a licensed bank, and this is not real government deposit insurance. \"itunda Bank\" is itunda's own product name for these savings, SACCO/Ikimina, loan, and investment features -- not a separate licensed banking entity.",
     ],
     .rw: [
         "goodMorning": "Mwaramutse",
@@ -127,7 +128,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "goalSaverTitle": "Umugambi w'ubwizigame",
         "goalSaverSubtitle": "Imigendekere y'ubwizigame bw'ibihe bikomeye",
         "coopRailTitle": "itunda Bank",
-        "bankStatusDisclosure": "itunda si banki ifite uruhushya. Amafaranga yawe ni e-money, ntabwo ari amafaranga abitswe muri banki, kandi ntabwo yishingirwa n'ubwishingizi bw'ubwizigame. \"itunda Bank\" ni izina ry'ibicuruzwa bya itunda ku bwizigame, SACCO/Ikimina, inguzanyo, no gushora imari -- ntabwo ari urwego rwihariye rufite uruhushya rwa banki.",
+        "bankStatusDisclosure": "itunda si banki ifite uruhushya, kandi iki si ubwishingizi nyakuri bw'ubwizigame bwa Leta. \"itunda Bank\" ni izina ry'ibicuruzwa bya itunda ku bwizigame, SACCO/Ikimina, inguzanyo, no gushora imari -- ntabwo ari urwego rwihariye rufite uruhushya rwa banki.",
     ],
 ]
 
@@ -208,7 +209,13 @@ public struct DiscoverRowData: Identifiable {
 
 public struct BankView: View {
     @State private var locale: BankingLocale = loadBankingLocale()
+    // Real Deposit Protection Fund status (2026-08-11) -- see backend's
+    // DepositProtectionFund.kt doc comment. Self-fetched via .task below, same
+    // "each screen fetches its own minimal real data" shape `locale` above already
+    // establishes for this view.
+    @State private var depositProtection: DepositProtectionStatus?
     private let balanceText: String
+    private let accountNumber: String?
     private let savingsRows: [SavingsRowData]
     private let discoverRows: [DiscoverRowData]
     private let coopRows: [CooperativeRowData]
@@ -222,8 +229,10 @@ public struct BankView: View {
     /// always passes real values from BankViewModel. onSend added 2026-07-12 -- "Send
     /// money now" was a decorative row with no action; it's the real entry point into
     /// the send-money flow now, matching Android's WalletHeroCard "Send" button.
+    /// accountNumber added 2026-08-11 -- see AccountSummaryCard's own doc comment.
     public init(
         balanceText: String = "RWF 0",
+        accountNumber: String? = nil,
         savingsRows: [SavingsRowData] = [],
         discoverRows: [DiscoverRowData] = [],
         coopRows: [CooperativeRowData] = [],
@@ -231,6 +240,7 @@ public struct BankView: View {
         onOpenTransactionHistory: @escaping () -> Void = {}
     ) {
         self.balanceText = balanceText
+        self.accountNumber = accountNumber
         self.savingsRows = savingsRows
         self.discoverRows = discoverRows
         self.coopRows = coopRows
@@ -242,7 +252,7 @@ public struct BankView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: IDS.Layout.cardGap) {
                 HomeTopBar(locale: locale)
-                AccountSummaryCard(balanceText: balanceText, onSend: onSend, locale: locale)
+                AccountSummaryCard(balanceText: balanceText, accountNumber: accountNumber, onSend: onSend, locale: locale)
                 QuickActionsRow(locale: locale)
                 if !coopRows.isEmpty {
                     HomeSectionCard(
@@ -289,7 +299,30 @@ public struct BankView: View {
                         }
                     )
                 }
-                // Real licensed-bank/deposit-insurance disclosure (2026-08-11) -- see
+                // Real Deposit Protection Fund card (2026-08-11) -- see
+                // DepositProtectionFund.kt's own doc comment: rather than just
+                // disclosing an absence of real banking protections, this shows the
+                // real, working, ledger-backed reserve itunda maintains as its own
+                // internal simulation of what real deposit protection could look
+                // like -- same "real mechanics, honestly labeled as itunda's own
+                // scheme" discipline this codebase already applies to VUP/RSE/SACCO.
+                if let dp = depositProtection {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Deposit Protection Fund (simulation)").font(.system(size: 14, weight: .bold))
+                        HStack {
+                            Text("Your covered balance").font(.system(size: 13)).foregroundColor(IDS.Colors.textSecondary)
+                            Spacer()
+                            Text("\(Int(dp.yourCoveredBalance)) RWF").font(.system(size: 13, weight: .semibold))
+                        }
+                        Text("Covered up to \(Int(dp.coverageCapPerUser)) RWF per user").font(.system(size: 11)).foregroundColor(IDS.Colors.textTertiary)
+                        Text("itunda's reserve: \(Int(dp.fundReserveBalance)) RWF").font(.system(size: 11)).foregroundColor(IDS.Colors.textTertiary)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(IDS.Colors.card)
+                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                }
+                // Real licensed-bank disclosure (2026-08-11) -- see
                 // docs/TOSS_PARITY_MATRIX.md's own confirmation of "zero real banking-
                 // license implementation anywhere" and TOSS_FEATURE_SPECIFICATION.md's
                 // Pillar 3 listing "itunda Bank... RBDB licensed in Rwanda" as roadmap-
@@ -308,6 +341,9 @@ public struct BankView: View {
             .padding(.bottom, IDS.Layout.sectionSpacing)
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .task {
+            depositProtection = try? await NetworkClient.shared.getDepositProtectionStatus().status
+        }
     }
 }
 
@@ -398,6 +434,7 @@ private struct TopBarActionButton: View {
 
 private struct AccountSummaryCard: View {
     let balanceText: String
+    let accountNumber: String?
     let onSend: () -> Void
     let locale: BankingLocale
 
@@ -407,6 +444,18 @@ private struct AccountSummaryCard: View {
                 Text(bt("totalBalance", locale: locale))
                     .font(IDS.Typography.sectionLabel)
                     .foregroundColor(IDS.Colors.textSecondary)
+                // Real Toss Bank reference (user-provided screenshots, 2026-08-11):
+                // the real account detail screen leads with the account's own real
+                // number ("토스뱅크 1000-3058-1980") directly above the balance --
+                // itunda's real, collision-checked AccountNumberGenerator has produced
+                // a real accountNumber for the MAIN wallet since it was built, but it
+                // was never actually shown anywhere except when entering someone
+                // ELSE's number to send to. Same fix on Android/web the same day.
+                if let accountNumber {
+                    Text("itunda \(accountNumber.chunked(4).joined(separator: "-"))")
+                        .font(.system(size: 12))
+                        .foregroundColor(IDS.Colors.textTertiary)
+                }
                 Text(balanceText)
                     .font(IDS.Typography.largeAmount)
                     .foregroundColor(IDS.Colors.textPrimary)
@@ -581,5 +630,22 @@ private struct CompactListRow: View {
 struct BankView_Previews: PreviewProvider {
     static var previews: some View {
         BankView()
+    }
+}
+
+// Real account-number display grouping (2026-08-11) -- see AccountSummaryCard's own
+// doc comment. Matches Android's `accountNumber.chunked(4)` and web's
+// `.match(/.{1,4}/g)` -- same 4-digit grouping on all 3 platforms.
+private extension String {
+    func chunked(_ size: Int) -> [String] {
+        guard size > 0 else { return [self] }
+        var result: [String] = []
+        var index = startIndex
+        while index < endIndex {
+            let end = self.index(index, offsetBy: size, limitedBy: endIndex) ?? endIndex
+            result.append(String(self[index..<end]))
+            index = end
+        }
+        return result
     }
 }

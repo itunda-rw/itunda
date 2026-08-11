@@ -165,6 +165,7 @@ struct ContentView: View {
             // Android already went through for its own legacy BankScreen.kt.
             BankView(
                 balanceText: bankViewModel.balanceText,
+                accountNumber: bankViewModel.accountNumber,
                 savingsRows: savingsRows,
                 discoverRows: bankViewModel.discoverRows,
                 coopRows: coopRows,

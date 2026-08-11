@@ -107,6 +107,16 @@ enum class LedgerAccountType {
     // dedicated account so premium-fund float can be reconciled independently of
     // ordinary savings-goal float.
     INSURANCE_PREMIUM_FUND_PAYABLE,
+    // Real itunda Deposit Protection Fund (2026-08-11) -- see DepositProtectionFund.kt's
+    // own doc comment. itunda has no real BNR banking license, so unlike a real bank's
+    // government-backed deposit insurance, this is itunda's own internal reserve,
+    // honestly disclosed as a simulation rather than a real regulatory scheme. Real
+    // double-entry pair with DEPOSIT_PROTECTION_EXPENSE below: itunda periodically sets
+    // aside a real percentage of covered deposits into this reserve, the same
+    // expense-funds-a-reserve shape AGENT_COMMISSION_EXPENSE/INTEREST_INCOME already
+    // establish for "itunda's own money moving between its own accounts."
+    DEPOSIT_PROTECTION_RESERVE,
+    DEPOSIT_PROTECTION_EXPENSE,
 }
 
 /**

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Contact
+import rw.itunda.core.domain.DepositProtectionFund
 import rw.itunda.core.domain.Agent
 import rw.itunda.core.domain.AgentCashIn
 import rw.itunda.core.domain.AgentCashOut
@@ -41,6 +42,7 @@ import rw.itunda.core.domain.WalletAutoTopUpSetting
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.domain.WeeklySavingsInstallment
 import rw.itunda.core.domain.WeeklySavingsPlan
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.util.Optional
@@ -70,6 +72,8 @@ interface SavingsGoalRepository : JpaRepository<SavingsGoal, String> {
 }
 
 interface InterestJarRepository : JpaRepository<InterestJar, String>
+
+interface DepositProtectionFundRepository : JpaRepository<DepositProtectionFund, String>
 
 interface GroupAccountRepository : JpaRepository<GroupAccount, String> {
     fun findAllByIdIn(ids: List<String>): List<GroupAccount>
@@ -191,6 +195,19 @@ interface WalletRepository : JpaRepository<Wallet, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select w from Wallet w where w.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Optional<Wallet>
+
+    // Real Deposit Protection Fund coverage math (2026-08-11) -- see
+    // DepositProtectionFund.kt's own doc comment. Scoped to the three real
+    // Wallet-backed products itunda Bank's own "Save & grow" hub actually shows
+    // (SAVINGS/WEEKLY_SAVINGS/UPFRONT_DEPOSIT), not every WalletType -- MAIN is
+    // itunda's separate wallet/Pay product (see AccountSwitcherSheet's own naming
+    // research), and INVESTMENT/GROUP/BUSINESS/MINI/FOREIGN_CURRENCY are each their
+    // own distinct product with different real risk, not itunda Bank deposits.
+    @Query("select coalesce(sum(w.balance), 0) from Wallet w where w.userId = :userId and w.type in :types")
+    fun sumBalanceByUserIdAndTypeIn(@Param("userId") userId: String, @Param("types") types: List<WalletType>): BigDecimal
+
+    @Query("select coalesce(sum(w.balance), 0) from Wallet w where w.type in :types")
+    fun sumBalanceByTypeIn(@Param("types") types: List<WalletType>): BigDecimal
 }
 
 interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
