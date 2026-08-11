@@ -1318,7 +1318,8 @@ data class CollectPaymentRequest(val couponId: String? = null)
 data class StaticQrPayRequest(val amount: java.math.BigDecimal, val description: String? = null)
 // Real customer-presented payment code (2026-08-11) -- see backend's
 // MerchantService.generateCustomerPaymentCode/chargeByCustomerCode doc comments.
-data class CustomerPaymentCodeResponse(val success: Boolean, val code: String, val expiresAt: String)
+data class CustomerPaymentCodeResponse(val success: Boolean, val code: String, val expiresAt: String, val walletId: String? = null)
+data class GenerateCustomerPaymentCodeRequest(val walletId: String? = null)
 data class ChargeByCustomerCodeRequest(val code: String, val amount: java.math.BigDecimal)
 data class CollectPaymentResultDto(
     val success: Boolean, val transactionId: String, val merchantName: String,
@@ -3048,7 +3049,7 @@ interface ApiService {
     // opens Pay and a scannable code is already on screen, no typing on either side --
     // the reverse direction of collectPayment/payByStaticQr above.
     @POST("api/v1/merchant/pay/customer-code")
-    suspend fun generateCustomerPaymentCode(): CustomerPaymentCodeResponse
+    suspend fun generateCustomerPaymentCode(@Body request: GenerateCustomerPaymentCodeRequest = GenerateCustomerPaymentCodeRequest()): CustomerPaymentCodeResponse
 
     @POST("api/v1/merchant/pay/charge-by-code")
     suspend fun chargeByCustomerCode(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ChargeByCustomerCodeRequest): CollectPaymentResultDto

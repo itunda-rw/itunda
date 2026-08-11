@@ -2484,6 +2484,28 @@ private fun PayTab() {
     // static QR (a market stall), the one real case where typing a merchant ID is
     // still the honest baseline until real camera scanning exists on that side too.
     var mode by remember { mutableStateOf(PayTabMode.MY_CODE) }
+    // Real swipeable funding-source cards (2026-08-11) -- the user's own KakaoPay
+    // reference screenshot's bottom card carousel. The real, buildable slice of that:
+    // itunda's own real wallets (MAIN + any opened foreign-currency ones,
+    // ForeignCurrencyWalletService) as distinct swipeable cards, where the settled
+    // card is the one CustomerPaymentCode.walletId actually funds the QR from -- see
+    // MerchantService.generateCustomerPaymentCode's own doc comment. No fabricated
+    // membership/deal cards: itunda has no real backend for those as payment sources.
+    var wallets by remember { mutableStateOf<List<rw.itunda.core.network.Wallet>>(emptyList()) }
+    var selectedWalletId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            val main = rw.itunda.core.network.NetworkClient.apiService.getWallets().wallets.filter { it.type == "MAIN" }
+            val foreign = rw.itunda.core.network.NetworkClient.apiService.getForeignWallets().wallets
+            wallets = main + foreign
+        } catch (e: Exception) {
+            // Real, non-critical -- MyPaymentCodeCard falls back to the backend's own
+            // MAIN default when wallets never load.
+        }
+    }
+    LaunchedEffect(wallets) {
+        if (selectedWalletId == null) selectedWalletId = wallets.firstOrNull { it.type == "MAIN" }?.id
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
@@ -2519,7 +2541,22 @@ private fun PayTab() {
             }
         }
         when (mode) {
-            PayTabMode.MY_CODE -> item { MyPaymentCodeCard() }
+            PayTabMode.MY_CODE -> {
+                item {
+                    MyPaymentCodeCard(
+                        selectedWallet = wallets.find { it.id == selectedWalletId },
+                    )
+                }
+                if (wallets.size > 1) {
+                    item {
+                        WalletCardCarousel(
+                            wallets = wallets,
+                            selectedWalletId = selectedWalletId,
+                            onSelect = { selectedWalletId = it },
+                        )
+                    }
+                }
+            }
             PayTabMode.PAY_MERCHANT -> item {
                 rw.itunda.feature.shop.impl.PayAMerchantSection(
                     deviceStepUpHost = { visible, onDismiss, onVerified ->
@@ -2546,22 +2583,26 @@ private fun PayTab() {
 // read against white under a POS scanner regardless of phone theme" reasoning
 // IdsSemanticColors.kt's own light-palette comment already documents.
 @Composable
-private fun MyPaymentCodeCard() {
+private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
     var revealed by remember { mutableStateOf(false) }
     var code by remember { mutableStateOf<String?>(null) }
     var expiresAtMillis by remember { mutableStateOf(0L) }
     var error by remember { mutableStateOf<String?>(null) }
     var secondsLeft by remember { mutableStateOf(0) }
-    var wallet by remember { mutableStateOf<rw.itunda.core.network.Wallet?>(null) }
     var linkedAccount by remember { mutableStateOf<rw.itunda.core.network.LinkedAccountEntityDto?>(null) }
     var nearbyAds by remember { mutableStateOf<List<rw.itunda.core.network.NearbyMerchantAdDto>>(emptyList()) }
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
-    LaunchedEffect(revealed) {
+    // Re-keyed on selectedWallet.id (not just `revealed`): swiping WalletCardCarousel
+    // to a different real wallet while the code is already showing must regenerate it
+    // against the newly-selected wallet, not silently keep charging the old one.
+    LaunchedEffect(revealed, selectedWallet?.id) {
         if (!revealed) return@LaunchedEffect
         while (true) {
             try {
-                val res = rw.itunda.core.network.NetworkClient.apiService.generateCustomerPaymentCode()
+                val res = rw.itunda.core.network.NetworkClient.apiService.generateCustomerPaymentCode(
+                    rw.itunda.core.network.GenerateCustomerPaymentCodeRequest(walletId = selectedWallet?.id),
+                )
                 code = res.code
                 expiresAtMillis = java.time.Instant.parse(res.expiresAt).toEpochMilli()
                 error = null
@@ -2577,15 +2618,6 @@ private fun MyPaymentCodeCard() {
         while (true) {
             secondsLeft = ((expiresAtMillis - System.currentTimeMillis()) / 1000L).toInt().coerceAtLeast(0)
             kotlinx.coroutines.delay(1000)
-        }
-    }
-    // Real itunda wallet balance -- "type == MAIN is the real signal" per Wallet's
-    // own doc comment above, same field WalletResponse callers everywhere else use.
-    LaunchedEffect(Unit) {
-        try {
-            wallet = rw.itunda.core.network.NetworkClient.apiService.getWallets().wallets.firstOrNull { it.type == "MAIN" }
-        } catch (e: Exception) {
-            // Real, non-critical -- the balance line just won't render if this fails.
         }
     }
     // Real linked funding account (rw.itunda.overview.LinkedAccountService) -- same
@@ -2658,13 +2690,18 @@ private fun MyPaymentCodeCard() {
             }
         }
 
-        val currentWallet = wallet
-        if (currentWallet != null) {
+        if (selectedWallet != null) {
             Spacer(Modifier.height(20.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("itunda Pay", color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Text(
-                    "${currentWallet.currency} ${"%,.0f".format(currentWallet.availableBalance)}",
+                    if (selectedWallet.type == "MAIN") "itunda Pay" else "itunda Pay (${selectedWallet.currency})",
+                    color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                )
+                Text(
+                    "${selectedWallet.currency} ${
+                        if (selectedWallet.currency == "RWF") "%,.0f".format(selectedWallet.availableBalance)
+                        else "%,.2f".format(selectedWallet.availableBalance)
+                    }",
                     color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                 )
             }
@@ -2710,6 +2747,79 @@ private fun MyPaymentCodeCard() {
             color = IdsColors.Gray600, fontSize = 11.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+private fun walletCardColor(currency: String): androidx.compose.ui.graphics.Color = when (currency) {
+    "RWF" -> IdsColors.Blue600
+    "USD" -> IdsColors.Green500
+    "EUR" -> androidx.compose.ui.graphics.Color(0xFF7C5CFC)
+    "GBP" -> androidx.compose.ui.graphics.Color(0xFF00898A)
+    else -> IdsColors.Gray700
+}
+
+// Real swipeable funding-source cards (2026-08-11) -- see PayTab's own doc comment on
+// `wallets`/`selectedWalletId` for why these are itunda's own real wallets (MAIN +
+// any opened foreign-currency ones) and not fabricated membership/deal cards.
+// Settling the pager on a card is a real selection, not cosmetic: it's propagated
+// back up to PayTab and becomes the walletId MyPaymentCodeCard's QR is generated
+// against, matching the "swipe to choose what you pay with" real KakaoPay behavior
+// the user's own reference screenshot showed.
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun WalletCardCarousel(
+    wallets: List<rw.itunda.core.network.Wallet>,
+    selectedWalletId: String?,
+    onSelect: (String) -> Unit,
+) {
+    val initialPage = wallets.indexOfFirst { it.id == selectedWalletId }.coerceAtLeast(0)
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialPage) { wallets.size }
+    LaunchedEffect(pagerState) {
+        androidx.compose.runtime.snapshotFlow { pagerState.settledPage }.collect { page ->
+            wallets.getOrNull(page)?.let { onSelect(it.id) }
+        }
+    }
+    Column {
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            pageSpacing = 12.dp,
+            contentPadding = PaddingValues(horizontal = 40.dp),
+            modifier = Modifier.fillMaxWidth().height(92.dp),
+        ) { page ->
+            val w = wallets[page]
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(walletCardColor(w.currency))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    if (w.type == "MAIN") "itunda Pay" else "itunda Pay ${w.currency}",
+                    color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                )
+                Text(
+                    "${w.currency} ${
+                        if (w.currency == "RWF") "%,.0f".format(w.availableBalance) else "%,.2f".format(w.availableBalance)
+                    }",
+                    color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            wallets.indices.forEach { i ->
+                val active = i == pagerState.currentPage
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 3.dp)
+                        .size(if (active) 8.dp else 6.dp)
+                        .clip(CircleShape)
+                        .background(if (active) Ids.colors.brand else Ids.colors.divider),
+                )
+            }
+        }
     }
 }
 
