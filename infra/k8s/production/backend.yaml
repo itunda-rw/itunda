@@ -5,14 +5,18 @@
 # service actually holding the real business logic and ledger had no deployment
 # story at all.
 #
-# Secrets referenced below (itunda-db-credentials, itunda-jwt-secret) are NOT
-# created by this file on purpose -- committing real credentials to a YAML file
-# in git is exactly the anti-pattern this repo's own SECURITY.md exists to catch
-# elsewhere. Provision them out-of-band, e.g.:
+# Secrets referenced below (itunda-db-credentials, itunda-jwt-secret,
+# itunda-firebase-credentials) are NOT created by this file on purpose --
+# committing real credentials to a YAML file in git is exactly the anti-pattern
+# this repo's own SECURITY.md exists to catch elsewhere. Provision them
+# out-of-band, e.g.:
 #   kubectl create secret generic itunda-db-credentials \
 #     --from-literal=username=itunda --from-literal=password=<real value> -n itunda
 #   kubectl create secret generic itunda-jwt-secret \
 #     --from-literal=secret=<real value> -n itunda
+#   kubectl create secret generic itunda-firebase-credentials \
+#     --from-file=firebase-service-account.json=<path to the real key downloaded
+#     from Firebase Console -> Project Settings -> Service Accounts> -n itunda
 #
 # DB_HOST/DB_PORT point at an external managed MySQL instance via itunda-db-config
 # (a ConfigMap, also provisioned out-of-band) -- this manifest deliberately does
@@ -115,6 +119,18 @@ spec:
               key: secret
         - name: ITUNDA_CORS_ALLOWED_ORIGINS
           value: "https://itunda.duckdns.org,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005"
+        # Real FCM push (2026-08-12) -- see PushConfig.kt's own doc comment. A file
+        # path, not a raw string value like JWT_SECRET above, so it's a Secret
+        # *volume* mount (below), not secretKeyRef on the env var directly --
+        # PushConfig reads this path and opens the file itself, matching the exact
+        # shape RealFcmPushSender's constructor expects. Absent/unmounted falls back
+        # to SimulatedPushSender exactly as it does with no env var set at all.
+        - name: FCM_CREDENTIALS_PATH
+          value: "/secrets/firebase/firebase-service-account.json"
+        volumeMounts:
+        - name: firebase-credentials
+          mountPath: /secrets/firebase
+          readOnly: true
         resources:
           requests:
             memory: "512Mi"
@@ -151,6 +167,14 @@ spec:
             port: 4001
           initialDelaySeconds: 45
           periodSeconds: 15
+      volumes:
+      - name: firebase-credentials
+        secret:
+          secretName: itunda-firebase-credentials
+          optional: true
+          items:
+          - key: firebase-service-account.json
+            path: firebase-service-account.json
 ---
 apiVersion: v1
 kind: Service
