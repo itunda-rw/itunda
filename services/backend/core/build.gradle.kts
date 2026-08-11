@@ -26,6 +26,11 @@ dependencies {
     // servlet container, which this library module has no business pulling in.
     implementation("org.springframework:spring-web")
     implementation("com.mysql:mysql-connector-j")
+    // Real FCM Admin SDK (see push/RealFcmPushSender.kt's own doc comment) -- the
+    // real Google-published client for sending to real device tokens over HTTP v1,
+    // same "real SDK, credential is the only simulated boundary" shape as every
+    // other external integration in this backend.
+    implementation("com.google.firebase:firebase-admin:9.4.1")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     // Toss's own engineering blog (toss.tech/article/test-strategy-server) and multiple
     // Toss-adjacent Kotlin shops document Kotest + MockK, not JUnit+Mockito, as their

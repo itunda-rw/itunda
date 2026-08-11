@@ -378,6 +378,7 @@ class P2pService(
                 title,
                 body,
                 mapOf("amount" to amount.toString(), "senderId" to senderUserId),
+                type = "MONEY_RECEIVED",
             )
         }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {

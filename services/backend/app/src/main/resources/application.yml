@@ -154,6 +154,14 @@ itunda:
   # call, matching Toss Payments' own hosted-checkout-page shape.
   pay:
     checkout-base-url: ${ITUNDA_PAY_CHECKOUT_BASE_URL:http://localhost:5005}
+  # Real FCM push delivery (2026-08-12) -- see PushConfig.kt's own doc comment. Empty
+  # by default, same never-required-for-local-dev convention as mtn-momo/osrm/nominatim
+  # above: without a real Firebase project's service-account JSON key (Firebase Console
+  # -> Project Settings -> Service Accounts -> Generate new private key), every push
+  # falls back to SimulatedPushSender's log-only stand-in, exactly as before this
+  # integration existed.
+  push:
+    firebase-credentials-path: ${FCM_CREDENTIALS_PATH:}
 
 # Real Prometheus scrape target (2026-07-11, alongside micrometer-registry-prometheus
 # in app/build.gradle.kts and infra/k8s/monitoring/prometheus-config.yaml's

@@ -120,7 +120,7 @@ class FraudReviewService(
     private fun sendConfirmedFraudPushAfterCommit(userId: String, title: String, body: String, flagId: String) {
         val send = {
             try {
-                pushNotificationService.sendToUser(userId, title, body, mapOf("flagId" to flagId))
+                pushNotificationService.sendToUser(userId, title, body, mapOf("flagId" to flagId), type = "FRAUD_ALERT")
             } catch (e: Exception) {
                 logger.warn("Could not send confirmed-fraud push for flag {}", flagId, e)
             }

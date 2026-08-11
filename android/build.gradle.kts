@@ -46,6 +46,12 @@ plugins {
     // version string here since it's resolved via settings.gradle.kts's
     // includeBuild composite-build substitution, not a published Maven coordinate.
     id("com.facebook.react") apply false
+    // Real FCM push (2026-08-12) -- see :app's own build.gradle.kts for why this is
+    // applied conditionally rather than unconditionally like every other plugin
+    // above: it requires a real google-services.json (from the Firebase Console)
+    // that doesn't exist in this repo, and unconditionally applying it would break
+    // every build/CI run until one is dropped in.
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
 buildscript {

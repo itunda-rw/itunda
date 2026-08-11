@@ -5,6 +5,21 @@ plugins {
     id("com.facebook.react")
 }
 
+// Real FCM push (2026-08-12) -- see ItundaMessagingService.kt's own doc comment for
+// the full account of why FCM is the transport (Android has no OS-sanctioned
+// alternative for waking a backgrounded app -- this is a platform constraint, not a
+// vendor choice; every real Android app, itunda included, sits on top of it). The
+// google-services plugin needs a real google-services.json downloaded from the
+// Firebase Console (Project Settings -> General -> Your apps -> itunda, applicationId
+// rw.itunda.app) -- something only the project owner can generate, not something this
+// build can fabricate. Applied conditionally so the build stays green either way:
+// without the file, this app compiles and runs exactly as before (PushConfig.kt's
+// backend counterpart falls back the same way); with it, FCM lights up with zero
+// further code changes.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // Real React Native Gradle Plugin config (2026-07-12, granite-adoption stage 2).
 // itunda's JS project root is NOT the default `..` the plugin assumes (that default
 // fits the standard co-located android/+node_modules/ layout the plugin was built
@@ -213,7 +228,15 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    
+
+    // Real FCM push client (2026-08-12) -- see ItundaMessagingService.kt's own doc
+    // comment. Safe to compile/run even without google-services.json applied above:
+    // every call site into FirebaseMessaging guards on FirebaseApp.getApps(context)
+    // being non-empty first, so an unconfigured build just no-ops push registration
+    // rather than crashing.
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+
     // Networking & Architecture
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")

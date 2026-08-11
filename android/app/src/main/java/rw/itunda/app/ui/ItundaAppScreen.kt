@@ -416,6 +416,11 @@ fun ItundaAppScreen(
     onMapDeepLinkConsumed: () -> Unit = {},
 ) {
     IdsTheme {
+        // Real push notification permission request (2026-08-12) -- see
+        // NotificationPermissionPrompt.kt's own doc comment for why here specifically:
+        // this composable only ever renders for an already-logged-in session, the real
+        // contextual moment Toss's own onboarding asks at, not cold app launch.
+        rw.itunda.app.push.NotificationPermissionPrompt()
         var selectedTab by rememberSaveable { mutableStateOf(ItundaTab.Home) }
         var transferStep by rememberSaveable { mutableStateOf<TransferStep?>(null) }
         var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }

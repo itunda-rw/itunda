@@ -34,4 +34,11 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // Real FCM token registration (2026-08-12) -- see SessionManager.currentPushToken's
+    // own doc comment. Play-services-backed Task<String>.await() extension, the
+    // standard way to bridge FirebaseMessaging's Task API into a suspend function
+    // without hand-rolling a suspendCancellableCoroutine wrapper.
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 }

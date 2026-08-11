@@ -13,6 +13,12 @@
          itunda://pay QR directly, see features/shop/impl's own CameraQrScanner.kt. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Real push notifications (2026-08-12): Android 13+ (API 33+) requires this
+         runtime-requested permission before ANY notification can post, unlike every
+         permission above: notifications without it simply never show, no crash, no
+         error, which is why NotificationPermissionPrompt.kt exists (see its own doc
+         comment) instead of assuming a manifest declaration alone is enough. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".miniapps.ItundaApplication"
@@ -65,5 +71,30 @@
             android:name=".miniapps.PartnerMiniAppActivity"
             android:theme="@style/Theme.Itunda.MiniApp"
             android:exported="false" />
+
+        <!-- Real FCM push (2026-08-12), see ItundaMessagingService.kt's own doc
+             comment. exported=false: only the OS/Play Services may deliver to this
+             service, never another app on-device. -->
+        <service
+            android:name=".push.ItundaMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <!-- Real default channel/icon/color metadata FCM's own notification builder
+             reads when a data-only or background-delivered notification message is
+             shown by the OS directly (no onMessageReceived call at all): without
+             these, a backgrounded/killed-app push renders with the generic system
+             default icon (a plain bell) instead of itunda's own mark. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_itunda" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/itunda_notification_brand" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="general" />
     </application>
 </manifest>

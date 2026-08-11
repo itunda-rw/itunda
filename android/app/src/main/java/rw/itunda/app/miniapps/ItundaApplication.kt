@@ -8,6 +8,7 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import rw.itunda.app.BuildConfig
+import rw.itunda.app.push.NotificationChannels
 import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
@@ -96,6 +97,9 @@ class ItundaApplication : Application(), ReactApplication {
         SessionManager.restoreSession()
         ThemePreference.restore()
         AppLocalePreference.restore(this)
+        // Real push notifications (2026-08-12) -- channels must exist before any
+        // notification can post; see NotificationChannels.kt's own doc comment.
+        NotificationChannels.createAll(this)
     }
 }
 

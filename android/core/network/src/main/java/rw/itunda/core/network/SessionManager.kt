@@ -2,6 +2,7 @@ package rw.itunda.core.network
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.tasks.await
 
 sealed interface SessionState {
     data object LoggedOut : SessionState
@@ -105,13 +106,38 @@ object SessionManager {
     // Real push device-token registration (item 120) -- see ApiService.kt's own doc
     // comment. Best-effort and fire-and-forget: a registration failure must never
     // block an otherwise-successful login/register.
-    private suspend fun registerDeviceToken() {
+    //
+    // Real FCM token (2026-08-12) -- replaces the client-generated device id this used
+    // to register as a "push token", the exact gap PushSender.kt's own doc comment
+    // named ("everything up to and including which real device tokens should receive
+    // this push ... is fully real; only the actual network hop ... is simulated").
+    // currentPushToken() falls back to the device id below whenever Firebase isn't
+    // configured (no google-services.json, see :app's build.gradle.kts), so this stays
+    // exactly as safe/best-effort as before on an unconfigured build.
+    suspend fun registerDeviceToken() {
         try {
             val deviceStore = NetworkClient.currentDeviceStore()
-            NetworkClient.authApi.registerDeviceToken(RegisterDeviceTokenRequest(DevicePlatform.ANDROID, deviceStore.getOrCreateDeviceId()))
+            val token = currentPushToken() ?: deviceStore.getOrCreateDeviceId()
+            NetworkClient.authApi.registerDeviceToken(RegisterDeviceTokenRequest(DevicePlatform.ANDROID, token))
         } catch (_: Exception) {
             // Best-effort, see doc comment above.
         }
+    }
+
+    // Public (called again from ItundaMessagingService.onNewToken whenever FCM issues a
+    // fresh token, e.g. after a reinstall or the app's own local data being cleared --
+    // the token registered at login time can go stale independent of the session
+    // itself). DeviceTokenController.register's own doc comment: re-registering the
+    // same or a new token is a natural idempotent upsert, never a duplicate row.
+    private suspend fun currentPushToken(): String? = try {
+        // FirebaseApp.getInstance() throws IllegalStateException when no
+        // google-services.json was present at build time (see :app's build.gradle.kts)
+        // -- the real, cheap way to check "is Firebase actually configured here" without
+        // this module needing to hold onto an Application Context of its own.
+        com.google.firebase.FirebaseApp.getInstance()
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+    } catch (_: Exception) {
+        null
     }
 
     // Real gap found live (2026-08-10): the two other backend-message helpers in this

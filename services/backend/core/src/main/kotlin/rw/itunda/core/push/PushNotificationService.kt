@@ -35,7 +35,13 @@ class PushNotificationService(
 ) {
     private val log = LoggerFactory.getLogger(PushNotificationService::class.java)
 
-    fun sendToUser(userId: String, title: String, body: String, data: Map<String, String> = emptyMap()) {
+    // `type` (e.g. "MONEY_RECEIVED") rides in the data payload's "type" key -- both
+    // RealFcmPushSender (Android notification channel + FCM priority) and the Android
+    // client's own ItundaMessagingService (which channel to post under, where a tap
+    // deep-links to) read it. Optional and additive: every pre-existing call site that
+    // doesn't pass one keeps working exactly as before, defaulting to the "general"
+    // channel on both ends.
+    fun sendToUser(userId: String, title: String, body: String, data: Map<String, String> = emptyMap(), type: String? = null) {
         val tokens = try {
             deviceTokenRepository.findByUserId(userId)
         } catch (e: Exception) {
@@ -45,9 +51,10 @@ class PushNotificationService(
             return
         }
         if (tokens.isEmpty()) return
+        val fullData = if (type != null) data + ("type" to type) else data
         tokens.forEach { token ->
             try {
-                pushSender.send(token, title, body, data)
+                pushSender.send(token, title, body, fullData)
             } catch (e: Exception) {
                 log.warn("Push delivery failed for user {} token {}: {}", userId, token.id, e.message)
             }
