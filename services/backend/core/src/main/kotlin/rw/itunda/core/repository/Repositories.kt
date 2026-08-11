@@ -41,6 +41,8 @@ import rw.itunda.core.domain.UserEmoticonPack
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletAutoTopUpSetting
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.Grow31SavingsDeposit
+import rw.itunda.core.domain.Grow31SavingsPlan
 import rw.itunda.core.domain.WeeklySavingsInstallment
 import rw.itunda.core.domain.WeeklySavingsPlan
 import java.math.BigDecimal
@@ -102,6 +104,14 @@ interface WeeklySavingsPlanRepository : JpaRepository<WeeklySavingsPlan, String>
 
 interface WeeklySavingsInstallmentRepository : JpaRepository<WeeklySavingsInstallment, String> {
     fun findByPlanIdOrderByWeekNumberAsc(planId: String): List<WeeklySavingsInstallment>
+}
+
+interface Grow31SavingsPlanRepository : JpaRepository<Grow31SavingsPlan, String> {
+    fun findByUserId(userId: String): List<Grow31SavingsPlan>
+}
+
+interface Grow31SavingsDepositRepository : JpaRepository<Grow31SavingsDeposit, String> {
+    fun findByPlanIdOrderByDayNumberAsc(planId: String): List<Grow31SavingsDeposit>
 }
 
 interface LedgerAccountRepository : JpaRepository<LedgerAccount, String> {

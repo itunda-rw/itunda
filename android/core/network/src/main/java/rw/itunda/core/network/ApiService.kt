@@ -2106,6 +2106,68 @@ data class WeeklySavingsActionResponse(
     val installments: List<WeeklySavingsInstallmentDto>,
 )
 
+// Real Toss Bank 키워봐요 31일적금 (Grow-it 31-day savings) equivalent (2026-08-12) --
+// see backend's Grow31SavingsPlan.kt doc comment for the full sourced mechanics: a real
+// once-per-calendar-day USER-triggered deposit (not an auto-debit) over a fixed 31-day
+// term, with a bonus rate keyed on the longest unbroken daily-deposit streak reached
+// (base 1%, +3/+4/+6/+8/+10 at a 3/7/14/21/31-day streak). TERM_DAYS=31 is a
+// display-only constant mirrored from Grow31SavingsService.kt -- no endpoint exposes it
+// since it never changes.
+data class Grow31SavingsPlanDto(
+    val id: String,
+    val userId: String,
+    val walletId: String,
+    val name: String,
+    val dailyAmount: Double,
+    val startDate: String,
+    val daysElapsed: Int,
+    val currentStreak: Int,
+    val longestStreak: Int,
+    val lastDepositDate: String? = null,
+    val totalSaved: Double,
+    val baseRate: Double,
+    val status: String,
+    val createdAt: String,
+    val maturedAt: String? = null,
+    val cancelledAt: String? = null,
+    val withdrawnAt: String? = null,
+    val totalInterestPaid: Double? = null,
+)
+
+data class Grow31SavingsDepositDto(
+    val id: String,
+    val planId: String,
+    val dayNumber: Int,
+    val depositDate: String,
+    val amount: Double,
+    val streakAtDeposit: Int,
+    val depositedAt: String,
+)
+
+data class Grow31SavingsPlansResponse(val success: Boolean, val plans: List<Grow31SavingsPlanDto>)
+
+data class Grow31SavingsPlanDetailResponse(
+    val success: Boolean,
+    val plan: Grow31SavingsPlanDto,
+    val walletBalance: Double,
+    val deposits: List<Grow31SavingsDepositDto>,
+)
+
+data class CreateGrow31SavingsPlanRequest(val name: String, val dailyAmount: java.math.BigDecimal)
+
+// POST /plans's real response shape is just {success, plan} -- same "brand-new plan has
+// no wallet balance/deposits yet" reasoning CreateWeeklySavingsPlanResponse's own doc
+// comment names.
+data class CreateGrow31SavingsPlanResponse(val success: Boolean, val plan: Grow31SavingsPlanDto)
+
+data class Grow31SavingsActionResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val plan: Grow31SavingsPlanDto,
+    val walletBalance: Double,
+    val deposits: List<Grow31SavingsDepositDto>,
+)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 // Real, minimal product-analytics event (2026-08-10) -- see the backend's own
@@ -3604,6 +3666,28 @@ interface ApiService {
 
     @POST("api/v1/weekly-savings/plans/{id}/withdraw")
     suspend fun withdrawWeeklySavingsPlan(@Path("id") id: String): WeeklySavingsActionResponse
+
+    // Real 31-day daily savings plan (2026-08-12) -- see Grow31SavingsPlanDto's own doc
+    // comment. Unlike weekly-savings above, create/depositToday/cancel/withdraw all
+    // genuinely require the Idempotency-Key header -- Grow31SavingsController declares
+    // it on every state-changing endpoint.
+    @GET("api/v1/grow31-savings/plans")
+    suspend fun getGrow31SavingsPlans(): Grow31SavingsPlansResponse
+
+    @GET("api/v1/grow31-savings/plans/{id}")
+    suspend fun getGrow31SavingsPlan(@Path("id") id: String): Grow31SavingsPlanDetailResponse
+
+    @POST("api/v1/grow31-savings/plans")
+    suspend fun createGrow31SavingsPlan(@Header("Idempotency-Key") idempotencyKey: String, @Body request: CreateGrow31SavingsPlanRequest): CreateGrow31SavingsPlanResponse
+
+    @POST("api/v1/grow31-savings/plans/{id}/deposit-today")
+    suspend fun depositGrow31SavingsToday(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String): Grow31SavingsActionResponse
+
+    @POST("api/v1/grow31-savings/plans/{id}/cancel")
+    suspend fun cancelGrow31SavingsPlan(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String): Grow31SavingsActionResponse
+
+    @POST("api/v1/grow31-savings/plans/{id}/withdraw")
+    suspend fun withdrawGrow31SavingsPlan(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String): Grow31SavingsActionResponse
 
     // Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit)
     // equivalent (2026-07-25) -- see backend UpfrontInterestDeposit's own doc comment.

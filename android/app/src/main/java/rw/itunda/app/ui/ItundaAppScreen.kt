@@ -475,6 +475,10 @@ fun ItundaAppScreen(
         // backend (WeeklySavingsController/WeeklySavingsService) never had ANY mobile UI
         // before now.
         var showWeeklySavings by rememberSaveable { mutableStateOf(false) }
+        // Real Toss Bank 키워봐요 31일적금 (Grow-it 31-day savings) screen (2026-08-12) --
+        // same "backend existed with zero mobile UI" pattern as WeeklySavingsScreen above,
+        // just shipped with a client from day one this time.
+        var showGrow31Savings by rememberSaveable { mutableStateOf(false) }
         // Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit)
         // screen (2026-07-25) -- same "backend existed with zero mobile UI" gap
         // WeeklySavingsScreen closed above.
@@ -1205,6 +1209,13 @@ fun ItundaAppScreen(
             WeeklySavingsScreen(onBack = { showWeeklySavings = false })
             return@IdsTheme
         }
+        // Real Toss Bank 키워봐요 31일적금 screen (2026-08-12) -- same Quick-links
+        // full-screen pattern as WeeklySavingsScreen directly above.
+        if (showGrow31Savings) {
+            BackHandler { showGrow31Savings = false }
+            Grow31SavingsScreen(onBack = { showGrow31Savings = false })
+            return@IdsTheme
+        }
         // Real Toss Bank 먼저 이자받는 정기예금 screen (2026-07-25) -- same pattern.
         if (showUpfrontDeposit) {
             BackHandler { showUpfrontDeposit = false }
@@ -1263,6 +1274,7 @@ fun ItundaAppScreen(
                 onOpenLoans = { showLoans = true },
                 onOpenInvest = { showInvest = true },
                 onOpenWeeklySavings = { showWeeklySavings = true },
+                onOpenGrow31Savings = { showGrow31Savings = true },
                 onOpenUpfrontDeposit = { showUpfrontDeposit = true },
                 onOpenVupLoan = { showVupLoan = true },
                 onOpenStudentLoan = { showStudentLoan = true },
@@ -1440,6 +1452,7 @@ fun ItundaAppScreen(
                             onOpenCertificate = { showCertificate = true },
                             onOpenIdentity = { showIdentity = true },
                             onOpenWeeklySavings = { showWeeklySavings = true },
+                            onOpenGrow31Savings = { showGrow31Savings = true },
                             onOpenUpfrontDeposit = { showUpfrontDeposit = true },
                             onOpenMiniWallet = { showMiniWallet = true },
                             onOpenCard = { showCard = true },
@@ -1816,6 +1829,7 @@ private fun BankHubScreen(
     onOpenLoans: () -> Unit,
     onOpenInvest: () -> Unit,
     onOpenWeeklySavings: () -> Unit,
+    onOpenGrow31Savings: () -> Unit,
     onOpenUpfrontDeposit: () -> Unit,
     onOpenVupLoan: () -> Unit,
     onOpenStudentLoan: () -> Unit,
@@ -1918,6 +1932,7 @@ private fun BankHubScreen(
                             )
                         }
                         add(ShellRow("26-week savings", "Escalating weekly deposit plan", ">", Icons.Outlined.Savings, AccentBlue, onClick = onOpenWeeklySavings))
+                        add(ShellRow("31-day savings", "Daily streak, tiered bonus rate", ">", Icons.Outlined.Savings, AccentOrange, onClick = onOpenGrow31Savings))
                         add(ShellRow("12-month deposit", "Interest paid upfront, principal locked", ">", Icons.Outlined.Savings, AccentPurple, onClick = onOpenUpfrontDeposit))
                         add(ShellRow(stringResource(R.string.home_coop_rail_ikimina_title), stringResource(R.string.home_coop_rail_ikimina_subtitle), ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina))
                         add(ShellRow(stringResource(R.string.home_coop_rail_sacco_title), stringResource(R.string.home_coop_rail_sacco_subtitle), ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco))
@@ -2863,6 +2878,7 @@ private fun MenuScreen(
     onOpenCertificate: () -> Unit = {},
     onOpenIdentity: () -> Unit = {},
     onOpenWeeklySavings: () -> Unit = {},
+    onOpenGrow31Savings: () -> Unit = {},
     onOpenUpfrontDeposit: () -> Unit = {},
     onOpenMiniWallet: () -> Unit = {},
     onOpenCard: () -> Unit = {},
@@ -2941,6 +2957,7 @@ private fun MenuScreen(
         FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
         FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
         FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
+        FlatRow("31-Day Savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
         FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
     )
     val accountsRows = listOf(
@@ -2964,6 +2981,7 @@ private fun MenuScreen(
     )
     val saveGrowRows = listOf(
         FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
+        FlatRow("31-day savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
         FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
         FlatRow("Mini account", subtitle = "Capped starter wallet, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniWallet),
         FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenIkimina),
