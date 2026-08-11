@@ -29,6 +29,7 @@ class LoanAmountInvalidException(message: String) : RuntimeException(message)
 class LoanApplicationDeclinedException(message: String) : RuntimeException(message)
 class NoWalletException(message: String) : RuntimeException(message)
 class NoBetterRateAvailableException(message: String) : RuntimeException(message)
+class BusinessAccountRequiredException(message: String) : RuntimeException(message)
 
 // Real affordability/risk-model governance (2026-07-13) -- see
 // docs/TOSS_PARITY_MATRIX.md's Credit row ("affordability/risk-model governance ... still
@@ -97,7 +98,17 @@ class LoansService(
             throw LoanApplicationDeclinedException("Credit score $score is below $HIGH_AMOUNT_SCORE_THRESHOLD, required for amounts over half of ${offer.name}'s limit")
         }
 
-        val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+        // Real business-account gating (2026-08-11) -- see LoanOffer.requiresBusinessAccount's
+        // own doc comment. A business-scoped offer disburses into the real BUSINESS wallet,
+        // not MAIN, matching Toss Bank's own real 전문직사업자대출/사장님신용대출 pattern of
+        // business-account-scoped lending rather than a relabeled personal loan.
+        val walletType = if (offer.requiresBusinessAccount) WalletType.BUSINESS else WalletType.MAIN
+        val wallet = walletRepository.findByUserIdAndType(userId, walletType)
+            ?: if (offer.requiresBusinessAccount) {
+                throw BusinessAccountRequiredException("Open an itunda Business account before applying for ${offer.name}")
+            } else {
+                throw NoWalletException("No wallet found for this account")
+            }
 
         ledgerService.postLedgerTransaction(
             wallet.currency,

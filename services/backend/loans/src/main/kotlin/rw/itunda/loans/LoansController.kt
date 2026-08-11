@@ -237,6 +237,10 @@ class LoansController(
     @ExceptionHandler(NoWalletException::class)
     fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
+    @ExceptionHandler(BusinessAccountRequiredException::class)
+    fun handleBusinessAccountRequired(ex: BusinessAccountRequiredException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("BUSINESS_ACCOUNT_REQUIRED", ex.message ?: "Conflict"))
+
     @ExceptionHandler(LoanNotOwnedException::class)
     fun handleNotOwned(ex: LoanNotOwnedException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("LOAN_NOT_OWNED", ex.message ?: "Forbidden"))
 

@@ -34,6 +34,19 @@ data class LoanOffer(
     val interestRate: Double,
     val term: String,
     val requirements: String,
+    // Real gap found 2026-08-11 (DESIGN_REFERENCES.md item 6's own named follow-up,
+    // "사장님 대출 (Boss Loans) as a business-specific lending product") -- Toss Bank's
+    // real 전문직사업자대출/사장님신용대출 (launched 2026-02/03, tossbank.com/articles/
+    // soho-loan-transfer) are genuinely business-account-scoped products, not a
+    // relabeled personal loan. Until this field existed, "Business Loan" (loan_3
+    // below) was disbursed to the borrower's MAIN wallet exactly like every other
+    // offer -- no real business-account requirement, no real business-scoped
+    // disbursement, despite `WalletType.BUSINESS`/`MerchantBusinessAccountService`
+    // (2026-07-25) already existing. When true, `LoansService.applyForLoan` requires
+    // and disburses to the caller's real BUSINESS wallet instead of MAIN;
+    // `repayLoan` needs no matching change since it already repays from
+    // `LoanAccount.walletId`, the wallet actually disbursed to.
+    val requiresBusinessAccount: Boolean = false,
 )
 
 /** Same static catalog as backend/src/services/database.ts's loanOffers, now a real multi-lender marketplace. */
@@ -41,7 +54,7 @@ object LoanCatalog {
     val offers = listOf(
         LoanOffer("loan_1", "lender_itunda", "Itunda", "Quick Loan", BigDecimal("500000"), 5.0, "30 days", "MTN MoMo account"),
         LoanOffer("loan_2", "lender_itunda", "Itunda", "Personal Loan", BigDecimal("2000000"), 3.5, "6 months", "KYC verified"),
-        LoanOffer("loan_3", "lender_itunda", "Itunda", "Business Loan", BigDecimal("5000000"), 2.8, "12 months", "KYC verified + 3 months history"),
+        LoanOffer("loan_3", "lender_itunda", "Itunda", "Business Loan", BigDecimal("5000000"), 2.8, "12 months", "Open itunda Business account + 3 months history", requiresBusinessAccount = true),
         LoanOffer("loan_4", "lender_bk", "Bank of Kigali", "BK Personal Loan", BigDecimal("3000000"), 3.2, "9 months", "KYC verified"),
         LoanOffer("loan_5", "lender_equity", "Equity Bank Rwanda", "Equity SME Loan", BigDecimal("8000000"), 2.5, "18 months", "KYC verified + 3 months history"),
         LoanOffer("loan_6", "lender_urwego", "Urwego Bank", "Urwego Microloan", BigDecimal("300000"), 4.5, "30 days", "MTN MoMo account"),
