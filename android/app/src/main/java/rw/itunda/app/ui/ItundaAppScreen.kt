@@ -2783,8 +2783,11 @@ private fun WalletCardCarousel(
         androidx.compose.foundation.pager.HorizontalPager(
             state = pagerState,
             pageSpacing = 12.dp,
-            contentPadding = PaddingValues(horizontal = 40.dp),
-            modifier = Modifier.fillMaxWidth().height(92.dp),
+            contentPadding = PaddingValues(horizontal = 56.dp),
+            // Real physical-card proportions (roughly the 1.586:1 ISO/IEC 7810 ID-1
+            // ratio a real bank card uses) rather than the earlier thin banner shape --
+            // closer to the user's own KakaoPay reference screenshot's card thumbnails.
+            modifier = Modifier.fillMaxWidth().height(148.dp),
         ) { page ->
             val w = wallets[page]
             Column(
@@ -2792,19 +2795,30 @@ private fun WalletCardCarousel(
                     .fillMaxSize()
                     .clip(RoundedCornerShape(16.dp))
                     .background(walletCardColor(w.currency))
-                    .padding(16.dp),
+                    .padding(18.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(
-                    if (w.type == "MAIN") "itunda Pay" else "itunda Pay ${w.currency}",
-                    color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                // Small light rectangle mimicking a real card's EMV chip -- a cheap,
+                // honest visual cue that reads as "card" at a glance, same real-card
+                // metaphor the reference screenshot's own card art leans on.
+                Box(
+                    modifier = Modifier
+                        .size(width = 32.dp, height = 24.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.35f)),
                 )
-                Text(
-                    "${w.currency} ${
-                        if (w.currency == "RWF") "%,.0f".format(w.availableBalance) else "%,.2f".format(w.availableBalance)
-                    }",
-                    color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp,
-                )
+                Column {
+                    Text(
+                        if (w.type == "MAIN") "itunda Pay" else "itunda Pay ${w.currency}",
+                        color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    )
+                    Text(
+                        "${w.currency} ${
+                            if (w.currency == "RWF") "%,.0f".format(w.availableBalance) else "%,.2f".format(w.availableBalance)
+                        }",
+                        color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold, fontSize = 19.sp,
+                    )
+                }
             }
         }
         Spacer(Modifier.height(10.dp))

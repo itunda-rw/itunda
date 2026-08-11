@@ -38,4 +38,18 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // Real camera-based QR scanning (2026-08-11) -- lets a customer scan a merchant's
+    // own itunda://pay?intentId= QR directly instead of typing the payment code (see
+    // PayByCodeCard's own doc comment for that typed flow, still kept as the fallback
+    // when a camera isn't usable). Same CameraX + ML Kit combination merchantapp's
+    // CameraQrScanner.kt already established for the reverse direction (merchant
+    // scanning a customer's code) -- this app has its own copy rather than a shared
+    // module, same "duplicate for money-critical safety, separate apps" precedent
+    // PayQrCodeUtil.kt/QrCodeUtil.kt already set.
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 }

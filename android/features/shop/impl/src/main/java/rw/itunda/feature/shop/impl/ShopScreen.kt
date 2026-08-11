@@ -2854,11 +2854,16 @@ fun PayAMerchantSection(
     // action (it changes how Pay-by-code itself behaves, per that card's own copy) -- but
     // Code vs. static QR are now mutually exclusive via a real mode picker, matching Toss's
     // own resolution for this exact class of violation.
-    var payMode by remember { mutableStateOf(PayMerchantMode.CODE) }
+    // Real camera scanning added (2026-08-11) as the new default -- matches real
+    // KakaoPay/Toss Pay's own "QR스캔" primary in-store flow (see the user's own
+    // reference screenshot). CODE (typed fallback) and STATIC_QR stay for when a
+    // camera isn't usable, same "no typing unless you have to" principle MY_CODE's
+    // own tap-to-reveal already established for the customer's own code.
+    var payMode by remember { mutableStateOf(PayMerchantMode.SCAN) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         FacePaySettingsCard(enrolled = facePayEnrolled, onChanged = ::loadFacePayStatus)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            listOf(PayMerchantMode.CODE to "Pay by code", PayMerchantMode.STATIC_QR to "Pay by merchant ID").forEach { (mode, label) ->
+            listOf(PayMerchantMode.SCAN to "Scan QR", PayMerchantMode.CODE to "Pay by code", PayMerchantMode.STATIC_QR to "Merchant ID").forEach { (mode, label) ->
                 val active = payMode == mode
                 Text(
                     label, fontSize = 13.sp, fontWeight = FontWeight.Bold,
@@ -2874,13 +2879,14 @@ fun PayAMerchantSection(
             }
         }
         when (payMode) {
+            PayMerchantMode.SCAN -> PayByScanCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
             PayMerchantMode.CODE -> PayByCodeCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
             PayMerchantMode.STATIC_QR -> PayByStaticQrCard(onPaid = { paymentResult = it })
         }
     }
 }
 
-private enum class PayMerchantMode { CODE, STATIC_QR }
+private enum class PayMerchantMode { SCAN, CODE, STATIC_QR }
 
 /**
  * Real Face Pay enroll/disable toggle -- see rw.itunda.merchant.FacePayService's own
@@ -3070,6 +3076,154 @@ private fun PayByCodeCard(
     }
     // Real fix (2026-08-10) -- see MultiCartView's own identical fix above for the
     // full account. payDirect resets needsDeviceVerification itself.
+    deviceStepUpHost(needsDeviceVerification, { needsDeviceVerification = false }, { payDirect(selectedCouponId) })
+}
+
+/**
+ * Real camera scanning for the existing merchant-generated PaymentIntent QR
+ * (`itunda://pay?intentId=...`, see merchantapp's own `paymentIntentQrPayload` doc
+ * comment) -- this is the exact same real `collectPayment`/`collectWithFacePay`
+ * charge PayByCodeCard already makes, just sourced from a scanned QR instead of a
+ * typed code, closing the real "no scanner" gap that card's own copy used to admit
+ * ("No scanner handy? Enter the code..."). Deliberately mirrors PayByCodeCard's
+ * device-step-up/coupon-preview handling rather than a simplified path, since it's
+ * real money movement and the two entry points should behave identically.
+ */
+@Composable
+private fun PayByScanCard(
+    deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+    facePayEnrolled: Boolean,
+    onPaid: (CollectPaymentResultDto) -> Unit,
+) {
+    var scannedIntentId by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var needsDeviceVerification by remember { mutableStateOf(false) }
+    var preview by remember { mutableStateOf<PaymentIntentPreviewResponse?>(null) }
+    var eligibleCoupons by remember { mutableStateOf<List<MerchantCouponViewDto>>(emptyList()) }
+    var selectedCouponId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun payDirect(couponId: String? = null) {
+        val intentId = scannedIntentId ?: return
+        needsDeviceVerification = false
+        submitting = true
+        error = null
+        coroutineScope.launch {
+            try {
+                val idempotencyKey = UUID.randomUUID().toString()
+                val result = if (facePayEnrolled) {
+                    NetworkClient.apiService.collectWithFacePay(intentId, idempotencyKey)
+                } else {
+                    NetworkClient.apiService.collectPayment(intentId, idempotencyKey, CollectPaymentRequest(couponId))
+                }
+                scannedIntentId = null
+                preview = null
+                eligibleCoupons = emptyList()
+                selectedCouponId = null
+                onPaid(result)
+            } catch (e: HttpException) {
+                if (isDeviceNotVerifiedError(e)) {
+                    needsDeviceVerification = true
+                } else {
+                    error = superAppErrorMessage(e)
+                    scannedIntentId = null
+                }
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+                scannedIntentId = null
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
+    fun handleScanned(rawValue: String) {
+        val intentId = try {
+            android.net.Uri.parse(rawValue).getQueryParameter("intentId")
+        } catch (e: Exception) {
+            null
+        }
+        if (intentId.isNullOrBlank()) {
+            error = "That doesn't look like an itunda payment QR code."
+            return
+        }
+        error = null
+        scannedIntentId = intentId
+        if (facePayEnrolled) {
+            payDirect()
+            return
+        }
+        submitting = true
+        coroutineScope.launch {
+            try {
+                val r = NetworkClient.apiService.previewPaymentIntent(intentId)
+                val eligible = r.coupons.filter { it.eligible && !it.alreadyRedeemed }
+                if (eligible.isEmpty()) {
+                    payDirect()
+                } else {
+                    preview = r
+                    eligibleCoupons = eligible
+                    submitting = false
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+                scannedIntentId = null
+                submitting = false
+            } catch (e: IOException) {
+                error = "Could not look up this payment code."
+                scannedIntentId = null
+                submitting = false
+            }
+        }
+    }
+
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Scan a merchant's QR", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            val currentPreview = preview
+            when {
+                currentPreview != null -> {
+                    Text(currentPreview.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("%,.0f RWF".format(currentPreview.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text("Apply a coupon?", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedCouponId == null, onClick = { selectedCouponId = null })
+                        Text("No coupon", color = Ids.colors.textPrimary, fontSize = 13.sp)
+                    }
+                    eligibleCoupons.forEach { c ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = selectedCouponId == c.coupon.id, onClick = { selectedCouponId = c.coupon.id })
+                            Text("${c.coupon.title} -- ${couponDiscountLabel(c.coupon)}", color = Ids.colors.textPrimary, fontSize = 13.sp)
+                        }
+                    }
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ListingActionButtonShop(if (submitting) "Paying…" else "Pay", submitting, filled = true) { payDirect(selectedCouponId) }
+                        ListingActionButtonShop("Cancel", submitting, filled = false) {
+                            preview = null; eligibleCoupons = emptyList(); selectedCouponId = null; scannedIntentId = null; error = null
+                        }
+                    }
+                }
+                submitting -> {
+                    Box(modifier = Modifier.fillMaxWidth().height(280.dp), contentAlignment = Alignment.Center) {
+                        Text(if (facePayEnrolled) "Authorizing…" else "Paying…", color = Ids.colors.textSecondary, fontSize = 14.sp)
+                    }
+                }
+                else -> {
+                    Text(
+                        "Point your camera at the merchant's payment QR code.",
+                        color = Ids.colors.textSecondary, fontSize = 12.sp,
+                    )
+                    CameraQrScanner(
+                        onScanned = ::handleScanned,
+                        modifier = Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(12.dp)),
+                    )
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+                }
+            }
+        }
+    }
     deviceStepUpHost(needsDeviceVerification, { needsDeviceVerification = false }, { payDirect(selectedCouponId) })
 }
 
