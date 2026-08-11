@@ -236,6 +236,12 @@ struct LoansScreenView: View {
     @State private var busyId: String?
     @State private var repayAmounts: [String: String] = [:]
     @State private var refinanceResult: RefinanceResult?
+    // Real Toss writing-principle adoption ("숨은 감정 찾기" -- find the hidden emotion):
+    // toss.tech/article/8-writing-principles-of-toss names a fully-repaid loan as their
+    // own example of a moment that deserves more than transactional silence. Paying off
+    // a loan just refreshed the list silently before this, even though the repay
+    // response already tells us `remaining` hit zero.
+    @State private var payoffMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -258,6 +264,7 @@ struct LoansScreenView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    if let payoffMessage { Text(payoffMessage).font(.subheadline).bold().foregroundColor(IDS.Colors.brand) }
                     if let refinanceResult {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Refinanced into \(refinanceResult.newLoanName)").font(.subheadline).bold()
@@ -365,8 +372,9 @@ struct LoansScreenView: View {
         busyId = loan.id; error = nil
         defer { busyId = nil }
         do {
-            _ = try await NetworkClient.shared.repayLoan(loanId: loan.id, amount: amount)
+            let result = try await NetworkClient.shared.repayLoan(loanId: loan.id, amount: amount)
             repayAmounts[loan.id] = nil
+            payoffMessage = result.remaining <= 0 ? "You paid off this loan in full — one less thing to carry." : nil
             await refresh()
         } catch { self.error = "That repayment could not be completed." }
     }

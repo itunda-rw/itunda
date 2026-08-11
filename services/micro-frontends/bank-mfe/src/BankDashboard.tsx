@@ -2124,14 +2124,21 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
     }
   };
 
+  // Real Toss writing-principle adoption ("숨은 감정 찾기" -- find the hidden emotion):
+  // toss.tech/article/8-writing-principles-of-toss names a fully-repaid loan as their
+  // own example of a moment that deserves more than transactional silence. Paying off
+  // a loan just refreshed the list silently before this, even though the repay response
+  // already tells us `remaining` hit zero.
+  const [payoffMessage, setPayoffMessage] = useState<string | null>(null);
   const handleRepay = async (loan: LoanAccount) => {
     const amount = Number(repayAmounts[loan.id] ?? '');
     if (!amount || amount <= 0) { setError('Enter a valid repayment amount.'); return; }
     setBusyId(loan.id);
     setError(null);
     try {
-      await repayLoan(loan.id, amount);
+      const result = await repayLoan(loan.id, amount);
       setRepayAmounts((prev) => { const next = { ...prev }; delete next[loan.id]; return next; });
+      setPayoffMessage(result.remaining <= 0 ? 'You paid off this loan in full — one less thing to carry.' : null);
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'That repayment could not be completed.');
@@ -2182,6 +2189,7 @@ function LoansView({ initialMode, onConsumedInitialMode }: { initialMode?: Loans
       {mode === 'STUDENT' && <StudentLoanView />}
       {mode === 'MOTO_OWNERSHIP' && <MotoOwnershipView />}
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && payoffMessage && <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>{payoffMessage}</p>}
       {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && mode !== 'VUP' && mode !== 'STUDENT' && mode !== 'MOTO_OWNERSHIP' && refinanceResult && (
         <div className="itunda-card" style={{ padding: '16px', border: '1px solid var(--itunda-blue)' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>

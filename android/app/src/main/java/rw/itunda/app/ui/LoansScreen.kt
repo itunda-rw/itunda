@@ -71,6 +71,12 @@ fun LoansScreen(onBack: () -> Unit) {
     var busyId by remember { mutableStateOf<String?>(null) }
     var repayAmounts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var refinanceResult by remember { mutableStateOf<RefinanceResult?>(null) }
+    // Real Toss writing-principle adoption ("숨은 감정 찾기" -- find the hidden emotion):
+    // toss.tech/article/8-writing-principles-of-toss names a fully-repaid loan as their
+    // own example of a moment that deserves more than transactional silence. Paying off
+    // a loan was a silent list refresh before this -- no acknowledgment of what the user
+    // just finished, even though `RepayLoanResponse.remaining` already tells us.
+    var payoffMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun refresh() {
@@ -116,6 +122,7 @@ fun LoansScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            payoffMessage?.let { item { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium) } }
             refinanceResult?.let { result ->
                 item {
                     Card(Modifier.fillMaxWidth()) {
@@ -175,10 +182,14 @@ fun LoansScreen(onBack: () -> Unit) {
                             val amount = (repayAmounts[loan.id] ?: "").toBigDecimalOrNull()
                             if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@MyLoanCard }
                             busyId = loan.id
+                            error = null
                             scope.launch {
                                 try {
-                                    NetworkClient.apiService.repayLoan(UUID.randomUUID().toString(), RepayLoanRequest(loan.id, amount))
+                                    val result = NetworkClient.apiService.repayLoan(UUID.randomUUID().toString(), RepayLoanRequest(loan.id, amount))
                                     repayAmounts = repayAmounts - loan.id
+                                    payoffMessage = if (result.remaining <= BigDecimal.ZERO) {
+                                        "You paid off this loan in full — one less thing to carry."
+                                    } else null
                                     refresh()
                                 } catch (_: Exception) {
                                     error = "That repayment could not be completed."
