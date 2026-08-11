@@ -81,6 +81,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         // now also Loans/Invest -- see ContentView's own coopRows doc comment), just
         // given the real product identity they were missing.
         "coopRailTitle": "itunda Bank",
+        "bankStatusDisclosure": "itunda is not a licensed bank. Your balance is e-money, not a bank deposit, and isn't covered by deposit insurance. \"itunda Bank\" is itunda's own product name for these savings, SACCO/Ikimina, loan, and investment features -- not a separate licensed banking entity.",
     ],
     .rw: [
         "goodMorning": "Mwaramutse",
@@ -126,6 +127,7 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "goalSaverTitle": "Umugambi w'ubwizigame",
         "goalSaverSubtitle": "Imigendekere y'ubwizigame bw'ibihe bikomeye",
         "coopRailTitle": "itunda Bank",
+        "bankStatusDisclosure": "itunda si banki ifite uruhushya. Amafaranga yawe ni e-money, ntabwo ari amafaranga abitswe muri banki, kandi ntabwo yishingirwa n'ubwishingizi bw'ubwizigame. \"itunda Bank\" ni izina ry'ibicuruzwa bya itunda ku bwizigame, SACCO/Ikimina, inguzanyo, no gushora imari -- ntabwo ari urwego rwihariye rufite uruhushya rwa banki.",
     ],
 ]
 
@@ -287,6 +289,19 @@ public struct BankView: View {
                         }
                     )
                 }
+                // Real licensed-bank/deposit-insurance disclosure (2026-08-11) -- see
+                // docs/TOSS_PARITY_MATRIX.md's own confirmation of "zero real banking-
+                // license implementation anywhere" and TOSS_FEATURE_SPECIFICATION.md's
+                // Pillar 3 listing "itunda Bank... RBDB licensed in Rwanda" as roadmap-
+                // only, never built. This screen's "itunda Bank" section title
+                // (coopRailTitle above) has carried that name with no disclosure
+                // anywhere clarifying itunda's actual (unlicensed) status. Same fix on
+                // Android's BankHubScreen and web's Bank tab the same day.
+                Text(bt("bankStatusDisclosure", locale: locale))
+                    .font(.system(size: 11))
+                    .foregroundColor(IDS.Colors.textTertiary)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 4)
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, IDS.Layout.screenTop)

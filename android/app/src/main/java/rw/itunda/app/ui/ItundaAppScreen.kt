@@ -1849,7 +1849,6 @@ private fun BankHubScreen(
                 val roundUpOn = stringResource(R.string.home_round_up_on)
                 val roundUpSetUp = stringResource(R.string.home_round_up_set_up)
                 val interestJarLabel = stringResource(R.string.home_interest_jar)
-                val earnedThisMonthLabel = stringResource(R.string.home_earned_this_month)
                 val roundUpTitle = stringResource(R.string.home_round_up_title)
                 val roundUpRoundingText = roundUpSettings?.roundToNearest?.let { stringResource(R.string.home_round_up_rounding, "%,.0f".format(it)) }
                 val savingsProgressPattern = stringResource(R.string.home_savings_progress)
@@ -1857,10 +1856,18 @@ private fun BankHubScreen(
                     title = stringResource(R.string.bank_save_grow),
                     rows = buildList {
                         interestJar?.let { jar ->
+                            // Real interest-methodology transparency (2026-08-11) --
+                            // this row only ever showed the opaque earned-this-month
+                            // figure, never the rate or accrual frequency backing it
+                            // (SavingsService.accrueInterest() divides jar.rate, the
+                            // real annual rate, by 365 for a real daily accrual --
+                            // that math was never shown to the user on this platform).
+                            // Matches the same fix applied to bank-mfe's mislabeled
+                            // "daily interest" copy the same day.
                             add(
                                 ShellRow(
                                     interestJarLabel,
-                                    earnedThisMonthLabel,
+                                    stringResource(R.string.home_interest_jar_rate_subtitle, "%.1f".format(jar.rate)),
                                     "RWF %,.0f".format(jar.earnedThisMonth),
                                     Icons.Outlined.Savings,
                                     AccentOrange,
@@ -1915,6 +1922,25 @@ private fun BankHubScreen(
                         ShellRow("Student loan", "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", ">", Icons.Outlined.School, AccentPurple, onClick = onOpenStudentLoan),
                         ShellRow(stringResource(R.string.home_coop_rail_moto_title), "Save a 30% down payment, then convert to a loan for your own bike", ">", Icons.Outlined.DirectionsBike, AccentTeal, onClick = onOpenMotoOwnership),
                     )
+                )
+            }
+            // Real licensed-bank/deposit-insurance disclosure (2026-08-11) -- see
+            // docs/TOSS_PARITY_MATRIX.md's own confirmation of "zero real banking-
+            // license implementation anywhere" and TOSS_FEATURE_SPECIFICATION.md's
+            // Pillar 3 listing "itunda Bank... RBDB licensed in Rwanda" as roadmap-
+            // only, never built. This exact screen has carried the "itunda Bank" name
+            // on every platform since the same day AccountSwitcherSheet's own doc
+            // comment (above) reasoned that label risks a real regulatory overclaim
+            // for the wallet row -- with no disclosure anywhere clarifying itunda's
+            // actual (unlicensed) status. Real Toss Bank/KakaoBank both lead with
+            // exactly this kind of small-print status disclosure; itunda's honest
+            // equivalent is the inverse claim, not a copy of theirs.
+            item {
+                Text(
+                    stringResource(R.string.bank_status_disclosure),
+                    color = Ids.colors.textTertiary,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                 )
             }
         }

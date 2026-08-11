@@ -130,9 +130,16 @@ struct ContentView: View {
     private var savingsRows: [SavingsRowData] {
         var rows: [SavingsRowData] = []
         if let jar = bankViewModel.interestJar {
+            // Real interest-methodology transparency (2026-08-11) -- this row only
+            // ever showed the opaque earned-this-month figure, never the rate or
+            // accrual frequency backing it (SavingsService.accrueInterest() divides
+            // jar.rate, the real annual rate, by 365 for a real daily accrual -- that
+            // math was never shown to the user on this platform). Matches the same
+            // fix applied to bank-mfe's mislabeled "daily interest" copy and Android's
+            // equivalent row the same day.
             rows.append(SavingsRowData(
                 title: "Interest jar",
-                subtitle: "Earned this month",
+                subtitle: String(format: "%.1f%% annual, accrued daily", jar.rate),
                 trailing: "RWF \(Int(jar.earnedThisMonth))",
                 onTap: { savingsFlowStep = .claimInterest }
             ))

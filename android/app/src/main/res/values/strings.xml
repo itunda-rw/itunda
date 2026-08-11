@@ -161,6 +161,7 @@
     <string name="home_savings">Savings</string>
     <string name="home_interest_jar">Interest jar</string>
     <string name="home_earned_this_month">Earned this month</string>
+    <string name="home_interest_jar_rate_subtitle">%1$s%% annual, accrued daily</string>
     <string name="home_savings_progress">RWF %1$s of %2$s</string>
     <string name="home_round_up_rounding">Rounding up to RWF %1$s</string>
     <string name="home_round_up_off">Off</string>
@@ -177,4 +178,5 @@
     <string name="bank_summary_subtitle">Savings, SACCO, Ikimina, loans &amp; investments</string>
     <string name="bank_save_grow">Save &amp; grow</string>
     <string name="bank_borrow">Borrow</string>
+    <string name="bank_status_disclosure">itunda is not a licensed bank. Your balance is e-money, not a bank deposit, and isn\'t covered by deposit insurance. \"itunda Bank\" is itunda\'s own product name for these savings, SACCO/Ikimina, loan, and investment features -- not a separate licensed banking entity.</string>
 </resources>

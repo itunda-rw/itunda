@@ -18436,7 +18436,12 @@ function InterestJarCard() {
 
   return (
     <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
-      <p style={{ fontSize: '13px', opacity: 0.85 }}>Safe Box · {jar.rate}% real daily interest</p>
+      {/* Real methodology-transparency fix (2026-08-11): jar.rate is the ANNUAL rate
+          SavingsService.accrueInterest() divides by 365 to get the real daily accrual
+          (dailyRate = rate/100/365) -- this copy called it "daily interest" outright,
+          which is the actual number times ~365 too high a read for anyone taking it
+          literally. Now states the real methodology instead of a bare adjective. */}
+      <p style={{ fontSize: '13px', opacity: 0.85 }}>Safe Box · {jar.rate}% annual, accrued daily on your balance</p>
       <p style={{ fontSize: '28px', fontWeight: 800, margin: '6px 0' }}>{jar.balance.toLocaleString()} RWF</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
         <div>
@@ -19868,6 +19873,20 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
           </div>
         </div>
       )}
+      {/* Real licensed-bank/deposit-insurance disclosure (2026-08-11) -- see
+          docs/TOSS_PARITY_MATRIX.md's own confirmation of "zero real banking-license
+          implementation anywhere" and TOSS_FEATURE_SPECIFICATION.md's Pillar 3
+          listing "itunda Bank... RBDB licensed in Rwanda" as roadmap-only, never
+          built. This exact screen has carried the "itunda Bank" name since the same
+          day the wallet-row naming research above reasoned that label risks a real
+          regulatory overclaim -- with no disclosure anywhere clarifying itunda's
+          actual (unlicensed) status. Same fix on Android's BankHubScreen and iOS's
+          BankView the same day. */}
+      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-400)', marginTop: '20px', padding: '0 4px' }}>
+        itunda is not a licensed bank. Your balance is e-money, not a bank deposit, and isn&apos;t covered
+        by deposit insurance. &quot;itunda Bank&quot; is itunda&apos;s own product name for these savings,
+        SACCO/Ikimina, loan, and investment features — not a separate licensed banking entity.
+      </p>
     </div>
   );
 }
