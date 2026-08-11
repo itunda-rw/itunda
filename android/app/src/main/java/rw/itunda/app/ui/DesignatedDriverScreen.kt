@@ -1,6 +1,12 @@
 package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -451,7 +457,31 @@ private fun DesignatedDriverTripCard(trip: DesignatedDriverTripDto, action: (@Co
             Text("→ ${trip.dropoffAddress}", color = Ids.colors.textSecondary, fontSize = 13.sp)
             Text("${trip.vehicleMake} ${trip.vehicleModel} · ${trip.vehiclePlate}", color = Ids.colors.textSecondary, fontSize = 12.sp)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(designatedDriverStatusLabel(trip.status), color = designatedDriverStatusColor(trip.status), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                // Real Toss reference (2026-08-11) -- see RideScreen.kt's identical fix
+                // for the full account: a real-world matching wait (finding a driver)
+                // deserves a real "actively working" signal, not static text
+                // indistinguishable from a frozen screen.
+                val searching = trip.status == "REQUESTED"
+                val pulseAlpha = if (searching) {
+                    val transition = rememberInfiniteTransition(label = "searchingPulse")
+                    val alpha by transition.animateFloat(
+                        initialValue = 1f,
+                        targetValue = 0.4f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = 900),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                        label = "searchingPulseAlpha",
+                    )
+                    alpha
+                } else 1f
+                Text(
+                    designatedDriverStatusLabel(trip.status),
+                    color = designatedDriverStatusColor(trip.status),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.alpha(pulseAlpha),
+                )
                 Text("${formatMoneyDesignatedDriver(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             action?.let {

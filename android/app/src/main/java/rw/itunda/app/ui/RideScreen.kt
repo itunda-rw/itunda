@@ -1,6 +1,12 @@
 package rw.itunda.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -622,7 +628,36 @@ private fun RideTripCard(trip: RideTripDto, stops: List<RideTripStopDto>? = null
                 Text("🕒 Scheduled for ${scheduledFor.take(16).replace("T", " ")}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(rideTripStatusLabel(trip), color = rideTripStatusColor(trip.status), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                // Real Toss reference (2026-08-11, "토스 인터랙션 디자이너의 모든 것"): a
+                // real-world matching wait (finding a driver, here) is exactly the shape
+                // of their own "실시간 대출 처리" (real-time loan processing) fix -- they
+                // replaced a static wait screen with a dynamic indicator showing the
+                // process is actively running, instead of a screen that looks identical
+                // whether it's working or frozen. This was previously plain static text
+                // for a wait whose real duration is genuinely unknown (depends on a real
+                // driver accepting) -- a subtle pulse is the honest signal here, not a
+                // fake progress bar with no real percentage to report.
+                val searching = trip.status == "REQUESTED" && trip.scheduledFor == null
+                val pulseAlpha = if (searching) {
+                    val transition = rememberInfiniteTransition(label = "searchingPulse")
+                    val alpha by transition.animateFloat(
+                        initialValue = 1f,
+                        targetValue = 0.4f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(durationMillis = 900),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                        label = "searchingPulseAlpha",
+                    )
+                    alpha
+                } else 1f
+                Text(
+                    rideTripStatusLabel(trip),
+                    color = rideTripStatusColor(trip.status),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.alpha(pulseAlpha),
+                )
                 Text("${formatMoneyRide(trip.fare)} RWF · ${"%.1f".format(trip.distanceKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }
             action?.let {
