@@ -11,6 +11,21 @@
 # assumed, the same honesty convention the rest of this repo's infra docs follow.
 
 # ---------- HorizontalPodAutoscaler ----------
+# minReplicas/maxReplicas capped at 1 for every service (2026-08-11) -- real live
+# incident, not a precaution: these 4 HPAs had scaleTargetRef.kind: Deployment while
+# backend/api-gateway/ledger-service/payment-service were actually argoproj.io/v1alpha1
+# Rollout resources, a real kind mismatch that meant these HPAs had silently never
+# worked at all until this same pass converted the Rollouts to real Deployments (see
+# each service's own manifest). The very first time they DID start working, they
+# scaled backend to 4-5 concurrent replicas on a single 4-CPU/5.8Gi node -- each JVM
+# replica alone needs ~1.5Gi, so 4 replicas already exceeds total node memory before
+# anything else on the box is counted. Measured result: node load hit 179 (on 4
+# cores), memory dropped to 94Mi free, kubectl itself became unreachable, and the VM
+# needed a hard restart to recover. There is no real high-availability benefit to
+# multiple replicas on a single point-of-failure node anyway -- if the node goes down,
+# every replica goes down with it regardless of count. minReplicas: 1/maxReplicas: 1
+# effectively disables autoscaling here on purpose; revisit only if this ever becomes
+# a genuine multi-node cluster.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -21,8 +36,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: api-gateway
-  minReplicas: 2
-  maxReplicas: 6
+  minReplicas: 1
+  maxReplicas: 1
   metrics:
   - type: Resource
     resource:
@@ -41,8 +56,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: backend
-  minReplicas: 2
-  maxReplicas: 8
+  minReplicas: 1
+  maxReplicas: 1
   metrics:
   - type: Resource
     resource:
@@ -61,8 +76,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: ledger-service
-  minReplicas: 2
-  maxReplicas: 6
+  minReplicas: 1
+  maxReplicas: 1
   metrics:
   - type: Resource
     resource:
@@ -81,8 +96,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: payment-service
-  minReplicas: 2
-  maxReplicas: 6
+  minReplicas: 1
+  maxReplicas: 1
   metrics:
   - type: Resource
     resource:
@@ -237,9 +252,23 @@ spec:
     # narrow window between two related patches can get stamped with a stale
     # intermediate default permanently -- always verify the ACTUAL running pod's
     # resources (not just this spec) after a multi-step change like this one.
+    #
+    # Lowered back 2026-08-11 -- backend-rollout.yaml now declares its own explicit
+    # limits (1536Mi/1500m, sized to its real observed usage, see that file's own doc
+    # comment for the full account) instead of relying on this default, which is what
+    # made the 2Gi default matter in practice: nothing else in this namespace omits
+    # its own limits, so this default was only ever actually governing backend, and a
+    # single container allowed to claim over a third of a 5.8Gi single-node cluster's
+    # total memory was a real, measured contributor to a live crash-loop incident
+    # (kube-controller-manager/kube-scheduler/argo-rollouts/backend all restarting
+    # every few minutes). This is now purely a defense-in-depth default for any
+    # future container that forgets to set its own limits -- matching the other 3
+    # itunda services' own explicit 500m/512Mi (api-gateway-rollout.yaml/
+    # ledger-service-rollout.yaml/payment-service-rollout.yaml), not re-litigating
+    # the CPU-throttling fix those never needed a raised default to avoid.
     default:
-      cpu: "2"
-      memory: 2Gi
+      cpu: "500m"
+      memory: 512Mi
     defaultRequest:
       cpu: "100m"
       memory: 256Mi

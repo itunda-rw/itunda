@@ -11,63 +11,29 @@ spec:
     targetPort: 8082
   type: ClusterIP
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: ledger-service-stable
-  namespace: itunda
-spec:
-  selector:
-    app: ledger-service
-  ports:
-  - port: 8082
-    targetPort: 8082
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ledger-service-canary
-  namespace: itunda
-spec:
-  selector:
-    app: ledger-service
-  ports:
-  - port: 8082
-    targetPort: 8082
-  type: ClusterIP
----
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: ledger-service
   namespace: itunda
 spec:
-  replicas: 3
+  # Real architecture simplification (2026-08-11) -- see backend-rollout.yaml's own
+  # doc comment for the full account (real single-node incident, Argo Rollouts
+  # canary providing no real protection between two pods on the same box, its own
+  # controller stuck "Degraded" with 1000+ restarts). Converted from an
+  # argoproj.io/v1alpha1 Rollout to a plain Deployment; the stable/canary Service
+  # split and Istio VirtualService weighting are gone with it.
+  replicas: 1
   minReadySeconds: 10
   revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: ledger-service
   strategy:
-    canary:
-      stableService: ledger-service-stable
-      canaryService: ledger-service-canary
-      trafficRouting:
-        istio:
-          virtualServices:
-          - name: ledger-service
-            routes:
-            - primary
-      steps:
-      - setWeight: 10
-      - pause:
-          duration: 5m
-      - setWeight: 25
-      - pause:
-          duration: 10m
-      - setWeight: 50
-      - pause: {}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -76,10 +42,6 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/actuator/prometheus"
         prometheus.io/port: "8082"
-        sidecar.istio.io/proxyCPU: "50m"
-        sidecar.istio.io/proxyCPULimit: "200m"
-        sidecar.istio.io/proxyMemory: "64Mi"
-        sidecar.istio.io/proxyMemoryLimit: "128Mi"
     spec:
       enableServiceLinks: false
       terminationGracePeriodSeconds: 30
@@ -103,7 +65,15 @@ spec:
       - name: ledger-service
         # Keep a re-apply reproducible: pin the current audited private-registry
         # artifact by content digest, not a mutable tag.
-        image: 192.168.252.4:32000/itunda/ledger-service@sha256:7de6d4e1d8105df4d9845bbd15c54873ce22299e39bc9a02ba180ba18789340a
+        # Updated 2026-08-11 -- the prior digest (7de6d4e1...) developed the same
+        # registry manifest corruption backend-rollout.yaml's own doc comment
+        # describes (HTTP 500 on manifest HEAD), discovered live when this service's
+        # Rollout->Deployment conversion deleted its only running pod and the
+        # replacement couldn't pull. This digest is a fresh, real rebuild+push (no
+        # code changes -- same source), via the same local-build/docker-save/
+        # multipass-transfer/docker-load path backend used, since colima's own build
+        # daemon can't reach this node's registry directly.
+        image: 192.168.252.4:32000/itunda/ledger-service@sha256:46bf150fd8767c2129de4875ad3a060258d0910c4ce0e0806f8b57aba15c32cf
         ports:
         - containerPort: 8082
         env:
@@ -145,7 +115,14 @@ spec:
           httpGet:
             path: /actuator/health
             port: 8082
-          failureThreshold: 30
+          # failureThreshold raised 30->60 (2026-08-11) -- preventive, matching
+          # backend-rollout.yaml's own real measured fix (that JVM's actual boot
+          # time was 338s against the old 300s budget under the tightened CPU
+          # limit). This service's own boot time wasn't separately measured, but it
+          # shares the same JVM/Spring Boot startup shape and the same node-wide CPU
+          # contention, so the same real risk applies even without a service-specific
+          # measurement.
+          failureThreshold: 60
           periodSeconds: 10
           timeoutSeconds: 5
         readinessProbe:

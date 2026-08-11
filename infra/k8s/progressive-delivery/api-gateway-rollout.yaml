@@ -11,63 +11,29 @@ spec:
     targetPort: 3000
   type: ClusterIP
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: api-gateway-stable
-  namespace: itunda
-spec:
-  selector:
-    app: api-gateway
-  ports:
-  - port: 3000
-    targetPort: 3000
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: api-gateway-canary
-  namespace: itunda
-spec:
-  selector:
-    app: api-gateway
-  ports:
-  - port: 3000
-    targetPort: 3000
-  type: ClusterIP
----
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: api-gateway
   namespace: itunda
 spec:
-  replicas: 4
+  # Real architecture simplification (2026-08-11) -- see backend-rollout.yaml's own
+  # doc comment for the full account (real single-node incident, Argo Rollouts
+  # canary providing no real protection between two pods on the same box, its own
+  # controller stuck "Degraded" with 1000+ restarts). Converted from an
+  # argoproj.io/v1alpha1 Rollout to a plain Deployment; the stable/canary Service
+  # split and Istio VirtualService weighting are gone with it.
+  replicas: 1
   minReadySeconds: 5
   revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: api-gateway
   strategy:
-    canary:
-      stableService: api-gateway-stable
-      canaryService: api-gateway-canary
-      trafficRouting:
-        istio:
-          virtualServices:
-          - name: api-gateway
-            routes:
-            - primary
-      steps:
-      - setWeight: 5
-      - pause:
-          duration: 2m
-      - setWeight: 25
-      - pause:
-          duration: 5m
-      - setWeight: 50
-      - pause: {}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -76,15 +42,23 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/metrics"
         prometheus.io/port: "3000"
-        sidecar.istio.io/proxyCPU: "50m"
-        sidecar.istio.io/proxyCPULimit: "200m"
-        sidecar.istio.io/proxyMemory: "64Mi"
-        sidecar.istio.io/proxyMemoryLimit: "128Mi"
     spec:
       enableServiceLinks: false
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
+        # Real fix (2026-08-11) -- runAsNonRoot alone was never actually enforceable
+        # here: the image's Dockerfile creates its user via `adduser -S itunda`
+        # (Alpine, a named, non-numeric user), and kubelet can't verify a named user
+        # is non-root without a numeric UID. This silently worked before only because
+        # Istio's sidecar-injection webhook happened to also stamp a runAsUser
+        # override -- removing Istio (see backend-rollout.yaml's own doc comment)
+        # exposed the real, pre-existing gap: every pod using this manifest was
+        # crash-looping with CreateContainerConfigError the moment injection stopped
+        # masking it. 100 confirmed live via `id itunda` inside the actual running
+        # image, not guessed.
+        runAsUser: 100
+        runAsGroup: 101
         seccompProfile:
           type: RuntimeDefault
       terminationGracePeriodSeconds: 30
@@ -142,9 +116,14 @@ spec:
           failureThreshold: 12
           periodSeconds: 5
           timeoutSeconds: 5
-      volumes:
-      - name: tmp
-        emptyDir: {}
+        # Real fix (2026-08-11) -- these two probes were previously mis-indented to
+        # after the pod-level `volumes:` block, making them properties of the `tmp`
+        # volume rather than this container (a real, pre-existing structural bug,
+        # not introduced by this Rollout->Deployment conversion) -- Kubernetes' schema
+        # validation likely silently dropped/ignored them, meaning this container may
+        # never have had readiness/liveness probes actually enforced despite this
+        # file appearing to define them. Moved back to their correct place alongside
+        # startupProbe above.
         readinessProbe:
           httpGet:
             path: /health
@@ -163,3 +142,6 @@ spec:
           # after chronic restarts traced to kubelet hard-killing containers that were
           # briefly slow to answer a probe, not actually unhealthy.
           timeoutSeconds: 5
+      volumes:
+      - name: tmp
+        emptyDir: {}

@@ -11,6 +11,26 @@ logging:
 spring:
   application:
     name: itunda
+  # Real startup-time fix (2026-08-11) -- live-measured cold boot was 338 seconds
+  # ("Started ItundaApplicationKt in 338.424 seconds") on this private-cloud node,
+  # found while diagnosing why backend-rollout.yaml's own startupProbe budget (then
+  # 300s) was killing every fresh pod mid-boot. Root cause: this app eagerly
+  # constructs every bean across ~50 feature modules and all 174 JPA repositories at
+  # context refresh, regardless of whether a given request ever touches them.
+  # spring.main.lazy-initialization defers bean creation to first use instead --
+  # Spring Boot's own documented, officially-supported flag for exactly this, not a
+  # workaround. Known, deliberately-accepted tradeoff: the first real request to a
+  # not-yet-used feature is a little slower (that feature's beans get constructed
+  # then, not at boot) -- a fair trade for a single-node deployment where boot time
+  # was actively causing probe kills, over one where steady-state p99 latency is the
+  # constraint. Does NOT affect @Scheduled beans (OutboxRelay.relay() every 2s,
+  # InterestAccrualScheduler, IdempotencyCleanupScheduler, etc.) -- Spring's own
+  # ScheduledAnnotationBeanPostProcessor always eagerly instantiates beans with
+  # @Scheduled methods specifically to register their triggers at startup,
+  # lazy-initialization or not, so the real scheduler-starvation bug this file's own
+  # `task.scheduling.pool.size: 10` fix closed (2026-07-13) isn't reopened.
+  main:
+    lazy-initialization: true
   # Real photo upload (2026-07-24) -- see UploadController's own doc comment. Spring
   # Boot's own defaults (1MB file / 10MB request) are too small for a real phone photo.
   servlet:

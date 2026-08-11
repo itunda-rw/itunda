@@ -11,63 +11,37 @@ spec:
     targetPort: 4001
   type: ClusterIP
 ---
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-stable
-  namespace: itunda
-spec:
-  selector:
-    app: backend
-  ports:
-  - port: 4001
-    targetPort: 4001
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-canary
-  namespace: itunda
-spec:
-  selector:
-    app: backend
-  ports:
-  - port: 4001
-    targetPort: 4001
-  type: ClusterIP
----
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: backend
   namespace: itunda
 spec:
-  replicas: 4
+  # Real architecture simplification (2026-08-11) -- see this repo's own live
+  # incident write-up in production/policies.yaml's HPA comment: this was an
+  # argoproj.io/v1alpha1 Rollout with a canary strategy depending on Istio traffic
+  # splitting between backend-stable/backend-canary Services. On a genuine single
+  # node, canary-ing between two pods on the SAME physical box gives none of Argo
+  # Rollouts' real value (testing a change against a subset of real DISTRIBUTED
+  # traffic before full rollout) -- it only added deploy latency (the 5m/10m pause
+  # steps below, now removed) and another controller to keep healthy (the
+  # argo-rollouts controller itself had 1000+ restarts and was stuck in a
+  # "Degraded" reconciliation state the night this was converted). A plain
+  # Deployment with a standard RollingUpdate removes both the mesh-sidecar
+  # overhead (see the now-removed sidecar.istio.io/* annotations below) and the
+  # rollout controller dependency, for a service that was never actually getting
+  # real canary protection here in the first place.
+  replicas: 1
   minReadySeconds: 10
   revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: backend
   strategy:
-    canary:
-      stableService: backend-stable
-      canaryService: backend-canary
-      trafficRouting:
-        istio:
-          virtualServices:
-          - name: backend
-            routes:
-            - primary
-      steps:
-      - setWeight: 10
-      - pause:
-          duration: 5m
-      - setWeight: 25
-      - pause:
-          duration: 10m
-      - setWeight: 50
-      - pause: {}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -76,28 +50,6 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/actuator/prometheus"
         prometheus.io/port: "4001"
-        sidecar.istio.io/proxyCPU: "50m"
-        sidecar.istio.io/proxyCPULimit: "200m"
-        sidecar.istio.io/proxyMemory: "64Mi"
-        sidecar.istio.io/proxyMemoryLimit: "128Mi"
-        # Makes istio-init block app container start until Envoy is actually
-        # ready to accept traffic, closing a real (if narrow) race window.
-        # Investigated as a candidate fix for a long 2026-07-24 crash-loop
-        # that turned out to have a different root cause (see excludeOutboundPorts
-        # below and SeedDataRunner.kt's git history for the real story) -- kept
-        # anyway since it's correct, standard hygiene on its own merits.
-        proxy.istio.io/config: '{ "holdApplicationUntilProxyStarts": true }'
-        # MySQL/Redis/Kafka run as plain Docker containers on the node, not as
-        # mesh services -- routing that traffic through Envoy buys nothing (no
-        # mTLS, no mesh-aware LB target) for no reason. Also investigated
-        # during the same 2026-07-24 incident and also not the actual cause
-        # (a `kubectl patch --type merge` on this container's array had silently
-        # wiped DB_HOST/DB_PORT/etc, so the app was really just connecting to
-        # `localhost` -- "Connection refused" was 100% accurate, just not for
-        # the reason assumed at the time). Kept as legitimate hygiene: it
-        # removes needless mesh overhead for traffic that was never going to a
-        # mesh member.
-        traffic.sidecar.istio.io/excludeOutboundPorts: "3306,6379,9092"
     spec:
       enableServiceLinks: false
       terminationGracePeriodSeconds: 30
@@ -121,7 +73,19 @@ spec:
       - name: backend
         # Keep a re-apply reproducible: pin the current audited private-registry
         # artifact by content digest, not a mutable tag.
-        image: 192.168.252.4:32000/itunda/backend@sha256:a2dff51d4537cc165f69fe148d84070fdcfa1451f8b8ba4f9ef07d67ff956b23
+        # Updated 2026-08-11 -- the prior digest (a2dff51d...) developed a corrupted
+        # manifest in the private registry ("unrecognized manifest schema version 0",
+        # HTTP 500 on HEAD) discovered live while deploying this same resource-limit
+        # fix, unrelated to it -- any fresh pod scheduling would hit ImagePullBackOff
+        # regardless of resource limits, since it could never re-pull. This digest is
+        # a real, freshly built+pushed image (Discover personalization, Section 42's
+        # itunda Bank split, and this file's own resource-limit fix, all baked in),
+        # built locally (not on this node, to avoid competing with it for memory
+        # during compilation) and pushed via this node's own local docker daemon
+        # after a `docker save`/`multipass transfer`/`docker load` hop -- the build
+        # machine's docker daemon (colima, its own isolated VM) couldn't reach this
+        # node's registry directly.
+        image: 192.168.252.4:32000/itunda/backend@sha256:666c1978c2dc75a4843d5d3f4f6294177438e5250164db8a6bfc3713daf83110
         ports:
         - containerPort: 4001
         env:
@@ -199,13 +163,7 @@ spec:
         - name: uploads
           mountPath: /uploads
         resources:
-          # No explicit limits (2026-07-27) -- governed entirely by the itunda-limits
-          # namespace LimitRange instead (see infra/k8s/private-cloud/limitrange.yaml),
-          # whose defaults were raised the same pass (memory 512Mi->2Gi, cpu 500m->2)
-          # after a real cgroup cpu.stat check showed this container throttled in 49%
-          # of scheduling periods under the old 1-core cap -- invisible to a JVM thread
-          # dump (a throttled thread still shows RUNNABLE, it's just not scheduled by
-          # the kernel). cpu request lowered 500m->200m (2026-07-24): this single-node,
+          # cpu request lowered 500m->200m (2026-07-24): this single-node,
           # 2-vCPU cluster runs at ~100% CPU *requests* just from system pods
           # (kube-apiserver/etcd/controller-manager/istiod) plus the other
           # itunda services -- 500m left zero headroom and caused real
@@ -213,11 +171,43 @@ spec:
           requests:
             memory: "512Mi"
             cpu: "200m"
+          # Explicit limits restored (2026-08-11) -- the 2026-07-27 fix above removed
+          # limits entirely and relied on the itunda-limits namespace LimitRange's
+          # default instead, which was RAISED the same pass (memory 512Mi->2Gi,
+          # cpu 500m->2) to fix a real measured 49%-throttling bug. That solved
+          # throttling but also removed backend's only memory ceiling: a live
+          # investigation (2026-08-11, prompted by the whole node showing
+          # kube-controller-manager/kube-scheduler/argo-rollouts/backend all
+          # crash-looping with 200-1000+ restarts) found this container's real RSS
+          # already at ~1066Mi with NOTHING stopping it from growing toward the
+          # LimitRange's full 2Gi default on a node with only 5.8Gi total, of which
+          # ~2.2-2.5Gi is already consumed by real non-k8s processes (a host-level
+          # Kafka broker, MySQL, and the control plane itself) -- one container
+          # allowed to claim over a third of total node memory on an already
+          # memory-starved node is a real OOM/eviction risk, not a hypothetical one.
+          # 1536Mi/1500m keeps ~44% headroom above the observed 1066Mi (well clear of
+          # the throttling this container hit under the old 512Mi/500m-equivalent
+          # cap) while capping it far short of starving Kafka/MySQL/the control
+          # plane. See infra/k8s/production/policies.yaml's own LimitRange doc
+          # comment for the matching default-lowering half of this fix.
+          limits:
+            memory: "1536Mi"
+            cpu: "1500m"
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 4001
-          failureThreshold: 30
+          # failureThreshold raised 30->60 (2026-08-11) -- real fallout from this same
+          # file's own cpu limit fix above (unbounded/2-core LimitRange default -> an
+          # explicit 1500m): live logs showed a real, honest cold boot (174 JPA
+          # repositories, Hibernate metadata + EntityManagerFactory init, 9 real Flyway
+          # migrations) still mid-Hibernate-init at the 5-minute mark under the new,
+          # tighter CPU cap, at which point kubelet killed it for exceeding the OLD
+          # 300s (30*10s) budget -- a real, measured regression the resource-limit fix
+          # introduced, not a code bug. 60*10s = 600s gives real headroom above the
+          # observed boot time instead of guessing; the container's steady-state
+          # request-serving readiness (readinessProbe below) is unaffected either way.
+          failureThreshold: 60
           periodSeconds: 10
           timeoutSeconds: 5
         readinessProbe:
