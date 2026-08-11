@@ -2470,20 +2470,246 @@ private fun BenefitsTab(onBack: () -> Unit = {}) {
 // could never reach it. This is that real UI, moved to where "Pay" actually means
 // pay -- see PayAMerchantSection's own doc comment in ShopScreen.kt for why it's
 // exposed from :features:shop:impl rather than duplicated.
+private enum class PayTabMode { MY_CODE, PAY_MERCHANT }
+
 @Composable
 private fun PayTab() {
+    // Real fix (2026-08-11, same session -- direct user pushback: "why is itunda pay
+    // have no simplicity at all pay by code?"): PAY_MERCHANT (manual merchant-ID/
+    // amount entry) was the ONLY way to pay -- real friction Toss's own "Postel's
+    // Law -- minimize input requests" research argues against. Real KakaoPay/Toss
+    // Pay's actual primary in-store flow has the CUSTOMER's own scannable code
+    // already on screen the moment Pay opens, no typing at all -- MY_CODE is that,
+    // now the default. PAY_MERCHANT stays for a merchant with a printed/posted
+    // static QR (a market stall), the one real case where typing a merchant ID is
+    // still the honest baseline until real camera scanning exists on that side too.
+    var mode by remember { mutableStateOf(PayTabMode.MY_CODE) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { PlainTopBar("Pay") }
         item {
-            rw.itunda.feature.shop.impl.PayAMerchantSection(
-                deviceStepUpHost = { visible, onDismiss, onVerified ->
-                    DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
-                },
-            )
+            // Real KakaoPay reference (user's own screenshot): the segmented control is
+            // a dark pill with a lighter-grey highlight behind the active label, not a
+            // bright brand-color fill -- text stays white either way. Uses
+            // Ids.colors.surface (not .chip) for the active highlight: .chip and
+            // .surfaceSoft resolve to the literal same hex in both themes
+            // (IdsSemanticColors.kt), so the highlight was rendering invisibly against
+            // its own container until this fix -- .surface is the one token
+            // guaranteed distinct from .surfaceSoft in both light and dark.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).padding(4.dp),
+            ) {
+                listOf(PayTabMode.MY_CODE to "My code", PayTabMode.PAY_MERCHANT to "Pay a merchant").forEach { (m, label) ->
+                    val active = mode == m
+                    Text(
+                        label, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (active) Ids.colors.surface else androidx.compose.ui.graphics.Color.Transparent)
+                            .clickable { mode = m }
+                            .padding(vertical = 10.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                }
+            }
         }
+        when (mode) {
+            PayTabMode.MY_CODE -> item { MyPaymentCodeCard() }
+            PayTabMode.PAY_MERCHANT -> item {
+                rw.itunda.feature.shop.impl.PayAMerchantSection(
+                    deviceStepUpHost = { visible, onDismiss, onVerified ->
+                        DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
+                    },
+                )
+            }
+        }
+    }
+}
+
+// Real customer-presented payment code (2026-08-11) -- see backend's
+// MerchantService.generateCustomerPaymentCode doc comment. Auto-refreshes shortly
+// before its own real 2-minute expiry so a customer standing at a register never
+// has it silently go stale mid-checkout.
+//
+// Rebuilt 2026-08-11 to closely match the user's own real KakaoPay screenshot
+// (not an invented layout -- see feedback_dont_imagine_use_real_reference memory):
+// one white card holding the masked pay button, the wallet balance, the funding
+// account, and nearby benefits, in that order. The card is pinned to raw IdsColors
+// light values (White/Grey100/Gray900 etc.) rather than the theme-adaptive
+// Ids.colors -- the reference screenshot itself is shown against a dark system
+// background yet the payment card stays white, the same real "barcode/QR needs to
+// read against white under a POS scanner regardless of phone theme" reasoning
+// IdsSemanticColors.kt's own light-palette comment already documents.
+@Composable
+private fun MyPaymentCodeCard() {
+    var revealed by remember { mutableStateOf(false) }
+    var code by remember { mutableStateOf<String?>(null) }
+    var expiresAtMillis by remember { mutableStateOf(0L) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var secondsLeft by remember { mutableStateOf(0) }
+    var wallet by remember { mutableStateOf<rw.itunda.core.network.Wallet?>(null) }
+    var linkedAccount by remember { mutableStateOf<rw.itunda.core.network.LinkedAccountEntityDto?>(null) }
+    var nearbyAds by remember { mutableStateOf<List<rw.itunda.core.network.NearbyMerchantAdDto>>(emptyList()) }
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+
+    LaunchedEffect(revealed) {
+        if (!revealed) return@LaunchedEffect
+        while (true) {
+            try {
+                val res = rw.itunda.core.network.NetworkClient.apiService.generateCustomerPaymentCode()
+                code = res.code
+                expiresAtMillis = java.time.Instant.parse(res.expiresAt).toEpochMilli()
+                error = null
+            } catch (e: Exception) {
+                error = "Could not load your payment code."
+            }
+            val waitMs = (expiresAtMillis - System.currentTimeMillis() - 10_000L).coerceAtLeast(5_000L)
+            kotlinx.coroutines.delay(waitMs)
+        }
+    }
+    LaunchedEffect(revealed) {
+        if (!revealed) return@LaunchedEffect
+        while (true) {
+            secondsLeft = ((expiresAtMillis - System.currentTimeMillis()) / 1000L).toInt().coerceAtLeast(0)
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+    // Real itunda wallet balance -- "type == MAIN is the real signal" per Wallet's
+    // own doc comment above, same field WalletResponse callers everywhere else use.
+    LaunchedEffect(Unit) {
+        try {
+            wallet = rw.itunda.core.network.NetworkClient.apiService.getWallets().wallets.firstOrNull { it.type == "MAIN" }
+        } catch (e: Exception) {
+            // Real, non-critical -- the balance line just won't render if this fails.
+        }
+    }
+    // Real linked funding account (rw.itunda.overview.LinkedAccountService) -- same
+    // data AutoTopUpScreen/OverviewScreen already fetch, read-only display here.
+    LaunchedEffect(Unit) {
+        try {
+            linkedAccount = rw.itunda.core.network.NetworkClient.apiService.getLinkedAccounts().linkedAccounts.firstOrNull { it.status == "LINKED" }
+        } catch (e: Exception) {
+            // Real, non-critical.
+        }
+    }
+    // Real 당근(Karrot)-style radius-targeted nearby merchant ads (MerchantAdService.nearby)
+    // -- same rememberRealLocationRequester + endpoint ShopScreen.kt's own nearby-ads
+    // rail already established. Silent when location is denied or nothing is nearby.
+    val requestLocation = rw.itunda.core.designsystem.components.rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            coroutineScope.launch {
+                try {
+                    nearbyAds = rw.itunda.core.network.NetworkClient.apiService.getNearbyMerchantAds(lat, lng).ads
+                } catch (e: Exception) {
+                    // Real, non-critical -- the row just won't render if this fails.
+                }
+            }
+        },
+        onError = {},
+    )
+    LaunchedEffect(Unit) { requestLocation() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(IdsColors.White)
+            .padding(20.dp),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(IdsColors.Grey100).padding(vertical = 20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (!revealed) {
+                Text(
+                    "Pay", color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(IdsColors.White)
+                        .clickable { revealed = true }
+                        .padding(horizontal = 40.dp, vertical = 14.dp),
+                )
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val currentCode = code
+                    when {
+                        currentCode != null -> {
+                            val qr = remember(currentCode) { generatePayQrBitmap(currentCode) }
+                            androidx.compose.foundation.Image(
+                                bitmap = qr,
+                                contentDescription = "Your payment QR code",
+                                modifier = Modifier.size(180.dp).clip(RoundedCornerShape(8.dp)),
+                            )
+                            Text(
+                                if (secondsLeft > 0) "Refreshes in ${secondsLeft}s" else "Refreshing…",
+                                color = IdsColors.Gray600, fontSize = 12.sp,
+                            )
+                        }
+                        error != null -> Text(error!!, color = IdsColors.Red500, fontSize = 13.sp)
+                        else -> androidx.compose.material3.CircularProgressIndicator(color = IdsColors.Blue500)
+                    }
+                }
+            }
+        }
+
+        val currentWallet = wallet
+        if (currentWallet != null) {
+            Spacer(Modifier.height(20.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("itunda Pay", color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(
+                    "${currentWallet.currency} ${"%,.0f".format(currentWallet.availableBalance)}",
+                    color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                )
+            }
+            val account = linkedAccount
+            if (account != null) {
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Funding account", color = IdsColors.Gray600, fontSize = 13.sp)
+                    Text("${account.provider} ${account.externalAccountNumberMasked}", color = IdsColors.Gray700, fontSize = 13.sp)
+                }
+            }
+        }
+
+        if (nearbyAds.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            androidx.compose.material3.HorizontalDivider(color = IdsColors.Grey200, thickness = 1.dp)
+            Spacer(Modifier.height(16.dp))
+            Text("Nearby benefits", color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Spacer(Modifier.height(12.dp))
+            androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(nearbyAds) { nearbyAd ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.width(64.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier.size(40.dp).clip(CircleShape).background(IdsColors.Blue100),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(nearbyAd.businessName.take(1).uppercase(), color = IdsColors.Blue600, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(nearbyAd.businessName, color = IdsColors.Gray800, fontSize = 11.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text("${(nearbyAd.distanceKm * 1000).toInt()}m", color = IdsColors.Gray600, fontSize = 10.sp)
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Not a real card network -- itunda's own real ledger-backed payment.",
+            color = IdsColors.Gray600, fontSize = 11.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

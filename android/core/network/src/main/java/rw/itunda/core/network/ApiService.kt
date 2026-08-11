@@ -1316,6 +1316,10 @@ data class MerchantFollowResponse(val success: Boolean, val follow: MerchantFoll
 // exactly (a flat response, not nested under a key).
 data class CollectPaymentRequest(val couponId: String? = null)
 data class StaticQrPayRequest(val amount: java.math.BigDecimal, val description: String? = null)
+// Real customer-presented payment code (2026-08-11) -- see backend's
+// MerchantService.generateCustomerPaymentCode/chargeByCustomerCode doc comments.
+data class CustomerPaymentCodeResponse(val success: Boolean, val code: String, val expiresAt: String)
+data class ChargeByCustomerCodeRequest(val code: String, val amount: java.math.BigDecimal)
 data class CollectPaymentResultDto(
     val success: Boolean, val transactionId: String, val merchantName: String,
     val amount: java.math.BigDecimal, val fee: java.math.BigDecimal, val status: String,
@@ -3037,6 +3041,17 @@ interface ApiService {
 
     @POST("api/v1/merchant/{merchantId}/static-qr/pay")
     suspend fun payByStaticQr(@Path("merchantId") merchantId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: StaticQrPayRequest): CollectPaymentResultDto
+
+    // Real customer-presented payment code (2026-08-11) -- see backend's
+    // MerchantService.generateCustomerPaymentCode/chargeByCustomerCode doc comments.
+    // Matches real KakaoPay/Toss Pay's actual primary in-store flow: the CUSTOMER
+    // opens Pay and a scannable code is already on screen, no typing on either side --
+    // the reverse direction of collectPayment/payByStaticQr above.
+    @POST("api/v1/merchant/pay/customer-code")
+    suspend fun generateCustomerPaymentCode(): CustomerPaymentCodeResponse
+
+    @POST("api/v1/merchant/pay/charge-by-code")
+    suspend fun chargeByCustomerCode(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ChargeByCustomerCodeRequest): CollectPaymentResultDto
 
     // Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
     // this file's own collectPayment comment previously named. bank-mfe already has this
