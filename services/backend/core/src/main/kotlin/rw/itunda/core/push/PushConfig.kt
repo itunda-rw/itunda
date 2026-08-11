@@ -1,6 +1,7 @@
 package rw.itunda.core.push
 
 import com.google.auth.oauth2.GoogleCredentials
+import com.google.auth.oauth2.ServiceAccountCredentials
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.messaging.FirebaseMessaging
@@ -46,16 +47,20 @@ class PushConfig {
             return simulatedPushSender
         }
         return try {
+            val credentials = FileInputStream(credentialsFile).use { stream -> GoogleCredentials.fromStream(stream) }
             val app = if (FirebaseApp.getApps().isEmpty()) {
-                FileInputStream(credentialsFile).use { stream ->
-                    FirebaseApp.initializeApp(
-                        FirebaseOptions.builder().setCredentials(GoogleCredentials.fromStream(stream)).build(),
-                    )
-                }
+                FirebaseApp.initializeApp(FirebaseOptions.builder().setCredentials(credentials).build())
             } else {
                 FirebaseApp.getInstance()
             }
-            log.info("Real FCM push sender active (Firebase project {}).", app.options.projectId)
+            // Read the project id from the credential itself, not
+            // FirebaseOptions.projectId (stays null unless explicitly set via
+            // .setProjectId()) or FirebaseApp.getProjectId() (package-private in this
+            // SDK version, confirmed via a real compile failure while verifying this
+            // against the user's own real credential) -- both looked like the "right"
+            // API but neither is actually usable here.
+            val projectId = (credentials as? ServiceAccountCredentials)?.projectId
+            log.info("Real FCM push sender active (Firebase project {}).", projectId)
             RealFcmPushSender(FirebaseMessaging.getInstance(app))
         } catch (e: Exception) {
             log.error("Could not initialize Firebase from itunda.push.firebase-credentials-path={} -- falling back to SimulatedPushSender.", path, e)
