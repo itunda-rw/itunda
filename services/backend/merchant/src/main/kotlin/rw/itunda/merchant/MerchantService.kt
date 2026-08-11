@@ -58,6 +58,7 @@ class SelfPaymentException(message: String) : RuntimeException(message)
 // code, merchant scans it, no typing on either side.
 class CustomerPaymentCodeNotFoundException(message: String) : RuntimeException(message)
 class CustomerPaymentCodeNotPayableException(message: String) : RuntimeException(message)
+class PaymentCodeWalletNotOwnedException(message: String) : RuntimeException(message)
 class CardDeclinedException(message: String) : RuntimeException(message)
 class InvalidWebhookUrlException(message: String) : RuntimeException(message)
 class InvalidApiKeyException(message: String) : RuntimeException(message)
@@ -793,8 +794,17 @@ class MerchantService(
     // time" discipline PhoneVerificationTokenRepository.invalidateUnusedByUserId already
     // establishes, so a customer re-opening Pay can't leave an earlier still-valid code
     // usable by whoever saw it on screen first.
+    // walletId (2026-08-11) -- real funding-source selection, see the user's own
+    // KakaoPay reference screenshot's swipeable card carousel and CustomerPaymentCode.
+    // walletId's own doc comment. Ownership is checked here (not left to
+    // chargeByCustomerCode) so a bad walletId fails loudly to the customer generating
+    // the code, not silently at charge time in front of a merchant.
     @Transactional
-    fun generateCustomerPaymentCode(userId: String): CustomerPaymentCode {
+    fun generateCustomerPaymentCode(userId: String, walletId: String? = null): CustomerPaymentCode {
+        if (walletId != null) {
+            val wallet = walletRepository.findById(walletId).orElseThrow { MerchantNoWalletException("Wallet not found") }
+            if (wallet.userId != userId) throw PaymentCodeWalletNotOwnedException("That wallet does not belong to you")
+        }
         customerPaymentCodeRepository.invalidateUnusedByUserId(userId)
         val codeBytes = ByteArray(24)
         SecureRandom().nextBytes(codeBytes)
@@ -805,6 +815,7 @@ class MerchantService(
                 userId = userId,
                 code = code,
                 expiresAt = Instant.now().plus(customerCodeValidity),
+                walletId = walletId,
             ),
         )
     }
@@ -837,7 +848,11 @@ class MerchantService(
             throw SelfPaymentException("Cannot pay your own merchant code")
         }
 
-        val payerWallet = walletRepository.findByUserIdAndType(payerUserId, WalletType.MAIN)
+        // Real funding-source selection -- falls back to the historical WalletType.MAIN
+        // default when the code was generated without picking a specific wallet (see
+        // CustomerPaymentCode.walletId's own doc comment).
+        val payerWallet = paymentCode.walletId?.let { walletRepository.findById(it).orElse(null) }
+            ?: walletRepository.findByUserIdAndType(payerUserId, WalletType.MAIN)
             ?: throw MerchantNoWalletException("No wallet found for this account")
         val merchantWallet = walletRepository.findById(merchant.walletId)
             .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }

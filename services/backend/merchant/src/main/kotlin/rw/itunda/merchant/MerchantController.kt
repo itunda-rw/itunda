@@ -41,6 +41,7 @@ data class CollectPaymentRequest(val couponId: String? = null)
 // Real customer-presented payment code (2026-08-11) -- see
 // MerchantService.chargeByCustomerCode's own doc comment.
 data class ChargeByCustomerCodeRequest(val code: String, val amount: BigDecimal)
+data class GenerateCustomerPaymentCodeRequest(val walletId: String? = null)
 // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see MerchantStaticQrService's own
 // doc comment.
 data class StaticQrPayRequest(val amount: BigDecimal, val description: String? = null)
@@ -271,9 +272,17 @@ class MerchantController(
     // PAYING customer from their own Pay tab -- any logged-in user, not merchant-role-
     // specific, same as previewIntent/collect above.
     @PostMapping("/pay/customer-code")
-    fun generateCustomerPaymentCode(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val paymentCode = merchantService.generateCustomerPaymentCode(currentUser.userId)
-        return ResponseEntity.ok(mapOf("success" to true, "code" to paymentCode.code, "expiresAt" to paymentCode.expiresAt.toString()))
+    fun generateCustomerPaymentCode(
+        @RequestBody(required = false) request: GenerateCustomerPaymentCodeRequest?,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val paymentCode = merchantService.generateCustomerPaymentCode(currentUser.userId, request?.walletId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true, "code" to paymentCode.code, "expiresAt" to paymentCode.expiresAt.toString(),
+                "walletId" to paymentCode.walletId,
+            ),
+        )
     }
 
     // Real customer-presented payment charge (2026-08-11) -- see
@@ -369,6 +378,10 @@ class MerchantController(
     @ExceptionHandler(CustomerPaymentCodeNotPayableException::class)
     fun handleCustomerCodeNotPayable(ex: CustomerPaymentCodeNotPayableException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("CUSTOMER_PAYMENT_CODE_NOT_PAYABLE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(PaymentCodeWalletNotOwnedException::class)
+    fun handlePaymentCodeWalletNotOwned(ex: PaymentCodeWalletNotOwnedException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_OWNED", ex.message ?: "Not found"))
 
     @ExceptionHandler(SelfPaymentException::class)
     fun handleSelfPayment(ex: SelfPaymentException) =

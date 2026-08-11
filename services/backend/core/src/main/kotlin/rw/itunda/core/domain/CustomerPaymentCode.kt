@@ -30,6 +30,15 @@ class CustomerPaymentCode(
     @Column(name = "expires_at", nullable = false)
     val expiresAt: Instant,
 
+    // Real funding-source selection (2026-08-11) -- see the user's own KakaoPay
+    // reference screenshot's swipeable card carousel (멤버십/페이머니/bravo card etc.):
+    // the real, buildable slice of that is "which of this customer's own real wallets
+    // funds this code" -- null means MerchantService.chargeByCustomerCode falls back
+    // to the real historical default, WalletType.MAIN, exactly as before this field
+    // existed, so no existing unused code is invalidated by this migration.
+    @Column(name = "wallet_id", length = 64)
+    val walletId: String? = null,
+
     @Column(name = "used_at")
     var usedAt: Instant? = null,
 
