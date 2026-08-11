@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.core.network.superAppErrorMessage
 import rw.itunda.core.network.CertificateDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.VerifyCertificateSignatureRequest
@@ -123,7 +124,7 @@ fun CertificateScreen(onBack: () -> Unit) {
                                             error = if (isKycRequiredError(e)) {
                                                 "You need a verified identity before you can issue a certificate."
                                             } else {
-                                                "Could not issue a certificate."
+                                                superAppErrorMessage(e)
                                             }
                                         } catch (_: Exception) {
                                             error = "Could not issue a certificate."

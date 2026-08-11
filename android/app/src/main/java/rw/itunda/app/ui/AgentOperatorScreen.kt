@@ -32,6 +32,7 @@ import rw.itunda.core.network.AgentTillSnapshotDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SubmitTillCountRequest
 import rw.itunda.core.network.apiErrorCode
+import rw.itunda.core.network.superAppErrorMessage
 import java.util.UUID
 import rw.itunda.core.designsystem.components.EmptyState
 
@@ -61,7 +62,7 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
                 if (apiErrorCode(e) == "AGENT_OPERATOR_NOT_AUTHORIZED") {
                     notOperator = true
                 } else {
-                    error = "Could not load your till."
+                    error = superAppErrorMessage(e)
                 }
             } catch (e: Exception) {
                 error = "Could not load your till."
@@ -169,6 +170,12 @@ private fun CashInCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (St
                             val result = NetworkClient.apiService.agentCashIn(UUID.randomUUID().toString(), AgentCashInRequest(account.trim(), value, receipt.trim()))
                             account = ""; amount = ""; receipt = ""
                             onSubmitted(result.newBalance)
+                        } catch (e: retrofit2.HttpException) {
+                            // Real fix (2026-08-11) -- a real backend decline here
+                            // (duplicate receipt number, float exhausted, etc.) is
+                            // exactly the kind of specific reason an agent operator
+                            // needs to see to act correctly, not a generic dead end.
+                            onError(superAppErrorMessage(e))
                         } catch (e: Exception) {
                             onError("Could not accept this cash-in.")
                         } finally {
@@ -212,6 +219,8 @@ private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (S
                             val result = NetworkClient.apiService.agentCashOut(UUID.randomUUID().toString(), AgentCashOutRequest(account.trim(), value, receipt.trim(), code.trim()))
                             account = ""; amount = ""; receipt = ""; code = ""
                             onSubmitted(result.newBalance)
+                        } catch (e: retrofit2.HttpException) {
+                            onError(superAppErrorMessage(e))
                         } catch (e: Exception) {
                             onError("Could not pay this cash-out. Check the withdrawal code.")
                         } finally {
@@ -249,6 +258,8 @@ private fun TillCountCard(onSubmitted: (java.math.BigDecimal, String) -> Unit, o
                             val result = NetworkClient.apiService.submitAgentTillCount(SubmitTillCountRequest(value)).reconciliation
                             counted = ""
                             onSubmitted(result.variance, result.status)
+                        } catch (e: retrofit2.HttpException) {
+                            onError(superAppErrorMessage(e))
                         } catch (e: Exception) {
                             onError("Could not submit this till count.")
                         } finally {

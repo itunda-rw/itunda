@@ -34,6 +34,7 @@ import rw.itunda.core.network.NearbyFloatListingDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PostFloatListingRequest
 import rw.itunda.core.network.RequestFloatRequest
+import rw.itunda.core.network.superAppErrorMessage
 import java.util.UUID
 import rw.itunda.core.designsystem.components.EmptyState
 
@@ -72,6 +73,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
             scope.launch {
                 try {
                     nearby = NetworkClient.apiService.getNearbyFloatListings(lat, lng).listings
+                } catch (e: retrofit2.HttpException) {
+                    error = superAppErrorMessage(e)
                 } catch (e: Exception) {
                     error = "Could not load nearby float listings."
                 }
@@ -98,6 +101,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                 NetworkClient.apiService.postFloatListing(PostFloatListingRequest(amount))
                                 message = "Listing posted — other nearby agents can now request this float."
                                 loadMine()
+                            } catch (e: retrofit2.HttpException) {
+                                error = superAppErrorMessage(e)
                             } catch (e: Exception) {
                                 error = "Could not post this listing."
                             } finally {
@@ -133,6 +138,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                             NetworkClient.apiService.requestFloat(n.listing.id, RequestFloatRequest(amount))
                                             message = "Request sent — the listing owner will accept or decline it."
                                             loadMine()
+                                        } catch (e: retrofit2.HttpException) {
+                                            error = superAppErrorMessage(e)
                                         } catch (e: Exception) {
                                             error = "Could not send this request."
                                         } finally {
@@ -166,6 +173,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                         try {
                                             NetworkClient.apiService.cancelFloatListing(l.id)
                                             loadMine()
+                                        } catch (e: retrofit2.HttpException) {
+                                            error = superAppErrorMessage(e)
                                         } catch (e: Exception) {
                                             error = "Could not cancel this listing."
                                         } finally {
@@ -200,6 +209,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                                 NetworkClient.apiService.acceptFloatRequest(r.id, UUID.randomUUID().toString())
                                                 message = "Float transferred to the requesting agent."
                                                 loadMine()
+                                            } catch (e: retrofit2.HttpException) {
+                                                error = superAppErrorMessage(e)
                                             } catch (e: Exception) {
                                                 error = "Could not accept this request."
                                             } finally {
@@ -219,6 +230,8 @@ fun FloatMarketplaceScreen(onBack: () -> Unit) {
                                             try {
                                                 NetworkClient.apiService.declineFloatRequest(r.id)
                                                 loadMine()
+                                            } catch (e: retrofit2.HttpException) {
+                                                error = superAppErrorMessage(e)
                                             } catch (e: Exception) {
                                                 error = "Could not decline this request."
                                             } finally {

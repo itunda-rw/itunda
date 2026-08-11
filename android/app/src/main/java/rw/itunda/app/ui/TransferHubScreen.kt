@@ -53,6 +53,7 @@ import rw.itunda.core.network.CreateAutoTransferRequest
 import rw.itunda.core.network.CreateScheduledTransferRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ScheduledTransferDto
+import rw.itunda.core.network.superAppErrorMessage
 import java.util.UUID
 
 /**
@@ -170,6 +171,8 @@ fun AutoTransferListScreen(onBack: () -> Unit, onChanged: () -> Unit) {
         try {
             autoTransfers = NetworkClient.apiService.getMyAutoTransfers().autoTransfers
             error = null
+        } catch (e: retrofit2.HttpException) {
+            error = superAppErrorMessage(e)
         } catch (e: Exception) {
             error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -315,9 +318,12 @@ fun NewAutoTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                 )
                 onCreated()
             } catch (e: retrofit2.HttpException) {
-                error = e.response()?.errorBody()?.string()?.let { body ->
-                    Regex("\"message\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)
-                } ?: "Couldn't set up this auto-transfer."
+                // Real fix (2026-08-11) -- was a local, hand-rolled regex over the raw
+                // JSON body, fragile against escaped characters/nested quotes and a
+                // straight duplicate of what superAppErrorMessage already does with a
+                // real JSON parser (see ErrorMessages.kt's own doc comment on why this
+                // shared function exists in the first place).
+                error = superAppErrorMessage(e)
             } catch (e: Exception) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
@@ -520,9 +526,9 @@ fun NewScheduledTransferScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                 )
                 onCreated()
             } catch (e: retrofit2.HttpException) {
-                error = e.response()?.errorBody()?.string()?.let { body ->
-                    Regex("\"message\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)
-                } ?: "Couldn't set up this scheduled transfer."
+                // Real fix (2026-08-11) -- see NewAutoTransferScreen's own identical
+                // fix above for the full account.
+                error = superAppErrorMessage(e)
             } catch (e: Exception) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {

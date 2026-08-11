@@ -36,6 +36,7 @@ import rw.itunda.core.network.DetectedSubscriptionDto
 import rw.itunda.core.network.MerchantBillingSubscriptionDto
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.superAppErrorMessage
 
 // Real recurring-payment ("subscription") detection over a user's own real transaction
 // history -- see rw.itunda.wallet.SubscriptionDetectionService's own doc comment. Plus
@@ -56,6 +57,8 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
         coroutineScope.launch {
             try {
                 billingSubs = NetworkClient.apiService.getMyBillingSubscriptions().subscriptions
+            } catch (e: retrofit2.HttpException) {
+                error = superAppErrorMessage(e)
             } catch (e: Exception) {
                 error = "Could not load your subscriptions."
             }
@@ -67,6 +70,8 @@ fun SubscriptionsScreen(onBack: () -> Unit) {
             val res = NetworkClient.apiService.getDetectedSubscriptions()
             detected = res.subscriptions
             estimatedMonthlyTotal = res.estimatedMonthlyTotal
+        } catch (e: retrofit2.HttpException) {
+            error = superAppErrorMessage(e)
         } catch (e: Exception) {
             error = "Could not load your subscriptions."
         }
@@ -183,6 +188,8 @@ private fun MerchantBillingSubscriptionRow(subscription: MerchantBillingSubscrip
                                 try {
                                     NetworkClient.apiService.cancelBillingSubscription(subscription.id)
                                     onChanged()
+                                } catch (e: retrofit2.HttpException) {
+                                    error = superAppErrorMessage(e)
                                 } catch (e: Exception) {
                                     error = "Could not cancel this subscription."
                                 } finally {
