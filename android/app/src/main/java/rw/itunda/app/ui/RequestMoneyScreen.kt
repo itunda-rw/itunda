@@ -143,7 +143,7 @@ private fun CreateRequestCard(onCreated: (P2pPaymentRequestDto) -> Unit) {
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("New request", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = description, onValueChange = { description = it }, label = "What's it for? (optional)", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Box(

@@ -226,7 +226,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                 }
                             }
                             IdsTextField(value = income, onValueChange = { income = it }, label = "Declared annual household income (RWF)", modifier = Modifier.fillMaxWidth())
-                            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Loan amount (RWF, up to 2,000,000)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Loan amount (RWF, up to 2,000,000)", isAmount = true, modifier = Modifier.fillMaxWidth())
                             IdsTextField(value = yearsToGraduation, onValueChange = { yearsToGraduation = it }, label = "Years until you graduate", modifier = Modifier.fillMaxWidth())
                             Box(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
@@ -286,7 +286,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                                         color = Ids.colors.textSecondary, fontSize = 11.sp,
                                     )
                                 }
-                                IdsTextField(value = repayAmounts[loan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (loan.id to it) }, label = "Repayment amount (RWF)", modifier = Modifier.fillMaxWidth())
+                                IdsTextField(value = repayAmounts[loan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (loan.id to it) }, label = "Repayment amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = busyId != loan.id) { repay(loan.id) }

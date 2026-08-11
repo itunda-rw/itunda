@@ -254,7 +254,7 @@ private fun WeeklySavingsCreateContent(onCreated: () -> Unit) {
             color = Ids.colors.textSecondary, fontSize = 13.sp,
         )
         IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
-        IdsTextField(value = baseAmount, onValueChange = { baseAmount = it }, label = "Base weekly amount (RWF)", modifier = Modifier.fillMaxWidth())
+        IdsTextField(value = baseAmount, onValueChange = { baseAmount = it }, label = "Base weekly amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
         Text("Escalation rate", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             escalationOptions.chunked(3).forEach { rowOptions ->

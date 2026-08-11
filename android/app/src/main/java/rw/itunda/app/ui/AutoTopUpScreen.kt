@@ -201,7 +201,7 @@ private fun AutoTopUpConfigCard(
                 Text("${linkedAccounts.first().provider} ${linkedAccounts.first().externalAccountNumberMasked}", color = Ids.colors.textSecondary, fontSize = 13.sp)
             }
             IdsTextField(value = threshold, onValueChange = { threshold = it }, label = "Top up when wallet drops below (RWF)", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = topUpAmount, onValueChange = { topUpAmount = it }, label = "Amount to top up (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = topUpAmount, onValueChange = { topUpAmount = it }, label = "Amount to top up (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             if (setting != null) {
                 Text("Triggered ${setting.triggersToday}/${setting.dailyTriggerCap} times today.", color = Ids.colors.textSecondary, fontSize = 12.sp)
             }

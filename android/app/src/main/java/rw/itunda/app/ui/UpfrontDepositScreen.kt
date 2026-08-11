@@ -234,7 +234,7 @@ private fun UpfrontDepositCreateContent(onCreated: () -> Unit) {
                 "the full $TERM_MONTHS months with no early withdrawal.",
             color = Ids.colors.textSecondary, fontSize = 13.sp,
         )
-        IdsTextField(value = principal, onValueChange = { principal = it }, label = "Deposit amount (RWF)", modifier = Modifier.fillMaxWidth())
+        IdsTextField(value = principal, onValueChange = { principal = it }, label = "Deposit amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
         previewInterest?.let {
             Text("You'll receive ${formatMoneyUpfront(it.toDouble())} RWF immediately", color = Ids.colors.success, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }

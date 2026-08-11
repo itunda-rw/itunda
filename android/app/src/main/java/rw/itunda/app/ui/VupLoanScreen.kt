@@ -219,6 +219,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                 IdsTextField(
                                     value = amount, onValueChange = { amount = it },
                                     label = "Loan amount (RWF, up to ${"%,.0f".format(eligibilityNow.maxAmount)})",
+                                    isAmount = true,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                                 Box(
@@ -264,6 +265,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
                                     value = repayAmounts[loan.id] ?: "",
                                     onValueChange = { repayAmounts = repayAmounts + (loan.id to it) },
                                     label = "Repayment amount (RWF)",
+                                    isAmount = true,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                                 Box(

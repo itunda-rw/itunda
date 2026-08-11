@@ -248,7 +248,7 @@ private fun Grow31CreateContent(onCreated: () -> Unit) {
             color = Ids.colors.textSecondary, fontSize = 13.sp,
         )
         IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
-        IdsTextField(value = dailyAmount, onValueChange = { dailyAmount = it }, label = "Daily amount (RWF)", modifier = Modifier.fillMaxWidth())
+        IdsTextField(value = dailyAmount, onValueChange = { dailyAmount = it }, label = "Daily amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.weight(1f))
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         Box(

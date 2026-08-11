@@ -264,7 +264,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Request an advance", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            IdsTextField(value = advanceAmount, onValueChange = { advanceAmount = it }, label = "Amount (RWF, max 500,000)", modifier = Modifier.fillMaxWidth())
+                            IdsTextField(value = advanceAmount, onValueChange = { advanceAmount = it }, label = "Amount (RWF, max 500,000)", isAmount = true, modifier = Modifier.fillMaxWidth())
                             IdsTextField(value = advancePurpose, onValueChange = { advancePurpose = it }, label = "Purpose (INPUT_FINANCING / POST_HARVEST)", modifier = Modifier.fillMaxWidth())
                             IdsTextField(value = harvestMonthsAway, onValueChange = { harvestMonthsAway = it }, label = "Expected harvest (months from now)", modifier = Modifier.fillMaxWidth())
                             Box(

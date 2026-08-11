@@ -153,7 +153,7 @@ private fun CashInCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (St
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Accept cash-in", style = MaterialTheme.typography.titleMedium)
             IdsTextField(value = account, onValueChange = { account = it }, label = "Customer account number", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Receipt number", modifier = Modifier.fillMaxWidth())
             IdsButton(
                 text = if (busy) "Working…" else "Accept cash-in",
@@ -201,7 +201,7 @@ private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (S
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pay cash-out", style = MaterialTheme.typography.titleMedium)
             IdsTextField(value = account, onValueChange = { account = it }, label = "Customer account number", modifier = Modifier.fillMaxWidth())
-            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = receipt, onValueChange = { receipt = it }, label = "Receipt number", modifier = Modifier.fillMaxWidth())
             IdsTextField(value = code, onValueChange = { code = it }, label = "Customer's withdrawal code", modifier = Modifier.fillMaxWidth())
             IdsButton(

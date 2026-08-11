@@ -353,7 +353,7 @@ private fun AddFundsCard(onFunded: () -> Unit) {
             if (expanded) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", modifier = Modifier.weight(1f))
+                    IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.weight(1f))
                     Spacer(modifier = Modifier.width(10.dp))
                     Box(
                         modifier = Modifier.clip(RoundedCornerShape(10.dp))

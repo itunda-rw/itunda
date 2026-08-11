@@ -3244,7 +3244,7 @@ private fun PayByStaticQrCard(onPaid: (CollectPaymentResultDto) -> Unit) {
             )
             IdsTextField(value = merchantId, onValueChange = { merchantId = it }, label = "Merchant ID", modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", keyboardType = KeyboardType.Number, modifier = Modifier.weight(1f))
+                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", keyboardType = KeyboardType.Number, isAmount = true, modifier = Modifier.weight(1f))
                 ListingActionButtonShop(
                     if (submitting) "Paying…" else "Pay",
                     submitting || merchantId.isBlank() || amount.toBigDecimalOrNull() == null,

@@ -805,7 +805,7 @@ private fun GroupBuyFinalizeSection(post: CommunityPostDto, currentUserId: Strin
                 "Enter what you paid up front -- every real member who joined will be asked for their even share.",
                 color = Ids.colors.textSecondary, fontSize = 12.sp,
             )
-            IdsTextField(value = totalAmount, onValueChange = { totalAmount = it }, label = "Total amount (RWF)", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = totalAmount, onValueChange = { totalAmount = it }, label = "Total amount (RWF)", keyboardType = androidx.compose.ui.text.input.KeyboardType.Number, isAmount = true, modifier = Modifier.fillMaxWidth())
             IdsTextField(value = description, onValueChange = { description = it }, label = "What was this for?", modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             ListingActionButton(if (submitting) "Splitting…" else "Request even split", submitting, filled = true) {

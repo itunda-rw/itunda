@@ -228,7 +228,7 @@ private fun OfferCard(offer: LoanOfferDto, busy: Boolean, onApply: (BigDecimal) 
             Text("Up to RWF ${offer.maxAmount} · ${offer.interestRate}% · ${offer.term}", style = MaterialTheme.typography.bodyMedium)
             Text(offer.requirements, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(8.dp))
-            IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = amountText, onValueChange = { amountText = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             IdsButton(
                 text = if (busy) "Applying…" else "Apply",
@@ -257,7 +257,7 @@ private fun MyLoanCard(
         Text("Status: ${loan.status} · ${loan.interestRate}%", style = MaterialTheme.typography.bodySmall)
         if (loan.status == "ACTIVE") {
             Spacer(Modifier.height(8.dp))
-            IdsTextField(value = repayText, onValueChange = onRepayTextChanged, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = repayText, onValueChange = onRepayTextChanged, label = "Repay amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             IdsButton(text = if (busy) "Repaying…" else "Repay", enabled = !busy, onClick = onRepay)
             Spacer(Modifier.height(8.dp))
@@ -365,7 +365,7 @@ private fun OverdraftPanel() {
             notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(Modifier.height(8.dp))
-            IdsTextField(value = drawAmount, onValueChange = { drawAmount = it }, label = "Draw amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = drawAmount, onValueChange = { drawAmount = it }, label = "Draw amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             IdsButton(
                 text = if (busy) "Drawing…" else "Draw",
@@ -389,7 +389,7 @@ private fun OverdraftPanel() {
                 },
             )
             Spacer(Modifier.height(8.dp))
-            IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Repay amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             IdsButton(
                 text = if (busy) "Repaying…" else "Repay",
@@ -490,7 +490,7 @@ private fun PostpaidCreditPanel() {
             notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Spacer(Modifier.height(8.dp))
-            IdsTextField(value = spendAmount, onValueChange = { spendAmount = it }, label = "Spend amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = spendAmount, onValueChange = { spendAmount = it }, label = "Spend amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             IdsButton(
                 text = if (busy) "Adding…" else "Add to wallet",
@@ -514,7 +514,7 @@ private fun PostpaidCreditPanel() {
                 },
             )
             Spacer(Modifier.height(8.dp))
-            IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Repay amount (RWF)", modifier = Modifier.fillMaxWidth())
+            IdsTextField(value = repayAmount, onValueChange = { repayAmount = it }, label = "Repay amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             IdsButton(
                 text = if (busy) "Repaying…" else "Repay",

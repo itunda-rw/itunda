@@ -65,7 +65,7 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
                     // Editing the amount is a new customer intent. Retrying unchanged
                     // input after a timeout deliberately keeps the original key.
                     pendingCreationKey = null
-                }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+                }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             IdsButton(text = if (busy) "Creating…" else "Create withdrawal code", enabled = !busy, onClick = {
                 val amount = amountText.toBigDecimalOrNull()

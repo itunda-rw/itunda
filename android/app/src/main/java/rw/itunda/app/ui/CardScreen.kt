@@ -243,7 +243,7 @@ fun CardScreen(onBack: () -> Unit) {
                                     )
                                     chargeMessage?.let { Text(it, color = if (it.startsWith("Paid")) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp) }
                                     IdsTextField(value = merchantName, onValueChange = { merchantName = it }, label = "Merchant name", modifier = Modifier.fillMaxWidth())
-                                    IdsTextField(value = chargeAmount, onValueChange = { chargeAmount = it }, label = "Amount (RWF)", modifier = Modifier.fillMaxWidth())
+                                    IdsTextField(value = chargeAmount, onValueChange = { chargeAmount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
                                     CardActionButton(if (c.frozen) "Card is frozen" else if (busy) "Paying…" else "Pay", enabled = !busy && !c.frozen) { charge() }
                                 }
                             }

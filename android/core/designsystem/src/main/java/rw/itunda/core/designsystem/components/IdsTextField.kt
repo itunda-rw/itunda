@@ -83,6 +83,14 @@ fun IdsTextField(
     // visualTransformation/trailingIcon (no existing call site sets both this and
     // either of those together).
     isPassword: Boolean = false,
+    // Real Toss-style live thousand-separator formatting (docs/DESIGN_REFERENCES.md's
+    // amount-entry research, 2026-08-12) -- see AmountVisualTransformation's own doc
+    // comment. Defaults to false, same opt-in convention as isPassword/autoFocus above,
+    // so every existing call site keeps its current unformatted behavior unless it
+    // deliberately turns this on. When true, overrides any caller-supplied
+    // visualTransformation and forces a numeric keyboard, matching how isPassword
+    // already overrides visualTransformation/trailingIcon together.
+    isAmount: Boolean = false,
 ) {
     val focusRequester = remember { FocusRequester() }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -96,10 +104,12 @@ fun IdsTextField(
             isError = isError,
             visualTransformation = if (isPassword) {
                 if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()
+            } else if (isAmount) {
+                AmountVisualTransformation
             } else {
                 visualTransformation
             },
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            keyboardOptions = KeyboardOptions(keyboardType = if (isAmount) KeyboardType.Number else keyboardType),
             trailingIcon = if (isPassword) {
                 {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {

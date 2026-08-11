@@ -1182,7 +1182,7 @@ private fun GroupSplitBillsView(
                     IdsButton(text = "Split a bill", onClick = { showNewForm = true })
                 } else {
                     Column {
-                        IdsTextField(amountText, { amountText = it }, label = "Total amount (RWF)", keyboardType = KeyboardType.Number, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(amountText, { amountText = it }, label = "Total amount (RWF)", keyboardType = KeyboardType.Number, isAmount = true, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         IdsTextField(descriptionText, { descriptionText = it }, label = "What was it for?", modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
@@ -1399,7 +1399,7 @@ private fun DirectSplitBillsView(
                     IdsButton(text = "Split a bill", onClick = { showNewForm = true })
                 } else {
                     Column {
-                        IdsTextField(amountText, { amountText = it }, label = "Total amount (RWF)", keyboardType = KeyboardType.Number, modifier = Modifier.fillMaxWidth())
+                        IdsTextField(amountText, { amountText = it }, label = "Total amount (RWF)", keyboardType = KeyboardType.Number, isAmount = true, modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
                         IdsTextField(descriptionText, { descriptionText = it }, label = "What was it for?", modifier = Modifier.fillMaxWidth())
                         Spacer(modifier = Modifier.height(8.dp))
@@ -2354,6 +2354,7 @@ private fun ChatThreadView(
                     onValueChange = { giftAmount = it },
                     label = "Amount (RWF)",
                     keyboardType = KeyboardType.Number,
+                    isAmount = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 IdsTextField(

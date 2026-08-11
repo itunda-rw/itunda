@@ -283,7 +283,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                                             .clip(RoundedCornerShape(3.dp)).background(Ids.colors.brand),
                                     )
                                 }
-                                IdsTextField(value = contributeAmounts[plan.id] ?: "", onValueChange = { contributeAmounts = contributeAmounts + (plan.id to it) }, label = "Contribution amount (RWF)", modifier = Modifier.fillMaxWidth())
+                                IdsTextField(value = contributeAmounts[plan.id] ?: "", onValueChange = { contributeAmounts = contributeAmounts + (plan.id to it) }, label = "Contribution amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Box(
                                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
@@ -313,7 +313,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
                             }
                             if (plan.status == "LOAN_ACTIVE") {
                                 Text("Loan outstanding: ${formatMoneyMoto(plan.loanOutstanding)} RWF", color = Ids.colors.textSecondary, fontSize = 11.sp)
-                                IdsTextField(value = repayAmounts[plan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (plan.id to it) }, label = "Repayment amount (RWF)", modifier = Modifier.fillMaxWidth())
+                                IdsTextField(value = repayAmounts[plan.id] ?: "", onValueChange = { repayAmounts = repayAmounts + (plan.id to it) }, label = "Repayment amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
                                 Box(
                                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
                                         .clickable(enabled = busyId == null) { repay(plan.id) }
