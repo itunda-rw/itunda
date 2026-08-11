@@ -60,12 +60,16 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
             IdsButton(text = "Find a nearby Itunda agent", onClick = onFindNearbyAgent)
         }
         item {
-            IdsTextField(value = amountText, onValueChange = {
+            rw.itunda.core.designsystem.components.AmountKeypadInput(
+                digits = amountText,
+                onDigitsChange = {
                     amountText = it
                     // Editing the amount is a new customer intent. Retrying unchanged
                     // input after a timeout deliberately keeps the original key.
                     pendingCreationKey = null
-                }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
+                },
+                quickAmounts = listOf(10_000L, 100_000L),
+            )
             Spacer(Modifier.height(8.dp))
             IdsButton(text = if (busy) "Creating…" else "Create withdrawal code", enabled = !busy, onClick = {
                 val amount = amountText.toBigDecimalOrNull()

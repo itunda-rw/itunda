@@ -248,8 +248,11 @@ private fun Grow31CreateContent(onCreated: () -> Unit) {
             color = Ids.colors.textSecondary, fontSize = 13.sp,
         )
         IdsTextField(value = name, onValueChange = { name = it }, label = "Plan name", modifier = Modifier.fillMaxWidth())
-        IdsTextField(value = dailyAmount, onValueChange = { dailyAmount = it }, label = "Daily amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.weight(1f))
+        Text("Daily amount", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        rw.itunda.core.designsystem.components.AmountKeypadInput(
+            digits = dailyAmount, onDigitsChange = { dailyAmount = it },
+            quickAmounts = listOf(500L, 1_000L),
+        )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         Box(
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))

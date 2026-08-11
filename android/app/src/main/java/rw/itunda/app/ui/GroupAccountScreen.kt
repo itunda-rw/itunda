@@ -458,7 +458,10 @@ private fun GroupAccountDetailContent(id: String) {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(if (isOwner) "Deposit or withdraw" else "Deposit", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
+                        rw.itunda.core.designsystem.components.AmountKeypadInput(
+                            digits = amount, onDigitsChange = { amount = it },
+                            quickAmounts = listOf(10_000L, 100_000L),
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             GroupAccountActionButton(title = if (busy) "…" else "Deposit", enabled = !busy && amount.isNotBlank(), modifier = Modifier.weight(1f)) { deposit() }
                             if (isOwner) {

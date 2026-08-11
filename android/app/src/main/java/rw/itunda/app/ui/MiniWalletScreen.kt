@@ -189,9 +189,10 @@ fun MiniWalletScreen(onBack: () -> Unit) {
                     }
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount (RWF)", isAmount = true, modifier = Modifier.weight(1f))
-                            }
+                            rw.itunda.core.designsystem.components.AmountKeypadInput(
+                                digits = amount, onDigitsChange = { amount = it },
+                                quickAmounts = listOf(1_000L, 5_000L),
+                            )
                             MiniWalletActionButton(if (busy) "Adding…" else "Add money", enabled = !busy) { deposit() }
                         }
                     }

@@ -266,7 +266,10 @@ private fun PostListingCard(busy: Boolean, onPost: (java.math.BigDecimal) -> Uni
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Offer surplus float", style = MaterialTheme.typography.titleMedium)
-            IdsTextField(value = amount, onValueChange = { amount = it }, label = "Amount to offer (RWF)", isAmount = true, modifier = Modifier.fillMaxWidth())
+            rw.itunda.core.designsystem.components.AmountKeypadInput(
+                digits = amount, onDigitsChange = { amount = it },
+                quickAmounts = listOf(10_000L, 100_000L),
+            )
             IdsButton(
                 text = if (busy) "Working…" else "Post listing",
                 enabled = !busy,
