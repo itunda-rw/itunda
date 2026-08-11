@@ -2571,7 +2571,11 @@ private struct MyReturnRequestsView: View {
 /// the static QR flow existed anywhere on this native consumer app.
 /// Coupon-preview-before-pay (bank-mfe's own `previewPaymentIntent` flow, item 149/146)
 /// closed 2026-08-01 -- see PayByCodeCard's own doc comment.
-private struct PayAMerchantSection: View {
+// Real fix (2026-08-11) -- no longer private. This is itunda's real, working
+// payment-collection UI (pay-by-code, pay-by-static-QR, Face Pay) -- see
+// ContentView.swift's own PayScreen doc comment for why it's now called directly
+// from there too, same App-target file as this one.
+struct PayAMerchantSection: View {
     @Binding var paymentResult: CollectPaymentResultDto?
     // Real Face Pay -- see FacePaySettingsCard/PayByCodeCard's own doc comments. Lifted
     // here, same as bank-mfe's own ShoppingView, so this card and PayByCodeCard don't

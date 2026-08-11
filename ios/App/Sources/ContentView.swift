@@ -363,60 +363,31 @@ private extension URL {
 // file's own header for why. (DiscoverScreen, the old "Shop" tab, was removed
 // 2026-07-18 -- see BenefitsShopAllScreens.swift's own note on why.)
 //
-// PayScreen stays defined here and is a real primary bottom tab again (2026-08-10,
-// ContentView.body's own Home/Pay/Explore/Messages/You). Still real-UI-only (no real
-// backend quote/confirm wired -- see this struct's own header comment below), that
-// scope gap is unrelated to the nav move.
+// Real fix (2026-08-11, itunda Pay research pass -- user-provided KakaoPay/Toss
+// Pay screenshots): this whole tab was a decorative mockup -- hardcoded "32,050
+// RWF" balance, hardcoded "Kigali Heights"/"Brioche Cafe" merchant rows with fake
+// distances, a "Scan QR / Barcode" button that was a literal no-op
+// (Button(action: {})), and tapping a merchant opened a hardcoded fake quote
+// ("2,000" RWF) that never called any API. The REAL payment-collection UI
+// (pay-by-code, pay-by-static-QR, Face Pay -- all genuinely wired to
+// rw.itunda.merchant.MerchantService.collect) already existed, just misfiled
+// inside the unrelated Shop screen (ShopScreen.swift's own PayAMerchantSection)
+// where the Pay tab could never reach it. This is that real UI, moved to where
+// "Pay" actually means pay -- same fix as Android's identical PayTab mock the
+// same day.
 struct PayScreen: View {
-    // Wires the real, ported TransferQuoteScreen (ios/Features/Payments/
-    // Sources/TransferScreen.swift) in for the first time -- it had zero call
-    // sites anywhere in ios/ despite being real code with a working biometric
-    // confirm gate (docs/ARCHITECTURE.md §3's "BankView wired in" note names
-    // this same pattern for BankView; this is the same fix for
-    // TransferQuoteScreen). No real backend session exists on iOS yet (no
-    // login flow -- same honest caveat android/features/payments/impl/
-    // TransferFlow.kt's own header states for Android), so recipient/amount/
-    // fee are UI-only placeholder state, not a real quote.
-    @State private var selectedMerchant: String?
-    @State private var showTransferSheet = false
+    @State private var paymentResult: CollectPaymentResultDto?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 HeaderTitle(title: "Itunda Pay")
-                CardItem(title: "Pay Balance", value: "32,050 RWF", buttonText: "Scan QR / Barcode", buttonColor: .blue)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Nearby Merchants")
-                        .font(scaledFont(size: 18, weight: .bold, relativeTo: .headline))
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 16)
-                    TransactionRow(title: "Kigali Heights", date: "1.2 km away", amount: "Pay with QR", isNegative: false) {
-                        selectedMerchant = "Kigali Heights"
-                        showTransferSheet = true
-                    }
-                    TransactionRow(title: "Brioche Cafe", date: "2.0 km away", amount: "Pay with QR", isNegative: false) {
-                        selectedMerchant = "Brioche Cafe"
-                        showTransferSheet = true
-                    }
-                }
-                .padding(.vertical, 24)
-                .background(Color(.secondarySystemGroupedBackground))
-                .cornerRadius(24)
-                .padding(.horizontal, 20)
+                PayAMerchantSection(paymentResult: $paymentResult)
+                    .padding(.horizontal, 20)
             }
             .padding(.top, 24)
         }
         .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
-        .sheet(isPresented: $showTransferSheet) {
-            TransferQuoteScreen(
-                recipientName: selectedMerchant ?? "Merchant",
-                amount: "2,000",
-                fee: "0",
-                onConfirm: { showTransferSheet = false },
-                onCancel: { showTransferSheet = false }
-            )
-        }
     }
 }
 

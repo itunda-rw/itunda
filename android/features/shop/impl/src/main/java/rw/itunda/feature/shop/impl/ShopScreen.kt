@@ -2802,7 +2802,14 @@ private fun OrderItemReviews(order: OrderDto) {
  * own doc comment.
  */
 @Composable
-private fun PayAMerchantSection(
+// Real fix (2026-08-11) -- no longer private. This is itunda's real, working
+// payment-collection UI (pay-by-code, pay-by-static-QR, Face Pay) -- see
+// ItundaAppScreen.kt's own PayTab doc comment for the full account of why it now
+// lives here (this is where the real backend calls already were) AND is called
+// directly by the app module's Pay tab, the same "app calls a public composable in
+// a feature's own impl module directly" precedent SavingsAmountScreen already
+// establishes for :features:payments:impl.
+fun PayAMerchantSection(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
 ) {
     var paymentResult by remember { mutableStateOf<CollectPaymentResultDto?>(null) }

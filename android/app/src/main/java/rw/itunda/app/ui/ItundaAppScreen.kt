@@ -2459,19 +2459,31 @@ private fun BenefitsTab(onBack: () -> Unit = {}) {
     }
 }
 
+// Real fix (2026-08-11, itunda Pay research pass -- user-provided KakaoPay/Toss
+// Pay screenshots): this whole tab was a decorative mockup -- MapPlaceholder's
+// hardcoded "5 nearby stores" text, PayFeatureCard's hardcoded "30% rewards" with
+// onClick = {} no-op buttons, and a ShellSection row with a hardcoded "RWF 31,031"
+// that had no onClick at all. Zero calls to any real Pay backend endpoint. The
+// REAL payment-collection UI (pay-by-code, pay-by-static-QR, Face Pay -- all
+// genuinely wired to rw.itunda.merchant.MerchantService.collect) already existed,
+// just misfiled inside the unrelated Shop feature where the Pay tab/Home QR icon
+// could never reach it. This is that real UI, moved to where "Pay" actually means
+// pay -- see PayAMerchantSection's own doc comment in ShopScreen.kt for why it's
+// exposed from :features:shop:impl rather than duplicated.
 @Composable
-private fun PayTab(onBack: () -> Unit = {}) {
+private fun PayTab() {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
-        item { BackTopBar("Pay", onBack) }
-        item { MapPlaceholder() }
-        item { PayFeatureCard() }
-        item { ShellSection("", listOf(
-            ShellRow("Points and pay money", "Total RWF 31,031", " ", Icons.Outlined.Payments, AccentBlue),
-            ShellRow("Received coupons", "", " ", Icons.Outlined.LocalOffer, AccentOrange)
-        )) }
+        item { PlainTopBar("Pay") }
+        item {
+            rw.itunda.feature.shop.impl.PayAMerchantSection(
+                deviceStepUpHost = { visible, onDismiss, onVerified ->
+                    DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
+                },
+            )
+        }
     }
 }
 
@@ -3687,54 +3699,6 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholde
 // BackTopBar relocated 2026-07-23 to core/designsystem/components/HoodShared.kt while
 // extracting Community into :features:community:impl -- every call site across :app
 // now imports it from there instead.
-
-@Composable
-private fun MapPlaceholder() {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFE4D7)),
-        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
-    ) {
-        Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.BottomCenter) {
-            Box(modifier = Modifier.padding(bottom = 18.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF202228)).padding(horizontal = 20.dp, vertical = 10.dp)) {
-                Text("5 nearby stores", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PayFeatureCard() {
-    IdsCard {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.brand)
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("itunda pay", color = Ids.colors.textSecondary)
-                    Text("30% rewards at partner stores", color = Ids.colors.brand, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                }
-                IdsButton("Find store", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
-            }
-            Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Ids.colors.surfaceSoft).padding(18.dp)) {
-                Text("Apply pay money and points automatically", color = Ids.colors.textSecondary, fontSize = 16.sp)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Language, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("How to pay online", color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("Use Itunda Pay on e-commerce and partner stores", color = Ids.colors.textSecondary)
-                }
-                IdsButton("See", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
-            }
-        }
-    }
-}
 
 // Was a text navbar -- "ID | Support | Settings" with pipe separators --
 // a website convention with no equivalent anywhere in real Toss. The
