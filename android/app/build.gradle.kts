@@ -75,6 +75,21 @@ android {
     namespace = "rw.itunda.app"
     compileSdk = 34
 
+    // Real Android 16KB memory-page-size fix (2026-08-12) -- found live via the
+    // real "Android 앱 호환성" system dialog on the physical test device: the
+    // default NDK this project resolved to (no ndkVersion was ever pinned, so AGP
+    // fell back to whatever's locally cached -- confirmed r27.0.12077973, no r28+
+    // present) does not produce 16KB-page-aligned native libraries by default.
+    // r28 is the first NDK release where 16KB alignment is the actual default
+    // (developer.android.com/16kb-page-size); r29 (installed here) supersedes it.
+    // Pinned here AND in the root build.gradle.kts's subprojects block below so
+    // every autolinked React Native native module (react-native-screens/-svg/
+    // -safe-area-context, Hermes, JSI/libfbjni) and itunda's own native
+    // dependencies (MapLibre, ML Kit barcode-scanning) all rebuild against the
+    // same, real 16KB-compliant toolchain -- a mismatched NDK across modules
+    // would silently re-introduce the exact misalignment this fixes.
+    ndkVersion = "29.0.14206865"
+
     defaultConfig {
         applicationId = "rw.itunda.app"
         minSdk = 26

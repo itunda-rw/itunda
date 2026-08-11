@@ -47,9 +47,12 @@ dependencies {
     // scanning a customer's code) -- this app has its own copy rather than a shared
     // module, same "duplicate for money-critical safety, separate apps" precedent
     // PayQrCodeUtil.kt/QrCodeUtil.kt already set.
-    implementation("androidx.camera:camera-core:1.3.4")
-    implementation("androidx.camera:camera-camera2:1.3.4")
-    implementation("androidx.camera:camera-lifecycle:1.3.4")
-    implementation("androidx.camera:camera-view:1.3.4")
+    // 1.4.2, not 1.3.4: CameraX 1.3.x ships libimage_processing_util_jni.so built
+    // without 16KB-page alignment (real, confirmed via readelf on our own APK
+    // 2026-08-12) -- Google fixed this starting 1.4.0.
+    implementation("androidx.camera:camera-core:1.4.2")
+    implementation("androidx.camera:camera-camera2:1.4.2")
+    implementation("androidx.camera:camera-lifecycle:1.4.2")
+    implementation("androidx.camera:camera-view:1.4.2")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 }

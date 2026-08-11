@@ -91,6 +91,13 @@ subprojects {
     pluginManager.withPlugin("com.android.library") {
         extensions.configure<com.android.build.api.dsl.LibraryExtension> {
             compileSdk = 34
+            // Real Android 16KB memory-page-size fix (2026-08-12), same reasoning as
+            // :app's own ndkVersion pin in android/app/build.gradle.kts -- every
+            // autolinked React Native native module (react-native-screens/-svg/
+            // -safe-area-context, Hermes/JSI) must build against the same
+            // 16KB-compliant NDK as :app itself, or the mismatch re-introduces the
+            // exact misaligned .so files this is fixing.
+            ndkVersion = "29.0.14206865"
             if (project.name == "react-native-safe-area-context") {
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_17
