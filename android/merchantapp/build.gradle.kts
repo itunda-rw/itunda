@@ -83,5 +83,18 @@ dependencies {
     // (ZXing core only, no camera/scanning dependency needed here).
     implementation("com.google.zxing:core:3.5.3")
 
+    // Real camera-based QR scanning (2026-08-11) -- the customer-presented payment
+    // code flow (see ApiService.kt's own chargeByCustomerCode doc comment) is the
+    // FIRST real camera-scanning capability anywhere in this monorepo, on any
+    // platform/app -- confirmed via a full-repo audit before building this. CameraX
+    // for the real camera preview/frame pipeline, ML Kit Barcode Scanning for
+    // on-device (no network round-trip, no per-scan cost) QR decoding -- the
+    // standard modern Android combination, not a third-party scanning SDK.
+    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+
     implementation(project(":core:designsystem"))
 }

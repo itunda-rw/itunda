@@ -285,6 +285,16 @@ data class MenuOptionGroupResponse(val success: Boolean, val optionGroup: MenuOp
 data class MenuOptionGroupsResponse(val success: Boolean, val optionGroups: List<MenuOptionGroupDto>)
 
 data class GenerateQrRequest(val amount: Double, val description: String)
+// Real customer-presented payment code (2026-08-11) -- see backend's
+// MerchantService.chargeByCustomerCode doc comment. Same real result shape as the
+// customer app's own CollectPaymentResultDto (:core:network ApiService.kt) --
+// chargeByCustomerCode returns the identical resultMap shape as collect().
+data class ChargeByCustomerCodeRequest(val code: String, val amount: Double)
+data class CollectPaymentResultDto(
+    val success: Boolean, val transactionId: String, val merchantName: String,
+    val amount: Double, val fee: Double, val status: String,
+    val channel: String, val completedAt: String, val cashbackEarned: Double,
+)
 data class PaymentIntentDto(val id: String, val merchantId: String, val amount: Double, val description: String, val status: String, val expiresAt: String, val createdAt: String)
 data class PaymentIntentResponse(val success: Boolean, val paymentIntent: PaymentIntentDto)
 
@@ -424,6 +434,14 @@ interface ApiService {
 
     @POST("api/v1/merchant/qr/generate")
     suspend fun generateQr(@Body request: GenerateQrRequest): PaymentIntentResponse
+
+    // Real customer-presented payment code (2026-08-11) -- see backend's
+    // MerchantService.chargeByCustomerCode doc comment. Real KakaoPay/Toss Pay's
+    // actual primary in-store flow, reversed from generateQr above: the CUSTOMER's
+    // own app already shows a scannable code, this merchant app scans it (real
+    // camera QR scanning, see PaymentScanScreen.kt) and enters the amount.
+    @POST("api/v1/merchant/pay/charge-by-code")
+    suspend fun chargeByCustomerCode(@Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString(), @Body request: ChargeByCustomerCodeRequest): CollectPaymentResultDto
 
     @POST("api/v1/merchant/card/charge")
     suspend fun chargeCard(@Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString(), @Body request: ChargeCardRequest): CardChargeResponse

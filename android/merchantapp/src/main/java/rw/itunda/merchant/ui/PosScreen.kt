@@ -154,7 +154,15 @@ private fun ProductGrid(products: List<MerchantProductDto>, onAdd: (MerchantProd
 
 @Composable
 private fun CheckoutView(total: Double, description: String, onDone: () -> Unit, onCancel: () -> Unit) {
-    var mode by remember { mutableStateOf("QR") }
+    // Real fix (2026-08-11, itunda Pay research pass -- user pushback: "why is
+    // itunda pay have no simplicity at all pay by code?"): SCAN is now the default
+    // mode, not QR (merchant generates a code the customer has to separately scan
+    // or type). Real KakaoPay/Toss Pay's actual primary in-store flow is the
+    // reverse -- the customer's own code is already on their screen, the merchant
+    // just scans it, no typing on either side. QR stays for a customer without the
+    // itunda app open/available; CARD stays for a real demo card-authorization
+    // flow.
+    var mode by remember { mutableStateOf("SCAN") }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Checkout", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -163,7 +171,7 @@ private fun CheckoutView(total: Double, description: String, onDone: () -> Unit,
         Spacer(modifier = Modifier.padding(top = 16.dp))
 
         Row {
-            listOf("QR" to "QR code", "CARD" to "Card").forEach { (v, label) ->
+            listOf("SCAN" to "Scan customer", "QR" to "Show QR code", "CARD" to "Card").forEach { (v, label) ->
                 val selected = mode == v
                 Text(
                     label,
@@ -175,14 +183,71 @@ private fun CheckoutView(total: Double, description: String, onDone: () -> Unit,
         }
         Spacer(modifier = Modifier.padding(top = 12.dp))
 
-        if (mode == "QR") {
-            QrCheckout(amount = total, description = description, onDone = onDone)
-        } else {
-            CardCheckout(amount = total, description = description, onDone = onDone)
+        when (mode) {
+            "SCAN" -> ScanCustomerCheckout(amount = total, onDone = onDone)
+            "QR" -> QrCheckout(amount = total, description = description, onDone = onDone)
+            else -> CardCheckout(amount = total, description = description, onDone = onDone)
         }
 
         Spacer(modifier = Modifier.padding(top = 12.dp))
         TextButton(onClick = onCancel) { Text("Back to cart") }
+    }
+}
+
+// Real customer-presented payment code checkout (2026-08-11) -- see
+// CameraQrScanner.kt's own doc comment and backend's MerchantService.
+// chargeByCustomerCode doc comment. The amount is already known from the cart, so
+// unlike a merchant scanning an unknown market-stall customer, no separate amount
+// entry step is needed here -- scan, confirm, done.
+@Composable
+private fun ScanCustomerCheckout(amount: Double, onDone: () -> Unit) {
+    var scannedCode by remember { mutableStateOf<String?>(null) }
+    var result by remember { mutableStateOf<rw.itunda.merchant.network.CollectPaymentResultDto?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var charging by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val currentResult = result
+    if (currentResult != null) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Text("Payment received — ${"%,.0f".format(currentResult.amount)} RWF", fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.padding(top = 12.dp))
+            IdsButton(text = "Done — new sale", onClick = onDone)
+        }
+        return
+    }
+
+    val code = scannedCode
+    if (code == null) {
+        Column(modifier = Modifier.fillMaxWidth().size(320.dp)) {
+            CameraQrScanner(onScanned = { scannedCode = it }, modifier = Modifier.fillMaxSize())
+        }
+        Spacer(modifier = Modifier.padding(top = 8.dp))
+        Text("Point the camera at the customer's Pay screen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
+    }
+
+    fun charge() {
+        charging = true
+        error = null
+        scope.launch {
+            try {
+                result = rw.itunda.merchant.network.NetworkClient.apiService.chargeByCustomerCode(
+                    request = rw.itunda.merchant.network.ChargeByCustomerCodeRequest(code, amount),
+                )
+            } catch (e: Exception) {
+                error = "Could not charge this code. It may have expired -- ask the customer to refresh their Pay screen."
+                scannedCode = null
+            } finally {
+                charging = false
+            }
+        }
+    }
+    LaunchedEffect(code) { charge() }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Text(if (charging) "Charging ${"%,.0f".format(amount)} RWF…" else "Code scanned", fontWeight = FontWeight.Bold)
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     }
 }
 
