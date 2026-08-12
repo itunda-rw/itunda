@@ -5710,3 +5710,49 @@ already-approved request -> 409, unauthenticated user access -> 401.
   staying fetchable so signatures made before a rotation stay verifiable.
 - `requestedFields` is a fixed list for v1 (matching the single "full KYC-style" scope this pass
   built) -- no per-partner configurable scope system exists, unlike Toss's own real richer model.
+
+## 63. Physical Android device reconnected -- first real on-device verification in this entire session
+
+**2026-08-13**, same session. The physical Android test device (offline over WiFi for this whole
+session's second half, a real standing gap flagged repeatedly across Sections 50-62) reconnected
+with a new wireless-debug address. Set up the same real networking recipe
+([[feedback_physical_device_networking]]) fresh: `adb connect`, local `socat` relays (`30081` for
+the real backend API, `8090`/`8091` for the self-hosted map tiles/glyphs), `adb reverse` for each,
+then `installDebug -PapiBaseUrl=http://127.0.0.1:30081/ ...` against the actual deployed backend.
+
+**Real, immediate false alarm caught and resolved before assuming a bug**: the very first
+`screencap` after cold launch came back solid black despite `dumpsys window` confirming itunda
+genuinely had foreground focus. Checked `MainActivity.kt`'s own real `FLAG_SECURE` logic (added
+2026-08-09 for real screenshot/recording protection, explicitly skipped in debug builds since
+2026-08-11 specifically so on-device UI verification stays possible) and confirmed via the raw
+window-flags dump that FLAG_SECURE was genuinely NOT set on this debug build. A second screencap
+taken moments later came back completely normal (real map content, ~35x larger file size) --the
+first was just a transient cold-start GPU-surface warm-up frame, not FLAG_SECURE, not the
+previously-documented foreground-contention issue. **Lesson**: a single black frame right after
+`am start` isn't automatically evidence of the known FLAG_SECURE/contention failure modes -- verify
+the specific mechanism (window flags, focus) before concluding either, and just retry once.
+
+**Real coordinate-tapping lesson**: guessing device-pixel tap coordinates from a scaled-down preview
+image (applying the stated display-to-real scale factor by eye) missed the real bottom-nav tab bar
+by a wide margin three times in a row, landing on unrelated content each time. Switched to
+`uiautomator dump` + grepping the target text's real `bounds="[x1,y1][x2,y2]"` -- exact, reliable,
+worked first try every time after. **Use `uiautomator dump` for real element coordinates on native
+Android, never eyeball scaled screenshot pixels.**
+
+**Real, genuine live confirmations obtained** (screenshots taken directly from the device, not
+simulated or assumed) -- closing a large amount of this session's own repeatedly-flagged
+"build-verified only, never actually seen" debt:
+- **Explore tab** (Sections 49-50): Open/Shortcuts icon grids, then one flat "Quick links" list --
+  confirmed still exactly as fixed, no regression.
+- **Maps** (dark style, category chips, real search with an honest "No real places found" empty
+  state) rendering correctly with real Kigali street data.
+- **Home tab's "Get interest" pill** (Section 57, the actual feature this session's identity-API
+  thread grew out of): confirmed rendering with the real live unclaimed balance
+  (`RWF 858,081 · Get interest`), and confirmed tapping it navigates to the real
+  `SavingsFlowStep.ClaimInterest` screen exactly as wired.
+- **Shopping "Get points and coupons" mission row** (Section 53): confirmed rendering with the real
+  backend-sourced reward amounts (`Scroll +30`, `Draw a prize +10~300`, `Cat +15`, `Claim +200`),
+  `Check-in` correctly shown already-completed/dimmed from an earlier real claim.
+
+Session-local, same as every prior networking-recipe entry -- must be redone next session if the
+device drops offline again (device address, port, all `socat`/`adb reverse` state).
