@@ -226,6 +226,14 @@ struct MapScreenView: View {
     // comment on the backend for the real, separately-deployed foot-profile OSRM
     // instance this reaches.
     @State private var travelMode = "DRIVING"
+    // Real Naver Map-style transit tab (2026-08-12, direct user screenshot) -- see the
+    // Android port's own doc comment (features/maps/impl/.../MapsScreen.kt,
+    // BusTripResultsView) for the full account: itunda has no live bus-GPS or transit-
+    // schedule feed to draw a fake route from, so this surfaces the real, already-
+    // shipped peer-to-peer BusService trip marketplace instead -- honestly labeled
+    // "Scheduled", never implying live tracking.
+    @State private var busTrips: [BusTripDto]?
+    @State private var busSearching = false
     @State private var showSteps = false
     @State private var routing = false
     @State private var error: String?
@@ -576,8 +584,10 @@ struct MapScreenView: View {
                                     // inlined here, the combined nesting made the Swift
                                     // type-checker time out ("unable to type-check this
                                     // expression in reasonable time").
-                                    travelModeToggle()
-                                    if let route {
+                                    travelModeToggle(placeName: place.displayName)
+                                    if travelMode == "BUS" {
+                                        busResultsView(placeName: place.displayName)
+                                    } else if let route {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text("\(travelMode == "DRIVING" ? "🚗" : "🚶") \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
                                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
@@ -837,6 +847,19 @@ struct MapScreenView: View {
         }
     }
 
+    // Real scheduled bus trips (BusService.kt) -- see busTrips's own doc comment above.
+    private func searchBus(destination: String) async {
+        busSearching = true
+        busTrips = nil
+        defer { busSearching = false }
+        do {
+            let response = try await NetworkClient.shared.searchBusTrips(origin: nil, destination: destination)
+            busTrips = response.trips
+        } catch {
+            busTrips = []
+        }
+    }
+
     private func getItineraryDirections() async {
         guard itineraryStops.count >= 2 else { return }
         routing = true; error = nil; defer { routing = false }
@@ -943,13 +966,16 @@ struct MapScreenView: View {
     // into the surrounding view hierarchy, the combined nesting made the Swift
     // type-checker time out).
     @ViewBuilder
-    private func travelModeToggle() -> some View {
+    private func travelModeToggle(placeName: String) -> some View {
         HStack(spacing: 6) {
-            ForEach([("DRIVING", "🚗 Driving"), ("WALKING", "🚶 Walking")], id: \.0) { mode, label in
+            ForEach([("DRIVING", "🚗 Driving"), ("WALKING", "🚶 Walking"), ("BUS", "🚌 Bus")], id: \.0) { mode, label in
                 let active = travelMode == mode
                 Button(action: {
                     guard mode != travelMode else { return }
-                    if route != nil {
+                    if mode == "BUS" {
+                        travelMode = "BUS"
+                        Task { await searchBus(destination: placeName) }
+                    } else if route != nil {
                         Task { await getDirections(mode: mode) }
                     } else {
                         travelMode = mode
@@ -962,7 +988,34 @@ struct MapScreenView: View {
                         .background(active ? IDS.Colors.brand : Color(red: 0.949, green: 0.957, blue: 0.965))
                         .cornerRadius(8)
                 }
-                .disabled(routing)
+                .disabled(routing || busSearching)
+            }
+        }
+    }
+
+    // Real scheduled bus trips (BusService.kt) -- its own @ViewBuilder function, same
+    // type-checker-timeout lesson travelModeToggle/routeAlternativesPicker already
+    // established. Honest "Scheduled" labeling, no live-tracking claim; no OSRM route
+    // line since there's no real road-route concept for a peer-posted coach trip.
+    @ViewBuilder
+    private func busResultsView(placeName: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if busSearching {
+                Text("Searching real scheduled trips to \(placeName)…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            } else if let trips = busTrips, !trips.isEmpty {
+                ForEach(trips) { trip in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(trip.origin) → \(trip.destination)").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Text("Scheduled · \(String(trip.departureTime.prefix(16)).replacingOccurrences(of: "T", with: " ")) · \(trip.availableSeats) seat(s) left · \(String(format: "%.0f", trip.farePerSeat)) RWF/seat")
+                            .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(red: 0.949, green: 0.957, blue: 0.965))
+                    .cornerRadius(10)
+                }
+            } else {
+                Text("No scheduled bus trips found to \(placeName) right now.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
         }
     }

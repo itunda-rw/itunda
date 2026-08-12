@@ -24,6 +24,7 @@ import {
   type TravelMode,
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
+import { searchBusTrips, type BusTrip } from './lib/bus';
 import { ApiError } from './lib/api';
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
@@ -260,7 +261,15 @@ export default function MapView() {
   const [routing, setRouting] = useState(false);
   // Real driving/walking toggle (2026-07-22) -- see lib/maps.ts's TravelMode doc
   // comment for the real, separately-deployed foot-profile OSRM instance this reaches.
-  const [travelMode, setTravelMode] = useState<TravelMode>('DRIVING');
+  const [travelMode, setTravelMode] = useState<TravelMode | 'BUS'>('DRIVING');
+  // Real Naver Map-style transit tab (2026-08-12, direct user screenshot) -- see the
+  // Android/iOS ports' own doc comments for the full account: itunda has no live
+  // bus-GPS or transit-schedule feed, so this surfaces the real, already-shipped
+  // peer-to-peer BusService trip marketplace instead -- honestly labeled "Scheduled",
+  // never implying live tracking. Widened travelMode's own type (not the shared
+  // TravelMode used for real OSRM calls) to include this local-only pseudo-mode.
+  const [busTrips, setBusTrips] = useState<BusTrip[] | null>(null);
+  const [busSearching, setBusSearching] = useState(false);
   const [locating, setLocating] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [categoryLoading, setCategoryLoading] = useState(false);
@@ -620,7 +629,7 @@ export default function MapView() {
 
   const selectAndRoute = (place: PlaceSearchResult) => {
     selectPlace(place);
-    void handleGetDirections(travelMode, place);
+    void handleGetDirections(travelMode === 'BUS' ? 'DRIVING' : travelMode, place);
   };
 
   const isBookmarked = (place: PlaceSearchResult) =>
@@ -816,7 +825,7 @@ export default function MapView() {
     map.fitBounds(bounds, { padding: 60 });
   };
 
-  const handleGetDirections = async (mode: TravelMode = travelMode, destination: PlaceSearchResult | null = null) => {
+  const handleGetDirections = async (mode: TravelMode = travelMode === 'BUS' ? 'DRIVING' : travelMode, destination: PlaceSearchResult | null = null) => {
     const map = mapRef.current;
     const place = destination ?? selectedPlace;
     if (!map || !place) return;
@@ -837,11 +846,25 @@ export default function MapView() {
     }
   };
 
+  // Real scheduled bus trips (BusService.kt) -- see busTrips's own doc comment above.
+  const searchBus = async (destination: string) => {
+    setBusSearching(true);
+    setBusTrips(null);
+    try {
+      const trips = await searchBusTrips(undefined, destination);
+      setBusTrips(trips);
+    } catch {
+      setBusTrips([]);
+    } finally {
+      setBusSearching(false);
+    }
+  };
+
   // Turns the ruler's ordered points into one real OSRM itinerary. The backend validates
   // the same 2–7-stop boundary, but this guard keeps the action self-explanatory before
   // making a network request. We intentionally preserve the ruler points afterward so
   // users can undo/reorder by editing their selected stops and route again.
-  const handleRouteItinerary = async (mode: TravelMode = travelMode) => {
+  const handleRouteItinerary = async (mode: TravelMode = travelMode === 'BUS' ? 'DRIVING' : travelMode) => {
     if (measurePoints.length < 2 || measurePoints.length > 7) return;
     setRouting(true);
     setError(null);
@@ -1326,8 +1349,55 @@ export default function MapView() {
                     {m === 'DRIVING' ? '🚗 Driving' : '🚶 Walking'}
                   </button>
                 ))}
+                {/* Real Naver Map-style transit tab (2026-08-12) -- see busTrips's own
+                    doc comment. Not shown for a multi-stop itinerary: a peer-posted
+                    point-to-point coach trip has no real concept of a custom
+                    multi-waypoint route, same deliberate scope boundary the
+                    Android/iOS ports already established. */}
+                {!itineraryStops && (
+                  <button
+                    type="button"
+                    disabled={routing || busSearching}
+                    onClick={() => {
+                      if (travelMode === 'BUS') return;
+                      setTravelMode('BUS');
+                      void searchBus(selectedPlace!.displayName);
+                    }}
+                    style={{
+                      flex: 1, padding: '6px 0', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
+                      background: travelMode === 'BUS' ? 'var(--itunda-blue)' : '#F2F4F6',
+                      color: travelMode === 'BUS' ? '#fff' : MAP_CARD_TEXT_SECONDARY,
+                    }}
+                  >
+                    🚌 Bus
+                  </button>
+                )}
               </div>
-              {route ? (
+              {travelMode === 'BUS' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {busSearching ? (
+                    <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
+                      Searching real scheduled trips to {selectedPlace!.displayName}…
+                    </p>
+                  ) : busTrips && busTrips.length > 0 ? (
+                    busTrips.map((trip) => (
+                      <div key={trip.id} style={{ background: '#F2F4F6', borderRadius: '10px', padding: '12px' }}>
+                        <p style={{ fontSize: '13px', fontWeight: 700, color: MAP_CARD_TEXT }}>
+                          {trip.origin} → {trip.destination}
+                        </p>
+                        <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>
+                          Scheduled · {trip.departureTime.slice(0, 16).replace('T', ' ')} · {trip.availableSeats} seat(s) left ·{' '}
+                          {trip.farePerSeat.toLocaleString()} RWF/seat
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
+                      No scheduled bus trips found to {selectedPlace!.displayName} right now.
+                    </p>
+                  )}
+                </div>
+              ) : route ? (
                 <div>
                   <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
                     {travelMode === 'DRIVING' ? '🚗' : '🚶'} {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
