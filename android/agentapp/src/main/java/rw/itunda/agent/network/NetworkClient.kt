@@ -74,3 +74,14 @@ object NetworkClient {
     val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
     val notificationsApi: NotificationsApi by lazy { retrofit.create(NotificationsApi::class.java) }
 }
+
+// Real backend-message pass-through (2026-08-12), mirroring core/network's own
+// apiErrorMessage/riderapp's parseApiError -- agentapp is a standalone module with
+// its own network layer, so it doesn't share either. Real Toss-style discipline: a
+// specific backend-stated reason beats a generic bucket string every time.
+fun apiErrorMessage(e: retrofit2.HttpException): String? = try {
+    val body = e.response()?.errorBody()?.string() ?: return null
+    com.google.gson.JsonParser.parseString(body).asJsonObject.get("message")?.asString
+} catch (_: Exception) {
+    null
+}

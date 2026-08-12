@@ -75,6 +75,17 @@ fun IdsButton(
         IdsButtonVariant.Filled -> Ids.colors.brand to IdsColors.White
         IdsButtonVariant.Tinted -> Ids.colors.pressed to Ids.colors.textBrand
     }
+    // Real Toss disabled-CTA reference (2026-08-12, direct user screenshot: a bottom
+    // "Confirm" bar that's a dim TINT of the same brand blue while its required input
+    // is empty, turning fully solid the moment it's valid) -- a neutral gray disabled
+    // state (the old unconditional Ids.colors.divider below) reads as "broken/
+    // unavailable" rather than "not ready yet, same action, just waiting on you."
+    // Only applies to Filled -- Tinted's own disabled state (a secondary style, not
+    // shown in the reference) keeps the existing neutral fallback.
+    val (disabledContainerColor, disabledContentColor) = when (variant) {
+        IdsButtonVariant.Filled -> Ids.colors.brand.copy(alpha = 0.35f) to IdsColors.White
+        IdsButtonVariant.Tinted -> Ids.colors.divider to Ids.colors.textTertiary
+    }
     // Real Toss micro-interaction reference (2026-08-11) -- "시각적 신호가 탭이 발생하는
     //정확한 순간에 햅틱/사용자 액션과 동기화되어야 한다" (visual cues synchronized
     // precisely with the tap): a subtle press-scale on every primary button in the app,
@@ -99,8 +110,8 @@ fun IdsButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
             contentColor = contentColor,
-            disabledContainerColor = Ids.colors.divider,
-            disabledContentColor = Ids.colors.textTertiary
+            disabledContainerColor = disabledContainerColor,
+            disabledContentColor = disabledContentColor
         )
     ) {
         if (icon != null) {

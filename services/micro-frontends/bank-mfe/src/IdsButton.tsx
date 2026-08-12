@@ -64,9 +64,16 @@ export function IdsButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      // Real disabled-state colors, matching Android's own
-      // ButtonDefaults.buttonColors(disabledContainerColor = Ids.colors.divider,
-      // disabledContentColor = Ids.colors.textTertiary) exactly.
+      // Real disabled-state colors (2026-08-12, direct user screenshot of Toss's real
+      // bottom "Confirm" bar: a dim TINT of the same brand blue while its required
+      // input is empty, turning fully solid the moment it's valid) -- a neutral grey
+      // disabled state reads as "broken/unavailable" rather than "not ready yet, same
+      // action, just waiting on you." Only `filled` gets the blue tint (matches
+      // Android's identical fix in IdsButton.kt); `tinted`/`danger` keep the existing
+      // neutral fallback, a secondary style not shown in the reference.
+      // color-mix (not a hardcoded rgba literal) so this stays in sync with
+      // --itunda-blue automatically if the token ever changes -- the exact hardcoded-
+      // color drift bug this file's own header comment already describes once.
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -80,8 +87,12 @@ export function IdsButton({
         fontSize: FONT_SIZE[size],
         border: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        backgroundColor: disabled ? 'var(--itunda-grey-200)' : background,
-        color: disabled ? 'var(--itunda-grey-400)' : color,
+        backgroundColor: disabled
+          ? variant === 'filled'
+            ? 'color-mix(in srgb, var(--itunda-blue) 35%, transparent)'
+            : 'var(--itunda-grey-200)'
+          : background,
+        color: disabled ? (variant === 'filled' ? 'var(--itunda-white)' : 'var(--itunda-grey-400)') : color,
         transition: 'var(--itunda-transition)',
         ...style,
       }}

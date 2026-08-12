@@ -67,9 +67,19 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         }
                     }
                     onLoggedIn()
+                } catch (e: retrofit2.HttpException) {
+                    // Real Toss-style error handling (2026-08-12) -- this catch used
+                    // to collapse a real login failure, a real role-check failure
+                    // (agentApi.me() rejecting a non-agent account), AND a network
+                    // failure into one generic sentence, discarding any real backend
+                    // message. A real HTTP response means it wasn't unreachable --
+                    // surface what the backend actually said when it said something.
+                    NetworkClient.session().clear()
+                    error = rw.itunda.agent.network.apiErrorMessage(e)
+                        ?: "This account is not an active agent operator."
                 } catch (_: Exception) {
                     NetworkClient.session().clear()
-                    error = "This account is not an active agent operator, or the service could not be reached."
+                    error = "Couldn't reach itunda. Check your connection and try again."
                 } finally { busy = false }
             }
         }, text = if (busy) "Signing in…" else "Sign in")

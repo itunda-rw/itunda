@@ -100,7 +100,20 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         }
                         onLoggedIn()
                     } catch (e: HttpException) {
-                        error = if (e.code() == 401) "Incorrect phone number or password." else "Couldn't reach itunda. Try again."
+                        // Real Toss-style error handling (2026-08-12) -- 401 stays a
+                        // real, friendly, specific message (not itunda's own to
+                        // second-guess), but every OTHER real HTTP error (429 rate
+                        // limit, 403 account suspended, 5xx, etc.) was discarding any
+                        // real backend message for a vague "Couldn't reach itunda" --
+                        // wrong on two counts: it wasn't a reachability problem if a
+                        // real response came back, and it silently dropped whatever
+                        // specific reason the backend actually gave.
+                        error = if (e.code() == 401) {
+                            "Incorrect phone number or password."
+                        } else {
+                            rw.itunda.merchant.network.apiErrorMessage(e)
+                                ?: "itunda is having a brief hiccup on our end -- not something you did. Try again in a moment."
+                        }
                     } catch (e: IOException) {
                         error = "Couldn't reach itunda. Check your connection and try again."
                     } finally {
