@@ -90,7 +90,8 @@ import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type Ky
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
 import { cancelBillingSubscription, collectPayment, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
-import { fetchActiveTimeDeals, type TimeDealView } from './lib/timeDeal';
+import { fetchActiveTimeDeals, fetchShopBanners, type TimeDealView } from './lib/timeDeal';
+import { completeShoppingMission, fetchShoppingMissionStatus, type ShoppingMission, type SpinOutcome } from './lib/shoppingMissions';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   fundInvestmentWallet,
@@ -17716,6 +17717,41 @@ function ShopView() {
     return () => clearInterval(interval);
   }, []);
 
+  // Real Toss Shopping banner carousel (2026-08-12, direct user screenshot) -- see
+  // backend TimeDealService.getBanners's own doc comment: every banner IS a real,
+  // currently-active Time Deal, never fabricated promotional content. Same feature
+  // Android's ShopScreen.kt already ports (docs/DESIGN_REFERENCES.md Section 53) --
+  // this was the one real gap found via a grep for the endpoint's call sites: shipped
+  // Android-only that pass, never actually ported to web.
+  const [banners, setBanners] = useState<TimeDealView[]>([]);
+  useEffect(() => { fetchShopBanners().then(setBanners).catch(() => {}); }, []);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const bannerScrollRef = useRef<HTMLDivElement>(null);
+
+  // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
+  // see backend ShoppingMissionService.kt's own doc comment. Every mission credits real
+  // RWF to the real wallet; itunda has never had a separate points currency.
+  const [missions, setMissions] = useState<ShoppingMission[]>([]);
+  const [spinOutcomes, setSpinOutcomes] = useState<SpinOutcome[]>([]);
+  const [missionBusyType, setMissionBusyType] = useState<string | null>(null);
+  const [missionFeedback, setMissionFeedback] = useState<string | null>(null);
+  const loadMissions = () => {
+    fetchShoppingMissionStatus().then((r) => { setMissions(r.missions); setSpinOutcomes(r.spinOutcomes); }).catch(() => {});
+  };
+  useEffect(loadMissions, []);
+  const handleCompleteMission = async (type: string) => {
+    setMissionBusyType(type);
+    try {
+      const result = await completeShoppingMission(type);
+      setMissionFeedback(`+${result.amountEarned.toLocaleString()} RWF`);
+      loadMissions();
+    } catch (err) {
+      setMissionFeedback(err instanceof ApiError ? err.message : "Couldn't reach itunda. Try again.");
+    } finally {
+      setMissionBusyType(null);
+    }
+  };
+
   // Real Karrot 반경 타기팅-style nearby ads (item 148) -- silent, non-blocking: a
   // customer who denies/lacks location just never sees this rail, same discipline
   // NeighborhoodSetupPrompt's own opt-in geolocation already establishes elsewhere.
@@ -17894,6 +17930,91 @@ function ShopView() {
             </button>
           )}
         </form>
+      )}
+
+      {/* Real Toss Shopping banner carousel -- see the banners state's own doc comment
+          above. Horizontal scroll-snap (no external carousel library) with a real
+          "current | total" page indicator, matching Android's HorizontalPager reference
+          exactly. */}
+      {view === 'BROWSE' && searchResults === null && banners.length > 0 && (
+        <div style={{ marginBottom: '16px', position: 'relative' }}>
+          <div
+            ref={bannerScrollRef}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              setBannerIndex(Math.round(el.scrollLeft / el.clientWidth));
+            }}
+            style={{ display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory', borderRadius: '14px', gap: '0' }}
+          >
+            {banners.map((v) => {
+              const discountPercent = v.deal.originalPrice > 0 ? Math.round(100 - (v.deal.dealPrice / v.deal.originalPrice) * 100) : 0;
+              return (
+                <div
+                  key={v.deal.id}
+                  style={{
+                    flex: '0 0 100%', scrollSnapAlign: 'start', height: '140px', background: 'color-mix(in srgb, var(--itunda-blue) 12%, transparent)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', boxSizing: 'border-box',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {discountPercent > 0 && <span style={{ color: 'var(--itunda-red)', fontWeight: 700, fontSize: '14px' }}>{discountPercent}% off</span>}
+                    <span style={{ fontWeight: 700, fontSize: '18px', color: 'var(--itunda-grey-900)' }}>{v.productName}</span>
+                    <span style={{ fontSize: '15px', color: 'var(--itunda-grey-900)' }}>{v.deal.dealPrice.toLocaleString()} RWF</span>
+                    <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{v.businessName}</span>
+                  </div>
+                  {v.productImageUrl && (
+                    <img src={v.productImageUrl} alt="" style={{ width: '96px', height: '96px', borderRadius: '12px', objectFit: 'cover' }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {banners.length > 1 && (
+            <span style={{ position: 'absolute', right: '10px', bottom: '10px', background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '11px', padding: '3px 8px', borderRadius: '10px' }}>
+              {bannerIndex + 1} | {banners.length}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
+          see missions state's own doc comment above. */}
+      {view === 'BROWSE' && searchResults === null && missions.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>Get points and coupons</p>
+          <div style={{ display: 'flex', gap: '18px', overflowX: 'auto' }}>
+            {missions.map((m) => {
+              const done = m.type === 'WELCOME_BONUS' ? m.claimedEver : m.completedToday;
+              const rewardText = m.type === 'SPIN' && spinOutcomes.length > 0
+                ? `+${Math.min(...spinOutcomes.map((s) => s.amount)).toLocaleString()}~${Math.max(...spinOutcomes.map((s) => s.amount)).toLocaleString()}`
+                : `+${m.rewardAmount.toLocaleString()}`;
+              return (
+                <button
+                  key={m.type}
+                  onClick={() => handleCompleteMission(m.type)}
+                  disabled={done || missionBusyType !== null}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '64px', flexShrink: 0, background: 'none', border: 'none', cursor: done ? 'default' : 'pointer' }}
+                >
+                  <div
+                    style={{
+                      width: '52px', height: '52px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: done ? 'var(--itunda-grey-100)' : 'color-mix(in srgb, var(--itunda-blue) 15%, transparent)',
+                    }}
+                  >
+                    {missionBusyType === m.type ? (
+                      <span style={{ fontSize: '18px', color: 'var(--itunda-grey-500)' }}>…</span>
+                    ) : (
+                      <Zap size={20} color={done ? 'var(--itunda-grey-400)' : 'var(--itunda-blue)'} />
+                    )}
+                  </div>
+                  <span style={{ fontSize: '11px', marginTop: '4px', color: done ? 'var(--itunda-grey-400)' : 'var(--itunda-grey-900)', textAlign: 'center' }}>{m.label}</span>
+                  {!done && <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--itunda-blue)' }}>{rewardText}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {missionFeedback && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>{missionFeedback}</p>}
+        </div>
       )}
 
       {/* Real Karrot 반경 타기팅-style nearby ads rail (item 148) -- see lib/shopping.ts's

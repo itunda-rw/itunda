@@ -30,5 +30,12 @@ export interface TimeDealView {
 export const fetchActiveTimeDeals = () =>
   apiFetch<{ success: boolean; deals: TimeDealView[] }>('/api/v1/time-deals?size=20').then((r) => r.deals);
 
+// Real Toss Shopping banner carousel (2026-08-12, direct user screenshot) -- see
+// backend TimeDealService.getBanners's own doc comment: derives every banner from a
+// real, currently-live, merchant-priced Time Deal, never invented promo content. Same
+// endpoint Android's ShopScreen.kt already ported (docs/DESIGN_REFERENCES.md Section 53).
+export const fetchShopBanners = () =>
+  apiFetch<{ success: boolean; banners: TimeDealView[] }>('/api/v1/time-deals/banners').then((r) => r.banners);
+
 export const fetchTimeDeal = (dealId: string) =>
   apiFetch<{ success: boolean; deal: TimeDealView }>(`/api/v1/time-deals/${dealId}`).then((r) => r.deal);
