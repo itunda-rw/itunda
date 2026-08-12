@@ -4864,3 +4864,20 @@ test device (confirmed via `dumpsys window` -- itunda in foreground with this ex
   Lifestyle), left as-is rather than renamed wholesale without a matching audit of every row.
 - Not live-verified screen-by-screen on-device yet (installed and confirmed in foreground, not
   visually walked through) -- same open item as Sections 43-48.
+
+**Same-session follow-up**: user sent 11 more real screenshots (7 already-seen, 4 new -- fully
+confirming the Finance category's ~20 items and Lifestyle's ~14, both in light and dark mode) and
+said explicitly "this how explore tab should look like." The single clearest, confirmed-across-
+every-screenshot structural fact: **every category's items are always fully visible, with no
+collapse/expand mechanic anywhere** -- itunda's own `MenuScreen` had exactly that (16 categories
+behind a `CollapsibleFlatSection` tap-to-expand accordion, added 2026-08-10 on a real but, per this
+new evidence, over-applied Hick's Law theory). Reverted all 16 to plain always-expanded
+`FlatSection`, matching the real screenshots exactly; removed the now-dead `expandedMenuSection`
+state and the now-unused `CollapsibleFlatSection` composable entirely rather than leaving dead code
+behind. Real Toss's actual answer to a long list is its working search box, not hiding content --
+itunda already had that search box built (2026-08-10, unchanged by this fix).
+
+`:app` full `compileDebugKotlin` build-verified clean, installed and relaunched on the physical
+test device.
+
+*Shipped: `ItundaAppScreen.kt`*

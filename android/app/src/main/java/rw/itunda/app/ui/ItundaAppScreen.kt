@@ -2815,12 +2815,14 @@ private fun MenuScreen(
     // every real onClick below is completely unchanged; only how it's found and
     // shown changed: a real, working search over all of it.
     var menuSearchQuery by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
-    // Real fix (2026-08-10): same accordion pattern bank-mfe's More panel now uses --
-    // collapsed by default, only one open at a time. "Quick links"/"Quick access"/
-    // "Mini apps"/"Shortcuts" stay always-visible (they're this screen's own
-    // frequently-used showcase, same role bank-mfe's primary tab row plays), only the
-    // 16 heavier categories below them collapse.
-    var expandedMenuSection by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    // CORRECTED 2026-08-12: the 16 heavier categories below used to collapse behind a
+    // tap-to-expand accordion (added 2026-08-10 on a Hick's Law/decision-overload
+    // theory). A real, direct user-provided screenshot batch of the actual Toss app's
+    // own All tab shows every category's items always fully visible, no
+    // collapse/expand mechanic anywhere -- Toss's real answer to a long list is the
+    // real, working search box above (kept, unchanged), not hiding content behind a
+    // tap. Reverted to always-expanded FlatSection for all 16, matching the real
+    // screenshots exactly; expandedMenuSection state removed as dead code.
 
     // Shop/Eats/Marketplace/Community/Jobs added here as separate flat rows
     // (2026-08-10, real user correction) -- all lost their own primary tab (see
@@ -3102,128 +3104,32 @@ private fun MenuScreen(
             // organized within the screen"; they restructured around real user intent
             // instead of internal product structure). Same real rows, same real
             // onClick callbacks -- only the grouping and two previously-dead rows changed.
-            item {
-                CollapsibleFlatSection(
-                    "Accounts & cards", accountsRows,
-                    isExpanded = expandedMenuSection == "Accounts & cards",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Accounts & cards") null else "Accounts & cards" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Send & pay", sendPayRows,
-                    isExpanded = expandedMenuSection == "Send & pay",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Send & pay") null else "Send & pay" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Save & grow", saveGrowRows,
-                    isExpanded = expandedMenuSection == "Save & grow",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Save & grow") null else "Save & grow" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Borrow", borrowRows,
-                    isExpanded = expandedMenuSection == "Borrow",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Borrow") null else "Borrow" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Transport", transportRows,
-                    isExpanded = expandedMenuSection == "Transport",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Transport") null else "Transport" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Community & trust", communityTrustRows,
-                    isExpanded = expandedMenuSection == "Community & trust",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Community & trust") null else "Community & trust" },
-                )
-            }
+            item { FlatSection("Accounts & cards", accountsRows) }
+            item { FlatSection("Send & pay", sendPayRows) }
+            item { FlatSection("Save & grow", saveGrowRows) }
+            item { FlatSection("Borrow", borrowRows) }
+            item { FlatSection("Transport", transportRows) }
+            item { FlatSection("Community & trust", communityTrustRows) }
             // Kept last and separately labeled, not blended into the rows above: these two
             // are role-gated (only assigned cash-agent operators can use them), so grouping
             // them with everyday-user rows would itself be the same "wrong category" problem
             // this whole section just got fixed for.
-            item {
-                CollapsibleFlatSection(
-                    "Cash agent tools", cashAgentRows,
-                    isExpanded = expandedMenuSection == "Cash agent tools",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Cash agent tools") null else "Cash agent tools" },
-                )
-            }
+            item { FlatSection("Cash agent tools", cashAgentRows) }
             // Everything below is modeled directly on the real Toss Bank
             // 갈아타기/신용카드/체크카드/서비스/외화/목돈굴리기/연금/대출/알림 및 동의/고객센터
             // reference screens (user-provided, 2026-07-10), adapted to Rwanda
             // rails per docs/FACT_CHECKED_TOSS_RWANDA_MAP.md's established
             // mapping (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel Money, RSE tickers,
             // RSSB pension) rather than left as Korean-market content.
-            item {
-                CollapsibleFlatSection(
-                    "Switch & save", switchSaveRows,
-                    isExpanded = expandedMenuSection == "Switch & save",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Switch & save") null else "Switch & save" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Cards", cardsRows,
-                    isExpanded = expandedMenuSection == "Cards",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Cards") null else "Cards" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Services", servicesRows,
-                    isExpanded = expandedMenuSection == "Services",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Services") null else "Services" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Foreign currency", foreignCurrencyRows,
-                    isExpanded = expandedMenuSection == "Foreign currency",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Foreign currency") null else "Foreign currency" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Grow your money", growMoneyRows,
-                    isExpanded = expandedMenuSection == "Grow your money",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Grow your money") null else "Grow your money" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Pension", pensionRows,
-                    isExpanded = expandedMenuSection == "Pension",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Pension") null else "Pension" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Loans", loansRows,
-                    isExpanded = expandedMenuSection == "Loans",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Loans") null else "Loans" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Notifications & consent", notificationsConsentRows,
-                    isExpanded = expandedMenuSection == "Notifications & consent",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Notifications & consent") null else "Notifications & consent" },
-                )
-            }
-            item {
-                CollapsibleFlatSection(
-                    "Support", supportRows,
-                    isExpanded = expandedMenuSection == "Support",
-                    onToggle = { expandedMenuSection = if (expandedMenuSection == "Support") null else "Support" },
-                )
-            }
+            item { FlatSection("Switch & save", switchSaveRows) }
+            item { FlatSection("Cards", cardsRows) }
+            item { FlatSection("Services", servicesRows) }
+            item { FlatSection("Foreign currency", foreignCurrencyRows) }
+            item { FlatSection("Grow your money", growMoneyRows) }
+            item { FlatSection("Pension", pensionRows) }
+            item { FlatSection("Loans", loansRows) }
+            item { FlatSection("Notifications & consent", notificationsConsentRows) }
+            item { FlatSection("Support", supportRows) }
         } else {
             val query = menuSearchQuery.trim()
             val matchingSections = allMenuSectionsForSearch.map { (title, rows) ->
@@ -3734,81 +3640,6 @@ private fun FlatSectionRow(row: FlatRow) {
             )
         } else if (row.showChevron && onClick != null) {
             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-        }
-    }
-}
-
-// Real fix (2026-08-10): matches bank-mfe's own More-panel restructure (see
-// BankDashboard.tsx's MORE_TAB_GROUPS doc comment for the full Hick's Law citation)
-// -- MenuScreen showed all of its non-"Quick links" categories fully expanded,
-// always, same anti-pattern already fixed for web. Collapsed by default, one open
-// at a time, real category-item counts shown in the header so collapsing doesn't
-// hide that content exists.
-@Composable
-internal fun CollapsibleFlatSection(title: String, rows: List<FlatRow>, isExpanded: Boolean, onToggle: () -> Unit) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onToggle)
-                .padding(vertical = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "$title  ·  ${rows.size}",
-                color = Ids.colors.textPrimary,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Icon(
-                if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                contentDescription = null,
-                tint = Ids.colors.textTertiary,
-            )
-        }
-        if (isExpanded) {
-            Spacer(modifier = Modifier.height(6.dp))
-            rows.forEach { row ->
-                val onClick = row.onClick
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                        .padding(vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        if (row.icon != null) {
-                            Box(
-                                modifier = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(row.iconColor),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(row.icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = Color.White)
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                        }
-                        Column {
-                            Text(row.title, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                            if (row.subtitle != null) {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(row.subtitle, color = Ids.colors.textTertiary, fontSize = 13.sp)
-                            }
-                        }
-                    }
-                    if (row.trailing != null) {
-                        Text(
-                            row.trailing,
-                            color = if (row.trailingIsLink) Ids.colors.brand else Ids.colors.textSecondary,
-                            fontSize = 15.sp,
-                            fontWeight = if (row.trailingIsLink) FontWeight.SemiBold else FontWeight.Normal
-                        )
-                    } else if (row.showChevron && onClick != null) {
-                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-                    }
-                }
-            }
         }
     }
 }
