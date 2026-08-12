@@ -5332,6 +5332,11 @@ existing neutral disabled fallback, a secondary style not shown in the reference
 Android verified via `:core:designsystem:compileDebugKotlin` + full `:app:compileDebugKotlin`. Web
 verified via `tsc -b --noEmit` + full production `vite build`, both clean.
 
+**Live-verified same day (2026-08-12), via the headless-Chrome/CDP technique** (see
+[[feedback_headless_chrome_verification]]): rendered a real enabled vs. disabled `filled` button
+side by side against the actual page's real `--itunda-blue` custom property and confirmed the
+disabled state genuinely renders as a dim blue tint, not the old neutral grey.
+
 **Real keyboard-docking CTA, found by re-examining the same reference screenshots more closely
 (user's follow-up: "did you see how the button changes from curved button to full width when it's
 on top of keyboard or keypad")**: with the keyboard hidden, the real "Confirm" bar is a normal
@@ -5438,4 +5443,37 @@ Home. Verified via `tsc -b --noEmit` + full production `vite build`, both clean.
   on the real Safe Box/itunda Bank screen with the correct data. First fully live (not just build- or
   backend-)verified confirmation of ANY fix in the second half of this session.
 - iOS untouched this pass -- the iOS `HomeView` is a separate implementation, not ported yet.
-- Not yet visually verified on-device -- same real connectivity gap as Sections 53-55.
+
+## 58. Explore tab -- removed web's leftover tap-to-expand accordion, matching Android's own fix
+
+**2026-08-12**, same session, continuation of the newly-working headless-Chrome live-verification
+capability from Section 57. After confirming the disabled-CTA color fix (Section 56) renders
+correctly on web via a real side-by-side color-mix render, went looking for other already-shipped
+Android fixes that were never checked for a web equivalent -- the standing "when a fix lands on one
+platform, check whether the others got it too" lesson from this same research thread's fourth pass.
+
+Found one, real and unresolved: Section 49's Explore/전체 accordion removal (16 real screenshots
+confirmed every category's items are always fully visible in real Toss, zero collapse/expand
+mechanic) was applied to Android's `MenuScreen` but never ported to `bank-mfe`'s own `ExploreHub` --
+it still had the exact same `expandedGroup`/`ChevronDown`-rotate tap-to-toggle pattern the real
+reference screenshots showed was wrong. Removed it: every group's chips now render unconditionally,
+matching Android exactly. Also removed the now-unused `ChevronDown` import.
+
+Verified via `tsc -b --noEmit` + full `vite build` (both clean), then **live-verified** via the
+headless-Chrome/CDP technique ([[feedback_headless_chrome_verification]]): logged in with the real
+seeded demo user, clicked into Explore, and confirmed every one of the 6 real category groups
+(Everyday, Your neighbourhood, Get around, Money tools, Trust & community, More) renders its full
+item list immediately with no tap required, exactly matching the reference and Android's own fix.
+
+*Shipped: `bank-mfe/src/BankDashboard.tsx` (`ExploreHub`)*
+
+### Unresolved / worth a follow-up
+
+- Only checked this one Android-fixed-but-web-unchecked candidate this pass. The rest of Sections
+  43-56's Android-only fixes (confetti, skeleton loading, pull-to-refresh, haptics, list keys, image
+  crossfade, keyboard-docking button) are mostly Compose-specific mechanisms without a direct 1:1 web
+  analog -- not blindly assumed to need porting, but not individually checked either.
+- The chip buttons within each group render as full-width stacked rows on web rather than wrapping
+  into a dense grid (visible in the live screenshot) -- pre-existing behavior, not introduced by this
+  fix (the `flexWrap`/`gap` layout was already there), and not compared against a specific reference
+  screenshot for chip density on web specifically. Noted, not fixed this pass.
