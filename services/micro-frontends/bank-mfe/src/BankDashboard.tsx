@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -235,8 +235,19 @@ import {
 // render directly, exactly as they did before either hub existed.
 type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
-function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
+function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: Wallet | null; onTransferClick: () => void; onClaimInterest: () => void }) {
   const { t } = useI18n();
+  // Real Toss Bank reference (user-provided, 2026-08-12): the account detail screen
+  // shows a small "Get interest" prompt (unclaimed balance + claim button) directly
+  // below the balance, above the Transfer/Top up row -- itunda already has the real
+  // data (fetchInterestJar, the same call InterestJarCard on the itunda Bank tab
+  // already makes) and a real claim destination (SavingsView's own InterestJarCard,
+  // reached via onNavigateToTab('SAVINGS')), just never surfaced here on Home. Same
+  // fix as Android's identical WalletHeroCard addition the same day. Only shown once
+  // there's a real unclaimed balance, matching this file's own "don't show an empty
+  // section" convention.
+  const [jar, setJar] = useState<InterestJar | null>(null);
+  useEffect(() => { fetchInterestJar().then(setJar).catch(() => {}); }, []);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -266,6 +277,21 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
       <h1 style={{ color: 'var(--itunda-grey-900)', fontSize: '36px', fontWeight: '700', margin: '0 0 28px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
         {(wallet?.balance ?? 0).toLocaleString()} <span style={{ fontSize: '20px', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
       </h1>
+
+      {jar && jar.balance > 0 && (
+        <button
+          onClick={onClaimInterest}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'color-mix(in srgb, var(--itunda-blue) 8%, transparent)', border: 'none', borderRadius: '14px', padding: '10px 14px', marginBottom: '16px', cursor: 'pointer' }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: 'color-mix(in srgb, var(--itunda-blue) 15%, transparent)' }}>
+              <Zap size={16} color="var(--itunda-blue)" />
+            </span>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{jar.balance.toLocaleString()} RWF</span>
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>Get interest</span>
+        </button>
+      )}
 
       <div style={{ display: 'flex', gap: '12px' }}>
         <motion.button whileTap={{ scale: 0.96 }} className="itunda-btn itunda-btn-primary" style={{ flex: 1, gap: '8px' }} onClick={onTransferClick}>
@@ -804,7 +830,7 @@ function HomeView({ onNavigateToCard, onNavigateToTab, onNavigateToLoansMode, on
 
   return (
     <div>
-      <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} />
+      <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} onClaimInterest={() => onNavigateToTab('SAVINGS')} />
       {showTransfer && (
         <TransferFlow
           walletBalance={wallet?.balance ?? 0}
