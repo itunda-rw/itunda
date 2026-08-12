@@ -1,7 +1,11 @@
 package rw.itunda.core.network
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 sealed interface SessionState {
@@ -25,6 +29,11 @@ object SessionManager {
     private val _sessionState = MutableStateFlow<SessionState>(SessionState.LoggedOut)
     val sessionState: StateFlow<SessionState> = _sessionState
 
+    // App-process-lifetime scope for fire-and-forget background work (currently just
+    // registerDeviceToken() below) -- SessionManager is itself a singleton with the
+    // same lifetime, so this never needs its own explicit cancellation.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     fun restoreSession() {
         val tokenStore = NetworkClient.currentTokenStore()
         val userId = tokenStore.getUserId()
@@ -32,6 +41,22 @@ object SessionManager {
             SessionState.LoggedIn(userId)
         } else {
             SessionState.LoggedOut
+        }
+        // Real bug found live (2026-08-12): registerDeviceToken() was only ever called
+        // from runAuthCall (a fresh login/register) -- an already-logged-in user
+        // reopening the app (restoreSession(), the actual common case: most app opens
+        // are a restore, not a fresh login) never registered a real push token at all.
+        // Confirmed on a real physical device: notification permission granted, real
+        // Firebase config live, yet zero device-token rows had ever reached the
+        // backend, because this device's session was restored, not freshly logged
+        // into, after the FCM work shipped. onNewToken() (ItundaMessagingService)
+        // alone isn't a reliable substitute -- it only fires for a genuinely
+        // new/refreshed token, and even then races this very function during cold
+        // start. registerDeviceToken() itself is a safe, idempotent upsert
+        // (DeviceTokenController.register's own doc comment), so calling it again
+        // here on every restore is not wasted work.
+        if (_sessionState.value is SessionState.LoggedIn) {
+            scope.launch { registerDeviceToken() }
         }
     }
 
