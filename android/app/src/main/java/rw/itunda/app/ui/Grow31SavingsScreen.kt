@@ -273,6 +273,16 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
     var actionError by remember { mutableStateOf<String?>(null) }
     var confirmingCancel by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
+    // Real Toss motion research (2026-08-12): "confetti for positive moments like a
+    // credit-score increase or payday" -- completing a real 31-day savings challenge is
+    // exactly that kind of earned milestone, arguably closer to Toss's own example than
+    // this app's one other celebratory moment (claiming savings interest). Before this,
+    // a matured-plan withdrawal had ZERO success acknowledgment of any kind: withdraw()
+    // just silently updated `detail` in place and the screen re-rendered with a plain
+    // "withdrawn" status label. Captures the real totals from the withdrawal response
+    // itself (not the post-withdrawal `detail`, which no longer reflects the just-paid
+    // interest) so the celebration message stays accurate.
+    var withdrawSuccess by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -337,6 +347,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                 val res = NetworkClient.apiService.withdrawGrow31SavingsPlan(planId, idempotencyKey)
                 detail = Grow31SavingsPlanDetailResponse(res.success, res.plan, res.walletBalance, res.deposits)
                 actionError = null
+                withdrawSuccess = res.plan.totalSaved to (res.plan.totalInterestPaid ?: 0.0)
                 onChanged()
             } catch (e: HttpException) {
                 actionError = superAppErrorMessage(e)
@@ -346,6 +357,20 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                 submitting = false
             }
         }
+    }
+
+    withdrawSuccess?.let { (totalSaved, interestPaid) ->
+        rw.itunda.core.designsystem.components.IdsCelebrationScreen(
+            headline = "${formatMoneyGrow31(totalSaved)} RWF saved",
+            message = if (interestPaid > 0.0) {
+                "31-day challenge complete -- ${formatMoneyGrow31(interestPaid)} RWF bonus interest is in your wallet."
+            } else {
+                "31-day challenge complete -- moved to your main wallet."
+            },
+            celebratory = true,
+            onDone = { withdrawSuccess = null },
+        )
+        return
     }
 
     when {

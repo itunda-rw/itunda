@@ -4535,3 +4535,57 @@ shared entry point, no new feature implementations):
   `LoansScreenView`/`InvestScreenView` via new `showLoans`/`showInvest` state in `ContentView`,
   matching the `showSacco`/`showIkimina` precedent already there. Not build-verified (see Section
   41's iOS `xcodebuild` gap note) -- syntax/reference-consistency only.
+
+---
+
+## 43. Real Toss motion research, applied: confetti for the two moments it was missing from
+
+**2026-08-12.** User asked to keep researching Toss's simplicity/interactions/UX writing/
+animations/graphics, explicitly "search online don't imagine." Fresh `WebFetch` (not just the
+existing Section 9 table) against toss.tech/article/interaction and
+toss.im/tossfeed/article/why-motion-in-finance surfaced detail beyond what was already recorded:
+
+- **Rally**, Toss's real cross-platform motion specification, has three concrete rules: only
+  bezier and spring easing curves are permitted; "one motion attached to one target element"
+  (no multi-element ad-hoc choreography without an explicit timeline); named easing tokens
+  (`spring.quick`, `bezier.expo`) so designers/engineers share vocabulary instead of "make it feel
+  smooth" back-and-forth.
+- **"Optical illusion over heavy animation"** -- a named, explicit Toss principle: rather than
+  animating every real list element, overlay a new visual layer and use motion to create the
+  *illusion* of a unified screen, reducing implementation cost while keeping the perceived polish.
+  Not yet checked against itunda's own transition code -- a real follow-up, not applied this pass.
+  Confetti-for-positive-moments was already recorded in Section 9's table, but the *specific*
+  phrase -- "적립금 증가, 월급날 같은 긍정적인 순간에 색종이 효과를 사용해 행복한 순간을
+  극적으로 만든다" (confetti for positive moments like a credit-score increase or payday) -- is
+  what this pass actually acted on.
+
+**itunda's real, current state, verified by inspection, not assumed:** a real, pure-Compose
+confetti celebration screen already existed (`ItundaAppScreen.kt`, built 2026-08-11) but was wired
+to exactly one moment (claiming savings interest). Checking every other real "matured plan"
+completion moment in the app found two more genuine milestones with **zero success
+acknowledgment of any kind** -- not even the plain non-celebratory checkmark: `Grow31SavingsScreen.
+kt`'s and `WeeklySavingsScreen.kt`'s own `withdraw()` success paths (finishing a real 31-day or
+26-week savings challenge) just silently updated on-screen state in place.
+
+**Shipped:** promoted the confetti screen out of `ItundaAppScreen.kt`'s private
+`MoneySuccessScreen`/`ConfettiBurst`/`ConfettiParticle` into `core:designsystem`'s
+`IdsCelebrationScreen` (the same "promote once a second real call site needs it" pattern this
+module's own `HoodShared.kt`/`IdsInteractions.kt` already established -- not a fresh invention),
+then wired it into both real completion moments with `celebratory = true`, using the real totals
+from each withdrawal response (`totalSaved`/`totalInterestPaid` for Grow31,
+`currentAmount`/`totalInterestPaid` for Weekly) so the message is accurate, not generic. `:app`
+full `assembleDebug` build-verified clean; not yet live-verified on-device.
+
+*Shipped: `core/designsystem/.../IdsCelebrationScreen.kt` (new), `ItundaAppScreen.kt`,
+`Grow31SavingsScreen.kt`, `WeeklySavingsScreen.kt`*
+
+### Unresolved / worth a follow-up
+
+- The "optical illusion over heavy animation" principle above hasn't been checked against
+  itunda's own screen-transition code on any platform yet -- a real, separate follow-up.
+- Neither fix is live-verified on-device (build-verified only) -- the physical test device's
+  Grow31/Weekly plans would need to actually reach `MATURED` status (a real 31/26-period wait,
+  or a seeded matured plan) to trigger the withdraw button at all.
+- The broader "UX writing" and "simplicity" angles the user named weren't freshly re-researched
+  this pass beyond what Sections 10/11/14 already cover in depth -- this pass focused specifically
+  on the animations/graphics angle since it was the thinnest existing coverage.

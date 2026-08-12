@@ -299,6 +299,10 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
     var actionError by remember { mutableStateOf<String?>(null) }
     var confirmingCancel by remember { mutableStateOf(false) }
     var submitting by remember { mutableStateOf(false) }
+    // Real Toss motion research (2026-08-12), same reasoning as Grow31SavingsScreen.kt's
+    // own withdrawSuccess: completing a real 26-week savings challenge is a genuine
+    // earned milestone with zero success acknowledgment before this fix.
+    var withdrawSuccess by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -342,6 +346,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                 val res = NetworkClient.apiService.withdrawWeeklySavingsPlan(planId)
                 detail = WeeklySavingsPlanDetailResponse(res.success, res.plan, res.walletBalance, res.installments)
                 actionError = null
+                withdrawSuccess = res.plan.currentAmount to (res.plan.totalInterestPaid ?: 0.0)
                 onChanged()
             } catch (e: HttpException) {
                 actionError = superAppErrorMessage(e)
@@ -351,6 +356,20 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                 submitting = false
             }
         }
+    }
+
+    withdrawSuccess?.let { (totalSaved, interestPaid) ->
+        rw.itunda.core.designsystem.components.IdsCelebrationScreen(
+            headline = "${formatMoneyWeekly(totalSaved)} RWF saved",
+            message = if (interestPaid > 0.0) {
+                "26-week challenge complete -- ${formatMoneyWeekly(interestPaid)} RWF bonus interest is in your wallet."
+            } else {
+                "26-week challenge complete -- moved to your main wallet."
+            },
+            celebratory = true,
+            onDone = { withdrawSuccess = null },
+        )
+        return
     }
 
     when {
