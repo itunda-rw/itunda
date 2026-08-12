@@ -5428,12 +5428,14 @@ Home. Verified via `tsc -b --noEmit` + full production `vite build`, both clean.
   (Refinancing/Credit Card/Debit Card/Service categories), and the product catalog's exact Demand
   Deposits/Savings category grouping with real rates. Worth a dedicated follow-up pass with the
   reference images back in view, rather than building from a text description of them.
-- Not visually verified on-device (Android) or in-browser (Web) this pass -- the physical Android
-  device stayed unreachable over WiFi all session, and neither the Claude-in-Chrome extension nor
-  macOS `screencapture` could produce a real screenshot in this environment this pass (extension
-  reported not connected; `screencapture` returned a black image twice in a row, consistent with a
-  missing Screen Recording permission for this process rather than a fluke) -- both build-verified
-  only. The web `bank-mfe` dev server is live at `localhost:5002` against the real backend if a human
-  wants to look directly.
+- **Android still not visually verified** -- the physical device stayed unreachable over WiFi the
+  entire session; build-verified only.
+- **Web now genuinely live-verified**, not just build-verified: after the Claude-in-Chrome extension
+  and macOS `screencapture` both failed (see [[feedback_headless_chrome_verification]] for the full
+  account), drove a headless Chrome instance directly over the Chrome DevTools Protocol (raw
+  WebSocket, no puppeteer) -- logged in with the real seeded demo user, confirmed the "Get interest"
+  pill renders correctly below the real balance (858,081.42 RWF), clicked it, and confirmed it lands
+  on the real Safe Box/itunda Bank screen with the correct data. First fully live (not just build- or
+  backend-)verified confirmation of ANY fix in the second half of this session.
 - iOS untouched this pass -- the iOS `HomeView` is a separate implementation, not ported yet.
 - Not yet visually verified on-device -- same real connectivity gap as Sections 53-55.
