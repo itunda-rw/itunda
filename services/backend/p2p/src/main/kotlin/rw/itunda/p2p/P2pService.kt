@@ -102,8 +102,11 @@ class P2pService(
             p2pPaymentRequestRepository.save(request)
             throw P2pRequestNotPayableException("This payment request has expired")
         }
+        // Real Toss writing-principle reference (toss.tech/article/21021, "6 principles
+        // for a good error message"): plain user language over a blunt "Cannot X"
+        // directive, and a concrete next step rather than just naming what's wrong.
         if (request.requesterUserId == payerUserId) {
-            throw P2pSelfPaymentException("Cannot pay your own payment request")
+            throw P2pSelfPaymentException("This request is yours -- ask someone else to pay it instead")
         }
         // Real anti-spam limit, same sweep -- lower abuse surface than generateRequest
         // (a real pending request is single-use and payment debits the payer's own real
@@ -199,7 +202,7 @@ class P2pService(
             ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
 
         if (recipientWallet.userId == senderUserId) {
-            throw P2pSelfPaymentException("Cannot send money to your own account")
+            throw P2pSelfPaymentException("You can't send money to yourself -- check the recipient and try again")
         }
         if (senderWallet.availableBalance < amount) {
             // Real Naver Pay Money "결제 시 부족분 자동 충전" (auto-charge the shortfall at

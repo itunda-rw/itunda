@@ -615,8 +615,11 @@ class MerchantService(
 
         val merchant = merchantRepository.findById(intent.merchantId)
             .orElseThrow { MerchantNotFoundException("Merchant not found") }
+        // Real Toss writing-principle reference (toss.tech/article/21021): a concrete
+        // next step over a blunt "Cannot X" -- there IS a real useful alternative here
+        // (share the code with a customer), so name it instead of just naming the block.
         if (merchant.ownerUserId == payerUserId) {
-            throw SelfPaymentException("Cannot pay your own merchant QR code")
+            throw SelfPaymentException("That's your own QR code -- share it with a customer instead of scanning it yourself")
         }
 
         val payerWallet = walletRepository.findByUserIdAndType(payerUserId, WalletType.MAIN)
@@ -845,7 +848,7 @@ class MerchantService(
             ?: throw MerchantNotFoundException("Merchant not found")
         val payerUserId = paymentCode.userId
         if (merchant.ownerUserId == payerUserId) {
-            throw SelfPaymentException("Cannot pay your own merchant code")
+            throw SelfPaymentException("That's your own code -- share it with a customer instead of using it yourself")
         }
 
         // Real funding-source selection -- falls back to the historical WalletType.MAIN

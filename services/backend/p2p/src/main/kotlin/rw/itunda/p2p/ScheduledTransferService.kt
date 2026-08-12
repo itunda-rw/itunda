@@ -64,7 +64,7 @@ class ScheduledTransferService(
             ) ?: walletRepository.findByAccountNumber(trimmedIdentifier)
             ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
         if (recipientWallet.userId == userId) {
-            throw P2pSelfPaymentException("Cannot schedule a transfer to your own account")
+            throw P2pSelfPaymentException("Scheduled transfers need a different recipient -- you can't send to yourself")
         }
         val recipientDisplayName = userRepository.findById(recipientWallet.userId).map { "${it.firstName} ${it.lastName}" }.orElse(trimmedIdentifier)
 
