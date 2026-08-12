@@ -5370,4 +5370,51 @@ riderapp), `android/core/designsystem/.../IdsButton.kt`, `bank-mfe/src/IdsButton
   specific fix is a live, real-time visual behavior (shape morphing as the keyboard animates in/out)
   that's especially worth an actual on-device look once the phone reconnects, more so than a static
   screenshot comparison would show.
+
+## 57. Home tab / itunda Bank account detail -- "Get interest" prompt on the wallet card
+
+**2026-08-12**, same session. User sent 16 real Toss Bank account-detail screenshots ("itunda bank
+should be 100% something like this") followed mid-turn by 2 real Toss super-app Home-tab screenshots
+("home screen should also be 100% like this"), then asked directly whether the distinction between
+the two was understood ("do you also the the difference between home tab and itunda bank right?") --
+confirmed explicitly before touching anything: Toss's super-app Home tab (홈/혜택/쇼핑/페이/전체 nav,
+wallet balance, promo/rewards, category row, spending summary, credit score) maps to itunda's own
+`HomeTab`; Toss Bank's own dedicated account-detail view (balance, "Get interest" CTA, transaction
+list, Top up/Send, deposit-rate banner, Auto Transfer, "My Toss Bank assets", a 관리/Manage menu, a
+product catalog) maps to itunda's own `BankHubScreen`.
+
+Checking both against current code found this area was **already substantially built in an earlier
+pass this same session** (code comments dated 2026-08-11): `HomeTab` already has
+`PersonalRecommendationCard`, `WalletHeroCard`, `BankSummaryCard`, spending insight;
+`BankHubScreen` already has the Save & Grow / Borrow product catalog, interest jar, savings goals,
+round-up, Ikimina/SACCO, Investments, loans, and a real Deposit Protection Fund disclosure card. Not
+a green-field gap -- one concrete, real, still-missing piece found by direct comparison: the account-
+detail screenshots show a small "Get interest" prompt card (unclaimed interest balance + inline claim
+button) sitting directly below the balance, above the transaction list. itunda already had both real
+pieces this needs -- `MainViewModel.interestJar` (already fetched, already used by `BankSummaryCard`
+and `BankHubScreen`'s own "Interest earned this month" row) and a real claim destination
+(`SavingsFlowStep.ClaimInterest`, already wired from `BankHubScreen`) -- just never surfaced on
+`WalletHeroCard` itself. Added a conditionally-rendered row (only when `interestJar.balance > 0`,
+matching this same card's existing "don't show an empty section" discipline already used for
+`earnedThisMonth`): a tinted brand-color pill with a bolt icon + the real unclaimed amount, and a
+small `IdsButton` reusing the exact `SavingsFlowStep.ClaimInterest` destination `BankHubScreen`
+already routes to. New `interestJarBalance`/`onClaimInterest` params threaded from `HomeTab` down
+through the existing `interestJar` state it already collected, no new fetch.
+
+Verified via full `:app:compileDebugKotlin`, clean.
+
+*Shipped: `android/app/.../ItundaAppScreen.kt` (`WalletHeroCard`, `HomeTab`), `android/app/src/main/res/values/strings.xml`*
+
+### Unresolved / worth a follow-up
+
+- Only one gap was found and closed this pass -- the full 16+2 reference image set has **not** been
+  exhaustively swept beyond it. Real candidates not yet checked against current code: the
+  promotional deposit-rate banner, "Auto Transfer" row, "My Toss Bank assets" section, the exact
+  관리/Manage menu structure (Refinancing/Credit Card/Debit Card/Service categories), and the product
+  catalog's exact Demand Deposits/Savings category grouping with real rates. Worth a dedicated
+  follow-up pass rather than assuming this closes the whole reference set.
+- Not yet visually verified on-device -- same real connectivity gap as Sections 53-56; build-verified
+  only.
+- iOS/Web untouched this pass -- `WalletHeroCard` is Android-only in this codebase (`bank-mfe`'s own
+  Home view and the iOS `HomeView` are separate implementations); not ported yet.
 - Not yet visually verified on-device -- same real connectivity gap as Sections 53-55.
