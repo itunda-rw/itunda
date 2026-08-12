@@ -5229,6 +5229,42 @@ specific to this feature.
 
 *Shipped: `android/features/maps/impl/.../MapsScreen.kt`*
 
+### Cross-platform port (same day) -- "100% visual, across all three platforms"
+
+User confirmed the same real Bus tab should ship on iOS and Web too. Both already had real
+`searchBusTrips` API clients (from each platform's own standalone Bus-booking screen), so this was
+a straight port of the same real logic and honest labeling, not new design work:
+
+- **Web** (`bank-mfe/src/MapView.tsx`): added the same third "🚌 Bus" button to the existing mode
+  toggle (skipped for the multi-stop itinerary path, same deliberate boundary as Android). Verified
+  with the real toolchain end to end: `tsc -b --noEmit` clean, full production `vite build` succeeds,
+  `oxlint` clean for this file.
+- **iOS** (`MapScreenView.swift`): same port, extracted into its own `busResultsView`
+  `@ViewBuilder` function up front (this file already had a documented Swift type-checker-timeout
+  precedent for exactly this shape of addition -- `travelModeToggle()`/`routeAlternativesPicker(_:)`
+  -- so the extraction wasn't discovered the hard way this time).
+
+**Real, significant finding while verifying iOS**: the full `ItundaApp` scheme hadn't actually been
+xcodebuild-verified in a long time. `DeviceKeyManager.swift` -- item 246's real Secure-Enclave
+device-key feature, recorded as shipped 2026-08-07 -- failed with "cannot find 'DeviceKeyManager' in
+scope" despite the file existing, being correctly `public`, and being correctly `import`ed. Root
+cause: the file had **zero references in the generated `project.pbxproj`** -- it was never actually
+a member of the Xcode project, only ever verified via `swiftc -parse` (a syntax check, not a real
+compile), per its own header comment blaming "Tuist can't run in this sandbox's toolchain." That
+claim no longer held: `tuist generate --no-open` ran successfully this pass and regenerated a
+correct project from `Project.swift`'s own source globs (which were always correct -- this was a
+**stale local generated-project artifact**, gitignored and not source-controlled, not a manifest
+bug). Regenerating also picked up 5 more files with the identical "NOT build-verified" header
+comment that had silently been in the same state: `NIDABiometricAuth.swift`, `IDS.swift`,
+`ZeroTrust.swift`, `BankView.swift`, `PaymentWidget.swift`. After `pod install` re-integrated
+CocoaPods against the regenerated project, the full `ItundaApp` scheme built with **zero errors**
+for the iOS Simulator -- the first confirmed full-app iOS build this project has had in this
+session's memory of it.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/MapView.tsx`, `ios/App/Sources/MapScreenView.swift`*
+(the `tuist generate`/`pod install` fix itself touches only gitignored generated files, nothing to
+commit beyond confirming the regenerated project builds clean)
+
 ### Unresolved / worth a follow-up
 
 - Live traffic-colored routing and live GPS bus-arrival countdowns are explicitly NOT built --
@@ -5236,12 +5272,18 @@ specific to this feature.
   has consistently avoided (see the `AskUserQuestion` above). If itunda ever integrates a real
   traffic-data provider or partners with a real Rwanda transit operator for live GPS feeds, this is
   the natural place to revisit.
-- The multi-stop itinerary route planner's own mode selector (a separate code path, line ~2680)
-  deliberately did NOT get a Bus tab -- a peer-posted point-to-point coach trip has no real concept
-  of a custom multi-waypoint itinerary, so forcing it in would be dishonest UI, not a missed spot.
-- Not yet visually verified on-device -- same real connectivity gap as Sections 53/54 (the physical
-  test device has been unreachable over WiFi for the second half of this session).
-- Origin is not passed to `searchBusTrips` (only destination) -- a deliberate simplification to
-  avoid an extra reverse-geocode-then-search round trip for the user's current location; real
-  destination-only matching already narrows results meaningfully. Worth adding if it turns out to
-  return too many irrelevant real trips in practice.
+- The multi-stop itinerary route planner's own mode selector (a separate code path, line ~2680 on
+  Android, ~1305 on Web) deliberately did NOT get a Bus tab on any platform -- a peer-posted
+  point-to-point coach trip has no real concept of a custom multi-waypoint itinerary, so forcing it
+  in would be dishonest UI, not a missed spot.
+- Not yet visually verified on-device on any platform -- same real connectivity gap as Sections
+  53/54 (the physical Android test device has been unreachable over WiFi for the second half of
+  this session); iOS/Web verification so far is compiler/build-level only, no simulator or browser
+  screenshot taken.
+- Origin is not passed to `searchBusTrips` (only destination) on any platform -- a deliberate
+  simplification to avoid an extra reverse-geocode-then-search round trip for the user's current
+  location; real destination-only matching already narrows results meaningfully.
+- The 6-file iOS project-membership gap was only found because THIS pass happened to try a full
+  `xcodebuild` for the first time in a while -- worth periodically re-running `tuist generate &&
+  pod install && xcodebuild` as a real health check, the same standing lesson
+  `feedback_run_real_tests_not_just_compile` already established for the backend's own test suites.
