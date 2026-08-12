@@ -4881,3 +4881,47 @@ itunda already had that search box built (2026-08-10, unchanged by this fix).
 test device.
 
 *Shipped: `ItundaAppScreen.kt`*
+
+---
+
+## 50. Explore tab quick-access consolidation -- five sections down to two
+
+**2026-08-12**, same session, same thread. User sent 6 screenshots of itunda's own current Explore
+tab (not Toss) and said "still not the same." Even after the accordion removal in Section 49, the
+tab opened with five separate icon/list "quick access"-style sections stacked one after another --
+Quick links, Quick access, Mini apps, Partner mini-apps, Shortcuts -- before reaching the real
+categorized content. Real Toss's All-tab reference screenshots (Section 49) open with exactly two:
+a quick-launch icon grid, then a flat list.
+
+Fix, in `ItundaAppScreen.kt`:
+- Renamed the `IconGridSection("Quick access", ...)` grid to `"Open"` (matching real Toss wording)
+  and moved it, together with `"Shortcuts"`, to open the tab immediately after the search bar.
+- Merged the 4 `MiniAppsSection` rows (Wallet balance / Pay bills / Reward tasks / Insurance) into
+  the existing `FlatSection("Quick links", ...)` rather than keeping them a separate section --
+  they were real, working rows, just redundant as their own section.
+- Removed the now-unused `MiniAppsSection` composable and its doc comment entirely (no dead code
+  left behind), same discipline as the `CollapsibleFlatSection` removal in Section 49.
+- Hit and fixed a real compile error mid-edit: an orphaned closing brace left over from moving the
+  old "Shortcuts" item block caused cascading `Unresolved reference` / `@Composable invocations can
+  only happen from the context of a @Composable function` errors through the rest of the file.
+
+Result, confirmed live via `dumpsys window` + screenshot on the physical device: the tab now opens
+with `Open` (Mini/Games/Bank/Pick) and `Shortcuts` (Open account/Verify/Send/Group/Property/
+Insurance) as two icon grids, then `Quick links` as one flat list (Shop/Eats/Marketplace/Wallet
+balance/Pay bills/Reward tasks/Insurance/...) -- structurally two groups instead of five, matching
+the real reference shape.
+
+`:app:compileDebugKotlin` and full `installDebug` build-verified clean; installed and relaunched on
+the physical test device; foreground + on-screen content confirmed live via screenshot this pass
+(the first fix this session actually visually walked, not just installed).
+
+*Shipped: `ItundaAppScreen.kt`*
+
+### Unresolved / worth a follow-up
+
+- "Quick links" still carries real but visually mixed content (app-launch rows like Shop/Eats
+  alongside account-status rows like Wallet balance) -- not split further this pass since the user's
+  own screenshots didn't call this out specifically; worth a real-reference check if it comes up
+  again.
+- Still not screen-recorded or walked interactively (tapped through) on-device -- only a static
+  screenshot comparison this pass.

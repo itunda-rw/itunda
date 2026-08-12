@@ -2998,12 +2998,21 @@ private fun MenuScreen(
             )
         }
         if (menuSearchQuery.isBlank()) {
-            // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
-            // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
-            // reachable as a real row instead of being dropped.
-            item { FlatSection("Quick links", quickLinksRows) }
+            // Real Toss layout (2026-08-12), matching the real screenshot's own
+            // opening two sections exactly: "Open" (a real app-launcher shortcut grid,
+            // itunda's Mini/Games/Bank/Pick already matched this concept 1:1, just
+            // renamed to the real label) then a real quick-launch grid, in that order
+            // -- itunda previously had FIVE separate "quick access"-flavored sections
+            // stacked before reaching any of the real categorized content (Quick
+            // links, Quick access, Mini apps, Partner mini-apps, Shortcuts), which is
+            // real, visible clutter the actual Toss app doesn't have. Consolidated to
+            // three: Open, Shortcuts, then Quick links (with Mini apps' 4 rows folded
+            // in rather than kept as their own separate header) -- "Shortcuts" stays
+            // that name, not renamed to "Recent", since it's still a static curated
+            // list, not real recently-used tracking (the exact honesty bug this same
+            // screen's own 2026-08-10 fix already corrected once).
             item {
-                IconGridSection("Quick access", listOf(
+                IconGridSection("Open", listOf(
                     "Mini" to Icons.Outlined.Apps,
                     "Games" to Icons.Outlined.SportsEsports,
                     "Bank" to Icons.Outlined.AccountBalance,
@@ -3011,19 +3020,50 @@ private fun MenuScreen(
                 ))
             }
             item {
-                MiniAppsSection(
-                    onWalletBalance = {
-                        context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.WalletBalanceMiniAppActivity::class.java))
+                IconGridSection(
+                    "Shortcuts",
+                    listOf(
+                        "Open account" to Icons.Outlined.AddCircleOutline,
+                        "Verify" to Icons.Outlined.VerifiedUser,
+                        "Send" to Icons.Outlined.Send,
+                        "Group" to Icons.Outlined.Group,
+                        "Property" to Icons.Outlined.HomeWork,
+                        "Insurance" to Icons.Outlined.Shield,
+                    ),
+                    onItemClick = { label ->
+                        when (label) {
+                            "Open account" -> onOpenOverview()
+                            "Verify" -> onOpenIdentity()
+                            "Send" -> onOpenTransferHub()
+                            "Group" -> onOpenGroupAccounts()
+                            "Property" -> onOpenProperty()
+                            "Insurance" -> context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
+                        }
                     },
-                    onPayBills = {
-                        context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
-                    },
-                    onRewardTasks = {
-                        context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
-                    },
-                    onInsurance = {
-                        context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
-                    }
+                )
+            }
+            // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
+            // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
+            // reachable as a real row instead of being dropped. Mini apps' own 4 rows
+            // (Wallet balance/Pay bills/Reward tasks/Insurance) merged in here too
+            // (2026-08-12), not kept as their own separate "Mini apps" header.
+            item {
+                FlatSection(
+                    "Quick links",
+                    quickLinksRows + listOf(
+                        FlatRow("Wallet balance", onClick = {
+                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.WalletBalanceMiniAppActivity::class.java))
+                        }),
+                        FlatRow("Pay bills", onClick = {
+                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
+                        }),
+                        FlatRow("Reward tasks", onClick = {
+                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
+                        }),
+                        FlatRow("Insurance", onClick = {
+                            context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
+                        }),
+                    ),
                 )
             }
             // Real Partner SDK section (2026-07-17) -- lists REAL approved third-party
@@ -3031,10 +3071,7 @@ private fun MenuScreen(
             // closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner SDK row.
             // Empty when the catalog has no approved entries yet (a real, honest empty
             // state, not hidden entirely, so this section's existence is itself visible
-            // proof the mechanism is wired up end to end). Follows the exact same
-            // FlatSection/tap-to-launch pattern as MiniAppsSection above, on purpose --
-            // this is meant to read as a natural extension of first-party mini-apps, not a
-            // separately-styled bolt-on.
+            // proof the mechanism is wired up end to end).
             if (partnerMiniApps.isNotEmpty()) {
                 item {
                     FlatSection(
@@ -3060,38 +3097,6 @@ private fun MenuScreen(
                         }
                     )
                 }
-            }
-            item {
-                // Real gap found live (2026-08-10): titled "Recent services" but nothing
-                // here was ever actually tracked as recent -- a static, hardcoded list,
-                // which is its own small honesty problem on top of the bigger one: 6 of
-                // its 8 icons were dead taps (tap ripple fires, nothing happens). Renamed
-                // to "Shortcuts" (what it actually is) and wired to the same real
-                // destinations the rest of this screen already uses. "Photo transfer" is
-                // dropped outright, not wired -- grepping this app for any OCR/photo-based
-                // transfer feature turns up nothing; same "don't fake a destination that
-                // doesn't exist" call already made for QuickActions' Scan-to-Pay icon.
-                IconGridSection(
-                    "Shortcuts",
-                    listOf(
-                        "Open account" to Icons.Outlined.AddCircleOutline,
-                        "Verify" to Icons.Outlined.VerifiedUser,
-                        "Send" to Icons.Outlined.Send,
-                        "Group" to Icons.Outlined.Group,
-                        "Property" to Icons.Outlined.HomeWork,
-                        "Insurance" to Icons.Outlined.Shield,
-                    ),
-                    onItemClick = { label ->
-                        when (label) {
-                            "Open account" -> onOpenOverview()
-                            "Verify" -> onOpenIdentity()
-                            "Send" -> onOpenTransferHub()
-                            "Group" -> onOpenGroupAccounts()
-                            "Property" -> onOpenProperty()
-                            "Insurance" -> context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
-                        }
-                    },
-                )
             }
             // Real gap found live (2026-08-10): this used to be one 33-row "Financial
             // services" section -- everything from savings to bus tickets to vehicle
@@ -3515,36 +3520,6 @@ private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> U
         }
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
     }
-}
-
-/**
- * Real entry point for Apps-in-Itunda mini-apps -- launches the genuine
- * ReactActivity subclasses in rw.itunda.app.miniapps, each loading a real RN
- * bundle from packages/saronite/mini-apps, not a placeholder screen.
- *
- * Flat, no card wrapper -- matches the real Toss settings/service screens
- * (송금, 전체 서비스, 고객센터 reference screenshots, 2026-07-10): rows sit
- * directly on the screen background, grouped by a small label, separated by
- * hairline dividers, not floated in an isolated white/gray card island. The
- * earlier card-per-section treatment read as generic fintech-app UI, not
- * Toss's actual, much flatter composition.
- */
-@Composable
-private fun MiniAppsSection(
-    onWalletBalance: () -> Unit,
-    onPayBills: () -> Unit,
-    onRewardTasks: () -> Unit,
-    onInsurance: () -> Unit
-) {
-    FlatSection(
-        title = "Mini apps",
-        rows = listOf(
-            FlatRow("Wallet balance", onClick = onWalletBalance),
-            FlatRow("Pay bills", onClick = onPayBills),
-            FlatRow("Reward tasks", onClick = onRewardTasks),
-            FlatRow("Insurance", onClick = onInsurance)
-        )
-    )
 }
 
 internal data class FlatRow(
