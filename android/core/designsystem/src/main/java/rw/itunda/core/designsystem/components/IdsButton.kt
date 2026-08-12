@@ -5,8 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,6 +64,12 @@ fun IdsButton(
     // an optional leading icon generally. Default null preserves every existing call
     // site (this app's own icon-less "Send"/"Log in"/etc. buttons) unchanged.
     icon: ImageVector? = null,
+    // Real keyboard-docking reference (2026-08-12) -- see
+    // IdsKeyboardDockedButton's own doc comment. Null (the default) preserves this
+    // button's own normal rounded corners for every existing call site; only a
+    // caller that specifically wants the flush, sharp-cornered "docked to the
+    // keyboard" look passes one in.
+    shape: androidx.compose.ui.graphics.Shape? = null,
 ) {
     val heightDp = when (size) {
         IdsButtonSize.Large -> 56.dp
@@ -105,7 +115,7 @@ fun IdsButton(
             .then(widthModifier)
             .scale(pressScale)
             .height(heightDp),
-        shape = RoundedCornerShape(if (size == IdsButtonSize.Small) 10.dp else 12.dp),
+        shape = shape ?: RoundedCornerShape(if (size == IdsButtonSize.Small) 10.dp else 12.dp),
         contentPadding = horizontalPadding,
         colors = ButtonDefaults.buttonColors(
             containerColor = containerColor,
@@ -121,6 +131,41 @@ fun IdsButton(
         Text(
             text = text,
             style = if (size == IdsButtonSize.Small) IdsTypography.Body2 else IdsTypography.Button
+        )
+    }
+}
+
+// Real Toss reference (2026-08-12, direct user screenshot: "Enter workplace name" ->
+// a single field + bottom "Confirm" bar): with the keyboard hidden, the bar is a
+// normal rounded, inset button like everywhere else in the app; the moment the
+// keyboard opens, it loses its rounding and side margins entirely and becomes a
+// flush, edge-to-edge bar sitting directly on top of the keyboard -- visually
+// "docking" into the keyboard's own flat surface instead of floating above it as a
+// separate rounded card. A neutral inset+rounded button butted up against a hard
+// flat keyboard edge reads as slightly disconnected from it; going flush removes
+// that seam. Wraps IdsButton rather than baking this into it directly -- most real
+// IdsButton call sites (inline in a card, a row, a non-keyboard screen) should never
+// pick up this behavior automatically, only a screen that explicitly opts in by
+// using this composable for its own bottom "single field -> confirm" pattern.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun IdsKeyboardDockedButton(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    horizontalPadding: androidx.compose.ui.unit.Dp = Ids.layout.screenHorizontal,
+) {
+    val imeVisible = WindowInsets.isImeVisible
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = if (imeVisible) 0.dp else horizontalPadding),
+    ) {
+        IdsButton(
+            text = text,
+            onClick = onClick,
+            enabled = enabled,
+            shape = if (imeVisible) androidx.compose.ui.graphics.RectangleShape else null,
         )
     }
 }

@@ -5290,7 +5290,7 @@ commit beyond confirming the regenerated project builds clean)
 
 ---
 
-## 56. Error-handling audit continued + a real disabled-CTA color fix
+## 56. Error-handling audit continued + real disabled-CTA color/keyboard-docking fixes
 
 **2026-08-12**, same session. User said "keep searching about toss and improve itunda" -- rather
 than start a fresh research angle on top of an already very long session, picked up two real,
@@ -5332,14 +5332,42 @@ existing neutral disabled fallback, a secondary style not shown in the reference
 Android verified via `:core:designsystem:compileDebugKotlin` + full `:app:compileDebugKotlin`. Web
 verified via `tsc -b --noEmit` + full production `vite build`, both clean.
 
+**Real keyboard-docking CTA, found by re-examining the same reference screenshots more closely
+(user's follow-up: "did you see how the button changes from curved button to full width when it's
+on top of keyboard or keypad")**: with the keyboard hidden, the real "Confirm" bar is a normal
+rounded, inset button like everywhere else in the app; the moment the keyboard opens, it loses its
+rounding and side margins entirely and becomes a flush, edge-to-edge bar sitting directly on top of
+the keyboard -- visually docking into the keyboard's own flat surface rather than floating above it
+as a separate rounded card. Added `IdsKeyboardDockedButton` (Android `core/designsystem`), a thin
+wrapper around `IdsButton` using the real Compose `WindowInsets.isImeVisible` API
+(`@ExperimentalLayoutApi`) to switch `shape`/horizontal padding live as the keyboard opens/closes --
+not baked into `IdsButton` itself, since most real call sites (inline in a card, a row, a
+non-keyboard screen) should never pick this behavior up automatically. `IdsButton` itself gained one
+small, non-breaking addition: an optional `shape` override param. Applied to the first real matching
+itunda screen -- `LoginScreen.kt`'s own phone-number/password entry flow (single field + bottom
+primary button, the same real shape as the reference), the app's single highest-traffic keyboard-
+adjacent form. Verified via full `:app:compileDebugKotlin`, clean.
+
 *Shipped: `android/agentapp/.../NetworkClient.kt`, `.../LoginScreen.kt` (agentapp/merchantapp/
-riderapp), `android/core/designsystem/.../IdsButton.kt`, `bank-mfe/src/IdsButton.tsx`*
+riderapp), `android/core/designsystem/.../IdsButton.kt`, `bank-mfe/src/IdsButton.tsx`,
+`android/app/.../LoginScreen.kt`*
 
 ### Unresolved / worth a follow-up
 
 - iOS has no `IdsButton` port at all yet (a real, already-documented gap from the original Web port
-  pass) -- the disabled-color fix above only applies to the 2 platforms that have the component.
+  pass) -- the disabled-color fix above only applies to the 2 platforms that have the component; the
+  keyboard-docking fix is Android-only for the same reason plus SwiftUI needing its own real
+  keyboard-visibility detection mechanism, not attempted this pass.
 - Web's `IdsButton.tsx` migration itself is still only 2 of 400+ real button call sites in
   `BankDashboard.tsx` (a pre-existing, already-documented gap, unrelated to this pass) -- this
   disabled-color fix only benefits screens that have already migrated to the real component.
+- `IdsKeyboardDockedButton` was only applied to `LoginScreen.kt` this pass -- a real, honest first
+  application, not a claim that every itunda screen with this shape (single field + bottom confirm)
+  has been swept. Worth the same kind of audit pass this whole research thread keeps applying to
+  other components (confetti, skeleton loading, pull-to-refresh, haptics, etc.) if the user wants
+  full coverage.
+- Not yet visually verified on-device -- same real connectivity gap as Sections 53-55; this
+  specific fix is a live, real-time visual behavior (shape morphing as the keyboard animates in/out)
+  that's especially worth an actual on-device look once the phone reconnects, more so than a static
+  screenshot comparison would show.
 - Not yet visually verified on-device -- same real connectivity gap as Sections 53-55.

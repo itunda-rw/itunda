@@ -12,12 +12,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -56,7 +59,7 @@ import rw.itunda.app.R
 import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.AuthResult
 import rw.itunda.core.network.SessionManager
-import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsKeyboardDockedButton
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme
@@ -101,10 +104,12 @@ import rw.itunda.core.designsystem.theme.IdsTypography
  * instead of rendering the whole app unconditionally against services/backend's real
  * /api/v1/auth/register and /api/v1/auth/login.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
     val baseContext = LocalContext.current
     val locale by AppLocalePreference.locale.collectAsState()
+    val isImeVisible = WindowInsets.isImeVisible
 
     IdsTheme {
         var isRegisterMode by remember { mutableStateOf(false) }
@@ -250,10 +255,17 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     }
                 }
 
+                // Real Toss keyboard-docking reference (2026-08-12, direct user
+                // screenshot) -- the primary "Next"/"Log in"/"Create account" button
+                // now handles its own horizontal bleed via IdsKeyboardDockedButton
+                // (flush, sharp-cornered, full-width the moment the keyboard opens;
+                // normal rounded+inset otherwise), so this outer Column no longer
+                // applies a fixed horizontal inset -- only the secondary "switch
+                // mode" text link below still wants one, applied directly to it.
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+                        .padding(vertical = if (isImeVisible) 0.dp else Ids.layout.screenVertical),
                 ) {
                     if (isSubmitting) {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -265,7 +277,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         }
                     } else {
                         val isLastStep = step == stepCount - 1
-                        IdsButton(
+                        IdsKeyboardDockedButton(
                             text = if (isLastStep) stringResource(if (isRegisterMode) R.string.login_button_create_account else R.string.login_button_log_in) else stringResource(R.string.login_button_next),
                             onClick = { goNext() },
                             enabled = currentStepValid,
@@ -276,7 +288,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                         Spacer(modifier = Modifier.height(Ids.layout.rowGap))
                         TextButton(
                             onClick = { switchMode(!isRegisterMode) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal),
                         ) {
                             Text(
                                 text = stringResource(if (isRegisterMode) R.string.login_switch_to_login else R.string.login_switch_to_register),
