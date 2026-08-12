@@ -4773,3 +4773,36 @@ uniformly. `:app` full `assembleDebug` build-verified clean.
 - Image loading/caching (Coil usage, size constraints, crossfade, disk cache config) -- named in
   this pass's own search results as a real Toss performance lever -- wasn't audited this pass, a
   real, separate follow-up.
+
+---
+
+## 48. Image loading — real Coil crossfade gap, closed the Section 47 follow-up
+
+**2026-08-12**, same session, direct continuation of Section 47's own named follow-up. Checked
+itunda's real Coil usage: 18 `AsyncImage` call sites across 6 modules (Marketplace/Shop/Eats/Talk/
+Maps listings and photos, plus avatars), zero use `crossfade`, and no app-wide `ImageLoader` is
+configured anywhere -- every image load runs on Coil's raw defaults. Coil's own disk/memory cache
+defaults are already reasonable out of the box (a real check, not assumed broken -- Coil 2.x's
+default `ImageLoader` auto-sizes both caches sensibly), so the real, concrete gap here is
+specifically the missing crossfade: every image currently hard-pops in the instant it finishes
+downloading, the same jarring-loading-moment problem this session's own Doherty-Threshold/
+skeleton-loading pass (Section 44) and confetti pass (Section 43) already found and fixed for
+other loading moments -- this is the same principle, applied to a mechanism neither of those
+passes touched.
+
+**Shipped**: `ItundaApplication` now implements Coil's own documented `ImageLoaderFactory`
+interface, returning `ImageLoader.Builder(this).crossfade(true).build()`. This is Coil's real,
+intended mechanism for exactly this -- every `AsyncImage` call app-wide automatically picks up
+`Context.imageLoader` once this is set, so none of the 18 existing (or any future) call sites
+needed individual edits. `:app` full `assembleDebug` build-verified clean.
+
+*Shipped: `ItundaApplication.kt`*
+
+### Unresolved / worth a follow-up
+
+- Not live-verified on-device -- same caveat as every fix in Sections 43-48 now (six real fixes:
+  confetti, skeleton loading, pull-to-refresh, haptics, list keys, image crossfade).
+- Explicit request-level `size()` constraints (loading a thumbnail-sized request instead of full
+  resolution for small avatar/listing-thumbnail UI) weren't audited or added this pass -- a real,
+  separate, more invasive follow-up (needs checking each call site's actual display size, not a
+  single global config change like this one was).

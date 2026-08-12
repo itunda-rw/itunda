@@ -1,6 +1,8 @@
 package rw.itunda.app.miniapps
 
 import android.app.Application
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import com.brickmodule.BrickModulePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -44,7 +46,20 @@ import java.util.concurrent.TimeUnit
  * `getDefaultReactHost`'s `jsBundleFilePath` parameter, which accepts a real file
  * path directly -- the modern equivalent of the old `getJSBundleFile()` override.
  */
-class ItundaApplication : Application(), ReactApplication {
+class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
+
+    // Real Toss motion research (2026-08-12): "loading moments get softened," the same
+    // principle this session already applied to skeleton loading/celebration screens,
+    // extended here to real image loads -- 18 real AsyncImage call sites across 6
+    // modules (Marketplace/Shop/Eats/Talk/Maps listings, avatars) all used Coil's raw
+    // defaults with no crossfade, a hard pop-in the moment each image finished
+    // downloading. Coil's own documented ImageLoaderFactory mechanism applies this
+    // app-wide from one place -- every AsyncImage call automatically picks up
+    // Context.imageLoader, so no per-call-site changes were needed or made.
+    override fun newImageLoader(): ImageLoader =
+        ImageLoader.Builder(this)
+            .crossfade(true)
+            .build()
 
     override val reactHost: ReactHost by lazy {
         // Same conditional logic as the pre-rewrite getJSBundleFile() override:
