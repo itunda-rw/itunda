@@ -5403,18 +5403,37 @@ through the existing `interestJar` state it already collected, no new fetch.
 
 Verified via full `:app:compileDebugKotlin`, clean.
 
-*Shipped: `android/app/.../ItundaAppScreen.kt` (`WalletHeroCard`, `HomeTab`), `android/app/src/main/res/values/strings.xml`*
+Checked `BankHubScreen` for the other reference-set candidates (Auto Transfer, Manage menu, deposit-
+rate banner, product catalog) before declaring more gaps: Auto Transfer already exists
+(`AutoTransferListScreen`), and Save & Grow/Borrow already cover most of the product-catalog ground
+with real rates. Didn't build the promotional deposit-rate banner or a distinct Manage-menu grouping
+from memory of the earlier screenshots -- doing so without the images in front of me again risks
+guessing at layout, so left both as named open follow-ups instead.
+
+**Same-day web port**: Android device stayed unreachable, but the backend turned out to be directly
+reachable from the dev machine itself (`192.168.252.4:30081`, unlike the phone's WiFi subnet) --
+started `bank-mfe`'s dev server against it and ported the identical fix. Web's `AccountBalance`
+(`HomeView`'s own wallet hero, the exact analog of `WalletHeroCard`) had every real piece needed
+already -- `fetchInterestJar` (the same call `InterestJarCard` on the `SavingsView`/"itunda Bank" tab
+already makes) and a real claim destination (`onNavigateToTab('SAVINGS')`) -- just never surfaced on
+Home. Verified via `tsc -b --noEmit` + full production `vite build`, both clean.
+
+*Shipped: `android/app/.../ItundaAppScreen.kt` (`WalletHeroCard`, `HomeTab`), `android/app/src/main/res/values/strings.xml`, `bank-mfe/src/BankDashboard.tsx` (`AccountBalance`, `HomeView`)*
 
 ### Unresolved / worth a follow-up
 
 - Only one gap was found and closed this pass -- the full 16+2 reference image set has **not** been
   exhaustively swept beyond it. Real candidates not yet checked against current code: the
-  promotional deposit-rate banner, "Auto Transfer" row, "My Toss Bank assets" section, the exact
-  관리/Manage menu structure (Refinancing/Credit Card/Debit Card/Service categories), and the product
-  catalog's exact Demand Deposits/Savings category grouping with real rates. Worth a dedicated
-  follow-up pass rather than assuming this closes the whole reference set.
-- Not yet visually verified on-device -- same real connectivity gap as Sections 53-56; build-verified
-  only.
-- iOS/Web untouched this pass -- `WalletHeroCard` is Android-only in this codebase (`bank-mfe`'s own
-  Home view and the iOS `HomeView` are separate implementations); not ported yet.
+  promotional deposit-rate banner, "My Toss Bank assets" section, the exact 관리/Manage menu structure
+  (Refinancing/Credit Card/Debit Card/Service categories), and the product catalog's exact Demand
+  Deposits/Savings category grouping with real rates. Worth a dedicated follow-up pass with the
+  reference images back in view, rather than building from a text description of them.
+- Not visually verified on-device (Android) or in-browser (Web) this pass -- the physical Android
+  device stayed unreachable over WiFi all session, and neither the Claude-in-Chrome extension nor
+  macOS `screencapture` could produce a real screenshot in this environment this pass (extension
+  reported not connected; `screencapture` returned a black image twice in a row, consistent with a
+  missing Screen Recording permission for this process rather than a fluke) -- both build-verified
+  only. The web `bank-mfe` dev server is live at `localhost:5002` against the real backend if a human
+  wants to look directly.
+- iOS untouched this pass -- the iOS `HomeView` is a separate implementation, not ported yet.
 - Not yet visually verified on-device -- same real connectivity gap as Sections 53-55.
