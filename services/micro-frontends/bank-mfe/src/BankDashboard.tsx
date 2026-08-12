@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronDown, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -922,7 +922,6 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
   onSelect: (id: Tab) => void;
 }) {
   const [search, setSearch] = useState('');
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const allIds = groups.flatMap((g) => g.ids);
   const matches = search.trim()
     ? allIds.filter((id) => tabLabel(id).toLowerCase().includes(search.trim().toLowerCase()))
@@ -976,30 +975,27 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
               </div>
             </section>
           )}
-          {groups.map((group) => {
-            const isOpen = expandedGroup === group.title;
-            return (
-              <section key={group.title} className="itunda-card" style={{ padding: '16px', marginBottom: '12px' }}>
-                <button
-                  onClick={() => setExpandedGroup(isOpen ? null : group.title)}
-                  aria-expanded={isOpen}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'transparent', color: 'var(--itunda-grey-900)' }}
-                >
-                  <span style={{ fontSize: '15px', fontWeight: 700 }}>{group.title} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 500, fontSize: '12px' }}>· {group.ids.length}</span></span>
-                  <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-                </button>
-                {isOpen && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
-                    {group.ids.map((id) => (
-                      <button key={id} className="itunda-btn itunda-btn-secondary" style={{ fontSize: '13px', padding: '8px 12px', borderRadius: '999px' }} onClick={() => onSelect(id)}>
-                        {tabLabel(id)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-            );
-          })}
+          {/* Real Toss reference (16 screenshots, 2026-08-12 -- see Android's identical
+              MenuScreen fix, docs/DESIGN_REFERENCES.md Section 49): every category's
+              items are always fully visible in the real 전체 screen, zero collapse/
+              expand mechanic anywhere. This accordion (tap-to-expand, was the only real
+              way to see a group's own items) was the same over-applied Hick's Law
+              pattern Android's MenuScreen had before that fix -- web just never got the
+              same correction until now. */}
+          {groups.map((group) => (
+            <section key={group.title} className="itunda-card" style={{ padding: '16px', marginBottom: '12px' }}>
+              <h2 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
+                {group.title} <span style={{ color: 'var(--itunda-grey-400)', fontWeight: 500, fontSize: '12px' }}>· {group.ids.length}</span>
+              </h2>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {group.ids.map((id) => (
+                  <button key={id} className="itunda-btn itunda-btn-secondary" style={{ fontSize: '13px', padding: '8px 12px', borderRadius: '999px' }} onClick={() => onSelect(id)}>
+                    {tabLabel(id)}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
         </>
       )}
     </div>
