@@ -39,6 +39,9 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.Call
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Chat
@@ -303,6 +306,14 @@ fun ItundaAppScreen(
         var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }
         var showTransactionHistory by rememberSaveable { mutableStateOf(false) }
         var showSettings by rememberSaveable { mutableStateOf(false) }
+        // Real Toss distinction (2026-08-12, direct user clarification against real
+        // screenshots) -- the Home bell icon opens the real notifications FEED
+        // directly; Settings' own "Notifications" row opens notification SETTINGS
+        // (a different, real Toss screen -- "Manage notifications" in the reference
+        // screenshots). This app previously conflated the two, routing the Home bell
+        // into the whole Settings screen -- a real no-op-shaped bug (see this file's
+        // own 2026-07-22 audit comment on HomeTopBar, now corrected).
+        var showNotificationsFeed by rememberSaveable { mutableStateOf(false) }
         var showBenefits by rememberSaveable { mutableStateOf(false) }
         // Shop/Hood lost their own primary tabs (2026-08-10, see ItundaTab's own doc
         // comment) -- same real full-screen-entry-point pattern showBenefits/showMap
@@ -881,6 +892,22 @@ fun ItundaAppScreen(
                 viewModel = viewModel,
                 onBack = { showSettings = false },
                 onLogout = { coroutineScope.launch { rw.itunda.core.network.SessionManager.logout() } },
+                onOpenSend = { showSettings = false; showTransferHub = true },
+                onOpenPay = { showSettings = false; selectedTab = ItundaTab.Pay },
+            )
+            return@IdsTheme
+        }
+
+        if (showNotificationsFeed) {
+            BackHandler { showNotificationsFeed = false }
+            val feedNotifications by viewModel.notifications.collectAsState()
+            val feedUnreadCount by viewModel.unreadNotificationCount.collectAsState()
+            NotificationListScreen(
+                notifications = feedNotifications,
+                unreadCount = feedUnreadCount,
+                onMarkAllRead = { viewModel.markAllNotificationsRead() },
+                onNotificationClick = { id -> viewModel.markNotificationRead(id) },
+                onBack = { showNotificationsFeed = false },
             )
             return@IdsTheme
         }
@@ -1290,7 +1317,7 @@ fun ItundaAppScreen(
                         onOpenSpendingInsight = { showSpending = true },
                         onCashOutAtAgent = { showAgentCash = true },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
-                        onOpenNotifications = { showSettings = true },
+                        onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
                     )
@@ -2039,8 +2066,12 @@ private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Un
         // Both icons were real no-op taps (found 2026-07-22 audit) despite their own
         // real destinations already existing elsewhere in this file: QR scan opens
         // the same real "Pay" screen (scan-or-pay-by-code) the My tab's Pay row
-        // already reaches; Notifications opens Settings, which already renders a
-        // real notifications list against GET /api/v1/notifications.
+        // already reaches. Notifications opened the whole Settings screen until
+        // 2026-08-12 -- corrected after a direct user clarification against real
+        // Toss screenshots: the bell opens the real notifications FEED
+        // (NotificationListScreen, showNotificationsFeed above), a different real
+        // screen from Settings' own "Notifications" row (notification SEND
+        // preferences, see SettingsScreen.kt's NotificationSettingsScreen).
         IdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = stringResource(R.string.home_scan_qr), onClick = onOpenPay)
         IdsIconButton(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.home_notifications), onClick = onOpenNotifications)
     }
@@ -2942,19 +2973,28 @@ private fun MenuScreen(
         FlatRow("Check my max limit", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenLoans),
         FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans)
     )
-    val notificationsConsentRows = listOf(
-        FlatRow("Notifications", showChevron = true, onClick = onOpenSettings),
-        FlatRow("Credit data usage policy"),
-        FlatRow("Privacy policy"),
-        FlatRow("Terms & consent")
-    )
+    // Real Toss arrangement (2026-08-12, direct user screenshot comparison) -- the
+    // real All-tab reference screenshots have NO "Notifications & consent"-style
+    // section at all; Notifications and legal-document links live exclusively in
+    // Settings on the real app (Section 51/52, docs/DESIGN_REFERENCES.md), not
+    // duplicated into the app-launcher-style All tab. This section used to render
+    // here; its 3 legal rows (never had a real destination -- itunda has no
+    // Credit-data-usage/Privacy-policy/Terms document screens yet, same honest
+    // inert-row state as before, not fabricated now either) moved to a real
+    // "Legal Documents" card in SettingsScreen.kt instead of staying duplicated in
+    // two places. The "Notifications" row is dropped outright, not moved -- Settings'
+    // own "Notifications" row already covers the same real destination.
+    // Real Toss icon convention (2026-08-12, direct user screenshot comparison) --
+    // the real Help section shows a distinct colored icon on every single row; these
+    // 6 rows previously had none at all (plain text), a real visible "still not the
+    // same" gap the user flagged directly against the reference screenshot.
     val supportRows = listOf(
-        FlatRow("FAQ"),
-        FlatRow("Live chat"),
-        FlatRow("Call support"),
-        FlatRow("Report an issue with a transaction", showChevron = true, onClick = onOpenSupport),
-        FlatRow("My support tickets", showChevron = true, onClick = onOpenSupport),
-        FlatRow("Announcements")
+        FlatRow("FAQ", icon = Icons.Outlined.HelpOutline, iconColor = AccentBlue),
+        FlatRow("Live chat", icon = Icons.Outlined.Chat, iconColor = AccentTeal),
+        FlatRow("Call support", icon = Icons.Outlined.Call, iconColor = AccentPurple),
+        FlatRow("Report an issue with a transaction", icon = Icons.Outlined.ReportProblem, iconColor = AccentRed, showChevron = true, onClick = onOpenSupport),
+        FlatRow("My support tickets", icon = Icons.Outlined.ConfirmationNumber, iconColor = AccentOrange, showChevron = true, onClick = onOpenSupport),
+        FlatRow("Announcements", icon = Icons.Outlined.Campaign, iconColor = AccentGray)
     )
     // Real Toss Bank reference mapping (see the doc comment further down, kept in
     // place, for the full account of Switch & save/Cards/Services/Foreign
@@ -2975,7 +3015,6 @@ private fun MenuScreen(
         "Grow your money" to growMoneyRows,
         "Pension" to pensionRows,
         "Loans" to loansRows,
-        "Notifications & consent" to notificationsConsentRows,
         "Support" to supportRows,
     )
 
@@ -3133,7 +3172,6 @@ private fun MenuScreen(
             item { FlatSection("Grow your money", growMoneyRows) }
             item { FlatSection("Pension", pensionRows) }
             item { FlatSection("Loans", loansRows) }
-            item { FlatSection("Notifications & consent", notificationsConsentRows) }
             item { FlatSection("Support", supportRows) }
         } else {
             val query = menuSearchQuery.trim()

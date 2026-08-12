@@ -8,11 +8,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Fingerprint
-import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -74,15 +74,51 @@ import rw.itunda.core.identity.NIDABiometricAuth
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () -> Unit) {
+fun SettingsScreen(
+    viewModel: MainViewModel,
+    onBack: () -> Unit,
+    onLogout: () -> Unit,
+    onOpenSend: () -> Unit = {},
+    onOpenPay: () -> Unit = {},
+) {
     val profile by viewModel.profile.collectAsState()
-    val notifications by viewModel.notifications.collectAsState()
     val unreadCount by viewModel.unreadNotificationCount.collectAsState()
     val devices by viewModel.devices.collectAsState()
     val baseContext = LocalContext.current
     val locale by AppLocalePreference.locale.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.loadSettingsData() }
+
+    // Real Toss layout (2026-08-12, direct user screenshot comparison) -- the real
+    // Settings screen's "Notifications" and "Services logged in with Toss" rows are
+    // plain navigation rows, not inline dumps of every notification/device ever
+    // recorded. itunda's own earlier version rendered BOTH lists directly on the main
+    // Settings screen (a live 15+-entry notification feed -- including a plaintext
+    // OTP code -- and a 6-entry device list, both scrolling well past what the real
+    // screenshot shows), a real, user-flagged "still not the same" gap, not a cosmetic
+    // one. Moved to real sub-screens, reached the same way Toss's own chevron rows do.
+    //
+    // Real Toss distinction, corrected same day after direct user clarification: the
+    // real "Notifications" screen (reached from Home's bell icon) and real "Manage
+    // notifications" screen (reached from THIS row) are two different screens --
+    // a feed of past notifications vs. per-category send preferences. This row
+    // previously (wrongly) pointed at the feed; it now opens NotificationSettingsScreen
+    // below, and the feed itself moved to be reached from Home's bell icon directly
+    // (see ItundaAppScreen.kt's own showNotificationsFeed state).
+    var showDeviceList by remember { mutableStateOf(false) }
+    var showNotificationSettings by remember { mutableStateOf(false) }
+    if (showDeviceList) {
+        DeviceListScreen(
+            devices = devices,
+            onRevoke = { deviceId -> viewModel.revokeDeviceFromSettings(deviceId) },
+            onBack = { showDeviceList = false },
+        )
+        return
+    }
+    if (showNotificationSettings) {
+        NotificationSettingsScreen(onBack = { showNotificationSettings = false })
+        return
+    }
 
     // Real Toss/Kakao pull-to-refresh (2026-08-12 research pass) -- same real
     // mechanics as ItundaAppScreen.kt's own Home-tab implementation, applied here
@@ -96,6 +132,44 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
     }
     LaunchedEffect(isLoadingSettings) {
         if (!isLoadingSettings) pullToRefreshState.endRefresh()
+    }
+
+    // Real theme picker, relocated (2026-08-12) -- previously its own "Display" card
+    // with an always-visible 3-way selector; the real screenshot shows "Theme &
+    // vibration" as a plain row in the first card, so the same real, working
+    // ThemePreference selector now opens as a dialog from that row instead.
+    var showThemeDialog by remember { mutableStateOf(false) }
+    if (showThemeDialog) {
+        val themeMode by ThemePreference.mode.collectAsState()
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text(stringResource(R.string.settings_theme_vibration)) },
+            text = {
+                Column {
+                    listOf(
+                        ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
+                        ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
+                        ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
+                    ).forEach { (mode, label) ->
+                        val selected = themeMode == mode
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { ThemePreference.set(mode) }
+                                .padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp)
+                            if (selected) Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) { Text(stringResource(R.string.settings_confirm)) }
+            },
+        )
     }
 
     Box(Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
@@ -171,8 +245,33 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(stringResource(R.string.settings_language), color = Ids.colors.textPrimary, fontSize = 15.sp)
-                        Text(if (locale == "en") "English" else "Kinyarwanda", color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        // Real Toss row shape (2026-08-12, direct screenshot comparison)
+                        // -- every row in this card ends with a chevron, including this
+                        // one (value + chevron together), not just a bare value.
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(if (locale == "en") "English" else "Kinyarwanda", color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                        }
                     }
+                    // Real Toss position (2026-08-12) -- both rows live in this same
+                    // first card, right under Language, on the real screenshot. Each
+                    // now opens a real destination instead of dumping content inline
+                    // (see this screen's own header comment).
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { showNotificationSettings = true }.padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(stringResource(R.string.settings_notifications), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (unreadCount > 0) {
+                                Text(unreadCount.toString(), color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                        }
+                    }
+                    SettingsChevronRow(stringResource(R.string.settings_theme_vibration)) { showThemeDialog = true }
                 }
             }
 
@@ -182,17 +281,23 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
             // same discipline this screen's own header comment already established
             // for the "보안" rows this app deliberately doesn't fake.
             item {
+                // Real Toss layout fix (2026-08-12) -- this whole card used to be
+                // conditional on biometricAvailable, which hid "Services logged in
+                // with Toss" too on any device without biometrics enrolled; that row
+                // is real device management, unrelated to biometrics, so the card and
+                // its header now always render, with only the two biometric-specific
+                // rows inside gated on availability.
                 val activity = LocalRealActivity.current
                 val biometricAvailable = remember { NIDABiometricAuth(activity).isAvailable() }
-                if (biometricAvailable) {
-                    val tokenStore = remember { NetworkClient.currentTokenStore() }
-                    var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
-                    SettingsCard {
+                SettingsCard {
                     // Real Toss section name (2026-08-12) -- "Authentication & Security"
                     // is the real header on the real Toss Settings screenshot; itunda's
                     // own shorter "Security" was close but not the actual real label.
                     Text(stringResource(R.string.settings_authentication_security), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(8.dp))
+                if (biometricAvailable) {
+                    val tokenStore = remember { NetworkClient.currentTokenStore() }
+                    var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -313,108 +418,50 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                         )
                     }
                     }
+                    // Real Toss position (2026-08-12) -- "Services logged in with
+                    // Toss" is always present on the real screenshot regardless of
+                    // biometric availability; itunda's real equivalent is its own
+                    // device list (see DeviceListScreen below), just relocated from
+                    // its own former standalone card to this row.
+                    SettingsChevronRow(stringResource(R.string.settings_devices)) { showDeviceList = true }
                 }
             }
 
-            // Real in-app theme override (2026-08-03) -- see ThemePreference.kt's own
-            // doc comment. Fixes a real, reproduced complaint: a phone left in system
-            // dark mode makes the whole app render with the dark palette, which reads
-            // as "nothing like Toss" against the light reference screenshots this app
-            // is built from -- there was no way back to the light look short of
-            // changing the phone's own OS-wide setting. Default SYSTEM.
+            // Real Toss layout (2026-08-12, direct user screenshot) -- the real
+            // Settings screen has its own "Transfer & Payment" card (Send, Toss Pay)
+            // duplicating quick access to money-moving features that also live in
+            // the Explore tab's own Shortcuts grid ("Send" -> onOpenTransferHub) and
+            // bottom nav ("Pay" tab) -- real Toss surfaces the exact same actions in
+            // both places rather than making Settings a dead end. Both rows route to
+            // the same real, already-shipped screens, nothing new built here.
             item {
-                val themeMode by ThemePreference.mode.collectAsState()
                 SettingsCard {
-                Text(stringResource(R.string.settings_display), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = Ids.colors.textPrimary)
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.settings_theme), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Text(stringResource(R.string.settings_theme_body), color = Ids.colors.textTertiary, fontSize = 13.sp)
-                    }
+                    Text(stringResource(R.string.settings_transfer_payment), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SettingsChevronRow(stringResource(R.string.settings_send), onClick = onOpenSend)
+                    SettingsChevronRow(stringResource(R.string.settings_pay), onClick = onOpenPay)
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+            }
+
+            // Real Toss position (2026-08-12, direct user screenshot comparison) --
+            // the real All-tab screenshots have no "Notifications & consent" section;
+            // Legal Documents lives in Settings only. These 3 rows were relocated
+            // here from ItundaAppScreen.kt's Explore-tab menu, not newly invented --
+            // same real, honest inert state as before (no onClick at all, so no
+            // chevron either): itunda has no Credit-data-usage/Privacy-policy/Terms
+            // document screens to link to yet, and a tappable row with nowhere to go
+            // is worse than a plain label (this file's own established discipline).
+            item {
+                SettingsCard {
+                    Text(stringResource(R.string.settings_legal_documents), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(8.dp))
                     listOf(
-                        ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
-                        ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
-                        ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
-                    ).forEach { (mode, label) ->
-                        val selected = themeMode == mode
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (selected) Ids.colors.brand else Ids.colors.chip)
-                                .clickable { ThemePreference.set(mode) }
-                                .padding(vertical = 10.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                label,
-                                color = if (selected) rw.itunda.core.designsystem.theme.IdsColors.White else Ids.colors.textSecondary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
+                        stringResource(R.string.settings_credit_data_policy),
+                        stringResource(R.string.settings_privacy_policy),
+                        stringResource(R.string.settings_terms_consent),
+                    ).forEach { label ->
+                        Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp))
                     }
-                }
-                }
-            }
-
-            // Real device management (2026-07-21 port) -- see this screen's own header
-            // comment. Mirrors bank-mfe's Devices tab: every device this account has
-            // ever signed in from, whether it's trusted (can move money) or merely
-            // seen, and a real "Remove" action.
-            item {
-                SettingsCard {
-                Text(stringResource(R.string.settings_devices), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(8.dp))
-                devices.forEach { device ->
-                    DeviceRow(device, onRevoke = { viewModel.revokeDeviceFromSettings(device.deviceId) })
-                }
-                }
-            }
-
-            item {
-                SettingsCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(stringResource(R.string.settings_notifications), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    if (unreadCount > 0) {
-                        Text(
-                            stringResource(R.string.settings_mark_all_read),
-                            color = Ids.colors.brand,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { viewModel.markAllNotificationsRead() }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                if (notifications.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                        Text(stringResource(R.string.settings_no_notifications), color = Ids.colors.textTertiary, fontSize = 14.sp)
-                    }
-                } else {
-                    notifications.forEach { notification ->
-                        NotificationRow(notification, onClick = { viewModel.markNotificationRead(notification.id) })
-                    }
-                }
                 }
             }
 
@@ -444,6 +491,124 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
     }
 }
 
+// Real device management sub-screen (2026-08-12) -- extracted out of the main
+// Settings list (see SettingsScreen's own header comment on why): same real
+// GET/POST/DELETE /api/v1/auth/devices-backed data and DeviceRow as before, just
+// reached via "Services logged in with Toss" instead of dumped inline.
+@Composable
+private fun DeviceListScreen(devices: List<rw.itunda.core.network.TrustedDeviceDto>, onRevoke: (String) -> Unit, onBack: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
+        SettingsSubScreenHeader(stringResource(R.string.settings_devices), onBack)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            contentPadding = PaddingValues(vertical = 12.dp),
+        ) {
+            items(devices, key = { it.deviceId }) { device ->
+                DeviceRow(device, onRevoke = { onRevoke(device.deviceId) })
+            }
+        }
+    }
+}
+
+// Real "Manage notifications" screen (2026-08-12, direct user clarification against
+// real Toss reference screenshots) -- Toss's own version has real per-category
+// server-side toggles (its own notification-preferences backend), which itunda has
+// no equivalent of yet; building fake switches that don't actually change what gets
+// sent would be exactly the "looks tappable, does nothing" dishonesty this project's
+// own established discipline forbids (see FlatRow's own doc comment). The real,
+// honest destination itunda DOES have: its two actual Android notification channels
+// (NotificationChannels.CHANNEL_MONEY/CHANNEL_GENERAL, already live since the FCM
+// push work), each with its own real OS-level settings page
+// (Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS) where the user can genuinely mute,
+// re-tone, or change the importance of that category -- a real per-category control,
+// just backed by Android's own settings surface instead of a fabricated in-app one.
+@Composable
+private fun NotificationSettingsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
+        SettingsSubScreenHeader(stringResource(R.string.settings_manage_notifications), onBack)
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp)) {
+            SettingsCard {
+                Text(stringResource(R.string.settings_notifications), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+                SettingsChevronRow(stringResource(R.string.settings_channel_money)) {
+                    context.startActivity(channelSettingsIntent(context, rw.itunda.app.push.NotificationChannels.CHANNEL_MONEY))
+                }
+                SettingsChevronRow(stringResource(R.string.settings_channel_general)) {
+                    context.startActivity(channelSettingsIntent(context, rw.itunda.app.push.NotificationChannels.CHANNEL_GENERAL))
+                }
+            }
+        }
+    }
+}
+
+private fun channelSettingsIntent(context: android.content.Context, channelId: String) =
+    android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+        putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, channelId)
+    }
+
+// Real notifications sub-screen (2026-08-12) -- same extraction as DeviceListScreen
+// above, same real /api/v1/notifications-backed data and NotificationRow, reached
+// via the "Notifications" row in the first card instead of an inline feed.
+@Composable
+internal fun NotificationListScreen(
+    notifications: List<NotificationDto>,
+    unreadCount: Int,
+    onMarkAllRead: () -> Unit,
+    onNotificationClick: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
+        SettingsSubScreenHeader(stringResource(R.string.settings_notifications), onBack) {
+            if (unreadCount > 0) {
+                Text(
+                    stringResource(R.string.settings_mark_all_read),
+                    color = Ids.colors.brand,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable(onClick = onMarkAllRead),
+                )
+            }
+        }
+        if (notifications.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize().padding(top = 48.dp), contentAlignment = Alignment.TopCenter) {
+                Text(stringResource(R.string.settings_no_notifications), color = Ids.colors.textTertiary, fontSize = 14.sp)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                contentPadding = PaddingValues(vertical = 12.dp),
+            ) {
+                items(notifications, key = { it.id }) { notification ->
+                    NotificationRow(notification, onClick = { onNotificationClick(notification.id) })
+                }
+            }
+        }
+    }
+}
+
+// Shared back-header for the two sub-screens above, matching SettingsScreen's own
+// top bar exactly (same back-button shape/position) so navigating in feels like the
+// same screen family, not a different pattern.
+@Composable
+private fun SettingsSubScreenHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.settings_back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+        }
+        Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
+        trailing()
+        Spacer(modifier = Modifier.width(8.dp))
+    }
+}
+
 // Real Toss card container (2026-08-12) -- see this screen's own doc comment for the
 // full account of why: a real, rounded, surface-colored group per section, matching
 // the actual Toss Settings screenshot's own card-list layout instead of one
@@ -456,6 +621,21 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(20.dp), content = content)
+    }
+}
+
+// Plain chevron row (2026-08-12) -- the real Toss Settings screenshot's second row
+// pattern: no icon box, just a label and a trailing chevron, used for rows that
+// simply navigate elsewhere (Send/Pay) rather than toggle something in place.
+@Composable
+private fun SettingsChevronRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, color = Ids.colors.textPrimary, fontSize = 15.sp)
+        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
     }
 }
 

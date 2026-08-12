@@ -4925,3 +4925,124 @@ the physical test device; foreground + on-screen content confirmed live via scre
   again.
 - Still not screen-recorded or walked interactively (tapped through) on-device -- only a static
   screenshot comparison this pass.
+
+---
+
+## 51. Settings screen -- real Toss "Transfer & Payment" card, duplicating Send/Pay from Explore
+
+**2026-08-12**, same session, same thread. User sent 4 more real screenshots (light + dark) of
+their actual Toss app's Settings screen and said "this is how settings should look like -- they
+are some features in explore tab that have to be in settings as well." Comparing card-by-card
+against `SettingsScreen.kt`'s existing structure (My info / Authentication & Security / Display /
+Devices / Notifications / Logout, built in Section 49):
+
+Real Toss Settings has a card itunda didn't: **"Transfer & Payment"**, with two plain chevron rows,
+**Send** and **Toss Pay** -- both of which duplicate quick-launch actions that already live
+elsewhere in the real Toss app (its own equivalent of itunda's Explore-tab Shortcuts and bottom
+nav), not new features. itunda already has both of the underlying real destinations (`Send` is the
+same `onOpenTransferHub` the Explore tab's Shortcuts grid already calls; `Pay` is the same
+`ItundaTab.Pay` bottom-nav tab) -- the gap was purely that Settings itself had no path to either.
+
+Fix: added a `SettingsCard("Transfer & Payment")` with two new `SettingsChevronRow` rows (a new,
+minimal composable matching the real screenshot's plain label-plus-chevron row style, no icon box
+-- distinct from the icon-box rows used for the biometric toggles above it in the same screen).
+`SettingsScreen` gained two new optional callback params, `onOpenSend`/`onOpenPay`, wired from
+`ItundaAppScreen.kt`'s call site to the same real `showTransferHub`/`selectedTab` state the Explore
+tab and bottom nav already use -- not a second, parallel navigation path, the exact same one.
+Labeled "Pay" rather than "Toss Pay" since that's itunda's own real feature name (the bottom nav
+tab's actual label), not Toss's brand name. New strings `settings_transfer_payment`/`settings_send`/
+`settings_pay` added in both `strings.xml` and `values-rw/strings.xml`.
+
+**Deliberately not added**: the real screenshot's other new card, "Assets & Certificates" (Manage
+imported assets (MyData), Issue Certificate) -- itunda has no real MyData-import flow or
+certificate-issuance backend, already correctly named as a deferred gap in Section 49; not
+fabricated here either. "Send translation feedback" and "Contacts" rows (first card) also have no
+real itunda destination -- left out for the same reason.
+
+`:app:compileDebugKotlin` build-verified clean.
+
+*Shipped: `SettingsScreen.kt`, `ItundaAppScreen.kt`, `strings.xml`, `values-rw/strings.xml`*
+
+---
+
+## 52. Settings restructure -- real sub-screens, real information architecture, live-verified
+
+**2026-08-12**, same session, direct continuation of Section 51. User sent 4 more real Settings
+screenshots and said "this is how settings should look like -- they are some features in explore
+tab that have to be in settings as well," then kept iterating with "still not visually the same"
+twice more as each fix landed, each time with a fresh, specific real-screenshot comparison. Five
+real, separate fixes shipped this pass, in order:
+
+1. **Devices/Notifications extraction.** itunda's Settings had grown two full inline dumps
+   directly on the main scrolling list: every device the account had ever signed in from (6
+   entries) and every notification ever received (15+ entries, including a **plaintext OTP code**
+   visible on the settings page). Real Toss's own screenshots show these as plain single-line
+   navigation rows, not expanded content. Extracted both into real sub-screens
+   (`DeviceListScreen`, `NotificationListScreen`), reached via "Services logged in with Toss"-style
+   chevron rows instead. Also relocated the theme picker the same way: "Display" stopped being its
+   own card with an always-visible 3-way selector and became a "Theme & vibration" row that opens
+   the same real `ThemePreference` picker as a dialog.
+2. **Home bell vs. Settings "Notifications" row -- corrected, a real distinction, not a duplicate.**
+   User sent 4 more screenshots and explicitly clarified: "notifications icon in home screen show
+   notifications and notifications in settings shows notifications settings." Real Toss has two
+   different screens behind these two entry points -- a feed of past notifications, and a
+   *"Manage notifications"* preferences screen (per-category send toggles) -- and itunda's Home
+   bell had wrongly opened the whole Settings screen (a real no-op-shaped bug named but not fixed
+   in a 2026-07-22 audit comment, finally corrected here). Fixed: Home's bell -> real feed directly
+   (`NotificationListScreen`, promoted to `internal` so `ItundaAppScreen.kt` can reach it without
+   going through Settings at all); Settings' own "Notifications" row -> a new
+   `NotificationSettingsScreen`. Toss's real version has server-side per-category toggles itunda
+   has no backend for -- rather than fabricate switches that don't actually change what gets sent
+   (the exact dishonesty `FlatRow`'s own doc comment already forbids), built the one real, honest
+   destination available: deep-links into Android's own actual per-channel notification settings
+   (`Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS`) for itunda's two real channels
+   (`NotificationChannels.CHANNEL_MONEY`/`CHANNEL_GENERAL`, live since the FCM push work) -- a real
+   per-category control, just backed by the OS's own settings surface instead of an invented one.
+3. **Legal Documents relocated out of Explore.** User sent 4 more screenshots plus a direct
+   instruction: "toss arrangements is clear what to settings in settings." Real Toss's All-tab
+   reference screenshots have no "Notifications & consent"-style section at all -- that content
+   lives in Settings only. itunda's own Explore tab (`ItundaAppScreen.kt`'s `MenuScreen`) had
+   exactly that section, duplicating a "Notifications" row Settings already covered and 3 legal
+   rows (Credit data usage policy / Privacy policy / Terms & consent) that had never had a real
+   destination anywhere. Removed the section from Explore entirely; the 3 legal rows moved into a
+   new "Legal Documents" `SettingsCard`, kept exactly as honest/inert as before (no `onClick`, no
+   chevron -- itunda still has no real document screens behind them, not fabricated now either).
+4. **Support-section icons.** User sent a screenshot of itunda's own (already-fixed) Explore tab
+   and said "still not visually the same" a third time -- comparing directly against the real
+   Toss "Help" section, where every single row carries a distinct colored icon. itunda's
+   "Support" rows (FAQ/Live chat/Call support/Announcements) had none at all, plain text only.
+   Added real icons matching each row's real purpose (`HelpOutline`/`Chat`/`Call`/`ReportProblem`/
+   `ConfirmationNumber`/`Campaign`), reusing the same `AccentBlue`/`AccentTeal`/etc. palette every
+   other `FlatRow` icon in this file already uses.
+5. **Language row chevron.** Direct screenshot comparison: every row in the real "My info" card
+   ends with a chevron, including "Language" (value + chevron together) -- itunda's version showed
+   the value with no chevron at all. Added.
+
+**First multi-fix pass this whole research thread with real, live, on-device screenshot
+verification at nearly every step**, not just build-verified: relaunched and screenshotted after
+each of the 5 fixes above via `dumpsys window` + `adb exec-out screencap`, catching the device
+being mid-use by the real user (Yogiyo, real Toss app, notification shade, the Claude mobile app
+itself showing this exact session) multiple times and deliberately waiting rather than
+interrupting each time. One real navigation mistake caught and corrected: an overscroll swipe at
+the top of Explore accidentally triggered Android's own app-switch gesture into the Claude mobile
+client, landing on this session's own live transcript with a real feedback text box on screen --
+recognized immediately as a different real app, not tapped, backed out via `KEYCODE_HOME`.
+
+`:app:compileDebugKotlin` build-verified clean after every step; installed and relaunched on the
+physical test device between each fix.
+
+*Shipped: `SettingsScreen.kt`, `ItundaAppScreen.kt`, `strings.xml`, `values-rw/strings.xml`*
+
+### Unresolved / worth a follow-up
+
+- Real Toss has real sub-screens behind "Certificate"/"PIN & security" (a full "Security" screen:
+  PIN verification, Manage passkeys, Quick login toggle, Biometric settings toggle, Change PIN,
+  Toss Securities security, Manage Toss Bank authentication methods) and behind the profile row
+  itself (a full "My Profile" editor with an emoji/avatar picker bottom sheet) -- confirmed via 2
+  more user screenshots this same pass. itunda's simplified toggle-only "Authentication & Security"
+  card is a real, honest, working subset of this, not a 1:1 match -- a full parity pass on either
+  sub-screen is a distinctly larger, separate scope, not attempted this pass.
+- "Devices" kept as itunda's own real label rather than adopting Toss's brand-name wording
+  ("Services logged in with Toss") -- a deliberate choice, not an oversight, consistent with this
+  whole thread's practice of using itunda's own real feature names rather than another company's
+  branding.
