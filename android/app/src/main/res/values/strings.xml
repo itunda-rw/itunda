@@ -172,6 +172,7 @@
     <string name="home_coop_rail_harvest_subtitle">Input financing from your coffee cooperative</string>
     <string name="home_savings">Savings</string>
     <string name="home_interest_jar">Interest jar</string>
+    <string name="home_get_interest">Get interest</string>
     <string name="home_earned_this_month">Earned this month</string>
     <string name="home_interest_jar_rate_subtitle">%1$s%% annual, accrued daily</string>
     <string name="home_savings_progress">RWF %1$s of %2$s</string>

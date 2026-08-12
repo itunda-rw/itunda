@@ -1320,6 +1320,7 @@ fun ItundaAppScreen(
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
+                        onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                     )
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
                     // comment) -- previously PayTab was only reachable via a showPay
@@ -1477,6 +1478,7 @@ private fun HomeTab(
     onOpenNotifications: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
     onOpenBank: () -> Unit = {},
+    onClaimInterest: () -> Unit = {},
 ) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
@@ -1550,6 +1552,8 @@ private fun HomeTab(
                 currentUserId = primaryWallet?.userId,
                 onSeeAll = onOpenTransactionHistory,
                 earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
+                interestJarBalance = interestJar?.balance ?: 0.0,
+                onClaimInterest = onClaimInterest,
             )
         }
         // Real itunda Bank product surface (2026-08-11) -- replaces the coop rail +
@@ -2175,6 +2179,17 @@ private fun WalletHeroCard(
     currentUserId: String?,
     onSeeAll: () -> Unit,
     earnedThisMonth: Double,
+    // Real Toss Bank reference (user-provided, 2026-08-12): the real account detail
+    // screen shows a small "Get interest" prompt card (a real unclaimed balance +
+    // a claim button) right below the account number/balance, above the
+    // transaction list -- itunda already had this exact real data
+    // (MainViewModel.interestJar) and a real claim destination
+    // (SavingsFlowStep.ClaimInterest, already wired into BankHubScreen's own
+    // "Interest earned this month" row), just never surfaced here on Home. Only
+    // shown once there's a real unclaimed balance, same "don't show an empty
+    // section" discipline every other conditional row on this tab already follows.
+    interestJarBalance: Double = 0.0,
+    onClaimInterest: () -> Unit = {},
 ) {
     IdsCard(
         shape = RoundedCornerShape(28.dp),
@@ -2227,6 +2242,34 @@ private fun WalletHeroCard(
             // most important number on the Home tab -- use the real token instead of
             // a number that happens to currently match it.
             Text(balanceText, style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+            if (interestJarBalance > 0.0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Ids.colors.brand.copy(alpha = 0.08f))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(28.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Outlined.Bolt, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("RWF %,.0f".format(interestJarBalance), color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    IdsButton(
+                        stringResource(R.string.home_get_interest),
+                        onClick = onClaimInterest,
+                        variant = IdsButtonVariant.Filled,
+                        size = IdsButtonSize.Small,
+                    )
+                }
+            }
             // Real Toss reference (user-provided, 2026-08-03): the real Home wallet
             // card's own two buttons ("+ 채우기" / "↗ 보내기") both carry a leading
             // glyph -- IdsButton's icon param is new this pass (see its own doc
