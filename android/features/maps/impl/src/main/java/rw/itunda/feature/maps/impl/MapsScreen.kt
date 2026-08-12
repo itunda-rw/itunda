@@ -139,6 +139,7 @@ import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.PlaceSearchResultDto
 import rw.itunda.core.network.RecentMapSearchesStore
 import rw.itunda.core.network.RouteResultDto
+import rw.itunda.core.network.BusTripDto
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 
@@ -177,6 +178,35 @@ private val BOOKMARK_COLOR_PALETTE = listOf("#F5A623", "#3182F6", "#8B5CF6", "#E
 // hairline border in Ids.colors.divider), filled solid brand when `filled` is true
 // (matches the real reference screenshots' own convention of a solid-filled pill for
 // a toggled-on state like a saved bookmark).
+// Real scheduled bus trips (BusService.kt, extracted as its own composable so its
+// bytecode doesn't count against MapScreen's own already-large generated method --
+// hit a real JVM "Method too large" compile error before this extraction, not a
+// stylistic choice). Honest "Scheduled" labeling, no live-tracking claim; real
+// fare/seats/departure time, no OSRM route line since there's no real road-route
+// concept for a peer-posted coach trip.
+@Composable
+private fun BusTripResultsView(placeName: String, busSearching: Boolean, busTrips: List<BusTripDto>?) {
+    Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (busSearching) {
+            Text("Searching real scheduled trips to $placeName…", fontSize = 13.sp, color = Ids.colors.textSecondary)
+        } else if (busTrips.isNullOrEmpty()) {
+            Text("No scheduled bus trips found to $placeName right now.", fontSize = 13.sp, color = Ids.colors.textSecondary)
+        } else {
+            busTrips.forEach { trip ->
+                Column(
+                    modifier = Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp)).padding(12.dp),
+                ) {
+                    Text("${trip.origin} → ${trip.destination}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+                    Text(
+                        "Scheduled · ${trip.departureTime.take(16).replace("T", " ")} · ${trip.availableSeats} seat(s) left · %,.0f RWF/seat".format(trip.farePerSeat),
+                        fontSize = 12.sp, color = Ids.colors.textSecondary,
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PlaceActionPill(icon: String, label: String, filled: Boolean, enabled: Boolean, onClick: () -> Unit) {
     Row(
@@ -540,6 +570,29 @@ fun MapScreen(
     // currently active; null until that fetch resolves (or forever, if it errors -- an honest
     // omission, never a guessed number).
     var otherModeEtaMinutes by remember { mutableStateOf<Double?>(null) }
+    // Real Naver Map-style transit tab (2026-08-12, direct user screenshot) -- unlike
+    // driving/walking, itunda has no live bus-GPS or national transit-schedule feed to
+    // draw a real route line from, so this deliberately doesn't fake one. What IS real:
+    // itunda's own peer-to-peer intercity bus marketplace (BusService.kt, already
+    // shipped, real scheduled departures/fares/seats) -- surfaced here as a genuine
+    // scheduled-departure option, honestly labeled "Scheduled" rather than implying
+    // live tracking.
+    var busTrips by remember { mutableStateOf<List<BusTripDto>?>(null) }
+    var busSearching by remember { mutableStateOf(false) }
+    fun searchBus(destination: String) {
+        busSearching = true
+        busTrips = null
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.searchBusTrips(destination = destination)
+                if (res.success) busTrips = res.trips
+            } catch (e: Exception) {
+                busTrips = emptyList()
+            } finally {
+                busSearching = false
+            }
+        }
+    }
     var showSteps by remember { mutableStateOf(false) }
     var routing by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
@@ -2393,20 +2446,29 @@ fun MapScreen(
                                             modifier = Modifier.clickable { clearRoute() }.padding(bottom = 6.dp),
                                         )
                                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                                            listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking").forEach { (mode, label) ->
+                                            listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking", "BUS" to "🚌 Bus").forEach { (mode, label) ->
                                                 val active = travelMode == mode
                                                 // Real per-mode precomputed time (2026-08-09) --
                                                 // matches the real reference screenshots' mode-
                                                 // selector row, where every mode shows its own
-                                                // time, not just the active one.
-                                                val eta = if (active) route?.route?.durationMinutes else otherModeEtaMinutes
+                                                // time, not just the active one. Bus has no real
+                                                // precomputed ETA (see busTrips's own doc comment
+                                                // above -- no live schedule feed), so this
+                                                // honestly shows a trip count once searched
+                                                // instead of a fake time.
+                                                val eta = if (mode == "BUS") null else if (active) route?.route?.durationMinutes else otherModeEtaMinutes
                                                 Column(
                                                     horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                                                     modifier = Modifier
                                                         .weight(1f)
                                                         .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
-                                                        .clickable(enabled = !routing) {
-                                                            if (mode != travelMode) fetchDirections(mode)
+                                                        .clickable(enabled = !routing && !busSearching) {
+                                                            if (mode == "BUS") {
+                                                                travelMode = "BUS"
+                                                                searchBus(placeName)
+                                                            } else if (mode != travelMode) {
+                                                                fetchDirections(mode)
+                                                            }
                                                         }
                                                         .padding(vertical = 6.dp),
                                                 ) {
@@ -2417,10 +2479,19 @@ fun MapScreen(
                                                             fontSize = 10.sp,
                                                             color = if (active) androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f) else Ids.colors.textTertiary,
                                                         )
+                                                    } else if (mode == "BUS" && active) {
+                                                        Text(
+                                                            if (busSearching) "…" else "${busTrips?.size ?: 0} found",
+                                                            fontSize = 10.sp,
+                                                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
+                                                        )
                                                     }
                                                 }
                                             }
                                         }
+                                        if (travelMode == "BUS") {
+                                            BusTripResultsView(placeName, busSearching, busTrips)
+                                        } else {
                                         Text(
                                             "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
                                             fontSize = 13.sp, color = Ids.colors.textSecondary,
@@ -2498,6 +2569,7 @@ fun MapScreen(
                                                     )
                                                 }
                                             }
+                                        }
                                         }
                                     } else {
                                         // Real "Start Navigation" mode (2026-08-09) -- see

@@ -5185,3 +5185,63 @@ yet -- a genuine new-backend-data gap, not guessed at with a fake rank.
   composables in two different feature modules -- a real, minor duplication worth promoting to
   `core/designsystem` if a third module ever needs the same pattern, not urgent enough to justify
   the cross-module refactor on its own this pass.
+
+---
+
+## 55. Maps -- a real "Bus" mode surfacing itunda's own scheduled trip marketplace
+
+**2026-08-12**, same session, direct continuation. User sent 16 real screenshots and said "our maps
+should look like this full visually and functionality" -- the reference turned out to be Naver Map's
+actual navigation product (watermark visible in one screenshot), with real-time GPS bus-arrival
+countdowns, live traffic-colored routing, and multiple named route strategies (fastest/main-roads/
+toll-free), all backed by Korea's national live transit-data feed. Checked itunda's real Maps
+backend first: real OSRM-based driving/walking routing with alternative routes, turn-by-turn steps,
+and a real "Start navigation" mode already existed (more mature than expected) -- but there is no
+live traffic data source and no Rwanda public-transit API to plug into. Rather than fabricate live
+bus GPS or live traffic colors (a real dishonesty this whole session has avoided), asked the user
+directly via `AskUserQuestion` how to scope it. **User chose: "also build a real transit-schedule
+feature" if real schedule data actually exists to source from.**
+
+**Real find**: itunda already has exactly that -- `BusService.kt` (rideshare module), a real,
+shipped peer-to-peer intercity bus marketplace (any user posts a scheduled trip with a real
+origin/destination/departure time/fare/seat count; riders book seats with real immediate wallet
+settlement via `LedgerService`, real refund-on-cancel). This is real scheduled data, just not live
+GPS tracking -- exactly the honest middle ground the user asked for.
+
+**Shipped**: added a third "🚌 Bus" tab to the Maps directions mode-selector (alongside the existing
+Driving/Walking tabs), which calls the real `searchBusTrips(destination)` endpoint (already existed,
+already had an Android client from the standalone Bus-booking screen) using the real destination
+place name already resolved by the directions search. Results show real matching `BusTrip` rows
+(origin → destination, real departure time, real seats remaining, real fare), honestly labeled
+**"Scheduled"** rather than implying live tracking -- and an honest "No scheduled bus trips found"
+empty state when none match, never a fabricated placeholder. No OSRM route line, alternative-route
+picker, turn-by-turn steps, or "Start navigation" CTA render for the Bus tab, since none of those
+real concepts apply to a peer-posted point-to-point coach trip.
+
+**Real compiler limit hit and fixed mid-pass**: `MapScreen`'s directions-display composable lambda
+was already large (2860+ line file); adding the Bus block inline pushed it over the JVM's 64KB
+per-method bytecode limit (`MethodTooLargeException`, a real compile failure, not a typo). Fixed by
+extracting the new UI into its own `BusTripResultsView` composable, which the Kotlin compiler emits
+as a separate method -- same real fix Compose code always needs for a sufficiently large screen, not
+specific to this feature.
+
+`:features:maps:impl` and full `:app:compileDebugKotlin` build-verified clean.
+
+*Shipped: `android/features/maps/impl/.../MapsScreen.kt`*
+
+### Unresolved / worth a follow-up
+
+- Live traffic-colored routing and live GPS bus-arrival countdowns are explicitly NOT built --
+  itunda has no real data source for either, and faking one would be a real dishonesty this session
+  has consistently avoided (see the `AskUserQuestion` above). If itunda ever integrates a real
+  traffic-data provider or partners with a real Rwanda transit operator for live GPS feeds, this is
+  the natural place to revisit.
+- The multi-stop itinerary route planner's own mode selector (a separate code path, line ~2680)
+  deliberately did NOT get a Bus tab -- a peer-posted point-to-point coach trip has no real concept
+  of a custom multi-waypoint itinerary, so forcing it in would be dishonest UI, not a missed spot.
+- Not yet visually verified on-device -- same real connectivity gap as Sections 53/54 (the physical
+  test device has been unreachable over WiFi for the second half of this session).
+- Origin is not passed to `searchBusTrips` (only destination) -- a deliberate simplification to
+  avoid an extra reverse-geocode-then-search round trip for the user's current location; real
+  destination-only matching already narrows results meaningfully. Worth adding if it turns out to
+  return too many irrelevant real trips in practice.
