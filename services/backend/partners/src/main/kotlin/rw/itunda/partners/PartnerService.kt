@@ -150,6 +150,12 @@ class PartnerService(
         return partnerMiniAppRepository.save(miniApp)
     }
 
+    // Real, shared partner-authentication entry point -- IdentityVerificationService
+    // reuses this exact API-key resolution (hash lookup + suspended check) rather than
+    // duplicating it, so a suspended partner is locked out of every real partner-facing
+    // feature consistently, not just mini-app submission.
+    fun authenticate(apiKey: String): Partner = resolvePartner(apiKey)
+
     private fun resolvePartner(apiKey: String): Partner {
         val partner = partnerRepository.findByApiKeyHash(hashApiKey(apiKey))
             ?: throw InvalidApiKeyException("Invalid or unknown API key")
