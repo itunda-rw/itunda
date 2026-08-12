@@ -86,6 +86,7 @@
     <string name="settings_language">Language</string>
     <string name="settings_my_info">My info</string>
     <string name="settings_security">Security</string>
+    <string name="settings_authentication_security">Authentication &amp; Security</string>
     <string name="settings_unlock_biometrics">Unlock with biometrics</string>
     <string name="settings_unlock_biometrics_body">Require Face/Fingerprint to open Itunda</string>
     <string name="settings_verify_biometrics">Verify this device with biometrics</string>

@@ -2981,7 +2981,13 @@ private fun MenuScreen(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
-        item { AllTopBar(onOpenSettings = onOpenSettings) }
+        item {
+            AllTopBar(
+                onOpenAuthentication = onOpenIdentity,
+                onOpenHelp = onOpenSupport,
+                onOpenSettings = onOpenSettings,
+            )
+        }
         item {
             SearchBar(
                 query = menuSearchQuery,
@@ -3953,21 +3959,48 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholde
 // extracting Community into :features:community:impl -- every call site across :app
 // now imports it from there instead.
 
-// Was a text navbar -- "ID | Support | Settings" with pipe separators --
-// a website convention with no equivalent anywhere in real Toss. The
-// Explore tab top bar is just the user's name plus a single settings
-// icon button; support/ID live as rows further down the list, not up here.
-// The profile icon this bar used to show (2026-07-24 - 2026-08-10) is gone --
-// You is its own primary tab now (see ItundaTab's own doc comment), so a
-// second way to reach the same screen from here would be a real duplicate,
-// not a convenience.
+// CORRECTED 2026-08-12: an earlier pass here claimed "a text navbar ('ID | Support |
+// Settings') is a website convention with no equivalent anywhere in real Toss" and
+// replaced it with a bold username + single gear icon -- that claim was wrong,
+// contradicted directly by a real user-provided screenshot of the actual Toss app's
+// own All-tab header, which is exactly a 3-link text row: "Authentication | Help |
+// Settings" (not "ID | Support | Settings" -- close but not the real labels either).
+// No bold username shown on this specific screen in the real screenshot (that
+// personalization lives on Home's own switcher header instead, a different real
+// screenshot from the same batch, not duplicated here).
 @Composable
-private fun AllTopBar(onOpenSettings: () -> Unit = {}) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text("TUYIZERE ERIC", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-        // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
-        // wired directly to logout with no screen behind it at all.
-        IdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
+private fun AllTopBar(onOpenAuthentication: () -> Unit = {}, onOpenHelp: () -> Unit = {}, onOpenSettings: () -> Unit = {}) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            "Authentication",
+            color = Ids.colors.textSecondary,
+            fontSize = 15.sp,
+            modifier = Modifier.clickable(onClick = onOpenAuthentication),
+        )
+        androidx.compose.material3.VerticalDivider(
+            modifier = Modifier.padding(horizontal = 10.dp).height(14.dp),
+            color = Ids.colors.textTertiary,
+        )
+        Text(
+            "Help",
+            color = Ids.colors.textSecondary,
+            fontSize = 15.sp,
+            modifier = Modifier.clickable(onClick = onOpenHelp),
+        )
+        androidx.compose.material3.VerticalDivider(
+            modifier = Modifier.padding(horizontal = 10.dp).height(14.dp),
+            color = Ids.colors.textTertiary,
+        )
+        Text(
+            "Settings",
+            color = Ids.colors.textSecondary,
+            fontSize = 15.sp,
+            modifier = Modifier.clickable(onClick = onOpenSettings),
+        )
     }
 }
 

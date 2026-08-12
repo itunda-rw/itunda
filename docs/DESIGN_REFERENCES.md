@@ -4806,3 +4806,61 @@ needed individual edits. `:app` full `assembleDebug` build-verified clean.
   resolution for small avatar/listing-thumbnail UI) weren't audited or added this pass -- a real,
   separate, more invasive follow-up (needs checking each call site's actual display size, not a
   single global config change like this one was).
+
+---
+
+## 49. Direct reference screenshots -- real Toss All-tab top bar and Settings card layout
+
+**2026-08-12**, same session. User sent 16 real screenshots of their own actual Toss app (Home,
+Pay, All/전체, Settings, language picker -- light and dark) and asked to make itunda "100% like
+this." Given the scope (a real 5-tab bottom nav -- Home/Rewards/Shopping/Pay/All -- that conflicts
+with the Home/Pay/Explore/Messages/You nav just shipped in the immediately preceding commits, plus
+a large categorized All-tab menu and a full Settings restructure), asked the user to scope it
+before touching anything: keep the current nav, fix Settings/All-menu **content** to match within
+it. Two real, concrete, sourced fixes shipped from the reference set:
+
+1. **All-tab top bar.** The real screenshot shows exactly 3 right-aligned text links --
+   "Authentication | Help | Settings" -- with thin dividers, no username. itunda's `AllTopBar` had
+   a bold "TUYIZERE ERIC" name + a single gear icon instead. Found, while fixing this, that an
+   **earlier pass in this exact file had explicitly claimed** "a text navbar ('ID | Support |
+   Settings') is a website convention with no equivalent anywhere in real Toss" and deliberately
+   removed one -- a real, sourced correction of a previously-wrong assumption, not a style
+   preference. Rewired to real itunda destinations: Authentication -> `onOpenIdentity`, Help ->
+   `onOpenSupport`, Settings -> `onOpenSettings` (all pre-existing, real screens).
+2. **Settings screen card layout.** The real screenshot shows separate rounded cards per section
+   (My info / Authentication & Security / Assets & Certificates / Transfer & Payment / Legal
+   Documents / standalone Close-account card), not one continuous list with inline dividers, which
+   is what itunda had. Restructured into real `SettingsCard` containers (rounded, surface-colored,
+   matching `Ids.layout.cardCornerRadius`) per section, kept every real existing feature
+   unchanged (biometric app-lock toggle, device-key verification, theme picker, device list,
+   notifications list, logout) -- nothing removed or fabricated, only regrouped and two labels
+   corrected to the real Toss wording: "Security" -> "Authentication & Security", and Language
+   moved from a top-bar EN/RW toggle into its real screenshot position (a row inside the first
+   card).
+
+**Deliberately not fabricated**: real Toss Settings also shows "Certificate", "PIN & security",
+"Services logged in with Toss", "Manage imported assets (MyData)", "Issue Certificate", "Send",
+"Toss Pay", "Terms and privacy agreements", "Privacy Policy", and an "Electronic Prepayment Means"
+policy row -- itunda has no real destination for several of these (no profile-edit screen, no
+MyData import flow, no separate legal-document screens beyond placeholder rows already elsewhere
+in `MenuScreen`). Not added as dead chevron rows -- this session's own established discipline
+(`FlatRow.onClick` made genuinely optional rather than fabricating fake legal content, an earlier
+fix in this same research thread) applies here too.
+
+`:app` full `assembleDebug` build-verified clean, then installed and relaunched on the physical
+test device (confirmed via `dumpsys window` -- itunda in foreground with this exact build).
+
+*Shipped: `ItundaAppScreen.kt` (`AllTopBar`), `SettingsScreen.kt`, `strings.xml`/`values-rw/strings.xml`*
+
+### Unresolved / worth a follow-up
+
+- The bottom-nav conflict (Home/Rewards/Shopping/Pay/All vs. the shipped Home/Pay/Explore/
+  Messages/You) was explicitly NOT resolved this pass, per the user's own scoping choice -- still
+  a real, open, larger decision if revisited.
+- The real All-tab's full Finance/Lifestyle categorized structure (~35 real named items across two
+  categories) was not rebuilt to match Toss's exact category names/grouping -- itunda's own
+  `MenuScreen` already has a comparable categorized-search structure with real content, just
+  different section names (Quick links/Accounts & cards/Send & pay/etc. vs. Toss's real Finance/
+  Lifestyle), left as-is rather than renamed wholesale without a matching audit of every row.
+- Not live-verified screen-by-screen on-device yet (installed and confirmed in foreground, not
+  visually walked through) -- same open item as Sections 43-48.

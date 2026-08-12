@@ -65,6 +65,7 @@
     <string name="settings_language">Ururimi</string>
     <string name="settings_my_info">Amakuru yanjye</string>
     <string name="settings_security">Umutekano</string>
+    <string name="settings_authentication_security">Kwemeza n\'Umutekano</string>
     <string name="settings_unlock_biometrics">Fungura ukoresheje ibimenyetso by\'umubiri</string>
     <string name="settings_unlock_biometrics_body">Saba Face/Fingerprint kugira ngo ufungure itunda</string>
     <string name="settings_verify_biometrics">Emeza iki gikoresho ukoresheje ibimenyetso by\'umubiri</string>

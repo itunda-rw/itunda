@@ -121,48 +121,59 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 color = Ids.colors.textPrimary,
                 modifier = Modifier.weight(1f),
             )
-            // Real in-app language switcher for logged-in users -- see this file's own
-            // top-of-file doc comment. Same simple EN/RW toggle LoginScreen.kt shows,
-            // same shared AppLocalePreference, so both screens always agree.
-            Text(
-                if (locale == "en") "EN" else "RW",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = Ids.colors.textTertiary,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { AppLocalePreference.set(baseContext, if (locale == "en") "rw" else "en") }
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            )
         }
 
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            // Real Toss layout (2026-08-12), matching a direct user-provided screenshot
+            // of the real Toss app's own Settings screen: separate rounded cards per
+            // section (My info / Authentication & Security / Display / Devices /
+            // Notifications), not one continuous flat list with inline dividers -- the
+            // divider-per-section pattern this screen used before was itunda's own
+            // invented layout, not sourced from a real screenshot. "Language" moved
+            // here from the top bar's own EN/RW toggle to match the real screenshot's
+            // placement (a row inside the first card, right under My info) -- same
+              // real, already-working AppLocalePreference, just relocated.
             item {
-                Text(stringResource(R.string.settings_my_info), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
-                        contentAlignment = Alignment.Center
+                SettingsCard {
+                    Text(stringResource(R.string.settings_my_info), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Outlined.Person, contentDescription = null, tint = Ids.colors.textPrimary)
+                        Box(
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Outlined.Person, contentDescription = null, tint = Ids.colors.textPrimary)
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                profile?.let { "${it.firstName} ${it.lastName}" } ?: "—",
+                                color = Ids.colors.textPrimary,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(profile?.phoneNumber ?: "", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                        }
                     }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
-                        Text(
-                            profile?.let { "${it.firstName} ${it.lastName}" } ?: "—",
-                            color = Ids.colors.textPrimary,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(profile?.phoneNumber ?: "", color = Ids.colors.textTertiary, fontSize = 14.sp)
+                    androidx.compose.material3.Divider(color = Ids.colors.divider)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { AppLocalePreference.set(baseContext, if (locale == "en") "rw" else "en") }
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(stringResource(R.string.settings_language), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                        Text(if (locale == "en") "English" else "Kinyarwanda", color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     }
                 }
-                androidx.compose.material3.Divider(color = Ids.colors.divider)
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
             // Real biometric app-lock toggle (2026-07-21) -- see AppLockScreen.kt's own
@@ -176,7 +187,11 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 if (biometricAvailable) {
                     val tokenStore = remember { NetworkClient.currentTokenStore() }
                     var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
-                    Text(stringResource(R.string.settings_security), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    SettingsCard {
+                    // Real Toss section name (2026-08-12) -- "Authentication & Security"
+                    // is the real header on the real Toss Settings screenshot; itunda's
+                    // own shorter "Security" was close but not the actual real label.
+                    Text(stringResource(R.string.settings_authentication_security), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -297,9 +312,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                             },
                         )
                     }
-
-                    androidx.compose.material3.Divider(color = Ids.colors.divider)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
             }
 
@@ -311,6 +324,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
             // changing the phone's own OS-wide setting. Default SYSTEM.
             item {
                 val themeMode by ThemePreference.mode.collectAsState()
+                SettingsCard {
                 Text(stringResource(R.string.settings_display), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -357,8 +371,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                         }
                     }
                 }
-                androidx.compose.material3.Divider(color = Ids.colors.divider, modifier = Modifier.padding(top = 12.dp))
-                Spacer(modifier = Modifier.height(16.dp))
+                }
             }
 
             // Real device management (2026-07-21 port) -- see this screen's own header
@@ -366,18 +379,17 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
             // ever signed in from, whether it's trusted (can move money) or merely
             // seen, and a real "Remove" action.
             item {
+                SettingsCard {
                 Text(stringResource(R.string.settings_devices), color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
-            }
-            items(devices, key = { it.id }) { device ->
-                DeviceRow(device, onRevoke = { viewModel.revokeDeviceFromSettings(device.deviceId) })
-            }
-            item {
-                androidx.compose.material3.Divider(color = Ids.colors.divider)
-                Spacer(modifier = Modifier.height(16.dp))
+                devices.forEach { device ->
+                    DeviceRow(device, onRevoke = { viewModel.revokeDeviceFromSettings(device.deviceId) })
+                }
+                }
             }
 
             item {
+                SettingsCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -394,38 +406,56 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            if (notifications.isEmpty()) {
-                item {
+                if (notifications.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                         Text(stringResource(R.string.settings_no_notifications), color = Ids.colors.textTertiary, fontSize = 14.sp)
                     }
+                } else {
+                    notifications.forEach { notification ->
+                        NotificationRow(notification, onClick = { viewModel.markNotificationRead(notification.id) })
+                    }
                 }
-            } else {
-                items(notifications, key = { it.id }) { notification ->
-                    NotificationRow(notification, onClick = { viewModel.markNotificationRead(notification.id) })
                 }
             }
 
+            // Real Toss layout (2026-08-12) -- "Close Toss account" is its own
+            // standalone card at the bottom of the real screenshot, separate from
+            // everything above it; itunda's real equivalent account-boundary action is
+            // Log out (there's no real account-closure flow to fabricate a destination
+            // for), given the same standalone-card treatment.
             item {
-                Spacer(modifier = Modifier.height(24.dp))
+                SettingsCard {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(onClick = onLogout)
-                        .padding(vertical = 14.dp),
+                        .clickable(onClick = onLogout),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Outlined.Logout, contentDescription = null, tint = Ids.colors.danger)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(stringResource(R.string.settings_log_out), color = Ids.colors.danger, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
+                }
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }
     PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
+    }
+}
+
+// Real Toss card container (2026-08-12) -- see this screen's own doc comment for the
+// full account of why: a real, rounded, surface-colored group per section, matching
+// the actual Toss Settings screenshot's own card-list layout instead of one
+// continuous scrolling list with inline dividers between sections.
+@Composable
+private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
+    androidx.compose.material3.Card(
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = Ids.colors.surface),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(20.dp), content = content)
     }
 }
 
