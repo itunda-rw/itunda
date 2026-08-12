@@ -1391,6 +1391,7 @@ fun ItundaAppScreen(
                             onOpenSettings = { showSettings = true },
                             onOpenBenefits = { showBenefits = true },
                             onOpenInvest = { showInvest = true },
+                            onOpenBank = { showBank = true },
                             onOpenMap = { showMap = true },
                             onOpenOverview = { showOverview = true },
                             onOpenLoans = { showLoans = true },
@@ -3180,6 +3181,7 @@ private fun MenuScreen(
     onOpenSettings: () -> Unit = {},
     onOpenBenefits: () -> Unit = {},
     onOpenInvest: () -> Unit = {},
+    onOpenBank: () -> Unit = {},
     onOpenMap: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
@@ -3445,12 +3447,31 @@ private fun MenuScreen(
             // list, not real recently-used tracking (the exact honesty bug this same
             // screen's own 2026-08-10 fix already corrected once).
             item {
-                IconGridSection("Open", listOf(
-                    "Mini" to Icons.Outlined.Apps,
-                    "Games" to Icons.Outlined.SportsEsports,
-                    "Bank" to Icons.Outlined.AccountBalance,
-                    "Pick" to Icons.Outlined.Star
-                ))
+                // Real fix (2026-08-13, direct user report: "entire app is still
+                // messy... keep fixing"): this whole grid had no onItemClick at all --
+                // IconGridSection's default is a silent no-op, so all 4 tiles here were
+                // dead taps. "Mini" (real MiniWalletScreen, ages 7-18 capped account)
+                // and "Bank" (real itunda Bank hub) both already have working
+                // destinations elsewhere in this file, just never wired here. "Games"
+                // is honestly still unbuilt -- this same file's own MenuScreen doc
+                // comment above already calls it "(planned)" -- and "Pick" has no real
+                // backing feature anywhere in this codebase (grepped). Left both
+                // unwired rather than fabricating a destination neither one has.
+                IconGridSection(
+                    "Open",
+                    listOf(
+                        "Mini" to Icons.Outlined.Apps,
+                        "Games" to Icons.Outlined.SportsEsports,
+                        "Bank" to Icons.Outlined.AccountBalance,
+                        "Pick" to Icons.Outlined.Star,
+                    ),
+                    onItemClick = { label ->
+                        when (label) {
+                            "Mini" -> onOpenMiniWallet()
+                            "Bank" -> onOpenBank()
+                        }
+                    },
+                )
             }
             item {
                 IconGridSection(
