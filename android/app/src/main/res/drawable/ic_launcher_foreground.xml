@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Real itunda mark: the same shield-check glyph already used consistently next
+         to the "Itunda" wordmark on web's LoginPage.tsx/RegisterPage.tsx (a ShieldCheck
+         icon tinted the real itunda blue token), formalized here as the app's own
+         launcher icon rather than a fresh invented design. Sized within Android's
+         real 66dp safe zone (center of the 108dp adaptive-icon canvas). -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 L76,40 L76,58 L54,80 L32,58 L32,40 Z" />
+    <path
+        android:strokeColor="#3182F6"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M44,57 L51,64 L66,47" />
+</vector>
