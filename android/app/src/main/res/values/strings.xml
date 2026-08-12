@@ -128,8 +128,7 @@
          default landing tab (TossTab.Home), the exact same "translated the wrong
          screen" gap just found and fixed on web's BankDashboard (HomeView vs
          OverviewView). HomeTab itself had almost zero stringResource() calls before this. -->
-    <string name="home_search">Search</string>
-    <string name="home_scan_qr">Scan QR code</string>
+    <string name="home_pay_shortcut">Pay</string>
     <string name="home_notifications">Notifications</string>
     <string name="home_account_switcher">Switch account</string>
     <string name="home_your_accounts">YOUR ACCOUNTS</string>
@@ -150,6 +149,7 @@
     <string name="home_discover">Discover</string>
     <string name="home_new_badge">NEW</string>
     <string name="home_recommendation_cta_named">%1$s, %2$s</string>
+    <string name="home_dismiss_recommendation">Dismiss</string>
     <string name="home_spent_period_category">Spent this period -- mostly on %1$s</string>
     <string name="home_spent_period">Spent this period</string>
     <string name="home_promo_cashback_title">Transfer cashback</string>
@@ -161,6 +161,13 @@
     <string name="home_promo_pay_cashback">Get cashback every time you pay</string>
     <string name="home_promo_face_id">Pay with face ID</string>
     <string name="home_promo_gov_alerts">Receive government alerts</string>
+    <string name="home_credit_score_title">My credit score</string>
+    <string name="home_credit_score_subtitle">Free check, alternative data</string>
+    <string name="home_credit_score_value">%1$d points</string>
+    <string name="home_credit_score_action">View</string>
+    <string name="home_auto_transfer_title">Auto-transfer</string>
+    <string name="home_auto_transfer_active">%1$d active</string>
+    <string name="home_auto_transfer_setup">Set up a recurring transfer</string>
     <string name="home_coop_rail_title">Built for how Rwanda saves</string>
     <string name="home_coop_rail_sacco_title">SACCO shares</string>
     <string name="home_coop_rail_sacco_subtitle">Buy cooperative shares, earn a real dividend</string>

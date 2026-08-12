@@ -3,6 +3,7 @@ package rw.itunda.app.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -1321,6 +1322,11 @@ fun ItundaAppScreen(
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
                         onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
+                        onOpenCreditScore = { showCreditScore = true },
+                        autoTransferCount = autoTransferCount,
+                        onOpenAutoTransfers = { showAutoTransfers = true },
+                        onOpenIdentity = { showIdentity = true },
+                        onOpenLoans = { showLoans = true },
                     )
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
                     // comment) -- previously PayTab was only reachable via a showPay
@@ -1479,6 +1485,11 @@ private fun HomeTab(
     onOpenOverview: () -> Unit = {},
     onOpenBank: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
+    onOpenCreditScore: () -> Unit = {},
+    autoTransferCount: Int = 0,
+    onOpenAutoTransfers: () -> Unit = {},
+    onOpenIdentity: () -> Unit = {},
+    onOpenLoans: () -> Unit = {},
 ) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
@@ -1487,6 +1498,28 @@ private fun HomeTab(
     val discoverItems by viewModel.discoverItems.collectAsState()
     val recentTransactions by viewModel.transactions.collectAsState()
     val spendingInsight by viewModel.spendingInsight.collectAsState()
+    val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
+    // Real Toss reference (16 screenshots, 2026-08-13 -- direct user follow-up "fix
+    // the detail" against a Home-tab comparison): the real Home screen shows a
+    // dedicated "내 신용점수" (My credit score) row with its own "보기" (View)
+    // button, positioned between the spending-insight card and the account-opening
+    // shortcuts row. itunda already has this exact real feature -- a genuine,
+    // computed-from-real-account-activity score (rw.itunda.creditscore,
+    // GET /api/v1/credit-score, already load-bearing on LoansService's risk gate)
+    // with its own real CreditScoreScreen -- it was just never surfaced on Home,
+    // only reachable from deep inside Explore's Money tools list. Fetched locally
+    // (own minimal LaunchedEffect), matching this same file's established
+    // per-section real-data-fetch precedent (BankHubScreen's depositProtection,
+    // PersonalRecommendationCard's discover fetch) rather than growing
+    // MainViewModel's own Home-load path for one row.
+    var creditScore by remember { mutableStateOf<rw.itunda.core.network.CreditScoreResponse?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            creditScore = rw.itunda.core.network.NetworkClient.apiService.getCreditScore()
+        } catch (_: Exception) {
+            // Non-critical -- the row just won't render if this fails.
+        }
+    }
     // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not the
     // mirror" strategy memo, recommendation (ii), and rw.itunda.core.network.
     // recordAnalyticsEvent's own doc comment. Fired once per real composition of
@@ -1520,7 +1553,7 @@ private fun HomeTab(
             contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, top = 14.dp, end = Ids.layout.screenHorizontal, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
         ) {
-            item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview) }
+            item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview, unreadCount = unreadNotificationCount) }
         // Real personalized recommendation card (2026-08-11) -- direct comparison
         // against real Toss Bank reference screenshots (user-provided): Toss leads
         // Home with a large, illustrated, name-addressed card ("TUYIZERE ERIC님 복권
@@ -1540,7 +1573,26 @@ private fun HomeTab(
         // before the backend had any real ranking signal to sort by.
         val heroDiscoverItem = discoverItems.sortedByDescending { it.priority }.firstOrNull()
         if (heroDiscoverItem != null) {
-            item { PersonalRecommendationCard(heroDiscoverItem) }
+            item {
+                // Real per-category destination (2026-08-13, direct user comparison:
+                // "itunda intelligence banner should [look] like this") -- the real
+                // Toss lottery banner's own CTA button is genuinely tappable, unlike
+                // this card's prior deliberately-inert CTA (see PersonalRecommendationCard's
+                // own doc comment on why it used to be plain Text, not a button: no
+                // destination existed on DiscoverItem at the time). DiscoverService's
+                // real backend only ever emits 3 real category values
+                // (account/savings/credit, confirmed by grep) -- each maps to a real,
+                // already-built itunda screen, not a guess.
+                val onOpenAction: () -> Unit = when (heroDiscoverItem.category) {
+                    "account" -> onOpenIdentity
+                    "savings" -> onOpenBank
+                    "credit" -> onOpenLoans
+                    else -> {
+                        {}
+                    }
+                }
+                PersonalRecommendationCard(heroDiscoverItem, onOpenAction = onOpenAction)
+            }
         }
         item {
             WalletHeroCard(
@@ -1554,6 +1606,8 @@ private fun HomeTab(
                 earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
                 interestJarBalance = interestJar?.balance ?: 0.0,
                 onClaimInterest = onClaimInterest,
+                autoTransferCount = autoTransferCount,
+                onOpenAutoTransfers = onOpenAutoTransfers,
             )
         }
         // Real itunda Bank product surface (2026-08-11) -- replaces the coop rail +
@@ -1608,6 +1662,21 @@ private fun HomeTab(
                     )
                 )
             }
+        }
+        item {
+            ShellSection(
+                title = "",
+                rows = listOf(
+                    ShellRow(
+                        stringResource(R.string.home_credit_score_title),
+                        creditScore?.let { stringResource(R.string.home_credit_score_value, it.score) } ?: stringResource(R.string.home_credit_score_subtitle),
+                        stringResource(R.string.home_credit_score_action),
+                        Icons.Outlined.TrendingUp,
+                        AccentPurple,
+                        onClick = onOpenCreditScore,
+                    ),
+                )
+            )
         }
         item {
             ShellSection(
@@ -1933,9 +2002,22 @@ private fun BankHubScreen(
 // LaunchedEffect), same "each screen fetches its own minimal real data" precedent
 // HoodTab's neighborhoodName fetch already established -- avoids Home also firing
 // loadSettingsData()'s heavier notifications/devices calls just for a first name.
+// Real restyle (2026-08-13, direct user comparison against the real Toss lottery
+// banner, "itunda intelligence banner should [look] like this and if nothing new to
+// recommend or suggestion it should disappear"): the "disappear when empty" behavior
+// already existed (this whole composable is only ever called from inside HomeTab's own
+// `if (heroDiscoverItem != null)` gate) -- what didn't match was the visual weight and
+// the CTA's real interactivity. Now a real full-bleed accentColor-tinted card (using
+// the item's own real per-item color more prominently, not inventing a new one),
+// a real session-local dismiss control (matching the reference's own "X" -- generic
+// and safe, not a fabricated destination), and a real full-width CTA button now that
+// onOpenAction resolves to a real per-category destination (see the call site's own
+// doc comment) instead of the dead-tap risk the prior "deliberately Text, not
+// IdsButton" comment was written to avoid.
 @Composable
-private fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverItem) {
+private fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverItem, onOpenAction: () -> Unit) {
     var firstName by remember { mutableStateOf<String?>(null) }
+    var dismissed by remember(item.id) { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         try {
             val profile = rw.itunda.core.network.NetworkClient.authApi.getProfile()
@@ -1949,14 +2031,17 @@ private fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverItem
     } catch (_: IllegalArgumentException) {
         AccentBlue
     }
-    IdsCard(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        modifier = Modifier.fillMaxWidth(),
+    if (dismissed) return
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
+            .background(accentColor.copy(alpha = 0.10f)),
     ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accentColor.copy(alpha = 0.15f)),
+                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accentColor.copy(alpha = 0.18f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Outlined.CardGiftcard, contentDescription = null, modifier = Modifier.size(24.dp), tint = accentColor)
@@ -1965,25 +2050,25 @@ private fun PersonalRecommendationCard(item: rw.itunda.core.network.DiscoverItem
                     Spacer(modifier = Modifier.weight(1f))
                     Text(
                         stringResource(R.string.home_new_badge), color = accentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(accentColor.copy(alpha = 0.12f)).padding(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(accentColor.copy(alpha = 0.14f)).padding(horizontal = 10.dp, vertical = 4.dp),
                     )
                 }
             }
-            Text(item.title, color = Ids.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(item.title, color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp)
             Text(item.subtitle, color = Ids.colors.textSecondary, fontSize = 14.sp)
-            // Deliberately Text, not IdsButton (2026-08-11): item.description has no
-            // real per-item destination anywhere in this DTO -- an IdsButton with
-            // onClick = {} would be exactly the "button-shaped but does nothing" dead
-            // tap this same file has found and fixed repeatedly elsewhere this
-            // session. Styled with real emphasis (the accent color, semibold) so it
-            // still reads as the card's headline message, matching the rest of
-            // DiscoverSection's own honestly-informational (non-clickable) cards
-            // rather than pretending to be interactive.
-            Text(
+            IdsButton(
                 firstName?.let { stringResource(R.string.home_recommendation_cta_named, it, item.description) } ?: item.description,
-                color = accentColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                onClick = onOpenAction,
+                variant = IdsButtonVariant.Filled,
+                size = IdsButtonSize.Large,
             )
         }
+        IdsIconButton(
+            Icons.Outlined.Close,
+            contentDescription = stringResource(R.string.home_dismiss_recommendation),
+            onClick = { dismissed = true },
+            modifier = Modifier.align(Alignment.TopEnd).padding(10.dp).size(32.dp),
+        )
     }
 }
 
@@ -2024,7 +2109,21 @@ private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
 }
 
 @Composable
-private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Unit = {}, onOpenOverview: () -> Unit = {}) {
+private fun HomeTopBar(
+    onOpenPay: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
+    onOpenOverview: () -> Unit = {},
+    // Real Toss Bank reference (2 images, 2026-08-13, direct user comparison, "app bar
+    // should be 100% same as this"): the real top bar has no search field at all --
+    // just the account switcher on the left and a real "Pay" shortcut + a
+    // notification bell with a real unread-count dot on the right. itunda's own
+    // search Box here had never actually been wired to anything (no onClick, no
+    // destination -- a real dead UI element, not just a style mismatch), so removing
+    // it fixes two real problems at once. unreadCount is the same real
+    // MainViewModel.unreadNotificationCount already powering NotificationListScreen's
+    // own badge, just never surfaced here.
+    unreadCount: Int = 0,
+) {
     // Real account switcher (2026-08-11) -- direct comparison against real Toss Bank
     // reference screenshots (user-provided): Toss's own top bar leads with "토스뱅크 >",
     // a tappable account-identity element, not a bare wordmark -- this bar had nothing
@@ -2054,30 +2153,44 @@ private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Un
                 modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary,
             )
         }
-        // Real search bar, not an empty placeholder box -- the previous
-        // version here was a Box() with a background color and no children
-        // at all, a genuine leftover bug (found comparing directly against
-        // real Toss screenshots, 2026-07-10).
-        Box(
+        Spacer(modifier = Modifier.weight(1f))
+        // Real "Pay" shortcut, matching the reference's own bracket-accented pill --
+        // opens the same real "Pay" screen (scan-or-pay-by-code) the My tab's Pay row
+        // already reaches (found real, previously reachable only via QR icon here,
+        // 2026-07-22 audit).
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Ids.colors.surfaceSoft)
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .border(1.dp, Ids.colors.divider, RoundedCornerShape(999.dp))
+                .clickable(onClick = onOpenPay)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(R.string.home_search), color = Ids.colors.textSecondary, fontSize = 15.sp)
+            Text(stringResource(R.string.home_pay_shortcut), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
+        Spacer(modifier = Modifier.width(4.dp))
         // Both icons were real no-op taps (found 2026-07-22 audit) despite their own
-        // real destinations already existing elsewhere in this file: QR scan opens
-        // the same real "Pay" screen (scan-or-pay-by-code) the My tab's Pay row
-        // already reaches. Notifications opened the whole Settings screen until
-        // 2026-08-12 -- corrected after a direct user clarification against real
-        // Toss screenshots: the bell opens the real notifications FEED
-        // (NotificationListScreen, showNotificationsFeed above), a different real
-        // screen from Settings' own "Notifications" row (notification SEND
-        // preferences, see SettingsScreen.kt's NotificationSettingsScreen).
-        IdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = stringResource(R.string.home_scan_qr), onClick = onOpenPay)
-        IdsIconButton(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.home_notifications), onClick = onOpenNotifications)
+        // real destinations already existing elsewhere in this file. Notifications
+        // opened the whole Settings screen until 2026-08-12 -- corrected after a
+        // direct user clarification against real Toss screenshots: the bell opens
+        // the real notifications FEED (NotificationListScreen, showNotificationsFeed
+        // above), a different real screen from Settings' own "Notifications" row
+        // (notification SEND preferences, see SettingsScreen.kt's
+        // NotificationSettingsScreen). The red dot is real (unreadCount > 0), not
+        // decorative -- matches the reference's own real unread indicator.
+        Box {
+            IdsIconButton(Icons.Outlined.Notifications, contentDescription = stringResource(R.string.home_notifications), onClick = onOpenNotifications)
+            if (unreadCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 6.dp, end = 6.dp)
+                        .size(9.dp)
+                        .clip(CircleShape)
+                        .background(Ids.colors.danger),
+                )
+            }
+        }
     }
     if (showAccountSwitcher) {
         AccountSwitcherSheet(onDismiss = { showAccountSwitcher = false }, onOpenOverview = { showAccountSwitcher = false; onOpenOverview() })
@@ -2190,6 +2303,18 @@ private fun WalletHeroCard(
     // section" discipline every other conditional row on this tab already follows.
     interestJarBalance: Double = 0.0,
     onClaimInterest: () -> Unit = {},
+    // Real Toss Bank reference (6-image direct comparison, 2026-08-13, user: "why
+    // don't they look the same itunda bank and toss bank"): the real account detail
+    // screen has a real "Auto Transfer / 2 Items" row directly below the Top up/Send
+    // buttons -- itunda already has this exact real feature (AutoTransferListScreen,
+    // autoTransferCount already fetched at this screen's own parent level and used by
+    // TransferHubScreen with this identical copy), just never surfaced here, the same
+    // real gap this card's own interestJarBalance/onClaimInterest params closed for
+    // the interest jar. Always shown (not gated on count > 0) -- Toss's own reference
+    // shows this as a persistent discovery entry point, matching how Cash out/Send
+    // above are always shown regardless of usage, not a "hide when empty" row.
+    autoTransferCount: Int = 0,
+    onOpenAutoTransfers: () -> Unit = {},
 ) {
     IdsCard(
         shape = RoundedCornerShape(28.dp),
@@ -2277,6 +2402,30 @@ private fun WalletHeroCard(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = Icons.Outlined.Add)
                 IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAutoTransfers),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(Ids.colors.chip),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Autorenew, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(stringResource(R.string.home_auto_transfer_title), color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (autoTransferCount > 0) stringResource(R.string.home_auto_transfer_active, autoTransferCount) else stringResource(R.string.home_auto_transfer_setup),
+                        color = Ids.colors.textSecondary,
+                        fontSize = 13.sp,
+                    )
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+                }
             }
             // Real fix, 2026-08-03: these two rows used to be hardcoded literal
             // strings ("Bravo Korea parking" / "Savings deposit") baked into every
