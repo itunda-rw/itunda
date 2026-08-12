@@ -5646,3 +5646,67 @@ next unrelated task -- documenting something as done doesn't guarantee the commi
 - Not live-verified on-device on either platform this pass (same standing gap as the rest of this
   session) -- the icon fix in particular is inherently unverifiable without literally looking at a
   home screen; flagged rather than assumed correct from a clean build alone.
+
+## 62. Real partner identity-verification API -- "Sign in with itunda", live-verified end-to-end
+
+**2026-08-12**, same session, direct continuation of Section 61's flagged open decision. Asked the
+user via `AskUserQuestion` how much data itunda should disclose to a partner on a successful
+verification (minimal verified+phone, moderate +name, full KYC-style, or don't build yet). **User
+chose full KYC-style** (name, phone, ID-verification status, demographics) -- the closest real
+analog to Toss's own CI/DI-linkage-token model, adapted since Rwanda has no CI/DI equivalent to port
+directly.
+
+Real flow, mirroring Toss Cert's actual documented shape (toss.im/tosscert/docs/guides/
+integration/user, confirmed in Section 61's research): a partner (existing real Partner API-key
+auth, reused via a new `PartnerService.authenticate` rather than duplicated) creates a request; the
+itunda user reviews a real consent screen naming the partner and exactly what will be shared --
+never a silent or default-approve path anywhere in the service; the partner polls for the result.
+Disclosed data (`firstName`/`lastName`/`phoneNumber`/`kycVerified`/`birthDate`, from the real `User`
+entity) is frozen at approval time in a stored JSON snapshot, so a later profile edit can't
+retroactively change what a partner already received. Signed with a NEW system-level Ed25519 key
+(`IdentitySigningKeyProvider`) -- deliberately distinct from `CertificateService`'s existing
+per-user signing keys, which the backend never stores server-side (handed to the user exactly once)
+and so structurally can't sign anything on itunda's own behalf. Requests are real, short-lived (5
+minutes), with the same lazy-expiry-on-read convention `P2pPaymentRequest` already established.
+
+New: `IdentityVerificationRequest` entity + `V240` migration, `IdentityVerificationService`,
+`IdentitySigningKeyProvider`, `PartnerIdentityController` (`/api/v1/partners/identity/*`, API-key
+auth, permitAll at the Spring Security layer matching `PartnerController`'s own pattern) and
+`IdentityVerificationController` (`/api/v1/identity/verification/*`, real itunda-user JWT, no
+special SecurityConfig rule needed -- falls through to the default `.anyRequest().authenticated()`).
+5 real test scenarios in `IdentityVerificationServiceTest.kt`: create, approve (with real Ed25519
+signature verification AND a real tampered-payload-fails-verification check), decline, lazy-expiry
+rejection, and cross-partner isolation (partner A can't poll partner B's request).
+
+**Fully live-verified end-to-end against the real deployed backend**, not just unit tests: built and
+pushed a new image, deployed via `kubectl set image` (hit and rode out a real transient registry
+crash-loop mid-push -- the same long-documented [[project_itunda_private_cloud]] overcommitment
+issue, self-recovered once retried), watched the rollout, confirmed `V240` applied cleanly in the
+live pod logs, then ran the ENTIRE flow with real curl calls: registered a real partner, logged in
+as the real seeded demo user, created a request, confirmed zero identity data leaks before approval,
+approved, confirmed the partner receives real structured JSON identity data (not a double-encoded
+string -- a real bug caught and fixed before this: `disclosedPayloadJson` is stored as a frozen raw
+string for signature stability but re-parsed via Jackson before being returned to a partner, so
+their own JSON client sees a real nested object) plus a valid Ed25519 signature and a working public
+key endpoint. Confirmed all 3 real security boundaries live: wrong API key -> 401, re-approving an
+already-approved request -> 409, unauthenticated user access -> 401.
+
+*Shipped: `core/.../IdentityVerificationRequest.kt`, `core/.../IdentityVerificationRequestRepository.kt`,
+`app/.../V240__identity_verification_requests.sql`, `partners/.../IdentitySigningKeyProvider.kt`,
+`partners/.../IdentityVerificationService.kt`, `partners/.../PartnerService.kt` (new `authenticate`),
+`partners/.../web/PartnerIdentityController.kt`, `partners/.../web/IdentityVerificationController.kt`,
+`partners/.../IdentityVerificationServiceTest.kt`*
+
+### Unresolved / worth a follow-up
+
+- **No client-side consent UI exists yet on any platform.** The real `itunda://verify/{requestId}`
+  deep link (matching the existing `itunda://maps` precedent) has nowhere to land -- a partner
+  integrating today gets a fully real, working backend API, but there's no actual screen inside the
+  itunda app for a user to see and approve/decline a request. This is a deliberate, named, explicitly
+  scoped-out follow-up given this pass's size, not a silently dropped piece.
+- The system signing key is in-memory only, regenerated on every pod restart (a real, honestly
+  documented demo-mode gap in `IdentitySigningKeyProvider`'s own doc comment) -- a real production
+  version needs a persisted, rotatable key in a real secrets store, with old-generation public keys
+  staying fetchable so signatures made before a rotation stay verifiable.
+- `requestedFields` is a fixed list for v1 (matching the single "full KYC-style" scope this pass
+  built) -- no per-partner configurable scope system exists, unlike Toss's own real richer model.
