@@ -1,17 +1,20 @@
 package rw.itunda.core.designsystem.theme
 
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
  * Toss-Style Typography
- * Uses a clean Sans-Serif font with high legibility.
- * (Ideally mapped to Toss Product Sans or Pretendard if custom font added)
+ * Real Pretendard typeface (see Pretendard.kt) -- the plain platform Sans-Serif fallback
+ * this comment used to describe as the "ideally" state is now actually replaced.
  */
 object IdsTypography {
-    private val defaultFontFamily = FontFamily.SansSerif
+    // Real typeface fix (2026-08-13) -- see Pretendard.kt's own doc comment for the full
+    // sourced account. Was FontFamily.SansSerif (the plain platform system font) despite
+    // this file's own header comment naming Pretendard as the intended real typeface since
+    // this scale was first written.
+    private val defaultFontFamily = PretendardFontFamily
 
     // Real TDS typography scale (2026-07-13), sourced by directly fetching Toss's own
     // official docs (tossmini-docs.toss.im/tds-mobile/foundation/typography) --

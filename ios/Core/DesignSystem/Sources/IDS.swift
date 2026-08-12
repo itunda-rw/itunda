@@ -72,8 +72,28 @@ public struct IDS {
     // no-Xcode-in-this-environment reason (see this file's own header) -- UIFontMetrics
     // is real UIKit API, not invented, but the runtime scaling behavior itself is
     // unverified here.
+    // Real typeface fix (2026-08-13, direct user feedback: "we are still far away from
+    // toss") -- see Android's identical Pretendard.kt for the full sourced account
+    // (github.com/orioncactus/pretendard, SIL Open Font License 1.1, bundled as
+    // App/Resources/Fonts/*.ttf and registered via UIAppFonts in Project.swift). Every
+    // real call site below used to render UIFont.systemFont(ofSize:weight:) -- the plain
+    // platform system font -- despite this whole app being built around Toss's own real
+    // visual language everywhere else. Falls back to the real system font if the custom
+    // font somehow isn't loaded (a defensive guard, not the normal path) so this can
+    // never crash or silently render blank text.
+    private static func pretendardFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
+        let postscriptName: String
+        switch weight {
+        case .bold, .heavy, .black: postscriptName = "Pretendard-Bold"
+        case .semibold: postscriptName = "Pretendard-SemiBold"
+        case .medium: postscriptName = "Pretendard-Medium"
+        default: postscriptName = "Pretendard-Regular"
+        }
+        return UIFont(name: postscriptName, size: size) ?? UIFont.systemFont(ofSize: size, weight: weight)
+    }
+
     public static func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
-        Font(UIFontMetrics(forTextStyle: style).scaledFont(for: UIFont.systemFont(ofSize: size, weight: weight)))
+        Font(UIFontMetrics(forTextStyle: style).scaledFont(for: pretendardFont(size: size, weight: weight)))
     }
 
     public struct Colors {

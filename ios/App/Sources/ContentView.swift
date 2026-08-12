@@ -10,8 +10,22 @@ import FeaturePayments
 // IdsTheme.swift (see IDS.swift's Typography struct for the full reasoning) --
 // this file doesn't import CoreDesignSystem for anything else today, so a small
 // local helper avoids adding a new cross-module dependency just for this.
+// Real typeface fix (2026-08-13) -- see IDS.scaledFont's own doc comment for the full
+// sourced account; kept as its own local copy for the same reason this function
+// duplicates IDS.scaledFont's logic in the first place (see the comment above).
+private func pretendardFont(size: CGFloat, weight: UIFont.Weight) -> UIFont {
+    let postscriptName: String
+    switch weight {
+    case .bold, .heavy, .black: postscriptName = "Pretendard-Bold"
+    case .semibold: postscriptName = "Pretendard-SemiBold"
+    case .medium: postscriptName = "Pretendard-Medium"
+    default: postscriptName = "Pretendard-Regular"
+    }
+    return UIFont(name: postscriptName, size: size) ?? UIFont.systemFont(ofSize: size, weight: weight)
+}
+
 private func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
-    Font(UIFontMetrics(forTextStyle: style).scaledFont(for: UIFont.systemFont(ofSize: size, weight: weight)))
+    Font(UIFontMetrics(forTextStyle: style).scaledFont(for: pretendardFont(size: size, weight: weight)))
 }
 
 // Tab taxonomy history: Home/Benefits/Shop/Pay/All (2026-07-11, matching Android's

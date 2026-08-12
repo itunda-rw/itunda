@@ -187,8 +187,23 @@ allTargets.append(
             "CFBundleURLTypes": [[
                 "CFBundleURLSchemes": ["itunda"],
             ]],
+            // Real typeface fix (2026-08-13, direct user feedback: "we are still far away
+            // from toss") -- see Android's identical Pretendard.kt for the full sourced
+            // account (github.com/orioncactus/pretendard, SIL Open Font License 1.1). iOS
+            // was rendering every IDS.Typography style in the plain system font
+            // (UIFont.systemFont, confirmed via grep before this fix, not an Android-only
+            // gap). UIAppFonts must list every embedded font file by its real filename --
+            // iOS won't discover bundled TTFs on its own the way it does with `resources:`
+            // for other asset types.
+            "UIAppFonts": [
+                "Pretendard-Regular.ttf",
+                "Pretendard-Medium.ttf",
+                "Pretendard-SemiBold.ttf",
+                "Pretendard-Bold.ttf",
+            ],
         ]),
         sources: ["App/Sources/**"],
+        resources: ["App/Resources/Fonts/**"],
         dependencies: appDependencies,
         // Real granite mini-app host (2026-07-16, see App/Sources/Saronite/) needs one
         // small ObjC helper (SaroniteBrickBridge.m) for two RN-internal APIs Swift's

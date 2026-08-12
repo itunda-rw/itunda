@@ -31,7 +31,50 @@
  * IdsColors struct, which generate-tokens.js does regenerate directly.
  */
 
+/* Real typeface fix (2026-08-13, direct user feedback: "we are still far away from
+   toss") -- see android/core/designsystem/.../Pretendard.kt for the full sourced
+   account (github.com/orioncactus/pretendard, SIL Open Font License 1.1, license text
+   bundled at packages/design-tokens/PRETENDARD_LICENSE.txt). Every real web app in
+   this repo was rendering in the plain OS system-font stack (confirmed via grep
+   before this fix, matching Android/iOS's identical gap) despite the whole visual
+   language elsewhere being built around Toss's own real look. font-display: swap so
+   a slow font load never blocks text from rendering -- an instant system-font paint
+   that reflows once Pretendard loads beats a blank screen while it downloads. */
+@font-face {
+  font-family: "Pretendard";
+  src: url("./fonts/Pretendard-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: url("./fonts/Pretendard-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: url("./fonts/Pretendard-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: url("./fonts/Pretendard-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
+  /* Single source of truth for the real font stack every consuming app's own body
+     rule should reference -- Pretendard first, falling back to the same real system
+     stack each app already had if it somehow fails to load. */
+  --itunda-font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
   --itunda-blue: #3182f6;
   --itunda-blue-active: #1b64da;
   --itunda-blue-light: #f5faff;
