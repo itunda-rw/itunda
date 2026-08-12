@@ -28,6 +28,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -162,7 +163,7 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
 
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
-        stocks == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
+        stocks == null -> SkeletonBlock(height = 220.dp)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("ALL" to "All", "RSE" to "Rwanda (RSE)", "NASDAQ" to "Overseas").forEach { (id, label) ->
@@ -187,7 +188,7 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
 @Composable
 private fun WatchlistContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit) {
     when {
-        watchlist == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
+        watchlist == null -> SkeletonBlock(height = 220.dp)
         watchlist.isEmpty() -> EmptyState("No stocks watched yet — open a stock in the Market tab and tap the star to follow it.")
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             watchlist.forEach { StockRow(it, isWatched = true, onClick = { onOpen(it) }) }
@@ -268,7 +269,7 @@ private fun PortfolioContent() {
 
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
-        portfolio == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
+        portfolio == null -> SkeletonBlock(height = 220.dp)
         else -> {
             val p = portfolio!!
             val positive = p.totalReturn >= 0

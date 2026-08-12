@@ -4589,3 +4589,51 @@ full `assembleDebug` build-verified clean; not yet live-verified on-device.
 - The broader "UX writing" and "simplicity" angles the user named weren't freshly re-researched
   this pass beyond what Sections 10/11/14 already cover in depth -- this pass focused specifically
   on the animations/graphics angle since it was the thinnest existing coverage.
+
+---
+
+## 44. Doherty Threshold — a real, widespread loading-feedback gap, 24 sites across 21 screens
+
+**2026-08-12**, same session as Section 43, user asked to keep researching Toss interactions
+specifically. Fresh `WebFetch` on a real (though secondary/aggregator, not toss.tech primary —
+flagged accordingly) source, "토스에서 찾아본 10가지 UX 법칙" (10 UX laws found in Toss,
+brunch.co.kr/@mobiinside/4997), named 10 concrete UX heuristics with a specific Toss example each.
+Most were already covered elsewhere in this document under different framing (Postel's Law /
+"1 thing, 1 page" = Sections 33/36/38; Peak-End Effect = the confetti/soft-error work; Von Restorff
+= the badge work). One wasn't: **Doherty Threshold** — the article's Toss example is playful
+loading animation during account/loan-processing delays, cited as keeping perceived response time
+under the ~0.4s threshold where users start perceiving a system as unresponsive.
+
+**Real, verified gap found by inspection**: itunda already has a real, correct answer to this —
+`SkeletonBlock` (`core/designsystem/.../HoodShared.kt`), an animated shimmer-gradient loading
+placeholder, in real use across 17 files. But a `grep` across `android/app/src/main/java/rw/itunda/
+app/ui/` found **24 separate call sites across 21 different screens** using a completely inert,
+static, blank `Card(...) {}` — zero shimmer, zero motion, zero signal that anything is loading —
+as their own loading placeholder instead, during the exact same kind of real network-fetch delay
+`SkeletonBlock` already solves correctly elsewhere. The same "a good component gets built once,
+adoption never gets swept everywhere" pattern this document has now found repeatedly across
+different domains (EmptyState copy, ErrorCard, StatusBadge, IdsButton, and now loading skeletons).
+
+**Checked, no gap found (documented, not silently skipped)**: the article's Tesler's Law example
+(Toss auto-suggests a bank from a typed account number) doesn't map onto a real itunda gap --
+`OverviewScreen.kt`'s own account-linking form already sidesteps the underlying problem
+structurally, by having the user pick a provider chip *first*, before typing an account
+number/phone -- there's no "guess the bank from digits" step to improve.
+
+**Shipped**: mechanical, scripted swap of all 24 real call sites (`AutoTopUpScreen.kt`,
+`StudentLoanScreen.kt`, `InvestScreen.kt` x3, `VupLoanScreen.kt`, `HarvestAdvanceScreen.kt`,
+`SaccoScreen.kt`, `BusScreen.kt`, `DesignatedDriverScreen.kt`, `ParkingScreen.kt`,
+`GroupAccountScreen.kt`, `UpfrontDepositScreen.kt`, `IkiminaScreen.kt`,
+`ForeignCurrencyScreen.kt`, `MotoOwnershipScreen.kt`, `RideScreen.kt`, `BikeRentalScreen.kt`,
+`Grow31SavingsScreen.kt` x2, `WeeklySavingsScreen.kt` x2, `MiniWalletScreen.kt`,
+`RequestMoneyScreen.kt`, `CardScreen.kt`) from the bare `Card` to `SkeletonBlock(height = ...)`,
+same height per site, behavior-identical apart from adding the real shimmer. `:app` full
+`assembleDebug` build-verified clean. Not yet live-verified on-device (would need to catch each
+screen's own real loading window, which is often sub-second on a healthy connection).
+
+### Unresolved / worth a follow-up
+
+- Not live-verified on-device (build-verified only), same caveat as Section 43's fixes.
+- Web (`bank-mfe`)/iOS weren't checked for the same bare-placeholder pattern this pass -- Android
+  only, matching how this session's other single-platform passes are scoped and documented
+  honestly rather than silently claimed done everywhere.

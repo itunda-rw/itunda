@@ -22,6 +22,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -191,7 +192,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         when {
             ikiminas == null -> item {
-                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(64.dp)) {}
+                SkeletonBlock(height = 64.dp)
             }
             ikiminas!!.isEmpty() -> item {
                 EmptyState("No ikimina groups yet — start one with people you trust.")

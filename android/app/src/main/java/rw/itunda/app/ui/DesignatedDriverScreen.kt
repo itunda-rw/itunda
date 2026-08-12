@@ -25,6 +25,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -370,7 +371,7 @@ private fun DesignatedDriverDriveContent() {
         error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
         val current = driver
         when {
-            !loaded -> item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            !loaded -> item { SkeletonBlock(height = 120.dp) }
             current == null -> item {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {

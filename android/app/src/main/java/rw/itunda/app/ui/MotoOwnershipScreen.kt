@@ -20,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -224,7 +225,7 @@ fun MotoOwnershipScreen(onBack: () -> Unit) {
 
             if (plans == null) {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
+                    SkeletonBlock(height = 48.dp)
                 }
             } else {
                 item {

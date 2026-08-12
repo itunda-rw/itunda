@@ -18,6 +18,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -109,7 +110,7 @@ fun AutoTopUpScreen(onBack: () -> Unit) {
             val accounts = linkedAccounts
             val id = walletId
             if (id == null || accounts == null || !settingLoaded) {
-                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+                item { SkeletonBlock(height = 120.dp) }
             } else if (accounts.none { it.status == "LINKED" }) {
                 item {
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {

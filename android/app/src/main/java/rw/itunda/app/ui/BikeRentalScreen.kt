@@ -37,6 +37,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BikeDto
@@ -329,7 +330,7 @@ private fun BikeMineContent() {
             }
         }
         if (!loaded) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
+            item { SkeletonBlock(height = 80.dp) }
         } else if (myBikes.isEmpty()) {
             item { Text("You haven't registered any bikes yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         } else {

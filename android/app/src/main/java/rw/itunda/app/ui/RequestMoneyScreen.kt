@@ -19,6 +19,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -104,7 +105,7 @@ fun RequestMoneyScreen(onBack: () -> Unit) {
             item { Text("My requests", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
             val list = requests
             if (list == null) {
-                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(60.dp)) {} }
+                item { SkeletonBlock(height = 60.dp) }
             } else if (list.isEmpty()) {
                 item { EmptyState("No requests yet — ask someone to pay you above.") }
             } else {

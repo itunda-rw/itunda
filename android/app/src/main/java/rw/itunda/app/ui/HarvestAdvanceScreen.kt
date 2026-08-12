@@ -20,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -281,7 +282,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
             item { Text("My advances", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             when {
                 advances == null -> item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
+                    SkeletonBlock(height = 48.dp)
                 }
                 advances!!.isEmpty() -> item {
                     EmptyState("No advances yet.")

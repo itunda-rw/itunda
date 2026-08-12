@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ApplyForVupLoanRequest
@@ -178,7 +179,7 @@ fun VupLoanScreen(onBack: () -> Unit) {
             val eligibilityNow = eligibility
             if (eligibilityNow == null || loans == null) {
                 item {
-                    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(48.dp)) {}
+                    SkeletonBlock(height = 48.dp)
                 }
             } else {
                 item {

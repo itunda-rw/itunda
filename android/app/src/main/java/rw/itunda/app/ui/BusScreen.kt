@@ -19,6 +19,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -330,7 +331,7 @@ private fun BusOperateContent() {
             }
         }
         if (!loaded) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
+            item { SkeletonBlock(height = 80.dp) }
         } else if (myTrips.isEmpty()) {
             item { Text("You haven't posted any routes yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         } else {

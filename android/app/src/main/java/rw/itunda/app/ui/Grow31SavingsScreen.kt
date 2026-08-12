@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -121,7 +122,7 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
                 when {
                     listError != null -> item { ErrorCard(listError!!, onRetry = ::loadPlans) }
                     plans == null -> item {
-                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+                        SkeletonBlock(height = 120.dp)
                     }
                     plans!!.isEmpty() -> item {
                         EmptyState(
@@ -375,7 +376,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
 
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
-        detail == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
+        detail == null -> SkeletonBlock(height = 220.dp)
         else -> {
             val current = detail!!
             val plan = current.plan
