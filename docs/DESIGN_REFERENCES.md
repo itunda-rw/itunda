@@ -5477,3 +5477,73 @@ item list immediately with no tap required, exactly matching the reference and A
   into a dense grid (visible in the live screenshot) -- pre-existing behavior, not introduced by this
   fix (the `flexWrap`/`gap` layout was already there), and not compared against a specific reference
   screenshot for chip density on web specifically. Noted, not fixed this pass.
+
+## 59. Shopping gamification suite -- ported to web, plus a real backend health sweep
+
+**2026-08-12**, same session. An uncalled-endpoint check (grep for real call sites of
+`/api/v1/shopping/points` and `/api/v1/time-deals/banners` across `services/micro-frontends` and
+`ios`) found Section 53's Shopping gamification suite -- shipped and deployed same session -- had
+zero web or iOS callers. It had never been explicitly scoped as Android-only; it just never got
+ported. Given the backend and Android UI design were already fully real and settled, ported the
+same feature to `bank-mfe`'s `ShopView` rather than treat this as a fresh design task.
+
+Added `lib/timeDeal.ts`'s `fetchShopBanners` and a new `lib/shoppingMissions.ts`
+(`fetchShoppingMissionStatus`/`completeShoppingMission`), mirroring Android's `ApiService.kt`
+shapes exactly. Two new UI pieces in `ShopView`: a horizontal scroll-snap banner carousel (CSS
+`scroll-snap-type`, no external carousel library) with a real "current | total" page indicator
+matching Android's `HorizontalPager` reference, and the "Get points and coupons" mission row
+(Check-in/Scroll/Draw a prize/Cat/Claim reward), both only shown on the unfiltered Merchants
+landing state, same placement Android uses.
+
+Verified via `tsc -b --noEmit` + full `vite build` (clean), then fully live-verified end-to-end via
+the headless-Chrome/CDP technique ([[feedback_headless_chrome_verification]]): logged in with the
+real seeded demo user, confirmed the mission row renders with real reward amounts, clicked
+"Check-in," and confirmed the real state transition (icon dims, reward text disappears, a real
+"+20 RWF" confirmation appears) -- a genuine round trip through the real backend, not a mocked
+click. The banner carousel didn't render for this demo account (no active Time Deals right now) --
+correctly an honest empty state, not a bug, matching `ShoppingBannerCarousel`'s own established
+"don't show an empty section" discipline.
+
+*Shipped: `bank-mfe/src/lib/timeDeal.ts`, `bank-mfe/src/lib/shoppingMissions.ts` (new),
+`bank-mfe/src/BankDashboard.tsx` (`ShopView`)*
+
+**Same-session real infra incident, worth recording alongside this**: while this was in progress,
+the K8s `backend` pod crash-looped (0/1 Running, restarting) -- confirmed via `cluster_kubectl get
+pods`, matching [[project_itunda_private_cloud]]'s already-documented, still-unfixed overcommitment
+issue. Root cause this time: a concurrent local `./gradlew test --continue` sweep (below) competing
+for the same host's CPU as the Multipass VM. Waited for the pod to recover rather than force-killing
+or restarting anything; it self-recovered once the local build's CPU pressure eased.
+
+### Unresolved / worth a follow-up
+
+- iOS untouched -- same gap, not ported this pass.
+- Per-card rating and banner-tap-opens-merchant are still the same deliberate Section 53 scope cuts,
+  carried over unchanged into the web port.
+
+## 60. Full backend health sweep -- 4 real bugs found and fixed, one a genuine precision bug
+
+**2026-08-12**, same session, standalone health-check task (not triggered by a specific feature
+change) per [[feedback_run_real_tests_not_just_compile]]'s own established cadence -- the last full
+sweep was 2026-08-09. Full writeup in that memory file's own "10th sweep" entry; summary here:
+
+Full `./gradlew test --continue` across all ~40 backend modules found 4 real failures: (1)
+`MerchantServiceTest.kt` had 3 stale constructor calls after `MerchantService` gained a real
+`customerPaymentCodeRepository` param (2026-08-11) -- a compile break, same shape as the DeviceService
+constructor break this exact audit technique caught once before; (2)-(3) `P2pServiceTest`/
+`FraudReviewServiceTest` verified `pushNotificationService.sendToUser(...)` without the `type` param
+the real call sites now pass -- MockK's `verify` silently stopped matching the real invocation, and
+a same-shape `every { ... } throws ...` mock in the same file was quietly no-op'ing for the identical
+reason, weakening (not failing) its own push-failure-resilience test; (4) `StockCatalogTest`'s own
+"stocks simulate independently" assertion caught a REAL production collision -- TSLA and MSFT both
+landed on the identical 2.0900% simulated daily change on the same real day. Root-caused (after two
+wrong hand-derived Python replicas -- trusted the actual running JVM's own debug output instead) to
+`StockCatalog`'s `changePercent` computation rounding the RATIO to scale 4 before multiplying by 100,
+which only preserves 2 real decimal digits of percent precision, not 4 -- collapsing ~120,000
+possible 4-decimal-percent outcomes to ~1,200 and making an 11-stock collision realistic rather than
+astronomically rare. Fixed the rounding order (divide to a higher intermediate scale, round the
+final percent) and widened the daily-return seed from 16 to 32 bits of the SHA-256 digest.
+
+Full suite re-verified clean after all 4 fixes. Commit `cd2fae1c`.
+
+*Shipped: `merchant/.../MerchantServiceTest.kt`, `p2p/.../P2pServiceTest.kt`,
+`system/.../FraudReviewServiceTest.kt`, `stocks/.../StockCatalog.kt`*
