@@ -317,10 +317,10 @@ private struct OrderFoodContent: View {
         .task {
             if restaurants == nil { await loadRestaurants() }
             if allRestaurants == nil {
-                do { allRestaurants = try await NetworkClient.shared.getShoppingMerchants().merchants } catch {}
+                do { allRestaurants = try await NetworkClient.shared.getShoppingMerchants(businessType: "RESTAURANT").merchants } catch {}
             }
             if categories.isEmpty {
-                do { categories = try await NetworkClient.shared.getMerchantCategories().categories } catch {}
+                do { categories = try await NetworkClient.shared.getMerchantCategories(businessType: "RESTAURANT").categories } catch {}
             }
             await loadFavoriteIds()
         }
@@ -494,7 +494,7 @@ private struct OrderFoodContent: View {
     private func loadRestaurants() async {
         do {
             let q = searchInput.trimmingCharacters(in: .whitespaces)
-            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, q: q.isEmpty ? nil : q)
+            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, businessType: "RESTAURANT", q: q.isEmpty ? nil : q)
             restaurants = res.merchants
             error = nil
         } catch {

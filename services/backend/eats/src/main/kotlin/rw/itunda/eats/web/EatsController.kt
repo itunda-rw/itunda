@@ -142,7 +142,10 @@ class EatsController(
         @RequestParam(required = false) category: String?,
         @PageableDefault(size = 30) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
-        val page = merchantProductRepository.findDishes(rw.itunda.core.domain.MerchantStatus.ACTIVE, category, pageable)
+        // businessType=RESTAURANT added 2026-08-13 -- see MerchantBusinessType's own doc
+        // comment. Without it, any non-food merchant's photographed product (a phone, a
+        // t-shirt) qualified as a "dish" purely by having imageUrl set.
+        val page = merchantProductRepository.findDishes(rw.itunda.core.domain.MerchantStatus.ACTIVE, category, rw.itunda.core.domain.MerchantBusinessType.RESTAURANT, pageable)
         val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
         val dishes = page.content.map { p ->
             mapOf(

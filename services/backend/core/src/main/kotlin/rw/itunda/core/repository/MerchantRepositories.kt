@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Merchant
+import rw.itunda.core.domain.MerchantBusinessType
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.PaymentIntent
@@ -36,14 +37,20 @@ interface MerchantRepository : JpaRepository<Merchant, String> {
     // Real category/search filter (2026-07-19) for restaurant/merchant browse -- both
     // params optional and independently combinable, matching how a real Coupang
     // Eats-style filter bar works (category chip + free-text search, either or both).
+    // businessType added 2026-08-13 (see MerchantBusinessType's own doc comment) --
+    // null (the default every existing call site keeps) means "no vertical filter,"
+    // preserving Shop's own unfiltered browse exactly as before; Eats now passes
+    // RESTAURANT explicitly.
     @Query(
         "SELECT m FROM Merchant m WHERE m.status = :status " +
             "AND (:category IS NULL OR m.category = :category) " +
+            "AND (:businessType IS NULL OR m.businessType = :businessType) " +
             "AND (:q IS NULL OR LOWER(m.businessName) LIKE LOWER(CONCAT('%', :q, '%')))",
     )
     fun search(
         @Param("status") status: MerchantStatus,
         @Param("category") category: String?,
+        @Param("businessType") businessType: MerchantBusinessType?,
         @Param("q") q: String?,
         pageable: Pageable,
     ): Page<Merchant>
@@ -51,8 +58,13 @@ interface MerchantRepository : JpaRepository<Merchant, String> {
     // Real distinct category list -- powers a category chip row without hardcoding a
     // fixed taxonomy client-side (a merchant's own real, self-set categories are the
     // source of truth, same "no fabricated data" discipline as everywhere else).
-    @Query("SELECT DISTINCT m.category FROM Merchant m WHERE m.status = :status AND m.category IS NOT NULL ORDER BY m.category")
-    fun findDistinctCategories(@Param("status") status: MerchantStatus): List<String>
+    // businessType added 2026-08-13 -- Eats scopes this to RESTAURANT so its own chip
+    // row can never surface a non-food category like "Electronics" again.
+    @Query(
+        "SELECT DISTINCT m.category FROM Merchant m WHERE m.status = :status AND m.category IS NOT NULL " +
+            "AND (:businessType IS NULL OR m.businessType = :businessType) ORDER BY m.category",
+    )
+    fun findDistinctCategories(@Param("status") status: MerchantStatus, @Param("businessType") businessType: MerchantBusinessType?): List<String>
 }
 
 interface PaymentIntentRepository : JpaRepository<PaymentIntent, String> {
@@ -97,11 +109,21 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     // (search's own doc comment) -- a real photo requirement, not a fabricated
     // placeholder image, is what makes this genuinely a dish *grid* rather than the
     // pre-existing restaurant list with a different name.
+    // businessType added 2026-08-13 (see MerchantBusinessType's own doc comment) --
+    // without this, any non-restaurant merchant's photographed product (the Fashion
+    // seed merchant's t-shirt/sneakers, the Electronics merchant's phone -- all real,
+    // all have imageUrl set) qualified as a "dish" purely by having a photo.
     @Query(
         "SELECT p FROM MerchantProduct p JOIN Merchant m ON m.id = p.merchantId " +
             "WHERE p.active = true AND m.status = :status AND p.imageUrl IS NOT NULL " +
             "AND (:category IS NULL OR m.category = :category) " +
+            "AND (:businessType IS NULL OR m.businessType = :businessType) " +
             "ORDER BY p.createdAt DESC",
     )
-    fun findDishes(@Param("status") status: MerchantStatus, @Param("category") category: String?, pageable: Pageable): Page<MerchantProduct>
+    fun findDishes(
+        @Param("status") status: MerchantStatus,
+        @Param("category") category: String?,
+        @Param("businessType") businessType: MerchantBusinessType?,
+        pageable: Pageable,
+    ): Page<MerchantProduct>
 }

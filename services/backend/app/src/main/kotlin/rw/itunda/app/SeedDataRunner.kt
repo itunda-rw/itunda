@@ -14,6 +14,7 @@ import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
 import rw.itunda.core.domain.Merchant
+import rw.itunda.core.domain.MerchantBusinessType
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.User
@@ -344,7 +345,7 @@ class SeedDataRunner(
             merchantRepository.save(
                 Merchant(
                     id = "merchant_seed_1", ownerUserId = restaurantOwner1.id, walletId = "wallet_restaurant_1",
-                    businessName = "Heaven Kigali", category = "Rwandan", kybVerified = true,
+                    businessName = "Heaven Kigali", category = "Rwandan", businessType = MerchantBusinessType.RESTAURANT, kybVerified = true,
                     latitude = -1.9441, longitude = 30.1136,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Brochettes.jpg",
                     minOrderAmount = BigDecimal("3000"),
@@ -355,7 +356,7 @@ class SeedDataRunner(
             merchantRepository.save(
                 Merchant(
                     id = "merchant_seed_2", ownerUserId = restaurantOwner2.id, walletId = "wallet_restaurant_2",
-                    businessName = "Kigali Grill House", category = "Fast Food", kybVerified = true,
+                    businessName = "Kigali Grill House", category = "Fast Food", businessType = MerchantBusinessType.RESTAURANT, kybVerified = true,
                     latitude = -1.9578, longitude = 30.1127,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Hamburger.jpg",
                     minOrderAmount = BigDecimal("2000"),
@@ -366,7 +367,7 @@ class SeedDataRunner(
             merchantRepository.save(
                 Merchant(
                     id = "merchant_seed_3", ownerUserId = restaurantOwner3.id, walletId = "wallet_restaurant_3",
-                    businessName = "Inzozi Coffee & Bakery", category = "Coffee & Bakery", kybVerified = true,
+                    businessName = "Inzozi Coffee & Bakery", category = "Coffee & Bakery", businessType = MerchantBusinessType.RESTAURANT, kybVerified = true,
                     latitude = -1.9346, longitude = 30.0906,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Cappuccino.jpg",
                     minOrderAmount = BigDecimal("1500"),
@@ -434,7 +435,7 @@ class SeedDataRunner(
             merchantRepository.save(
                 Merchant(
                     id = "merchant_seed_4", ownerUserId = retailOwner1.id, walletId = "wallet_retail_1",
-                    businessName = "Kigali Electronics Hub", category = "Electronics", kybVerified = true,
+                    businessName = "Kigali Electronics Hub", category = "Electronics", businessType = MerchantBusinessType.SHOP, kybVerified = true,
                     latitude = -1.9723, longitude = 30.0428,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Smartphone.jpg",
                 ),
@@ -444,11 +445,27 @@ class SeedDataRunner(
             merchantRepository.save(
                 Merchant(
                     id = "merchant_seed_5", ownerUserId = retailOwner2.id, walletId = "wallet_retail_2",
-                    businessName = "Umutima Fashion", category = "Fashion", kybVerified = true,
+                    businessName = "Umutima Fashion", category = "Fashion", businessType = MerchantBusinessType.SHOP, kybVerified = true,
                     latitude = -1.9878, longitude = 30.1094,
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/T-shirt.jpg",
                 ),
             )
+        }
+
+        // Real backfill (2026-08-13) -- the two `findByOwnerUserId == null` guards above
+        // only ever INSERT once; an environment that already ran this seeder before
+        // MerchantBusinessType existed has these 5 merchants with businessType still
+        // NULL, and re-running the seeder wouldn't touch them (the guard sees they
+        // already exist and skips). Explicit, idempotent, ID-targeted -- not a broad
+        // sweep -- since these are the only 5 real merchants this seeder itself created.
+        mapOf(
+            "merchant_seed_1" to MerchantBusinessType.RESTAURANT, "merchant_seed_2" to MerchantBusinessType.RESTAURANT,
+            "merchant_seed_3" to MerchantBusinessType.RESTAURANT, "merchant_seed_4" to MerchantBusinessType.SHOP,
+            "merchant_seed_5" to MerchantBusinessType.SHOP,
+        ).forEach { (id, type) ->
+            merchantRepository.findById(id).ifPresent { m ->
+                if (m.businessType == null) merchantRepository.save(m.apply { businessType = type })
+            }
         }
 
         if (merchantProductRepository.findByMerchantIdAndActiveTrue("merchant_seed_4").isEmpty()) {

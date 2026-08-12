@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.domain.MerchantBusinessType
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.repository.EatsReviewRepository
@@ -80,15 +81,20 @@ class ShoppingController(
     // needs a rough real distance to sort/display by) plus a real, clearly-an-ESTIMATE
     // deliveryTimeMinutes derived from that distance. All new fields are null/omitted
     // when there's genuinely nothing real to compute -- never a fabricated number.
+    // businessType added 2026-08-13 (see MerchantBusinessType's own doc comment) --
+    // Eats now passes RESTAURANT explicitly so its own browse can never surface a
+    // non-food merchant again; omitted (null) keeps Shop's own browse exactly as
+    // unfiltered as it was before this param existed.
     @GetMapping("/merchants")
     fun getEligibleMerchants(
         @RequestParam(required = false) category: String?,
+        @RequestParam(required = false) businessType: MerchantBusinessType?,
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) buyerLat: Double?,
         @RequestParam(required = false) buyerLng: Double?,
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
-        val page = merchantRepository.search(MerchantStatus.ACTIVE, category?.trim()?.ifBlank { null }, q?.trim()?.ifBlank { null }, pageable)
+        val page = merchantRepository.search(MerchantStatus.ACTIVE, category?.trim()?.ifBlank { null }, businessType, q?.trim()?.ifBlank { null }, pageable)
         val hasBuyerLocation = buyerLat != null && buyerLng != null && GeoUtils.isValidCoordinate(buyerLat, buyerLng)
         // Real batched rating lookup -- one GROUP BY query for the whole page, not one
         // per-merchant call. See EatsReviewRepository.getRestaurantRatingSummaries's own
@@ -139,8 +145,8 @@ class ShoppingController(
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment for why this is derived from real merchant data, not a hardcoded list.
     @GetMapping("/merchants/categories")
-    fun getCategories(): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "categories" to merchantRepository.findDistinctCategories(MerchantStatus.ACTIVE)))
+    fun getCategories(@RequestParam(required = false) businessType: MerchantBusinessType?): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "categories" to merchantRepository.findDistinctCategories(MerchantStatus.ACTIVE, businessType)))
 
     // Real public per-merchant product browse -- the missing piece a buyer needs to see
     // a specific seller's real catalog before checking out via the new Coupang-style

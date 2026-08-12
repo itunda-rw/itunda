@@ -31,9 +31,11 @@ import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Pets
 import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
@@ -422,7 +424,12 @@ fun CommerceShopContent(
     fun loadMerchants() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getShoppingMerchants(selectedCategory, searchInput.trim().ifBlank { null })
+                // Real fix (2026-08-13): getShoppingMerchants gained a businessType
+                // param between category and q -- named args here so Shop's own
+                // search text can never silently bind to the wrong parameter.
+                // businessType intentionally omitted (null): Shop's browse stays
+                // unfiltered by vertical, same as before this param existed.
+                val res = NetworkClient.apiService.getShoppingMerchants(category = selectedCategory, q = searchInput.trim().ifBlank { null })
                 if (res.success) merchants = res.merchants
                 error = null
             } catch (e: HttpException) {
@@ -970,11 +977,17 @@ private fun ShoppingPointsRow(
         Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             missions.forEach { m ->
                 val done = if (m.type == "WELCOME_BONUS") m.claimedEver else m.completedToday
+                // Real fix (2026-08-13, direct user report against a live screenshot):
+                // SCROLL used a share/network icon and CAT_FEED used a plain heart --
+                // neither matched what the row's own label said. Swipe reads as
+                // "scroll through content," Pets reads as "cat," matching every other
+                // row here (Autorenew for the daily check-in cycle, Star for the spin
+                // wheel) where the icon and label already agreed.
                 val icon = when (m.type) {
                     "CHECK_IN" -> Icons.Outlined.Autorenew
-                    "SCROLL" -> Icons.Outlined.Share
+                    "SCROLL" -> Icons.Outlined.Swipe
                     "SPIN" -> Icons.Outlined.Star
-                    "CAT_FEED" -> Icons.Outlined.FavoriteBorder
+                    "CAT_FEED" -> Icons.Outlined.Pets
                     else -> Icons.AutoMirrored.Outlined.ReceiptLong
                 }
                 Column(

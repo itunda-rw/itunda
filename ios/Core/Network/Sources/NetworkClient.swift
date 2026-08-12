@@ -4432,9 +4432,15 @@ extension NetworkClient {
     // ShoppingController.getEligibleMerchants's own doc comment on the backend.
     // buyerLat/buyerLng added 2026-07-21 (see ShoppingMerchantDto's own doc comment) --
     // optional, mirroring Android's own getShoppingMerchants signature.
-    public func getShoppingMerchants(category: String? = nil, q: String? = nil, buyerLat: Double? = nil, buyerLng: Double? = nil) async throws -> ShoppingMerchantsResponse {
+    // businessType added 2026-08-13 (see Merchant.kt's MerchantBusinessType doc comment
+    // on the backend for the full account: Eats' own restaurant browse showed
+    // Electronics/Fashion merchants, since it shared Shop's exact unfiltered browse).
+    // EatsScreen.swift passes "RESTAURANT"; ShopScreen.swift leaves it nil (unfiltered,
+    // unchanged), same split as Android/web.
+    public func getShoppingMerchants(category: String? = nil, businessType: String? = nil, q: String? = nil, buyerLat: Double? = nil, buyerLng: Double? = nil) async throws -> ShoppingMerchantsResponse {
         try await get("api/v1/shopping/merchants", query: [
             URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "businessType", value: businessType),
             URLQueryItem(name: "q", value: q),
             URLQueryItem(name: "buyerLat", value: buyerLat.map { String($0) }),
             URLQueryItem(name: "buyerLng", value: buyerLng.map { String($0) }),
@@ -4442,8 +4448,11 @@ extension NetworkClient {
     }
 
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
-    // doc comment on the backend.
-    public func getMerchantCategories() async throws -> MerchantCategoriesResponse { try await get("api/v1/shopping/merchants/categories") }
+    // doc comment on the backend. businessType added 2026-08-13, same reasoning as
+    // getShoppingMerchants above.
+    public func getMerchantCategories(businessType: String? = nil) async throws -> MerchantCategoriesResponse {
+        try await get("api/v1/shopping/merchants/categories", query: [URLQueryItem(name: "businessType", value: businessType)])
+    }
 
     // Real "Deals" rail (2026-07-25) -- see backend MerchantProductRepository.findDeals's
     // own doc comment.

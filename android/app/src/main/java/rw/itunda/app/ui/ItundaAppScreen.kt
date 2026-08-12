@@ -176,6 +176,7 @@ import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
 import rw.itunda.core.designsystem.components.IdsTextField
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.designsystem.theme.IdsTypography
 import rw.itunda.core.designsystem.theme.IdsColors
@@ -355,6 +356,16 @@ fun ItundaAppScreen(
         // primary tab -- real Toss's own bottom nav doesn't put Toss Bank there either
         // despite it being a distinct product, it's a surface reached from Home.
         var showBank by rememberSaveable { mutableStateOf(false) }
+        // Real Toss Bank account-detail screen (2026-08-13, 3 direct user
+        // screenshots of their own real Toss Bank account: "when you click on bank
+        // accounts that what you should see"). AccountSwitcherSheet's own "itunda
+        // wallet" row (below) had never been clickable at all -- tapping it did
+        // nothing. That real screen is a balance + unclaimed-interest + real
+        // transaction ledger (with a running per-row balance and date-grouped
+        // history), distinct from both HomeTab's compact wallet card and
+        // BankHubScreen's product catalog -- see AccountDetailScreen's own doc
+        // comment.
+        var showAccountDetail by rememberSaveable { mutableStateOf(false) }
         // Real Overview/Loans/Support screens (2026-07-22) -- these three backend
         // modules (rw.itunda.overview, rw.itunda.loans, rw.itunda.support) were fully
         // built with zero client UI anywhere until now; see OverviewScreen.kt/
@@ -1191,6 +1202,25 @@ fun ItundaAppScreen(
                 onOpenUpfrontDeposit = { showUpfrontDeposit = true },
                 onOpenVupLoan = { showVupLoan = true },
                 onOpenStudentLoan = { showStudentLoan = true },
+                autoTransferCount = autoTransferCount,
+                onOpenAutoTransfers = { showAutoTransfers = true },
+            )
+            return@IdsTheme
+        }
+        // Checked after showCard/showSettings/showAgentCash/transferStep/
+        // savingsFlowStep (all set well above this point in the file) since this
+        // screen's own Card/Manage/Top up/Send/Get interest actions deep-link into
+        // each of them -- same ordering rule showBank's own comment above documents.
+        if (showAccountDetail) {
+            BackHandler { showAccountDetail = false }
+            AccountDetailScreen(
+                viewModel = viewModel,
+                onBack = { showAccountDetail = false },
+                onOpenCard = { showAccountDetail = false; showCard = true },
+                onOpenManage = { showAccountDetail = false; showSettings = true },
+                onTopUp = { showAccountDetail = false; showAgentCash = true },
+                onSend = { showAccountDetail = false; transferStep = TransferStep.Recipient },
+                onClaimInterest = { showAccountDetail = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
             )
             return@IdsTheme
         }
@@ -1321,12 +1351,10 @@ fun ItundaAppScreen(
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
-                        onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                         onOpenCreditScore = { showCreditScore = true },
-                        autoTransferCount = autoTransferCount,
-                        onOpenAutoTransfers = { showAutoTransfers = true },
                         onOpenIdentity = { showIdentity = true },
                         onOpenLoans = { showLoans = true },
+                        onOpenAccountDetail = { showAccountDetail = true },
                     )
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
                     // comment) -- previously PayTab was only reachable via a showPay
@@ -1484,12 +1512,10 @@ private fun HomeTab(
     onOpenNotifications: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
     onOpenBank: () -> Unit = {},
-    onClaimInterest: () -> Unit = {},
     onOpenCreditScore: () -> Unit = {},
-    autoTransferCount: Int = 0,
-    onOpenAutoTransfers: () -> Unit = {},
     onOpenIdentity: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
+    onOpenAccountDetail: () -> Unit = {},
 ) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
@@ -1553,7 +1579,7 @@ private fun HomeTab(
             contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, top = 14.dp, end = Ids.layout.screenHorizontal, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
         ) {
-            item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview, unreadCount = unreadNotificationCount) }
+            item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview, onOpenAccountDetail = onOpenAccountDetail, unreadCount = unreadNotificationCount) }
         // Real personalized recommendation card (2026-08-11) -- direct comparison
         // against real Toss Bank reference screenshots (user-provided): Toss leads
         // Home with a large, illustrated, name-addressed card ("TUYIZERE ERIC님 복권
@@ -1604,10 +1630,6 @@ private fun HomeTab(
                 currentUserId = primaryWallet?.userId,
                 onSeeAll = onOpenTransactionHistory,
                 earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
-                interestJarBalance = interestJar?.balance ?: 0.0,
-                onClaimInterest = onClaimInterest,
-                autoTransferCount = autoTransferCount,
-                onOpenAutoTransfers = onOpenAutoTransfers,
             )
         }
         // Real itunda Bank product surface (2026-08-11) -- replaces the coop rail +
@@ -1818,6 +1840,15 @@ private fun BankHubScreen(
     onOpenUpfrontDeposit: () -> Unit,
     onOpenVupLoan: () -> Unit,
     onOpenStudentLoan: () -> Unit,
+    // Real Toss Bank reference (12-image direct comparison, 2026-08-13, user caught a
+    // real mistake: "you mixed itunda bank with home screen") -- the real "Auto
+    // Transfer / N Items" row belongs on the real Toss BANK account-detail screen,
+    // not the super-app Home tab. Was briefly (and wrongly) added to HomeTab's
+    // WalletHeroCard instead -- moved here, its real home, using the same real
+    // autoTransferCount data (AutoTransferListScreen) already fetched at the top
+    // level for exactly this purpose.
+    autoTransferCount: Int = 0,
+    onOpenAutoTransfers: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val savingsGoals by viewModel.savingsGoals.collectAsState()
@@ -1853,6 +1884,34 @@ private fun BankHubScreen(
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(stringResource(R.string.bank_total_saved), fontSize = 14.sp, color = Ids.colors.textSecondary)
                         Text("RWF %,.0f".format(totalSaved), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                    }
+                }
+            }
+            item {
+                IdsCard(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAutoTransfers).padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(Ids.colors.chip),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Outlined.Autorenew, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(stringResource(R.string.home_auto_transfer_title), color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (autoTransferCount > 0) stringResource(R.string.home_auto_transfer_active, autoTransferCount) else stringResource(R.string.home_auto_transfer_setup),
+                                color = Ids.colors.textSecondary,
+                                fontSize = 13.sp,
+                            )
+                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
             }
@@ -2113,6 +2172,7 @@ private fun HomeTopBar(
     onOpenPay: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
+    onOpenAccountDetail: () -> Unit = {},
     // Real Toss Bank reference (2 images, 2026-08-13, direct user comparison, "app bar
     // should be 100% same as this"): the real top bar has no search field at all --
     // just the account switcher on the left and a real "Pay" shortcut + a
@@ -2193,12 +2253,16 @@ private fun HomeTopBar(
         }
     }
     if (showAccountSwitcher) {
-        AccountSwitcherSheet(onDismiss = { showAccountSwitcher = false }, onOpenOverview = { showAccountSwitcher = false; onOpenOverview() })
+        AccountSwitcherSheet(
+            onDismiss = { showAccountSwitcher = false },
+            onOpenOverview = { showAccountSwitcher = false; onOpenOverview() },
+            onOpenAccount = { showAccountSwitcher = false; onOpenAccountDetail() },
+        )
     }
 }
 
 @Composable
-private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Unit) {
+private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Unit, onOpenAccount: () -> Unit = {}) {
     var linkedAccounts by remember { mutableStateOf<List<rw.itunda.core.network.LinkedAccountEntityDto>?>(null) }
     LaunchedEffect(Unit) {
         try {
@@ -2225,8 +2289,11 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
                 color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
             )
+            // Real destination (2026-08-13, direct user screenshots of tapping their
+            // own real Toss Bank account row): this row had never been clickable --
+            // now opens AccountDetailScreen, the real balance+interest+ledger view.
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAccount).padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null, modifier = Modifier.size(22.dp), tint = Ids.colors.brand)
@@ -2282,6 +2349,206 @@ private fun AccountSwitcherSheet(onDismiss: () -> Unit, onOpenOverview: () -> Un
     }
 }
 
+// Real Toss Bank account-detail screen (2026-08-13, 3 direct user screenshots of
+// their own real Toss Bank account: "when you click on bank accounts that what
+// you should see"). Reached by tapping the "itunda wallet" row in
+// AccountSwitcherSheet above, which had never actually been clickable before this.
+// Distinct from both HomeTab's compact WalletHeroCard (a Home-tab summary, not a
+// full ledger) and BankHubScreen's product catalog (savings goals/loans, not this
+// wallet's own transaction history) -- this is the one real screen that shows
+// balance + unclaimed interest + the actual transaction ledger for the account,
+// matching the reference's header (back arrow, "Card"/"Manage"), balance block,
+// interest row with its own "Get interest" CTA, Top up/Send buttons, and a
+// date-grouped transaction list with a running balance on every row.
+//
+// Reuses only real, already-fetched data (MainViewModel.primaryWallet/.interestJar/
+// .transactions, the same GET /api/v1/wallet/transactions this file's other
+// screens already call) -- no new backend endpoint. TransactionDto carries no
+// balance-snapshot-per-row field (confirmed by reading ApiService.kt), so each
+// row's running balance is derived client-side by walking the real transaction
+// list backward from the real current balance -- real arithmetic on real data,
+// not an invented number.
+@Composable
+private fun AccountDetailScreen(
+    viewModel: MainViewModel,
+    onBack: () -> Unit,
+    onOpenCard: () -> Unit,
+    onOpenManage: () -> Unit,
+    onTopUp: () -> Unit,
+    onSend: () -> Unit,
+    onClaimInterest: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val primaryWallet by viewModel.primaryWallet.collectAsState()
+    val interestJar by viewModel.interestJar.collectAsState()
+    val transactions by viewModel.transactions.collectAsState()
+    val balance = primaryWallet?.balance ?: 0.0
+    val currency = primaryWallet?.currency ?: "RWF"
+    val currentUserId = primaryWallet?.userId
+
+    val sorted = remember(transactions) { transactions.sortedByDescending { it.createdAt } }
+    val withBalance = remember(sorted, balance, currentUserId) {
+        var runningBalance = balance
+        sorted.map { tx ->
+            val afterBalance = runningBalance
+            val delta = if (tx.senderId == currentUserId) -tx.amount else tx.amount
+            runningBalance -= delta
+            tx to afterBalance
+        }
+    }
+    val grouped = remember(withBalance) {
+        withBalance.groupBy { (tx, _) -> ledgerDateHeader(tx.createdAt) }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier.size(Ids.layout.minTouchTarget).clip(CircleShape).clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.back), modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            // Real Toss reference (2026-08-13, direct user follow-up "still not the
+            // same right?"): the real header's "card"/"Manage" both carry a leading
+            // glyph, not bare text -- these two icons (CreditCard/Settings) are
+            // already imported and used elsewhere in this file for the same real
+            // destinations (see MenuScreen's own Card/Settings rows).
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(onClick = onOpenCard).padding(8.dp)) {
+                Icon(Icons.Outlined.CreditCard, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(stringResource(R.string.account_detail_card), color = Ids.colors.textSecondary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable(onClick = onOpenManage).padding(8.dp)) {
+                Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textSecondary)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(stringResource(R.string.account_detail_manage), color = Ids.colors.textSecondary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().weight(1f),
+            contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, end = Ids.layout.screenHorizontal, bottom = 16.dp),
+        ) {
+            item {
+                Column(modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)) {
+                    if (primaryWallet != null) {
+                        Text(
+                            "itunda ${primaryWallet!!.accountNumber.chunked(4).joinToString("-")}",
+                            fontSize = 13.sp, color = Ids.colors.textSecondary,
+                        )
+                    }
+                    Text("$currency %,.0f".format(balance), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
+                }
+            }
+            val earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0
+            if (earnedThisMonth > 0.0) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Ids.colors.chip)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Ids.colors.brand))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        // Real Toss reference: the row's own text is "이자 7원"
+                        // ("Interest ₩7") -- a label plus the amount together, not
+                        // the bare number this rendered as before.
+                        Text(
+                            "${stringResource(R.string.account_detail_interest_prefix)} $currency %,.0f".format(earnedThisMonth),
+                            color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IdsButton(stringResource(R.string.account_detail_get_interest), onClick = onClaimInterest, variant = IdsButtonVariant.Filled, size = IdsButtonSize.Small)
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 20.dp)) {
+                    IdsButton(stringResource(R.string.account_detail_top_up), onClick = onTopUp, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium)
+                    IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium)
+                }
+            }
+            if (withBalance.isEmpty()) {
+                item { EmptyState(stringResource(R.string.account_detail_empty)) }
+            } else {
+                grouped.forEach { (dateHeader, rows) ->
+                    item {
+                        Text(
+                            dateHeader, color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                        )
+                    }
+                    items(rows, key = { it.first.id }) { (tx, afterBalance) ->
+                        AccountLedgerRow(transaction = tx, isOutgoing = tx.senderId == currentUserId, afterBalance = afterBalance, currency = currency)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real Toss Bank reference: every transaction row shows the account's real balance
+// AFTER that transaction directly under the signed amount, not just the amount
+// alone -- reuses WalletMiniRow's own signed-amount/icon convention (see its doc
+// comment) and adds that second line.
+@Composable
+private fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String) {
+    val amountText = "${if (isOutgoing) "-" else "+"}$currency %,.0f".format(transaction.amount)
+    val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.success
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (isOutgoing) Icons.Outlined.ArrowUpward else Icons.Outlined.ArrowDownward,
+                contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary,
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(transaction.description, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(ledgerTimeOfDay(transaction.createdAt), color = Ids.colors.textTertiary, fontSize = 12.sp)
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(amountText, color = amountColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text("$currency %,.0f".format(afterBalance), color = Ids.colors.textTertiary, fontSize = 12.sp)
+        }
+    }
+}
+
+// Real bug, caught live (2026-08-13): with no explicit Locale, DateTimeFormatter
+// picks up the device's own locale -- on the test device that's Korean, so this
+// rendered "8월 13" even though the rest of this app's UI is fixed English
+// (strings.xml has no localization at all). Locale.ENGLISH keeps it consistent
+// with itunda's own actual language, not whatever the phone happens to be set to.
+private fun ledgerDateHeader(iso: String): String =
+    try {
+        java.time.Instant.parse(iso).atZone(java.time.ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("MMM d", java.util.Locale.ENGLISH))
+    } catch (_: Exception) {
+        iso.take(10)
+    }
+
+private fun ledgerTimeOfDay(iso: String): String =
+    try {
+        java.time.Instant.parse(iso).atZone(java.time.ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ENGLISH))
+    } catch (_: Exception) {
+        ""
+    }
+
 @Composable
 private fun WalletHeroCard(
     balanceText: String,
@@ -2292,29 +2559,6 @@ private fun WalletHeroCard(
     currentUserId: String?,
     onSeeAll: () -> Unit,
     earnedThisMonth: Double,
-    // Real Toss Bank reference (user-provided, 2026-08-12): the real account detail
-    // screen shows a small "Get interest" prompt card (a real unclaimed balance +
-    // a claim button) right below the account number/balance, above the
-    // transaction list -- itunda already had this exact real data
-    // (MainViewModel.interestJar) and a real claim destination
-    // (SavingsFlowStep.ClaimInterest, already wired into BankHubScreen's own
-    // "Interest earned this month" row), just never surfaced here on Home. Only
-    // shown once there's a real unclaimed balance, same "don't show an empty
-    // section" discipline every other conditional row on this tab already follows.
-    interestJarBalance: Double = 0.0,
-    onClaimInterest: () -> Unit = {},
-    // Real Toss Bank reference (6-image direct comparison, 2026-08-13, user: "why
-    // don't they look the same itunda bank and toss bank"): the real account detail
-    // screen has a real "Auto Transfer / 2 Items" row directly below the Top up/Send
-    // buttons -- itunda already has this exact real feature (AutoTransferListScreen,
-    // autoTransferCount already fetched at this screen's own parent level and used by
-    // TransferHubScreen with this identical copy), just never surfaced here, the same
-    // real gap this card's own interestJarBalance/onClaimInterest params closed for
-    // the interest jar. Always shown (not gated on count > 0) -- Toss's own reference
-    // shows this as a persistent discovery entry point, matching how Cash out/Send
-    // above are always shown regardless of usage, not a "hide when empty" row.
-    autoTransferCount: Int = 0,
-    onOpenAutoTransfers: () -> Unit = {},
 ) {
     IdsCard(
         shape = RoundedCornerShape(28.dp),
@@ -2367,34 +2611,16 @@ private fun WalletHeroCard(
             // most important number on the Home tab -- use the real token instead of
             // a number that happens to currently match it.
             Text(balanceText, style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
-            if (interestJarBalance > 0.0) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Ids.colors.brand.copy(alpha = 0.08f))
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(28.dp).clip(CircleShape).background(Ids.colors.brand.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(Icons.Outlined.Bolt, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(16.dp))
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text("RWF %,.0f".format(interestJarBalance), color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    IdsButton(
-                        stringResource(R.string.home_get_interest),
-                        onClick = onClaimInterest,
-                        variant = IdsButtonVariant.Filled,
-                        size = IdsButtonSize.Small,
-                    )
-                }
-            }
+            // Real correction (2026-08-13, direct user catch: "you mixed itunda bank
+            // with home screen"): a "Get interest" pill and an "Auto Transfer" row
+            // both used to render here. A closer direct comparison against the real
+            // Toss SUPER-APP Home tab (12 images, light+dark) -- as opposed to the
+            // separate real Toss BANK account-detail screen those two rows were
+            // actually sourced from -- confirms Home's own real compact wallet row
+            // has neither: no unclaimed-interest CTA, no Auto Transfer entry point.
+            // Both are real Toss Bank features, correctly homed on BankHubScreen
+            // instead (Interest jar already lived there before this session; Auto
+            // Transfer is added there now, see BankHubScreen's own doc comment).
             // Real Toss reference (user-provided, 2026-08-03): the real Home wallet
             // card's own two buttons ("+ 채우기" / "↗ 보내기") both carry a leading
             // glyph -- IdsButton's icon param is new this pass (see its own doc
@@ -2402,30 +2628,6 @@ private fun WalletHeroCard(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 IdsButton(stringResource(R.string.home_cash_out), onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium, icon = Icons.Outlined.Add)
                 IdsButton(stringResource(R.string.home_send), onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium, icon = Icons.AutoMirrored.Outlined.Send)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAutoTransfers),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(Ids.colors.chip),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Icons.Outlined.Autorenew, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(stringResource(R.string.home_auto_transfer_title), color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (autoTransferCount > 0) stringResource(R.string.home_auto_transfer_active, autoTransferCount) else stringResource(R.string.home_auto_transfer_setup),
-                        color = Ids.colors.textSecondary,
-                        fontSize = 13.sp,
-                    )
-                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
-                }
             }
             // Real fix, 2026-08-03: these two rows used to be hardcoded literal
             // strings ("Bravo Korea parking" / "Savings deposit") baked into every
@@ -3582,20 +3784,37 @@ private fun ProfilePhotoCard() {
     }
 
     IdsCard(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Real fix, 2026-08-05 (same audit that found Talk's avatar bugs) -- this
-            // rendered an empty gray circle with nothing in it when no photo was set,
-            // the exact same "missing avatar" gap Talk's GroupRow had.
-            rw.itunda.core.designsystem.components.IdsAvatar(
-                name = displayName.ifBlank { "?" },
-                photoUrl = profilePhotoUrl,
-                size = 56.dp,
-            )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Real fix (2026-08-13, direct user report against a live screenshot: a
+            // bare "Profile photo URL" text box + "Save photo" button read as an
+            // unpolished, engineer-facing debug control). itunda genuinely has no
+            // image-upload/hosting pipeline to build a real device photo picker on top
+            // of -- see this composable's own doc comment and Merchant.photoUrl's
+            // identical "real URL, not a fabricated upload" discipline -- so the honest
+            // fix is explaining what this real feature actually does and giving live
+            // visual feedback, not pretending to be a picker it isn't. Preview shows
+            // urlInput itself (before saving) rather than only the already-saved
+            // profilePhotoUrl, so pasting a link gives an immediate result.
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                rw.itunda.core.designsystem.components.IdsAvatar(
+                    name = displayName.ifBlank { "?" },
+                    photoUrl = urlInput.trim().ifBlank { profilePhotoUrl },
+                    size = 56.dp,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Profile photo", color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Paste a link to a photo hosted elsewhere -- itunda doesn't host photo uploads yet.",
+                        color = Ids.colors.textSecondary, fontSize = 12.sp,
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
                 IdsTextField(
                     value = urlInput, onValueChange = { urlInput = it },
-                    label = "Profile photo URL",
+                    label = "Photo link",
+                    placeholder = "https://example.com/my-photo.jpg",
                     modifier = Modifier.fillMaxWidth(),
                 )
                 IdsButton(

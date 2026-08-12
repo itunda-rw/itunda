@@ -13,8 +13,15 @@ import type { ShoppingMerchant } from './shopping';
 // Real browse-card enrichment (2026-07-21) -- optional buyerLat/buyerLng backs a real
 // distanceKm + deliveryTimeMinutes estimate per restaurant; see ShoppingMerchant's own
 // doc comment in lib/shopping.ts for the full field account.
+// Real fix (2026-08-13, direct user report against a live screenshot): this list
+// showed Electronics/Fashion merchants alongside real restaurants, since it shares
+// the exact same unfiltered Merchant directory Shop's own browse uses -- see
+// ShoppingController.getEligibleMerchants's own doc comment. businessType=RESTAURANT
+// scopes this to real food merchants only, the same fix applied server-side and on
+// Android.
 export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number) => {
   const params = new URLSearchParams();
+  params.set('businessType', 'RESTAURANT');
   if (category) params.set('category', category);
   if (q) params.set('q', q);
   if (buyerLat != null && buyerLng != null) {
@@ -37,7 +44,9 @@ export const fetchRestaurants = (category?: string, q?: string, buyerLat?: numbe
 // Real distinct category list, derived from real merchant data -- see
 // MerchantRepository.findDistinctCategories's own doc comment.
 export const fetchRestaurantCategories = () =>
-  apiFetch<{ success: boolean; categories: string[] }>('/api/v1/shopping/merchants/categories').then((r) => r.categories);
+  apiFetch<{ success: boolean; categories: string[] }>('/api/v1/shopping/merchants/categories?businessType=RESTAURANT').then(
+    (r) => r.categories,
+  );
 
 // Real menu-item option groups (2026-07-21, v1: required single-select only) -- closes
 // docs/DESIGN_REFERENCES.md's Eats recommendation #3, the single biggest structural

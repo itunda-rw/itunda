@@ -135,7 +135,13 @@
     <string name="home_current_account">Current account</string>
     <string name="home_demo_balance_unavailable">Demo balance unavailable</string>
     <string name="home_link_another_account">+ Link another account</string>
-    <string name="home_wallet">Wallet</string>
+    <!-- Real fix (2026-08-13, direct user report: "what is wallet didn't is itunda
+         bank wallet"). Home's hero card and the Pay tab showed the literal identical
+         balance under two different names ("Wallet" here vs "itunda Pay" at
+         ItundaAppScreen.kt:3022/3137's account switcher), reading as two different
+         products competing for the same money. Renamed to match the name already used
+         everywhere else this same account appears. -->
+    <string name="home_wallet">itunda Pay</string>
     <string name="home_cash_out">Cash out</string>
     <string name="home_send">Send</string>
     <string name="home_see_all">See all</string>
@@ -168,6 +174,13 @@
     <string name="home_auto_transfer_title">Auto-transfer</string>
     <string name="home_auto_transfer_active">%1$d active</string>
     <string name="home_auto_transfer_setup">Set up a recurring transfer</string>
+    <string name="back">Back</string>
+    <string name="account_detail_card">Card</string>
+    <string name="account_detail_manage">Manage</string>
+    <string name="account_detail_top_up">Top up</string>
+    <string name="account_detail_get_interest">Get interest</string>
+    <string name="account_detail_interest_prefix">Interest</string>
+    <string name="account_detail_empty">No transactions yet</string>
     <string name="home_coop_rail_title">Built for how Rwanda saves</string>
     <string name="home_coop_rail_sacco_title">SACCO shares</string>
     <string name="home_coop_rail_sacco_subtitle">Buy cooperative shares, earn a real dividend</string>
@@ -179,7 +192,6 @@
     <string name="home_coop_rail_harvest_subtitle">Input financing from your coffee cooperative</string>
     <string name="home_savings">Savings</string>
     <string name="home_interest_jar">Interest jar</string>
-    <string name="home_get_interest">Get interest</string>
     <string name="home_earned_this_month">Earned this month</string>
     <string name="home_interest_jar_rate_subtitle">%1$s%% annual, accrued daily</string>
     <string name="home_savings_progress">RWF %1$s of %2$s</string>

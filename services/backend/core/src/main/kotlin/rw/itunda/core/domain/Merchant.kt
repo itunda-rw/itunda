@@ -11,6 +11,19 @@ import java.time.Instant
 
 enum class MerchantStatus { ACTIVE, SUSPENDED }
 
+// Real fix (2026-08-13, direct user report against a live screenshot: Eats' own
+// "Restaurants" list and category chips showed Electronics/Fashion/Sneakers
+// alongside real food merchants). Root cause: ShoppingController.getEligibleMerchants
+// and MerchantRepository.findDistinctCategories/findDishes are shared verbatim by
+// Shop AND Eats (see eats.ts's own doc comment: "a restaurant IS a Merchant" -- a
+// deliberate, correct decision on its own), but nothing ever scoped Eats' own browse
+// to food merchants specifically, so it silently inherited the WHOLE marketplace.
+// Nullable, not required at registration: existing/legacy merchants haven't declared
+// one, and forcing a choice at register() would be a breaking API change for a
+// cosmetic gap -- see MerchantService.setBusinessType for the same optional,
+// settable-later pattern setCategory/setLocation/setCashbackRate already establish.
+enum class MerchantBusinessType { RESTAURANT, SHOP }
+
 /**
  * A real, minimal merchant record -- registration + a settlement wallet reference.
  * Reuses the owner's existing MAIN wallet as the settlement wallet rather than
@@ -77,6 +90,15 @@ class Merchant(
     // default.
     @Column(length = 64, nullable = true)
     var category: String? = null,
+
+    // Real Eats-vs-Shop vertical split (2026-08-13) -- see MerchantBusinessType's own
+    // doc comment above for the full account of the bug this closes. Null means
+    // "not declared" -- Shop's own browse is intentionally left unfiltered by this
+    // field so an undeclared merchant is never silently hidden from it; only Eats'
+    // browse explicitly requires RESTAURANT.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "business_type", length = 16, nullable = true)
+    var businessType: MerchantBusinessType? = null,
 
     // Real restaurant-card enrichment (2026-07-21) -- closes the "browse card has no
     // photo/minOrderAmount" gap named in docs/DESIGN_REFERENCES.md's Eats section

@@ -2917,6 +2917,11 @@ interface ApiService {
     @GET("api/v1/shopping/merchants")
     suspend fun getShoppingMerchants(
         @Query("category") category: String? = null,
+        // Real fix (2026-08-13, direct user report against a live screenshot): Eats'
+        // own restaurant list showed Electronics/Fashion merchants alongside real
+        // restaurants -- both browse the exact same unfiltered Merchant directory. Pass
+        // "RESTAURANT" from EatsScreen.kt, leave null (unfiltered, unchanged) from Shop.
+        @Query("businessType") businessType: String? = null,
         @Query("q") q: String? = null,
         // Real browse-card enrichment (2026-07-21) -- see ShoppingMerchantDto's own doc
         // comment. Omitted (null) means no real distanceKm/deliveryTimeMinutes back.
@@ -3021,7 +3026,7 @@ interface ApiService {
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment on the backend.
     @GET("api/v1/shopping/merchants/categories")
-    suspend fun getMerchantCategories(): MerchantCategoriesResponse
+    suspend fun getMerchantCategories(@Query("businessType") businessType: String? = null): MerchantCategoriesResponse
 
     // Real "Deals" rail (2026-07-25) -- see backend MerchantProductRepository.findDeals's
     // own doc comment.

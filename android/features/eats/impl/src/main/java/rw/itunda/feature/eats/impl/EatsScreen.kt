@@ -721,7 +721,9 @@ private fun OrderFoodContent(
     fun loadRestaurants() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getShoppingMerchants(selectedCategory, searchInput.trim().ifBlank { null })
+                val res = NetworkClient.apiService.getShoppingMerchants(
+                    category = selectedCategory, businessType = "RESTAURANT", q = searchInput.trim().ifBlank { null },
+                )
                 if (res.success) restaurants = res.merchants
                 error = null
             } catch (e: HttpException) {
@@ -735,11 +737,11 @@ private fun OrderFoodContent(
         loadRestaurants()
         loadFavorites()
         try {
-            val allRes = NetworkClient.apiService.getShoppingMerchants()
+            val allRes = NetworkClient.apiService.getShoppingMerchants(businessType = "RESTAURANT")
             if (allRes.success) allRestaurants = allRes.merchants
         } catch (e: Exception) { /* non-critical, only backs the Reorder lookup */ }
         try {
-            val catRes = NetworkClient.apiService.getMerchantCategories()
+            val catRes = NetworkClient.apiService.getMerchantCategories(businessType = "RESTAURANT")
             if (catRes.success) categories = catRes.categories
         } catch (e: Exception) { /* non-critical, only backs the category chip row */ }
     }
