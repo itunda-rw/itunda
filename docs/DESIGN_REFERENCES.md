@@ -5756,3 +5756,83 @@ simulated or assumed) -- closing a large amount of this session's own repeatedly
 
 Session-local, same as every prior networking-recipe entry -- must be redone next session if the
 device drops offline again (device address, port, all `socat`/`adb reverse` state).
+
+## 64. Real Pretendard typeface across all 3 platforms -- the first "visual craft" pass
+
+**2026-08-13**, same session. User's direct feedback: "we are still far away from toss." Asked
+where to focus next; user chose both visual polish/craft AND continuing to close remaining feature
+gaps. Started with visual craft since it hadn't been systematically addressed all session (every
+prior pass fixed individual component behaviors -- colors, spacing on specific screens, disabled
+states -- never the base typography layer itself).
+
+Checked `IdsTypography.kt` first and found its own header comment had named this exact gap since
+the file was written and never closed: `private val defaultFontFamily = FontFamily.SansSerif`, with
+a comment reading "(Ideally mapped to Toss Product Sans or Pretendard if custom font added)".
+Checked iOS (`IDS.swift`) and every web app's `index.css` -- confirmed the identical gap existed on
+all 3 platforms, not just Android: `UIFont.systemFont(ofSize:weight:)` on iOS, the standard
+`-apple-system, ... sans-serif` fallback stack on web. A real, cross-platform, base-layer gap, not a
+one-screen issue -- explains a large share of why the app reads as "generic Material/SF/system UI"
+rather than having Toss's own distinctive visual character, even with correct real colors and a
+real, sourced type SCALE (sizes/line-heights) already in place since Section 21-ish's TDS research.
+
+**Pretendard** (github.com/orioncactus/pretendard, real SIL Open Font License 1.1, confirmed
+license terms permit bundling in commercial software) is the real, free, open, widely-recognized
+typeface Korean fintech apps deliberately matching Toss's own visual register actually use as a
+stand-in for Toss's real proprietary in-house font -- not invented or guessed, verified via the
+license file and package structure directly. Downloaded 4 real static weights (Regular/Medium/
+SemiBold/Bold, matching every FontWeight each platform's own type scale actually needs) as both TTF
+(mobile) and WOFF2 (web) from the real npm package via jsDelivr's CDN, confirmed genuine via `file`.
+
+- **Android**: new `Pretendard.kt` mirrors the exact bundling pattern this repo already established
+  for `TossFaceFontFamily` (Toss's own real open-source emoji font, already bundled the same way) --
+  found this precedent BEFORE building anything, not coincidentally similar. License bundled at
+  `core/designsystem/PRETENDARD_LICENSE.txt`, matching `TOSSFACE_LICENSE.txt`'s own precedent.
+- **iOS**: found `IDS.scaledFont` is the ONE real function every font call site across the entire
+  app funnels through (dozens of real call sites checked via grep, all consistent) -- fixed it once,
+  centrally, plus its one local duplicate in `ContentView.swift` (kept local as a deliberate
+  cross-module-dependency avoidance, per that file's own existing comment). Resolves a real
+  `UIFont(name: "Pretendard-<Weight>")` by PostScript name (verified via `fontTools` against the
+  actual downloaded files, not guessed), falling back to the system font defensively, while keeping
+  the real `UIFontMetrics(forTextStyle:).scaledFont(for:)` Dynamic Type accessibility wrapping fully
+  intact -- this was a real, deliberate 2026-07-11 accessibility fix and this pass does not regress
+  it. Fonts registered via `UIAppFonts` in `Project.swift`, bundled at `App/Resources/Fonts/`.
+- **Web**: real `@font-face` declarations plus a new `--itunda-font-family` custom property added to
+  `packages/design-tokens/tokens.css` -- the same real single-source-of-truth file this repo already
+  uses for colors, extended to typography for the first time. All 6 web apps' `body` rules (bank-mfe,
+  merchant-mfe, kyc-mfe, host-app, ops-mfe, pay-checkout) switched to reference the token, keeping
+  each app's own original system-font stack as a real CSS fallback if the custom property somehow
+  isn't defined. `font-display: swap` so a slow font load never blocks text from rendering.
+
+**Fully live-verified on all 3 platforms**, not just build-verified:
+- **Android**: rebuilt, installed on the real physical device (reconnected this session, Section
+  63), launched, and took a real before/after screenshot comparison -- a tight zoomed crop on the
+  word "Wallet" shows genuinely different letterforms (the "a" bowl shape and "t" terminal curve
+  both visibly differ between the old Roboto rendering and the new Pretendard one).
+- **iOS**: `tuist generate` + `pod install` + full `xcodebuild` on the `ItundaApp` scheme --
+  **BUILD SUCCEEDED**, 0 errors (the only failures on the first attempt were pre-existing CocoaPods
+  module-resolution errors from a stale generated project, unrelated to this change, resolved by
+  `pod install` as already known from this project's own build-env history).
+- **Web**: headless-Chrome/CDP technique ([[feedback_headless_chrome_verification]]) confirmed
+  `getComputedStyle(document.body).fontFamily` genuinely starts with `"Pretendard"` on the real
+  running login page, and `document.fonts` shows the real weight faces (400/600/700) with
+  `status=loaded` (500/Medium correctly shows `unloaded` -- nothing on that specific page uses that
+  weight yet, standard lazy web-font loading behavior, not a bug).
+
+*Shipped: `android/core/designsystem/.../Pretendard.kt`, `.../IdsTypography.kt`,
+`.../res/font/pretendard_*.ttf`, `ios/Core/DesignSystem/Sources/IDS.swift`,
+`ios/App/Sources/ContentView.swift`, `ios/Project.swift`, `ios/App/Resources/Fonts/*.ttf`,
+`packages/design-tokens/tokens.css`, `packages/design-tokens/fonts/*.woff2`, all 6 web apps'
+`index.css`, `*/PRETENDARD_LICENSE.txt` on all 3 platforms*
+
+### Unresolved / worth a follow-up
+
+- This closes the single biggest base-layer typography gap, but "visual craft" is much larger than
+  a typeface swap -- real Toss-level polish also comes from custom iconography (still plain Material/
+  Lucide icons everywhere), illustration work (empty states are still plain text, e.g. "No properties
+  near you yet"), and finer spacing/elevation refinement. Named as the natural next targets for
+  future visual-craft passes, not claimed as closed by this one fix.
+- Only Regular/Medium/SemiBold/Bold weights bundled -- one real iOS call site uses `.heavy`
+  (`BenefitsShopAllScreens.swift:61`), mapped to the closest bundled weight (Bold) rather than
+  fetching a 5th font file for a single call site; a real, minor, honestly-noted simplification.
+- Web font-loading performance (first-paint flash while Pretendard downloads, mitigated by
+  `font-display: swap` but not eliminated) not specifically measured or optimized this pass.
