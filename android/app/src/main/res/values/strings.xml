@@ -158,15 +158,6 @@
     <string name="home_dismiss_recommendation">Dismiss</string>
     <string name="home_spent_period_category">Spent this period -- mostly on %1$s</string>
     <string name="home_spent_period">Spent this period</string>
-    <string name="home_promo_cashback_title">Transfer cashback</string>
-    <string name="home_promo_cashback_subtitle">BK account -> TUYIZERE Eric</string>
-    <string name="home_promo_cashback_action">Claim</string>
-    <string name="home_promo_sprinkle_title">Sprinkle money to friends</string>
-    <string name="home_promo_sprinkle_subtitle">19:03:55 left</string>
-    <string name="home_promo_sprinkle_action">Send</string>
-    <string name="home_promo_pay_cashback">Get cashback every time you pay</string>
-    <string name="home_promo_face_id">Pay with face ID</string>
-    <string name="home_promo_gov_alerts">Receive government alerts</string>
     <string name="home_credit_score_title">My credit score</string>
     <string name="home_credit_score_subtitle">Free check, alternative data</string>
     <string name="home_credit_score_value">%1$d points</string>

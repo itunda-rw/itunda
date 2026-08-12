@@ -32,120 +32,13 @@ import CoreDesignSystem
 import CoreNetwork
 import FeatureCredit
 
-// MARK: - Benefits tab
-
-struct BenefitsScreen: View {
-    var body: some View {
-        ScrollView {
-            VStack(spacing: IDS.Layout.cardGap) {
-                IdsPlainTopBar(title: "Benefits")
-                PromoBannerCard()
-                BenefitsVisitCard()
-                CashbackChanceCard()
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, IDS.Layout.screenTop)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-    }
-}
-
-private struct PromoBannerCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("🎁 Limited gift for Rwanda")
-                .font(IDS.scaledFont(size: 18, weight: .bold, relativeTo: .body))
-                .foregroundColor(.white)
-            Text("25,000")
-                .font(IDS.scaledFont(size: 54, weight: .heavy, relativeTo: .largeTitle))
-                .foregroundColor(.white)
-            Spacer().frame(height: 2)
-            Text("Redeem for free")
-                .font(IDS.scaledFont(size: 16, weight: .bold, relativeTo: .body))
-                .foregroundColor(.white)
-                .padding(.horizontal, 26)
-                .padding(.vertical, 12)
-                .background(Color(hex: 0xEF56FF))
-                .clipShape(Capsule())
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, minHeight: 220, alignment: .topLeading)
-        .background(Color(hex: 0x5D2FE6))
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-}
-
-private struct BenefitsVisitCard: View {
-    private let rows: [(String, String)] = [
-        ("Happy lottery", "die.face.5.fill"),
-        ("Push the button", "hand.tap.fill"),
-        ("Try on", "tshirt.fill"),
-        ("Bring friends", "person.badge.plus"),
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Visit 3 of 4 services and earn points")
-                .font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .title1))
-                .foregroundColor(IDS.Colors.textPrimary)
-            ForEach(rows, id: \.0) { title, symbol in
-                HStack {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12).fill(IDS.Colors.chipBackground)
-                        Image(systemName: symbol)
-                            .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .body))
-                            .foregroundColor(IDS.Colors.textPrimary)
-                    }
-                    .frame(width: 38, height: 38)
-                    Text(title)
-                        .font(IDS.scaledFont(size: 18, weight: .semibold, relativeTo: .body))
-                        .foregroundColor(IDS.Colors.textPrimary)
-                    Spacer()
-                    SmallBlueButton(label: "Visit")
-                }
-            }
-        }
-        .padding(24)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-}
-
-private struct CashbackChanceCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("🍀 3 chances to get money back")
-                .font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .title1))
-                .foregroundColor(IDS.Colors.textPrimary)
-            Text("We will notify you when new chances are available")
-                .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline))
-                .foregroundColor(IDS.Colors.textSecondary)
-            HStack {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14).fill(Color(hex: 0x246BFF))
-                    Image(systemName: "arrow.left.arrow.right.circle.fill")
-                        .font(IDS.scaledFont(size: 20, weight: .medium, relativeTo: .body))
-                        .foregroundColor(.white)
-                }
-                .frame(width: 42, height: 42)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("RWF 5,000")
-                        .font(IDS.scaledFont(size: 24, weight: .bold, relativeTo: .title2))
-                        .foregroundColor(IDS.Colors.textPrimary)
-                    Text("BK account -> TUYIZERE Eric")
-                        .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline))
-                        .foregroundColor(IDS.Colors.textSecondary)
-                }
-                Spacer()
-                SmallBlueButton(label: "Get back")
-            }
-        }
-        .padding(24)
-        .background(IDS.Colors.card)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-}
+// Real fix (2026-08-13, matching the identical Android fix same day, direct user
+// report: "entire app is still messy... give me something real"): BenefitsScreen/
+// PromoBannerCard/BenefitsVisitCard/CashbackChanceCard used to live here -- a full
+// screen of entirely fabricated content (fake "P 137" points, a fake "Limited gift
+// for Rwanda / 25,000" banner, 4 dead "Visit" buttons with zero real backend, and a
+// fake "3 chances to get money back / BK account -> TUYIZERE Eric" card). Removed;
+// the "Benefits" row below now opens the real Reward tasks mini-app instead.
 
 // DiscoverScreen (the old "Shop" tab -- Toss-Shopping-cashback-style browsing) removed
 // 2026-07-18: the new Shop tab is real Coupang-style commerce (see ShopScreen.swift),
@@ -185,12 +78,6 @@ struct EntireMenuScreen: View {
     @State private var showWalletBalanceMiniApp = false
     @State private var showRewardTasksMiniApp = false
     @State private var showInsuranceMiniApp = false
-    // Benefits folded in here (2026-07-18) -- lost its own top-level tab when the
-    // bottom nav became Home/Shop/Hood/Talk/My, but stays just as reachable as a real
-    // row instead of being dropped, same fix Android's own AllTab went through (see
-    // ItundaAppScreen.kt's "Quick links" FlatSection). Pay itself is a real primary
-    // tab again (2026-08-10, ContentView.swift's Home/Pay/Explore/Messages/You).
-    @State private var showBenefits = false
     // Shop/Eats lost their own primary tab the same day (2026-08-10, real user
     // correction: nesting them behind one row with an internal Shop/Eats toggle --
     // ShopScreen's own retired Picker -- is noise a flat catalog shouldn't have).
@@ -336,7 +223,16 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", symbol: "person.3.fill", tint: .accentTeal, action: onOpenCommunity),
                 FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", symbol: "briefcase.fill", tint: .accentTeal, action: onOpenJobs),
                 FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", symbol: "house.fill", tint: .accentTeal, action: onOpenProperty),
-                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
+                // Real fix (2026-08-13, matching the identical Android fix same day, direct
+                // user report: "entire app is still messy... give me something
+                // real"): used to open BenefitsShopAllScreens' own BenefitsView, a
+                // full screen of entirely fabricated content -- a fake points pill, a
+                // fake "Limited gift for Rwanda / 25,000" banner, dead "Visit"
+                // buttons, and a fake "3 chances to get money back / BK account ->
+                // TUYIZERE Eric" card. This row's own subtitle ("Points, coupons,
+                // rewards") already describes exactly what the real "Reward tasks"
+                // mini-app does -- points there instead of a second, fake destination.
+                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showRewardTasksMiniApp = true }),
                 FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                 FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
                 FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
@@ -488,7 +384,16 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Community", subtitle: "Neighborhood life, local questions and posts", symbol: "person.3.fill", tint: .accentTeal, action: onOpenCommunity),
                         FlatRow(title: "Jobs", subtitle: "Neighborhood gigs and part-time work", symbol: "briefcase.fill", tint: .accentTeal, action: onOpenJobs),
                         FlatRow(title: "Property", subtitle: "Neighborhood rentals and sales", symbol: "house.fill", tint: .accentTeal, action: onOpenProperty),
-                        FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
+                        // Real fix (2026-08-13, matching the identical Android fix same day, direct
+                // user report: "entire app is still messy... give me something
+                // real"): used to open BenefitsShopAllScreens' own BenefitsView, a
+                // full screen of entirely fabricated content -- a fake points pill, a
+                // fake "Limited gift for Rwanda / 25,000" banner, dead "Visit"
+                // buttons, and a fake "3 chances to get money back / BK account ->
+                // TUYIZERE Eric" card. This row's own subtitle ("Points, coupons,
+                // rewards") already describes exactly what the real "Reward tasks"
+                // mini-app does -- points there instead of a second, fake destination.
+                FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showRewardTasksMiniApp = true }),
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                         FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
                         FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
@@ -734,9 +639,6 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showInsuranceMiniApp) {
             SaroniteInsuranceView()
-        }
-        .sheet(isPresented: $showBenefits) {
-            BenefitsScreen()
         }
         .sheet(isPresented: $showShop) {
             CommerceShopContent()

@@ -121,15 +121,6 @@
     <string name="home_new_badge">GISHYA</string>
     <string name="home_spent_period_category">Wakoresheje muri iki gihe -- cyane cyane kuri %1$s</string>
     <string name="home_spent_period">Wakoresheje muri iki gihe</string>
-    <string name="home_promo_cashback_title">Garura amafaranga y\'ikoreshwa</string>
-    <string name="home_promo_cashback_subtitle">Konti ya BK -> TUYIZERE Eric</string>
-    <string name="home_promo_cashback_action">Saba</string>
-    <string name="home_promo_sprinkle_title">Sangiza amafaranga inshuti</string>
-    <string name="home_promo_sprinkle_subtitle">Bisigaye 19:03:55</string>
-    <string name="home_promo_sprinkle_action">Ohereza</string>
-    <string name="home_promo_pay_cashback">Garura amafaranga buri gihe wishyuye</string>
-    <string name="home_promo_face_id">Ishyura ukoresheje mu isura</string>
-    <string name="home_promo_gov_alerts">Kwakira amakuru ya Leta</string>
     <string name="home_coop_rail_title">Byakorewe uko Abanyarwanda babika amafaranga</string>
     <string name="home_coop_rail_sacco_title">Imigabane ya SACCO</string>
     <string name="home_coop_rail_sacco_subtitle">Gura imigabane ya koperative, wakire inyungu nyayo</string>

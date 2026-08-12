@@ -44,10 +44,8 @@ import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material.icons.outlined.CardGiftcard
-import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CreditCard
@@ -66,7 +64,6 @@ import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material.icons.outlined.EventAvailable
-import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
@@ -81,12 +78,10 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.PersonAddAlt
 import androidx.compose.material.icons.outlined.Pets
 import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.Redeem
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.Savings
@@ -103,7 +98,6 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material.icons.outlined.SwapHoriz
-import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
@@ -316,10 +310,9 @@ fun ItundaAppScreen(
         // into the whole Settings screen -- a real no-op-shaped bug (see this file's
         // own 2026-07-22 audit comment on HomeTopBar, now corrected).
         var showNotificationsFeed by rememberSaveable { mutableStateOf(false) }
-        var showBenefits by rememberSaveable { mutableStateOf(false) }
         // Shop/Hood lost their own primary tabs (2026-08-10, see ItundaTab's own doc
-        // comment) -- same real full-screen-entry-point pattern showBenefits/showMap
-        // already established for non-primary destinations.
+        // comment) -- same real full-screen-entry-point pattern showMap already
+        // established for non-primary destinations.
         // Shop and Eats are two flat, independent Explore rows (2026-08-10, real user
         // correction: nesting them behind one "Shop" entry with its own Shop/Eats
         // toggle -- ShopTab's real shape, correct when Shop was a primary tab -- is
@@ -924,15 +917,6 @@ fun ItundaAppScreen(
             return@IdsTheme
         }
 
-        // Benefits/Pay folded into My as real full-screen entry points (2026-07-18)
-        // rather than dropped outright -- same reachability, one fewer top-level tab.
-        if (showBenefits) {
-            BackHandler { showBenefits = false }
-            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
-                Box(modifier = Modifier.fillMaxSize().padding(padding)) { BenefitsTab(onBack = { showBenefits = false }) }
-            }
-            return@IdsTheme
-        }
         if (showShop) {
             BackHandler { showShop = false }
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
@@ -1389,7 +1373,6 @@ fun ItundaAppScreen(
                             onOpenCommunity = { showCommunity = true },
                             onOpenJobs = { showJobs = true },
                             onOpenSettings = { showSettings = true },
-                            onOpenBenefits = { showBenefits = true },
                             onOpenInvest = { showInvest = true },
                             onOpenBank = { showBank = true },
                             onOpenMap = { showMap = true },
@@ -1657,6 +1640,18 @@ private fun HomeTab(
         // there's real spend to report, same "don't flash an empty/zero section"
         // discipline the Savings section below already establishes.
         val topCategory = spendingInsight?.categories?.maxByOrNull { it.amount.toDouble() }
+        // Real fix (2026-08-13, direct user report: "entire app is still messy...
+        // give me something real"): this section used to also render "Transfer
+        // cashback"/"Sprinkle money to friends" (zero backend anywhere -- grepped --
+        // hardcoded fake subtitle "BK account -> TUYIZERE Eric" and a countdown
+        // "19:03:55 left" that never actually counted down) plus a THIRD section of
+        // "Get cashback every time you pay"/"Pay with face ID"/"Receive government
+        // alerts" rows with no onClick at all. All pure decorative filler with no
+        // real data or destination behind any of it -- removed rather than either
+        // leaving them as dead taps or inventing a fake feature just to wire them up.
+        // Matches this same file's own established precedent (see the Legal/consent
+        // FlatRow fix, item 3 of the 2026-08-07 pass) of removing fabricated content
+        // instead of faking a destination for it.
         if (spendingInsight != null && (spendingInsight?.totalSpent?.toDouble() ?: 0.0) > 0.0) {
             item {
                 ShellSection(
@@ -1670,18 +1665,6 @@ private fun HomeTab(
                             AccentPurple,
                             onClick = onOpenSpendingInsight,
                         ),
-                        ShellRow(stringResource(R.string.home_promo_cashback_title), stringResource(R.string.home_promo_cashback_subtitle), stringResource(R.string.home_promo_cashback_action), Icons.Outlined.Payments, AccentBlue),
-                        ShellRow(stringResource(R.string.home_promo_sprinkle_title), stringResource(R.string.home_promo_sprinkle_subtitle), stringResource(R.string.home_promo_sprinkle_action), Icons.Outlined.Redeem, AccentOrange)
-                    )
-                )
-            }
-        } else {
-            item {
-                ShellSection(
-                    title = "",
-                    rows = listOf(
-                        ShellRow(stringResource(R.string.home_promo_cashback_title), stringResource(R.string.home_promo_cashback_subtitle), stringResource(R.string.home_promo_cashback_action), Icons.Outlined.Payments, AccentBlue),
-                        ShellRow(stringResource(R.string.home_promo_sprinkle_title), stringResource(R.string.home_promo_sprinkle_subtitle), stringResource(R.string.home_promo_sprinkle_action), Icons.Outlined.Redeem, AccentOrange)
                     )
                 )
             }
@@ -1698,16 +1681,6 @@ private fun HomeTab(
                         AccentPurple,
                         onClick = onOpenCreditScore,
                     ),
-                )
-            )
-        }
-        item {
-            ShellSection(
-                title = "",
-                rows = listOf(
-                    ShellRow(stringResource(R.string.home_promo_pay_cashback), "", ">", Icons.Outlined.Payments, AccentBlue),
-                    ShellRow(stringResource(R.string.home_promo_face_id), "", ">", Icons.Outlined.Face, AccentPurple),
-                    ShellRow(stringResource(R.string.home_promo_gov_alerts), "", ">", Icons.Outlined.Campaign, AccentRed)
                 )
             )
         }
@@ -2758,7 +2731,15 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                     if (row.action == ">") {
                         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                     } else if (row.action.isNotBlank()) {
-                        IdsButton(row.action, onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
+                        // Real fix (2026-08-13, direct user report: "entire app is
+                        // still messy"): this button's onClick was hardcoded to a
+                        // no-op regardless of row.onClick -- the surrounding Row above
+                        // is already clickable via row.onClick when set, but a nested
+                        // clickable element (this button) intercepts the tap before it
+                        // reaches the parent, so tapping directly on the visually
+                        // obvious CTA (e.g. credit score's "View") silently did
+                        // nothing while tapping elsewhere in the same row worked.
+                        IdsButton(row.action, onClick = row.onClick ?: {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                     }
                 }
                 if (index != rows.lastIndex) {
@@ -2766,22 +2747,6 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun BenefitsTab(onBack: () -> Unit = {}) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
-    ) {
-        item { BackTopBar("Benefits", onBack) }
-        item { PromoBannerCard() }
-        item { PointPill("P 137") }
-        item { BenefitsVisitCard() }
-        item { CashbackChanceCard() }
     }
 }
 
@@ -3179,7 +3144,6 @@ private fun MenuScreen(
     onOpenCommunity: () -> Unit = {},
     onOpenJobs: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
-    onOpenBenefits: () -> Unit = {},
     onOpenInvest: () -> Unit = {},
     onOpenBank: () -> Unit = {},
     onOpenMap: () -> Unit = {},
@@ -3268,7 +3232,20 @@ private fun MenuScreen(
         FlatRow("Community", subtitle = "Neighborhood life, local questions and posts", icon = Icons.Outlined.Groups, iconColor = AccentTeal, onClick = onOpenCommunity),
         FlatRow("Jobs", subtitle = "Neighborhood gigs and part-time work", icon = Icons.Outlined.Work, iconColor = AccentTeal, onClick = onOpenJobs),
         FlatRow("Property", subtitle = "Neighborhood rentals and sales", icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onOpenProperty),
-        FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
+        // Real fix (2026-08-13, direct user report: "entire app is still messy...
+        // give me something real"): used to open BenefitsTab, a full screen of
+        // entirely fabricated content -- a fake "P 137" points pill, a fake "🎁
+        // Limited gift for Rwanda / 25,000" banner, 4 dead "Visit" buttons (Happy
+        // lottery/Push the button/Try on/Bring friends, zero real backend), and a
+        // fake "3 chances to get money back / RWF 5,000 / BK account -> TUYIZERE
+        // Eric" card. This row's own subtitle ("Points, coupons, rewards") already
+        // describes exactly what the real "Reward tasks" mini-app below in this same
+        // section does (rw.itunda.rewards, real tasks/steps/referral, real RWF
+        // payouts) -- points there instead of a second, fake destination.
+        FlatRow(
+            "Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange,
+            onClick = { context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java)) },
+        ),
         FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
         FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
         FlatRow("31-Day Savings", subtitle = "Daily streak, tiered bonus rate", icon = Icons.Outlined.Savings, iconColor = AccentOrange, onClick = onOpenGrow31Savings),
@@ -4094,101 +4071,6 @@ internal fun PlainTopBar(title: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(title, color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Text("...", color = Ids.colors.textPrimary, fontSize = 24.sp)
-    }
-}
-
-@Composable
-private fun PromoBannerCard() {
-    Card(
-        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF5D2FE6)),
-        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
-    ) {
-        Box(modifier = Modifier.fillMaxWidth().height(220.dp).padding(20.dp)) {
-            Column {
-                Text(
-                    // Toss's real open-source emoji font (github.com/toss/tossface),
-                    // bundled from the actual release asset -- not a generic system
-                    // emoji glyph.
-                    "🎁 Limited gift for Rwanda",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = rw.itunda.core.designsystem.theme.TossFaceFontFamily
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("25,000", color = Color.White, fontSize = 54.sp, fontWeight = FontWeight.ExtraBold)
-                Spacer(modifier = Modifier.height(10.dp))
-                Box(modifier = Modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xFFEF56FF)).padding(horizontal = 26.dp, vertical = 12.dp)) {
-                    Text("Redeem for free", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PointPill(label: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(Ids.colors.chip)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Text(label, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun BenefitsVisitCard() {
-    IdsCard {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Text("Visit 3 of 4 services and earn points", color = Ids.colors.textPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            listOf(
-                "Happy lottery" to Icons.Outlined.Casino,
-                "Push the button" to Icons.Outlined.TouchApp,
-                "Try on" to Icons.Outlined.Checkroom,
-                "Bring friends" to Icons.Outlined.PersonAddAlt
-            ).forEach { (title, icon) ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip), contentAlignment = Alignment.Center) {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(title, modifier = Modifier.weight(1f), color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    IdsButton("Visit", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CashbackChanceCard() {
-    IdsCard {
-        Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-                "🍀 3 chances to get money back",
-                color = Ids.colors.textPrimary,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = rw.itunda.core.designsystem.theme.TossFaceFontFamily
-            )
-            Text("We will notify you when new chances are available", color = Ids.colors.textSecondary, fontSize = 15.sp)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF246BFF)), contentAlignment = Alignment.Center) {
-                    // Was the Korean Won symbol ("₩") -- wrong currency
-                    // entirely for a Rwanda app; real icon now.
-                    Icon(Icons.Outlined.CurrencyExchange, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("RWF 5,000", color = Ids.colors.textPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text("BK account -> TUYIZERE Eric", color = Ids.colors.textSecondary)
-                }
-                IdsButton("Get back", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
-            }
-        }
     }
 }
 
