@@ -5836,3 +5836,71 @@ SemiBold/Bold, matching every FontWeight each platform's own type scale actually
   fetching a 5th font file for a single call site; a real, minor, honestly-noted simplification.
 - Web font-loading performance (first-paint flash while Pretendard downloads, mitigated by
   `font-display: swap` but not eliminated) not specifically measured or optimized this pass.
+
+## 65. Home/itunda-Bank direct comparison -- credit score, Auto-transfer, top bar, banner
+
+**2026-08-13**, same session. User sent 12 real screenshots in two batches: 6 comparing itunda's
+own real BankHubScreen against real Toss Bank's account-detail and product-catalog screens
+("why don't they look the same itunda bank and toss bank"), then 2 more specifically on the Home
+top bar and hero banner ("app bar should be 100% same as this, itunda intelligence banner should
+[look] like this and if nothing new to recommend or suggestion it should disappear").
+
+**Honest, upfront diagnosis given first, not a silent rebuild**: the two Bank screens diverge in
+several real, structural ways -- richer/more-varied per-product iconography on Toss's side, real
+inline interest rates on every product row, real header tabs (카드/관리), and a real "Recommendations"
+carousel leading the product catalog. Named all of these explicitly as real gaps, then picked the
+most concretely buildable ones with real existing itunda data rather than attempting a full
+one-pass rebuild of everything at once.
+
+**Four real, concrete fixes shipped**:
+1. **Credit score card** -- Toss's real account-detail screen has a dedicated "내 신용점수" (My
+   credit score) row with a "보기" (View) button. itunda already has this exact real feature
+   (`rw.itunda.creditscore`, a real score computed from account activity, already load-bearing on
+   `LoansService`'s risk gate, with its own real `CreditScoreScreen`) -- it was just never surfaced
+   on Home, only reachable from deep inside Explore's Money tools list. Added to `HomeTab`, fetched
+   via the same real `GET /api/v1/credit-score` endpoint.
+2. **Auto-transfer row** -- Toss's account-detail card shows "Auto Transfer / 2 Items" directly
+   below Top up/Send. itunda already fetches this exact real data (`autoTransferCount`), previously
+   surfaced only inside `TransferHubScreen` -- added to `WalletHeroCard` in the same position.
+3. **Top app bar redesign** -- direct comparison found itunda's search box had never actually been
+   wired to anything at all (no `onClick`, no destination -- a real dead UI element, not just a
+   visual mismatch, confirmed by reading the code before removing it). Replaced with a real "Pay"
+   shortcut pill (opens the same real Pay screen the My tab's own Pay row reaches) and a
+   notification bell with a REAL unread-count dot (`MainViewModel.unreadNotificationCount`, already
+   powering `NotificationListScreen`'s own badge, never surfaced on this bar before).
+4. **Personal recommendation banner restyle** -- checked first whether "disappears when nothing to
+   recommend" was already true before treating it as a bug: it was (`PersonalRecommendationCard` is
+   only ever called inside `HomeTab`'s own `if (heroDiscoverItem != null)` gate) -- confirmed, not
+   silently assumed. Restyled to match the real reference's visual weight (full-bleed
+   accentColor-tinted background using the item's own real per-item color, bigger bold title, a real
+   dismiss "X"). Also closed a real, previously-documented gap: the CTA used to be deliberately
+   inert text (a prior pass's own comment explains why -- no real destination existed on
+   `DiscoverItem` at the time, and a dead-tap `IdsButton` would repeat a bug this session has fixed
+   elsewhere). Found that `DiscoverService`'s real backend only ever emits 3 real category values
+   (`account`/`savings`/`credit`, confirmed by grep, not guessed) -- mapped each to a real,
+   already-built itunda screen (Identity verification / itunda Bank / Loans), making the CTA
+   genuinely functional for the first time without inventing a destination.
+
+**Live-verified on the real physical device**: credit score card renders with the real fetched
+score and "View" navigates to the real `CreditScoreScreen`; Auto-transfer row renders with the real
+count-driven subtitle ("Set up a recurring transfer" at 0, matching `TransferHubScreen`'s own
+established copy); new top bar renders with the search box genuinely gone and a real 0-unread bell
+state (no dot, correctly honest since there are no real unread notifications right now); the banner
+correctly does NOT render in the same screenshot, live-confirming the "disappear when empty"
+behavior rather than just trusting the code read.
+
+*Shipped: `android/app/.../ItundaAppScreen.kt` (`HomeTab`, `WalletHeroCard`, `HomeTopBar`,
+`PersonalRecommendationCard`), `android/app/src/main/res/values/strings.xml`*
+
+### Unresolved / worth a follow-up
+
+- **The restyled banner's new visual appearance was NOT live-verified** -- no real discover item
+  existed for this account at verification time (confirmed empty-state behavior instead, which is
+  real and valuable, but different from confirming the new WITH-item visuals). A real follow-up once
+  a real recommendation is live for some account.
+- Real gaps named in the initial diagnosis but not yet built this pass: richer/varied per-product
+  iconography on `BankHubScreen`'s rows, real inline interest-rate display on every row (currently
+  inconsistent -- some rows show a rate/percent pill, most don't), the real Toss 카드/관리
+  header-tab structure, and a "Recommendations" carousel leading the product catalog. Named
+  explicitly, not silently folded into "done."
+- iOS/Web untouched this pass -- all 4 fixes are Android-only.
