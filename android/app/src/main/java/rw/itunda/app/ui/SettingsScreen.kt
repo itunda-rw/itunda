@@ -22,6 +22,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -32,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +72,7 @@ import rw.itunda.core.identity.NIDABiometricAuth
  * uses, found and fixed the same day: it used to hold only screen-local state that
  * never propagated past LoginScreen's own subtree.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () -> Unit) {
     val profile by viewModel.profile.collectAsState()
@@ -80,6 +84,21 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
 
     LaunchedEffect(Unit) { viewModel.loadSettingsData() }
 
+    // Real Toss/Kakao pull-to-refresh (2026-08-12 research pass) -- same real
+    // mechanics as ItundaAppScreen.kt's own Home-tab implementation, applied here
+    // since Settings' own notifications list is exactly the kind of live, changing
+    // data itunda's pull-to-refresh research already named as the reason Home got
+    // this gesture in the first place.
+    val pullToRefreshState = rememberPullToRefreshState()
+    val isLoadingSettings by viewModel.isLoadingSettings.collectAsState()
+    LaunchedEffect(pullToRefreshState.isRefreshing) {
+        if (pullToRefreshState.isRefreshing) viewModel.loadSettingsData()
+    }
+    LaunchedEffect(isLoadingSettings) {
+        if (!isLoadingSettings) pullToRefreshState.endRefresh()
+    }
+
+    Box(Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -405,6 +424,8 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }
+    }
+    PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
     }
 }
 

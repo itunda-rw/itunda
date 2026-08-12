@@ -107,6 +107,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
 
+    // Same real Toss/Kakao pull-to-refresh support, a separate flag from
+    // _isRefreshing above since Settings loads its own distinct data
+    // (profile/notifications/devices) via loadSettingsData(), not fetchData() --
+    // the Home tab's own pull gesture must never appear to finish early just because
+    // an unrelated Settings fetch happened to complete around the same time.
+    private val _isLoadingSettings = MutableStateFlow(false)
+    val isLoadingSettings: StateFlow<Boolean> = _isLoadingSettings
+
     init {
         fetchData()
         // Real replay-on-reconnect (2026-07-13): the moment a validated network
@@ -257,6 +265,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * Settings screen actually opens, not on every Home tab load. */
     fun loadSettingsData() {
         viewModelScope.launch {
+            _isLoadingSettings.value = true
             try {
                 val profileRes = NetworkClient.authApi.getProfile()
                 if (profileRes.success) _profile.value = profileRes.user
@@ -274,6 +283,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Settings screen just shows whatever it already had (or nothing) --
                 // not a money-moving action, no need for the offline-placeholder
                 // treatment fetchData() uses for the Home tab.
+            } finally {
+                _isLoadingSettings.value = false
             }
         }
     }

@@ -856,6 +856,7 @@ fun ItundaAppScreen(
             BackHandler { showTransactionHistory = false }
             val transactionsForHistory by viewModel.transactions.collectAsState()
             val currentUserIdForHistory by viewModel.primaryWallet.collectAsState()
+            val transactionHistoryRefreshing by viewModel.isRefreshing.collectAsState()
             rw.itunda.feature.payments.impl.TransactionHistoryScreen(
                 transactions = transactionsForHistory.map { tx ->
                     rw.itunda.feature.payments.impl.TransactionDisplayItem(
@@ -868,6 +869,8 @@ fun ItundaAppScreen(
                     )
                 },
                 onBack = { showTransactionHistory = false },
+                onRefresh = { viewModel.retry() },
+                isRefreshing = transactionHistoryRefreshing,
             )
             return@IdsTheme
         }

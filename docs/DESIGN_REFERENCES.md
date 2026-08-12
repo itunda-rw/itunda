@@ -4637,3 +4637,54 @@ screen's own real loading window, which is often sub-second on a healthy connect
 - Web (`bank-mfe`)/iOS weren't checked for the same bare-placeholder pattern this pass -- Android
   only, matching how this session's other single-platform passes are scoped and documented
   honestly rather than silently claimed done everywhere.
+
+---
+
+## 45. Pull-to-refresh — real, existed on exactly one screen, extended to two more
+
+**2026-08-12**, same session, user asked to "deep search toss interactions and improve itunda
+interactions to 100% toss interactions like." Checked itunda's own real pull-to-refresh coverage
+first, since it's one of Toss's (and virtually every modern mobile app's) most pervasive, iconic
+gesture patterns and hadn't been audited yet this research thread. Real, correct implementation
+already existed -- `ItundaAppScreen.kt`'s Home tab, built in an earlier 2026-08-11 research pass
+(`rememberPullToRefreshState` + `PullToRefreshContainer`, tied to `MainViewModel.isRefreshing`
+spanning the real fetch duration, not a fixed timer). `grep` across the rest of `:app` and every
+Feature module found **zero other screens with any pull-to-refresh at all** -- the exact same
+"built once for the screen it was designed for, never swept elsewhere" pattern Sections 43/44
+already found for confetti and skeleton loading, this time for arguably the single most
+recognizable gesture in this whole family of patterns.
+
+**Shipped, two more real screens** (picked for traffic/value, not exhaustive -- itunda has dozens
+of list screens, a full sweep is a real, separate, larger follow-up):
+- **Transaction history** (`features/payments/impl/TransactionHistoryScreen.kt`) -- the single
+  most-checked list in any real banking app. This Feature module has no `MainViewModel` of its
+  own (architectural constraint already established throughout this session's Feature-isolation
+  work), so `onRefresh`/`isRefreshing` are plain props the parent supplies -- the pull gesture's UI
+  mechanics live in the presentational component, the real data-refetch trigger
+  (`viewModel.retry()`, the same one Home's own pull-to-refresh already uses) stays owned by
+  `ItundaAppScreen.kt`.
+- **Settings** (`SettingsScreen.kt`), whose own notifications list is exactly the kind of live,
+  changing data this pattern exists for. Found `MainViewModel.loadSettingsData()` had no
+  refreshing-state signal of any kind (unlike `fetchData()`/`retry()`, which already had
+  `_isRefreshing`) -- added a dedicated `_isLoadingSettings` flag, deliberately separate from
+  Home's own `_isRefreshing` so an unrelated Settings fetch completing can't make Home's own pull
+  gesture appear to finish early.
+
+Both needed `@OptIn(ExperimentalMaterial3Api::class)` -- itunda's own Home implementation already
+carries this annotation, but neither of these two files did before this fix (a real, concrete
+compile error caught immediately, not a style nit). `:app` full `assembleDebug` build-verified
+clean.
+
+*Shipped: `TransactionHistoryScreen.kt`, `ItundaAppScreen.kt`, `MainViewModel.kt`,
+`SettingsScreen.kt`*
+
+### Unresolved / worth a follow-up
+
+- Not live-verified on-device (build-verified only).
+- Every other list screen in the app (savings/loan plan lists, Talk conversation list --
+  investigated this pass, structurally more complex with 3 separate lists
+  (conversations/archived/groups) inside nested composables, deferred rather than rushed --
+  Marketplace/Shop/Community/Jobs/Property browse screens, Overview's linked-accounts list, and
+  more) still has no pull-to-refresh. A real, larger follow-up if the user wants closer to
+  literal "every list" coverage, not a small remaining gap.
+- Web/iOS not checked for the same gap this pass -- Android only.

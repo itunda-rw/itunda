@@ -10,13 +10,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import rw.itunda.core.designsystem.components.EmptyState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -45,43 +49,72 @@ data class TransactionDisplayItem(
  * by services/backend/wallet's real getTransactionHistory endpoint (previously a
  * dead repository method with no controller ever calling it) -- no card issuance
  * or card network exists, so this is framed as spend history, not a real card.
+ *
+ * Real Toss/Kakao pull-to-refresh (2026-08-12 research pass) -- itunda's own real
+ * pull-to-refresh implementation (Home tab, `ItundaAppScreen.kt`) existed on exactly
+ * one screen despite this being one of Toss's most iconic, pervasive interaction
+ * patterns; transaction history is the single most-checked list in any real banking
+ * app and had no way to manually refresh beyond leaving and re-entering the screen.
+ * `onRefresh`/`isRefreshing` are plain props, not owned here -- this Feature module
+ * has no `MainViewModel` of its own to call `retry()` on (same "dumb presentational
+ * component, parent owns the real data" architecture this file's own doc comment
+ * above already establishes for `transactions` itself); only the pull gesture's own
+ * UI mechanics (state, nested scroll, the container) live in this composable.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionHistoryScreen(
     transactions: List<TransactionDisplayItem>,
     onBack: () -> Unit,
+    onRefresh: () -> Unit = {},
+    isRefreshing: Boolean = false,
 ) {
     val spentThisMonth = transactions
         .filter { it.isOutgoing && it.status == "COMPLETED" }
         .sumOf { it.amount }
 
-    Column(
+    val pullToRefreshState = rememberPullToRefreshState()
+    LaunchedEffect(pullToRefreshState.isRefreshing) {
+        if (pullToRefreshState.isRefreshing) onRefresh()
+    }
+    LaunchedEffect(isRefreshing) {
+        if (!isRefreshing) pullToRefreshState.endRefresh()
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Ids.colors.background)
+            .nestedScroll(pullToRefreshState.nestedScrollConnection),
     ) {
-        FlowTopBar(onBack)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Ids.colors.background)
+        ) {
+            FlowTopBar(onBack)
 
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            Text("Spent this month", color = Ids.colors.textSecondary, fontSize = 15.sp)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                "RWF ${rwfFormatter.format(spentThisMonth.toLong())}",
-                color = Ids.colors.textPrimary,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                Text("Spent this month", color = Ids.colors.textSecondary, fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "RWF ${rwfFormatter.format(spentThisMonth.toLong())}",
+                    color = Ids.colors.textPrimary,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        if (transactions.isEmpty()) {
-            EmptyState("No transactions yet — sends, receives, and payments will show up here.", icon = Icons.Outlined.ReceiptLong)
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
-                items(transactions, key = { it.id }) { tx -> TransactionRow(tx) }
+            if (transactions.isEmpty()) {
+                EmptyState("No transactions yet — sends, receives, and payments will show up here.", icon = Icons.Outlined.ReceiptLong)
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+                    items(transactions, key = { it.id }) { tx -> TransactionRow(tx) }
+                }
             }
         }
+        PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
     }
 }
 
