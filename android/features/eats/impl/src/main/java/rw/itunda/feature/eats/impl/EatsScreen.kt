@@ -31,6 +31,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Coffee
+import androidx.compose.material.icons.outlined.Fastfood
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.Restaurant
@@ -61,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +73,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
+import rw.itunda.core.designsystem.components.StatusBadge
 import rw.itunda.core.designsystem.components.IdsTextField
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.LiveRiderMiniMap
@@ -271,6 +275,46 @@ private fun eatsCartKey(productId: String, choiceIds: List<String>): String =
 // itunda already had -- the same research flagged that Coupang Eats itself hides that
 // line until you open the restaurant, which it calls out as a real usability flaw, so
 // this keeps it visible rather than copying that specific weakness.
+// Real category -> icon mapping (2026-08-12) -- covers itunda's own real seeded
+// merchant categories (SeedDataRunner.kt: "Rwandan"/"Fast Food"/"Coffee & Bakery"),
+// with a generic fallback for any other real category a merchant sets that isn't
+// explicitly mapped, so a new category never renders with no icon at all.
+private fun eatsCategoryIcon(category: String) = when {
+    category.contains("fast food", ignoreCase = true) -> Icons.Outlined.Fastfood
+    category.contains("coffee", ignoreCase = true) || category.contains("bakery", ignoreCase = true) -> Icons.Outlined.Coffee
+    else -> Icons.Outlined.Restaurant
+}
+
+@Composable
+private fun EatsCategoryIconRow(categories: List<String>, selectedCategory: String?, onSelect: (String) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        categories.forEach { c ->
+            val selected = c == selectedCategory
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp).clickable { onSelect(c) }) {
+                Box(
+                    modifier = Modifier.size(56.dp).clip(CircleShape)
+                        .background(if (selected) Ids.colors.brand.copy(alpha = 0.15f) else Ids.colors.surfaceSoft),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(eatsCategoryIcon(c), contentDescription = null, tint = if (selected) Ids.colors.brand else Ids.colors.textSecondary, modifier = Modifier.size(26.dp))
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    c,
+                    color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favoriteBusy: Boolean, onOpen: () -> Unit, onToggleFavorite: () -> Unit) {
     Card(
@@ -390,6 +434,32 @@ private fun EatsDishGrid(dishes: List<EatsDishDto>, onOpen: (EatsDishDto) -> Uni
 private fun RestaurantPhotoPlaceholder() {
     Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
         Icon(Icons.Outlined.Storefront, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
+    }
+}
+
+// Real menu-item photo thumbnail (2026-08-12) -- same real SubcomposeAsyncImage +
+// placeholder-on-failure pattern this file already uses for RestaurantCard/
+// EatsDishGrid, just sized for an inline menu row. Kept local to this module rather
+// than reusing Shop's private ProductImageThumb (a different Gradle module, that
+// composable isn't visible here).
+@Composable
+private fun MenuItemThumb(imageUrl: String?, size: androidx.compose.ui.unit.Dp) {
+    Box(modifier = Modifier.size(size).clip(RoundedCornerShape(10.dp))) {
+        if (imageUrl != null) {
+            SubcomposeAsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when (painter.state) {
+                    is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                    else -> RestaurantPhotoPlaceholder()
+                }
+            }
+        } else {
+            RestaurantPhotoPlaceholder()
+        }
     }
 }
 
@@ -876,6 +946,20 @@ private fun OrderFoodContent(
                 )
             }
         } else {
+            // Real Coupang Eats category icon row (2026-08-12, direct user screenshot)
+            // -- the real reference shows a horizontally-scrolling row of round
+            // category icons (일식/회해물/구이/찜탕/한식 -- Japanese/Seafood/Grilled/
+            // Stew/Korean) above the search bar, not just the plain text chips below.
+            // Uses itunda's own real merchant categories (getMerchantCategories,
+            // already fetched above -- real values like "Rwandan"/"Fast Food"/"Coffee
+            // & Bakery" from real seeded merchants, not fabricated Korean cuisine
+            // names) mapped to real Material icons -- no invented dish photography
+            // itunda has no license or real source for. Additive: the text chip row
+            // below still does the actual filtering; this is the same real
+            // selectedCategory state, just a second, visually-matched way to reach it.
+            if (categories.isNotEmpty()) {
+                item { EatsCategoryIconRow(categories, selectedCategory) { c -> selectedCategory = if (c == selectedCategory) null else c } }
+            }
             item {
                 SearchAndCategoryChips(
                     searchInput = searchInput,
@@ -1238,12 +1322,39 @@ private fun RestaurantMenuView(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).padding(16.dp),
                     ) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            // Real Coupang Eats-style photo-forward menu card (2026-08-12,
+                            // direct user screenshot) -- the real reference shows every
+                            // menu item as a photo card with a real discount badge, not a
+                            // plain text row. Uses MerchantProductDto's own already-real
+                            // imageUrl/discountPercent/originalPrice fields (Shop's own
+                            // Deals rail already relies on the same fields), no new
+                            // backend data needed.
+                            Box {
+                                MenuItemThumb(p.imageUrl, size = 64.dp)
+                                val discountPercent = p.discountPercent
+                                if (discountPercent != null && discountPercent > 0) {
+                                    StatusBadge("$discountPercent%", tint = Ids.colors.danger, modifier = Modifier.align(Alignment.TopStart).padding(2.dp))
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                Text(
-                                    "%,.0f RWF".format(p.price) + if (hasOptions) " · options required" else "",
-                                    color = Ids.colors.textSecondary, fontSize = 13.sp,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("%,.0f RWF".format(p.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    val originalPrice = p.originalPrice
+                                    if (originalPrice != null && originalPrice > p.price) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            "%,.0f RWF".format(originalPrice),
+                                            color = Ids.colors.textTertiary,
+                                            fontSize = 11.sp,
+                                            textDecoration = TextDecoration.LineThrough,
+                                        )
+                                    }
+                                }
+                                if (hasOptions) {
+                                    Text("Options required", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                                }
                             }
                             if (hasOptions) {
                                 Box(

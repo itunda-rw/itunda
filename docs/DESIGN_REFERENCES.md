@@ -5140,3 +5140,48 @@ JWT-gated (`401`, not `404`) via direct `curl` through the existing physical-dev
   screenshot alone) was deliberately dropped rather than guessed at; the "Cat" icon was
   implemented as a plain flat-reward daily tap (no pet-simulation state), an honest simplification
   named in `ShoppingMissionReward`'s own doc comment, not silently passed off as the full mechanic.
+
+---
+
+## 54. Eats screen -- category icon row + photo-forward menu cards
+
+**2026-08-12**, same session, direct continuation. User sent 14 real Coupang Eats screenshots and
+said "out eats should look like this (fully visually and functionality)." Unlike Shopping (Section
+53), itunda's Eats backend was already mature (real orders, favorites, reviews, an
+`EatsMembershipService` matching the reference's "WOW" membership concept, and real menu option
+groups already matching the reference's stew-customization screen almost exactly) -- this pass
+found two real, concrete, purely-visual gaps rather than needing new backend systems:
+
+1. **Category icon row.** The real reference shows a horizontally-scrolling row of round category
+   icons above the search bar (일식/회해물/구이/찜탕/한식); itunda's `SearchAndCategoryChips` (a
+   component shared with Shop) only ever rendered plain text pill chips. Rather than change the
+   shared component (real risk of an un-requested visual change to Shop), added a new,
+   Eats-only `EatsCategoryIconRow` using itunda's own real merchant categories (`getMerchantCategories()`
+   -- real values like "Rwandan"/"Fast Food"/"Coffee & Bakery" from real seeded merchants, not
+   fabricated Korean cuisine names) mapped to real Material icons. No invented dish photography --
+   itunda has no real per-category photo source to draw from honestly.
+2. **Photo-forward menu cards.** The real reference's restaurant-menu screen shows every item as a
+   photo card with a real discount badge; itunda's `RestaurantMenuView` rendered plain text rows
+   (name + price only), despite `MerchantProductDto` already carrying real `imageUrl`/
+   `discountPercent`/`originalPrice` fields (the same ones Shop's Deals rail already uses). Added a
+   64dp photo thumbnail + discount badge + strikethrough original price to each row -- real data,
+   no new backend calls.
+
+**Deliberately not attempted this pass**: the reference's "인기메뉴" (popular menu) 1위/2위/3위
+popularity-rank badges would need a real order-count aggregation itunda's backend doesn't expose
+yet -- a genuine new-backend-data gap, not guessed at with a fake rank.
+
+`:features:eats:impl` and full `:app:compileDebugKotlin` build-verified clean.
+
+*Shipped: `android/features/eats/impl/.../EatsScreen.kt`*
+
+### Unresolved / worth a follow-up
+
+- Not yet visually verified on-device -- the physical test device dropped off WiFi mid-session
+  (same real connectivity gap named in Section 53) and hadn't reconnected by the time this pass
+  finished. Explicitly flagged, not silently skipped.
+- Popularity-rank badges (see above) need a real backend aggregation, a genuine separate follow-up.
+- `ProductImageThumb` (Shop) and the new `MenuItemThumb` (Eats) are now two near-identical private
+  composables in two different feature modules -- a real, minor duplication worth promoting to
+  `core/designsystem` if a third module ever needs the same pattern, not urgent enough to justify
+  the cross-module refactor on its own this pass.
