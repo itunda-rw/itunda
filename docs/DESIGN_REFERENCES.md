@@ -5287,3 +5287,59 @@ commit beyond confirming the regenerated project builds clean)
   `xcodebuild` for the first time in a while -- worth periodically re-running `tuist generate &&
   pod install && xcodebuild` as a real health check, the same standing lesson
   `feedback_run_real_tests_not_just_compile` already established for the backend's own test suites.
+
+---
+
+## 56. Error-handling audit continued + a real disabled-CTA color fix
+
+**2026-08-12**, same session. User said "keep searching about toss and improve itunda" -- rather
+than start a fresh research angle on top of an already very long session, picked up two real,
+already-identified, still-open threads instead of starting from zero.
+
+**Toss-style error handling** ([[feedback_toss_error_handling]]'s own standing audit, last
+measured at "~89 generic catch sites"): re-swept every real `catch (e: HttpException)` site across
+the whole Android tree (270 total). 237 already correctly parse the real backend message via
+`superAppErrorMessage`/`apiErrorMessage` -- genuinely close to fully closed, a lot of quiet progress
+across earlier passes this thread never explicitly totaled up. Found and fixed the 3 real remaining
+gaps, all in the same shape: **merchantapp/riderapp/agentapp's own standalone `LoginScreen.kt`**
+(each a separate app with its own network layer, so each needed its own fix) collapsed every
+non-401 HTTP error -- rate limiting, a suspended account, a real 5xx -- into a hardcoded "Couldn't
+reach itunda. Try again.", discarding whatever the backend actually said. 401 stays a real, friendly
+hardcoded message (not itunda's own business to second-guess); everything else now surfaces the
+real parsed message, with a proper reassuring fallback ("itunda is having a brief hiccup on our end
+-- not something you did") only when the backend genuinely sent nothing parseable. agentapp had no
+error-parsing helper at all yet (unlike merchantapp/riderapp, which each already had one, just
+unused at this specific site) -- added one, mirroring the other two exactly. Every other real
+`HttpException` site checked this pass (RideScreen x2, CertificateScreen, CardScreen, MiniWalletScreen,
+InvestScreen, RequestMoneyScreen, PropertyScreen, MarketplaceScreen, JobsScreen) already correctly
+used the real pattern -- an honest, mostly-clean audit result, not manufactured findings to justify
+the pass.
+
+**Real disabled-CTA color, found from re-examining an already-sent reference screenshot** ("Enter
+workplace name" / bottom "Confirm" bar, sent twice earlier this session under "toss confirm bottom
+interactions"): the real screenshot shows a disabled primary button as a dim TINT of the same brand
+blue (readable as "the same action, just not ready yet"), not neutral grey (which reads as "broken/
+unavailable"). Checked `IdsButton.kt`/`IdsButton.tsx` -- both hardcoded `disabledContainerColor`
+unconditionally to a neutral grey regardless of variant, for every real primary button in the app.
+Fixed in the one shared component per platform (not per call site, matching this exact file's own
+established "single Flat props-based API" principle) so the fix cascades to every real Filled button
+automatically: Android uses `Ids.colors.brand.copy(alpha = 0.35f)`; Web uses
+`color-mix(in srgb, var(--itunda-blue) 35%, transparent)` (not a hardcoded rgba literal, so it stays
+in sync with the real `--itunda-blue` token automatically -- the same hardcoded-color drift bug
+`IdsButton.tsx`'s own header comment already names once). `Tinted`/`danger` variants keep the
+existing neutral disabled fallback, a secondary style not shown in the reference.
+
+Android verified via `:core:designsystem:compileDebugKotlin` + full `:app:compileDebugKotlin`. Web
+verified via `tsc -b --noEmit` + full production `vite build`, both clean.
+
+*Shipped: `android/agentapp/.../NetworkClient.kt`, `.../LoginScreen.kt` (agentapp/merchantapp/
+riderapp), `android/core/designsystem/.../IdsButton.kt`, `bank-mfe/src/IdsButton.tsx`*
+
+### Unresolved / worth a follow-up
+
+- iOS has no `IdsButton` port at all yet (a real, already-documented gap from the original Web port
+  pass) -- the disabled-color fix above only applies to the 2 platforms that have the component.
+- Web's `IdsButton.tsx` migration itself is still only 2 of 400+ real button call sites in
+  `BankDashboard.tsx` (a pre-existing, already-documented gap, unrelated to this pass) -- this
+  disabled-color fix only benefits screens that have already migrated to the real component.
+- Not yet visually verified on-device -- same real connectivity gap as Sections 53-55.
