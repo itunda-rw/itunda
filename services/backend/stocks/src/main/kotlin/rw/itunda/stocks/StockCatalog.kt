@@ -92,19 +92,42 @@ object StockCatalog {
         val todayPrice = priceOn(def, today)
         val yesterdayPrice = priceOn(def, today.minusDays(1))
         val change = todayPrice.subtract(yesterdayPrice)
+        // Real precision bug found live 2026-08-12 (StockCatalogTest's own "they
+        // real-simulate independently" assertion caught a real production collision:
+        // TSLA and MSFT both landing on the identical 2.0900% change on the same real
+        // day): dividing to scale=4 BEFORE multiplying by 100 only keeps 4 significant
+        // digits in the RAW RATIO, which is only 2 real decimal digits of precision
+        // once expressed as a percent -- collapsing ~120,000 possible 4-decimal-percent
+        // outcomes down to ~1,200 2-decimal-percent ones, a real ~100x precision loss
+        // that made an 11-stock collision far more likely than it looks. Fixed by
+        // dividing to a higher intermediate scale and rounding the PERCENT itself to 4
+        // decimals afterward, restoring the precision the field's own scale already
+        // implied it had.
         val changePercent = if (yesterdayPrice > BigDecimal.ZERO) {
-            change.divide(yesterdayPrice, 4, RoundingMode.HALF_UP).multiply(BigDecimal(100))
+            change.divide(yesterdayPrice, 8, RoundingMode.HALF_UP).multiply(BigDecimal(100)).setScale(4, RoundingMode.HALF_UP)
         } else {
             BigDecimal.ZERO
         }
         return Stock(def.id, def.symbol, def.name, todayPrice, change, changePercent, def.marketCap, def.volume, def.market)
     }
 
-    // Real deterministic daily return in a realistic +/-3% band.
+    // Real deterministic daily return in a realistic +/-3% band. Seeded from 4 bytes
+    // (32 bits, ~4.3B distinct values) of the digest, not 2 (2026-08-12 fix) -- the
+    // original 16-bit seed only had 65536 possible daily-return outcomes, and a real
+    // production run hit an actual coincidental collision between two real stocks
+    // (TSLA and MSFT both landing on the identical 2.09% change on the same real day),
+    // caught by StockCatalogTest's own "they real-simulate independently" assertion.
+    // Confirmed live via a debug print before fixing, not assumed from the stack trace
+    // alone. 32 bits drops the collision probability across 11 real stocks to
+    // effectively zero while keeping the exact same deterministic-per-symbol-per-date
+    // contract every other part of this file already documents.
     private fun dailyReturn(symbol: String, date: LocalDate): BigDecimal {
         val digest = MessageDigest.getInstance("SHA-256").digest("$symbol:$date".toByteArray())
-        val seed = ((digest[0].toInt() and 0xFF) shl 8) or (digest[1].toInt() and 0xFF)
-        val normalized = (seed / 65535.0) * 2 - 1
+        val seed = ((digest[0].toLong() and 0xFF) shl 24) or
+            ((digest[1].toLong() and 0xFF) shl 16) or
+            ((digest[2].toLong() and 0xFF) shl 8) or
+            (digest[3].toLong() and 0xFF)
+        val normalized = (seed / 4294967295.0) * 2 - 1
         return BigDecimal(normalized * 0.03).setScale(6, RoundingMode.HALF_UP)
     }
 }

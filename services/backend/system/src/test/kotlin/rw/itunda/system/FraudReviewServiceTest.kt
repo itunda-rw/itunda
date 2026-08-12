@@ -56,7 +56,7 @@ class FraudReviewServiceTest : BehaviorSpec({
             Then("it real-alerts the account owner in-app AND via push, the Toss FDS-style security notification this row was missing") {
                 decided.decision shouldBe FraudFlagDecision.CONFIRMED
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "FRAUD_CONFIRMED" }) }
-                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any(), type = "FRAUD_ALERT") }
             }
         }
 
@@ -156,10 +156,10 @@ class FraudReviewServiceTest : BehaviorSpec({
                 try {
                     service.decide(flag.id, "admin_1", FraudFlagDecision.CONFIRMED)
                     verify(exactly = 1) { notificationRepository.save(any()) }
-                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any(), type = any()) }
 
                     TransactionSynchronizationManager.getSynchronizations().forEach { it.afterCommit() }
-                    verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
+                    verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any(), type = "FRAUD_ALERT") }
                 } finally {
                     TransactionSynchronizationManager.clearSynchronization()
                 }
@@ -176,7 +176,7 @@ class FraudReviewServiceTest : BehaviorSpec({
         every { fraudFlagRepository.findByIdForUpdate(flag.id) } returns Optional.of(flag)
         every { fraudFlagRepository.save(any()) } answers { firstArg() }
         every { notificationRepository.save(any()) } answers { firstArg() }
-        every { pushNotificationService.sendToUser(any(), any(), any(), any()) } throws IllegalStateException("provider unavailable")
+        every { pushNotificationService.sendToUser(any(), any(), any(), any(), type = any()) } throws IllegalStateException("provider unavailable")
 
         Then("the already-persisted review remains successful even when the best-effort push fails") {
             TransactionSynchronizationManager.initSynchronization()

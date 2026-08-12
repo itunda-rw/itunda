@@ -93,7 +93,7 @@ class P2pServiceTest : BehaviorSpec({
             }
 
             Then("the requester also gets a real push notification, not just the in-app one") {
-                verify(exactly = 1) { pushNotificationService.sendToUser("requester_1", "Money received", "Jean Paul sent you 2000 RWF.", any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("requester_1", "Money received", "Jean Paul sent you 2000 RWF.", any(), type = "MONEY_RECEIVED") }
             }
 
             Then("it's a direct wallet-to-wallet ledger pair -- no rail_suspense hop, no fee, unlike a regular transfer") {
@@ -344,7 +344,7 @@ class P2pServiceTest : BehaviorSpec({
             }
 
             Then("the real recipient also gets a real push notification, not just the in-app one") {
-                verify(exactly = 1) { pushNotificationService.sendToUser("recipient_1", "Money received", "Eric Uwase sent you 2000 RWF.", any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("recipient_1", "Money received", "Eric Uwase sent you 2000 RWF.", any(), type = "MONEY_RECEIVED") }
             }
 
             Then("the recipient gets a real, immediate notification naming the real sender -- direct sendDirect transfers get the same real-time alert payRequest does") {
