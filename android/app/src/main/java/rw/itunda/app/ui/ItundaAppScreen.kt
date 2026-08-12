@@ -2622,7 +2622,7 @@ private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
             Text("Nearby benefits", color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Spacer(Modifier.height(12.dp))
             androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(nearbyAds) { nearbyAd ->
+                items(nearbyAds, key = { it.ad.id }) { nearbyAd ->
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.width(64.dp),
@@ -3347,7 +3347,7 @@ private fun MyTab(
         // the full MyCommerceOrdersView/MyEatsOrdersView already lives.
         if (shopOrders.isNotEmpty() || eatsOrders.isNotEmpty()) {
             item { Text("My orders", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
-            items(shopOrders.take(3)) { order ->
+            items(shopOrders.take(3), key = { it.id }) { order ->
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToShop).padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -3359,7 +3359,7 @@ private fun MyTab(
                     Text("RWF %,.0f".format(order.totalAmount), color = Ids.colors.textPrimary, fontSize = 15.sp)
                 }
             }
-            items(eatsOrders.take(3)) { order ->
+            items(eatsOrders.take(3), key = { it.id }) { order ->
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToEats).padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,

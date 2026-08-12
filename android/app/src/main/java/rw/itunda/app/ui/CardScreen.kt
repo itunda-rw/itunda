@@ -255,7 +255,7 @@ fun CardScreen(onBack: () -> Unit) {
                         if (transactions.isEmpty()) {
                             item { EmptyState("No card purchases yet — once you use your card, they'll show up here.") }
                         } else {
-                            items(transactions) { t ->
+                            items(transactions, key = { it.id }) { t ->
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(t.merchantName, color = Ids.colors.textPrimary, fontSize = 13.sp)
                                     Text("${t.amount.toPlainString()} RWF", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)

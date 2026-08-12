@@ -248,7 +248,7 @@ fun StudentLoanScreen(onBack: () -> Unit) {
                 loans!!.isEmpty() -> item {
                     EmptyState("No student loans yet.")
                 }
-                else -> items(loans!!) { loan ->
+                else -> items(loans!!, key = { it.id }) { loan ->
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

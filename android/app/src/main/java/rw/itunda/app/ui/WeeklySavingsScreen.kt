@@ -145,7 +145,7 @@ fun WeeklySavingsScreen(onBack: () -> Unit) {
                                 "$TERM_WEEKS earns a bonus interest rate on top.",
                         )
                     }
-                    else -> items(plans!!) { plan -> WeeklySavingsPlanRow(plan, onClick = { selectedPlanId = plan.id }) }
+                    else -> items(plans!!, key = { it.id }) { plan -> WeeklySavingsPlanRow(plan, onClick = { selectedPlanId = plan.id }) }
                 }
             }
         }
@@ -466,7 +466,7 @@ private fun WeeklySavingsDetailContent(planId: String, onChanged: () -> Unit) {
                 if (current.installments.isEmpty()) {
                     item { EmptyState("No installments collected yet.") }
                 } else {
-                    items(current.installments.sortedByDescending { it.weekNumber }) { installment ->
+                    items(current.installments.sortedByDescending { it.weekNumber }, key = { it.weekNumber }) { installment ->
                         InstallmentRowWeekly(installment)
                     }
                 }

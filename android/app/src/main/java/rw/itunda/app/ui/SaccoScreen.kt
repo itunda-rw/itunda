@@ -190,7 +190,7 @@ fun SaccoScreen(onBack: () -> Unit) {
                 dividends!!.isEmpty() -> item {
                     EmptyState("No dividends declared yet.")
                 }
-                else -> items(dividends!!) { d ->
+                else -> items(dividends!!, key = { it.id }) { d ->
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(d.createdAt.take(10), color = Ids.colors.textSecondary, fontSize = 12.sp)

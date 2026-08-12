@@ -163,7 +163,7 @@ private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
             accounts!!.isEmpty() -> item {
                 EmptyState("No group accounts yet — start one to split a shared expense with roommates or friends.")
             }
-            else -> items(accounts!!) { account ->
+            else -> items(accounts!!, key = { it.id }) { account ->
                 Card(
                     shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                     colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),

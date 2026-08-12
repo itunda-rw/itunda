@@ -4730,3 +4730,46 @@ would be a worse interaction than the current one.
   Compose UI version's `HapticFeedbackType.Reject` availability wasn't confirmed, and guessing
   wrong risks a real compile break; worth checking directly (bump the BOM, or test the constant)
   before adding it.
+
+---
+
+## 47. Performance -- real, official Compose guidance found itunda's own React-optimization gap
+
+**2026-08-12**, same session, user broadened the ask to "toss interactions, toss UI/UX, toss
+designs, toss simplicity, toss high performance, toss graphics." toss.tech/article/32583 (Toss's
+own real frontend-optimization episode) named "React re-rendering optimization" as a real,
+concrete lever -- but the article itself is video-gated, only the framing recovered, not
+implementation specifics.
+
+Checked the equivalent, real, OFFICIAL guidance for itunda's own UI framework instead of chasing a
+gated video further: Jetpack Compose's own documented performance rule -- `LazyColumn`/`LazyRow`
+items should carry a stable `key`, or Compose falls back to positional identity, causing avoidable
+recomposition and losing correct item identity/state across list mutations (exactly the kind of
+operation this session's own pull-to-refresh work, Section 45, just made easier to trigger more
+often). `grep` across `:app` found **14 of 65** `items(...)` call sites with no `key` at all --
+same "real, sourced principle exists, adoption never got swept everywhere" shape this whole
+research thread keeps finding, this time for a genuine performance property rather than a purely
+visual/interaction one.
+
+**Shipped**: added `key = { it.id }` (or the correct real identity field per DTO --
+`dayNumber`/`weekNumber` for the two ledger-entry lists that don't carry their own `id`) to all 14
+sites across `StudentLoanScreen.kt`, `SaccoScreen.kt`, `UpfrontDepositScreen.kt`,
+`GroupAccountScreen.kt`, `IkiminaScreen.kt`, `HarvestAdvanceScreen.kt`, `ItundaAppScreen.kt` (x3:
+nearby-ads row, Shop/Eats recent-orders rows on the "You"/profile summary), `CardScreen.kt`, and
+Grow31/WeeklySavingsScreen.kt (x2 each: plan list + own deposit/installment history). Verified
+each DTO's real id field by reading `ApiService.kt` directly rather than assuming `.id` exists
+uniformly. `:app` full `assembleDebug` build-verified clean.
+
+*Shipped: 14 sites across 10 files, see commit for the full list*
+
+### Unresolved / worth a follow-up
+
+- Not live-verified on-device -- same caveat as every fix in Sections 43-47 now (five real fixes:
+  confetti, skeleton loading, pull-to-refresh, haptics, list keys).
+- This was a targeted, scripted fix for the ONE real, checkable pattern this pass's research
+  recovered (list keys) -- Toss's own actual "3 major factors" in initial-load speed and its
+  specific re-rendering techniques remain genuinely unrecovered behind the video gate, not
+  something this pass solved by proxy.
+- Image loading/caching (Coil usage, size constraints, crossfade, disk cache config) -- named in
+  this pass's own search results as a real Toss performance lever -- wasn't audited this pass, a
+  real, separate follow-up.

@@ -197,7 +197,7 @@ private fun IkiminaListContent(refreshKey: Int, onOpen: (String) -> Unit) {
             ikiminas!!.isEmpty() -> item {
                 EmptyState("No ikimina groups yet — start one with people you trust.")
             }
-            else -> items(ikiminas!!) { k ->
+            else -> items(ikiminas!!, key = { it.id }) { k ->
                 Card(
                     shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                     colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),

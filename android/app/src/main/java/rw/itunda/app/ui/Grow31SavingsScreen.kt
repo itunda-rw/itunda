@@ -131,7 +131,7 @@ fun Grow31SavingsScreen(onBack: () -> Unit) {
                                 "of the base rate if you save all $TERM_DAYS days in a row.",
                         )
                     }
-                    else -> items(plans!!) { plan -> Grow31PlanRow(plan, onClick = { selectedPlanId = plan.id }) }
+                    else -> items(plans!!, key = { it.id }) { plan -> Grow31PlanRow(plan, onClick = { selectedPlanId = plan.id }) }
                 }
             }
         }
@@ -470,7 +470,7 @@ private fun Grow31DetailContent(planId: String, onChanged: () -> Unit) {
                 if (current.deposits.isEmpty()) {
                     item { EmptyState("No deposits yet.") }
                 } else {
-                    items(current.deposits.sortedByDescending { it.dayNumber }) { deposit ->
+                    items(current.deposits.sortedByDescending { it.dayNumber }, key = { it.dayNumber }) { deposit ->
                         DepositRowGrow31(deposit)
                     }
                 }

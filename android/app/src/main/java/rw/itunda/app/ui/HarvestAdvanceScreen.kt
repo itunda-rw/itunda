@@ -287,7 +287,7 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                 advances!!.isEmpty() -> item {
                     EmptyState("No advances yet.")
                 }
-                else -> items(advances!!) { a ->
+                else -> items(advances!!, key = { it.id }) { a ->
                     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

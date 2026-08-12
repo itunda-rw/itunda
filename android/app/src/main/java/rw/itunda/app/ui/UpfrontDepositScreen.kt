@@ -122,7 +122,7 @@ fun UpfrontDepositScreen(onBack: () -> Unit) {
                             color = Ids.colors.textSecondary, fontSize = 14.sp,
                         )
                     }
-                    else -> items(deposits!!) { deposit -> UpfrontDepositRow(deposit, onChanged = { refreshKey++ }) }
+                    else -> items(deposits!!, key = { it.id }) { deposit -> UpfrontDepositRow(deposit, onChanged = { refreshKey++ }) }
                 }
             }
         }
