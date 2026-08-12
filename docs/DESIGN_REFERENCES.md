@@ -5547,3 +5547,102 @@ Full suite re-verified clean after all 4 fixes. Commit `cd2fae1c`.
 
 *Shipped: `merchant/.../MerchantServiceTest.kt`, `p2p/.../P2pServiceTest.kt`,
 `system/.../FraudReviewServiceTest.kt`, `stocks/.../StockCatalog.kt`*
+
+## 61. Broad Toss-ecosystem sweep -- identity API research, real app-icon bug, error-copy rewording
+
+**2026-08-12**, same session. User asked for deep research + improvement across a wide list: humanized
+UX writing, ToS/privacy consent UX that doesn't sabotage simplicity, animation/graphics research that
+doesn't sabotage performance, cross-platform consistency, a real developer Payments API, a real
+"Toss 인증서"-style identity API letting partners let a user log in or verify themselves, a fully
+online-operated bank, fully offline payment with clear identity, and Toss's rebrand/logo work.
+
+**Two of these turned out to already be fully built**, found by direct code search before any new
+research or build work: a real "Pay with itunda" external checkout API mirroring Toss Payments
+(`merchant/.../PaymentsApiController.kt`, API-key auth, non-interactive checkout creation -- shipped
+2026-07-21) and a real "itunda Certificate" e-signature feature mirroring Toss's own 토스 인증서
+(`certificate/`, Ed25519 keypair issued after KYC, honestly disclosed as having no legal accredited-CA
+standing in Rwanda -- shipped earlier this project's history). Neither needed rework.
+
+**Real, sourced research (two parallel fork agents, matching this thread's own established pattern
+for pure research) surfaced one genuinely consequential finding**: Toss's real 본인확인 (identity
+verification) product for partners is NOT a simple "verified: true/false" OAuth flow -- it's a
+regulated identity-data exchange (real CI/DI linkage tokens, name, birthdate, gender, nationality, a
+non-repudiation signature, encrypted transport) gated behind Toss's own partner-vetting process, not
+self-serve. Rwanda has no CI/DI equivalent, so a real itunda version needs an explicit decision about
+what subset of KYC data itunda would disclose to third-party partners -- a genuine privacy/compliance
+call, not something to build unilaterally the way this session's other Toss-parity features have been.
+**Flagged to the user, not built.**
+
+Other research, recorded but not yet actioned: Toss's real offline-payment brand recognition finding
+(toss.tech/article/43061 -- white background + black text + blue logo as a combined recognition
+signal, not the logo alone, discovered building out their TossPlace/Toss Front/Toss Terminal hardware
+line) and the real 2022 Toss rebrand (toss.im/tossfeed/article/toss-newlogo -- criteria "uniqueness,
+meaningfulness, newness," NOT the "clear identity" phrasing the user's own request used, which wasn't
+found in Toss's own words). Toss's real "8 Writing Principles" pyramid (Core Values → Principles →
+Guidelines → Templates → Systems, toss.tech/article/8-writing-principles-of-toss) and their real "6
+principles for a good error message" (toss.tech/article/21021) were confirmed as primary-sourced and
+directly actionable -- see below. A real Simplicity4 session titled "동의 화면도 간결해질 수 있을까"
+("Can consent screens be simplified?") confirms Toss researched exactly the ToS/consent-UX angle
+asked about, but its actual content (checkbox hierarchy, progressive disclosure mechanics) wasn't
+retrievable -- a genuine, named research gap, not silently dropped. No Toss-published material on
+animation performance budgets/frame-rate targets was found despite multiple search angles -- also a
+genuine gap, not fabricated to fill space.
+
+**Real, severe, previously-unknown bug found via a fresh audit (not research-driven)**: neither the
+main `app` (itunda's own consumer wallet app) nor `agentapp` had ANY launcher icon at all -- zero
+`mipmap`/`drawable` icon resources, no `android:icon` in either manifest. Both would install and show
+a blank/generic icon on the home screen. Confirmed `merchantapp`/`riderapp` already had real
+vector-drawable adaptive icons (storefront glyph, scooter glyph, on itunda's real brand blue) -- so
+this wasn't a repo-wide gap, just these two apps. Fixed both, matching the existing established
+pattern exactly (vector-only adaptive icons, no legacy PNG fallback needed since minSdk 26 on all of
+them): `app` gets a shield-check glyph, formalizing the mark already used consistently next to the
+"Itunda" wordmark on web's `LoginPage.tsx`/`RegisterPage.tsx` (a real de facto brand mark, not an
+invented design) into a real icon for the first time; `agentapp` gets a wallet-plus-coin glyph,
+matching the per-app-role-icon convention. Both `:app:assembleDebug`/`:agentapp:assembleDebug` build
+clean. Hit and fixed a real, repeated XML gotcha along the way: `--` inside an XML comment (used
+stylistically as an em-dash, matching this codebase's own comment convention elsewhere) is invalid
+and breaks the resource compiler -- had to reword two comments to avoid it.
+
+**Applied Toss's own "6 principles for a good error message" for real**: grepped the whole backend
+for negatively-framed "Cannot X" user-facing blocking messages and found 6 real call sites, all the
+same self-payment family (`P2pSelfPaymentException`/`SelfPaymentException` across P2P transfers,
+auto-transfers, scheduled transfers, and merchant QR/code payments). Reworded each toward plain
+language and a concrete next step -- the two merchant-QR cases got the most direct application of the
+"suggest an alternative" principle since a real alternative exists ("share it with a customer instead
+of scanning/using it yourself"); the others got warmer, more human phrasing without inventing a fake
+alternative where none exists. No test asserted the old exact strings; `:p2p:test`/`:merchant:test`
+both clean.
+
+**A real near-miss caught mid-pass, worth naming**: a routine `git status` check (habit, not
+triggered by suspicion) found the earlier Shopping-gamification web port (Section 59, documented as
+"shipped" and live-verified) had never actually been `git commit`'d -- the doc/memory update happened,
+the code change did not get staged+committed in the same pass. Fixed by committing it as its own
+clearly-labeled commit, explicit about the gap rather than silently backfilling it. **Lesson**: after
+a long stretch of build → verify → document, explicitly re-check `git status` before moving to the
+next unrelated task -- documenting something as done doesn't guarantee the commit step actually ran.
+
+*Shipped: `android/app/src/main/res/drawable/ic_launcher_{background,foreground}.xml`,
+`android/app/src/main/res/mipmap-anydpi-v26/ic_launcher{,_round}.xml`,
+`android/app/src/main/AndroidManifest.xml`, `android/agentapp/` (same set),
+`p2p/.../P2pService.kt`, `p2p/.../AutoTransferService.kt`, `p2p/.../ScheduledTransferService.kt`,
+`merchant/.../MerchantService.kt`, `bank-mfe/src/lib/shoppingMissions.ts` (the missed commit)*
+
+### Unresolved / worth a follow-up
+
+- **The partner identity-verification API is a real, well-scoped, but NOT-yet-decided feature** --
+  needs the user's explicit call on what KYC data subset (if any) itunda would disclose to a
+  third-party partner before any code gets written, given the real privacy/trust stakes Toss's own
+  actual implementation makes clear this carries.
+- The consent-screen-simplification angle has a confirmed real Toss research precedent but no
+  retrievable content -- would need itunda's own current ToS/consent screens audited fresh against
+  general "progressive disclosure" principles rather than a specific Toss technique, if pursued.
+- Animation performance budgets: no Toss source exists to port from; would need itunda's own
+  first-principles measurement (real frame-time profiling on a low-end device) if this is still
+  wanted, not a research-to-code port.
+- iOS untouched for both the icon fix and the error-copy rewording (iOS clients parse the same
+  backend `message` field, so the copy fix already applies there automatically once deployed; the
+  icon fix does not -- iOS has no `.xcassets`/AppIcon at all either, confirmed but not fixed this
+  pass, a real, separate follow-up).
+- Not live-verified on-device on either platform this pass (same standing gap as the rest of this
+  session) -- the icon fix in particular is inherently unverifiable without literally looking at a
+  home screen; flagged rather than assumed correct from a clean build alone.
