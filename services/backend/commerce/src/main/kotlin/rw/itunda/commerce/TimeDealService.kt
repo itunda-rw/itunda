@@ -91,6 +91,18 @@ class TimeDealService(
         return PageImpl(enrich(page.content), pageable, page.totalElements)
     }
 
+    // Real Toss Shopping banner carousel (2026-08-12, direct user screenshot) -- the
+    // real reference shows a rotating full-width promo banner with a page indicator
+    // ("3 | 11"). Rather than build a second, separate, fabricated banner-content CMS,
+    // this derives every banner directly from the same real active Time Deals already
+    // enriched above -- each banner IS a real, currently-live, merchant-priced deal,
+    // never invented promotional copy. No banners simply means no active deals right
+    // now, an honest empty state, not a hole to fill with placeholder content.
+    fun getBanners(limit: Int = 10): List<TimeDealView> {
+        val page = timeDealRepository.findActiveDeals(Instant.now(), org.springframework.data.domain.PageRequest.of(0, limit))
+        return enrich(page.content)
+    }
+
     fun getMyDeals(ownerUserId: String, pageable: Pageable): Page<TimeDealView> {
         val merchant = getMyMerchant(ownerUserId)
         val page = timeDealRepository.findByMerchantIdOrderByCreatedAtDesc(merchant.id, pageable)

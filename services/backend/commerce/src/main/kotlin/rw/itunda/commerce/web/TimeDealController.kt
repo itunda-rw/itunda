@@ -50,6 +50,13 @@ class TimeDealController(private val timeDealService: TimeDealService) {
         return ResponseEntity.ok(mapOf("success" to true, "deals" to page.content) + pageMeta(page))
     }
 
+    // Real Toss Shopping banner carousel -- see TimeDealService.getBanners's own doc
+    // comment for why this reuses real active Time Deal data rather than a separate
+    // fabricated CMS.
+    @GetMapping("/banners")
+    fun getBanners(): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "banners" to timeDealService.getBanners()))
+
     @GetMapping("/mine")
     fun getMyDeals(
         @PageableDefault(size = 20) pageable: Pageable,

@@ -1104,6 +1104,26 @@ data class TimeDealDto(
 data class TimeDealViewDto(val deal: TimeDealDto, val productName: String, val productImageUrl: String?, val businessName: String)
 data class TimeDealsResponse(val success: Boolean, val deals: List<TimeDealViewDto>)
 
+// Real Toss Shopping banner carousel (2026-08-12) -- see backend
+// TimeDealService.getBanners's own doc comment. Same real shape as TimeDealViewDto
+// above -- a banner IS a real active Time Deal, not a separate DTO for fabricated
+// promotional content.
+data class ShoppingBannersResponse(val success: Boolean, val banners: List<TimeDealViewDto>)
+
+// Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
+// see backend ShoppingMissionService's own doc comment. Every mission pays real RWF
+// straight into the real wallet -- itunda has never had a separate "points" currency.
+data class ShoppingMissionDto(
+    val type: String,
+    val label: String,
+    val rewardAmount: java.math.BigDecimal,
+    val completedToday: Boolean,
+    val claimedEver: Boolean = false,
+)
+data class SpinOutcomeDto(val amount: java.math.BigDecimal, val odds: Double)
+data class ShoppingMissionsResponse(val success: Boolean, val missions: List<ShoppingMissionDto>, val spinOutcomes: List<SpinOutcomeDto>)
+data class MissionCompleteResponse(val success: Boolean, val type: String, val amountEarned: java.math.BigDecimal, val newWalletBalance: java.math.BigDecimal)
+
 // Real Coupang 정기배송 (subscribe & save)-style recurring product delivery
 // (rw.itunda.commerce's ProductSubscriptionService) -- real on bank-mfe since
 // 2026-07-25, found 2026-08-01 with zero client on Android/iOS despite that.
@@ -3016,6 +3036,20 @@ interface ApiService {
     // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment.
     @GET("api/v1/time-deals")
     suspend fun getActiveTimeDeals(): TimeDealsResponse
+
+    // Real Toss Shopping banner carousel (2026-08-12) -- see backend
+    // TimeDealService.getBanners's own doc comment: every banner IS a real, currently
+    // active Time Deal, never fabricated promotional content.
+    @GET("api/v1/time-deals/banners")
+    suspend fun getShoppingBanners(): ShoppingBannersResponse
+
+    // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
+    // see backend ShoppingMissionService's own doc comment.
+    @GET("api/v1/shopping/points")
+    suspend fun getShoppingMissions(): ShoppingMissionsResponse
+
+    @POST("api/v1/shopping/points/missions/{type}/complete")
+    suspend fun completeShoppingMission(@Path("type") type: String): MissionCompleteResponse
 
     // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- see
     // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe already has

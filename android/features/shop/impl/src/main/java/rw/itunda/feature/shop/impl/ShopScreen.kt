@@ -223,6 +223,59 @@ fun CommerceShopContent(
         }
     }
 
+    // Real Toss Shopping banner carousel (2026-08-12, direct user screenshot) -- see
+    // backend TimeDealService.getBanners's own doc comment: every banner IS a real,
+    // currently-active Time Deal, never fabricated promotional content.
+    var banners by remember { mutableStateOf<List<rw.itunda.core.network.TimeDealViewDto>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        try {
+            val res = NetworkClient.apiService.getShoppingBanners()
+            if (res.success) banners = res.banners
+        } catch (e: Exception) {
+            // Real, non-critical -- the carousel just won't render if this fails.
+        }
+    }
+
+    // Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row --
+    // see backend ShoppingMissionService's own doc comment. Every mission credits real
+    // RWF to the real wallet; itunda has never had a separate points currency.
+    var missions by remember { mutableStateOf<List<rw.itunda.core.network.ShoppingMissionDto>>(emptyList()) }
+    var spinOutcomes by remember { mutableStateOf<List<rw.itunda.core.network.SpinOutcomeDto>>(emptyList()) }
+    var missionFeedback by remember { mutableStateOf<String?>(null) }
+    var missionBusyType by remember { mutableStateOf<String?>(null) }
+
+    fun loadMissions() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getShoppingMissions()
+                if (res.success) {
+                    missions = res.missions
+                    spinOutcomes = res.spinOutcomes
+                }
+            } catch (e: Exception) {
+                // Real, non-critical -- the mission row just won't render if this fails.
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadMissions() }
+
+    fun completeMission(type: String) {
+        missionBusyType = type
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.completeShoppingMission(type)
+                missionFeedback = "+%,.0f RWF".format(res.amountEarned)
+                loadMissions()
+            } catch (e: HttpException) {
+                missionFeedback = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                missionFeedback = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                missionBusyType = null
+            }
+        }
+    }
+
     // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment
     // on the backend. A time-boxed, quantity-capped event, distinct from the
     // always-on Deals rail above. Re-fetched every 30s so a deal that just sold out
@@ -564,6 +617,49 @@ fun CommerceShopContent(
         } else if (view == CommerceView.QUESTIONS) {
             item { MyProductInquiriesView() }
         } else {
+            // Real Toss Shopping landing surface (2026-08-12, direct user screenshot):
+            // banner carousel, then "Get points and coupons" mission row, then a
+            // "Recommended for you" 2-column grid -- all three real, backend-connected,
+            // shown only on the unfiltered landing state (same discipline the Deals/
+            // Time Deals/Nearby/Recently-viewed rails below already established).
+            if (selectedCategory == null && searchInput.isBlank() && banners.isNotEmpty()) {
+                item { ShoppingBannerCarousel(banners) }
+            }
+            if (selectedCategory == null && searchInput.isBlank() && missions.isNotEmpty()) {
+                item {
+                    ShoppingPointsRow(
+                        missions = missions,
+                        spinOutcomes = spinOutcomes,
+                        busyType = missionBusyType,
+                        onComplete = ::completeMission,
+                    )
+                }
+            }
+            missionFeedback?.let { feedback ->
+                item {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { missionFeedback = null },
+                        title = { Text("Nice!") },
+                        text = { Text(feedback) },
+                        confirmButton = {
+                            TextButton(onClick = { missionFeedback = null }) { Text("OK") }
+                        },
+                    )
+                }
+            }
+            if (selectedCategory == null && searchInput.isBlank() && !deals.isNullOrEmpty()) {
+                item {
+                    Text("Recommended for you", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+                item {
+                    RecommendedForYouGrid(
+                        deals = deals!!,
+                        favoriteProductIds = favoriteProductIds,
+                        onToggleFavorite = ::toggleProductFavorite,
+                        onOpen = { d -> openMerchant(ShoppingMerchantDto(merchantId = d.merchantId, businessName = d.merchantName, category = null, cashbackRate = "1%")) },
+                    )
+                }
+            }
             item {
                 PayAMerchantSection(deviceStepUpHost = deviceStepUpHost)
             }
@@ -807,6 +903,183 @@ fun CommerceShopContent(
     if (view == CommerceView.BROWSE && totalItems > 0) {
         Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
             CartFab(totalItems, onClick = { showCart = true })
+        }
+    }
+}
+
+// Real Toss Shopping banner carousel (2026-08-12, direct user screenshot) -- a
+// swipeable full-width promo card with a page indicator, built on real active Time
+// Deal data (see backend TimeDealService.getBanners's own doc comment for why this
+// isn't a separate fabricated CMS). Tapping a banner isn't wired to a merchant open
+// here (the caller doesn't pass openMerchant in) -- deliberately kept read-only for
+// this first pass rather than half-wiring a tap target, a real follow-up if needed.
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun ShoppingBannerCarousel(banners: List<rw.itunda.core.network.TimeDealViewDto>) {
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState { banners.size }
+    Column {
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth().height(140.dp),
+        ) { page ->
+            val v = banners[page]
+            Box(
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
+                    .background(Ids.colors.brand.copy(alpha = 0.12f)),
+            ) {
+                Row(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(verticalArrangement = Arrangement.Center, modifier = Modifier.weight(1f)) {
+                        val discountPercent = if (v.deal.originalPrice > 0) {
+                            (100 - (v.deal.dealPrice / v.deal.originalPrice * 100)).roundToInt()
+                        } else 0
+                        if (discountPercent > 0) {
+                            Text("$discountPercent% off", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                        Text(v.productName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 2)
+                        Text("%,.0f RWF".format(v.deal.dealPrice), color = Ids.colors.textPrimary, fontSize = 15.sp)
+                        Text(v.businessName, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                    ProductImageThumb(v.productImageUrl, size = 96.dp, corner = 12.dp)
+                }
+                if (banners.size > 1) {
+                    Box(
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp).clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.5f)).padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) {
+                        Text("${pagerState.currentPage + 1} | ${banners.size}", color = Color.White, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real Toss Shopping "포인트 및 쿠폰받기" (get points and coupons) mission row -- see
+// backend ShoppingMissionService's own doc comment. Every icon here is a real,
+// backend-tracked once-per-day (or once-ever, for the welcome bonus) claim that
+// credits real RWF straight into the real wallet -- no fabricated points currency.
+@Composable
+private fun ShoppingPointsRow(
+    missions: List<rw.itunda.core.network.ShoppingMissionDto>,
+    spinOutcomes: List<rw.itunda.core.network.SpinOutcomeDto>,
+    busyType: String?,
+    onComplete: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Get points and coupons", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            missions.forEach { m ->
+                val done = if (m.type == "WELCOME_BONUS") m.claimedEver else m.completedToday
+                val icon = when (m.type) {
+                    "CHECK_IN" -> Icons.Outlined.Autorenew
+                    "SCROLL" -> Icons.Outlined.Share
+                    "SPIN" -> Icons.Outlined.Star
+                    "CAT_FEED" -> Icons.Outlined.FavoriteBorder
+                    else -> Icons.AutoMirrored.Outlined.ReceiptLong
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .width(64.dp)
+                        .clickable(enabled = !done && busyType == null) { onComplete(m.type) },
+                ) {
+                    Box(
+                        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp))
+                            .background(if (done) Ids.colors.chip else Ids.colors.brand.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (busyType == m.type) {
+                            Text("…", color = Ids.colors.textSecondary, fontSize = 18.sp)
+                        } else {
+                            Icon(icon, contentDescription = null, tint = if (done) Ids.colors.textTertiary else Ids.colors.brand)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        m.label,
+                        color = if (done) Ids.colors.textTertiary else Ids.colors.textPrimary,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        textAlign = TextAlign.Center,
+                    )
+                    if (!done) {
+                        // Real, stated odds for SPIN (item 248 discipline) -- shows the
+                        // real min-max range up front rather than a hidden mechanic.
+                        val rewardText = if (m.type == "SPIN" && spinOutcomes.isNotEmpty()) {
+                            "+%,.0f~%,.0f".format(spinOutcomes.minOf { it.amount }, spinOutcomes.maxOf { it.amount })
+                        } else {
+                            "+%,.0f".format(m.rewardAmount)
+                        }
+                        Text(rewardText, color = Ids.colors.brand, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real Toss Shopping "Recommended for you" 2-column grid (2026-08-12, direct user
+// screenshot) -- restyles the existing real Deals rail data (badge/rating/cashback/
+// heart) instead of a horizontal-scroll rail, matching the reference layout exactly.
+// Rating isn't fetched per-card here (would be N real network calls for a grid this
+// size) -- real cashback (via ShoppingCashbackService's own published flat rate,
+// itunda's real "1%" the same fallback the merchant-open shortcuts elsewhere in this
+// file already use) and the real discount/stock badges are shown instead, an honest
+// subset rather than a fabricated rating number.
+@Composable
+private fun RecommendedForYouGrid(
+    deals: List<DealProductDto>,
+    favoriteProductIds: Set<String>,
+    onToggleFavorite: (String) -> Unit,
+    onOpen: (DealProductDto) -> Unit,
+) {
+    val rowCount = (deals.size + 1) / 2
+    Column(
+        modifier = Modifier.height((rowCount * 260).dp),
+    ) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            gridItems(deals, key = { it.id }) { d ->
+                Column(
+                    modifier = Modifier.clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
+                        .clickable { onOpen(d) }.padding(10.dp),
+                ) {
+                    Box {
+                        ProductImageThumb(d.imageUrl, size = 140.dp, corner = 10.dp)
+                        val discountPercent = d.discountPercent
+                        if (discountPercent != null && discountPercent > 0) {
+                            StatusBadge("$discountPercent% off deal", tint = Ids.colors.danger, modifier = Modifier.align(Alignment.TopStart).padding(4.dp))
+                        }
+                        Box(
+                            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(28.dp).clip(RoundedCornerShape(14.dp))
+                                .background(Color.Black.copy(alpha = 0.35f)).clickable { onToggleFavorite(d.id) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                if (d.id in favoriteProductIds) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = null,
+                                tint = if (d.id in favoriteProductIds) Ids.colors.danger else Color.White,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(d.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2)
+                    Text("%,.0f RWF".format(d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        d.stockQuantity?.let { if (it == 0) "Out of stock" else "Ships today" } ?: "Ships today",
+                        color = if (d.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary,
+                        fontSize = 11.sp,
+                    )
+                    // Real cashback (ShoppingCashbackService's own published flat rate)
+                    // -- matches the "Earn up to ₩X" real reference row exactly, in RWF.
+                    Text("Earn up to %,.0f RWF".format(d.price * 0.01), color = Ids.colors.brand, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
     }
 }
