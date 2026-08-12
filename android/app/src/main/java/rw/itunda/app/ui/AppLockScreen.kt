@@ -22,6 +22,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +53,16 @@ fun AppLockScreen(activity: FragmentActivity, onUnlocked: () -> Unit) {
     val biometricAuth = remember(activity) { NIDABiometricAuth(activity) }
     var error by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
+    // Real Android platform haptics guidance (developer.android.com/develop/ui/views/
+    // haptics/haptics-principles), not just Toss-sourced this time -- "fingerprint
+    // acceptance or rejection" is named as one of the canonical moments haptic
+    // feedback belongs. This is the single highest-frequency real interaction in the
+    // whole app (runs on every cold launch when app-lock is enabled) and had zero
+    // haptic feedback of any kind before this. HapticFeedbackType.Confirm/Reject
+    // aren't available at this project's pinned Compose UI version (same constraint
+    // IdsCelebrationScreen's own doc comment already established) -- LongPress reads
+    // as a single confident buzz for success, same as it does there.
+    val haptics = LocalHapticFeedback.current
 
     fun attemptUnlock() {
         error = null
@@ -58,6 +70,7 @@ fun AppLockScreen(activity: FragmentActivity, onUnlocked: () -> Unit) {
         biometricAuth.authenticateForTransaction(reason = "Unlock Itunda") { success, message ->
             checking = false
             if (success) {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 onUnlocked()
             } else {
                 error = message

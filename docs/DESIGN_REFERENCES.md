@@ -4688,3 +4688,45 @@ clean.
   more) still has no pull-to-refresh. A real, larger follow-up if the user wants closer to
   literal "every list" coverage, not a small remaining gap.
 - Web/iOS not checked for the same gap this pass -- Android only.
+
+---
+
+## 46. Haptics — the single highest-frequency interaction in the app had none
+
+**2026-08-12**, same session, user repeated "deep search toss interactions and improve itunda
+interactions to 100% toss interactions like." Checked haptic feedback coverage: only 2 files in
+the whole app use `LocalHapticFeedback`/`performHapticFeedback` at all (`ItundaAppScreen.kt`,
+`IdsCelebrationScreen.kt`) -- same "built once, never swept" shape as confetti/skeleton-loading/
+pull-to-refresh in Sections 43-45.
+
+Checked Android's own official platform guidance this time, not a Toss-specific source
+(developer.android.com/develop/ui/views/haptics/haptics-principles) -- it names "fingerprint
+acceptance or rejection" as one of the canonical moments haptic feedback belongs. `AppLockScreen.kt`
+-- itunda's real biometric app-unlock gate, which runs on **every cold app launch** when app-lock
+is enabled, making it plausibly the single highest-frequency real interaction anywhere in this
+app -- had zero haptic feedback on its own success/failure callback. Fixed: a real
+`HapticFeedbackType.LongPress` buzz on successful unlock (the same one this codebase's own pinned
+Compose UI version constraint already established as the real available stand-in for `Confirm`,
+per `IdsCelebrationScreen`'s own doc comment).
+
+**Checked, no gap found (documented, not silently skipped)**: the OTHER real biometric moment in
+the app -- the transfer-confirm step-up gate (`ItundaAppScreen.kt`) -- also had no haptic directly
+at the biometric-success callback, but that flow always proceeds straight into
+`TransferSuccessScreen`/`IdsCelebrationScreen`, which ALREADY fires a real haptic on entrance. Not
+a gap; adding a second buzz there would double-haptic one continuous user action, which itself
+would be a worse interaction than the current one.
+
+`:app` full `assembleDebug` build-verified clean.
+
+*Shipped: `AppLockScreen.kt`*
+
+### Unresolved / worth a follow-up
+
+- Not live-verified on-device (build-verified only) -- same caveat as every fix in this pass's own
+  thread (Sections 43-46) now. **Four** real interaction fixes (confetti, skeleton loading,
+  pull-to-refresh, haptics) are now build-verified but none has been felt/seen on a real device
+  yet -- worth a dedicated on-device pass before a fifth.
+- Failure-path haptics (a distinct "rejected" feel, not just silence) weren't added -- this pinned
+  Compose UI version's `HapticFeedbackType.Reject` availability wasn't confirmed, and guessing
+  wrong risks a real compile break; worth checking directly (bump the BOM, or test the constant)
+  before adding it.
