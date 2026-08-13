@@ -20,6 +20,13 @@ import rw.itunda.core.web.ApiError
 @RequestMapping("/api/v1/auth")
 class AuthController(private val authService: AuthService, private val deviceService: DeviceService) {
 
+    // Real unified phone-first entry (2026-08-13) -- see PhoneCheckRequest's own doc
+    // comment. Public (see SecurityConfig): called before a user has any credential
+    // at all, same as register/login below.
+    @PostMapping("/check-phone")
+    fun checkPhone(@RequestBody request: PhoneCheckRequest): ResponseEntity<PhoneCheckResponse> =
+        ResponseEntity.ok(authService.checkPhoneExists(request.phoneNumber))
+
     @PostMapping("/register")
     fun register(@RequestBody request: RegisterRequest): ResponseEntity<AuthResponse> =
         ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request))

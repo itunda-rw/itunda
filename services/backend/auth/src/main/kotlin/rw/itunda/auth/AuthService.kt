@@ -166,6 +166,19 @@ class AuthService(
         return issueAuthResponse(user, "Registration successful", request.deviceId)
     }
 
+    // Real unified phone-first entry (2026-08-13) -- see PhoneCheckRequest's own doc
+    // comment. Rate-limited by phoneNumber like login/register above: this is a real
+    // account-existence oracle (an attacker could probe numbers to learn who has an
+    // itunda account), the same accepted trade-off real Toss/Kakao/WhatsApp all make
+    // for this exact UX -- a phone number isn't a secret the way a password is, and
+    // limiting attempts keeps bulk enumeration expensive without blocking the one
+    // real check a genuine user needs. Reuses existsByPhoneNumber, the same repository
+    // method register() above already calls for its own duplicate-account guard.
+    fun checkPhoneExists(phoneNumber: String): PhoneCheckResponse {
+        rateLimiter.checkLimit("auth:check-phone:$phoneNumber", limit = 10, window = Duration.ofMinutes(1))
+        return PhoneCheckResponse(exists = userRepository.existsByPhoneNumber(phoneNumber))
+    }
+
     fun login(request: LoginRequest): AuthResponse {
         // Keyed by phoneNumber, not IP: the actual asset being brute-forced is one
         // account's password, and a real attacker rotates source IPs long before they

@@ -22,6 +22,16 @@ data class RegisterRequest(
 
 data class LoginRequest(val phoneNumber: String, val password: String, val deviceId: String? = null, val deviceName: String? = null)
 
+// Real unified phone-first entry (2026-08-13, direct user description of the real
+// Toss flow): rather than making a user pick "Log in" vs "Sign up" upfront, the
+// phone number is entered once and the client asks the backend whether an account
+// already exists for it, then branches into the right next step (password for an
+// existing account, name/password for a new one) -- same pattern WhatsApp/Kakao/
+// Toss all use. See AuthService.checkPhoneExists's own doc comment for the real
+// existsByPhoneNumber reuse and rate-limiting.
+data class PhoneCheckRequest(val phoneNumber: String)
+data class PhoneCheckResponse(val exists: Boolean)
+
 data class RefreshRequest(val refreshToken: String)
 
 /** refreshToken is optional: a client that lost it (or never stored it) can still log
