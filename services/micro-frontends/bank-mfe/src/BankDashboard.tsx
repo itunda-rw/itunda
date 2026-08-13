@@ -279,7 +279,17 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
         {(wallet?.balance ?? 0).toLocaleString()} <span style={{ fontSize: '20px', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
       </h1>
 
-      {jar && jar.balance > 0 && (
+      {/* Real fix (2026-08-13, direct live-testing catch): this used to show
+          jar.balance (the whole Safe Box principal, e.g. 850,000 RWF) next to a
+          "Get interest" CTA -- reads as "850,000 RWF of interest is waiting," when
+          that number is the account's entire savings balance, not interest. The real
+          claimable amount is jar.earnedThisMonth (interest already auto-credits on
+          accrual, per InterestJarCard's own doc comment below -- "Get interest" is
+          really an acknowledgment of this month's accrual, not a hidden pot). Gate
+          condition fixed the same way: was jar.balance > 0 (shows for anyone with any
+          Safe Box balance at all, even zero new interest this month), now matches
+          InterestJarCard's own real canClaim logic. */}
+      {jar && jar.earnedThisMonth > 0 && (
         <button
           onClick={onClaimInterest}
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'color-mix(in srgb, var(--itunda-blue) 8%, transparent)', border: 'none', borderRadius: '14px', padding: '10px 14px', marginBottom: '16px', cursor: 'pointer' }}
@@ -288,7 +298,7 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', background: 'color-mix(in srgb, var(--itunda-blue) 15%, transparent)' }}>
               <Zap size={16} color="var(--itunda-blue)" />
             </span>
-            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{jar.balance.toLocaleString()} RWF</span>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--itunda-grey-900)' }}>{jar.earnedThisMonth.toLocaleString()} RWF</span>
           </span>
           <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>Get interest</span>
         </button>
