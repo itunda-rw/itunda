@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -1509,6 +1510,7 @@ private fun HomeTab(
     val recentTransactions by viewModel.transactions.collectAsState()
     val spendingInsight by viewModel.spendingInsight.collectAsState()
     val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
+    val isOffline by viewModel.isOffline.collectAsState()
     // Real Toss reference (16 screenshots, 2026-08-13 -- direct user follow-up "fix
     // the detail" against a Home-tab comparison): the real Home screen shows a
     // dedicated "내 신용점수" (My credit score) row with its own "보기" (View)
@@ -1564,6 +1566,29 @@ private fun HomeTab(
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
         ) {
             item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview, onOpenAccountDetail = onOpenAccountDetail, unreadCount = unreadNotificationCount) }
+        // Real fix (2026-08-13, direct live-device catch): MainViewModel.isOffline
+        // was already real and correctly toggled (showOfflinePlaceholder's own doc
+        // comment even claims this screen is "labeled via isOffline rather than
+        // presented as real") -- but nothing anywhere in this file actually read
+        // it. A genuinely offline user saw normal-looking placeholder data (a
+        // "RWF 0" wallet, a fixed 3-item Discover feed) with zero indication any of
+        // it wasn't real.
+        if (isOffline) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Ids.colors.dangerTint)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.CloudOff, contentDescription = null, modifier = Modifier.size(18.dp), tint = Ids.colors.danger)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(stringResource(R.string.home_offline_banner), color = Ids.colors.danger, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
         // Real personalized recommendation card (2026-08-11) -- direct comparison
         // against real Toss Bank reference screenshots (user-provided): Toss leads
         // Home with a large, illustrated, name-addressed card ("TUYIZERE ERIC님 복권

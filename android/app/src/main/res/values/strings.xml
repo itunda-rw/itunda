@@ -142,6 +142,11 @@
          products competing for the same money. Renamed to match the name already used
          everywhere else this same account appears. -->
     <string name="home_wallet">itunda Pay</string>
+    <!-- Real fix (2026-08-13, direct live-device catch): MainViewModel.isOffline
+         was already tracked but never actually surfaced anywhere. A genuinely
+         offline user saw normal-looking placeholder data with no honest signal
+         it wasn't real. -->
+    <string name="home_offline_banner">You are offline. Showing limited, non-live data.</string>
     <string name="home_cash_out">Cash out</string>
     <string name="home_send">Send</string>
     <string name="home_see_all">See all</string>

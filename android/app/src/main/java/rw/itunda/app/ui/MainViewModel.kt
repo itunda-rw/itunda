@@ -252,9 +252,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             currency = "RWF",
             isActive = false,
         )
+        // Real fix (2026-08-13, direct live-device catch): "itunda Points" carried a
+        // hardcoded "1,240 pts" -- a stale copy of a fake literal the real Discover
+        // feed itself already stopped showing (DiscoverService.kt's own doc comment,
+        // 2026-08-11, replaced it with the caller's real reward total). This offline
+        // placeholder never got the same fix, so a genuinely offline user saw a
+        // fabricated specific number with no indication it wasn't real -- worse
+        // still, isOffline (right above) was never actually surfaced anywhere in the
+        // UI, so there was no honest signal this was placeholder data at all. Badge
+        // removed (null, matching this same list's own "Irembo Services" row) rather
+        // than inventing a fake-but-different number; see HomeTab's own new offline
+        // banner for the other half of this fix.
         _discoverItems.value = listOf(
             DiscoverItem("d_1", "government", "Irembo Services", "Pay government fees instantly", "Access 100+ services", "#0066FF", false, null),
-            DiscoverItem("d_3", "rewards", "itunda Points", "Earn on every transaction", "Earn 1 point per 100 RWF spent", "#FFB300", false, "1,240 pts"),
+            DiscoverItem("d_3", "rewards", "itunda Points", "Earn on every transaction", "Earn 1 point per 100 RWF spent", "#FFB300", false, null),
             DiscoverItem("d_5", "lifestyle", "Yego Vouchers", "Exclusive partner deals", "Discounts at partners", "#E91E63", true, "Hot")
         )
     }
