@@ -29,6 +29,7 @@ import rw.itunda.app.ui.AppLockScreen
 import rw.itunda.app.ui.ItundaAppScreen
 import rw.itunda.app.ui.LocalRealActivity
 import rw.itunda.app.ui.LoginScreen
+import rw.itunda.app.ui.PinEntryScreen
 import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.core.identity.NIDABiometricAuth
 import rw.itunda.core.risk.RootDetection
@@ -153,10 +154,38 @@ class MainActivity : FragmentActivity() {
                                 val tokenStore = remember { NetworkClient.currentTokenStore() }
                                 val biometricAvailable = remember { NIDABiometricAuth(this).isAvailable() }
                                 var unlocked by remember { mutableStateOf(AppUnlockState.unlockedThisProcess) }
-                                if (biometricAvailable && tokenStore.isAppLockEnabled() && !unlocked) {
-                                    AppLockScreen(activity = this) {
-                                        AppUnlockState.unlockedThisProcess = true
-                                        unlocked = true
+                                // Real fix (2026-08-13, direct user correction: real
+                                // Toss always challenges a returning user with a PIN
+                                // OR biometric, never neither). This used to fall
+                                // straight through to the app with zero re-entry
+                                // challenge whenever biometrics weren't available (no
+                                // enrollment, unsupported hardware) even with app-lock
+                                // switched on -- PIN is that missing fallback, and
+                                // also the one already offered as an explicit
+                                // alternative if a biometric prompt itself fails. See
+                                // TokenStore.setPin's own doc comment for why this
+                                // isn't the "fake security" the original version of
+                                // this gate worried a PIN store would be.
+                                var useBiometricPreferred by remember { mutableStateOf(biometricAvailable) }
+                                val hasPin = remember { tokenStore.hasPin() }
+                                if (tokenStore.isAppLockEnabled() && !unlocked && (biometricAvailable || hasPin)) {
+                                    if (useBiometricPreferred && biometricAvailable) {
+                                        AppLockScreen(
+                                            activity = this,
+                                            onUnlocked = {
+                                                AppUnlockState.unlockedThisProcess = true
+                                                unlocked = true
+                                            },
+                                            onUsePinInstead = if (hasPin) { { useBiometricPreferred = false } } else null,
+                                        )
+                                    } else {
+                                        PinEntryScreen(
+                                            onUnlocked = {
+                                                AppUnlockState.unlockedThisProcess = true
+                                                unlocked = true
+                                            },
+                                            onUseBiometricInstead = if (biometricAvailable) { { useBiometricPreferred = true } } else null,
+                                        )
                                     }
                                 } else {
                                     ItundaAppScreen(

@@ -42,6 +42,9 @@ data class RegisterRequest(
 // deviceId/deviceName added 2026-07-21 -- mirrors bank-mfe's real device-binding login
 // call exactly (lib/api.ts's login()). See DeviceStore.kt for how these are generated.
 data class LoginRequest(val phoneNumber: String, val password: String, val deviceId: String? = null, val deviceName: String? = null)
+
+data class PhoneCheckRequest(val phoneNumber: String)
+data class PhoneCheckResponse(val exists: Boolean)
 data class RefreshRequest(val refreshToken: String)
 data class LogoutRequest(val refreshToken: String?)
 
@@ -92,6 +95,12 @@ data class AuthResponse(
 // logout requires the access token being revoked, passed explicitly rather than via
 // the auth interceptor so it's unambiguous which token is being killed.
 interface AuthApi {
+    // Real unified phone-first entry (2026-08-13) -- see services/backend's identical
+    // PhoneCheckRequest/AuthController.checkPhone doc comment. Called before the user
+    // has picked "log in" or "sign up" at all; the response drives which one happens.
+    @POST("api/v1/auth/check-phone")
+    suspend fun checkPhone(@Body request: PhoneCheckRequest): PhoneCheckResponse
+
     @POST("api/v1/auth/register")
     suspend fun register(@Body request: RegisterRequest): AuthResponse
 

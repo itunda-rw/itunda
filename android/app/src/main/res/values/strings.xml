@@ -17,12 +17,17 @@
 -->
 <resources>
     <string name="login_back">Back</string>
-    <string name="login_headline_phone_register">What\'s your phone number?</string>
-    <string name="login_headline_phone_login">Log in with your phone number</string>
-    <string name="login_subtitle_phone_register">We\'ll use this to keep your account secure.</string>
-    <string name="login_subtitle_phone_login">Enter the number you signed up with.</string>
+    <!-- Real Toss unified phone-first entry (2026-08-13, direct user description of
+         the real flow): a single, mode-agnostic question. The phone number is
+         checked against the backend to decide login vs signup automatically, so this
+         copy can no longer presuppose either intent the way the two old strings did. -->
+    <string name="login_headline_phone">What\'s your phone number?</string>
+    <string name="login_subtitle_phone">We\'ll check if you already have an account.</string>
     <string name="login_label_phone_number">Phone number</string>
     <string name="login_keypad_backspace">Delete last digit</string>
+    <string name="login_checking_phone_error">Could not check that number. Check your connection and try again.</string>
+    <string name="login_not_found_headline">No itunda account found</string>
+    <string name="login_not_found_body">We couldn\'t find an account for this number. Let\'s get you set up.</string>
     <string name="login_headline_name">What\'s your name?</string>
     <string name="login_subtitle_name">This is how you\'ll appear to friends and merchants.</string>
     <string name="login_label_first_name">First name</string>
@@ -36,8 +41,6 @@
     <string name="login_button_create_account">Create account</string>
     <string name="login_button_log_in">Log in</string>
     <string name="login_button_next">Next</string>
-    <string name="login_switch_to_login">Already have an account? Log in</string>
-    <string name="login_switch_to_register">New to itunda? Create an account</string>
     <string name="login_language_switcher_label">Language</string>
 
     <string name="overview_title">My assets</string>

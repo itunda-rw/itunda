@@ -3,6 +3,8 @@ package rw.itunda.core.network
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import java.security.MessageDigest
+import java.security.SecureRandom
 
 /**
  * Real session storage backing the login flow (2026-07-11) -- previously there was
@@ -56,6 +58,49 @@ class TokenStore(context: Context) {
         prefs.edit().putBoolean(KEY_APP_LOCK_ENABLED, enabled).apply()
     }
 
+    // Real app-lock PIN (2026-08-13, direct user correction with real Toss
+    // screenshots): AppLockScreen.kt's own original doc comment argued against a PIN
+    // store as "a fake-security shortcut" -- but that was comparing it to the wrong
+    // thing. This isn't a second copy of the real login *password* (a server-verified
+    // account credential); it's the same class of thing biometric already is here: a
+    // local-only "is this still the person holding the phone" gate on an ALREADY
+    // -authenticated session, never sent to or checked by the backend. Real Toss
+    // itself uses a PIN as biometric's actual fallback (confirmed directly by the
+    // user), and this store already holds the real access/refresh tokens behind
+    // Keystore-backed AES256-GCM encryption (this class's own header comment) -- a
+    // hashed PIN in the same encrypted store has strictly more real protection than
+    // the "no re-entry challenge at all" gap this closes (MainActivity.kt used to
+    // fall straight through to the app with zero challenge whenever biometrics
+    // weren't available/enrolled, even with app-lock switched on). SHA-256 with a
+    // random per-install salt on top of the store's own AES-GCM encryption is
+    // defense in depth, not the whole defense.
+    fun hasPin(): Boolean = prefs.getString(KEY_PIN_HASH, null) != null
+
+    fun setPin(pin: String) {
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        prefs.edit()
+            .putString(KEY_PIN_SALT, salt.joinToString("") { "%02x".format(it) })
+            .putString(KEY_PIN_HASH, hashPin(pin, salt))
+            .apply()
+    }
+
+    fun verifyPin(pin: String): Boolean {
+        val saltHex = prefs.getString(KEY_PIN_SALT, null) ?: return false
+        val storedHash = prefs.getString(KEY_PIN_HASH, null) ?: return false
+        val salt = ByteArray(saltHex.length / 2) { i -> saltHex.substring(i * 2, i * 2 + 2).toInt(16).toByte() }
+        return hashPin(pin, salt) == storedHash
+    }
+
+    fun clearPin() {
+        prefs.edit().remove(KEY_PIN_HASH).remove(KEY_PIN_SALT).apply()
+    }
+
+    private fun hashPin(pin: String, salt: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        digest.update(salt)
+        return digest.digest(pin.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
     // Real in-app theme override (2026-08-03) -- IdsTheme always followed the OS's
     // isSystemInDarkTheme() with no in-app way to override it, so a phone left in
     // system dark mode renders the whole app in the dark palette with no way back to
@@ -77,6 +122,8 @@ class TokenStore(context: Context) {
         const val KEY_REFRESH_TOKEN = "refresh_token"
         const val KEY_APP_LOCK_ENABLED = "app_lock_enabled"
         const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_PIN_HASH = "app_lock_pin_hash"
+        const val KEY_PIN_SALT = "app_lock_pin_salt"
     }
 }
 

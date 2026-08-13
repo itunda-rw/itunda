@@ -107,6 +107,13 @@ fun SettingsScreen(
     // (see ItundaAppScreen.kt's own showNotificationsFeed state).
     var showDeviceList by remember { mutableStateOf(false) }
     var showNotificationSettings by remember { mutableStateOf(false) }
+    // Real PIN app-unlock setup (2026-08-13) -- see TokenStore.setPin's own doc
+    // comment and PinScreen.kt. hasPin is local @Composable state (not re-read from
+    // TokenStore on every recomposition) so the "Change PIN" label updates the
+    // instant a PIN is set, without needing this whole screen to reload.
+    var showPinSetup by remember { mutableStateOf(false) }
+    val pinTokenStore = remember { NetworkClient.currentTokenStore() }
+    var hasPin by remember { mutableStateOf(pinTokenStore.hasPin()) }
     if (showDeviceList) {
         DeviceListScreen(
             devices = devices,
@@ -117,6 +124,18 @@ fun SettingsScreen(
     }
     if (showNotificationSettings) {
         NotificationSettingsScreen(onBack = { showNotificationSettings = false })
+        return
+    }
+    if (showPinSetup) {
+        PinSetupScreen(
+            onBack = { showPinSetup = false },
+            onPinSet = { pin ->
+                pinTokenStore.setPin(pin)
+                pinTokenStore.setAppLockEnabled(true)
+                hasPin = true
+                showPinSetup = false
+            },
+        )
         return
     }
 
@@ -322,6 +341,12 @@ fun SettingsScreen(
                             colors = SwitchDefaults.colors(checkedTrackColor = Ids.colors.brand),
                         )
                     }
+                    // Real PIN fallback (2026-08-13) -- see TokenStore.setPin's own
+                    // doc comment. Offered alongside biometric (not gated behind
+                    // appLockEnabled being off) since real Toss always has a PIN as
+                    // biometric's standing fallback, not something a user only
+                    // reaches after disabling biometric first.
+                    SettingsChevronRow(if (hasPin) "Change PIN" else "Set PIN") { showPinSetup = true }
 
                     // Real Keystore-signed-challenge device verification (item 246) --
                     // see DeviceKeyManager's own doc comment. A hardware-backed key,
@@ -417,6 +442,45 @@ fun SettingsScreen(
                             },
                         )
                     }
+                    } else {
+                        // Real fix (2026-08-13, direct user correction): this whole
+                        // app-lock section used to require biometric hardware to
+                        // exist at all before showing ANY app-lock option -- a
+                        // device with no biometric sensor got no real re-entry
+                        // challenge whatsoever, even though PIN never depended on
+                        // biometric hardware in the first place. See TokenStore
+                        // .setPin's own doc comment.
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(Icons.Outlined.Fingerprint, contentDescription = null, tint = Ids.colors.textPrimary)
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("App lock", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Require a PIN to open itunda", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                            }
+                            val pinLockTokenStore = remember { NetworkClient.currentTokenStore() }
+                            var pinLockEnabled by remember { mutableStateOf(pinLockTokenStore.isAppLockEnabled() && hasPin) }
+                            Switch(
+                                checked = pinLockEnabled,
+                                onCheckedChange = { checked ->
+                                    if (checked && !hasPin) {
+                                        showPinSetup = true
+                                    } else {
+                                        pinLockEnabled = checked
+                                        pinLockTokenStore.setAppLockEnabled(checked)
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(checkedTrackColor = Ids.colors.brand),
+                            )
+                        }
+                        SettingsChevronRow(if (hasPin) "Change PIN" else "Set PIN") { showPinSetup = true }
                     }
                     // Real Toss position (2026-08-12) -- "Services logged in with
                     // Toss" is always present on the real screenshot regardless of

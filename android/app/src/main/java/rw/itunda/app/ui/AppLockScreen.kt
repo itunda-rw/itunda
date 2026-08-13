@@ -49,7 +49,14 @@ import rw.itunda.core.identity.NIDABiometricAuth
  * entirely (checked by the caller) rather than blocking a real user out of the app.
  */
 @Composable
-fun AppLockScreen(activity: FragmentActivity, onUnlocked: () -> Unit) {
+fun AppLockScreen(
+    activity: FragmentActivity,
+    onUnlocked: () -> Unit,
+    // Real PIN fallback (2026-08-13) -- see TokenStore.setPin's own doc comment and
+    // PinEntryScreen.kt. Null (no PIN set yet) preserves this screen's original
+    // biometric-only behavior exactly.
+    onUsePinInstead: (() -> Unit)? = null,
+) {
     val biometricAuth = remember(activity) { NIDABiometricAuth(activity) }
     var error by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
@@ -108,6 +115,11 @@ fun AppLockScreen(activity: FragmentActivity, onUnlocked: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
             ) {
                 Text(if (checking) "Checking…" else "Unlock")
+            }
+            if (onUsePinInstead != null) {
+                androidx.compose.material3.TextButton(onClick = onUsePinInstead) {
+                    Text("Use PIN instead", color = Ids.colors.textBrand, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }

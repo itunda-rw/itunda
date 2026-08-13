@@ -30,9 +30,23 @@
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.Itunda">
+        <!-- Real fix (2026-08-14), root-caused via a direct `dumpsys window` check
+             on the real IME window: with no windowSoftInputMode declared,
+             MainActivity resolved to the legacy `adjust=pan` behavior (the OS never
+             resizes the window when the keyboard opens; it only overlays and pans).
+             Compose's imePadding()/WindowInsets.isImeVisible, used by
+             LoginScreen.kt's docked keyboard button, are built around adjustResize
+             (or true edge to edge with manual inset handling), not legacy pan.
+             Under pan, the button kept measuring at real, valid coordinates that
+             were nonetheless under the keyboard's own opaque window, genuinely
+             invisible on screen despite being "on-screen" by Compose's own
+             accounting. adjustResize makes the OS actually shrink the window (and
+             correctly deliver IME insets to Compose) the way every other screen in
+             this app that avoids the keyboard already assumes. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

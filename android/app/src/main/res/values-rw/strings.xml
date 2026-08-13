@@ -8,12 +8,13 @@
 -->
 <resources>
     <string name="login_back">Subira inyuma</string>
-    <string name="login_headline_phone_register">Numero yawe ya telefoni ni iyihe?</string>
-    <string name="login_headline_phone_login">Injira ukoresheje numero yawe ya telefoni</string>
-    <string name="login_subtitle_phone_register">Tuzayikoresha kugira ngo turinde konti yawe.</string>
-    <string name="login_subtitle_phone_login">Andika numero wiyandikishijeho.</string>
+    <string name="login_headline_phone">Numero yawe ya telefoni ni iyihe?</string>
+    <string name="login_subtitle_phone">Tuzareba niba ufite konti isanzwe.</string>
     <string name="login_label_phone_number">Numero ya telefoni</string>
     <string name="login_keypad_backspace">Siba umubare wanyuma</string>
+    <string name="login_checking_phone_error">Ntibishoboka kugenzura iyo numero. Reba interineti yawe hanyuma ugerageze.</string>
+    <string name="login_not_found_headline">Nta konti ya itunda yabonetse</string>
+    <string name="login_not_found_body">Ntitwabonye konti kuri iyi numero. Reka tuguhe konti nshya.</string>
     <string name="login_headline_name">Amazina yawe ni ayahe?</string>
     <string name="login_subtitle_name">Ni ko uzagaragara ku ncuti n\'abacuruzi.</string>
     <string name="login_label_first_name">Izina rya mbere</string>
@@ -27,8 +28,6 @@
     <string name="login_button_create_account">Fungura konti</string>
     <string name="login_button_log_in">Injira</string>
     <string name="login_button_next">Komeza</string>
-    <string name="login_switch_to_login">Usanzwe ufite konti? Injira</string>
-    <string name="login_switch_to_register">Uri mushya kuri itunda? Fungura konti</string>
     <string name="login_language_switcher_label">Ururimi</string>
 
     <string name="overview_title">Umutungo wanjye</string>

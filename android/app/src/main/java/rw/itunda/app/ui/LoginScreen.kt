@@ -23,10 +23,8 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -117,6 +115,12 @@ import rw.itunda.core.designsystem.theme.IdsTypography
  * instead of rendering the whole app unconditionally against services/backend's real
  * /api/v1/auth/register and /api/v1/auth/login.
  */
+/** See LoginScreen's own doc comment for the real Toss unified phone-first flow this
+ * drives. NOT_FOUND is a real interstitial (not a data-entry step): the account
+ * lookup came back negative and the user is being told that honestly, with a clear
+ * path forward, rather than either a dead end or silently assuming signup intent. */
+private enum class AuthStage { PHONE, NOT_FOUND, NAME, PASSWORD }
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
@@ -125,8 +129,17 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
     val isImeVisible = WindowInsets.isImeVisible
 
     IdsTheme {
+        // Real Toss unified phone-first entry (2026-08-13, direct user description
+        // of the real flow): itunda used to make the user pick "Log in" vs "Create
+        // account" upfront -- real Toss doesn't ask. A single phone-number question
+        // is checked against the backend (SessionManager.checkPhoneExists), and the
+        // flow branches automatically: an existing account goes straight to a
+        // password prompt; no account gets an honest "no itunda account found" screen
+        // with a clear path into signup, not a dead end. See AuthController
+        // .checkPhone's own doc comment on the backend for the account-existence
+        // check itself.
+        var stage by remember { mutableStateOf(AuthStage.PHONE) }
         var isRegisterMode by remember { mutableStateOf(false) }
-        var step by remember { mutableStateOf(0) }
         var phoneNumber by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         var firstName by remember { mutableStateOf("") }
@@ -136,14 +149,14 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         var isSubmitting by remember { mutableStateOf(false) }
         var errorMessage by remember { mutableStateOf<String?>(null) }
         val scope = rememberCoroutineScope()
+        val checkingPhoneError = stringResource(R.string.login_checking_phone_error)
 
-        val stepCount = if (isRegisterMode) 3 else 2
-
-        fun switchMode(registerMode: Boolean) {
-            isRegisterMode = registerMode
-            step = 0
-            errorMessage = null
+        val stepIndex = when (stage) {
+            AuthStage.PHONE, AuthStage.NOT_FOUND -> 0
+            AuthStage.NAME -> 1
+            AuthStage.PASSWORD -> if (isRegisterMode) 2 else 1
         }
+        val stepCount = if (isRegisterMode) 3 else 2
 
         fun submit() {
             errorMessage = null
@@ -167,20 +180,66 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
 
         fun goNext() {
             errorMessage = null
-            if (step < stepCount - 1) step++ else submit()
+            when (stage) {
+                AuthStage.PHONE -> {
+                    isSubmitting = true
+                    scope.launch {
+                        try {
+                            val exists = SessionManager.checkPhoneExists(phoneNumber)
+                            isSubmitting = false
+                            if (exists) {
+                                isRegisterMode = false
+                                stage = AuthStage.PASSWORD
+                            } else {
+                                stage = AuthStage.NOT_FOUND
+                            }
+                        } catch (e: Exception) {
+                            isSubmitting = false
+                            errorMessage = checkingPhoneError
+                        }
+                    }
+                }
+                AuthStage.NOT_FOUND -> {
+                    isRegisterMode = true
+                    stage = AuthStage.NAME
+                }
+                AuthStage.NAME -> stage = AuthStage.PASSWORD
+                AuthStage.PASSWORD -> submit()
+            }
         }
 
-        val currentStepValid = when {
-            !isRegisterMode && step == 0 -> phoneNumber.isNotBlank()
-            !isRegisterMode && step == 1 -> password.isNotBlank()
-            isRegisterMode && step == 0 -> phoneNumber.isNotBlank()
-            isRegisterMode && step == 1 -> firstName.isNotBlank() && lastName.isNotBlank()
-            isRegisterMode && step == 2 -> password.isNotBlank()
-            else -> false
+        fun goBack() {
+            errorMessage = null
+            stage = when (stage) {
+                AuthStage.PHONE -> AuthStage.PHONE
+                AuthStage.NOT_FOUND -> AuthStage.PHONE
+                AuthStage.NAME -> AuthStage.PHONE
+                AuthStage.PASSWORD -> if (isRegisterMode) AuthStage.NAME else AuthStage.PHONE
+            }
         }
 
-        Box(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
-            Column(modifier = Modifier.fillMaxSize().imePadding()) {
+        val currentStepValid = when (stage) {
+            AuthStage.PHONE -> phoneNumber.isNotBlank()
+            AuthStage.NOT_FOUND -> true
+            AuthStage.NAME -> firstName.isNotBlank() && lastName.isNotBlank()
+            AuthStage.PASSWORD -> password.isNotBlank()
+        }
+
+        // Real bug found live FIVE times in a row (2026-08-13) -- finally root-caused
+        // with a direct `adb shell uiautomator dump` bounds check instead of visual
+        // screenshot inspection (which can't distinguish "not rendered" from
+        // "rendered but covered by another window"): removing imePadding() (this
+        // comment's own previous, WRONG theory) left the button at real, valid,
+        // on-screen coordinates -- just underneath the real keyboard's own window.
+        // `dumpsys window windows` on the real InputMethod window confirms
+        // `sim={adjust=pan}` -- this Activity's window never resizes when the
+        // keyboard opens (no windowSoftInputMode="adjustResize" is declared, and the
+        // platform's default resolved to pan here), so nothing shrinks the space
+        // Compose sees automatically; imePadding() is the one thing that actually
+        // reserves that space manually, and removing it was a real regression, not a
+        // fix. Restored.
+        Box(modifier = Modifier.fillMaxSize().background(Ids.colors.background).imePadding()) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 // Top bar: back chevron (once past the first step) + step-progress dots.
                 Row(
                     modifier = Modifier
@@ -189,7 +248,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(modifier = Modifier.size(40.dp)) {
-                        if (step > 0) {
+                        if (stage != AuthStage.PHONE) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.login_back),
@@ -197,13 +256,13 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
-                                    .clickable { step-- }
+                                    .clickable { goBack() }
                                     .padding(8.dp),
                             )
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    StepDots(total = stepCount, current = step)
+                    StepDots(total = stepCount, current = stepIndex)
                     Spacer(modifier = Modifier.weight(1f))
                     LanguageSwitcher(
                         locale = locale,
@@ -213,9 +272,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
 
                 Column(
                     modifier = Modifier
-                        .weight(1f, fill = false)
                         .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
                         .padding(horizontal = Ids.layout.screenHorizontal),
                     // Real fix (2026-08-13, replacing the previous Arrangement.Center):
                     // now that answered fields stack and stay visible below the active
@@ -224,20 +281,24 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     // screen -- centering would make the active field visually jump as
                     // the stack beneath it grows.
                     //
-                    // Real bug found live (2026-08-13, direct user screenshot with the
-                    // real system keyboard open): weight(1f) (fill=true, the default)
-                    // combined with verticalScroll on the SAME Column made this content
-                    // claim its full natural height regardless of the space actually
-                    // left after imePadding() reserved room for the keyboard, pushing
-                    // the docked button and "Create an account" link off the bottom of
-                    // the screen entirely -- not just visually low, genuinely absent
-                    // from a full-screen screenshot. fill=false caps this Column at its
-                    // own measured content size instead of always expanding to consume
-                    // all available weighted space, so the fixed-height button Column
-                    // below it stays on-screen no matter how tall the keyboard is.
+                    // Real bug found live TWICE in a row (2026-08-13): first with
+                    // weight(1f) (fill=true, the default) + verticalScroll on this same
+                    // Column, which claimed its full natural height regardless of the
+                    // space actually left after imePadding() reserved room for the
+                    // keyboard, pushing the docked button off the bottom of the screen
+                    // entirely. Then, after trying fill=false + a separate weighted
+                    // Spacer below to close the gap that left, the SAME missing-button
+                    // bug came back -- two weighted siblings in one Column (this one at
+                    // fill=false, the Spacer at the default fill=true) don't split
+                    // leftover space predictably here. This Column now carries no
+                    // weight and no scroll at all -- it's never realistically taller
+                    // than the screen (at most a headline, one field, and two compact
+                    // completed-field rows) -- so there's nothing left to fight over;
+                    // the single weighted Spacer below is the only element pushing the
+                    // button down to dock against the keyboard.
                     verticalArrangement = Arrangement.Top,
                 ) {
-                    if (step == 0) {
+                    if (stage == AuthStage.PHONE) {
                         BrandMark()
                         Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
                     }
@@ -249,31 +310,32 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     // page navigation), so previously-answered rows below never
                     // re-transition when a new question appears above them.
                     AnimatedContent(
-                        targetState = isRegisterMode to step,
+                        targetState = stage,
                         transitionSpec = {
                             (slideInVertically(tween(200)) { it / 6 } + fadeIn(tween(200))) togetherWith
                                 fadeOut(tween(120))
                         },
                         label = "auth-active-step",
-                    ) { (registerMode, currentStep) ->
+                    ) { currentStage ->
                         Column {
-                            when {
-                                currentStep == 0 -> PhoneStep(
+                            when (currentStage) {
+                                AuthStage.PHONE -> PhoneStep(
                                     phoneNumber = phoneNumber,
                                     onPhoneNumberChange = { phoneNumber = it },
-                                    headline = stringResource(if (registerMode) R.string.login_headline_phone_register else R.string.login_headline_phone_login),
-                                    subtitle = stringResource(if (registerMode) R.string.login_subtitle_phone_register else R.string.login_subtitle_phone_login),
+                                    headline = stringResource(R.string.login_headline_phone),
+                                    subtitle = stringResource(R.string.login_subtitle_phone),
                                 )
-                                registerMode && currentStep == 1 -> NameStep(
+                                AuthStage.NOT_FOUND -> NotFoundStep()
+                                AuthStage.NAME -> NameStep(
                                     firstName = firstName,
                                     onFirstNameChange = { firstName = it },
                                     lastName = lastName,
                                     onLastNameChange = { lastName = it },
                                 )
-                                (registerMode && currentStep == 2) || (!registerMode && currentStep == 1) -> PasswordStep(
+                                AuthStage.PASSWORD -> PasswordStep(
                                     password = password,
                                     onPasswordChange = { password = it },
-                                    isRegisterMode = registerMode,
+                                    isRegisterMode = isRegisterMode,
                                     errorMessage = errorMessage,
                                     showReferralField = showReferralField,
                                     onShowReferralField = { showReferralField = true },
@@ -290,59 +352,53 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     // an earlier answer without restarting the whole flow).
                     val phoneLabel = stringResource(R.string.login_label_phone_number)
                     val nameLabel = stringResource(R.string.login_headline_name)
-                    if (step > 0) {
+                    if (stage == AuthStage.NAME || stage == AuthStage.PASSWORD) {
                         Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
                         Column(verticalArrangement = Arrangement.spacedBy(Ids.layout.inlineGap)) {
-                            if (isRegisterMode && step > 1) {
-                                CompletedFieldRow(label = nameLabel, value = "$firstName $lastName", onClick = { step = 1 })
+                            if (isRegisterMode && stage == AuthStage.PASSWORD) {
+                                CompletedFieldRow(label = nameLabel, value = "$firstName $lastName", onClick = { stage = AuthStage.NAME })
                             }
-                            CompletedFieldRow(label = phoneLabel, value = phoneNumber, onClick = { step = 0 })
+                            CompletedFieldRow(label = phoneLabel, value = phoneNumber, onClick = { stage = AuthStage.PHONE })
                         }
                     }
                 }
+            }
 
-                // Real Toss keyboard-docking reference (2026-08-12, direct user
-                // screenshot) -- the primary "Next"/"Log in"/"Create account" button
-                // now handles its own horizontal bleed via IdsKeyboardDockedButton
-                // (flush, sharp-cornered, full-width the moment the keyboard opens;
-                // normal rounded+inset otherwise), so this outer Column no longer
-                // applies a fixed horizontal inset -- only the secondary "switch
-                // mode" text link below still wants one, applied directly to it.
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = if (isImeVisible) 0.dp else Ids.layout.screenVertical),
-                ) {
-                    if (isSubmitting) {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(28.dp).padding(vertical = 14.dp),
-                                color = Ids.colors.brand,
-                                strokeWidth = 3.dp,
-                            )
-                        }
-                    } else {
-                        val isLastStep = step == stepCount - 1
-                        IdsKeyboardDockedButton(
-                            text = if (isLastStep) stringResource(if (isRegisterMode) R.string.login_button_create_account else R.string.login_button_log_in) else stringResource(R.string.login_button_next),
-                            onClick = { goNext() },
-                            enabled = currentStepValid,
+            // Real Toss keyboard-docking reference (2026-08-12, direct user
+            // screenshot) -- the primary "Next"/"Log in"/"Create account" button
+            // handles its own horizontal bleed via IdsKeyboardDockedButton (flush,
+            // sharp-cornered, full-width the moment the keyboard opens; normal
+            // rounded+inset otherwise). No mode-switch link below it any more -- see
+            // this whole screen's own doc comment for why login vs signup is no
+            // longer a manual choice. Pinned to the bottom of the outer Box (see its
+            // own doc comment for why this replaced a Column-weight approach) so it
+            // sits flush against the real keyboard exactly like the real Toss
+            // reference, with no gap and no risk of vanishing.
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(vertical = if (isImeVisible) 0.dp else Ids.layout.screenVertical),
+            ) {
+                if (isSubmitting) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp).padding(vertical = 14.dp),
+                            color = Ids.colors.brand,
+                            strokeWidth = 3.dp,
                         )
                     }
-
-                    if (step == 0) {
-                        Spacer(modifier = Modifier.height(Ids.layout.rowGap))
-                        TextButton(
-                            onClick = { switchMode(!isRegisterMode) },
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal),
-                        ) {
-                            Text(
-                                text = stringResource(if (isRegisterMode) R.string.login_switch_to_login else R.string.login_switch_to_register),
-                                style = IdsTypography.Body2.copy(fontWeight = FontWeight.SemiBold),
-                                color = Ids.colors.textBrand,
-                            )
-                        }
+                } else {
+                    val buttonLabel = when (stage) {
+                        AuthStage.PHONE, AuthStage.NAME -> stringResource(R.string.login_button_next)
+                        AuthStage.NOT_FOUND -> stringResource(R.string.login_button_create_account)
+                        AuthStage.PASSWORD -> stringResource(if (isRegisterMode) R.string.login_button_create_account else R.string.login_button_log_in)
                     }
+                    IdsKeyboardDockedButton(
+                        text = buttonLabel,
+                        onClick = { goNext() },
+                        enabled = currentStepValid,
+                    )
                 }
             }
         }
@@ -441,15 +497,14 @@ private fun rememberAutoFocus(key: Any?): FocusRequester {
 }
 
 // Real correction (2026-08-13, direct user-provided screenshots of the actual Toss
-// app): reverts the previous same-day change here, which replaced this field's
-// system keyboard with a custom digit keypad based on an inference that turned out
-// wrong. Real Toss screenshots (Split bill amount, company-name search) confirm the
-// actual rule is narrower than "no system IME anywhere" -- Toss reserves custom
-// keypads for money amounts and PINs specifically (see AmountKeypad in
-// TransferAmountStep.kt for the real, evidenced version of that: a calculator-style
-// pad with a "00" key and quick-amount chips, not a plain phone dial pad), and uses
-// the real system keyboard everywhere else, including login/signup. This field goes
-// back to that.
+// app): reverts an earlier same-day change here, which replaced this field's system
+// keyboard with a custom digit keypad based on an inference that turned out wrong.
+// Real Toss screenshots (Split bill amount, company-name search) confirm the actual
+// rule is narrower than "no system IME anywhere" -- Toss reserves custom keypads for
+// money amounts and PINs specifically (see TransferFlow.kt's real NumericKeypad --
+// a calculator-style pad with a "00" key and quick-amount chips, not a plain phone
+// dial pad -- and PinScreen.kt's PIN keypad), and uses the real system keyboard
+// everywhere else, including login/signup. This field goes back to that.
 @Composable
 private fun PhoneStep(
     phoneNumber: String,
@@ -466,6 +521,23 @@ private fun PhoneStep(
             label = stringResource(R.string.login_label_phone_number),
             keyboardType = KeyboardType.Phone,
             modifier = Modifier.focusRequester(focusRequester),
+        )
+    }
+}
+
+/**
+ * Real "no account found" interstitial -- see LoginScreen's own doc comment for the
+ * full real Toss-described flow this closes out. Not a dead end: the docked button
+ * below this step (wired to "Create account" copy at this stage) is the honest, clear
+ * path forward the user asked for, reusing the phone number already entered rather
+ * than asking for it again.
+ */
+@Composable
+private fun NotFoundStep() {
+    Column {
+        StepHeadline(
+            stringResource(R.string.login_not_found_headline),
+            stringResource(R.string.login_not_found_body),
         )
     }
 }

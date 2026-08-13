@@ -60,6 +60,13 @@ object SessionManager {
         }
     }
 
+    // Real unified phone-first entry (2026-08-13) -- see ApiService.kt's identical
+    // PhoneCheckRequest/checkPhone doc comment. Non-suspend-wrapped in a runAuthCall
+    // (that helper expects an AuthResponse-shaped result) -- callers handle the raw
+    // exists flag directly instead.
+    suspend fun checkPhoneExists(phoneNumber: String): Boolean =
+        NetworkClient.authApi.checkPhone(PhoneCheckRequest(phoneNumber)).exists
+
     // deviceId/deviceName added 2026-07-21 -- real device binding (see DeviceStore.kt),
     // mirrors bank-mfe's real login()/register() calls exactly. A stable per-install
     // id, not a one-off random value per call -- DeviceStore persists it.
