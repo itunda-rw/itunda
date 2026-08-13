@@ -1199,6 +1199,10 @@ fun ItundaAppScreen(
                 // real bug class this file's own showBank doc comment already warns
                 // about for exactly this reason.
                 onOpenSpendingInsight = { showBank = false; showSpending = true },
+                // Real fix (2026-08-14) -- see HomeTab's own onOpenAccountDetail comment
+                // above for the full "wrong home" story. showBank cleared first, same
+                // reasoning as onOpenSpendingInsight just above.
+                onOpenAccountDetail = { showBank = false; showAccountDetail = true },
             )
             return@IdsTheme
         }
@@ -1344,7 +1348,18 @@ fun ItundaAppScreen(
                         onOpenBank = { showBank = true },
                         onOpenIdentity = { showIdentity = true },
                         onOpenLoans = { showLoans = true },
-                        onOpenAccountDetail = { showAccountDetail = true },
+                        // Real fix (2026-08-14, direct user complaint: "when user click on
+                        // that itunda wallet is when they see itunda bank details that's
+                        // wrong bank details suppose to be accessed from bank not wallet
+                        // right"). AccountDetailScreen is a real Toss BANK account-detail
+                        // view (interest jar, Card/Manage, full ledger) -- same category of
+                        // mistake this file's own onOpenCreditScore/onOpenSpendingInsight/
+                        // autoTransferCount comments already document being caught and moved
+                        // off Home once before. Tapping "itunda wallet" in the account
+                        // switcher now goes to Bank (its real home) instead of opening the
+                        // ledger directly over Home; Bank's own new wallet-account card
+                        // below is what actually opens AccountDetailScreen.
+                        onOpenAccountDetail = { showBank = true },
                     )
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
                     // comment) -- previously PayTab was only reachable via a showPay
@@ -1741,8 +1756,13 @@ private fun BankHubScreen(
     onOpenAutoTransfers: () -> Unit = {},
     onOpenCreditScore: () -> Unit = {},
     onOpenSpendingInsight: () -> Unit = {},
+    // Real fix (2026-08-14) -- see HomeTab's own onOpenAccountDetail comment for the
+    // full story: this is Bank's real home for the wallet-account ledger view, not
+    // Home's account switcher.
+    onOpenAccountDetail: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
+    val primaryWallet by viewModel.primaryWallet.collectAsState()
     val savingsGoals by viewModel.savingsGoals.collectAsState()
     val interestJar by viewModel.interestJar.collectAsState()
     val roundUpSettings by viewModel.roundUpSettings.collectAsState()
@@ -1785,6 +1805,31 @@ private fun BankHubScreen(
             contentPadding = PaddingValues(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
         ) {
+            // Real fix (2026-08-14, direct user complaint) -- the actual spendable
+            // wallet balance + real transaction ledger (AccountDetailScreen) used to
+            // only be reachable from Home's account switcher. This card is its real
+            // home now: tapping it is the one way into that ledger.
+            if (primaryWallet != null) {
+                item {
+                    IdsCard(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAccountDetail).padding(20.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(stringResource(R.string.bank_wallet_account), fontSize = 13.sp, color = Ids.colors.textSecondary)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "${primaryWallet!!.currency} %,.0f".format(primaryWallet!!.balance),
+                                    fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary,
+                                )
+                            }
+                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                        }
+                    }
+                }
+            }
             item {
                 IdsCard(shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(24.dp)) {

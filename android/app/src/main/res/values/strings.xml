@@ -206,6 +206,7 @@
          name of itunda's own e-wallet/Pay product; "itunda Bank" is the separate
          product identity for its savings/SACCO/Ikimina/loans/investment features. -->
     <string name="bank_title">itunda Bank</string>
+    <string name="bank_wallet_account">itunda wallet</string>
     <string name="bank_total_saved">Total saved</string>
     <string name="bank_save_grow">Save &amp; grow</string>
     <string name="bank_borrow">Borrow</string>
