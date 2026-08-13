@@ -131,6 +131,25 @@ spec:
         - name: firebase-credentials
           mountPath: /secrets/firebase
           readOnly: true
+        # Real gap found live (2026-08-13, tracing a 500 on a real end-to-end upload
+        # test through to the pod): rw.itunda.marketplace.web.UploadController's own
+        # doc comment says its local-disk storage choice is deliberate for this
+        # single-node cluster ("Deliberately not S3/MinIO/a CDN... a plain
+        # validated-and-bounded local directory"), and its default UPLOAD_DIR is
+        # `/uploads` -- but no volume was ever actually mounted there. The container
+        # runs as a non-root user (uid 999) with no write access to the image's own
+        # root filesystem, so every real upload (this endpoint has been live and
+        # reachable since 2026-07-24, already used by Talk photo messages and
+        # marketplace listings) has been silently failing with a 500 in this
+        # deployment the whole time: `FileNotFoundException: /uploads/<id>.jpg (No
+        # such file or directory)`. hostPath is the right call specifically because
+        # this cluster genuinely has only the one node (itunda-dc-a) -- the usual
+        # "a rescheduled pod loses hostPath data" risk doesn't apply when there's
+        # nowhere else to reschedule to. The host directory itself
+        # (/var/lib/itunda/uploads, chown'd to 999:999) is provisioned out-of-band,
+        # same convention as the secrets referenced above.
+        - name: uploads-storage
+          mountPath: /uploads
         resources:
           requests:
             memory: "512Mi"
@@ -175,6 +194,16 @@ spec:
           items:
           - key: firebase-service-account.json
             path: firebase-service-account.json
+      # See uploads-storage's own volumeMount comment above -- Directory (not
+      # DirectoryOrCreate) on purpose: the host path is provisioned and chown'd to
+      # the container's non-root uid out-of-band before this is applied, the same
+      # discipline the secrets referenced above already follow. DirectoryOrCreate
+      # would let kubelet silently create it root-owned instead, recreating the
+      # exact permission gap this fix closes.
+      - name: uploads-storage
+        hostPath:
+          path: /var/lib/itunda/uploads
+          type: Directory
 ---
 apiVersion: v1
 kind: Service

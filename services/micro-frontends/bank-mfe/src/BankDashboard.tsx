@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Car, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Camera, Car, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -5064,74 +5064,79 @@ function NotificationsCard() {
 // depreciation estimate, not a real Carmart-style data partnership).
 // Real email/phone verification (item 169) -- see lib/verification.ts's own doc
 // comment. bank-mfe (the actual banking app) had zero client for either.
-// Real profile photo (URL, not a binary upload) -- also the real, buildable half of
-// Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep: a real,
-// working `PUT /api/v1/auth/profile/photo` endpoint with zero client anywhere, and
-// `PublicUser.profilePhotoUrl` wasn't even carried by any client's own User type.
+// Real profile photo upload (2026-08-13) -- found via the user's own "photo link vs.
+// upload" UX audit request: the previous version of this card (2026-07-29, see git
+// history) asked the user to paste a URL to a photo "hosted elsewhere," reasoning
+// that itunda had no upload/storage pipeline to build a real picker on top of. That
+// reasoning was stale even on the day it was written -- rw.itunda.marketplace.web.
+// UploadController's own real `POST /api/v1/uploads` (multipart, validated,
+// rate-limited local-disk storage) had existed since 2026-07-24, and this file's own
+// Talk photo-message flow (handleSendPhoto, above) already used it. Profile photo
+// was the one remaining "paste a link" holdout in bank-mfe; this wires it to the
+// same real upload endpoint every other photo flow in this app already uses.
 function ProfilePhotoCard() {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
-  const [urlInput, setUrlInput] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     fetchProfile()
-      .then((u) => { setProfilePhotoUrl(u.profilePhotoUrl); setUrlInput(u.profilePhotoUrl ?? ''); })
+      .then((u) => setProfilePhotoUrl(u.profilePhotoUrl))
       .catch(() => {
         // Real, non-critical -- the rest of "My" still works without this.
       });
   }, []);
 
-  const handleSave = async () => {
-    const trimmed = urlInput.trim();
-    if (!trimmed) { setError('Enter a photo URL.'); return; }
-    setSaving(true);
+  const handleFileSelected = async (file: File | undefined) => {
+    if (!file) return;
+    setUploading(true);
     setError(null);
     try {
-      const user = await updateProfilePhoto(trimmed);
+      const { url } = await uploadFile(file);
+      const user = await updateProfilePhoto(url);
       setProfilePhotoUrl(user.profilePhotoUrl);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update your profile photo.');
+      setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Check your connection and try again.");
     } finally {
-      setSaving(false);
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  // Real fix (2026-08-13, matching the identical Android fix same day, found via
-  // live browser testing): a bare "Profile photo URL" input + "Save photo" button
-  // read as an unpolished debug control. itunda has no image-upload/hosting
-  // pipeline to build a real device picker on top of (same discipline as
-  // Merchant.photoUrl on the backend -- real URL, not a fabricated upload), so the
-  // honest fix is explaining what this real feature actually does and giving live
-  // visual feedback, not pretending to be a picker it isn't. Preview uses the
-  // trimmed urlInput itself (falling back to the already-saved profilePhotoUrl) so
-  // pasting a link gives an immediate result, same as Android's ItundaAppScreen.kt.
-  const previewUrl = urlInput.trim() || profilePhotoUrl;
   return (
     <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
+        onChange={(e) => handleFileSelected(e.target.files?.[0])}
+      />
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-        {previewUrl ? (
-          <img src={previewUrl} alt="" style={{ width: '56px', height: '56px', borderRadius: '28px', objectFit: 'cover', flexShrink: 0 }} />
-        ) : (
-          <div style={{ width: '56px', height: '56px', borderRadius: '28px', backgroundColor: 'var(--itunda-grey-100)', flexShrink: 0 }} />
-        )}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          style={{ width: '56px', height: '56px', borderRadius: '28px', flexShrink: 0, padding: 0, border: 'none', overflow: 'hidden', opacity: uploading ? 0.5 : 1 }}
+          aria-label={profilePhotoUrl ? 'Change profile photo' : 'Add profile photo'}
+        >
+          {profilePhotoUrl ? (
+            <img src={profilePhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--itunda-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Camera size={20} color="var(--itunda-grey-500)" />
+            </div>
+          )}
+        </button>
         <div>
           <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-900)', margin: 0 }}>Profile photo</p>
           <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: '2px 0 0' }}>
-            Paste a link to a photo hosted elsewhere -- itunda doesn't host photo uploads yet.
+            {uploading ? 'Uploading…' : 'Tap to choose a photo from your device'}
           </p>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-        <input
-          type="url" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="https://example.com/my-photo.jpg"
-          style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '12px' }}
-        />
-        <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }} disabled={saving} onClick={handleSave}>
-          {saving ? 'Saving…' : 'Save photo'}
-        </button>
-      </div>
+      {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
     </div>
   );
 }
