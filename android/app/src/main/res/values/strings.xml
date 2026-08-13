@@ -151,6 +151,13 @@
          offline user saw normal-looking placeholder data with no honest signal
          it wasn't real. -->
     <string name="home_offline_banner">You are offline. Showing limited, non-live data.</string>
+    <!-- Real Naver-style Home redesign (2026-08-14), see HomeTab's own doc comment. -->
+    <string name="home_search_placeholder">Search itunda</string>
+    <string name="home_search_description">Search itunda products</string>
+    <string name="home_search_clear">Clear search</string>
+    <string name="home_search_empty">No products found.</string>
+    <string name="home_trending_title">Trending nearby</string>
+    <string name="home_feed_title">For you</string>
     <string name="home_cash_out">Cash out</string>
     <string name="home_send">Send</string>
     <string name="home_see_all">See all</string>

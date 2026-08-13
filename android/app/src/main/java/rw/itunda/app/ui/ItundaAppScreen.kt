@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.Fastfood
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DirectionsBike
@@ -118,6 +120,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import coil.compose.AsyncImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -1360,6 +1366,20 @@ fun ItundaAppScreen(
                         // ledger directly over Home; Bank's own new wallet-account card
                         // below is what actually opens AccountDetailScreen.
                         onOpenAccountDetail = { showBank = true },
+                        // Real Naver-style Home redesign (2026-08-14, direct user
+                        // reference: 5 real Naver Home screenshots -- search bar, weather/
+                        // stock widgets, a Clip video grid, an infinite content feed).
+                        // itunda has no weather/entertainment content to show honestly, but
+                        // it IS a real super app (direct user correction: "itunda is super
+                        // app more than just fintech") with real cross-vertical content --
+                        // reuses the exact same show*=true flags Explore already wires to
+                        // these same screens, just also reachable from Home's own feed now.
+                        onOpenMarketplace = { showMarketplace = true },
+                        onOpenCommunity = { showCommunity = true },
+                        onOpenJobs = { showJobs = true },
+                        onOpenProperty = { showProperty = true },
+                        onOpenInvest = { showInvest = true },
+                        onOpenShop = { showShop = true },
                     )
                     // Real, dedicated primary tab (2026-08-10, see ItundaTab's own doc
                     // comment) -- previously PayTab was only reachable via a showPay
@@ -1521,16 +1541,66 @@ private fun HomeTab(
     onOpenIdentity: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
     onOpenAccountDetail: () -> Unit = {},
+    onOpenMarketplace: () -> Unit = {},
+    onOpenCommunity: () -> Unit = {},
+    onOpenJobs: () -> Unit = {},
+    onOpenProperty: () -> Unit = {},
+    onOpenInvest: () -> Unit = {},
+    onOpenShop: () -> Unit = {},
 ) {
     val discoverItems by viewModel.discoverItems.collectAsState()
     val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
     val isOffline by viewModel.isOffline.collectAsState()
+    val primaryWallet by viewModel.primaryWallet.collectAsState()
     // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not the
     // mirror" strategy memo, recommendation (ii), and rw.itunda.core.network.
     // recordAnalyticsEvent's own doc comment. Fired once per real composition of
     // Home, the baseline every retention question is measured against -- same event
     // name/shape bank-mfe's identical HomeView effect already fires.
     LaunchedEffect(Unit) { rw.itunda.core.network.recordAnalyticsEvent("home_view") }
+
+    // Real Naver-style Home redesign (2026-08-14, direct user reference: 5 real
+    // Naver Home screenshots -- search bar, weather/stock widgets, a Clip video
+    // grid, an infinite content feed). itunda has no weather/entertainment content
+    // to show honestly, but it IS a real super app (direct user correction: "itunda
+    // is super app more than just fintech") with real cross-vertical content -- the
+    // same Marketplace/Community/Jobs/Property "my neighborhood" endpoints Explore's
+    // own screens already call, just never merged into one feed before. Each
+    // screen fetches its own minimal real data (same convention BankHubScreen's own
+    // depositProtection/creditScore fetches already establish), not pushed into
+    // MainViewModel as a global concern.
+    var stocks by remember { mutableStateOf<List<rw.itunda.core.network.StockDto>>(emptyList()) }
+    var trendingListings by remember { mutableStateOf<List<rw.itunda.core.network.ListingDto>>(emptyList()) }
+    var feedEntries by remember { mutableStateOf<List<HomeFeedEntry>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        try { stocks = rw.itunda.core.network.NetworkClient.apiService.getStocks().stocks.take(2) } catch (_: Exception) {}
+        val listings = try { rw.itunda.core.network.NetworkClient.apiService.getListingsMyNeighborhood().listings } catch (_: Exception) { emptyList() }
+        val posts = try { rw.itunda.core.network.NetworkClient.apiService.getCommunityPostsMyNeighborhood().posts } catch (_: Exception) { emptyList() }
+        val jobs = try { rw.itunda.core.network.NetworkClient.apiService.getJobPostsMyNeighborhood().posts } catch (_: Exception) { emptyList() }
+        val properties = try { rw.itunda.core.network.NetworkClient.apiService.getPropertyListingsMyNeighborhood().listings } catch (_: Exception) { emptyList() }
+        // Listings with a real photo lead the Trending grid (Naver's own Clip section
+        // is image-first); the rest -- including photo-less listings -- flow into the
+        // merged feed below like every other vertical.
+        val (withPhoto, withoutPhoto) = listings.partition { !it.photoUrl.isNullOrBlank() }
+        trendingListings = withPhoto.take(4)
+        val trendingIds = trendingListings.map { it.id }.toSet()
+        feedEntries = (
+            (listings.filter { it.id !in trendingIds }).map {
+                HomeFeedEntry(it.id, "marketplace", it.title, "RWF %,.0f".format(it.price), it.createdAt, it.photoUrl)
+            } +
+            posts.map { HomeFeedEntry(it.id, "community", it.title, it.body.take(80), it.createdAt) } +
+            jobs.map { HomeFeedEntry(it.id, "jobs", it.title, "${it.payType} · RWF %,.0f".format(it.payAmount), it.createdAt) } +
+            properties.map { HomeFeedEntry(it.id, "property", it.title, "RWF %,.0f".format(it.price), it.createdAt) }
+        ).sortedByDescending { it.createdAt }.take(30)
+    }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<rw.itunda.core.network.ProductSearchResultDto>?>(null) }
+    val searchScope = rememberCoroutineScope()
+    fun runSearch(query: String) {
+        searchScope.launch {
+            searchResults = try { rw.itunda.core.network.NetworkClient.apiService.searchProducts(query).products } catch (_: Exception) { emptyList() }
+        }
+    }
 
     // Real Toss/Kakao pull-to-refresh (2026-08-11 research pass) -- Home had no way
     // to manually refresh at all beyond leaving and re-entering the tab, despite
@@ -1559,6 +1629,35 @@ private fun HomeTab(
             verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
         ) {
             item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications, onOpenOverview = onOpenOverview, onOpenAccountDetail = onOpenAccountDetail, unreadCount = unreadNotificationCount) }
+        item {
+            HomeSearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it; if (it.isBlank()) searchResults = null else runSearch(it) },
+                onClear = { searchQuery = ""; searchResults = null },
+            )
+        }
+        // Real inline instant-search results (2026-08-14) -- searchProducts (Shop's
+        // real full-text product search) had zero client UI anywhere until now, a
+        // real backend endpoint with no consumer, same gap class this session's own
+        // "uncalled endpoint" sweeps keep finding. Scoped honestly to what actually
+        // has real full-text search server-side today -- Marketplace/Community/Jobs/
+        // Property below have no search endpoint yet, so this box only ever searches
+        // Shop products, not "everything," matching the real capability rather than
+        // implying a broader one.
+        if (searchQuery.isNotBlank()) {
+            val results = searchResults
+            when {
+                results == null -> item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
+                    }
+                }
+                results.isEmpty() -> item { EmptyState(stringResource(R.string.home_search_empty)) }
+                else -> items(results, key = { it.id }) { result ->
+                    HomeSearchResultRow(result, onClick = onOpenShop)
+                }
+            }
+        } else {
         // Real fix (2026-08-13, direct live-device catch): MainViewModel.isOffline
         // was already real and correctly toggled (showOfflinePlaceholder's own doc
         // comment even claims this screen is "labeled via isOffline rather than
@@ -1649,8 +1748,217 @@ private fun HomeTab(
         if (remainingDiscoverItems.isNotEmpty()) {
             item { DiscoverSection(remainingDiscoverItems) }
         }
+        // Real market widget row (2026-08-14) -- wallet balance (real, already
+        // fetched) plus real RSE stock ticker chips (getStocks, InvestScreen's own
+        // real data source), matching Naver's own weather/stock-index widget row
+        // structurally without inventing weather data itunda has no source for.
+        if (primaryWallet != null || stocks.isNotEmpty()) {
+            item { HomeMarketWidgetRow(primaryWallet, stocks, onOpenBank = onOpenBank, onOpenInvest = onOpenInvest) }
+        }
+        if (trendingListings.isNotEmpty()) {
+            item { HomeTrendingGrid(trendingListings, onOpenMarketplace = onOpenMarketplace) }
+        }
+        if (feedEntries.isNotEmpty()) {
+            item {
+                Text(
+                    stringResource(R.string.home_feed_title),
+                    color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            items(feedEntries, key = { it.id }) { entry ->
+                HomeFeedRow(
+                    entry,
+                    onClick = when (entry.kind) {
+                        "marketplace" -> onOpenMarketplace
+                        "community" -> onOpenCommunity
+                        "jobs" -> onOpenJobs
+                        "property" -> onOpenProperty
+                        else -> ({})
+                    },
+                )
+            }
+        }
+        }
         }
         PullToRefreshContainer(state = pullToRefreshState, modifier = Modifier.align(Alignment.TopCenter))
+    }
+}
+
+// Real cross-vertical feed entry (2026-08-14) -- see HomeTab's own Naver-redesign
+// doc comment. A plain discriminated shape, not a sealed hierarchy: the 4 real
+// source DTOs (ListingDto/CommunityPostDto/JobPostDto/PropertyListingDto) share no
+// common interface, and this is only ever used to sort+render, not to dispatch
+// type-specific business logic.
+private data class HomeFeedEntry(
+    val id: String,
+    val kind: String,
+    val title: String,
+    val subtitle: String,
+    val createdAt: String,
+    val photoUrl: String? = null,
+)
+
+@Composable
+private fun HomeSearchBar(query: String, onQueryChange: (String) -> Unit, onClear: () -> Unit) {
+    val searchDescription = stringResource(R.string.home_search_description)
+    val searchPlaceholder = stringResource(R.string.home_search_placeholder)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Ids.colors.chip)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(10.dp))
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 15.sp),
+            cursorBrush = SolidColor(Ids.colors.brand),
+            singleLine = true,
+            modifier = Modifier.weight(1f).semantics { contentDescription = searchDescription },
+            decorationBox = { inner -> if (query.isEmpty()) Text(searchPlaceholder, color = Ids.colors.textTertiary, fontSize = 15.sp); inner() },
+        )
+        if (query.isNotEmpty()) {
+            Icon(
+                Icons.Outlined.Close, contentDescription = stringResource(R.string.home_search_clear),
+                tint = Ids.colors.textTertiary, modifier = Modifier.size(16.dp).clickable(onClick = onClear),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeSearchResultRow(result: rw.itunda.core.network.ProductSearchResultDto, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip))
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(result.name, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(result.merchantName, color = Ids.colors.textTertiary, fontSize = 12.sp)
+        }
+        Text("RWF %,.0f".format(result.price), color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// Real market widget row (2026-08-14) -- Naver's own weather/stock-index widget
+// row, filled with itunda's real equivalents instead of fabricated weather: the
+// spendable wallet balance (already fetched) and real RSE stock chips (getStocks,
+// InvestScreen's own real data source, arrow+percent styled the same way real
+// stock tickers signal direction).
+@Composable
+private fun HomeMarketWidgetRow(
+    primaryWallet: rw.itunda.core.network.Wallet?,
+    stocks: List<rw.itunda.core.network.StockDto>,
+    onOpenBank: () -> Unit,
+    onOpenInvest: () -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (primaryWallet != null) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Ids.colors.chip)
+                    .clickable(onClick = onOpenBank)
+                    .padding(14.dp),
+            ) {
+                Text(stringResource(R.string.bank_wallet_account), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                Text("${primaryWallet.currency} %,.0f".format(primaryWallet.balance), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        stocks.forEach { stock ->
+            val positive = stock.change >= 0.0
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Ids.colors.chip)
+                    .clickable(onClick = onOpenInvest)
+                    .padding(14.dp),
+            ) {
+                Text(stock.symbol, color = Ids.colors.textSecondary, fontSize = 12.sp, maxLines = 1)
+                Text("%,.0f".format(stock.price), color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "${if (positive) "▲" else "▼"} ${"%.2f".format(kotlin.math.abs(stock.changePercent))}%",
+                    color = if (positive) Ids.colors.brand else Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+// Real "Trending nearby" grid (2026-08-14) -- Naver's own Clip video grid,
+// structurally: a 2-column image-led card grid. itunda has no video content, but
+// real Marketplace listing photos (the only one of the 4 feed sources with a real
+// photoUrl) fill the same slot honestly.
+@Composable
+private fun HomeTrendingGrid(listings: List<rw.itunda.core.network.ListingDto>, onOpenMarketplace: () -> Unit) {
+    Column {
+        Text(
+            stringResource(R.string.home_trending_title),
+            color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 10.dp),
+        )
+        listings.chunked(2).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { listing ->
+                    Column(modifier = Modifier.weight(1f).clickable(onClick = onOpenMarketplace)) {
+                        AsyncImage(
+                            model = listing.photoUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(14.dp)).background(Ids.colors.chip),
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(listing.title, color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text("RWF %,.0f".format(listing.price), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                }
+                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+// Real merged cross-vertical feed row (2026-08-14) -- see HomeFeedEntry's own doc
+// comment. Photo-led for Marketplace (the one source with a real photo), a
+// category-colored icon tile for the other three, matching Talk's own FriendsView
+// row shape rather than inventing a new avatar convention.
+@Composable
+private fun HomeFeedRow(entry: HomeFeedEntry, onClick: () -> Unit) {
+    val (icon, tint) = when (entry.kind) {
+        "community" -> Icons.Outlined.Forum to Ids.colors.brand
+        "jobs" -> Icons.Outlined.Work to Ids.colors.success
+        "property" -> Icons.Outlined.Home to Ids.colors.textSecondary
+        else -> Icons.Outlined.Storefront to Ids.colors.textSecondary
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (entry.kind == "marketplace" && !entry.photoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = entry.photoUrl, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.chip),
+            )
+        } else {
+            Box(
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp)) }
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(entry.title, color = Ids.colors.textPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(entry.subtitle, color = Ids.colors.textTertiary, fontSize = 12.sp, maxLines = 1)
+        }
     }
 }
 
