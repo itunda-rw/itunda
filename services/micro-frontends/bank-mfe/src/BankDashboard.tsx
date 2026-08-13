@@ -429,7 +429,7 @@ function ReportScamLink({ identifier }: { identifier: string }) {
   );
 }
 
-function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => void; onSuccess: () => void; walletBalance: number }) {
+function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: { onClose: () => void; onSuccess: () => void; onBalanceRefresh?: () => void; walletBalance: number }) {
   const { t } = useI18n();
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
@@ -498,6 +498,15 @@ function TransferFlow({ onClose, onSuccess, walletBalance }: { onClose: () => vo
     try {
       const res = await sendDirect(recipient.trim(), Number(amount), '');
       setResult({ message: res.message, newBalance: res.newBalance });
+      // Real fix (2026-08-13, direct live-testing catch): the top-level balance
+      // (AccountBalance, rendered above this whole form) previously only refreshed
+      // when onSuccess fired on the "Done" button -- but this confirmation panel
+      // already has the real, correct new balance the instant the transfer succeeds.
+      // For that whole in-between window, the two numbers visibly disagreed on the
+      // same screen (this panel said the new balance, the balance above still showed
+      // the pre-transfer one). Refresh in the background now, without closing this
+      // panel -- onSuccess (Done) still fires its own close-and-reload afterward.
+      onBalanceRefresh?.();
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
@@ -846,6 +855,7 @@ function HomeView({ onNavigateToCard, onNavigateToTab, onNavigateToLoansMode, on
         <TransferFlow
           walletBalance={wallet?.balance ?? 0}
           onClose={() => setShowTransfer(false)}
+          onBalanceRefresh={load}
           onSuccess={() => {
             setShowTransfer(false);
             load();
@@ -909,6 +919,7 @@ function PayHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
         <TransferFlow
           walletBalance={wallet.balance}
           onClose={() => setShowTransfer(false)}
+          onBalanceRefresh={loadWallet}
           onSuccess={() => { setShowTransfer(false); loadWallet(); }}
         />
       )}
