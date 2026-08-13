@@ -1,8 +1,9 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { ChevronDown, ChevronUp, CreditCard, Minus, Plus, RefreshCw, Store, Trash2 } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
+import { uploadFile } from '../lib/upload';
 import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 import {
   addOptionGroup,
@@ -407,6 +408,25 @@ function CatalogView() {
   const [stockQuantity, setStockQuantity] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real photo upload (2026-08-13) -- see lib/upload.ts's own doc comment. Replaces
+  // a "paste a URL" text field with a real device picker.
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleImageSelected = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingImage(true);
+    setError(null);
+    try {
+      const { url } = await uploadFile(file);
+      setImageUrl(url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Check your connection and try again.");
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
   // Real menu-item option groups management (2026-07-21) -- only one product's panel
   // expanded at a time, same "inline-card-replaces-trigger" convention bank-mfe's own
   // buyer-side option UI already established.
@@ -517,11 +537,26 @@ function CatalogView() {
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '220px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Image URL (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Product photo (optional)</span>
             <input
-              type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…/latte.jpg"
-              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={(e) => handleImageSelected(e.target.files?.[0])}
             />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {imageUrl && <img src={imageUrl} alt="" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />}
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={uploadingImage}
+                className="itunda-btn itunda-btn-secondary"
+                style={{ fontSize: '13px', padding: '10px 14px' }}
+              >
+                {uploadingImage ? 'Uploading…' : imageUrl ? 'Change photo' : 'Add photo from device'}
+              </button>
+            </div>
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexBasis: '100%' }}>
             <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Description (optional)</span>

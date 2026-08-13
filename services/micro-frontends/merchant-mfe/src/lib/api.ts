@@ -3,7 +3,11 @@
 // status is checked separately (see lib/merchant.ts's getMe -- 404 means "not a merchant
 // yet", not "not allowed here"), unlike ops-mfe's hard ADMIN-role gate.
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4001';
+// Exported (2026-08-13) for lib/upload.ts's real photo-upload flow -- needs a raw
+// fetch with the same base URL/error-parsing as apiFetch below, but can't use
+// apiFetch itself since it always sets Content-Type: application/json, which would
+// break a multipart/form-data request. Same reasoning as bank-mfe's identical export.
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4001';
 
 const TOKEN_KEY = 'itunda_merchant_access_token';
 const REFRESH_KEY = 'itunda_merchant_refresh_token';
@@ -49,7 +53,7 @@ export function logout(): void {
   localStorage.removeItem(USER_KEY);
 }
 
-async function parseErrorBody(response: Response): Promise<{ code: string; message: string }> {
+export async function parseErrorBody(response: Response): Promise<{ code: string; message: string }> {
   try {
     const body = await response.json();
     return { code: body.code ?? 'UNKNOWN_ERROR', message: body.message ?? response.statusText };
