@@ -425,39 +425,6 @@ struct HeaderTitle: View {
     }
 }
 
-struct CardItem: View {
-    let title: String
-    let value: String
-    let buttonText: String
-    let buttonColor: Color
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(title)
-                .font(scaledFont(size: 14, weight: .semibold, relativeTo: .footnote))
-                .foregroundColor(.secondary)
-
-            Text(value)
-                .font(scaledFont(size: 22, weight: .bold, relativeTo: .title1))
-                .foregroundColor(.primary)
-
-            Button(action: {}) {
-                Text(buttonText)
-                    .font(scaledFont(size: 16, weight: .semibold, relativeTo: .body))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(buttonColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-        }
-        .padding(24)
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(24)
-        .padding(.horizontal, 20)
-    }
-}
-
 struct TransactionRow: View {
     let title: String
     let date: String
