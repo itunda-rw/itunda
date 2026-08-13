@@ -13,6 +13,7 @@
     <string name="login_subtitle_phone_register">Tuzayikoresha kugira ngo turinde konti yawe.</string>
     <string name="login_subtitle_phone_login">Andika numero wiyandikishijeho.</string>
     <string name="login_label_phone_number">Numero ya telefoni</string>
+    <string name="login_keypad_backspace">Siba umubare wanyuma</string>
     <string name="login_headline_name">Amazina yawe ni ayahe?</string>
     <string name="login_subtitle_name">Ni ko uzagaragara ku ncuti n\'abacuruzi.</string>
     <string name="login_label_first_name">Izina rya mbere</string>

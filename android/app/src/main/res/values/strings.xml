@@ -22,6 +22,7 @@
     <string name="login_subtitle_phone_register">We\'ll use this to keep your account secure.</string>
     <string name="login_subtitle_phone_login">Enter the number you signed up with.</string>
     <string name="login_label_phone_number">Phone number</string>
+    <string name="login_keypad_backspace">Delete last digit</string>
     <string name="login_headline_name">What\'s your name?</string>
     <string name="login_subtitle_name">This is how you\'ll appear to friends and merchants.</string>
     <string name="login_label_first_name">First name</string>

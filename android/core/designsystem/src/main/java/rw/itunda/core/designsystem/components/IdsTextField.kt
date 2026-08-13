@@ -83,6 +83,14 @@ fun IdsTextField(
     // visualTransformation/trailingIcon (no existing call site sets both this and
     // either of those together).
     isPassword: Boolean = false,
+    // Real addition (2026-08-13, direct user research request comparing against real
+    // Toss login screens): a value-only field driven by a custom on-screen keypad
+    // rather than the platform IME -- see LoginScreen.kt's own NumericKeypad doc
+    // comment for why. Compose's TextField already supports this exact shape
+    // (readOnly still shows focus/cursor styling, just never raises the system
+    // keyboard); this just exposes it, same opt-in convention as autoFocus/isPassword
+    // above so every existing call site is unaffected.
+    readOnly: Boolean = false,
     // Real Toss-style live thousand-separator formatting (docs/DESIGN_REFERENCES.md's
     // amount-entry research, 2026-08-12) -- see AmountVisualTransformation's own doc
     // comment. Defaults to false, same opt-in convention as isPassword/autoFocus above,
@@ -101,6 +109,7 @@ fun IdsTextField(
             label = { Text(label, style = IdsTypography.Body2) },
             placeholder = placeholder?.let { { Text(it, style = IdsTypography.Body1, color = Ids.colors.textTertiary) } },
             singleLine = singleLine,
+            readOnly = readOnly,
             isError = isError,
             visualTransformation = if (isPassword) {
                 if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation()

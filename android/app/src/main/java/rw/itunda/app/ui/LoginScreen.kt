@@ -365,6 +365,21 @@ private fun rememberAutoFocus(key: Any?): FocusRequester {
     return focusRequester
 }
 
+// Real Toss reference (2026-08-13, direct user comparison against a live screenshot
+// of itunda's own login screen): the phone-number step used to trigger the
+// platform's own software keyboard (KeyboardType.Phone) -- on a device whose system
+// language differs from itunda's own selected app language (a real, live case: a
+// Korean-system-locale device running itunda in English), this meant the phone's
+// entire own numeric keypad -- "완료"/"*+#" labels -- popped up underneath an
+// English "Log in with your phone number" screen, breaking the fully-branded,
+// no-stray-system-chrome look every real Toss screen maintains (see
+// toss.tech/article/toss-signup-process's own "1 thing/1 page" discipline, which
+// only works if the screen stays under the app's own visual control end to end).
+// A custom in-app keypad, not the system IME, is how Toss actually avoids this --
+// same reason a security/PIN keypad is never the system keyboard on any real
+// banking app. Field itself stays a real IdsTextField (same focus ring/label/cursor
+// styling as every other step) via readOnly, driven entirely by this keypad's own
+// digit/backspace taps instead of direct typing.
 @Composable
 private fun PhoneStep(
     phoneNumber: String,
@@ -377,11 +392,70 @@ private fun PhoneStep(
         StepHeadline(headline, subtitle)
         IdsTextField(
             value = phoneNumber,
-            onValueChange = onPhoneNumberChange,
+            onValueChange = {},
             label = stringResource(R.string.login_label_phone_number),
             keyboardType = KeyboardType.Phone,
+            readOnly = true,
             modifier = Modifier.focusRequester(focusRequester),
         )
+        Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
+        NumericKeypad(
+            onDigit = { digit -> onPhoneNumberChange((phoneNumber + digit).take(15)) },
+            onBackspace = { if (phoneNumber.isNotEmpty()) onPhoneNumberChange(phoneNumber.dropLast(1)) },
+        )
+    }
+}
+
+/**
+ * A custom, itunda-branded numeric keypad -- see PhoneStep's own doc comment for why
+ * this exists instead of the platform IME. Plain digit-centered cells (no visible
+ * per-key background/border), matching real Toss/Kakao security-keypad references:
+ * minimal chrome, the number itself is the whole visual. Backspace occupies the
+ * bottom-right cell (same position every real phone dialer/PIN pad uses), bottom-left
+ * left empty rather than filled with a decorative glyph nothing here needs.
+ */
+@Composable
+private fun NumericKeypad(onDigit: (String) -> Unit, onBackspace: () -> Unit) {
+    val rows = listOf(
+        listOf("1", "2", "3"),
+        listOf("4", "5", "6"),
+        listOf("7", "8", "9"),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        rows.forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                row.forEach { digit -> KeypadKey(label = digit, onClick = { onDigit(digit) }) }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Box(modifier = Modifier.size(72.dp))
+            KeypadKey(label = "0", onClick = { onDigit("0") })
+            Box(modifier = Modifier.size(72.dp), contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.login_keypad_backspace),
+                    tint = Ids.colors.textSecondary,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onBackspace)
+                        .padding(12.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeypadKey(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(72.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = label, style = IdsTypography.Title1, color = Ids.colors.textPrimary)
     }
 }
 
