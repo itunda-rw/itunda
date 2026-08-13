@@ -23,7 +23,7 @@ spec:
       enableServiceLinks: false
       containers:
       - name: backend
-        image: ghcr.io/itunda/backend:staging
+        image: ghcr.io/itunda-rw/backend:staging
         ports:
         - containerPort: 4001
         env:

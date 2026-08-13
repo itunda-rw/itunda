@@ -71,7 +71,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: backend
-        image: ghcr.io/itunda/backend:latest
+        image: ghcr.io/itunda-rw/backend:latest
         ports:
         - containerPort: 4001
         env:

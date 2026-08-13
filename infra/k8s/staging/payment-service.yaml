@@ -19,7 +19,7 @@ spec:
       enableServiceLinks: false
       containers:
       - name: payment-service
-        image: ghcr.io/itunda/payment-service:staging
+        image: ghcr.io/itunda-rw/payment-service:staging
         ports:
         - containerPort: 8081
         env:

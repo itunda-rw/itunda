@@ -50,7 +50,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: api-gateway
-        image: ghcr.io/itunda/api-gateway:latest
+        image: ghcr.io/itunda-rw/api-gateway:latest
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

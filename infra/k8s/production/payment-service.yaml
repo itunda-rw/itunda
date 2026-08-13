@@ -55,7 +55,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: payment-service
-        image: ghcr.io/itunda/payment-service:latest
+        image: ghcr.io/itunda-rw/payment-service:latest
         ports:
         - containerPort: 8081
         env:
