@@ -90,6 +90,31 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     )
     fun search(@Param("status") status: MerchantStatus, @Param("q") q: String, pageable: Pageable): Page<MerchantProduct>
 
+    // Real relevance-ranked full-text search (2026-08-14) -- see V242's own migration
+    // comment for the "why" (the LIKE search above never ranked results and only ever
+    // matched one exact substring). MySQL's FULLTEXT + MATCH...AGAINST is a native
+    // query, not JPQL -- Hibernate has no portable JPQL equivalent -- so this returns
+    // Page<MerchantProduct> via nativeQuery=true with an explicit countQuery, the
+    // standard Spring Data pattern for a paginated native query. `:#{#status.name()}`
+    // is required (not `:status` directly): unlike the JPQL query above, a native
+    // query has no entity-mapping context to know MerchantStatus is @Enumerated(STRING)
+    // on its own, so this SpEL binding does that conversion explicitly.
+    // ShoppingController.searchProducts builds `booleanQuery` (MySQL BOOLEAN MODE
+    // syntax, e.g. "+phone* +case*") and falls back to the plain `search` above for
+    // queries shorter than MySQL's minimum indexed token length, where FULLTEXT
+    // structurally can't match anything.
+    @Query(
+        value = "SELECT p.* FROM merchant_products p JOIN merchants m ON m.id = p.merchant_id " +
+            "WHERE p.active = true AND m.status = :#{#status.name()} " +
+            "AND MATCH(p.name, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE) " +
+            "ORDER BY MATCH(p.name, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE) DESC",
+        countQuery = "SELECT COUNT(*) FROM merchant_products p JOIN merchants m ON m.id = p.merchant_id " +
+            "WHERE p.active = true AND m.status = :#{#status.name()} " +
+            "AND MATCH(p.name, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE)",
+        nativeQuery = true,
+    )
+    fun searchFullText(@Param("status") status: MerchantStatus, @Param("booleanQuery") booleanQuery: String, pageable: Pageable): Page<MerchantProduct>
+
     // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
     // recommendation #8: a curated deal rail on the Shop landing surface, above the
     // raw merchant list. Never a fabricated/hardcoded promo -- every row here is a

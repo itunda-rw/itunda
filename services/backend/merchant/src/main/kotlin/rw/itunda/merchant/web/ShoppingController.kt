@@ -240,12 +240,33 @@ class ShoppingController(
 
     // Real cross-merchant product search -- see MerchantProductRepository.search's own
     // doc comment for the gap this closes.
+    // Real relevance-ranked upgrade (2026-08-14) -- see MerchantProductRepository.
+    // searchFullText's own doc comment. Builds a MySQL BOOLEAN MODE query string here
+    // (not in the repository) since it's presentation-layer parsing of raw user input,
+    // the same layering this controller already uses elsewhere. Each token is
+    // sanitized (boolean-mode operator characters stripped, so a query like "c++" can't
+    // accidentally inject search syntax), suffixed with `*` for prefix matching (typing
+    // "pho" already matches "phone", a real search-as-you-type feel), and required via
+    // a leading `+` (AND of terms, not OR) -- a shopper typing "phone case" almost
+    // always wants products matching both words, not a flood of single-word matches.
+    // Falls back to the plain LIKE search for queries under 3 characters: MySQL's
+    // default innodb_ft_min_token_size is 3, so FULLTEXT structurally can't match
+    // anything shorter, not a bug in the query itself.
     @GetMapping("/products/search")
     fun searchProducts(
         @RequestParam q: String,
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
-        val page = merchantProductRepository.search(MerchantStatus.ACTIVE, q.trim(), pageable)
+        val trimmed = q.trim()
+        val booleanQuery = trimmed.split(Regex("\\s+"))
+            .map { it.replace(Regex("[+\\-><()~*\"@]"), "") }
+            .filter { it.length >= 3 }
+            .joinToString(" ") { "+$it*" }
+        val page = if (booleanQuery.isNotBlank()) {
+            merchantProductRepository.searchFullText(MerchantStatus.ACTIVE, booleanQuery, pageable)
+        } else {
+            merchantProductRepository.search(MerchantStatus.ACTIVE, trimmed, pageable)
+        }
         // Batch-resolved, same no-N+1 discipline as ProductFavoriteService.getMyFavorites.
         val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
         val products = page.content.map { p ->
