@@ -2488,7 +2488,12 @@ private fun AccountDetailScreen(
 @Composable
 private fun AccountLedgerRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, afterBalance: Double, currency: String) {
     val amountText = "${if (isOutgoing) "-" else "+"}$currency %,.0f".format(transaction.amount)
-    val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.success
+    // Real fix (2026-08-14, direct user screenshots of their own real Toss Bank
+    // ledger): incoming amounts are tinted the real brand blue there, not a generic
+    // green success color -- this file's own earlier claim otherwise (see
+    // WalletMiniRow's doc comment below) was never actually checked against a real
+    // reference until now.
+    val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2653,11 +2658,12 @@ private fun WalletHeroCard(
 private fun WalletMiniRow(transaction: rw.itunda.core.network.TransactionDto, isOutgoing: Boolean, onClick: () -> Unit) {
     // Real Toss-style signed amount (2026-08-03) -- outgoing money is prefixed "-"
     // in the normal text color, incoming is prefixed "+" and tinted with the real
-    // success token (Ids.colors.success), the same signed-and-tinted convention
-    // real Toss transaction rows use, instead of every row showing an unsigned,
-    // uncolored amount regardless of direction.
+    // brand blue (corrected 2026-08-14: this used Ids.colors.success/green until a
+    // direct user screenshot of their own real Toss Bank ledger showed incoming
+    // amounts in brand blue, not green -- the original "same convention real Toss
+    // uses" claim below was never actually checked against a reference).
     val amountText = "${if (isOutgoing) "-" else "+"}${transaction.currency} %,.0f".format(transaction.amount)
-    val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.success
+    val amountColor = if (isOutgoing) Ids.colors.textPrimary else Ids.colors.brand
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
