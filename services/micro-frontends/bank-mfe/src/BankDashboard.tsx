@@ -5110,17 +5110,35 @@ function ProfilePhotoCard() {
     }
   };
 
+  // Real fix (2026-08-13, matching the identical Android fix same day, found via
+  // live browser testing): a bare "Profile photo URL" input + "Save photo" button
+  // read as an unpolished debug control. itunda has no image-upload/hosting
+  // pipeline to build a real device picker on top of (same discipline as
+  // Merchant.photoUrl on the backend -- real URL, not a fabricated upload), so the
+  // honest fix is explaining what this real feature actually does and giving live
+  // visual feedback, not pretending to be a picker it isn't. Preview uses the
+  // trimmed urlInput itself (falling back to the already-saved profilePhotoUrl) so
+  // pasting a link gives an immediate result, same as Android's ItundaAppScreen.kt.
+  const previewUrl = urlInput.trim() || profilePhotoUrl;
   return (
-    <div className="itunda-card" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-      {profilePhotoUrl ? (
-        <img src={profilePhotoUrl} alt="" style={{ width: '56px', height: '56px', borderRadius: '28px', objectFit: 'cover', flexShrink: 0 }} />
-      ) : (
-        <div style={{ width: '56px', height: '56px', borderRadius: '28px', backgroundColor: 'var(--itunda-grey-100)', flexShrink: 0 }} />
-      )}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div className="itunda-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        {previewUrl ? (
+          <img src={previewUrl} alt="" style={{ width: '56px', height: '56px', borderRadius: '28px', objectFit: 'cover', flexShrink: 0 }} />
+        ) : (
+          <div style={{ width: '56px', height: '56px', borderRadius: '28px', backgroundColor: 'var(--itunda-grey-100)', flexShrink: 0 }} />
+        )}
+        <div>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-900)', margin: 0 }}>Profile photo</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: '2px 0 0' }}>
+            Paste a link to a photo hosted elsewhere -- itunda doesn't host photo uploads yet.
+          </p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
         <input
-          type="url" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Profile photo URL"
+          type="url" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="https://example.com/my-photo.jpg"
           style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '12px' }}
         />
         <button className="itunda-btn itunda-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }} disabled={saving} onClick={handleSave}>
