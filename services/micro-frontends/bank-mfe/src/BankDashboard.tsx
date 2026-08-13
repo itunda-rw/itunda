@@ -804,72 +804,27 @@ function CooperativeSavingsRail({ onNavigateToTab, onNavigateToLoansMode, onNavi
   );
 }
 
-function HomeView({ onNavigateToCard, onNavigateToTab, onNavigateToLoansMode, onNavigateToSavingsTarget }: { onNavigateToCard: () => void; onNavigateToTab: (tab: Tab) => void; onNavigateToLoansMode: (mode: LoansMode) => void; onNavigateToSavingsTarget: (target: 'sacco' | 'ikimina') => void }) {
-  const { t } = useI18n();
-  const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [unusuallyLargeIds, setUnusuallyLargeIds] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [showTransfer, setShowTransfer] = useState(false);
-
-  const load = () => {
-    setError(null);
-    Promise.all([fetchWallets(), fetchTransactions()])
-      .then(([wallets, txs]) => {
-        setWallet(wallets.find((w) => w.type === 'MAIN') ?? wallets[0] ?? null);
-        setTransactions(txs);
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : t('home.loadError')));
-    // Real Toss Timeline-style unusual-spend flag -- fetched independently of the main
-    // wallet/transactions load so a failure here never blocks the core balance view.
-    fetchTransactionTimeline()
-      .then((entries) => setUnusuallyLargeIds(new Set(entries.filter((e) => e.unusuallyLarge).map((e) => e.transaction.id))))
-      .catch(() => {});
-  };
-
-  useEffect(load, []);
+// Real architectural fix (2026-08-13, matching the identical Android/iOS fix same
+// session, direct user directive): "all itunda product features are independent
+// and isolated -- itunda bank is a complete product... tabs are not products, are
+// just access points." This tab used to render the wallet balance, transfer flow,
+// quick actions, coop-savings teaser, transaction history, scheduled/auto
+// transfers, auto top-up, request-money, and the Mini wallet card directly --
+// real Bank- and Pay-product content baked into what's meant to be a generic
+// access point. AccountBalance/QuickActions/TransactionHistory/RequestMoneyCard/
+// AutoTopUpCard/ScheduledTransfersCard moved into PayHub (itunda's real,
+// self-contained wallet product); AutoTransfersCard/MiniWalletCard moved into
+// SavingsView ("itunda Bank"); CooperativeSavingsRail was only ever a teaser
+// linking into SavingsView's own already-complete SaccoSection/IkiminaSection, so
+// it's removed outright rather than moved -- nothing it showed was unique.
+function HomeView() {
   // Real, minimal usage signal (2026-08-10) -- see lib/analytics.ts's own doc comment.
   // Fired once per real mount of Home, the baseline every retention question in the
   // "itunda: the wedge, not the mirror" memo is measured against.
   useEffect(() => { recordEvent('home_view'); }, []);
 
-  if (error) {
-    return (
-      <ErrorCard message={error} onRetry={load} />
-    );
-  }
-
-  if (wallet === undefined) {
-    return (
-      <div>
-        <div className="itunda-card skeleton" style={{ height: '180px', marginBottom: '16px' }} />
-        <div className="itunda-card skeleton" style={{ height: '300px' }} />
-      </div>
-    );
-  }
-
   return (
     <div>
-      <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} onClaimInterest={() => onNavigateToTab('SAVINGS')} />
-      {showTransfer && (
-        <TransferFlow
-          walletBalance={wallet?.balance ?? 0}
-          onClose={() => setShowTransfer(false)}
-          onBalanceRefresh={load}
-          onSuccess={() => {
-            setShowTransfer(false);
-            load();
-          }}
-        />
-      )}
-      <QuickActions onCardsClick={onNavigateToCard} />
-      <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} onNavigateToLoansMode={onNavigateToLoansMode} onNavigateToSavingsTarget={onNavigateToSavingsTarget} />
-      <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
-      <ScheduledTransfersCard />
-      <AutoTransfersCard />
-      {wallet && <AutoTopUpCard walletId={wallet.id} />}
-      <RequestMoneyCard />
-      <MiniWalletCard />
       <DiscoverSection />
     </div>
   );
@@ -887,14 +842,30 @@ function ProductPageHeader({ title, subtitle }: { title: string; subtitle: strin
 // The pay surface brings the real, existing money-moving flows into one predictable
 // place. It does not create another payment implementation: every action below uses
 // the established transfer, bill, merchant-code, and payment-intent components.
-function PayHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
+function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: Tab) => void; onNavigateToCard: () => void }) {
   const [wallet, setWallet] = useState<Wallet | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [unusuallyLargeIds, setUnusuallyLargeIds] = useState<Set<string>>(new Set());
   const [showTransfer, setShowTransfer] = useState(false);
   const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
   const [facePayEnrolled, setFacePayEnrolled] = useState(false);
 
+  // Real architectural fix (2026-08-13) -- see HomeView's own doc comment for why
+  // the wallet balance, quick actions, and transaction history moved here from
+  // Home: this is itunda's real, complete Pay product now, matching Android's
+  // identical WalletHeroCard -> PayTab move the same session.
   const loadWallet = () => {
-    fetchWallets().then((wallets) => setWallet(wallets.find((item) => item.type === 'MAIN') ?? wallets[0] ?? null)).catch(() => setWallet(null));
+    Promise.all([fetchWallets(), fetchTransactions()])
+      .then(([wallets, txs]) => {
+        setWallet(wallets.find((item) => item.type === 'MAIN') ?? wallets[0] ?? null);
+        setTransactions(txs);
+      })
+      .catch(() => setWallet(null));
+    // Real Toss Timeline-style unusual-spend flag -- fetched independently of the main
+    // wallet/transactions load so a failure here never blocks the core balance view.
+    fetchTransactionTimeline()
+      .then((entries) => setUnusuallyLargeIds(new Set(entries.filter((e) => e.unusuallyLarge).map((e) => e.transaction.id))))
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -907,6 +878,15 @@ function PayHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
   return (
     <div>
       <ProductPageHeader title="Pay" subtitle="Send, receive, or pay with a clear confirmation before money moves." />
+      <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} onClaimInterest={() => onNavigateToTab('SAVINGS')} />
+      {showTransfer && (
+        <TransferFlow
+          walletBalance={wallet?.balance ?? 0}
+          onClose={() => setShowTransfer(false)}
+          onBalanceRefresh={loadWallet}
+          onSuccess={() => { setShowTransfer(false); loadWallet(); }}
+        />
+      )}
       <div className="itunda-card" style={{ padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
         <button className="itunda-btn itunda-btn-primary" onClick={() => setShowTransfer(true)} disabled={!wallet} style={{ minHeight: '52px' }}>
           <Send size={17} /> Send money
@@ -915,17 +895,13 @@ function PayHub({ onNavigateToTab }: { onNavigateToTab: (tab: Tab) => void }) {
           <Receipt size={17} /> Bills & airtime
         </button>
       </div>
-      {showTransfer && wallet && (
-        <TransferFlow
-          walletBalance={wallet.balance}
-          onClose={() => setShowTransfer(false)}
-          onBalanceRefresh={loadWallet}
-          onSuccess={() => { setShowTransfer(false); loadWallet(); }}
-        />
-      )}
+      <QuickActions onCardsClick={onNavigateToCard} />
       <RequestMoneyCard />
       <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled} />
       <PayByStaticQrCard onPaid={setPaymentResult} />
+      <ScheduledTransfersCard />
+      {wallet && <AutoTopUpCard walletId={wallet.id} />}
+      <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
     </div>
   );
 }
@@ -20010,7 +19986,7 @@ function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDe
   );
 }
 
-function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNavigateToTab }: { initialScrollTarget?: 'sacco' | 'ikimina' | null; onConsumedInitialScrollTarget?: () => void; onNavigateToTab?: (tab: Tab) => void } = {}) {
+function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNavigateToTab, onNavigateToLoansMode, onNavigateToSavingsTarget }: { initialScrollTarget?: 'sacco' | 'ikimina' | null; onConsumedInitialScrollTarget?: () => void; onNavigateToTab?: (tab: Tab) => void; onNavigateToLoansMode?: (mode: LoansMode) => void; onNavigateToSavingsTarget?: (target: 'sacco' | 'ikimina') => void } = {}) {
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -20049,6 +20025,17 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
   return (
     <div>
       <ProductPageHeader title="itunda Bank" subtitle="Savings, SACCO, Ikimina, loans & investments" />
+      {/* Real architectural fix (2026-08-13, matching the identical Android/iOS fix
+          same session): this rail (SACCO/Ikimina/Moto-Taxi Ownership/Harvest advance)
+          used to render on Home -- real Bank-product content on what's meant to be a
+          generic access point. Moved here, its actual home, since this is itunda's
+          real Bank product; nothing about the rail itself changed (same
+          onNavigateToLoansMode/onNavigateToSavingsTarget wiring the parent already
+          threads through, see this view's own initialScrollTarget doc comment for why
+          the Sacco/Ikimina taps still work correctly even without a tab switch). */}
+      {onNavigateToTab && onNavigateToLoansMode && onNavigateToSavingsTarget && (
+        <CooperativeSavingsRail onNavigateToTab={onNavigateToTab} onNavigateToLoansMode={onNavigateToLoansMode} onNavigateToSavingsTarget={onNavigateToSavingsTarget} />
+      )}
       <InterestJarCard />
       <RoundUpCard goals={goals ?? []} />
       <CreateGoalForm onCreated={load} />
@@ -20078,6 +20065,17 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
       </div>
       <div style={{ marginTop: '24px' }}>
         <UpfrontDepositSection />
+      </div>
+      {/* Real architectural fix (2026-08-13) -- see this view's own coop-rail doc
+          comment above: AutoTransfersCard (recurring 자동이체) and MiniWalletCard (a
+          capped starter wallet) both used to render on Home too, same "real Bank-
+          product content on a generic access point" violation. Homed here now,
+          matching Android's identical "Auto Transfer -> BankHubScreen" move. */}
+      <div style={{ marginTop: '24px' }}>
+        <AutoTransfersCard />
+      </div>
+      <div style={{ marginTop: '24px' }}>
+        <MiniWalletCard />
       </div>
       {onNavigateToTab && (
         <div className="itunda-card" style={{ marginTop: '24px', padding: '20px' }}>
@@ -20332,8 +20330,8 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         ))}
       </div>
 
-      {tab === 'HOME' && <HomeView onNavigateToCard={() => setTab('CARD')} onNavigateToTab={setTab} onNavigateToLoansMode={setPendingLoansMode} onNavigateToSavingsTarget={setPendingSavingsTarget} />}
-      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} />}
+      {tab === 'HOME' && <HomeView />}
+      {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} />}
       {tab === 'EXPLORE' && <ExploreHub groups={EXPLORE_TAB_GROUPS} tabLabel={tabLabel} recentTabs={recentMoreTabs} onSelect={navigateFromExplore} />}
       {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
       {tab === 'MY' && <MyView />}
@@ -20349,6 +20347,8 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
           initialScrollTarget={pendingSavingsTarget}
           onConsumedInitialScrollTarget={() => setPendingSavingsTarget(null)}
           onNavigateToTab={setTab}
+          onNavigateToLoansMode={setPendingLoansMode}
+          onNavigateToSavingsTarget={setPendingSavingsTarget}
         />
       )}
       {tab === 'MESSAGES' && (
