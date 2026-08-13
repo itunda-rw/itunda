@@ -104,6 +104,16 @@ struct ContentView: View {
     // owns its own sheet state" duplication already used for showSacco above.
     @State private var showLoans = false
     @State private var showInvest = false
+    // Real architectural fix (2026-08-13, matching the identical Android fix same
+    // session, direct user directive): "all itunda product features are independent
+    // and isolated -- itunda bank is a complete product... tabs are not products,
+    // are just access points." BankView used to render directly as this TabView's
+    // own Home (tag 0) -- real Bank-product content (balance, savings, coop rail,
+    // connected money, discover, deposit protection) baked into what's meant to be
+    // a generic access point. Reachable from Explore's "Bank" icon now instead (see
+    // EntireMenuScreen's own onOpenBank doc comment), matching Android's identical
+    // BankHubScreen move. Home no longer carries any Bank-specific data at all.
+    @State private var showBank = false
 
     // Real, minimal usage signal on each tap (2026-08-10) -- same event name/metadata
     // shape bank-mfe's/Android's identical coop rails already fire, stable keys
@@ -172,28 +182,13 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Real, ported screen (was previously unreachable from any navigation --
-            // see docs/ARCHITECTURE.md §3's "New finding" note) replaces the crude,
-            // hardcoded-mock-data BankScreen struct that used to live in this file,
-            // same "delete the unreachable duplicate, wire in the real one" fix
-            // Android already went through for its own legacy BankScreen.kt.
-            BankView(
-                balanceText: bankViewModel.balanceText,
-                accountNumber: bankViewModel.accountNumber,
-                savingsRows: savingsRows,
-                discoverRows: bankViewModel.discoverRows,
-                coopRows: coopRows,
-                onSend: { showTransferFlow = true },
-                onOpenTransactionHistory: { showTransactionHistory = true }
-            )
-                .task { await bankViewModel.load() }
-                // Real, minimal usage signal (2026-08-10) -- see the "itunda: the
-                // wedge, not the mirror" strategy memo, recommendation (ii), and
-                // NetworkClient.recordAnalyticsEventBestEffort's own doc comment.
-                // Fired once per real appearance of Home, the baseline every
-                // retention question is measured against -- same event name/shape
-                // bank-mfe's/Android's identical Home effects already fire.
-                .onAppear { NetworkClient.shared.recordAnalyticsEventBestEffort("home_view") }
+            // Real minimal access-point Home (2026-08-13) -- see showBank's own doc
+            // comment above for why this used to be BankView directly. Discover is
+            // real, already-fetched data (bankViewModel.discoverRows); isOffline was
+            // already tracked by BankViewModel but never rendered anywhere -- same
+            // "tracked but never shown" bug just found and fixed on Android's
+            // identical HomeTab.
+            HomeTabContent(bankViewModel: bankViewModel)
                 .fullScreenCover(isPresented: $showTransferFlow) {
                     TransferFlowContainer(
                         availableBalance: bankViewModel.availableBalance,
@@ -227,24 +222,6 @@ struct ContentView: View {
                         },
                         onBack: { showTransactionHistory = false }
                     )
-                }
-                .sheet(isPresented: $showSacco) {
-                    SaccoScreenView(onBack: { showSacco = false })
-                }
-                .sheet(isPresented: $showIkimina) {
-                    IkiminaScreenView(onBack: { showIkimina = false })
-                }
-                .sheet(isPresented: $showMotoOwnership) {
-                    MotoOwnershipScreenView(onBack: { showMotoOwnership = false })
-                }
-                .sheet(isPresented: $showHarvestAdvance) {
-                    HarvestAdvanceScreenView(onBack: { showHarvestAdvance = false })
-                }
-                .sheet(isPresented: $showLoans) {
-                    LoansScreenView(onBack: { showLoans = false })
-                }
-                .sheet(isPresented: $showInvest) {
-                    InvestScreenView(onBack: { showInvest = false })
                 }
                 .tabItem {
                     Image(systemName: "house.fill")
@@ -286,8 +263,51 @@ struct ContentView: View {
                 onOpenMarketplace: { showMarketplace = true },
                 onOpenCommunity: { showCommunity = true },
                 onOpenJobs: { showJobs = true },
-                onOpenProperty: { showProperty = true }
+                onOpenProperty: { showProperty = true },
+                onOpenBank: { showBank = true }
             )
+                .fullScreenCover(isPresented: $showBank) {
+                    // BankView was built to be a TabView root (no back button of its
+                    // own -- the tab bar was navigation enough); presented here as a
+                    // real destination instead, so it needs one, matching every other
+                    // fullScreenCover destination in this file (SaccoScreenView etc.
+                    // each take their own onBack).
+                    NavigationStack {
+                        BankView(
+                            balanceText: bankViewModel.balanceText,
+                            accountNumber: bankViewModel.accountNumber,
+                            savingsRows: savingsRows,
+                            discoverRows: bankViewModel.discoverRows,
+                            coopRows: coopRows,
+                            onSend: { showTransferFlow = true },
+                            onOpenTransactionHistory: { showTransactionHistory = true }
+                        )
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarLeading) {
+                                    Button("Close") { showBank = false }
+                                }
+                            }
+                    }
+                        .task { await bankViewModel.load() }
+                        .sheet(isPresented: $showSacco) {
+                            SaccoScreenView(onBack: { showSacco = false })
+                        }
+                        .sheet(isPresented: $showIkimina) {
+                            IkiminaScreenView(onBack: { showIkimina = false })
+                        }
+                        .sheet(isPresented: $showMotoOwnership) {
+                            MotoOwnershipScreenView(onBack: { showMotoOwnership = false })
+                        }
+                        .sheet(isPresented: $showHarvestAdvance) {
+                            HarvestAdvanceScreenView(onBack: { showHarvestAdvance = false })
+                        }
+                        .sheet(isPresented: $showLoans) {
+                            LoansScreenView(onBack: { showLoans = false })
+                        }
+                        .sheet(isPresented: $showInvest) {
+                            InvestScreenView(onBack: { showInvest = false })
+                        }
+                }
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsScreen(onDone: { showSettings = false })
                 }
@@ -389,6 +409,85 @@ private extension URL {
 // where the Pay tab could never reach it. This is that real UI, moved to where
 // "Pay" actually means pay -- same fix as Android's identical PayTab mock the
 // same day.
+// Real minimal access-point Home (2026-08-13) -- see ContentView's own showBank
+// doc comment for why this replaces BankView as tag(0)'s content. Discover
+// (bankViewModel.discoverRows) was already real, already-fetched data; isOffline
+// was already tracked by BankViewModel (see its own doc comment) but nothing here
+// ever rendered it -- the same "tracked but never shown" bug just found and fixed
+// on Android's identical HomeTab, found by grepping for the same pattern on this
+// platform. Reuses the shared bankViewModel instance (not a second fetch) so this
+// and the Bank destination never show two different snapshots of the same data.
+struct HomeTabContent: View {
+    @ObservedObject var bankViewModel: BankViewModel
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                HeaderTitle(title: "itunda")
+                if bankViewModel.isOffline {
+                    HStack(spacing: 10) {
+                        Image(systemName: "wifi.slash")
+                            .foregroundColor(.red)
+                        Text("You are offline. Showing limited, non-live data.")
+                            .font(scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(Color.red.opacity(0.12))
+                    .cornerRadius(14)
+                    .padding(.horizontal, 24)
+                }
+                if !bankViewModel.discoverRows.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Discover")
+                            .font(scaledFont(size: 20, weight: .bold, relativeTo: .title3))
+                            .foregroundColor(.primary)
+                        ForEach(bankViewModel.discoverRows) { row in
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: "sparkles")
+                                    .foregroundColor(.accentBlue)
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.accentBlue.opacity(0.15))
+                                    .clipShape(Circle())
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(row.isNew ? "\(row.title) · NEW" : row.title)
+                                        .font(scaledFont(size: 15, weight: .semibold, relativeTo: .body))
+                                        .foregroundColor(.primary)
+                                    Text(row.subtitle)
+                                        .font(scaledFont(size: 13, weight: .regular, relativeTo: .footnote))
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if let badge = row.badge {
+                                    Text(badge)
+                                        .font(scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(16)
+                    .padding(.horizontal, 24)
+                }
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 32)
+        }
+        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+        .task { await bankViewModel.load() }
+        // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not
+        // the mirror" strategy memo, recommendation (ii), and
+        // NetworkClient.recordAnalyticsEventBestEffort's own doc comment. Fired once
+        // per real appearance of Home, the baseline every retention question is
+        // measured against -- same event name/shape bank-mfe's/Android's identical
+        // Home effects already fire.
+        .onAppear { NetworkClient.shared.recordAnalyticsEventBestEffort("home_view") }
+    }
+}
+
 struct PayScreen: View {
     @State private var paymentResult: CollectPaymentResultDto?
 

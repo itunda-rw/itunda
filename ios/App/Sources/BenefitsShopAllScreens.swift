@@ -66,6 +66,14 @@ struct EntireMenuScreen: View {
     var onOpenCommunity: () -> Void = {}
     var onOpenJobs: () -> Void = {}
     var onOpenProperty: () -> Void = {}
+    // Real architectural fix (2026-08-13, matching the identical Android/web fix same
+    // session, direct user directive): "itunda bank is a complete product... tabs are
+    // not products, are just access points." BankView used to render directly as
+    // ContentView's own Home tab (tag 0) -- real Bank-product content baked into what's
+    // meant to be a generic access point. Moved to a real destination reachable from
+    // here instead, wired to the "Bank" icon below (Quick access) which was previously
+    // a dead tap (IconGridSection's onItemClick was never passed for this section).
+    var onOpenBank: () -> Void = {}
 
     // Real granite mini-app launch, closing this file's own "MiniAppsSection... plain,
     // non-functional list rows" gap for real -- the CocoaPods/Tuist bridge plus the real
@@ -406,12 +414,18 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
                     IdsSearchBar(text: $menuSearchQuery, placeholder: "Search everything else")
-                    IconGridSection(title: "Quick access", items: [
-                        ("Mini", "square.grid.2x2.fill"),
-                        ("Games", "gamecontroller.fill"),
-                        ("Bank", "building.columns.fill"),
-                        ("Pick", "star.fill"),
-                    ])
+                    IconGridSection(
+                        title: "Quick access",
+                        items: [
+                            ("Mini", "square.grid.2x2.fill"),
+                            ("Games", "gamecontroller.fill"),
+                            ("Bank", "building.columns.fill"),
+                            ("Pick", "star.fill"),
+                        ],
+                        onItemClick: { label in
+                            if label == "Bank" { onOpenBank() }
+                        }
+                    )
                     // All four now open real granite mini-apps (see this file's header) --
                     // matching Android's own real four-mini-app parity.
                     FlatSection(title: "Mini apps", rows: [
