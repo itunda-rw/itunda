@@ -4,8 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,10 +23,13 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -81,24 +83,35 @@ import rw.itunda.core.designsystem.theme.IdsTypography
 // like SettingsScreen.kt's own copy of the same switcher does.
 
 /**
- * Real Toss-inspired step redesign, 2026-08-03 -- the previous version (still a real
- * improvement over the original bare form, see git history) put every field on one
- * screen inside a single card. Real Toss onboarding doesn't do that: Toss's own
- * design team has written publicly about "한 번에 하나만" ("only one thing at a
- * time") -- each real Toss signup screen asks exactly one direct question, shows one
- * auto-focused input, and pins one big pill button at the bottom, with a step
- * progressing forward rather than a form scrolling down. This rebuilds the same
- * behavior (still one real `SessionManager.login`/`register` call at the end, same
- * backend contract, same fields) as an in-screen step flow instead of a stacked form:
+ * Real Toss reverse-stacking redesign, 2026-08-13 -- direct user correction after the
+ * previous version (2026-08-03, still in git history) turned out to only borrow
+ * Toss's "one thing at a time" framing, not the actual documented mechanism. The real
+ * source (toss.tech/article/toss-signup-process, an official Toss Tech writeup on
+ * their own 2018 signup redesign) describes something more specific than "one field
+ * per full-screen step": when a question is answered, the NEXT question's field is
+ * inserted ABOVE it -- not a full-screen navigation to a new page -- so fields
+ * accumulate in reverse-chronological order on ONE continuous screen (newest/active
+ * field always at the top with focus, already-answered fields stacked, still
+ * visible, beneath it). Toss's own designer built this specifically to keep the CTA
+ * button reachable (the bug their old form had: fields appended at the BOTTOM could
+ * push the button below the keyboard) while still only showing one live input at a
+ * time -- and user testing found people don't consciously notice the reverse
+ * ordering because attention stays on the top field's cursor (the article's own
+ * "invisible gorilla" reference).
+ *
+ * This rebuilds that literally: `step` still drives which single field is active
+ * (auto-focused, editable) and which are "answered" (compactStepRows, tap to go back
+ * and re-edit), but there is no longer a full-screen slide transition between
+ * steps -- previously-answered fields stay on screen, stacked below the active one,
+ * exactly matching the real mechanism instead of only its stated goal.
  * - Login: phone -> password (2 steps)
  * - Register: phone -> name -> password, with referral code folded behind an
  *   optional "Have a referral code?" link on the password step rather than its own
  *   mandatory step -- matching Toss's own real practice of hiding optional fields
  *   instead of forcing every user through them.
- *
- * Each step auto-focuses its own field (`FocusRequester` + a `LaunchedEffect` on step
- * change -- the keyboard should already be up when a user lands on a new question,
- * not require an extra tap first, matching the real Toss feel this is inspired by).
+ * Password is never shown in a compact answered-row (it's always the final step in
+ * both modes, so it never needs to be) -- only phone and, in register mode, name
+ * ever stack below the active field.
  *
  * Gates ItundaAppScreen in MainActivity.kt behind a real authenticated session
  * instead of rendering the whole app unconditionally against services/backend's real
@@ -200,31 +213,48 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
 
                 Column(
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(1f, fill = false)
                         .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                         .padding(horizontal = Ids.layout.screenHorizontal),
-                    // Real fix, found live 2026-08-05 on a real emulator screenshot: with
-                    // Arrangement.Top, every step's headline+field sat pinned at the very
-                    // top of this weighted column while the button sat pinned to the
-                    // bottom of its own column below -- leaving roughly half the screen as
-                    // dead gray space on both the phone-number and password steps. Real
-                    // Toss/Kakao onboarding centers the one active question vertically in
-                    // the available viewport instead of stranding it at the top.
-                    verticalArrangement = Arrangement.Center,
+                    // Real fix (2026-08-13, replacing the previous Arrangement.Center):
+                    // now that answered fields stack and stay visible below the active
+                    // one instead of the screen swapping to a new page each step,
+                    // content grows from the top like any real Toss reverse-stacking
+                    // screen -- centering would make the active field visually jump as
+                    // the stack beneath it grows.
+                    //
+                    // Real bug found live (2026-08-13, direct user screenshot with the
+                    // real system keyboard open): weight(1f) (fill=true, the default)
+                    // combined with verticalScroll on the SAME Column made this content
+                    // claim its full natural height regardless of the space actually
+                    // left after imePadding() reserved room for the keyboard, pushing
+                    // the docked button and "Create an account" link off the bottom of
+                    // the screen entirely -- not just visually low, genuinely absent
+                    // from a full-screen screenshot. fill=false caps this Column at its
+                    // own measured content size instead of always expanding to consume
+                    // all available weighted space, so the fixed-height button Column
+                    // below it stays on-screen no matter how tall the keyboard is.
+                    verticalArrangement = Arrangement.Top,
                 ) {
                     if (step == 0) {
                         BrandMark()
                         Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
                     }
 
+                    // Real Toss reverse-stacking mechanism -- see this composable's own
+                    // doc comment for the full sourced account. AnimatedContent is
+                    // scoped to ONLY the active field (not the whole screen, and no
+                    // horizontal slide -- a subtle fade/rise instead, since this isn't a
+                    // page navigation), so previously-answered rows below never
+                    // re-transition when a new question appears above them.
                     AnimatedContent(
                         targetState = isRegisterMode to step,
                         transitionSpec = {
-                            val forward = targetState.second >= initialState.second
-                            (slideInHorizontally(tween(220)) { if (forward) it / 4 else -it / 4 } + fadeIn(tween(220))) togetherWith
-                                (slideOutHorizontally(tween(220)) { if (forward) -it / 4 else it / 4 } + fadeOut(tween(180)))
+                            (slideInVertically(tween(200)) { it / 6 } + fadeIn(tween(200))) togetherWith
+                                fadeOut(tween(120))
                         },
-                        label = "auth-step",
+                        label = "auth-active-step",
                     ) { (registerMode, currentStep) ->
                         Column {
                             when {
@@ -251,6 +281,22 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                                     onReferralCodeChange = { referralCode = it },
                                 )
                             }
+                        }
+                    }
+
+                    // Answered fields, most-recently-answered first -- directly below
+                    // the active field, exactly where Toss's real mechanism puts them.
+                    // Tapping one jumps back to re-edit it (real Toss lets you correct
+                    // an earlier answer without restarting the whole flow).
+                    val phoneLabel = stringResource(R.string.login_label_phone_number)
+                    val nameLabel = stringResource(R.string.login_headline_name)
+                    if (step > 0) {
+                        Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
+                        Column(verticalArrangement = Arrangement.spacedBy(Ids.layout.inlineGap)) {
+                            if (isRegisterMode && step > 1) {
+                                CompletedFieldRow(label = nameLabel, value = "$firstName $lastName", onClick = { step = 1 })
+                            }
+                            CompletedFieldRow(label = phoneLabel, value = phoneNumber, onClick = { step = 0 })
                         }
                     }
                 }
@@ -352,6 +398,35 @@ private fun StepHeadline(headline: String, subtitle: String? = null) {
     Spacer(modifier = Modifier.height(32.dp))
 }
 
+/**
+ * One already-answered question, stacked below the active field -- see
+ * LoginScreen's own doc comment for why this exists (the real Toss reverse-stacking
+ * mechanism, not a full-screen step swap). Tapping it re-opens that step for
+ * editing, same real affordance the sourced Toss redesign describes.
+ */
+@Composable
+private fun CompletedFieldRow(label: String, value: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Ids.colors.surfaceSoft)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = label, style = IdsTypography.Typography7, color = Ids.colors.textTertiary)
+            Text(text = value, style = IdsTypography.Body1, color = Ids.colors.textPrimary)
+        }
+        Icon(
+            imageVector = Icons.Outlined.ChevronRight,
+            contentDescription = null,
+            tint = Ids.colors.textTertiary,
+        )
+    }
+}
+
 /** Every focus-requesting step waits one frame before requesting focus -- a real,
  * common Compose timing fix: requesting focus in the same frame a composable enters
  * can silently no-op if the node hasn't attached yet. */
@@ -365,21 +440,16 @@ private fun rememberAutoFocus(key: Any?): FocusRequester {
     return focusRequester
 }
 
-// Real Toss reference (2026-08-13, direct user comparison against a live screenshot
-// of itunda's own login screen): the phone-number step used to trigger the
-// platform's own software keyboard (KeyboardType.Phone) -- on a device whose system
-// language differs from itunda's own selected app language (a real, live case: a
-// Korean-system-locale device running itunda in English), this meant the phone's
-// entire own numeric keypad -- "완료"/"*+#" labels -- popped up underneath an
-// English "Log in with your phone number" screen, breaking the fully-branded,
-// no-stray-system-chrome look every real Toss screen maintains (see
-// toss.tech/article/toss-signup-process's own "1 thing/1 page" discipline, which
-// only works if the screen stays under the app's own visual control end to end).
-// A custom in-app keypad, not the system IME, is how Toss actually avoids this --
-// same reason a security/PIN keypad is never the system keyboard on any real
-// banking app. Field itself stays a real IdsTextField (same focus ring/label/cursor
-// styling as every other step) via readOnly, driven entirely by this keypad's own
-// digit/backspace taps instead of direct typing.
+// Real correction (2026-08-13, direct user-provided screenshots of the actual Toss
+// app): reverts the previous same-day change here, which replaced this field's
+// system keyboard with a custom digit keypad based on an inference that turned out
+// wrong. Real Toss screenshots (Split bill amount, company-name search) confirm the
+// actual rule is narrower than "no system IME anywhere" -- Toss reserves custom
+// keypads for money amounts and PINs specifically (see AmountKeypad in
+// TransferAmountStep.kt for the real, evidenced version of that: a calculator-style
+// pad with a "00" key and quick-amount chips, not a plain phone dial pad), and uses
+// the real system keyboard everywhere else, including login/signup. This field goes
+// back to that.
 @Composable
 private fun PhoneStep(
     phoneNumber: String,
@@ -392,70 +462,11 @@ private fun PhoneStep(
         StepHeadline(headline, subtitle)
         IdsTextField(
             value = phoneNumber,
-            onValueChange = {},
+            onValueChange = onPhoneNumberChange,
             label = stringResource(R.string.login_label_phone_number),
             keyboardType = KeyboardType.Phone,
-            readOnly = true,
             modifier = Modifier.focusRequester(focusRequester),
         )
-        Spacer(modifier = Modifier.height(Ids.layout.sectionGap))
-        NumericKeypad(
-            onDigit = { digit -> onPhoneNumberChange((phoneNumber + digit).take(15)) },
-            onBackspace = { if (phoneNumber.isNotEmpty()) onPhoneNumberChange(phoneNumber.dropLast(1)) },
-        )
-    }
-}
-
-/**
- * A custom, itunda-branded numeric keypad -- see PhoneStep's own doc comment for why
- * this exists instead of the platform IME. Plain digit-centered cells (no visible
- * per-key background/border), matching real Toss/Kakao security-keypad references:
- * minimal chrome, the number itself is the whole visual. Backspace occupies the
- * bottom-right cell (same position every real phone dialer/PIN pad uses), bottom-left
- * left empty rather than filled with a decorative glyph nothing here needs.
- */
-@Composable
-private fun NumericKeypad(onDigit: (String) -> Unit, onBackspace: () -> Unit) {
-    val rows = listOf(
-        listOf("1", "2", "3"),
-        listOf("4", "5", "6"),
-        listOf("7", "8", "9"),
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        rows.forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                row.forEach { digit -> KeypadKey(label = digit, onClick = { onDigit(digit) }) }
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Box(modifier = Modifier.size(72.dp))
-            KeypadKey(label = "0", onClick = { onDigit("0") })
-            Box(modifier = Modifier.size(72.dp), contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.login_keypad_backspace),
-                    tint = Ids.colors.textSecondary,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onBackspace)
-                        .padding(12.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun KeypadKey(label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(72.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text = label, style = IdsTypography.Title1, color = Ids.colors.textPrimary)
     }
 }
 

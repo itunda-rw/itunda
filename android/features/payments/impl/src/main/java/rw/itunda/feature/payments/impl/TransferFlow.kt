@@ -1,7 +1,9 @@
 package rw.itunda.feature.payments.impl
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.IdsButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -24,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -579,25 +583,26 @@ internal fun QuickAmountChip(label: String, onClick: () -> Unit) {
     }
 }
 
+// Real correction (2026-08-13, direct user-provided real Toss screenshots: Split
+// bill, top-up/충전, "Enter workplace name"): this bespoke bar used a flat neutral
+// grey for its disabled state and floated as an inset, rounded, margined card even
+// though every screen that calls it (this file's amount/recipient steps,
+// SavingsAmountScreen's deposit step) already shows a permanently-visible custom
+// keypad below it -- exactly the real Toss "money amount entry" context the
+// screenshots show, where the confirm bar sits flush and edge-to-edge directly on
+// top of the keypad. Delegates to IdsButton instead: its disabled state is already a
+// dim tint of the real brand blue (not neutral grey, see IdsButton's own doc comment
+// citing its own separate real Toss screenshot), and it already has the real
+// press-scale micro-interaction -- this bar was quietly missing both by not using
+// the shared component at all.
 @Composable
 internal fun FlowNextBar(enabled: Boolean, label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (enabled) Ids.colors.brand else Ids.colors.chip)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            label,
-            color = if (enabled) Color.White else Ids.colors.textTertiary,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
+    IdsButton(
+        text = label,
+        onClick = onClick,
+        enabled = enabled,
+        shape = androidx.compose.ui.graphics.RectangleShape,
+    )
 }
 
 @Composable
@@ -613,11 +618,23 @@ internal fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
         keys.forEach { row ->
             Row(modifier = Modifier.fillMaxWidth().height(60.dp)) {
                 row.forEach { key ->
+                    // Real Toss micro-interaction (2026-08-13, direct user request:
+                    // "toss made keypad, button have interactions as well") -- same
+                    // press-scale IdsButton/IdsIconButton already use, applied here so
+                    // this keypad -- the actual real Toss-style custom keypad, unlike
+                    // the plain system IME used everywhere else -- gets the same
+                    // tactile feedback instead of a bare default ripple.
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val pressScale = rw.itunda.core.designsystem.components.rememberPressScale(interactionSource)
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clickable { if (key == "DEL") onDelete() else onDigit(key) }
+                            .scale(pressScale)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = LocalIndication.current,
+                            ) { if (key == "DEL") onDelete() else onDigit(key) }
                             // Digit keys' visible text is already their own accessible
                             // name; DEL's "⌫" glyph is not, so it needs an explicit one
                             // -- same reasoning as TopIconButton's fix elsewhere.
