@@ -5,16 +5,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import rw.itunda.core.designsystem.components.EmptyState
@@ -79,7 +82,18 @@ internal val rwfFormatter = NumberFormat.getNumberInstance(Locale.US)
 // ContactDto) keeps this feature module's existing independence from :app's
 // NetworkClient -- the actual fetch/add calls happen in ItundaAppScreen.kt, which
 // already has API access, and are passed down here as plain data + callbacks.
-data class ContactUi(val name: String, val phoneNumber: String, val bank: String)
+data class ContactUi(
+    val name: String,
+    val phoneNumber: String,
+    val bank: String,
+    // Real per-contact avatar (2026-08-14) -- already stored server-side
+    // (ContactRepository's own color/letter columns, set at creation time in
+    // ContactsController.addContact) but never plumbed past ContactDto until the
+    // Friends-tab redesign below needed a real colored avatar to match Talk's own
+    // FriendsView row style instead of RecentRecipientRow's flat single-tone circle.
+    val color: String = "#F5FAFF",
+    val letter: String = "?",
+)
 
 // Real Toss 사기계좌 조회-style pre-transfer warning (2026-07-31) -- see
 // rw.itunda.p2p.ScamReportService's own doc comment on the backend. A warning, not a
@@ -91,6 +105,16 @@ data class ContactUi(val name: String, val phoneNumber: String, val bank: String
 // ItundaAppScreen.kt.
 data class ScamWarningUi(val reportCount: Int)
 
+private enum class RecipientTab { FRIENDS, ACCOUNT }
+
+// Real Toss-matching redesign (2026-08-14, direct user reference: the real "어디로
+// 보낼까요?" screen tabs 계좌/친구/내 주변 -- itunda's version mixed manual account
+// entry and a small contacts afterthought into one screen with no tabs at all).
+// itunda already had the real data for a proper friends-first UI: the same
+// saved-contacts list Talk's own FriendsView (TalkScreen.kt) draws its friend list
+// from -- just never a screen that led with it. "내 주변" (Nearby) is skipped: itunda's
+// merchant-proximity discovery already lives in the Pay tab's own QR flow, not this
+// send-money funnel.
 @Composable
 fun RecipientEntryScreen(
     onBack: () -> Unit,
@@ -98,10 +122,12 @@ fun RecipientEntryScreen(
     contacts: List<ContactUi> = emptyList(),
     onAddContact: (name: String, phoneNumber: String) -> Unit = { _, _ -> },
 ) {
+    var tab by rememberSaveable { mutableStateOf(RecipientTab.FRIENDS) }
     var accountNumber by rememberSaveable { mutableStateOf("") }
     var showAddContactForm by rememberSaveable { mutableStateOf(false) }
     var newContactName by rememberSaveable { mutableStateOf("") }
     var newContactPhone by rememberSaveable { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -109,153 +135,203 @@ fun RecipientEntryScreen(
             .background(Ids.colors.background)
     ) {
         FlowTopBar(onBack)
+        RecipientTabRow(selected = tab, onSelect = { tab = it })
 
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            Text(
-                stringResource(R.string.transfer_recipient_headline),
-                color = Ids.colors.textPrimary,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 34.sp
-            )
-            Spacer(modifier = Modifier.height(28.dp))
-            // Copy widened 2026-07-20: this same digit keypad now also accepts a real
-            // phone number (a local "07XXXXXXXX" or international "2507XXXXXXXX" shape
-            // is recognized and normalized client-side -- see MainViewModel.
-            // normalizeRecipientIdentifier), not just an account number, now that
-            // MainViewModel.sendTransfer calls the real rw.itunda.p2p.sendDirect.
-            Text(stringResource(R.string.transfer_recipient_input_label), color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(6.dp))
-            // Fixed (2026-07-11): the only form input in this app had no accessible
-            // label at all -- BasicTextField, unlike a View-based TextInputLayout,
-            // doesn't auto-associate the visible "Enter account number" Text() above
-            // it (Compose doesn't merge sibling composables into one accessible node
-            // unless told to), so TalkBack announced this as a bare, unlabeled edit
-            // field. docs/ACCESSIBILITY.md flagged form labels as an open, unaudited
-            // item -- this was the field that audit needed to find.
-            val recipientInputDescription = stringResource(R.string.transfer_recipient_input_description)
-            BasicTextField(
-                value = accountNumber,
-                onValueChange = { input -> accountNumber = input.filter { it.isDigit() }.take(16) },
-                textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = recipientInputDescription }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            androidx.compose.material3.Divider(color = Ids.colors.brand, thickness = 2.dp)
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { }
-                    .padding(vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(stringResource(R.string.transfer_select_bank), color = Ids.colors.textTertiary, fontSize = 17.sp)
-                    // Real Toss auto-detects the bank from the account number's real
-                    // BIN registry -- itunda has no such registry to check against, so
-                    // this doesn't claim to (2026-07-12 fix: the previous copy here,
-                    // "We'll find the bank once you enter the account number," implied
-                    // detection that was never wired to anything -- the backend's
-                    // transfer/quote endpoint takes a single opaque `recipient` string,
-                    // not a resolved bank). A picker is a real, honest affordance for a
-                    // future release; for now this is just a label.
-                    Text(
-                        stringResource(R.string.transfer_select_bank_hint),
-                        color = Ids.colors.textTertiary,
-                        fontSize = 13.sp
-                    )
-                }
-                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-            }
-
-            // Added 2026-07-11 against a real Toss reference screenshot found this
-            // session (user-provided, 2026-07-10, matching this file's own header) --
-            // the real "어디로 돈을 보낼까요?" recipient screen leads with a "최근 보낸
-            // 계좌" (recently sent accounts) list above manual account entry, which
-            // this screen didn't have. Purely additive: the existing manual-entry
-            // flow (already real, tested, and wired to the biometric-gated confirm
-            // step) is unchanged, this just adds the shortcut the reference shows.
-            // "TUYIZERE Eric" / BK is the same demo recipient identity already used
-            // in ItundaAppScreen.kt's CashbackChanceCard -- and is, per that
-            // screenshot's own visible "TUYIZERE E" recent-recipient row, the real
-            // reference identity, not an arbitrary placeholder.
-            // Real saved contacts (2026-07-22), replacing the single hardcoded demo
-            // row this section used to show -- see rw.itunda.contacts.
-            // ContactsController's own doc comment; this was a real, live-fetched
-            // GET /api/v1/contacts with zero client UI anywhere until now.
-            if (accountNumber.isEmpty()) {
-                Spacer(modifier = Modifier.height(28.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.transfer_contacts_label), color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        if (showAddContactForm) stringResource(R.string.transfer_cancel) else stringResource(R.string.transfer_add_contact),
-                        color = Ids.colors.brand,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable { showAddContactForm = !showAddContactForm },
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                if (showAddContactForm) {
-                    val contactNamePlaceholder = stringResource(R.string.transfer_contact_name_placeholder)
-                    val contactNameDescription = stringResource(R.string.transfer_contact_name_description)
-                    BasicTextField(
-                        value = newContactName,
-                        onValueChange = { newContactName = it },
-                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = contactNameDescription },
-                        decorationBox = { inner -> if (newContactName.isEmpty()) Text(contactNamePlaceholder, color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    val contactPhonePlaceholder = stringResource(R.string.transfer_contact_phone_placeholder)
-                    val contactPhoneDescription = stringResource(R.string.transfer_contact_phone_description)
-                    BasicTextField(
-                        value = newContactPhone,
-                        onValueChange = { input -> newContactPhone = input.filter { it.isDigit() || it == '+' } },
-                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = contactPhoneDescription },
-                        decorationBox = { inner -> if (newContactPhone.isEmpty()) Text(contactPhonePlaceholder, color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        stringResource(R.string.transfer_save_contact),
-                        color = if (newContactName.isNotBlank() && newContactPhone.isNotBlank()) Ids.colors.brand else Ids.colors.textTertiary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable(enabled = newContactName.isNotBlank() && newContactPhone.isNotBlank()) {
-                            onAddContact(newContactName, newContactPhone)
-                            newContactName = ""; newContactPhone = ""; showAddContactForm = false
-                        },
-                    )
+        when (tab) {
+            RecipientTab.FRIENDS -> {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
+                ) {
                     Spacer(modifier = Modifier.height(16.dp))
-                }
-                if (contacts.isEmpty() && !showAddContactForm) {
-                    EmptyState(stringResource(R.string.transfer_no_contacts), icon = Icons.Outlined.PersonOutline)
-                } else {
-                    contacts.forEach { contact ->
-                        RecentRecipientRow(name = contact.name, bankAndAccount = "${contact.bank} - ${contact.phoneNumber}") {
-                            accountNumber = contact.phoneNumber.filter { it.isDigit() }.take(16)
+                    val searchDescription = stringResource(R.string.transfer_search_friends_description)
+                    val searchPlaceholder = stringResource(R.string.transfer_search_friends_placeholder)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Ids.colors.chip)
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.Search, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 15.sp),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
+                            modifier = Modifier.fillMaxWidth().semantics { contentDescription = searchDescription },
+                            decorationBox = { inner -> if (searchQuery.isEmpty()) Text(searchPlaceholder, color = Ids.colors.textTertiary, fontSize = 15.sp); inner() },
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.transfer_contacts_label), color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (showAddContactForm) stringResource(R.string.transfer_cancel) else stringResource(R.string.transfer_add_contact),
+                            color = Ids.colors.brand,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable { showAddContactForm = !showAddContactForm },
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (showAddContactForm) {
+                        val contactNamePlaceholder = stringResource(R.string.transfer_contact_name_placeholder)
+                        val contactNameDescription = stringResource(R.string.transfer_contact_name_description)
+                        BasicTextField(
+                            value = newContactName,
+                            onValueChange = { newContactName = it },
+                            textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                            modifier = Modifier.fillMaxWidth().semantics { contentDescription = contactNameDescription },
+                            decorationBox = { inner -> if (newContactName.isEmpty()) Text(contactNamePlaceholder, color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val contactPhonePlaceholder = stringResource(R.string.transfer_contact_phone_placeholder)
+                        val contactPhoneDescription = stringResource(R.string.transfer_contact_phone_description)
+                        BasicTextField(
+                            value = newContactPhone,
+                            onValueChange = { input -> newContactPhone = input.filter { it.isDigit() || it == '+' } },
+                            textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                            modifier = Modifier.fillMaxWidth().semantics { contentDescription = contactPhoneDescription },
+                            decorationBox = { inner -> if (newContactPhone.isEmpty()) Text(contactPhonePlaceholder, color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.transfer_save_contact),
+                            color = if (newContactName.isNotBlank() && newContactPhone.isNotBlank()) Ids.colors.brand else Ids.colors.textTertiary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable(enabled = newContactName.isNotBlank() && newContactPhone.isNotBlank()) {
+                                onAddContact(newContactName, newContactPhone)
+                                newContactName = ""; newContactPhone = ""; showAddContactForm = false
+                            },
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    val filteredContacts = if (searchQuery.isBlank()) contacts else contacts.filter { it.name.contains(searchQuery, ignoreCase = true) }
+                    if (filteredContacts.isEmpty() && !showAddContactForm) {
+                        EmptyState(stringResource(R.string.transfer_no_contacts), icon = Icons.Outlined.PersonOutline)
+                    } else {
+                        filteredContacts.forEach { contact ->
+                            FriendRecipientRow(contact) {
+                                onNext(contact.phoneNumber.filter { it.isDigit() }.take(16))
+                            }
                         }
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
-        }
+            RecipientTab.ACCOUNT -> {
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    Text(
+                        stringResource(R.string.transfer_recipient_headline),
+                        color = Ids.colors.textPrimary,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 34.sp
+                    )
+                    Spacer(modifier = Modifier.height(28.dp))
+                    // Copy widened 2026-07-20: this same digit keypad now also accepts a real
+                    // phone number (a local "07XXXXXXXX" or international "2507XXXXXXXX" shape
+                    // is recognized and normalized client-side -- see MainViewModel.
+                    // normalizeRecipientIdentifier), not just an account number, now that
+                    // MainViewModel.sendTransfer calls the real rw.itunda.p2p.sendDirect.
+                    Text(stringResource(R.string.transfer_recipient_input_label), color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    // Fixed (2026-07-11): the only form input in this app had no accessible
+                    // label at all -- BasicTextField, unlike a View-based TextInputLayout,
+                    // doesn't auto-associate the visible "Enter account number" Text() above
+                    // it (Compose doesn't merge sibling composables into one accessible node
+                    // unless told to), so TalkBack announced this as a bare, unlabeled edit
+                    // field. docs/ACCESSIBILITY.md flagged form labels as an open, unaudited
+                    // item -- this was the field that audit needed to find.
+                    val recipientInputDescription = stringResource(R.string.transfer_recipient_input_description)
+                    BasicTextField(
+                        value = accountNumber,
+                        onValueChange = { input -> accountNumber = input.filter { it.isDigit() }.take(16) },
+                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = recipientInputDescription }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    androidx.compose.material3.Divider(color = Ids.colors.brand, thickness = 2.dp)
 
-        Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.height(28.dp))
 
-        if (accountNumber.length >= 4) {
-            FlowNextBar(enabled = true, label = stringResource(R.string.transfer_next)) { onNext(accountNumber) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { }
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(stringResource(R.string.transfer_select_bank), color = Ids.colors.textTertiary, fontSize = 17.sp)
+                            // Real Toss auto-detects the bank from the account number's real
+                            // BIN registry -- itunda has no such registry to check against, so
+                            // this doesn't claim to (2026-07-12 fix: the previous copy here,
+                            // "We'll find the bank once you enter the account number," implied
+                            // detection that was never wired to anything -- the backend's
+                            // transfer/quote endpoint takes a single opaque `recipient` string,
+                            // not a resolved bank). A picker is a real, honest affordance for a
+                            // future release; for now this is just a label.
+                            Text(
+                                stringResource(R.string.transfer_select_bank_hint),
+                                color = Ids.colors.textTertiary,
+                                fontSize = 13.sp
+                            )
+                        }
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                if (accountNumber.length >= 4) {
+                    FlowNextBar(enabled = true, label = stringResource(R.string.transfer_next)) { onNext(accountNumber) }
+                }
+                NumericKeypad(
+                    onDigit = { d -> if (accountNumber.length < 16) accountNumber += d },
+                    onDelete = { if (accountNumber.isNotEmpty()) accountNumber = accountNumber.dropLast(1) }
+                )
+            }
         }
-        NumericKeypad(
-            onDigit = { d -> if (accountNumber.length < 16) accountNumber += d },
-            onDelete = { if (accountNumber.isNotEmpty()) accountNumber = accountNumber.dropLast(1) }
+    }
+}
+
+@Composable
+private fun RecipientTabRow(selected: RecipientTab, onSelect: (RecipientTab) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+        RecipientTabLabel(stringResource(R.string.transfer_tab_friends), selected == RecipientTab.FRIENDS) { onSelect(RecipientTab.FRIENDS) }
+        RecipientTabLabel(stringResource(R.string.transfer_tab_account), selected == RecipientTab.ACCOUNT) { onSelect(RecipientTab.ACCOUNT) }
+    }
+}
+
+@Composable
+private fun RecipientTabLabel(label: String, selected: Boolean, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier.clickable(onClick = onClick).padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            label,
+            color = if (selected) Ids.colors.textPrimary else Ids.colors.textTertiary,
+            fontSize = 17.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .height(2.dp)
+                .width(28.dp)
+                .background(if (selected) Ids.colors.brand else Color.Transparent)
         )
     }
 }
@@ -522,13 +598,17 @@ internal fun FlowTopBar(onBack: () -> Unit) {
 }
 
 /**
- * A recent-recipient shortcut row, matching the real reference screenshot's
- * "최근 보낸 계좌" (recently sent accounts) list -- a circular initial avatar,
- * name, and bank/account line, tappable to prefill the account number field
- * above rather than typing it manually.
+ * A friend row for the Friends tab, matching the real Toss "친구" list: a real
+ * per-contact colored avatar circle (the same color/letter ContactRepository already
+ * stores per contact, see ContactUi's own doc comment) rather than one flat tone for
+ * every row, name, and a phone-number subtitle. Tapping proceeds straight to the
+ * amount step, same as the old RecentRecipientRow this replaces.
  */
 @Composable
-private fun RecentRecipientRow(name: String, bankAndAccount: String, onClick: () -> Unit) {
+private fun FriendRecipientRow(contact: ContactUi, onClick: () -> Unit) {
+    val avatarColor = remember(contact.color) {
+        runCatching { Color(android.graphics.Color.parseColor(contact.color)) }.getOrDefault(Color(0xFFF5FAFF))
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -537,15 +617,15 @@ private fun RecentRecipientRow(name: String, bankAndAccount: String, onClick: ()
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(avatarColor),
             contentAlignment = Alignment.Center
         ) {
-            Text(name.take(1), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(contact.letter.ifBlank { contact.name.take(1) }, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column {
-            Text(name, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(bankAndAccount, color = Ids.colors.textTertiary, fontSize = 13.sp)
+            Text(contact.name, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(contact.phoneNumber, color = Ids.colors.textTertiary, fontSize = 13.sp)
         }
     }
 }

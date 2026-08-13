@@ -554,7 +554,7 @@ fun ItundaAppScreen(
                 is TransferStep.Recipient -> rw.itunda.feature.payments.impl.RecipientEntryScreen(
                     onBack = { transferStep = null },
                     onNext = { accountNumber -> transferStep = TransferStep.Amount(accountNumber) },
-                    contacts = contacts.map { rw.itunda.feature.payments.impl.ContactUi(it.name, it.phoneNumber, it.bank) },
+                    contacts = contacts.map { rw.itunda.feature.payments.impl.ContactUi(it.name, it.phoneNumber, it.bank, it.color, it.letter) },
                     onAddContact = { name, phoneNumber ->
                         coroutineScope.launch {
                             try {

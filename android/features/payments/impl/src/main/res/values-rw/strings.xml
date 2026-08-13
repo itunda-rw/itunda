@@ -10,6 +10,10 @@
     <string name="transfer_recipient_input_description">Numero ya telefoni cyangwa konti, ntirengeje imibare 16</string>
     <string name="transfer_select_bank">Hitamo banki</string>
     <string name="transfer_select_bank_hint">Si ngombwa, ni ukugira ngo ubimenye</string>
+    <string name="transfer_tab_account">Konti</string>
+    <string name="transfer_tab_friends">Inshuti</string>
+    <string name="transfer_search_friends_placeholder">Shakisha izina</string>
+    <string name="transfer_search_friends_description">Shakisha inshuti ukoresheje izina</string>
     <string name="transfer_contacts_label">Abo wabitse</string>
     <string name="transfer_add_contact">+ Ongeraho</string>
     <string name="transfer_cancel">Hagarika</string>

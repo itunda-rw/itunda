@@ -16,6 +16,10 @@
     <string name="transfer_recipient_input_description">Phone or account number, up to 16 digits</string>
     <string name="transfer_select_bank">Select bank</string>
     <string name="transfer_select_bank_hint">Optional, for your own reference</string>
+    <string name="transfer_tab_account">Account</string>
+    <string name="transfer_tab_friends">Friends</string>
+    <string name="transfer_search_friends_placeholder">Search by name</string>
+    <string name="transfer_search_friends_description">Search friends by name</string>
     <string name="transfer_contacts_label">Contacts</string>
     <string name="transfer_add_contact">+ Add</string>
     <string name="transfer_cancel">Cancel</string>
