@@ -203,9 +203,9 @@
          product identity for its savings/SACCO/Ikimina/loans/investment features. -->
     <string name="bank_title">itunda Bank</string>
     <string name="bank_total_saved">Total saved</string>
-    <string name="bank_summary_subtitle">Savings, SACCO, Ikimina, loans &amp; investments</string>
     <string name="bank_save_grow">Save &amp; grow</string>
     <string name="bank_borrow">Borrow</string>
+    <string name="bank_insights">Insights</string>
     <string name="bank_status_disclosure">itunda is not a licensed bank, and this is not real government deposit insurance. \"itunda Bank\" is itunda\'s own product name for these savings, SACCO/Ikimina, loan, and investment features -- not a separate licensed banking entity.</string>
     <string name="bank_deposit_protection_title">Deposit Protection Fund (simulation)</string>
     <string name="bank_deposit_protection_covered">Your covered balance</string>

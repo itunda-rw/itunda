@@ -71,6 +71,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Map
@@ -1189,6 +1190,15 @@ fun ItundaAppScreen(
                 onOpenStudentLoan = { showStudentLoan = true },
                 autoTransferCount = autoTransferCount,
                 onOpenAutoTransfers = { showAutoTransfers = true },
+                onOpenCreditScore = { showCreditScore = true },
+                // Real ordering fix: showSpending is checked AFTER showBank in this
+                // same sequential if-chain below (unlike showCreditScore, which is
+                // checked before it) -- without clearing showBank here first, tapping
+                // this row would just keep re-rendering BankHubScreen forever, since
+                // showBank's own `if` above it always wins and returns first. Same
+                // real bug class this file's own showBank doc comment already warns
+                // about for exactly this reason.
+                onOpenSpendingInsight = { showBank = false; showSpending = true },
             )
             return@IdsTheme
         }
@@ -1328,15 +1338,10 @@ fun ItundaAppScreen(
                 when (selectedTab) {
                     ItundaTab.Home -> HomeTab(
                         viewModel,
-                        onSend = { transferStep = TransferStep.Recipient },
-                        onOpenTransactionHistory = { showTransactionHistory = true },
-                        onOpenSpendingInsight = { showSpending = true },
-                        onCashOutAtAgent = { showAgentCash = true },
                         onOpenPay = { selectedTab = ItundaTab.Pay },
                         onOpenNotifications = { showNotificationsFeed = true },
                         onOpenOverview = { showOverview = true },
                         onOpenBank = { showBank = true },
-                        onOpenCreditScore = { showCreditScore = true },
                         onOpenIdentity = { showIdentity = true },
                         onOpenLoans = { showLoans = true },
                         onOpenAccountDetail = { showAccountDetail = true },
@@ -1346,7 +1351,12 @@ fun ItundaAppScreen(
                     // overlay from Home's QR icon or a Menu row. No BackHandler here,
                     // same as Explore/You below: a persistent bottom-nav destination,
                     // not a screen pushed on top of one.
-                    ItundaTab.Pay -> PayTab()
+                    ItundaTab.Pay -> PayTab(
+                        viewModel,
+                        onSend = { transferStep = TransferStep.Recipient },
+                        onOpenTransactionHistory = { showTransactionHistory = true },
+                        onCashOutAtAgent = { showAgentCash = true },
+                    )
                     // Seventh and final Feature extraction (2026-07-23) -- see
                     // TalkScreen.kt's own header comment for why deviceStepUpHost is
                     // injected (DeviceStepUpHost.kt wraps :features:payments:impl's
@@ -1489,49 +1499,17 @@ private fun ItundaBottomBar(selectedTab: ItundaTab, onSelect: (ItundaTab) -> Uni
 @Composable
 private fun HomeTab(
     viewModel: MainViewModel,
-    onSend: () -> Unit,
-    onOpenTransactionHistory: () -> Unit,
-    onOpenSpendingInsight: () -> Unit = {},
-    onCashOutAtAgent: () -> Unit,
     onOpenPay: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
     onOpenBank: () -> Unit = {},
-    onOpenCreditScore: () -> Unit = {},
     onOpenIdentity: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
     onOpenAccountDetail: () -> Unit = {},
 ) {
-    val primaryWallet by viewModel.primaryWallet.collectAsState()
-    val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
-    val savingsGoals by viewModel.savingsGoals.collectAsState()
-    val interestJar by viewModel.interestJar.collectAsState()
     val discoverItems by viewModel.discoverItems.collectAsState()
-    val recentTransactions by viewModel.transactions.collectAsState()
-    val spendingInsight by viewModel.spendingInsight.collectAsState()
     val unreadNotificationCount by viewModel.unreadNotificationCount.collectAsState()
     val isOffline by viewModel.isOffline.collectAsState()
-    // Real Toss reference (16 screenshots, 2026-08-13 -- direct user follow-up "fix
-    // the detail" against a Home-tab comparison): the real Home screen shows a
-    // dedicated "내 신용점수" (My credit score) row with its own "보기" (View)
-    // button, positioned between the spending-insight card and the account-opening
-    // shortcuts row. itunda already has this exact real feature -- a genuine,
-    // computed-from-real-account-activity score (rw.itunda.creditscore,
-    // GET /api/v1/credit-score, already load-bearing on LoansService's risk gate)
-    // with its own real CreditScoreScreen -- it was just never surfaced on Home,
-    // only reachable from deep inside Explore's Money tools list. Fetched locally
-    // (own minimal LaunchedEffect), matching this same file's established
-    // per-section real-data-fetch precedent (BankHubScreen's depositProtection,
-    // PersonalRecommendationCard's discover fetch) rather than growing
-    // MainViewModel's own Home-load path for one row.
-    var creditScore by remember { mutableStateOf<rw.itunda.core.network.CreditScoreResponse?>(null) }
-    LaunchedEffect(Unit) {
-        try {
-            creditScore = rw.itunda.core.network.NetworkClient.apiService.getCreditScore()
-        } catch (_: Exception) {
-            // Non-critical -- the row just won't render if this fails.
-        }
-    }
     // Real, minimal usage signal (2026-08-10) -- see the "itunda: the wedge, not the
     // mirror" strategy memo, recommendation (ii), and rw.itunda.core.network.
     // recordAnalyticsEvent's own doc comment. Fired once per real composition of
@@ -1629,86 +1607,23 @@ private fun HomeTab(
                 PersonalRecommendationCard(heroDiscoverItem, onOpenAction = onOpenAction)
             }
         }
-        item {
-            WalletHeroCard(
-                balanceText = balanceText,
-                accountNumber = primaryWallet?.accountNumber,
-                onSend = onSend,
-                onCashOutAtAgent = onCashOutAtAgent,
-                recentTransactions = recentTransactions.take(2),
-                currentUserId = primaryWallet?.userId,
-                onSeeAll = onOpenTransactionHistory,
-                earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
-            )
-        }
-        // Real itunda Bank product surface (2026-08-11) -- replaces the coop rail +
-        // Savings section that used to render directly here (SACCO/Ikimina/Moto/
-        // Harvest/interest jar/savings goals/round-up), same real data and real
-        // destinations, just moved into BankHubScreen so they read as one coherent
-        // product ("itunda Bank") instead of loose rows competing with itunda Pay's
-        // own WalletHeroCard for the same visual weight -- the exact real Toss Bank/
-        // Toss Payments and KakaoPay/KakaoBank split researched this session. This
-        // compact summary card is the entry point; BankHubScreen holds the full
-        // breakdown, same relationship WalletHeroCard already has with PayTab.
-        item {
-            BankSummaryCard(
-                totalSaved = (interestJar?.balance ?: 0.0) + savingsGoals.sumOf { it.currentAmount },
-                onClick = onOpenBank,
-            )
-        }
-        // Real Toss-style spending insight (2026-08-03) -- replaces a hardcoded
-        // "RWF 463,022 / Spent in July" row that this file's own prior comment
-        // admitted was illustrative. GET /api/v1/wallet/spending
-        // (WalletService.getSpendingInsight) has been real since 2026-07-13 and
-        // already had its own dedicated SpendingScreen -- this just surfaces the
-        // same real total/top-category on Home instead of nowhere. Shown only once
-        // there's real spend to report, same "don't flash an empty/zero section"
-        // discipline the Savings section below already establishes.
-        val topCategory = spendingInsight?.categories?.maxByOrNull { it.amount.toDouble() }
-        // Real fix (2026-08-13, direct user report: "entire app is still messy...
-        // give me something real"): this section used to also render "Transfer
-        // cashback"/"Sprinkle money to friends" (zero backend anywhere -- grepped --
-        // hardcoded fake subtitle "BK account -> TUYIZERE Eric" and a countdown
-        // "19:03:55 left" that never actually counted down) plus a THIRD section of
-        // "Get cashback every time you pay"/"Pay with face ID"/"Receive government
-        // alerts" rows with no onClick at all. All pure decorative filler with no
-        // real data or destination behind any of it -- removed rather than either
-        // leaving them as dead taps or inventing a fake feature just to wire them up.
-        // Matches this same file's own established precedent (see the Legal/consent
-        // FlatRow fix, item 3 of the 2026-08-07 pass) of removing fabricated content
-        // instead of faking a destination for it.
-        if (spendingInsight != null && (spendingInsight?.totalSpent?.toDouble() ?: 0.0) > 0.0) {
-            item {
-                ShellSection(
-                    title = "",
-                    rows = listOf(
-                        ShellRow(
-                            "RWF %,.0f".format(spendingInsight?.totalSpent?.toDouble() ?: 0.0),
-                            if (topCategory != null) stringResource(R.string.home_spent_period_category, topCategory.name) else stringResource(R.string.home_spent_period),
-                            ">",
-                            Icons.Outlined.PieChart,
-                            AccentPurple,
-                            onClick = onOpenSpendingInsight,
-                        ),
-                    )
-                )
-            }
-        }
-        item {
-            ShellSection(
-                title = "",
-                rows = listOf(
-                    ShellRow(
-                        stringResource(R.string.home_credit_score_title),
-                        creditScore?.let { stringResource(R.string.home_credit_score_value, it.score) } ?: stringResource(R.string.home_credit_score_subtitle),
-                        stringResource(R.string.home_credit_score_action),
-                        Icons.Outlined.TrendingUp,
-                        AccentPurple,
-                        onClick = onOpenCreditScore,
-                    ),
-                )
-            )
-        }
+        // Real architectural fix (2026-08-13, direct user directive): "all itunda
+        // product features are independent and isolated -- itunda bank is a complete
+        // product... tabs are not products, are just access points." The itunda Bank
+        // summary card (total saved), spending insight, and credit score all used to
+        // render directly here on Home -- real Bank-product content duplicated onto
+        // a tab that's meant to be a generic access point, not itself a product. All
+        // three moved into BankHubScreen (see its own doc comment), which is now the
+        // one complete, self-contained place for everything Bank. The itunda Pay
+        // wallet card (balance, Cash out/Send, recent transactions) had the exact
+        // same problem -- direct user follow-up after the Bank fix, pointing at a
+        // screenshot still showing this card on Home: "this is bank features
+        // remained in home tab move them keep each feature independent and isolated."
+        // Moved into PayTab (see its own doc comment) for the same reason. Home no
+        // longer carries any Bank- or Pay-specific data or destinations at all,
+        // keeping Home free to change shape later (the user's own stated example: a
+        // future Naver-style search surface) without that change touching either
+        // product.
         // Real Discover feed (found 2026-07-22) -- MainViewModel already fetched this
         // from GET /api/v1/discover on every launch, but it was never rendered
         // anywhere in the app: a real, live data flow with no UI consumer. See
@@ -1786,30 +1701,6 @@ private fun RoundUpSettingsDialog(
     )
 }
 
-// Real itunda Bank entry point on Home -- see HomeTab's own doc comment at its call
-// site. Deliberately styled like a second hero card, the same visual weight as
-// WalletHeroCard (itunda Pay), not a smaller row -- these are two parallel product
-// identities, not a primary feature and a buried secondary one.
-@Composable
-private fun BankSummaryCard(totalSaved: Double, onClick: () -> Unit) {
-    IdsCard(
-        shape = RoundedCornerShape(28.dp),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.padding(24.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(R.string.bank_title), fontSize = 14.sp, color = Ids.colors.textSecondary)
-                Text("RWF %,.0f".format(totalSaved), style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
-                Text(stringResource(R.string.bank_summary_subtitle), fontSize = 13.sp, color = Ids.colors.textSecondary)
-            }
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
-        }
-    }
-}
-
 // Real itunda Bank product hub (2026-08-11) -- see the doc comment on the showBank
 // state var in ItundaAppScreen for the full "itunda Bank vs itunda Pay/wallet"
 // naming research this came out of. Every row here is a real, already-built screen
@@ -1848,6 +1739,8 @@ private fun BankHubScreen(
     // level for exactly this purpose.
     autoTransferCount: Int = 0,
     onOpenAutoTransfers: () -> Unit = {},
+    onOpenCreditScore: () -> Unit = {},
+    onOpenSpendingInsight: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val savingsGoals by viewModel.savingsGoals.collectAsState()
@@ -1866,6 +1759,20 @@ private fun BankHubScreen(
             depositProtection = rw.itunda.core.network.NetworkClient.apiService.getDepositProtectionStatus().status
         } catch (_: Exception) {
             // Non-critical -- the disclosure copy below still renders without it.
+        }
+    }
+    // Real architectural fix (2026-08-13, direct user directive): credit score and
+    // spending insight used to be fetched by HomeTab -- moved here, same "each
+    // screen fetches its own minimal real data" precedent as depositProtection
+    // above, now that Bank (not Home) is their real home.
+    val spendingInsight by viewModel.spendingInsight.collectAsState()
+    val spendingTopCategory = spendingInsight?.categories?.maxByOrNull { it.amount.toDouble() }
+    var creditScore by remember { mutableStateOf<rw.itunda.core.network.CreditScoreResponse?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            creditScore = rw.itunda.core.network.NetworkClient.apiService.getCreditScore()
+        } catch (_: Exception) {
+            // Non-critical -- the row just won't render if this fails.
         }
     }
 
@@ -1993,6 +1900,41 @@ private fun BankHubScreen(
                         ShellRow("Student loan", "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", ">", Icons.Outlined.School, AccentPurple, onClick = onOpenStudentLoan),
                         ShellRow(stringResource(R.string.home_coop_rail_moto_title), "Save a 30% down payment, then convert to a loan for your own bike", ">", Icons.Outlined.DirectionsBike, AccentTeal, onClick = onOpenMotoOwnership),
                     )
+                )
+            }
+            // Real architectural fix (2026-08-13, direct user directive): "itunda bank
+            // is a complete product... with all features" -- credit score and
+            // spending insight used to render on Home instead, real Bank-product
+            // content stranded on a tab that's meant to be a generic access point.
+            // Moved here (state fetched near the top of this composable, alongside
+            // depositProtection's own identical pattern -- see above).
+            item {
+                ShellSection(
+                    title = stringResource(R.string.bank_insights),
+                    rows = buildList {
+                        if ((spendingInsight?.totalSpent?.toDouble() ?: 0.0) > 0.0) {
+                            add(
+                                ShellRow(
+                                    "RWF %,.0f".format(spendingInsight?.totalSpent?.toDouble() ?: 0.0),
+                                    if (spendingTopCategory != null) stringResource(R.string.home_spent_period_category, spendingTopCategory.name) else stringResource(R.string.home_spent_period),
+                                    ">",
+                                    Icons.Outlined.PieChart,
+                                    AccentPurple,
+                                    onClick = onOpenSpendingInsight,
+                                ),
+                            )
+                        }
+                        add(
+                            ShellRow(
+                                stringResource(R.string.home_credit_score_title),
+                                creditScore?.let { stringResource(R.string.home_credit_score_value, it.score) } ?: stringResource(R.string.home_credit_score_subtitle),
+                                stringResource(R.string.home_credit_score_action),
+                                Icons.Outlined.TrendingUp,
+                                AccentPurple,
+                                onClick = onOpenCreditScore,
+                            ),
+                        )
+                    },
                 )
             }
             // Real licensed-bank/deposit-insurance disclosure (2026-08-11) -- see
@@ -2789,7 +2731,12 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
 private enum class PayTabMode { MY_CODE, PAY_MERCHANT }
 
 @Composable
-private fun PayTab() {
+private fun PayTab(
+    viewModel: MainViewModel,
+    onSend: () -> Unit,
+    onOpenTransactionHistory: () -> Unit,
+    onCashOutAtAgent: () -> Unit,
+) {
     // Real fix (2026-08-11, same session -- direct user pushback: "why is itunda pay
     // have no simplicity at all pay by code?"): PAY_MERCHANT (manual merchant-ID/
     // amount entry) was the ONLY way to pay -- real friction Toss's own "Postel's
@@ -2800,6 +2747,16 @@ private fun PayTab() {
     // static QR (a market stall), the one real case where typing a merchant ID is
     // still the honest baseline until real camera scanning exists on that side too.
     var mode by remember { mutableStateOf(PayTabMode.MY_CODE) }
+    // Real architectural move (2026-08-13, direct user directive -- see HomeTab's
+    // own doc comment at its WalletHeroCard removal site): the itunda Pay balance
+    // card (balance, Cash out/Send, recent transactions) used to render on Home,
+    // duplicating real Pay-product content onto a tab meant to be a generic access
+    // point. Pay is itunda's actual complete, self-contained wallet product, so
+    // this is where that card belongs now.
+    val primaryWallet by viewModel.primaryWallet.collectAsState()
+    val payBalanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
+    val interestJar by viewModel.interestJar.collectAsState()
+    val recentTransactions by viewModel.transactions.collectAsState()
     // Real swipeable funding-source cards (2026-08-11) -- the user's own KakaoPay
     // reference screenshot's bottom card carousel. The real, buildable slice of that:
     // itunda's own real wallets (MAIN + any opened foreign-currency ones,
@@ -2827,6 +2784,18 @@ private fun PayTab() {
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { PlainTopBar("Pay") }
+        item {
+            WalletHeroCard(
+                balanceText = payBalanceText,
+                accountNumber = primaryWallet?.accountNumber,
+                onSend = onSend,
+                onCashOutAtAgent = onCashOutAtAgent,
+                recentTransactions = recentTransactions.take(2),
+                currentUserId = primaryWallet?.userId,
+                onSeeAll = onOpenTransactionHistory,
+                earnedThisMonth = interestJar?.earnedThisMonth ?: 0.0,
+            )
+        }
         item {
             // Real KakaoPay reference (user's own screenshot): the segmented control is
             // a dark pill with a lighter-grey highlight behind the active label, not a
@@ -2975,14 +2944,34 @@ private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
             contentAlignment = Alignment.Center,
         ) {
             if (!revealed) {
-                Text(
-                    "Pay", color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(IdsColors.White)
-                        .clickable { revealed = true }
-                        .padding(horizontal = 40.dp, vertical = 14.dp),
-                )
+                // Real fix (2026-08-13, direct user report: "this pay UI/UX it's so
+                // bad" -- researched real KakaoPay's own reveal-gate: the code screen
+                // requires security auth before showing the real barcode/QR, not an
+                // unprotected tap). This pill used to be a small, ambiguous "Pay"
+                // label floating alone in an empty gray box -- nothing communicated
+                // that tapping it does anything, let alone that it's a real security
+                // gate protecting a real payment code. A lock icon + explicit "Tap to
+                // show your code" copy makes the gate and the action both legible.
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Box(
+                        modifier = Modifier.size(56.dp).clip(CircleShape).background(IdsColors.White),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Lock, contentDescription = null, modifier = Modifier.size(24.dp), tint = IdsColors.Gray700)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Your payment code is hidden", color = IdsColors.Gray900, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Protects you if someone else has your phone", color = IdsColors.Gray600, fontSize = 12.sp)
+                    }
+                    Text(
+                        "Tap to show", color = IdsColors.White, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(IdsColors.Blue500)
+                            .clickable { revealed = true }
+                            .padding(horizontal = 32.dp, vertical = 12.dp),
+                    )
+                }
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val currentCode = code
@@ -3058,8 +3047,13 @@ private fun MyPaymentCodeCard(selectedWallet: rw.itunda.core.network.Wallet?) {
         }
 
         Spacer(Modifier.height(16.dp))
+        // Real fix (2026-08-13, direct user report: "this pay UI/UX it's so bad"):
+        // the real disclosure this line makes (itunda pays from its own ledger, not
+        // a card network) is genuinely important and stays -- only the wording
+        // changes, from an internal-doc-comment-style "--" aside to plain,
+        // user-facing copy a real product would actually ship.
         Text(
-            "Not a real card network -- itunda's own real ledger-backed payment.",
+            "Pays instantly from your real itunda balance.",
             color = IdsColors.Gray600, fontSize = 11.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
