@@ -688,7 +688,12 @@ private fun JobPostCard(
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("$categoryLabel · ${relativeTimeAgo(post.createdAt)}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    // Leads with the real hyperlocal neighborhood, same shape Hood's own
+                    // listing rows use -- "where" matters as much as "when" for a job
+                    // that's realistically only reachable nearby. Same class of gap as
+                    // Property's identical fix, see [[project_itunda_full_ecosystem_polish]].
+                    val categoryAndLocation = listOfNotNull(categoryLabel, post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · ")
+                    Text(categoryAndLocation, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     if (post.status == "FILLED") {
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 8.dp, vertical = 2.dp)) {

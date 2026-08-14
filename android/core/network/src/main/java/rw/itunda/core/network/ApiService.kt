@@ -950,6 +950,13 @@ data class JobPostDto(
     // mark-filled time, see backend JobPost.kt's own doc comment. Only set once a
     // real review becomes possible for this transaction.
     val workerId: String? = null,
+    // Real hyperlocal neighborhood -- the backend has stamped this on every job post
+    // since 2026-07-20 (same reverse-geocode-or-poster-fallback JobPost.kt's own doc
+    // comment describes for Listing/PropertyListing) and serializes the entity
+    // directly, but this DTO omitted the field until 2026-08-15, same class of gap as
+    // PropertyListingDto's identical fix -- see
+    // [[project_itunda_full_ecosystem_polish]] for the full pattern.
+    val neighborhood: String? = null,
 )
 data class MarkFilledRequest(val workerPhoneNumber: String? = null)
 data class CreateJobPostRequest(
