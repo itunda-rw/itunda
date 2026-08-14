@@ -5904,3 +5904,75 @@ behavior rather than just trusting the code read.
   header-tab structure, and a "Recommendations" carousel leading the product catalog. Named
   explicitly, not silently folded into "done."
 - iOS/Web untouched this pass -- all 4 fixes are Android-only.
+
+## 59. Uber (ride-hailing/delivery) -- first real research pass, plus a fresh Rwanda-market localization gap
+
+**Added 2026-08-15**, continuing the standing "keep searching other ecosystems" directive
+(Section 19 first opened this beyond Toss). Uber itself had never been researched anywhere in
+this document despite being one of the most directly comparable global products to itunda's own
+Eats delivery vertical -- checked and confirmed via a full-document grep before starting, not
+assumed.
+
+### References
+
+| Ecosystem | Finding | Status |
+|---|---|---|
+| Uber Eats delivery tracker redesign | restaurantdive.com's coverage of Uber Eats' own real 2026 tracker overhaul, sourced from real internal research across nine countries and hundreds of eaters/couriers/restaurant partners | Real five-stage tracking bar (confirm → prep → en route → pickup → arrival) with the driver's real name and a "Latest Arrival By" time shown alongside the delivery ETA -- explicitly aimed at reducing blame ("62% of diners blame both third-party aggregates and eateries for late or cold orders") through more upfront transparency | **Checked against itunda's own Eats order-tracking screen and partially fixed same day**, see below |
+
+### Checked against itunda's own code
+
+itunda's Eats order-tracking screen (`EatsOrderRow`/`EatsStatusStepper`, Android) already had a
+real stepped visual progress row (dots + connecting bars across the real backend status chain
+`PLACED → ACCEPTED → PREPARING → READY_FOR_PICKUP → RIDER_ASSIGNED → PICKED_UP → DELIVERED` --
+actually more granular than Uber Eats' own 5-stage bar), plus a real live rider-location mini-map
+and a real delivery-route view, both already gated correctly on an active delivery. This is at or
+beyond Uber Eats' own tracker in structural terms -- not a gap.
+
+What genuinely was missing, confirmed by reading `EatsOrderDto`/`EatsOrder` directly: the assigned
+rider's real name was never resolved and shown to the customer (only a raw `riderId`), and the
+order's own already-stored `distanceKm` was never turned into a customer-facing arrival estimate
+once a rider was assigned -- both exactly the two real signals Uber Eats' own redesign added.
+
+### Fixed same day
+
+**Real rider name + arrival estimate on order tracking** -- `DeliveryEtaEstimator`
+(`services/backend/core/.../geo/DeliveryEtaEstimator.kt`, new file) promotes the exact real
+distance→minutes formula that already existed as a private method on `ShoppingController` (used
+for Eats/Shop's own pre-order browse-time estimate) into a shared object, same "shared, not
+duplicated" discipline `FullTextSearchUtil` already established this session for an identical
+two-controllers-need-the-same-real-formula situation. `EatsController` gained `riderRepository`/
+`userRepository` and a `withRiderEtaFields` mapper resolving `order.riderId` → the real rider's
+`firstName`, wired into `GET /eats/orders/my-orders`. Resolved at the controller layer rather than
+adding two new repository dependencies to `EatsOrderService`'s own already-19-parameter
+constructor, which would have meant updating all 9 of that service's existing test call sites for
+a read-only enrichment unrelated to its actual business logic -- `EatsController` has no test file
+of its own yet, making it the genuinely lower-risk seam, not just the more convenient one.
+Android's `EatsOrderDto` gained matching `riderName`/`estimatedArrivalMinutes` fields, rendered as
+a real "Rider: {name} · Latest arrival by ~{n} min" line, shown only once at least one of the two
+is non-null (never a fabricated ETA before a rider is actually assigned).
+
+*Shipped: `services/backend/core/.../geo/DeliveryEtaEstimator.kt`,
+`services/backend/merchant/.../web/ShoppingController.kt` (now calls the shared version),
+`services/backend/eats/.../web/EatsController.kt`, `android/core/network/.../ApiService.kt`
+(`EatsOrderDto`), `android/features/eats/impl/.../EatsScreen.kt` (`EatsOrderRow`)*
+
+**Verification**: `:eats:test`/`:merchant:test`/`:app:compileDebugKotlin` all green. **Not yet
+deployed to the live backend or curl/device-verified** -- named honestly, not silently folded
+into "done," same discipline every other unverified item in this document already follows.
+
+### A second, unrelated real gap re-confirmed this same research thread
+
+Cross-checking Section 19's own already-sourced Paytm/PhonePe regional-language finding (>50% of
+new fintech users in a comparable market prefer their own language over English) against the
+actual current codebase -- not just trusting the doc's own years-old note -- found it was still
+real: `bank-mfe` had English + Kinyarwanda (since 2026-08-08) but zero French, and every other web
+micro-frontend (`merchant-mfe`, `ops-mfe`, `kyc-mfe`, `pay-checkout`, `host-app`) had zero
+localization infrastructure at all. **Fixed same day**: added a full, real French locale to
+`bank-mfe`'s existing i18n system (same architecture, no new library, every existing key
+translated) -- live-verified end to end against the real backend: login page, an authenticated
+Home/Discover view, and the complete Send Money transfer flow all confirmed rendering correct
+French through a real session, not just compiled. *Shipped:
+`services/micro-frontends/bank-mfe/src/i18n/translations.ts`, `I18nContext.tsx`, `LoginPage.tsx`,
+`BankDashboard.tsx`.* Porting the same pattern to the other MFEs, finishing Android's remaining
+~37% of untranslated strings, and any iOS localization at all are all real, still-open follow-ups
+-- see the `project_itunda_localization` memory for the full current-coverage account.
