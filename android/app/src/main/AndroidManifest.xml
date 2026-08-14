@@ -60,6 +60,16 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="itunda" android:host="maps" />
             </intent-filter>
+            <!-- `itunda://verify/{requestId}`: exactly the `verifyUrl` the backend hands
+                 the partner in its own createRequest response. Lets the partner send its
+                 user here to consent to a real identity disclosure. See
+                 IdentityVerificationService's own doc comment on the backend. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="itunda" android:host="verify" />
+            </intent-filter>
         </activity>
 
         <!-- Apps-in-Itunda mini-app host activities, see miniapps/MiniAppActivity.kt -->

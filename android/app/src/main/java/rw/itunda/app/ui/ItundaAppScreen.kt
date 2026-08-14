@@ -300,6 +300,8 @@ fun ItundaAppScreen(
     openMapFromDeepLink: Boolean = false,
     initialMapSearchQuery: String? = null,
     initialMapSharedFolder: Pair<String, String>? = null,
+    identityVerifyRequestId: String? = null,
+    onIdentityVerifyConsumed: () -> Unit = {},
     onMapDeepLinkConsumed: () -> Unit = {},
 ) {
     IdsTheme {
@@ -1025,6 +1027,17 @@ fun ItundaAppScreen(
                     )
                 }
             }
+            return@IdsTheme
+        }
+        // Real partner identity-disclosure consent. Deliberately checked before every
+        // other destination below: arriving here means the user followed a partner's
+        // link specifically to answer this, and the request itself expires in 5 minutes.
+        if (identityVerifyRequestId != null) {
+            BackHandler { onIdentityVerifyConsumed() }
+            IdentityVerificationConsentScreen(
+                requestId = identityVerifyRequestId,
+                onDone = onIdentityVerifyConsumed,
+            )
             return@IdsTheme
         }
         // Real self-hosted Rwanda map (2026-07-19) -- same Quick-links full-screen
@@ -4828,4 +4841,117 @@ private fun IconGridSection(
 @Composable
 fun PreviewItundaAppScreen() {
     ItundaAppScreen()
+}
+
+// Real "verify with itunda" consent screen. IdentityVerificationService's own doc
+// comment describes exactly this screen -- "names the partner and exactly what will be
+// shared ... no silent or default-approve path" -- but no client had ever implemented
+// it, so a partner could create a request the user could never answer (found
+// 2026-08-14). Nothing is disclosed until the user explicitly taps Approve: the GET
+// below returns only the partner's name and the field labels, never the user's data.
+@Composable
+private fun IdentityVerificationConsentScreen(requestId: String, onDone: () -> Unit) {
+    var request by remember { mutableStateOf<rw.itunda.core.network.IdentityVerificationRequestResponse?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var outcome by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(requestId) {
+        loading = true
+        error = null
+        try {
+            request = rw.itunda.core.network.NetworkClient.apiService.getIdentityVerificationRequest(requestId)
+        } catch (e: retrofit2.HttpException) {
+            error = rw.itunda.core.network.superAppErrorMessage(e)
+        } catch (e: Exception) {
+            error = "Couldn't reach itunda. Check your connection and try again."
+        } finally {
+            loading = false
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
+    ) {
+        BackTopBar("Verify with itunda", onDone)
+        when {
+            loading -> Text("Loading request…", color = Ids.colors.textSecondary, fontSize = 14.sp)
+            outcome != null -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(outcome!!, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("You can return to the app that sent you here.", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                IdsButton(text = "Done", onClick = onDone, modifier = Modifier.fillMaxWidth())
+            }
+            error != null -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(error!!, color = Ids.colors.danger, fontSize = 14.sp)
+                IdsButton(text = "Close", onClick = onDone, modifier = Modifier.fillMaxWidth())
+            }
+            request != null && request!!.status != "PENDING" -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "This request has already been answered, or it expired. Requests are only valid for a few minutes.",
+                    color = Ids.colors.textSecondary, fontSize = 14.sp,
+                )
+                IdsButton(text = "Close", onClick = onDone, modifier = Modifier.fillMaxWidth())
+            }
+            request != null -> {
+                val req = request!!
+                IdsCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("${req.partnerName} wants to verify your identity", color = Ids.colors.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("If you approve, itunda will share only this with them:", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        req.requestedFields.forEach { field ->
+                            Text("• $field", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                        }
+                        Text(
+                            "Nothing is shared unless you approve. itunda never shares your PIN, balance, or transaction history.",
+                            color = Ids.colors.textSecondary, fontSize = 12.sp,
+                        )
+                    }
+                }
+                IdsButton(
+                    text = if (busy) "…" else "Approve and share",
+                    enabled = !busy,
+                    onClick = {
+                        busy = true
+                        coroutineScope.launch {
+                            try {
+                                rw.itunda.core.network.NetworkClient.apiService.approveIdentityVerification(requestId)
+                                outcome = "Shared with ${req.partnerName}."
+                            } catch (e: retrofit2.HttpException) {
+                                error = rw.itunda.core.network.superAppErrorMessage(e)
+                            } catch (e: Exception) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                IdsButton(
+                    text = "Decline",
+                    variant = IdsButtonVariant.Tinted,
+                    enabled = !busy,
+                    onClick = {
+                        busy = true
+                        coroutineScope.launch {
+                            try {
+                                rw.itunda.core.network.NetworkClient.apiService.declineIdentityVerification(requestId)
+                                outcome = "Declined. Nothing was shared."
+                            } catch (e: retrofit2.HttpException) {
+                                error = rw.itunda.core.network.superAppErrorMessage(e)
+                            } catch (e: Exception) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
 }

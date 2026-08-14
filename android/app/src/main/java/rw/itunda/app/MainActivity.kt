@@ -50,6 +50,7 @@ class MainActivity : FragmentActivity() {
     private var mapDeepLinkRequested by mutableStateOf(false)
     private var mapSearchFromDeepLink by mutableStateOf<String?>(null)
     private var mapSharedFolderFromDeepLink by mutableStateOf<Pair<String, String>?>(null)
+    private var identityVerifyRequestId by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -193,6 +194,8 @@ class MainActivity : FragmentActivity() {
                                         openMapFromDeepLink = mapDeepLinkRequested,
                                         initialMapSearchQuery = mapSearchFromDeepLink,
                                         initialMapSharedFolder = mapSharedFolderFromDeepLink,
+                                        identityVerifyRequestId = identityVerifyRequestId,
+                                        onIdentityVerifyConsumed = { identityVerifyRequestId = null },
                                         onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
                                     )
                                 }
@@ -229,6 +232,19 @@ class MainActivity : FragmentActivity() {
         // link the app itself handed out landed the recipient on a blank Maps tab
         // (found 2026-08-14). getSharedMapFolder is deliberately permitAll'd on the
         // backend, so this resolves even for a recipient who isn't signed in.
+        // itunda://verify/{requestId} -- exactly the `verifyUrl` the backend itself hands
+        // the partner (IdentityVerificationService.createRequest), confirmed against a
+        // real response rather than assumed. Separate host from maps, so it's parsed on
+        // its own rather than inside the mapDeepLinkRequested gate below.
+        identityVerifyRequestId = if (
+            intent?.action == Intent.ACTION_VIEW &&
+            uri?.scheme.equals("itunda", ignoreCase = true) &&
+            uri?.host.equals("verify", ignoreCase = true)
+        ) {
+            uri?.pathSegments.orEmpty().firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
         mapSharedFolderFromDeepLink = if (mapDeepLinkRequested) {
             val segments = uri?.pathSegments.orEmpty()
             if (segments.size == 3 && segments[0].equals("shared", ignoreCase = true)) {

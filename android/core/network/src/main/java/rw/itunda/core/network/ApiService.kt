@@ -296,6 +296,14 @@ data class SavingsGoal(
 )
 
 data class SavingsGoalsResponse(val success: Boolean, val goals: List<SavingsGoal>)
+data class SimpleSuccessResponse(val success: Boolean)
+data class IdentityVerificationRequestResponse(
+    val success: Boolean,
+    val partnerName: String,
+    val status: String,
+    val expiresAt: String,
+    val requestedFields: List<String>,
+)
 data class CreateSavingsGoalRequest(
     val name: String,
     val targetAmount: java.math.BigDecimal,
@@ -2284,6 +2292,23 @@ interface ApiService {
 
     @GET("api/v1/discover")
     suspend fun getDiscoverItems(): DiscoverResponse
+
+    // Real "verify with itunda" partner consent flow. IdentityVerificationService's own
+    // doc comment states the itunda app "shows the user a real consent screen naming the
+    // partner and exactly what will be shared" -- but no client on any platform had ever
+    // called these, so a partner could create a request the user could never answer and
+    // the flow could only ever expire (found 2026-08-14). getIdentityVerificationRequest
+    // is deliberately unauthenticated on the backend (it names only the partner and the
+    // field labels, never the user's own data); approve/decline both require the real
+    // signed-in user, which is what makes the consent meaningful.
+    @GET("api/v1/identity/verification/{requestId}")
+    suspend fun getIdentityVerificationRequest(@Path("requestId") requestId: String): IdentityVerificationRequestResponse
+
+    @POST("api/v1/identity/verification/{requestId}/approve")
+    suspend fun approveIdentityVerification(@Path("requestId") requestId: String): SimpleSuccessResponse
+
+    @POST("api/v1/identity/verification/{requestId}/decline")
+    suspend fun declineIdentityVerification(@Path("requestId") requestId: String): SimpleSuccessResponse
 
     @GET("api/v1/savings/goals")
     suspend fun getSavingsGoals(): SavingsGoalsResponse
