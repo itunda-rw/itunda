@@ -297,6 +297,7 @@ fun ItundaAppScreen(
     viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     openMapFromDeepLink: Boolean = false,
     initialMapSearchQuery: String? = null,
+    initialMapSharedFolder: Pair<String, String>? = null,
     onMapDeepLinkConsumed: () -> Unit = {},
 ) {
     IdsTheme {
@@ -337,6 +338,7 @@ fun ItundaAppScreen(
         var showProperty by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
         var mapSearchQueryForScreen by rememberSaveable { mutableStateOf<String?>(null) }
+        var mapSharedFolderForScreen by rememberSaveable { mutableStateOf<Pair<String, String>?>(null) }
         // Real "Delivery" pill deep-link, Maps -> Eats (2026-08-09) -- itunda's
         // Feature-module isolation forbids Maps depending on Eats directly, so this
         // shell (the only thing that can see both) carries a small, plain (not
@@ -482,6 +484,7 @@ fun ItundaAppScreen(
             if (openMapFromDeepLink) {
                 showMap = true
                 mapSearchQueryForScreen = initialMapSearchQuery
+                mapSharedFolderForScreen = initialMapSharedFolder
                 onMapDeepLinkConsumed()
             }
         }
@@ -1030,6 +1033,7 @@ fun ItundaAppScreen(
                 onBack = { showMap = false },
                 initialCategory = if (showAgentCash) "ITUNDA_AGENT" else null,
                 initialSearchQuery = mapSearchQueryForScreen,
+                initialSharedFolder = mapSharedFolderForScreen,
                 onOrderDelivery = { merchantId, businessName ->
                     pendingEatsMerchantId = merchantId
                     pendingEatsMerchantName = businessName

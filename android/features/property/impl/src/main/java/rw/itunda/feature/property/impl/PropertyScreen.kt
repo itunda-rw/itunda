@@ -783,7 +783,13 @@ private fun PropertyListingCard(
                     }
                 }
             }
-            val detailsWithTime = (if (details.isNotBlank()) "$details · " else "") + relativeTimeAgo(listing.createdAt)
+            // Leads with the real hyperlocal neighborhood, same shape Hood's own listing
+            // rows use -- "where" is the first thing a property browser filters on.
+            val detailsWithTime = listOfNotNull(
+                listing.neighborhood,
+                details.takeIf { it.isNotBlank() },
+                relativeTimeAgo(listing.createdAt),
+            ).joinToString(" · ")
             Text(detailsWithTime, color = Ids.colors.textSecondary, fontSize = 12.sp)
             // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
             // comment. Only shown for someone else's listing -- a trust score about

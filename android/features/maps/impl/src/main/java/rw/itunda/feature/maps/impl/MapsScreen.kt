@@ -480,6 +480,10 @@ fun MapScreen(
     onBack: () -> Unit,
     initialCategory: String? = null,
     initialSearchQuery: String? = null,
+    // itunda://maps/shared/{userId}/{folderName}, as (ownerUserId, folderName) -- the
+    // receiving half of toggleFolderShare's own share sheet below. Optional/no-op
+    // default so no other MapScreen call site breaks.
+    initialSharedFolder: Pair<String, String>? = null,
     // Real "배달" (Delivery) pill (2026-08-09) -- see docs/DESIGN_REFERENCES.md Section
     // 35's own "named, not built this pass" note for why this needed a new navigation
     // contract: itunda's Feature-module isolation forbids Maps depending on Eats
@@ -603,6 +607,10 @@ fun MapScreen(
     var categoryResults by remember { mutableStateOf<List<NearbyPlaceDto>?>(null) }
     var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
     var bookmarking by remember { mutableStateOf(false) }
+    // Someone else's shared folder, opened from a real itunda://maps/shared/... link.
+    var sharedFolderBookmarks by remember { mutableStateOf<List<MapBookmarkDto>?>(null) }
+    var sharedFolderError by remember { mutableStateOf<String?>(null) }
+    var loadingSharedFolder by remember { mutableStateOf(false) }
     // Real "알림받기" (Notify/Follow) pill (2026-08-09) -- from the full-screen Naver Maps
     // reference screenshots. The backend + Retrofit endpoints already existed
     // (followMerchant/unfollowMerchant/getMyFollowedMerchants, ported for bank-mfe) but had
@@ -806,6 +814,32 @@ fun MapScreen(
     // making another Itunda surface recreate map search locally.
     LaunchedEffect(initialSearchQuery) {
         initialSearchQuery?.trim()?.takeIf { it.isNotEmpty() }?.let { query = it }
+    }
+
+    // The receiving half of toggleFolderShare below (2026-08-14). The share sheet has
+    // handed out itunda://maps/shared/... links since 2026-08-04, but nothing ever
+    // resolved them -- getSharedMapFolder existed with zero call sites, so a recipient
+    // tapping a shared link landed on a blank map. The endpoint is permitAll'd on the
+    // backend, so this deliberately works for a recipient who isn't signed in too.
+    LaunchedEffect(initialSharedFolder) {
+        val (ownerId, folderName) = initialSharedFolder ?: return@LaunchedEffect
+        loadingSharedFolder = true
+        sharedFolderError = null
+        try {
+            val res = NetworkClient.apiService.getSharedMapFolder(ownerId, folderName)
+            sharedFolderBookmarks = res.bookmarks
+            // Center on the shared list rather than leaving the recipient wherever they
+            // happen to be -- the whole point of opening the link is to see these places.
+            res.bookmarks.firstOrNull()?.let { first ->
+                selectedPlace = PlaceSearchResultDto(first.displayName, first.latitude, first.longitude)
+            }
+        } catch (e: HttpException) {
+            sharedFolderError = superAppErrorMessage(e)
+        } catch (e: Exception) {
+            sharedFolderError = "Couldn't reach itunda. Check your connection and try again."
+        } finally {
+            loadingSharedFolder = false
+        }
     }
 
     // Real search-as-you-type autocomplete (2026-07-22) -- ported from bank-mfe's own
@@ -2792,6 +2826,23 @@ fun MapScreen(
                                 )
                             }
 
+                            // A folder someone shared with this user, shown above their own
+                            // saved places since it's the reason they opened the app.
+                            if (initialSharedFolder != null) {
+                                SharedFolderSection(
+                                    folderName = initialSharedFolder.second,
+                                    loading = loadingSharedFolder,
+                                    error = sharedFolderError,
+                                    sharedBookmarks = sharedFolderBookmarks,
+                                    onOpenPlace = { shared ->
+                                        selectedPlace = PlaceSearchResultDto(shared.displayName, shared.latitude, shared.longitude)
+                                        route = null
+                                        routeAlternatives = null
+                                        selectedRouteIndex = 0
+                                        savingToFolder = null
+                                    },
+                                )
+                            }
                             Text(
                                 "★ Your saved places",
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
@@ -2930,5 +2981,51 @@ fun MapScreen(
                 }
             }
         } // end full-bleed map BoxWithConstraints
+    }
+}
+
+// Extracted rather than inlined into MapScreen's own bottom-sheet lambda: that lambda
+// was already close enough to the JVM's 64KB per-method bytecode ceiling that adding
+// this section inline overflowed it (real MethodTooLargeException, 2026-08-14).
+@Composable
+private fun SharedFolderSection(
+    folderName: String,
+    loading: Boolean,
+    error: String?,
+    sharedBookmarks: List<MapBookmarkDto>?,
+    onOpenPlace: (MapBookmarkDto) -> Unit,
+) {
+    Text(
+        "🔗 Shared with you · $folderName",
+        fontWeight = FontWeight.Bold,
+        fontSize = 12.sp,
+        color = Ids.colors.textSecondary,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+    when {
+        loading -> Text("Loading shared places…", fontSize = 12.sp, color = Ids.colors.textSecondary)
+        error != null -> Text(error, fontSize = 12.sp, color = Ids.colors.danger)
+        sharedBookmarks?.isEmpty() == true ->
+            Text("This shared list is empty, or is no longer public.", fontSize = 12.sp, color = Ids.colors.textSecondary)
+        else -> sharedBookmarks.orEmpty().forEach { shared ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenPlace(shared) }
+                    .padding(vertical = 6.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(
+                            try { androidx.compose.ui.graphics.Color(AndroidColor.parseColor(shared.color)) } catch (_: Exception) { androidx.compose.ui.graphics.Color(0xFFF5A623) },
+                            CircleShape,
+                        ),
+                )
+                Text(shared.displayName, fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
+            }
+        }
     }
 }

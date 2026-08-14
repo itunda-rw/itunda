@@ -49,6 +49,7 @@ private object AppUnlockState {
 class MainActivity : FragmentActivity() {
     private var mapDeepLinkRequested by mutableStateOf(false)
     private var mapSearchFromDeepLink by mutableStateOf<String?>(null)
+    private var mapSharedFolderFromDeepLink by mutableStateOf<Pair<String, String>?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -191,6 +192,7 @@ class MainActivity : FragmentActivity() {
                                     ItundaAppScreen(
                                         openMapFromDeepLink = mapDeepLinkRequested,
                                         initialMapSearchQuery = mapSearchFromDeepLink,
+                                        initialMapSharedFolder = mapSharedFolderFromDeepLink,
                                         onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
                                     )
                                 }
@@ -219,6 +221,23 @@ class MainActivity : FragmentActivity() {
             uri?.host.equals("maps", ignoreCase = true)
         mapSearchFromDeepLink = if (mapDeepLinkRequested && uri?.path.equals("/search", ignoreCase = true)) {
             uri?.getQueryParameter("query")?.trim()?.takeIf { it.isNotEmpty() }?.take(160)
+        } else {
+            null
+        }
+        // itunda://maps/shared/{userId}/{folderName} -- the exact link MapsScreen's own
+        // folder-share sheet sends. Only /search was ever parsed here, so every shared
+        // link the app itself handed out landed the recipient on a blank Maps tab
+        // (found 2026-08-14). getSharedMapFolder is deliberately permitAll'd on the
+        // backend, so this resolves even for a recipient who isn't signed in.
+        mapSharedFolderFromDeepLink = if (mapDeepLinkRequested) {
+            val segments = uri?.pathSegments.orEmpty()
+            if (segments.size == 3 && segments[0].equals("shared", ignoreCase = true)) {
+                val ownerId = segments[1].trim()
+                val folderName = segments[2].trim()
+                if (ownerId.isNotEmpty() && folderName.isNotEmpty()) ownerId to folderName else null
+            } else {
+                null
+            }
         } else {
             null
         }

@@ -982,6 +982,12 @@ data class PropertyListingDto(
     // Real ownership verification (2026-07-25) -- NONE/PENDING/VERIFIED, see backend
     // PropertyOwnershipSubmission's own doc comment.
     val ownershipVerificationStatus: String = "NONE",
+    // Real hyperlocal neighborhood -- the backend has stamped this on every listing
+    // since 2026-07-20 (PropertyListingService reverse-geocodes it, falling back to the
+    // lister's own neighborhood) and serializes the entity directly on every browse
+    // endpoint, but this DTO omitted the field until 2026-08-14, so Jackson dropped it
+    // and Property rows could never show the hyperlocal label Hood shows on every row.
+    val neighborhood: String? = null,
 )
 data class MarkTakenRequest(val counterpartyPhoneNumber: String? = null)
 data class SubmitOwnershipVerificationRequest(val documentUrl: String)
