@@ -5986,3 +5986,19 @@ French through a real session, not just compiled. *Shipped:
 `BankDashboard.tsx`.* Porting the same pattern to the other MFEs, finishing Android's remaining
 ~37% of untranslated strings, and any iOS localization at all are all real, still-open follow-ups
 -- see the `project_itunda_localization` memory for the full current-coverage account.
+
+### A real, sourced, deliberately-deferred lead: home-screen quick-pay widget
+
+**[sourced, real gap confirmed, not built this pass]** KakaoPay's Android app added a real 1x1
+home-screen payment widget (2025) for one-tap access to payment/scan without opening the app first.
+Checked itunda's own Android codebase directly (`find android -iname "*Widget*.kt"`, grep for
+`AppWidgetProvider`/`GlanceAppWidget`): **zero home-screen widget infrastructure exists anywhere**
+-- a real, confirmed gap. Deliberately not built this pass: widgets can only be meaningfully
+verified by actually placing one on a real home screen and observing render/tap behavior, which
+needs the physical device this session explicitly doesn't have access to
+(`project_itunda_ecosystem_deep_research_2` memory). Building one compile-only, with zero way to
+catch the real lifecycle/rendering quirks widgets are specifically prone to, would be shipping
+blind rather than honestly scoped -- the same discipline this document already applies elsewhere
+(e.g. this pass's own kyc-mfe REJECTED-state fix, code-verified but explicitly not claimed as
+live-clicked). Real next step once a device is available: a "Scan to Pay" 1x1 widget deep-linking
+into the existing Pay tab's scan flow, same real target Kakao's own widget serves.
