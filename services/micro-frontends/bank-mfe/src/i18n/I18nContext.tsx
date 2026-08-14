@@ -11,9 +11,11 @@ const STORAGE_KEY = 'itunda.locale';
 
 function detectInitialLocale(): Locale {
   const stored = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
-  if (stored === 'en' || stored === 'rw') return stored;
-  const browserLocale = typeof navigator !== 'undefined' ? navigator.language : '';
-  return browserLocale.toLowerCase().startsWith('rw') ? 'rw' : DEFAULT_LOCALE;
+  if (stored === 'en' || stored === 'rw' || stored === 'fr') return stored;
+  const browserLocale = (typeof navigator !== 'undefined' ? navigator.language : '').toLowerCase();
+  if (browserLocale.startsWith('rw')) return 'rw';
+  if (browserLocale.startsWith('fr')) return 'fr';
+  return DEFAULT_LOCALE;
 }
 
 type TranslationParams = Record<string, string | number>;

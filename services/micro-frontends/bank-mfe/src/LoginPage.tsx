@@ -54,7 +54,7 @@ export default function LoginPage({ onLogin, onCreateAccount }: { onLogin: () =>
               the one screen a Kinyarwanda-preferring user hits before anything else. */}
           <select
             value={locale}
-            onChange={(e) => setLocale(e.target.value as 'en' | 'rw')}
+            onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
             aria-label="Language"
             style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: 'var(--itunda-white)' }}
           >
