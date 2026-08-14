@@ -55,6 +55,15 @@ export default function KycDashboard() {
           <span className="kyc-status-detail">{latest.documentType} · {latest.documentNumber}</span>
         </div>
       )}
+      {/* Real fix (2026-08-15): decisionReason is a genuine, human-written reason a
+          real reviewer enters at decision time (IdentityService.decide's own real
+          `reason` param, not an internal code) -- bank-mfe's own IdentityView already
+          renders this (confirmed by reading it directly), but this separately-deployed
+          remote never did, so a rejected user here saw a bare red "REJECTED" badge
+          with zero explanation and no way to know what to fix before resubmitting. */}
+      {latest?.decisionReason && (
+        <p className="kyc-status-reason">{latest.decisionReason}</p>
+      )}
 
       <button
         className="kyc-card__cta"

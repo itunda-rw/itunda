@@ -202,6 +202,12 @@
   color: var(--itunda-grey-500);
 }
 
+.kyc-status-reason {
+  font-size: 12px;
+  color: var(--itunda-grey-500);
+  margin-top: -4px;
+}
+
 .kyc-doctype-row {
   display: flex;
   gap: 8px;
