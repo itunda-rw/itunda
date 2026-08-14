@@ -296,6 +296,14 @@ data class SavingsGoal(
 )
 
 data class SavingsGoalsResponse(val success: Boolean, val goals: List<SavingsGoal>)
+data class CreateSavingsGoalRequest(
+    val name: String,
+    val targetAmount: java.math.BigDecimal,
+    val monthlyContribution: java.math.BigDecimal? = null,
+    val targetDate: String? = null,
+    val category: String? = null,
+)
+data class CreateSavingsGoalResponse(val success: Boolean, val goal: SavingsGoal)
 
 data class InterestJar(
     val userId: String,
@@ -2279,6 +2287,13 @@ interface ApiService {
 
     @GET("api/v1/savings/goals")
     suspend fun getSavingsGoals(): SavingsGoalsResponse
+
+    // Real savings-goal creation. The backend endpoint and bank-mfe's own createGoal
+    // have both existed for a long time, but Android had only the GET above -- so the
+    // "Save & grow" goal list could never be anything but empty on this platform
+    // (found 2026-08-14). Mirrors backend SavingsController.CreateGoalRequest exactly.
+    @POST("api/v1/savings/goals")
+    suspend fun createSavingsGoal(@Body request: CreateSavingsGoalRequest): CreateSavingsGoalResponse
 
     @GET("api/v1/savings/interest-jar")
     suspend fun getInterestJar(): InterestJarResponse

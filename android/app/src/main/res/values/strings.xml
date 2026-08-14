@@ -208,6 +208,13 @@
     <string name="home_interest_jar_rate_subtitle">%1$s%% annual, accrued daily</string>
     <string name="home_savings_progress">RWF %1$s of %2$s</string>
     <string name="home_savings_progress_by_date">RWF %1$s of %2$s · by %3$s</string>
+    <string name="savings_new_goal_title">New savings goal</string>
+    <string name="savings_new_goal_subtitle">Set a target and save towards it</string>
+    <string name="savings_new_goal_name_label">Goal name</string>
+    <string name="savings_new_goal_target_label">Target amount (RWF)</string>
+    <string name="savings_new_goal_monthly_label">Monthly contribution (optional)</string>
+    <string name="savings_new_goal_date_label">Target date, YYYY-MM-DD (optional)</string>
+    <string name="savings_new_goal_create">Create goal</string>
     <string name="home_interest_jar_rate_subtitle_total">%1$s%% annual · RWF %2$s earned so far</string>
     <string name="home_round_up_rounding">Rounding up to RWF %1$s</string>
     <string name="home_round_up_off">Off</string>

@@ -15,6 +15,7 @@ import rw.itunda.core.network.DiscoverItem
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SendDirectP2pRequest
 import rw.itunda.core.network.DepositRequest
+import rw.itunda.core.network.CreateSavingsGoalRequest
 import rw.itunda.core.network.BatchActionRequest
 import rw.itunda.core.network.BatchRequest
 import rw.itunda.core.network.ConnectivityObserver
@@ -324,6 +325,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * means a retried tap after a timeout replays the same result instead of
      * double-sending money, same contract the backend's own IdempotencyService enforces.
      */
+    /**
+     * Real savings-goal creation (2026-08-14). The backend endpoint and bank-mfe's own
+     * createGoal have both existed for a long time, but Android only ever had the GET,
+     * so "Save & grow" could never show a goal on this platform. No Idempotency-Key
+     * here deliberately: the backend's own createGoal doesn't require one (unlike
+     * deposit/transfer), since creating a duplicate goal moves no money.
+     */
+    suspend fun createSavingsGoal(
+        name: String,
+        targetAmountRwf: Long,
+        monthlyContributionRwf: Long?,
+        targetDate: String?,
+    ): MoneyActionResult {
+        return try {
+            NetworkClient.apiService.createSavingsGoal(
+                CreateSavingsGoalRequest(
+                    name = name,
+                    targetAmount = BigDecimal(targetAmountRwf),
+                    monthlyContribution = monthlyContributionRwf?.let { BigDecimal(it) },
+                    targetDate = targetDate,
+                ),
+            )
+            fetchData()
+            MoneyActionResult.Success("Savings goal created.")
+        } catch (e: retrofit2.HttpException) {
+            MoneyActionResult.Failure(backendErrorMessage(e))
+        } catch (e: IOException) {
+            MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
+        }
+    }
+
     suspend fun sendTransfer(recipientIdentifier: String, amountRwf: Long): MoneyActionResult {
         return try {
             val res = NetworkClient.apiService.sendDirect(

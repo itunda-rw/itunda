@@ -136,6 +136,13 @@
     <string name="home_interest_jar_rate_subtitle">%1$s%% ku mwaka, zibarwa buri munsi</string>
     <string name="home_savings_progress">RWF %1$s muri %2$s</string>
     <string name="home_savings_progress_by_date">RWF %1$s muri %2$s · bitarenze %3$s</string>
+    <string name="savings_new_goal_title">Intego nshya yo kuzigama</string>
+    <string name="savings_new_goal_subtitle">Shyiraho intego maze uzigame uyigana</string>
+    <string name="savings_new_goal_name_label">Izina ry\'intego</string>
+    <string name="savings_new_goal_target_label">Amafaranga ugamije (RWF)</string>
+    <string name="savings_new_goal_monthly_label">Uzajya ushyiramo buri kwezi (si ngombwa)</string>
+    <string name="savings_new_goal_date_label">Itariki ugamije, YYYY-MM-DD (si ngombwa)</string>
+    <string name="savings_new_goal_create">Kora intego</string>
     <string name="home_interest_jar_rate_subtitle_total">%1$s%% ku mwaka · RWF %2$s wamaze kubona</string>
     <string name="home_round_up_rounding">Kuzunguruza ku RWF %1$s</string>
     <string name="home_round_up_off">Ntibikora</string>

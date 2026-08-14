@@ -2152,6 +2152,7 @@ private fun BankHubScreen(
     val interestJar by viewModel.interestJar.collectAsState()
     val roundUpSettings by viewModel.roundUpSettings.collectAsState()
     var showRoundUpDialog by remember { mutableStateOf(false) }
+    var showNewGoalDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val totalSaved = (interestJar?.balance ?: 0.0) + savingsGoals.sumOf { it.currentAmount }
     // Real Deposit Protection Fund status (2026-08-11) -- own-screen fetch, same
@@ -2321,6 +2322,19 @@ private fun BankHubScreen(
                                 )
                             )
                         }
+                        // Always offered, including (especially) when the list is empty:
+                        // Android had no create path at all until 2026-08-14, so this
+                        // section could only ever be empty on this platform.
+                        add(
+                            ShellRow(
+                                stringResource(R.string.savings_new_goal_title),
+                                stringResource(R.string.savings_new_goal_subtitle),
+                                "+",
+                                Icons.Outlined.Savings,
+                                AccentTeal,
+                                onClick = { showNewGoalDialog = true },
+                            )
+                        )
                         if (savingsGoals.isNotEmpty()) {
                             add(
                                 ShellRow(
@@ -2446,7 +2460,89 @@ private fun BankHubScreen(
                 },
             )
         }
+        if (showNewGoalDialog) {
+            NewSavingsGoalDialog(
+                onDismiss = { showNewGoalDialog = false },
+                onCreate = { name, target, monthly, date ->
+                    viewModel.createSavingsGoal(name, target, monthly, date)
+                },
+                onCreated = { showNewGoalDialog = false },
+            )
+        }
     }
+}
+
+// Real savings-goal creation dialog (2026-08-14). targetDate is a plain YYYY-MM-DD
+// text field rather than a picker: the backend takes it as a nullable String and
+// bank-mfe passes it the same way, so a picker would be inventing a stricter contract
+// than the real one -- and the field is genuinely optional.
+@Composable
+private fun NewSavingsGoalDialog(
+    onDismiss: () -> Unit,
+    onCreate: suspend (name: String, targetAmountRwf: Long, monthlyRwf: Long?, targetDate: String?) -> MoneyActionResult,
+    onCreated: () -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var targetAmount by remember { mutableStateOf("") }
+    var monthly by remember { mutableStateOf("") }
+    var targetDate by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val parsedTarget = targetAmount.filter { it.isDigit() }.toLongOrNull()
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        containerColor = Ids.colors.surface,
+        title = { Text(stringResource(R.string.savings_new_goal_title), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                IdsTextField(value = name, onValueChange = { name = it }, label = stringResource(R.string.savings_new_goal_name_label), modifier = Modifier.fillMaxWidth())
+                IdsTextField(
+                    value = targetAmount,
+                    onValueChange = { targetAmount = it.filter { c -> c.isDigit() } },
+                    label = stringResource(R.string.savings_new_goal_target_label),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                IdsTextField(
+                    value = monthly,
+                    onValueChange = { monthly = it.filter { c -> c.isDigit() } },
+                    label = stringResource(R.string.savings_new_goal_monthly_label),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                IdsTextField(value = targetDate, onValueChange = { targetDate = it }, label = stringResource(R.string.savings_new_goal_date_label), modifier = Modifier.fillMaxWidth())
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                enabled = !busy && name.isNotBlank() && parsedTarget != null && parsedTarget > 0,
+                onClick = {
+                    busy = true
+                    error = null
+                    coroutineScope.launch {
+                        when (
+                            val result = onCreate(
+                                name.trim(),
+                                parsedTarget ?: 0L,
+                                monthly.toLongOrNull(),
+                                targetDate.trim().ifBlank { null },
+                            )
+                        ) {
+                            is MoneyActionResult.Success -> { busy = false; onCreated() }
+                            is MoneyActionResult.Failure -> { busy = false; error = result.message }
+                            else -> busy = false
+                        }
+                    }
+                },
+            ) { Text(if (busy) "…" else stringResource(R.string.savings_new_goal_create), color = Ids.colors.brand, fontWeight = FontWeight.SemiBold) }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss, enabled = !busy) {
+                Text(stringResource(R.string.scam_report_cancel), color = Ids.colors.textSecondary)
+            }
+        },
+    )
 }
 
 // Real personalized recommendation card -- see HomeTab's own doc comment on
