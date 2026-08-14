@@ -2259,6 +2259,7 @@ private fun BankHubScreen(
                 val roundUpTitle = stringResource(R.string.home_round_up_title)
                 val roundUpRoundingText = roundUpSettings?.roundToNearest?.let { stringResource(R.string.home_round_up_rounding, "%,.0f".format(it)) }
                 val savingsProgressPattern = stringResource(R.string.home_savings_progress)
+                val savingsProgressByDatePattern = stringResource(R.string.home_savings_progress_by_date)
                 ShellSection(
                     title = stringResource(R.string.bank_save_grow),
                     rows = buildList {
@@ -2274,7 +2275,19 @@ private fun BankHubScreen(
                             add(
                                 ShellRow(
                                     interestJarLabel,
-                                    stringResource(R.string.home_interest_jar_rate_subtitle, "%.1f".format(jar.rate)),
+                                    // earnedTotal (real running all-time accrual, kept by
+                                    // SavingsService.accrueInterest) had no client anywhere
+                                    // -- only the this-month figure was ever shown, so a
+                                    // saver could never see what the jar had earned overall.
+                                    if (jar.earnedTotal > 0.0) {
+                                        stringResource(
+                                            R.string.home_interest_jar_rate_subtitle_total,
+                                            "%.1f".format(jar.rate),
+                                            "%,.0f".format(jar.earnedTotal),
+                                        )
+                                    } else {
+                                        stringResource(R.string.home_interest_jar_rate_subtitle, "%.1f".format(jar.rate))
+                                    },
                                     "RWF %,.0f".format(jar.earnedThisMonth),
                                     Icons.Outlined.Savings,
                                     AccentOrange,
@@ -2289,7 +2302,18 @@ private fun BankHubScreen(
                             add(
                                 ShellRow(
                                     goal.name,
-                                    savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount)),
+                                    // The backend has carried a real targetDate on every
+                                    // savings goal all along, but this row only ever showed
+                                    // progress -- a goal without its deadline is just a
+                                    // balance. Falls back to the plain pattern when the
+                                    // goal genuinely has no date set.
+                                    goal.targetDate?.takeIf { it.isNotBlank() }?.let { date ->
+                                        savingsProgressByDatePattern.format(
+                                            "%,.0f".format(goal.currentAmount),
+                                            "%,.0f".format(goal.targetAmount),
+                                            date.take(10),
+                                        )
+                                    } ?: savingsProgressPattern.format("%,.0f".format(goal.currentAmount), "%,.0f".format(goal.targetAmount)),
                                     "$progressPercent%",
                                     Icons.Outlined.Savings,
                                     AccentBlue,

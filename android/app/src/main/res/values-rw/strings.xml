@@ -135,6 +135,8 @@
     <string name="home_earned_this_month">Wabonye muri uku kwezi</string>
     <string name="home_interest_jar_rate_subtitle">%1$s%% ku mwaka, zibarwa buri munsi</string>
     <string name="home_savings_progress">RWF %1$s muri %2$s</string>
+    <string name="home_savings_progress_by_date">RWF %1$s muri %2$s · bitarenze %3$s</string>
+    <string name="home_interest_jar_rate_subtitle_total">%1$s%% ku mwaka · RWF %2$s wamaze kubona</string>
     <string name="home_round_up_rounding">Kuzunguruza ku RWF %1$s</string>
     <string name="home_round_up_off">Ntibikora</string>
     <string name="home_round_up_on">Birakora</string>

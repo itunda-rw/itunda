@@ -207,6 +207,8 @@
     <string name="home_earned_this_month">Earned this month</string>
     <string name="home_interest_jar_rate_subtitle">%1$s%% annual, accrued daily</string>
     <string name="home_savings_progress">RWF %1$s of %2$s</string>
+    <string name="home_savings_progress_by_date">RWF %1$s of %2$s · by %3$s</string>
+    <string name="home_interest_jar_rate_subtitle_total">%1$s%% annual · RWF %2$s earned so far</string>
     <string name="home_round_up_rounding">Rounding up to RWF %1$s</string>
     <string name="home_round_up_off">Off</string>
     <string name="home_round_up_on">On</string>
