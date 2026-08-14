@@ -33,7 +33,29 @@ export type TranslationKey =
   | 'login.hidePassword'
   | 'login.signingIn'
   | 'login.signIn'
-  | 'login.connectionError';
+  | 'login.connectionError'
+  // Real 2nd-localization-pass additions (2026-08-15): MerchantDashboard's own nav
+  // shell -- visible on every session regardless of which tab a merchant is using,
+  // same "the shell every session hits" reasoning that made bank-mfe's own Home/
+  // Overview tab its own 2nd priority screen. Individual tab CONTENT screens
+  // (CollectScreen, PosScreen, etc.) are each their own much larger file and are a
+  // real, separate, not-yet-done follow-up -- named honestly, not silently folded in.
+  | 'dashboard.loadError'
+  | 'dashboard.signOut'
+  | 'tabs.collect'
+  | 'tabs.pos'
+  | 'tabs.eatsOrders'
+  | 'tabs.dineIn'
+  | 'tabs.bookings'
+  | 'tabs.reports'
+  | 'tabs.reviews'
+  | 'tabs.billing'
+  | 'tabs.coupons'
+  | 'tabs.ads'
+  | 'tabs.business'
+  | 'tabs.cashAdvance'
+  | 'tabs.payroll'
+  | 'tabs.settings';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -45,6 +67,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'login.signingIn': 'Signing in…',
     'login.signIn': 'Sign in',
     'login.connectionError': "Can't connect right now. Please try again in a moment.",
+    'dashboard.loadError': 'Could not load your business account.',
+    'dashboard.signOut': 'Sign out',
+    'tabs.collect': 'Collect',
+    'tabs.pos': 'POS',
+    'tabs.eatsOrders': 'Eats orders',
+    'tabs.dineIn': 'Dine-in',
+    'tabs.bookings': 'Bookings',
+    'tabs.reports': 'Reports',
+    'tabs.reviews': 'Reviews',
+    'tabs.billing': 'Billing',
+    'tabs.coupons': 'Coupons',
+    'tabs.ads': 'Ads',
+    'tabs.business': 'Business',
+    'tabs.cashAdvance': 'Cash advance',
+    'tabs.payroll': 'Payroll',
+    'tabs.settings': 'Settings',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -55,6 +93,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'login.signingIn': 'Kwinjira…',
     'login.signIn': 'Injira',
     'login.connectionError': 'Ntibishoboka kwihuza nonaha. Ongera ugerageze mu kanya gato.',
+    'dashboard.loadError': 'Ntibishoboka gushakisha konti yawe y\'ubucuruzi.',
+    'dashboard.signOut': 'Sohoka',
+    'tabs.collect': 'Kwakira',
+    'tabs.pos': 'POS',
+    'tabs.eatsOrders': 'Itumiza ry\'ibiryo',
+    'tabs.dineIn': 'Kurira ku meza',
+    'tabs.bookings': 'Gahunda',
+    'tabs.reports': 'Raporo',
+    'tabs.reviews': 'Ibitekerezo',
+    'tabs.billing': 'Kwishyura',
+    'tabs.coupons': 'Amakuponi',
+    'tabs.ads': 'Kwamamaza',
+    'tabs.business': 'Ubucuruzi',
+    'tabs.cashAdvance': 'Inguzanyo y\'amafaranga',
+    'tabs.payroll': 'Imishahara',
+    'tabs.settings': 'Igenamiterere',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -65,5 +119,21 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'login.signingIn': 'Connexion en cours…',
     'login.signIn': 'Se connecter',
     'login.connectionError': 'Connexion impossible pour le moment. Veuillez réessayer dans un instant.',
+    'dashboard.loadError': 'Impossible de charger votre compte professionnel.',
+    'dashboard.signOut': 'Se déconnecter',
+    'tabs.collect': 'Encaisser',
+    'tabs.pos': 'Caisse',
+    'tabs.eatsOrders': 'Commandes Eats',
+    'tabs.dineIn': 'Sur place',
+    'tabs.bookings': 'Réservations',
+    'tabs.reports': 'Rapports',
+    'tabs.reviews': 'Avis',
+    'tabs.billing': 'Facturation',
+    'tabs.coupons': 'Coupons',
+    'tabs.ads': 'Publicités',
+    'tabs.business': 'Entreprise',
+    'tabs.cashAdvance': 'Avance de trésorerie',
+    'tabs.payroll': 'Paie',
+    'tabs.settings': 'Paramètres',
   },
 };

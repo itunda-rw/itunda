@@ -3,6 +3,8 @@ import { Briefcase, CalendarClock, CircleDollarSign, CreditCard, HandCoins, LogO
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import RegisterScreen from './RegisterScreen';
+import { useI18n } from './i18n/I18nContext';
+import { LOCALES, type TranslationKey } from './i18n/translations';
 import AdsScreen from './screens/AdsScreen';
 import BillingScreen from './screens/BillingScreen';
 import BookingScreen from './screens/BookingScreen';
@@ -21,37 +23,41 @@ import { QueueError, QueueSkeleton } from './QueueState';
 
 type Tab = 'collect' | 'pos' | 'eats' | 'dinein' | 'booking' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'ads' | 'business' | 'advance' | 'payroll' | 'settings';
 
-const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
-  { id: 'collect', label: 'Collect', icon: QrCode },
-  { id: 'pos', label: 'POS', icon: ShoppingCart },
+// Real 2nd-localization-pass (2026-08-15): labelKey replaces a literal string so the
+// nav renders in the merchant's own chosen language -- see i18n/translations.ts's own
+// doc comment on this file's `tabs.*` keys.
+const TABS: { id: Tab; labelKey: TranslationKey; icon: typeof QrCode }[] = [
+  { id: 'collect', labelKey: 'tabs.collect', icon: QrCode },
+  { id: 'pos', labelKey: 'tabs.pos', icon: ShoppingCart },
   // Real Coupang Eats/Baemin-style restaurant order queue (item 208) -- see
   // screens/EatsOrdersScreen.tsx's own doc comment. A merchant with no real
   // restaurant orders sees an honest empty state, not a hidden tab -- there's no
   // cheap way to know in advance whether a given merchant is a restaurant.
-  { id: 'eats', label: 'Eats orders', icon: UtensilsCrossed },
+  { id: 'eats', labelKey: 'tabs.eatsOrders', icon: UtensilsCrossed },
   // Real 배민오더-style table/QR in-store ordering -- see lib/eats.ts's own
   // dineInTableQrPayload doc comment. Already real on Android/iOS MerchantApp since
   // 2026-07-25; found missing here via the same sweep that found Bookings below.
-  { id: 'dinein', label: 'Dine-in', icon: Utensils },
+  { id: 'dinein', labelKey: 'tabs.dineIn', icon: Utensils },
   // Real local-business appointment booking, owner side -- see lib/booking.ts's own
   // doc comment. Already real on Android/iOS MerchantApp since 2026-07-25; found
   // missing here via a fresh backend-endpoint sweep.
-  { id: 'booking', label: 'Bookings', icon: CalendarClock },
-  { id: 'reports', label: 'Reports', icon: CircleDollarSign },
-  { id: 'reviews', label: 'Reviews', icon: Star },
-  { id: 'billing', label: 'Billing', icon: CreditCard },
-  { id: 'coupons', label: 'Coupons', icon: Tag },
-  { id: 'ads', label: 'Ads', icon: Megaphone },
-  { id: 'business', label: 'Business', icon: Briefcase },
+  { id: 'booking', labelKey: 'tabs.bookings', icon: CalendarClock },
+  { id: 'reports', labelKey: 'tabs.reports', icon: CircleDollarSign },
+  { id: 'reviews', labelKey: 'tabs.reviews', icon: Star },
+  { id: 'billing', labelKey: 'tabs.billing', icon: CreditCard },
+  { id: 'coupons', labelKey: 'tabs.coupons', icon: Tag },
+  { id: 'ads', labelKey: 'tabs.ads', icon: Megaphone },
+  { id: 'business', labelKey: 'tabs.business', icon: Briefcase },
   // Real Isoko Vendor Cash Advance (item 210) -- see lib/vendorCashAdvance.ts's own
   // doc comment. A merchant with no real 14-day settlement history yet sees an honest
   // "not eligible" state, not a hidden tab.
-  { id: 'advance', label: 'Cash advance', icon: HandCoins },
-  { id: 'payroll', label: 'Payroll', icon: Users },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'advance', labelKey: 'tabs.cashAdvance', icon: HandCoins },
+  { id: 'payroll', labelKey: 'tabs.payroll', icon: Users },
+  { id: 'settings', labelKey: 'tabs.settings', icon: Settings },
 ];
 
 export default function MerchantDashboard({ onLogout }: { onLogout: () => void }) {
+  const { t, locale, setLocale } = useI18n();
   const [merchant, setMerchant] = useState<Merchant | null | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('collect');
@@ -61,7 +67,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
     setLoadError(null);
     getMyMerchant()
       .then(setMerchant)
-      .catch((err) => setLoadError(err instanceof Error ? err.message : 'Could not load your business account.'));
+      .catch((err) => setLoadError(err instanceof Error ? err.message : t('dashboard.loadError')));
   };
 
   useEffect(load, []);
@@ -114,12 +120,25 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           <Store size={20} color="var(--itunda-blue)" />
           <h1 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>Itunda Business</h1>
         </div>
+        {/* Real language switcher (2026-08-15), same placement/pattern as LoginPage's
+            own -- the nav shell is visible on every session regardless of tab, so this
+            is reachable without signing out first. */}
+        <select
+          value={locale}
+          onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
+          aria-label="Language"
+          style={{ fontSize: '12px', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: 'var(--itunda-white)', marginBottom: '16px' }}
+        >
+          {LOCALES.map((l) => (
+            <option key={l.code} value={l.code}>{l.label}</option>
+          ))}
+        </select>
         <div className="merchant-nav-items" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {TABS.map(({ id, label, icon: Icon }) => (
+          {TABS.map(({ id, labelKey, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              aria-label={label}
+              aria-label={t(labelKey)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -134,7 +153,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
               }}
             >
               <Icon size={18} />
-              <span>{label}</span>
+              <span>{t(labelKey)}</span>
             </button>
           ))}
         </div>
@@ -152,10 +171,10 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
           </div>
           <button
             onClick={handleLogout}
-            aria-label="Sign out"
+            aria-label={t('dashboard.signOut')}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-500)' }}
           >
-            <LogOut size={16} /> <span>Sign out</span>
+            <LogOut size={16} /> <span>{t('dashboard.signOut')}</span>
           </button>
         </div>
       </nav>
