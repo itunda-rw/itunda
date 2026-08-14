@@ -40,6 +40,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Photo
@@ -1707,7 +1709,16 @@ private fun GroupMessageBubble(
         // own doc comment. Always genuine: the backend only ever stamps this on a real
         // forward, never client-asserted.
         if (message.forwardedFromMessageId != null) {
-            Text("↪ Forwarded", color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = if (isMine) TextAlign.End else TextAlign.Start)
+            // The backend stamps a real DIRECT/GROUP origin on every forward
+            // (MessageForwardService), which this label ignored until 2026-08-14 --
+            // "forwarded from a group" is materially different context for the reader
+            // than a forward out of a 1:1 chat, same distinction Telegram/KakaoTalk draw.
+            val forwardedLabel = when (message.forwardedFromType) {
+                "GROUP" -> "↪ Forwarded from a group chat"
+                "DIRECT" -> "↪ Forwarded from a chat"
+                else -> "↪ Forwarded"
+            }
+            Text(forwardedLabel, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = if (isMine) TextAlign.End else TextAlign.Start)
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             Box(modifier = Modifier.combinedClickable(onClick = {}, onLongClick = { menuOpen = true })) {
@@ -1883,12 +1894,43 @@ private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolea
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(conversation.otherUserName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(conversation.otherUserName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+                // listConversations already carries real per-row quiet/pinnedMessageId
+                // (backend resolves both from ConversationPreference on every call), but
+                // the row rendered neither until 2026-08-14 -- the state was only ever
+                // re-fetched lazily once a thread was already open, so the list itself
+                // could never show why a muted chat stayed silent. Same 🔇/📌 at-a-glance
+                // treatment real KakaoTalk gives its chat list.
+                if (conversation.quiet) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.Outlined.NotificationsOff,
+                        contentDescription = "Muted",
+                        tint = Ids.colors.textTertiary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+                if (conversation.pinnedMessageId != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        Icons.Outlined.PushPin,
+                        contentDescription = "Has a pinned message",
+                        tint = Ids.colors.textTertiary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(2.dp))
             Text(conversation.lastMessagePreview ?: "No messages yet", color = Ids.colors.textSecondary, fontSize = 14.sp, maxLines = 1)
         }
         if (conversation.unreadCount > 0) {
-            Box(modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand).padding(horizontal = 8.dp, vertical = 3.dp)) {
+            // A muted chat's badge stays neutral rather than brand-blue -- it still
+            // reports the real count, but doesn't compete for attention the user
+            // explicitly asked this conversation not to demand. Same distinction
+            // KakaoTalk draws between a muted and an unmuted unread badge.
+            val badgeColor = if (conversation.quiet) Ids.colors.textTertiary else Ids.colors.brand
+            Box(modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(badgeColor).padding(horizontal = 8.dp, vertical = 3.dp)) {
                 Text(conversation.unreadCount.toString(), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
@@ -3397,7 +3439,16 @@ private fun MessageBubble(
     val isPlainTextBubble = gift == null && voucher == null && offer == null && message.emoticonId == null && message.imageUrl == null
     Column(modifier = Modifier.fillMaxWidth()) {
         if (message.forwardedFromMessageId != null) {
-            Text("↪ Forwarded", color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = if (isMine) TextAlign.End else TextAlign.Start)
+            // The backend stamps a real DIRECT/GROUP origin on every forward
+            // (MessageForwardService), which this label ignored until 2026-08-14 --
+            // "forwarded from a group" is materially different context for the reader
+            // than a forward out of a 1:1 chat, same distinction Telegram/KakaoTalk draw.
+            val forwardedLabel = when (message.forwardedFromType) {
+                "GROUP" -> "↪ Forwarded from a group chat"
+                "DIRECT" -> "↪ Forwarded from a chat"
+                else -> "↪ Forwarded"
+            }
+            Text(forwardedLabel, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.fillMaxWidth(), textAlign = if (isMine) TextAlign.End else TextAlign.Start)
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             // Long-press trigger on the outer wrapper, not just the plain-text bubble --
