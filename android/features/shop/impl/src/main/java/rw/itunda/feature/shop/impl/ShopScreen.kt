@@ -1,5 +1,7 @@
 package rw.itunda.feature.shop.impl
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -61,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -421,6 +424,23 @@ fun CommerceShopContent(
         }
     }
 
+    // Real rating/distance/ETA enrichment (2026-08-14) -- see StoreCard's own doc
+    // comment. Deliberately checks permission first rather than reusing
+    // requestNearbyAdsLocation's own unconditional call (which does auto-prompt) --
+    // matches MarketplaceContent's/EatsContent's own careful "opt-in, never assumed"
+    // discipline: never trigger a permission prompt on a screen the user didn't ask
+    // location-based content from.
+    var storeBrowseLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    val requestStoreBrowseLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng -> storeBrowseLocation = lat to lng },
+        onError = {},
+    )
+    LaunchedEffect(Unit) {
+        val hasPermission = ContextCompat.checkSelfPermission(recentlyViewedContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission) requestStoreBrowseLocation()
+    }
+
     fun loadMerchants() {
         coroutineScope.launch {
             try {
@@ -429,7 +449,10 @@ fun CommerceShopContent(
                 // search text can never silently bind to the wrong parameter.
                 // businessType intentionally omitted (null): Shop's browse stays
                 // unfiltered by vertical, same as before this param existed.
-                val res = NetworkClient.apiService.getShoppingMerchants(category = selectedCategory, q = searchInput.trim().ifBlank { null })
+                val res = NetworkClient.apiService.getShoppingMerchants(
+                    category = selectedCategory, q = searchInput.trim().ifBlank { null },
+                    buyerLat = storeBrowseLocation?.first, buyerLng = storeBrowseLocation?.second,
+                )
                 if (res.success) merchants = res.merchants
                 error = null
             } catch (e: HttpException) {
@@ -452,6 +475,10 @@ fun CommerceShopContent(
         delay(300)
         loadMerchants()
     }
+    // Re-fetch once a real location fix lands, so a browse that already rendered
+    // (permission check + GPS fix both take real time) upgrades in place -- same
+    // discipline EatsContent's own identical LaunchedEffect establishes.
+    LaunchedEffect(storeBrowseLocation) { if (storeBrowseLocation != null) loadMerchants() }
 
     // Real Kakao Pay 정기결제/Toss 빌링키-style recurring merchant billing plans this
     // merchant itself has published -- see MerchantBillingService's own doc comment.
@@ -1147,6 +1174,31 @@ private fun StoreCard(m: ShoppingMerchantDto, onOpen: () -> Unit) {
                     color = Ids.colors.textSecondary,
                     fontSize = 12.sp,
                 )
+                // Real rating/distance/ETA row (2026-08-14) -- ShoppingMerchantDto
+                // already carries these fields (rating/distanceKm/deliveryTimeMinutes/
+                // minOrderAmount are the exact same DTO Eats' own RestaurantCard
+                // already renders this way), just never shown on Shop's own store
+                // card. Same "no fabricated data" gating: only renders when at least
+                // one real value is present.
+                if (m.rating != null || m.distanceKm != null || m.minOrderAmount != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        if (m.rating != null) {
+                            Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("%.1f (%d)".format(m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            listOfNotNull(
+                                m.distanceKm?.let { "%.1f km".format(it) },
+                                m.deliveryTimeMinutes?.let { "~$it min" },
+                                m.minOrderAmount?.let { "Min ${it.toLong()} RWF" },
+                            ).joinToString(" · "),
+                            color = Ids.colors.textSecondary,
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
             }
         }
     }
