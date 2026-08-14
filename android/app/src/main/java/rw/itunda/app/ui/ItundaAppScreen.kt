@@ -1593,12 +1593,52 @@ private fun HomeTab(
             properties.map { HomeFeedEntry(it.id, "property", it.title, "RWF %,.0f".format(it.price), it.createdAt) }
         ).sortedByDescending { it.createdAt }.take(30)
     }
+    // Real blended "universal search" (2026-08-14, direct user reference: real Naver
+    // search results blend multiple content types on one page -- products, places,
+    // posts -- each with its own card style, not a single flat list). itunda's own
+    // equivalents are its 5 real content verticals; all fired in parallel (matching
+    // this file's own "each screen fetches its own minimal real data" convention),
+    // each independently null (loading) / empty (no matches) / populated, rendered as
+    // labeled sections rather than one merged, type-blind list.
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<rw.itunda.core.network.ProductSearchResultDto>?>(null) }
+    var marketplaceResults by remember { mutableStateOf<List<HomeFeedEntry>?>(null) }
+    var communityResults by remember { mutableStateOf<List<HomeFeedEntry>?>(null) }
+    var jobResults by remember { mutableStateOf<List<HomeFeedEntry>?>(null) }
+    var propertyResults by remember { mutableStateOf<List<HomeFeedEntry>?>(null) }
     val searchScope = rememberCoroutineScope()
     fun runSearch(query: String) {
+        searchResults = null; marketplaceResults = null; communityResults = null; jobResults = null; propertyResults = null
         searchScope.launch {
             searchResults = try { rw.itunda.core.network.NetworkClient.apiService.searchProducts(query).products } catch (_: Exception) { emptyList() }
+        }
+        searchScope.launch {
+            marketplaceResults = try {
+                rw.itunda.core.network.NetworkClient.apiService.searchListings(query).listings.map {
+                    HomeFeedEntry(it.id, "marketplace", it.title, "RWF %,.0f".format(it.price), it.createdAt, it.photoUrl)
+                }
+            } catch (_: Exception) { emptyList() }
+        }
+        searchScope.launch {
+            communityResults = try {
+                rw.itunda.core.network.NetworkClient.apiService.searchCommunityPosts(query).posts.map {
+                    HomeFeedEntry(it.id, "community", it.title, it.body.take(80), it.createdAt)
+                }
+            } catch (_: Exception) { emptyList() }
+        }
+        searchScope.launch {
+            jobResults = try {
+                rw.itunda.core.network.NetworkClient.apiService.searchJobPosts(query).posts.map {
+                    HomeFeedEntry(it.id, "jobs", it.title, "${it.payType} · RWF %,.0f".format(it.payAmount), it.createdAt)
+                }
+            } catch (_: Exception) { emptyList() }
+        }
+        searchScope.launch {
+            propertyResults = try {
+                rw.itunda.core.network.NetworkClient.apiService.searchPropertyListings(query).listings.map {
+                    HomeFeedEntry(it.id, "property", it.title, "RWF %,.0f".format(it.price), it.createdAt)
+                }
+            } catch (_: Exception) { emptyList() }
         }
     }
 
@@ -1636,25 +1676,45 @@ private fun HomeTab(
                 onClear = { searchQuery = ""; searchResults = null },
             )
         }
-        // Real inline instant-search results (2026-08-14) -- searchProducts (Shop's
-        // real full-text product search) had zero client UI anywhere until now, a
-        // real backend endpoint with no consumer, same gap class this session's own
-        // "uncalled endpoint" sweeps keep finding. Scoped honestly to what actually
-        // has real full-text search server-side today -- Marketplace/Community/Jobs/
-        // Property below have no search endpoint yet, so this box only ever searches
-        // Shop products, not "everything," matching the real capability rather than
-        // implying a broader one.
+        // Real blended "universal search" results (2026-08-14) -- see this Column's own
+        // state declarations above for the full "why" (Naver blends multiple content
+        // types on one results page). Each of the 5 sources is independently
+        // null/empty/populated; a section only renders once its own fetch actually
+        // resolves, and only if it found something -- no empty section headers, no
+        // fabricated "0 results" padding.
         if (searchQuery.isNotBlank()) {
-            val results = searchResults
-            when {
-                results == null -> item {
+            val stillLoading = searchResults == null || marketplaceResults == null ||
+                communityResults == null || jobResults == null || propertyResults == null
+            val totalResults = (searchResults?.size ?: 0) + (marketplaceResults?.size ?: 0) +
+                (communityResults?.size ?: 0) + (jobResults?.size ?: 0) + (propertyResults?.size ?: 0)
+            if (stillLoading && totalResults == 0) {
+                item {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
                         androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
                     }
                 }
-                results.isEmpty() -> item { EmptyState(stringResource(R.string.home_search_empty)) }
-                else -> items(results, key = { it.id }) { result ->
-                    HomeSearchResultRow(result, onClick = onOpenShop)
+            } else if (!stillLoading && totalResults == 0) {
+                item { EmptyState(stringResource(R.string.home_search_empty)) }
+            } else {
+                searchResults?.takeIf { it.isNotEmpty() }?.let { results ->
+                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_products)) }
+                    items(results, key = { "product_${it.id}" }) { result -> HomeSearchResultRow(result, onClick = onOpenShop) }
+                }
+                marketplaceResults?.takeIf { it.isNotEmpty() }?.let { results ->
+                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_marketplace)) }
+                    items(results, key = { "marketplace_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenMarketplace) }
+                }
+                communityResults?.takeIf { it.isNotEmpty() }?.let { results ->
+                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_community)) }
+                    items(results, key = { "community_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenCommunity) }
+                }
+                jobResults?.takeIf { it.isNotEmpty() }?.let { results ->
+                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_jobs)) }
+                    items(results, key = { "jobs_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenJobs) }
+                }
+                propertyResults?.takeIf { it.isNotEmpty() }?.let { results ->
+                    item { HomeSearchSectionHeader(stringResource(R.string.home_search_section_property)) }
+                    items(results, key = { "property_${it.id}" }) { entry -> HomeFeedRow(entry, onClick = onOpenProperty) }
                 }
             }
         } else {
@@ -1829,6 +1889,17 @@ private fun HomeSearchBar(query: String, onQueryChange: (String) -> Unit, onClea
             )
         }
     }
+}
+
+// Real section header for blended search results (2026-08-14) -- see HomeTab's own
+// runSearch doc comment for the full "why" this exists (Naver's universal search
+// labels each content type's own section, rather than one type-blind list).
+@Composable
+private fun HomeSearchSectionHeader(label: String) {
+    Text(
+        label, color = Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+    )
 }
 
 @Composable

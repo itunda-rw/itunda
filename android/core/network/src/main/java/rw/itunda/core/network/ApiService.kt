@@ -2565,6 +2565,11 @@ interface ApiService {
     @GET("api/v1/marketplace/listings/my-neighborhood")
     suspend fun getListingsMyNeighborhood(@Query("category") category: String? = null): ListingsResponse
 
+    // Real relevance-ranked search (2026-08-14) -- see backend MarketplaceService
+    // .search's own doc comment. Not neighborhood-scoped, unlike the browse above.
+    @GET("api/v1/marketplace/listings/search")
+    suspend fun searchListings(@Query("q") query: String): ListingsResponse
+
     @POST("api/v1/marketplace/listings/{id}/mark-sold")
     suspend fun markListingSold(@Path("id") listingId: String, @Body request: MarkSoldRequest = MarkSoldRequest()): ListingResponse
 
@@ -2728,6 +2733,11 @@ interface ApiService {
     @GET("api/v1/community/posts/my-neighborhood")
     suspend fun getCommunityPostsMyNeighborhood(@Query("category") category: String? = null): CommunityPostsResponse
 
+    // Real relevance-ranked search (2026-08-14) -- see backend CommunityService
+    // .search's own doc comment.
+    @GET("api/v1/community/posts/search")
+    suspend fun searchCommunityPosts(@Query("q") query: String): CommunityPostsResponse
+
     @GET("api/v1/community/posts/{id}")
     suspend fun getCommunityPost(@Path("id") postId: String): CommunityPostDetailResponse
 
@@ -2803,6 +2813,11 @@ interface ApiService {
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     @GET("api/v1/jobs/posts/my-neighborhood")
     suspend fun getJobPostsMyNeighborhood(@Query("category") category: String? = null): JobPostsResponse
+
+    // Real relevance-ranked search (2026-08-14) -- see backend JobPostService
+    // .search's own doc comment.
+    @GET("api/v1/jobs/posts/search")
+    suspend fun searchJobPosts(@Query("q") query: String): JobPostsResponse
 
     @POST("api/v1/jobs/posts/{id}/mark-filled")
     suspend fun markJobPostFilled(@Path("id") jobPostId: String, @Body request: MarkFilledRequest = MarkFilledRequest()): JobPostResponse
@@ -2885,6 +2900,11 @@ interface ApiService {
     // scoping choice, same as the real backend endpoint this calls.
     @GET("api/v1/realestate/listings/my-neighborhood")
     suspend fun getPropertyListingsMyNeighborhood(): PropertyListingsResponse
+
+    // Real relevance-ranked search (2026-08-14) -- see backend PropertyListingService
+    // .search's own doc comment.
+    @GET("api/v1/realestate/listings/search")
+    suspend fun searchPropertyListings(@Query("q") query: String): PropertyListingsResponse
 
     @POST("api/v1/realestate/listings/{id}/mark-taken")
     suspend fun markPropertyListingTaken(@Path("id") propertyListingId: String, @Body request: MarkTakenRequest = MarkTakenRequest()): PropertyListingResponse
