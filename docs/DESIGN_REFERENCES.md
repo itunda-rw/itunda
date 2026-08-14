@@ -2443,7 +2443,7 @@ precedent and warned against repeating it).
 | Emerging-market challenger banks (Paytm Payments Bank) | 8-year KYC/compliance erosion led to a full regulatory wind-down — a slow accumulation, not one incident | Informational — itunda is single-country/BNR-licensed, structurally different context; worth an ongoing-compliance-monitoring habit, not a specific code fix |
 | Domestic Korean (Kakao Pay) | Real ₩15B fine (April 2025) for sharing 40M users' data with a shareholder without consent | Real lead — not yet checked against itunda's own third-party data-sharing practices |
 | Domestic Korean (KakaoBank) | Sequence-based (not per-transaction) fraud detection, 18M+ daily inferences — a different architectural paradigm from itunda's current per-transaction `FraudRuleEngine` | Informational/future-direction, not a quick fix |
-| Domestic Korean (Kakao Pay) | "정산하기" group bill-split reachable directly from inside a KakaoTalk chat | Real, checkable UX-parity question — not yet checked whether itunda's SplitBill is reachable from its own Talk feature |
+| Domestic Korean (Kakao Pay) | "정산하기" group bill-split reachable directly from inside a KakaoTalk chat | **Checked 2026-08-15, already real** — `GroupSplitBillsView` is reachable via a dedicated icon button directly inside itunda's own group chat screen, no gap |
 | Western neobanks (N26) | BaFin "compliance debt" pattern: monitoring/KYC capacity scaling with headcount instead of transaction volume | Informational only — not directly applicable (itunda is single-jurisdiction) |
 
 ### Fixed same day
@@ -2680,8 +2680,10 @@ precedent and warned against repeating it).
 4. **[sourced, real lead, not yet checked]** Kakao Pay's third-party data-sharing fine — worth an
    audit of whether itunda shares user data with any partner/vendor without a specific, itunda-side
    consent record (not just a blanket signup ToS).
-5. **[sourced, real, checkable UX-parity question, not yet checked]** Whether itunda's SplitBill flow
-   is reachable from inside its own Talk/chat feature, matching Kakao Pay's real "정산하기" pattern.
+5. **[sourced, checked 2026-08-15, already real]** Whether itunda's SplitBill flow is reachable from
+   inside its own Talk/chat feature, matching Kakao Pay's real "정산하기" pattern -- confirmed yes:
+   `GroupSplitBillsView` (`TalkScreen.kt`) is reachable via a dedicated icon button directly inside
+   the group chat screen itself, not a separate destination. No gap, no action needed.
 6. **[sourced, informational, future-direction]** KakaoBank's sequence-based fraud detection as a
    longer-term evolution of itunda's current per-transaction `FraudRuleEngine` — not a quick fix,
    worth naming as a real architectural option for whenever this project has enough real transaction
