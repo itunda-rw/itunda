@@ -125,6 +125,18 @@ class JobPostController(
         return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
+    // Real relevance-ranked search (2026-08-14) -- see JobPostService.search's own
+    // doc comment.
+    @GetMapping("/posts/search")
+    fun search(
+        @RequestParam q: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = jobPostService.search(q, pageable)
+        val scores = trustScores(userRepository, page.content.map { it.posterId })
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
     @GetMapping("/my-posts")
     fun myPosts(
         @PageableDefault(size = 20) pageable: Pageable,

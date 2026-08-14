@@ -98,4 +98,26 @@ interface ListingRepository : JpaRepository<Listing, String> {
     // "purchases" is even queryable, now that buyerId is captured (see Listing.kt's
     // own doc comment on why that was the real structural blocker until now).
     fun findByBuyerIdOrderByCreatedAtDesc(buyerId: String, pageable: Pageable): Page<Listing>
+
+    // Real short-query fallback (2026-08-14) -- see FullTextSearchUtil's own doc
+    // comment: MySQL's FULLTEXT structurally can't match anything under 3 characters,
+    // so a plain substring match covers that case instead of silently returning
+    // nothing (or everything).
+    @Query("SELECT l FROM Listing l WHERE l.status = :status AND LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))")
+    fun searchShort(@Param("status") status: ListingStatus, @Param("q") q: String, pageable: Pageable): Page<Listing>
+
+    // Real relevance-ranked full-text search (2026-08-14) -- see
+    // MerchantProductRepository.searchFullText's own doc comment for the full "why"
+    // (a native query, not JPQL, since Hibernate has no portable MATCH...AGAINST
+    // equivalent) and rw.itunda.core.search.FullTextSearchUtil for the boolean-mode
+    // query string this expects as input.
+    @Query(
+        value = "SELECT l.* FROM listings l WHERE l.status = :#{#status.name()} " +
+            "AND MATCH(l.title, l.description) AGAINST (:booleanQuery IN BOOLEAN MODE) " +
+            "ORDER BY MATCH(l.title, l.description) AGAINST (:booleanQuery IN BOOLEAN MODE) DESC",
+        countQuery = "SELECT COUNT(*) FROM listings l WHERE l.status = :#{#status.name()} " +
+            "AND MATCH(l.title, l.description) AGAINST (:booleanQuery IN BOOLEAN MODE)",
+        nativeQuery = true,
+    )
+    fun searchFullText(@Param("status") status: ListingStatus, @Param("booleanQuery") booleanQuery: String, pageable: Pageable): Page<Listing>
 }

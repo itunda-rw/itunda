@@ -136,6 +136,18 @@ class PropertyListingController(
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
+    // Real relevance-ranked search (2026-08-14) -- see PropertyListingService.search's
+    // own doc comment.
+    @GetMapping("/listings/search")
+    fun search(
+        @RequestParam q: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = propertyListingService.search(q, pageable)
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
     @GetMapping("/my-listings")
     fun myListings(
         @PageableDefault(size = 20) pageable: Pageable,

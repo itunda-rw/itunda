@@ -3,6 +3,8 @@ package rw.itunda.core.repository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.PropertyListing
 import rw.itunda.core.domain.PropertyListingStatus
 import rw.itunda.core.domain.PropertyListingType
@@ -43,4 +45,20 @@ interface PropertyListingRepository : JpaRepository<PropertyListing, String> {
     // findByBuyerIdOrderByCreatedAtDesc's own doc comment for the full account; same
     // "activity split" gap this closes, now that counterpartyId is captured.
     fun findByCounterpartyIdOrderByCreatedAtDesc(counterpartyId: String, pageable: Pageable): Page<PropertyListing>
+
+    // Real short-query fallback (2026-08-14) -- see FullTextSearchUtil's own doc comment.
+    @Query("SELECT p FROM PropertyListing p WHERE p.status = :status AND LOWER(p.title) LIKE LOWER(CONCAT('%', :q, '%'))")
+    fun searchShort(@Param("status") status: PropertyListingStatus, @Param("q") q: String, pageable: Pageable): Page<PropertyListing>
+
+    // Real relevance-ranked full-text search (2026-08-14) -- see
+    // MerchantProductRepository.searchFullText's own doc comment for the full "why".
+    @Query(
+        value = "SELECT p.* FROM property_listings p WHERE p.status = :#{#status.name()} " +
+            "AND MATCH(p.title, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE) " +
+            "ORDER BY MATCH(p.title, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE) DESC",
+        countQuery = "SELECT COUNT(*) FROM property_listings p WHERE p.status = :#{#status.name()} " +
+            "AND MATCH(p.title, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE)",
+        nativeQuery = true,
+    )
+    fun searchFullText(@Param("status") status: PropertyListingStatus, @Param("booleanQuery") booleanQuery: String, pageable: Pageable): Page<PropertyListing>
 }

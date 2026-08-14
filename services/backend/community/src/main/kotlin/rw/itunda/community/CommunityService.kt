@@ -207,6 +207,17 @@ class CommunityService(
     fun upcomingMeetups(pageable: Pageable): Page<CommunityPost> =
         postRepository.findUpcomingMeetups(CommunityPostStatus.ACTIVE, Instant.now(), pageable)
 
+    // Real relevance-ranked search (2026-08-14) -- see MarketplaceService.search's own
+    // doc comment for the full "why" (not neighborhood-scoped, same as browse above).
+    fun search(query: String, pageable: Pageable): Page<CommunityPost> {
+        val booleanQuery = rw.itunda.core.search.FullTextSearchUtil.toBooleanModeQuery(query)
+        return if (booleanQuery != null) {
+            postRepository.searchFullText(CommunityPostStatus.ACTIVE, booleanQuery, pageable)
+        } else {
+            postRepository.searchShort(CommunityPostStatus.ACTIVE, query.trim(), pageable)
+        }
+    }
+
     fun browse(pageable: Pageable, category: String?): Page<CommunityPost> =
         if (category.isNullOrBlank()) {
             postRepository.findByStatusOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, pageable)

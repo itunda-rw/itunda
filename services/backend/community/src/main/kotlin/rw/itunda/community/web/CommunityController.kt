@@ -128,6 +128,18 @@ class CommunityController(private val communityService: CommunityService, privat
         return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "joinedCounts" to joinedCounts) + pageMeta(page))
     }
 
+    // Real relevance-ranked search (2026-08-14) -- see CommunityService.search's own
+    // doc comment.
+    @GetMapping("/posts/search")
+    fun search(
+        @RequestParam q: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = communityService.search(q, pageable)
+        val joinedCounts = communityService.joinedCounts(page.content)
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "joinedCounts" to joinedCounts) + pageMeta(page))
+    }
+
     @GetMapping("/my-posts")
     fun myPosts(
         @PageableDefault(size = 20) pageable: Pageable,

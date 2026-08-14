@@ -150,6 +150,18 @@ class MarketplaceController(
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores, "likedByMe" to liked) + pageMeta(page))
     }
 
+    // Real relevance-ranked search (2026-08-14) -- see MarketplaceService.search's own
+    // doc comment.
+    @GetMapping("/listings/search")
+    fun search(
+        @RequestParam q: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = marketplaceService.search(q, pageable)
+        val scores = trustScores(userRepository, page.content.map { it.sellerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
     @GetMapping("/listings/{listingId}")
     fun getListing(@PathVariable listingId: String): ResponseEntity<Map<String, Any?>> {
         val listing = marketplaceService.getListing(listingId)

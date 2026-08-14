@@ -65,4 +65,20 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from CommunityPost p where p.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Optional<CommunityPost>
+
+    // Real short-query fallback (2026-08-14) -- see FullTextSearchUtil's own doc comment.
+    @Query("SELECT p FROM CommunityPost p WHERE p.status = :status AND LOWER(p.title) LIKE LOWER(CONCAT('%', :q, '%'))")
+    fun searchShort(@Param("status") status: CommunityPostStatus, @Param("q") q: String, pageable: Pageable): Page<CommunityPost>
+
+    // Real relevance-ranked full-text search (2026-08-14) -- see
+    // MerchantProductRepository.searchFullText's own doc comment for the full "why".
+    @Query(
+        value = "SELECT p.* FROM community_posts p WHERE p.status = :#{#status.name()} " +
+            "AND MATCH(p.title, p.body) AGAINST (:booleanQuery IN BOOLEAN MODE) " +
+            "ORDER BY MATCH(p.title, p.body) AGAINST (:booleanQuery IN BOOLEAN MODE) DESC",
+        countQuery = "SELECT COUNT(*) FROM community_posts p WHERE p.status = :#{#status.name()} " +
+            "AND MATCH(p.title, p.body) AGAINST (:booleanQuery IN BOOLEAN MODE)",
+        nativeQuery = true,
+    )
+    fun searchFullText(@Param("status") status: CommunityPostStatus, @Param("booleanQuery") booleanQuery: String, pageable: Pageable): Page<CommunityPost>
 }

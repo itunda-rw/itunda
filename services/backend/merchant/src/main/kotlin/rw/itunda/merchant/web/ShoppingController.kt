@@ -19,6 +19,7 @@ import rw.itunda.core.repository.MenuOptionGroupRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.ProductPriceTierRepository
+import rw.itunda.core.search.FullTextSearchUtil
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.merchant.ShoppingCashbackService
@@ -258,11 +259,8 @@ class ShoppingController(
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val trimmed = q.trim()
-        val booleanQuery = trimmed.split(Regex("\\s+"))
-            .map { it.replace(Regex("[+\\-><()~*\"@]"), "") }
-            .filter { it.length >= 3 }
-            .joinToString(" ") { "+$it*" }
-        val page = if (booleanQuery.isNotBlank()) {
+        val booleanQuery = FullTextSearchUtil.toBooleanModeQuery(trimmed)
+        val page = if (booleanQuery != null) {
             merchantProductRepository.searchFullText(MerchantStatus.ACTIVE, booleanQuery, pageable)
         } else {
             merchantProductRepository.search(MerchantStatus.ACTIVE, trimmed, pageable)

@@ -133,6 +133,17 @@ class JobPostService(
         )
     }
 
+    // Real relevance-ranked search (2026-08-14) -- see MarketplaceService.search's own
+    // doc comment for the full "why" (not neighborhood-scoped, same as browse above).
+    fun search(query: String, pageable: Pageable): Page<JobPost> {
+        val booleanQuery = rw.itunda.core.search.FullTextSearchUtil.toBooleanModeQuery(query)
+        return if (booleanQuery != null) {
+            jobPostRepository.searchFullText(JobPostStatus.OPEN, booleanQuery, pageable)
+        } else {
+            jobPostRepository.searchShort(JobPostStatus.OPEN, query.trim(), pageable)
+        }
+    }
+
     fun browse(pageable: Pageable, category: String?): Page<JobPost> =
         if (category.isNullOrBlank()) {
             jobPostRepository.findByStatusOrderByCreatedAtDesc(JobPostStatus.OPEN, pageable)

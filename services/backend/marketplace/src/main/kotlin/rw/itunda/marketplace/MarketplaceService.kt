@@ -26,6 +26,7 @@ import rw.itunda.core.domain.ListingLike
 import rw.itunda.core.repository.ListingLikeRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.MarketplaceEscrowRepository
+import rw.itunda.core.search.FullTextSearchUtil
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
@@ -268,6 +269,21 @@ class MarketplaceService(
         val start = (pageable.pageNumber * pageable.pageSize).coerceAtMost(sorted.size)
         val end = (start + pageable.pageSize).coerceAtMost(sorted.size)
         return PageImpl(sorted.subList(start, end), pageable, sorted.size.toLong())
+    }
+
+    // Real relevance-ranked search (2026-08-14) -- see ListingRepository.searchFullText's
+    // own doc comment. Deliberately not neighborhood-scoped, unlike myNeighborhood above:
+    // search should span the whole marketplace by default, matching real Google/Naver
+    // search behavior (results aren't silently limited to "near me" unless the user asks
+    // for that). Falls back to the plain substring match for queries too short for
+    // MySQL's FULLTEXT (see FullTextSearchUtil's own doc comment).
+    fun search(query: String, pageable: Pageable): Page<Listing> {
+        val booleanQuery = FullTextSearchUtil.toBooleanModeQuery(query)
+        return if (booleanQuery != null) {
+            listingRepository.searchFullText(ListingStatus.ACTIVE, booleanQuery, pageable)
+        } else {
+            listingRepository.searchShort(ListingStatus.ACTIVE, query.trim(), pageable)
+        }
     }
 
     fun browse(pageable: Pageable, category: String?): Page<Listing> {

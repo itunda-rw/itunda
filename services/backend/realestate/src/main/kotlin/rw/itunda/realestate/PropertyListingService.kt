@@ -161,6 +161,17 @@ class PropertyListingService(
         )
     }
 
+    // Real relevance-ranked search (2026-08-14) -- see MarketplaceService.search's own
+    // doc comment for the full "why" (not neighborhood-scoped, same as browse above).
+    fun search(query: String, pageable: Pageable): Page<PropertyListing> {
+        val booleanQuery = rw.itunda.core.search.FullTextSearchUtil.toBooleanModeQuery(query)
+        return if (booleanQuery != null) {
+            propertyListingRepository.searchFullText(PropertyListingStatus.AVAILABLE, booleanQuery, pageable)
+        } else {
+            propertyListingRepository.searchShort(PropertyListingStatus.AVAILABLE, query.trim(), pageable)
+        }
+    }
+
     fun browse(pageable: Pageable, listingType: PropertyListingType?, propertyType: String?): Page<PropertyListing> =
         when {
             listingType != null && propertyType != null ->

@@ -62,4 +62,20 @@ interface JobPostRepository : JpaRepository<JobPost, String> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from JobPost p where p.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Optional<JobPost>
+
+    // Real short-query fallback (2026-08-14) -- see FullTextSearchUtil's own doc comment.
+    @Query("SELECT p FROM JobPost p WHERE p.status = :status AND LOWER(p.title) LIKE LOWER(CONCAT('%', :q, '%'))")
+    fun searchShort(@Param("status") status: JobPostStatus, @Param("q") q: String, pageable: Pageable): Page<JobPost>
+
+    // Real relevance-ranked full-text search (2026-08-14) -- see
+    // MerchantProductRepository.searchFullText's own doc comment for the full "why".
+    @Query(
+        value = "SELECT p.* FROM job_posts p WHERE p.status = :#{#status.name()} " +
+            "AND MATCH(p.title, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE) " +
+            "ORDER BY MATCH(p.title, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE) DESC",
+        countQuery = "SELECT COUNT(*) FROM job_posts p WHERE p.status = :#{#status.name()} " +
+            "AND MATCH(p.title, p.description) AGAINST (:booleanQuery IN BOOLEAN MODE)",
+        nativeQuery = true,
+    )
+    fun searchFullText(@Param("status") status: JobPostStatus, @Param("booleanQuery") booleanQuery: String, pageable: Pageable): Page<JobPost>
 }
