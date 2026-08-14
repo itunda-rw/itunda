@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
+import { useI18n } from './i18n/I18nContext';
+import { LOCALES } from './i18n/translations';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4001';
 
@@ -29,6 +31,7 @@ interface CheckoutInfo {
 // holds the merchant's secret key), and polls for the real collect() flow completing
 // via the itunda app.
 export default function CheckoutPage() {
+  const { t, locale, setLocale } = useI18n();
   const paymentKey = window.location.pathname.split('/checkout/')[1]?.split('/')[0];
   const [info, setInfo] = useState<CheckoutInfo | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -36,19 +39,19 @@ export default function CheckoutPage() {
 
   const fetchInfo = async () => {
     if (!paymentKey) {
-      setError('No payment reference in this link.');
+      setError(t('checkout.noPaymentReference'));
       return;
     }
     try {
       const res = await fetch(`${BASE_URL}/api/v1/pay/checkout/${paymentKey}`);
       if (!res.ok) {
-        setError(res.status === 404 ? 'This payment link is invalid or has expired.' : 'Could not load this payment.');
+        setError(res.status === 404 ? t('checkout.linkInvalidOrExpired') : t('checkout.loadError'));
         return;
       }
       const body = await res.json();
       setInfo(body);
     } catch {
-      setError('Could not reach itunda. Check your connection and try again.');
+      setError(t('checkout.connectionError'));
     }
   };
 
@@ -99,7 +102,23 @@ export default function CheckoutPage() {
 
   return (
     <div className="itunda-card" style={{ textAlign: 'center', padding: '28px', width: '100%' }}>
-      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>Pay with itunda</p>
+      {/* Real first language switcher for this page (2026-08-15) -- see src/i18n's own
+          doc comment: this is arguably itunda's single highest-reach real surface to
+          localize, reached by any buyer via an external merchant link with no itunda
+          login at all. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+        <select
+          value={locale}
+          onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
+          aria-label="Language"
+          style={{ fontSize: '11px', padding: '3px 5px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: '#fff' }}
+        >
+          {LOCALES.map((l) => (
+            <option key={l.code} value={l.code}>{l.label}</option>
+          ))}
+        </select>
+      </div>
+      <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>{t('checkout.payWith')}</p>
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '2px' }}>{info.merchantName}</h2>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>{info.description}</p>
       <p style={{ fontSize: '32px', fontWeight: 700, marginBottom: '20px' }}>{info.amount.toLocaleString()} RWF</p>
@@ -108,20 +127,20 @@ export default function CheckoutPage() {
         <>
           {qrDataUrl && <img src={qrDataUrl} alt="Scan with the itunda app to pay" width={240} height={240} />}
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '16px' }}>
-            Scan this with the itunda app to complete payment
+            {t('checkout.scanInstruction')}
           </p>
         </>
       )}
 
       {info.status === 'COMPLETED' && (
         <p style={{ fontSize: '15px', color: 'var(--itunda-green)', fontWeight: 700 }}>
-          ✓ Payment complete{info.successUrl ? ' — returning to the merchant…' : ''}
+          {t('checkout.paymentComplete')}{info.successUrl ? t('checkout.returningToMerchant') : ''}
         </p>
       )}
 
       {info.status === 'EXPIRED' && (
         <p style={{ fontSize: '15px', color: 'var(--itunda-red)', fontWeight: 700 }}>
-          This payment link has expired{info.failUrl ? ' — returning to the merchant…' : ''}
+          {t('checkout.linkExpired')}{info.failUrl ? t('checkout.returningToMerchant') : ''}
         </p>
       )}
     </div>
