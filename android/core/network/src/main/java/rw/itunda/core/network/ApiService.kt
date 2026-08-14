@@ -908,6 +908,10 @@ data class CommunityPostDto(
     // this file already uses. capacity null means unlimited.
     val eventDate: String? = null,
     val capacity: Int? = null,
+    // Real hyperlocal neighborhood -- same gap as JobPostDto/PropertyListingDto's
+    // identical fix, see [[project_itunda_full_ecosystem_polish]]. The backend has
+    // stamped this on every post since 2026-07-20 and serializes the entity directly.
+    val neighborhood: String? = null,
 )
 data class CreateCommunityPostRequest(
     val category: String, val title: String, val body: String,

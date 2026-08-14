@@ -556,7 +556,12 @@ private fun CommunityPostCard(
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("$categoryLabel · ${relativeTimeAgo(post.createdAt)}", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                // Same hyperlocal-neighborhood fix as Jobs/Property -- see
+                // [[project_itunda_full_ecosystem_polish]]. Neighborhood matters
+                // especially here: a Community post is explicitly a "your neighbors"
+                // product, not generic content.
+                val categoryAndLocation = listOfNotNull(categoryLabel, post.neighborhood, relativeTimeAgo(post.createdAt)).joinToString(" · ")
+                Text(categoryAndLocation, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 if (isMine) {
                     ListingActionButton("Remove", busy) {
                         busy = true
