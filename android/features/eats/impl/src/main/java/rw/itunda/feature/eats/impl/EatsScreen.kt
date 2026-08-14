@@ -1,5 +1,7 @@
 package rw.itunda.feature.eats.impl
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -61,6 +63,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -79,6 +83,7 @@ import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.LiveRiderMiniMap
 import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.RouteMiniMap
+import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.components.SearchAndCategoryChips
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
@@ -682,6 +687,26 @@ private fun OrderFoodContent(
     var dishes by remember { mutableStateOf<List<EatsDishDto>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
+    // Real distance/ETA enrichment (2026-08-14) -- see ShoppingMerchantDto's own
+    // buyerLat/buyerLng doc comment: the backend has real distanceKm/
+    // deliveryTimeMinutes support and RestaurantCard already has the UI to render
+    // them (see its own rating/distance/ETA row), but no client anywhere -- Android,
+    // web, this file included -- ever actually sent the caller's location, so those
+    // fields silently never populated. Same "opt-in, never assumed" discipline
+    // MarketplaceContent's own browseLocation already establishes: only fetches if
+    // ACCESS_FINE_LOCATION is already granted, never prompts for it here.
+    val locationContext = LocalContext.current
+    var browseLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    val requestBrowseLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng -> browseLocation = lat to lng },
+        onError = {},
+    )
+    LaunchedEffect(Unit) {
+        val hasPermission = ContextCompat.checkSelfPermission(locationContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission) requestBrowseLocation()
+    }
+
     fun loadDishes() {
         coroutineScope.launch {
             try {
@@ -723,6 +748,7 @@ private fun OrderFoodContent(
             try {
                 val res = NetworkClient.apiService.getShoppingMerchants(
                     category = selectedCategory, businessType = "RESTAURANT", q = searchInput.trim().ifBlank { null },
+                    buyerLat = browseLocation?.first, buyerLng = browseLocation?.second,
                 )
                 if (res.success) restaurants = res.merchants
                 error = null
@@ -733,6 +759,10 @@ private fun OrderFoodContent(
             }
         }
     }
+    // Re-fetch once a real location fix lands, so a browse that already rendered
+    // (no distance/ETA yet, permission check + GPS fix both take real time) upgrades
+    // in place instead of requiring the user to pull-to-refresh themselves.
+    LaunchedEffect(browseLocation) { if (browseLocation != null) loadRestaurants() }
     LaunchedEffect(Unit) {
         loadRestaurants()
         loadFavorites()
