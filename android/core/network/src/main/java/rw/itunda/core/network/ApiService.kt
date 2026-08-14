@@ -1645,6 +1645,15 @@ data class EatsOrderDto(
     val deliveryLongitude: Double? = null,
     val distanceKm: Double? = null,
     val deliveryNotes: String? = null,
+    // Real fresh Uber Eats research (2026-08-15) -- see EatsController's own
+    // withRiderEtaFields doc comment: itunda's order-tracking screen already had a real
+    // stepped status UI and live rider-location map, but never resolved riderId to a
+    // real name or turned the already-stored distanceKm into a customer-facing arrival
+    // estimate, both real gaps against Uber Eats' own sourced tracker redesign. Only
+    // returned by GET my-orders (the customer's own order-tracking endpoint), null
+    // elsewhere -- never fabricated when no rider is assigned yet.
+    val riderName: String? = null,
+    val estimatedArrivalMinutes: Int? = null,
 )
 
 // selectedOptionsJson added 2026-07-21 -- unitPrice above already includes every

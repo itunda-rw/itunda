@@ -125,7 +125,43 @@ class EatsController(
     private val idempotencyService: IdempotencyService,
     private val merchantProductRepository: rw.itunda.core.repository.MerchantProductRepository,
     private val merchantRepository: rw.itunda.core.repository.MerchantRepository,
+    private val riderRepository: rw.itunda.core.repository.RiderRepository,
+    private val userRepository: rw.itunda.core.repository.UserRepository,
 ) {
+    // Real fresh Uber Eats research (2026-08-15, restaurantdive.com's coverage of Uber
+    // Eats' own delivery-tracker redesign, sourced from real internal research across
+    // nine countries): a real customer-facing rider name and "Latest Arrival By" time
+    // shown alongside delivery status -- itunda's own order-tracking screen already had
+    // a real stepped status UI and live rider-location map (at or beyond Uber Eats'
+    // bar), but never resolved order.riderId to a real name, and never turned the real,
+    // already-stored order.distanceKm into a customer-facing arrival estimate the way
+    // DeliveryEtaEstimator (promoted from ShoppingController's own browse-time version)
+    // already does for browsing. Resolved here, at the controller layer, rather than
+    // adding new repository dependencies to EatsOrderService's own already-19-parameter
+    // constructor (which would mean updating all 9 of its existing test call sites for a
+    // read-only enrichment that has nothing to do with that service's real business
+    // logic) -- EatsController has no test file of its own yet, so this is genuinely the
+    // lower-risk seam, not just the easier one.
+    private fun withRiderEtaFields(order: rw.itunda.core.domain.EatsOrder): Map<String, Any?> {
+        val rider = order.riderId?.let { riderRepository.findById(it).orElse(null) }
+        val riderName = rider?.let { userRepository.findById(it.userId).orElse(null) }?.firstName
+        val etaMinutes = order.distanceKm?.let {
+            rw.itunda.core.geo.DeliveryEtaEstimator.estimateDeliveryMinutes(it.toDouble())
+        }
+        return mapOf(
+            "id" to order.id, "buyerId" to order.buyerId, "restaurantId" to order.restaurantId,
+            "riderId" to order.riderId, "deliveryAddress" to order.deliveryAddress,
+            "itemsSubtotal" to order.itemsSubtotal, "deliveryFee" to order.deliveryFee,
+            "platformFee" to order.platformFee, "totalAmount" to order.totalAmount,
+            "transactionId" to order.transactionId,
+            "deliveryPayoutTransactionId" to order.deliveryPayoutTransactionId,
+            "status" to order.status, "createdAt" to order.createdAt, "updatedAt" to order.updatedAt,
+            "refundTransactionId" to order.refundTransactionId,
+            "deliveryLatitude" to order.deliveryLatitude, "deliveryLongitude" to order.deliveryLongitude,
+            "distanceKm" to order.distanceKm, "deliveryNotes" to order.deliveryNotes,
+            "riderName" to riderName, "estimatedArrivalMinutes" to etaMinutes,
+        )
+    }
     // Real Coupang Eats-style dish grid (2026-08-03) -- user-directed 100% UI/UX
     // parity pass, sourced from a real Coupang Eats UX teardown (brunch.co.kr
     // @e6b24f6f7c6949f/20): the actual home browse surface isn't a restaurant-card
@@ -262,7 +298,7 @@ class EatsController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = eatsOrderService.getMyOrders(currentUser.userId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "orders" to page.content) + pageMeta(page))
+        return ResponseEntity.ok(mapOf("success" to true, "orders" to page.content.map(::withRiderEtaFields)) + pageMeta(page))
     }
 
     @GetMapping("/orders/restaurant-orders")

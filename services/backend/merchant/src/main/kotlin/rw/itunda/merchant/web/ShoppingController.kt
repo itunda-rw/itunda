@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.domain.MerchantBusinessType
 import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.geo.DeliveryEtaEstimator
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MenuOptionChoiceRepository
@@ -46,25 +47,10 @@ class ShoppingController(
     private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
     private val priceTierRepository: ProductPriceTierRepository,
 ) {
-    companion object {
-        // Real, labeled ESTIMATE (2026-07-21) -- not measured historical delivery time
-        // (this backend has never recorded one), same "computed from real distance, never
-        // fabricated" discipline EatsOrderService.computeDeliveryFee already established
-        // for the delivery fee itself. A real kitchen-prep floor plus a real
-        // distance/speed travel estimate, rounded to the nearest 5 minutes the way every
-        // real delivery app's ETA badge is displayed.
-        private const val BASE_PREP_MINUTES = 15.0
-        private const val ASSUMED_AVG_SPEED_KMH = 20.0
-        private const val MIN_DELIVERY_MINUTES = 15
-        private const val MAX_DELIVERY_MINUTES = 90
-    }
-
-    private fun estimateDeliveryMinutes(distanceKm: Double): Int {
-        val travelMinutes = (distanceKm / ASSUMED_AVG_SPEED_KMH) * 60.0
-        val total = BASE_PREP_MINUTES + travelMinutes
-        val rounded = (Math.round(total / 5.0) * 5).toInt()
-        return rounded.coerceIn(MIN_DELIVERY_MINUTES, MAX_DELIVERY_MINUTES)
-    }
+    // Promoted to DeliveryEtaEstimator (2026-08-15) -- EatsOrderService now needs this
+    // exact same real formula for an in-flight order's own estimated arrival, not just
+    // this controller's pre-order browse-time estimate. See that object's own doc
+    // comment.
 
     // Real category/search filter (2026-07-19) -- both params optional and
     // independently combinable, backing restaurant categories + search/filter for Eats
@@ -127,7 +113,7 @@ class ShoppingController(
                 "rating" to rating?.average,
                 "reviewCount" to (rating?.count ?: 0L),
                 "distanceKm" to distanceKm?.let { BigDecimal(it).setScale(2, RoundingMode.HALF_UP) },
-                "deliveryTimeMinutes" to distanceKm?.let { estimateDeliveryMinutes(it) },
+                "deliveryTimeMinutes" to distanceKm?.let { DeliveryEtaEstimator.estimateDeliveryMinutes(it) },
                 // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- see
                 // EatsOrderService.claimDelivery's own doc comment. Universally true,
                 // not a per-merchant toggle: enforced at claim time for every real

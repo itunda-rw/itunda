@@ -1809,6 +1809,20 @@ private fun EatsOrderRow(
                 // rider actually gets assigned partway through.
                 EatsStatusStepper(order.status, hasRider = order.deliveryLatitude != null || order.riderId != null)
             }
+            // Real fresh Uber Eats research (2026-08-15) -- see EatsOrderDto's own doc
+            // comment. Rider name + a real distance-derived arrival estimate, matching
+            // Uber Eats' own sourced tracker redesign ("Latest Arrival By" shown
+            // alongside the driver's name). Only meaningful once a rider is actually
+            // assigned -- both fields are null until then, never a fabricated ETA.
+            if (order.riderName != null || order.estimatedArrivalMinutes != null) {
+                Text(
+                    listOfNotNull(
+                        order.riderName?.let { "Rider: $it" },
+                        order.estimatedArrivalMinutes?.let { "Latest arrival by ~$it min" },
+                    ).joinToString(" · "),
+                    color = Ids.colors.textSecondary, fontSize = 12.sp,
+                )
+            }
             if (!order.deliveryNotes.isNullOrBlank()) {
                 Text(
                     "Note: ${order.deliveryNotes}",
