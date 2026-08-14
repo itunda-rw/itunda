@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
@@ -341,7 +342,7 @@ fun CommunityContent(
             item { SkeletonBlock() }
         } else if (posts!!.isEmpty() && (view != CommunityView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
-                Text(
+                EmptyState(
                     // Real copy-voice fix (item 244, round 5 of the empty-state pass --
                     // docs/COPY_VOICE.md's rules): say what's missing AND what fixes it,
                     // per this screen's own real "+ Write a post" button above in MINE.
@@ -351,7 +352,13 @@ fun CommunityContent(
                         CommunityView.NEIGHBORHOOD -> "No posts in your neighborhood yet — try Browse to see posts from everywhere."
                         CommunityView.MINE -> "You haven't posted anything yet — tap \"+ Write a post\" above to share your first one."
                     },
-                    color = Ids.colors.textSecondary, fontSize = 14.sp,
+                    icon = Icons.Outlined.Groups,
+                    // Real fix (2026-08-15): the copy above told the user to "try
+                    // Browse", but there was never any way to actually reach it -- this
+                    // was plain Text, not even the shared EmptyState. See
+                    // EmptyState's own doc comment for the full cross-feature account.
+                    actionLabel = if (view == CommunityView.NEARBY || view == CommunityView.NEIGHBORHOOD) "Browse everywhere" else null,
+                    onAction = if (view == CommunityView.NEARBY || view == CommunityView.NEIGHBORHOOD) { { view = CommunityView.BROWSE } } else null,
                 )
             }
         } else if (posts!!.isNotEmpty()) {

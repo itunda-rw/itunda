@@ -561,6 +561,13 @@ fun MarketplaceContent(
                         HoodView.ALERTS -> "" // unreachable -- ALERTS is intercepted earlier
                     },
                     icon = Icons.Outlined.ShoppingBag,
+                    // Real fix (2026-08-15): the copy above told the user to "try
+                    // Browse", but there was never any way to actually reach it --
+                    // EmptyState had no action, and nothing anywhere else in this
+                    // screen could set `view = HoodView.BROWSE`. See EmptyState's own
+                    // doc comment for the full cross-feature account.
+                    actionLabel = if (view == HoodView.NEARBY || view == HoodView.NEIGHBORHOOD) "Browse everywhere" else null,
+                    onAction = if (view == HoodView.NEARBY || view == HoodView.NEIGHBORHOOD) { { view = HoodView.BROWSE } } else null,
                 )
             }
         } else if (listings!!.isNotEmpty()) {

@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -51,6 +52,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
@@ -366,7 +368,7 @@ fun JobsContent(
             item { SkeletonBlock() }
         } else if (posts!!.isEmpty() && (view != JobsView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
-                Text(
+                EmptyState(
                     // Real copy-voice fix (item 244, round 5 of the empty-state pass --
                     // docs/COPY_VOICE.md's rules): say what's missing AND what fixes it,
                     // per this screen's own real "+ Post a job" button above in MINE.
@@ -379,7 +381,13 @@ fun JobsContent(
                         JobsView.SAVED -> ""
                         JobsView.APPLICATIONS -> ""
                     },
-                    color = Ids.colors.textSecondary, fontSize = 14.sp,
+                    icon = Icons.Outlined.Work,
+                    // Real fix (2026-08-15): the copy above told the user to "try
+                    // Browse", but there was never any way to actually reach it -- this
+                    // was plain Text, not even the shared EmptyState. See
+                    // EmptyState's own doc comment for the full cross-feature account.
+                    actionLabel = if (view == JobsView.NEARBY || view == JobsView.NEIGHBORHOOD) "Browse everywhere" else null,
+                    onAction = if (view == JobsView.NEARBY || view == JobsView.NEIGHBORHOOD) { { view = JobsView.BROWSE } } else null,
                 )
             }
         } else if (posts!!.isNotEmpty()) {

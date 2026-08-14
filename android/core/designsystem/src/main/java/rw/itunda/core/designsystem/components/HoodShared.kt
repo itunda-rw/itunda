@@ -107,7 +107,19 @@ fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun EmptyState(message: String, icon: ImageVector = Icons.Outlined.Inbox) {
+fun EmptyState(
+    message: String,
+    icon: ImageVector = Icons.Outlined.Inbox,
+    // Real fix (2026-08-15): four call sites (Marketplace/Jobs/Property/Community's
+    // NEARBY/NEIGHBORHOOD empty states) told the user to "try Browse to see X from
+    // everywhere" -- but EmptyState was plain, non-interactive text with no way to
+    // actually reach Browse. A user with location permission granted (the common
+    // case) who lands on an empty nearby/neighborhood view had no path forward at
+    // all. Optional so every other EmptyState call site (favorites, alerts, search
+    // results) that has no real action stays exactly as plain as before.
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -120,6 +132,15 @@ fun EmptyState(message: String, icon: ImageVector = Icons.Outlined.Inbox) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Ids.colors.textSecondary)
         }
         Text(message, color = Ids.colors.textSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
+        if (actionLabel != null && onAction != null) {
+            Text(
+                actionLabel,
+                color = Ids.colors.brand,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                modifier = Modifier.clickable(onClick = onAction),
+            )
+        }
     }
 }
 
