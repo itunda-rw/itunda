@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
@@ -229,6 +231,30 @@ fun PropertyContent(
     }
     LaunchedEffect(view, listingTypeFilter, propertyTypeFilter) { load() }
 
+    // Real relevance-ranked search (2026-08-14) -- see backend
+    // PropertyListingService.search's own doc comment; same "uncalled endpoint" gap
+    // class as MarketplaceContent's own identical addition, see its doc comment for
+    // the full account.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<PropertyListingDto>?>(null) }
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = null
+            return@LaunchedEffect
+        }
+        delay(300)
+        try {
+            val res = NetworkClient.apiService.searchPropertyListings(searchQuery)
+            if (res.success) {
+                searchResults = res.listings
+                trustScores = res.trustScores
+            }
+        } catch (_: Exception) {
+            searchResults = emptyList()
+        }
+    }
+    val isSearching = searchQuery.isNotBlank()
+
     if (showNewListing) {
         BackHandler { showNewListing = false }
     }
@@ -244,6 +270,58 @@ fun PropertyContent(
         // auto-detected (see neighborhoodRefreshSignal's own doc comment above) and
         // the personal-management views moved to HoodTab's hamburger menu
         // (requestedView above).
+        item {
+            IdsTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = "Search",
+                placeholder = "Search properties",
+            )
+        }
+        if (isSearching) {
+            if (searchResults == null) {
+                item { SkeletonBlock() }
+            } else if (searchResults!!.isEmpty()) {
+                item { Text("No properties match \"$searchQuery\".", color = Ids.colors.textSecondary, fontSize = 14.sp) }
+            } else {
+                items(searchResults!!, key = { it.id }) { listing ->
+                    PropertyListingCard(
+                        listing = listing,
+                        propertyTypeLabel = propertyTypes.firstOrNull { it.id == listing.propertyType }?.label ?: listing.propertyType,
+                        isMine = listing.listerId == currentUserId,
+                        listerTrustScore = trustScores[listing.listerId],
+                        currentUserId = currentUserId,
+                        onChanged = ::load,
+                        onContact = {
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.contactLister(listing.id)
+                                    if (res.success) onMessageLister(res.conversation.id)
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                }
+                            }
+                        },
+                        onMakeOffer = { id, amount ->
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.makePropertyOffer(id, MakePropertyOfferRequest(amount))
+                                    if (res.success) onMessageLister(res.offer.conversationId)
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                }
+                            }
+                        },
+                        favorited = listing.id in favoriteIds,
+                        onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; Toast.makeText(context, "Removed from saved properties", Toast.LENGTH_SHORT).show() } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; Toast.makeText(context, "Saved to your properties list", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
+                    )
+                }
+            }
+        } else {
         if (view == PropertyView.NEARBY) item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
                 val active = nearbyRadiusKm == radius
@@ -366,6 +444,7 @@ fun PropertyContent(
                     onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; Toast.makeText(context, "Removed from saved properties", Toast.LENGTH_SHORT).show() } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; Toast.makeText(context, "Saved to your properties list", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                 )
             }
+        }
         }
     }
         ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))

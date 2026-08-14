@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.ErrorCard
@@ -222,6 +224,30 @@ fun JobsContent(
     }
     LaunchedEffect(view, activeCategory) { load() }
 
+    // Real relevance-ranked search (2026-08-14) -- see backend JobPostService
+    // .search's own doc comment; same "uncalled endpoint" gap class as
+    // MarketplaceContent's own identical addition, see its doc comment for the full
+    // account.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<JobPostDto>?>(null) }
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = null
+            return@LaunchedEffect
+        }
+        delay(300)
+        try {
+            val res = NetworkClient.apiService.searchJobPosts(searchQuery)
+            if (res.success) {
+                searchResults = res.posts
+                trustScores = res.trustScores
+            }
+        } catch (_: Exception) {
+            searchResults = emptyList()
+        }
+    }
+    val isSearching = searchQuery.isNotBlank()
+
     if (showNewPost) {
         BackHandler { showNewPost = false }
     }
@@ -237,6 +263,56 @@ fun JobsContent(
         // auto-detected (see neighborhoodRefreshSignal's own doc comment above) and
         // the personal-management views moved to HoodTab's hamburger menu
         // (requestedView above).
+        item {
+            IdsTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = "Search",
+                placeholder = "Search jobs",
+            )
+        }
+        if (isSearching) {
+            if (searchResults == null) {
+                item { SkeletonBlock() }
+            } else if (searchResults!!.isEmpty()) {
+                item { Text("No jobs match \"$searchQuery\".", color = Ids.colors.textSecondary, fontSize = 14.sp) }
+            } else {
+                items(searchResults!!, key = { it.id }) { post ->
+                    JobPostCard(
+                        post = post,
+                        categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
+                        isMine = post.posterId == currentUserId,
+                        posterTrustScore = trustScores[post.posterId],
+                        currentUserId = currentUserId,
+                        onChanged = ::load,
+                        onContact = {
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.contactPoster(post.id)
+                                    if (res.success) onMessagePoster(res.conversation.id)
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                }
+                            }
+                        },
+                        favorited = post.id in favoriteIds,
+                        favoriteBusy = favoritingId == post.id,
+                        onToggleFavorite = {
+                            favoritingId = post.id
+                            coroutineScope.launch {
+                                try {
+                                    if (post.id in favoriteIds) { NetworkClient.apiService.removeJobPostFavorite(post.id); favoriteIds = favoriteIds - post.id; Toast.makeText(context, "Removed from saved jobs", Toast.LENGTH_SHORT).show() }
+                                    else { NetworkClient.apiService.addJobPostFavorite(post.id); favoriteIds = favoriteIds + post.id; Toast.makeText(context, "Saved to your jobs list", Toast.LENGTH_SHORT).show() }
+                                } catch (e: Exception) { error = "Couldn't update your saved jobs. Check your connection and try again." }
+                                finally { favoritingId = null }
+                            }
+                        },
+                    )
+                }
+            }
+        } else {
         if (view == JobsView.NEARBY) item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
                 val active = nearbyRadiusKm == radius
@@ -341,6 +417,7 @@ fun JobsContent(
                     },
                 )
             }
+        }
         }
     }
         ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))

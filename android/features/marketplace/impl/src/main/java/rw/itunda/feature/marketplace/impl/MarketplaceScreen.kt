@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +59,7 @@ import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -379,6 +381,36 @@ fun MarketplaceContent(
         if (view == HoodView.NEARBY) requestNearbyLocation() else load()
     }
 
+    // Real relevance-ranked search (2026-08-14) -- see backend MarketplaceService
+    // .search's own doc comment. This screen had no search at all before (only
+    // Home's own universal search box could reach these listings, and only by
+    // navigating away first) despite the real endpoint already existing -- the same
+    // "uncalled endpoint" gap class this project's own periodic sweeps keep finding.
+    // Debounced (300ms) so typing doesn't fire a request per keystroke; searchResults
+    // stays null (not emptyList) while blank so it never shadows the real view-based
+    // feed above.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<ListingDto>?>(null) }
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = null
+            return@LaunchedEffect
+        }
+        delay(300)
+        try {
+            val res = NetworkClient.apiService.searchListings(searchQuery)
+            if (res.success) {
+                searchResults = res.listings
+                trustScores = res.trustScores
+                likedListingIds = res.likedByMe ?: emptySet()
+            }
+        } catch (_: Exception) {
+            searchResults = emptyList()
+        }
+    }
+    val isSearching = searchQuery.isNotBlank()
+    val displayListings = if (isSearching) searchResults else listings
+
     // Real listing detail navigation (2026-08-03) -- see ListingDetailScreen's own
     // doc comment for the real-Karrot-verified sourcing. Local nav state, same
     // pattern showNewListing (Mine tab) already establishes in this file.
@@ -452,6 +484,35 @@ fun MarketplaceContent(
         // stacked chip rows" gap for real, not just visually -- Hood's Market mode
         // now has exactly one chip row (HoodTab's Market/Life/Jobs/Home), matching
         // real Karrot.
+        item {
+            IdsTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = "Search",
+                placeholder = "Search marketplace listings",
+            )
+        }
+        if (isSearching) {
+            if (displayListings == null) {
+                item { SkeletonBlock() }
+            } else if (displayListings.isEmpty()) {
+                item { EmptyState("No listings match \"$searchQuery\".", icon = Icons.Outlined.ShoppingBag) }
+            } else {
+                items(displayListings, key = { it.id }) { listing ->
+                    ListingRow(
+                        listing = listing,
+                        isMine = listing.sellerId == currentUserId,
+                        viewerLocation = browseLocation,
+                        favorited = listing.id in favoriteIds,
+                        favoriteBusy = favoritingId == listing.id,
+                        onToggleFavorite = { toggleFavorite(listing.id) },
+                        liked = listing.id in likedListingIds,
+                        onToggleLike = { toggleLike(listing.id) },
+                        onOpen = { selectedListing = listing },
+                    )
+                }
+            }
+        } else {
         favoriteNotice?.let { notice ->
             item { Text(notice, color = Ids.colors.brand, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
         }
@@ -516,6 +577,7 @@ fun MarketplaceContent(
                     onOpen = { selectedListing = listing },
                 )
             }
+        }
         }
     }
         ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))

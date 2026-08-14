@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
@@ -198,6 +200,30 @@ fun CommunityContent(
     }
     LaunchedEffect(view, activeCategory) { load() }
 
+    // Real relevance-ranked search (2026-08-14) -- see backend CommunityService
+    // .search's own doc comment; same "uncalled endpoint" gap class as
+    // MarketplaceContent's own identical addition, see its doc comment for the full
+    // account.
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<CommunityPostDto>?>(null) }
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = null
+            return@LaunchedEffect
+        }
+        delay(300)
+        try {
+            val res = NetworkClient.apiService.searchCommunityPosts(searchQuery)
+            if (res.success) {
+                searchResults = res.posts
+                joinedCounts = res.joinedCounts
+            }
+        } catch (_: Exception) {
+            searchResults = emptyList()
+        }
+    }
+    val isSearching = searchQuery.isNotBlank()
+
     // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- closes
     // docs/DESIGN_REFERENCES.md Section 4 recommendation #4. Reuses the exact same
     // onOpenGroupChat/onMessageSeller callback Marketplace/Jobs/Property already share
@@ -244,6 +270,34 @@ fun CommunityContent(
         // neighborhood shown separately, not as a chip). Feed source is now
         // auto-detected (see neighborhoodRefreshSignal's own doc comment above) and
         // "My posts" moved to HoodTab's hamburger menu (requestedView above).
+        item {
+            IdsTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = "Search",
+                placeholder = "Search community posts",
+            )
+        }
+        if (isSearching) {
+            if (searchResults == null) {
+                item { SkeletonBlock() }
+            } else if (searchResults!!.isEmpty()) {
+                item { Text("No posts match \"$searchQuery\".", color = Ids.colors.textSecondary, fontSize = 14.sp) }
+            } else {
+                items(searchResults!!, key = { it.id }) { post ->
+                    CommunityPostCard(
+                        post = post,
+                        categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
+                        isMine = post.authorId == currentUserId,
+                        joinedCount = joinedCounts[post.id] ?: 0,
+                        joining = joiningPostId == post.id,
+                        onJoin = { joinMeetup(post.id) },
+                        onOpen = { openPostId = post.id },
+                        onRemoved = ::load,
+                    )
+                }
+            }
+        } else {
         if ((view == CommunityView.BROWSE || view == CommunityView.NEIGHBORHOOD) && categories.isNotEmpty()) {
             item {
                 Row(
@@ -346,6 +400,7 @@ fun CommunityContent(
                     onRemoved = ::load,
                 )
             }
+        }
         }
     }
         ScrollFog(modifier = Modifier.align(Alignment.BottomCenter))
