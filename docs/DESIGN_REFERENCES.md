@@ -2677,9 +2677,17 @@ precedent and warned against repeating it).
    scoring — worth checking whether itunda's own loans/credit-score feature already uses itunda's own
    in-app transaction history as a signal, or leans on external/bureau-style data alone, given
    Rwanda's likely-thin traditional credit-bureau coverage.
-4. **[sourced, real lead, not yet checked]** Kakao Pay's third-party data-sharing fine — worth an
-   audit of whether itunda shares user data with any partner/vendor without a specific, itunda-side
-   consent record (not just a blanket signup ToS).
+4. **[sourced, checked 2026-08-15, no equivalent gap found]** Kakao Pay's third-party data-sharing
+   fine — audited every real partner-facing user-data pathway: `PartnerController` (mini-app
+   registration/submission -- no user PII exposed, purely partner-account mechanics),
+   `MiniAppSecurityContext` (governs which native bridge *methods* a mini-app can call, e.g.
+   `getWalletBalance`, gated on itunda's own internal moderation approval at submission time --
+   not a data-sale pathway, and every mini-app currently live is itunda's own first-party one,
+   confirmed via `packages/saronite` grep), `AffiliateController` (itunda-internal click/commission
+   tracking only, no external party involved). The one real external-data-disclosure pathway that
+   exists -- `IdentityVerificationService`, see Section 15/this document's own partner-identity
+   coverage -- already requires a fresh, explicit, single-use user approval every time, the opposite
+   of Kakao Pay's actual failure (bulk sharing with zero consent mechanism). No equivalent gap.
 5. **[sourced, checked 2026-08-15, already real]** Whether itunda's SplitBill flow is reachable from
    inside its own Talk/chat feature, matching Kakao Pay's real "정산하기" pattern -- confirmed yes:
    `GroupSplitBillsView` (`TalkScreen.kt`) is reachable via a dedicated icon button directly inside
