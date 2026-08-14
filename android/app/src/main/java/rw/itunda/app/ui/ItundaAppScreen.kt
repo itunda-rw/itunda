@@ -167,6 +167,8 @@ import androidx.compose.ui.unit.sp
 
 import rw.itunda.app.R
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.StarGold
+import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsCard
 import rw.itunda.core.designsystem.components.rememberPressScale
@@ -4093,6 +4095,12 @@ private fun MyTab(
     // this is purely the read-back, mirroring bank-mfe's own AffiliateEarningsCard.
     var affiliateLinks by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.AffiliateLinkDto>>(emptyList()) }
     var affiliateCommissions by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.AffiliateCommissionDto>>(emptyList()) }
+    // Both of these are real, working, previously-uncalled read-backs (found by a
+    // 2026-08-14 sweep of every ApiService method with zero call sites). Each closes a
+    // real write-with-no-read asymmetry: you could report a scam account or review a
+    // booking, and then never see it again anywhere in any client.
+    var myScamReports by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.ScamReportDto>>(emptyList()) }
+    var myBookingReviews by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.MerchantBookingReviewDto>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         // Each fetch independent and best-effort -- one product's API hiccup must
@@ -4108,6 +4116,8 @@ private fun MyTab(
         try { myPropertyListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyPropertyListings().listings.size } catch (_: Exception) { }
         try { affiliateLinks = rw.itunda.core.network.NetworkClient.apiService.getMyAffiliateLinks().links } catch (_: Exception) { }
         try { affiliateCommissions = rw.itunda.core.network.NetworkClient.apiService.getMyAffiliateCommissions().commissions } catch (_: Exception) { }
+        try { myScamReports = rw.itunda.core.network.NetworkClient.apiService.getMyScamReports().reports } catch (_: Exception) { }
+        try { myBookingReviews = rw.itunda.core.network.NetworkClient.apiService.getMyBookingReviews().reviews } catch (_: Exception) { }
     }
 
     LazyColumn(
@@ -4202,6 +4212,52 @@ private fun MyTab(
                     FlatRow("Property listed", trailing = "$myPropertyListingsCount", icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onSwitchToProperty),
                 ),
             )
+        }
+        // Real read-back of reviews this user has written. ownerReply is the reason
+        // this matters most: a merchant can already reply to a review, and until
+        // 2026-08-14 there was nowhere in any client the author could ever see that
+        // reply -- the endpoint existed and worked, it just had no caller.
+        if (myBookingReviews.isNotEmpty()) {
+            item { Text("My reviews", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            items(myBookingReviews, key = { it.id }) { review ->
+                IdsCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(review.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                            Text("★".repeat(review.rating.coerceIn(0, 5)), color = StarGold, fontSize = 13.sp)
+                        }
+                        review.comment?.takeIf { it.isNotBlank() }?.let {
+                            Text(it, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        }
+                        review.ownerReply?.takeIf { it.isNotBlank() }?.let { reply ->
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                                    .background(Ids.colors.surfaceSoft, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                    .padding(10.dp),
+                            ) {
+                                Text("Owner replied", color = Ids.colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(reply, color = Ids.colors.textPrimary, fontSize = 13.sp)
+                            }
+                        }
+                        Text(relativeTimeAgo(review.createdAt), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+        // Real read-back of scam reports this user filed from the Transfer flow's own
+        // "report this account" dialog. Reporting worked; seeing what you reported
+        // never did, on any client.
+        if (myScamReports.isNotEmpty()) {
+            item { Text("My scam reports", color = Ids.colors.textPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            items(myScamReports, key = { it.id }) { report ->
+                IdsCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(report.reportedIdentifier, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Text(report.reason, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Text(relativeTimeAgo(report.createdAt), color = Ids.colors.textTertiary, fontSize = 11.sp)
+                    }
+                }
+            }
         }
         // "My account" (My assets/Get a loan/Credit score/etc) deliberately dropped
         // here (2026-07-24) -- every one of those rows already lives in the All tab's
