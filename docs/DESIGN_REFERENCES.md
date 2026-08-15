@@ -4478,6 +4478,12 @@ research-body finding** (NN/g, Apple HIG); nothing here is `inferred`.
    real `itunda://` deep-link scheme (see Section 1's Maps entry); bank-mfe web has none at all.
    *Target: `App.tsx`/`BankDashboard.tsx` -- real architectural gap, larger scope than the others
    above, not yet scoped into a concrete plan.*
+   **Built 2026-08-16, top-level `tab` only (scoped down, not the full architectural version) --
+   no new router dependency, `?tab=X` synced via `history.pushState`/`popstate` directly. Live-
+   verified in a real browser: click updates the URL, a hard refresh with `?tab=PAY` lands
+   directly on Pay, and back/forward correctly restore both URL and rendered tab. Deeper state
+   (a specific chat/policy/order inside a tab) is still not URL-addressable -- that's a real,
+   separately-scoped follow-up if ever prioritized, not folded into this fix.
 
 ### Final nav taxonomy: Home/Pay/Explore/Messages/You, shipped on all 3 platforms
 
