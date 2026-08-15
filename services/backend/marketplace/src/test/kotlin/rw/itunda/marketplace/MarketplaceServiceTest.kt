@@ -210,6 +210,69 @@ class MarketplaceServiceTest : BehaviorSpec({
             }
         }
 
+        // Real gap closed 2026-08-15 -- see MarketplaceEscrow.deliveryAddress's own doc
+        // comment (당근마켓 바로구매-style shipped-item support, escrow previously only
+        // ever assumed an in-person handoff). payEscrow's own happy path had no test at
+        // all before this (the only existing payEscrow test above covers the rate-limit
+        // failure path, never reaches the ledger).
+        When("a real buyer pays escrow with a real delivery address for a shipped item") {
+            val freshListing = Listing(
+                id = "listing_6", sellerId = "seller_1", title = "Bike helmet", description = "desc",
+                price = BigDecimal("5000"), category = "sports",
+            )
+            every { listingRepository.findById("listing_6") } returns Optional.of(freshListing)
+            every { rateLimiter.checkLimit("marketplace:pay-escrow:buyer_2", limit = 20, window = Duration.ofHours(1)) } returns Unit
+            val buyerWallet = Wallet(id = "wallet_buyer", userId = "buyer_2", accountNumber = "1", accountName = "Buyer", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
+            val sellerWallet = Wallet(id = "wallet_seller", userId = "seller_1", accountNumber = "2", accountName = "Seller", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"))
+            every { walletRepository.findByUserIdAndType("buyer_2", rw.itunda.core.domain.WalletType.MAIN) } returns buyerWallet
+            every { walletRepository.findByUserIdAndType("seller_1", rw.itunda.core.domain.WalletType.MAIN) } returns sellerWallet
+            val seller = User(id = "seller_1", phoneNumber = "0788000001", firstName = "Seller", lastName = "One", passwordHash = "x")
+            every { userRepository.findById("seller_1") } returns Optional.of(seller)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("txn_1", emptyList())
+            every { transactionRepository.save(any()) } answers { firstArg() }
+            every { listingRepository.save(any()) } answers { firstArg() }
+            val escrowSlot = slot<MarketplaceEscrow>()
+            every { marketplaceEscrowRepository.save(capture(escrowSlot)) } answers { firstArg() }
+            val conversation = Conversation(id = "conversation_2", participantAId = "buyer_2", participantBId = "seller_1")
+            every { messagingService.startOrGetConversation("buyer_2", "seller_1") } returns conversation
+            every { messagingService.sendMessage(any(), any(), any()) } returns mockk(relaxed = true)
+
+            val escrow = service.payEscrow("buyer_2", "listing_6", "  123 Main St, Kigali  ")
+
+            Then("the real delivery address is trimmed and persisted on the escrow") {
+                escrow.deliveryAddress shouldBe "123 Main St, Kigali"
+                escrowSlot.captured.deliveryAddress shouldBe "123 Main St, Kigali"
+            }
+        }
+
+        When("a real buyer pays escrow with no delivery address (the original in-person case)") {
+            val freshListing = Listing(
+                id = "listing_7", sellerId = "seller_1", title = "Bike helmet", description = "desc",
+                price = BigDecimal("5000"), category = "sports",
+            )
+            every { listingRepository.findById("listing_7") } returns Optional.of(freshListing)
+            every { rateLimiter.checkLimit("marketplace:pay-escrow:buyer_3", limit = 20, window = Duration.ofHours(1)) } returns Unit
+            val buyerWallet = Wallet(id = "wallet_buyer_3", userId = "buyer_3", accountNumber = "3", accountName = "Buyer", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
+            val sellerWallet = Wallet(id = "wallet_seller_2", userId = "seller_1", accountNumber = "4", accountName = "Seller", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal("0"), availableBalance = BigDecimal("0"))
+            every { walletRepository.findByUserIdAndType("buyer_3", rw.itunda.core.domain.WalletType.MAIN) } returns buyerWallet
+            every { walletRepository.findByUserIdAndType("seller_1", rw.itunda.core.domain.WalletType.MAIN) } returns sellerWallet
+            val seller = User(id = "seller_1", phoneNumber = "0788000001", firstName = "Seller", lastName = "One", passwordHash = "x")
+            every { userRepository.findById("seller_1") } returns Optional.of(seller)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("txn_2", emptyList())
+            every { transactionRepository.save(any()) } answers { firstArg() }
+            every { listingRepository.save(any()) } answers { firstArg() }
+            every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
+            val conversation = Conversation(id = "conversation_3", participantAId = "buyer_3", participantBId = "seller_1")
+            every { messagingService.startOrGetConversation("buyer_3", "seller_1") } returns conversation
+            every { messagingService.sendMessage(any(), any(), any()) } returns mockk(relaxed = true)
+
+            val escrow = service.payEscrow("buyer_3", "listing_7", null)
+
+            Then("deliveryAddress stays null, the original in-person flow is unaffected") {
+                escrow.deliveryAddress shouldBe null
+            }
+        }
+
         // Real 당근마켓 끌어올리기 (bump to top of feed), 2026-08-10. Backdated
         // createdAt in both bump tests below -- a truly brand-new listing (createdAt =
         // now) is still inside its own 24h freshness window, so the cooldown correctly

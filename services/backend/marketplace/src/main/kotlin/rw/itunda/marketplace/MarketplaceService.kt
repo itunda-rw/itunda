@@ -404,7 +404,7 @@ class MarketplaceService(
      * `marketplace_escrow_holding`.
      */
     @Transactional
-    fun payEscrow(buyerId: String, listingId: String): MarketplaceEscrow {
+    fun payEscrow(buyerId: String, listingId: String, deliveryAddress: String? = null): MarketplaceEscrow {
         rateLimiter.checkLimit("marketplace:pay-escrow:$buyerId", limit = 20, window = Duration.ofHours(1))
         val listing = listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
         if (listing.status != ListingStatus.ACTIVE) {
@@ -454,6 +454,7 @@ class MarketplaceService(
             MarketplaceEscrow(
                 id = "marketplace_escrow_${UUID.randomUUID()}", listingId = listingId, buyerId = buyerId, sellerId = seller.id,
                 amount = listing.price, fee = fee, holdTransactionId = result.transactionId,
+                deliveryAddress = deliveryAddress?.trim()?.takeIf { it.isNotEmpty() },
             ),
         )
         trustScoreService.computeScore(seller.id)

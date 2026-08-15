@@ -78,6 +78,13 @@ class MarketplaceEscrow(
     @Column(name = "dispute_reason", length = 500)
     var disputeReason: String? = null,
 
+    // Real gap closed 2026-08-15: escrow always assumed an in-person handoff (buyer
+    // "confirms receipt" in person) -- a real, sourced 당근마켓 (Karrot) 바로구매-style
+    // shipped-item trade had no field to say where a non-local item should go. Nullable
+    // and optional -- the original in-person use case leaves this null.
+    @Column(name = "delivery_address", length = 500)
+    val deliveryAddress: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 

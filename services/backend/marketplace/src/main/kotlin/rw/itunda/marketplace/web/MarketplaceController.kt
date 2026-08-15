@@ -78,6 +78,9 @@ data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
 data class BoostListingRequest(val days: Int)
 data class DisputeEscrowRequest(val reason: String)
+// Real gap closed 2026-08-15 -- see MarketplaceEscrow.deliveryAddress's own doc comment.
+// Optional: omit it (or send it empty) for the original in-person handoff.
+data class PayEscrowRequest(val deliveryAddress: String? = null)
 
 // Real 당근마켓-style marketplace -- see MarketplaceService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -252,10 +255,13 @@ class MarketplaceController(
     fun payEscrow(
         @PathVariable listingId: String,
         @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        // Not required -- existing callers (Android's own in-person escrow flow) send
+        // no body at all today, and that must keep working unchanged.
+        @RequestBody(required = false) request: PayEscrowRequest?,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/marketplace/listings/$listingId/pay-escrow", idempotencyKey, listingId) {
-            201 to mapOf("success" to true, "escrow" to marketplaceService.payEscrow(currentUser.userId, listingId))
+            201 to mapOf("success" to true, "escrow" to marketplaceService.payEscrow(currentUser.userId, listingId, request?.deliveryAddress))
         }
         return ResponseEntity.status(status).body(body)
     }

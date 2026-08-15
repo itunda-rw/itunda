@@ -35,6 +35,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -92,6 +93,7 @@ import rw.itunda.core.network.BoostListingRequest
 import rw.itunda.core.network.MarkSoldRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetKeywordAlertQuietHoursRequest
+import rw.itunda.core.network.PayEscrowRequest
 import rw.itunda.core.network.SubmitHoodReviewRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
@@ -1212,6 +1214,11 @@ private fun ListingDetailScreen(
     // cash handoff -- paying = the buyer committing to escrow; escrow/loadedEscrow =
     // the buyer's own already-paid escrow status once this listing is SOLD to them.
     var paying by remember { mutableStateOf(false) }
+    // Real gap closed 2026-08-15 -- see backend MarketplaceEscrow.deliveryAddress's own
+    // doc comment (당근마켓 바로구매-style shipped-item support). Deliberately optional
+    // and blank by default: the original in-person handoff still works with nothing
+    // typed here.
+    var deliveryAddress by remember { mutableStateOf("") }
     var escrow by remember { mutableStateOf<rw.itunda.core.network.MarketplaceEscrowDto?>(null) }
     var loadedEscrow by remember { mutableStateOf(false) }
     var showDispute by remember { mutableStateOf(false) }
@@ -1489,6 +1496,17 @@ private fun ListingDetailScreen(
                     ListingActionButton("Rate this buyer", busy, filled = true) { showReviewSheet = true }
                 }
             }
+            // Real gap closed 2026-08-15 -- see backend MarketplaceEscrow.deliveryAddress's
+            // own doc comment (당근마켓 바로구매-style shipped-item support). Deliberately
+            // optional: leaving this blank keeps the original in-person handoff unchanged.
+            if (!isMine && listing.status == "ACTIVE" && !offering) {
+                OutlinedTextField(
+                    value = deliveryAddress,
+                    onValueChange = { deliveryAddress = it },
+                    label = { Text("Delivery address (optional, for a shipped item)") },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
                     if (listing.status == "ACTIVE" && !markingSold) {
@@ -1551,7 +1569,10 @@ private fun ListingDetailScreen(
                         error = null
                         coroutineScope.launch {
                             try {
-                                NetworkClient.apiService.payEscrow(listing.id, UUID.randomUUID().toString())
+                                NetworkClient.apiService.payEscrow(
+                                    listing.id, UUID.randomUUID().toString(),
+                                    PayEscrowRequest(deliveryAddress.trim().takeIf { it.isNotEmpty() }),
+                                )
                                 onChanged()
                             } catch (e: HttpException) {
                                 error = superAppErrorMessage(e)

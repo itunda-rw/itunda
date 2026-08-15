@@ -772,10 +772,16 @@ data class MarketplaceEscrowDto(
     val id: String, val listingId: String, val buyerId: String, val sellerId: String,
     val amount: Double, val fee: Double, val status: String,
     val holdTransactionId: String, val resolutionTransactionId: String? = null,
-    val disputeReason: String? = null, val createdAt: String, val updatedAt: String,
+    val disputeReason: String? = null,
+    // Real gap closed 2026-08-15 -- see the backend MarketplaceEscrow.deliveryAddress's
+    // own doc comment (당근마켓 바로구매-style shipped-item support, escrow previously
+    // only ever assumed an in-person handoff). Null for the original in-person case.
+    val deliveryAddress: String? = null,
+    val createdAt: String, val updatedAt: String,
 )
 data class MarketplaceEscrowResponse(val success: Boolean, val escrow: MarketplaceEscrowDto)
 data class DisputeEscrowRequest(val reason: String)
+data class PayEscrowRequest(val deliveryAddress: String? = null)
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
 // -- see backend HoodTransactionReview.kt's own doc comment. goodPoints/
 // uncomfortablePoints are preset tag ids (never free text), matching Karrot's own real
@@ -2656,7 +2662,7 @@ interface ApiService {
     // Real "pay via itunda" Marketplace escrow (2026-07-25) -- see
     // rw.itunda.marketplace.web.MarketplaceController.
     @POST("api/v1/marketplace/listings/{id}/pay-escrow")
-    suspend fun payEscrow(@Path("id") listingId: String, @Header("Idempotency-Key") idempotencyKey: String): MarketplaceEscrowResponse
+    suspend fun payEscrow(@Path("id") listingId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: PayEscrowRequest = PayEscrowRequest()): MarketplaceEscrowResponse
 
     @POST("api/v1/marketplace/listings/{id}/confirm-receipt")
     suspend fun confirmEscrowReceipt(@Path("id") listingId: String, @Header("Idempotency-Key") idempotencyKey: String): MarketplaceEscrowResponse
