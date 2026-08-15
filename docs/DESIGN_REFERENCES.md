@@ -6200,3 +6200,42 @@ guardian/child relationship as the trust primitive (already real, already has co
 candidates (rideshare is where Uber's own feature shipped first) -- both would need a new optional
 `onBehalfOfUserId` request field, a real authorization check against `FamilyLinkRepository`, and a
 clear design decision on payer vs. rider wallet routing before writing any client code.
+
+### Follow-up: iOS's text-scale accessibility support was more nuanced than first assumed
+
+While porting Simple Mode's text-scale toggle to iOS (after building it on Android), found iOS
+already has REAL, working accessibility text scaling -- just not the custom in-app toggle Android
+now has. `IDS.Typography` (`ios/Core/DesignSystem/Sources/IDS.swift`) has used
+`UIFontMetrics(forTextStyle:).scaledFont(for:)` since 2026-07-11 (predates this session entirely),
+the documented Apple pattern for "keep this exact point size at the default content size category,
+but still scale with the user's real iOS Settings > Accessibility > Larger Text setting." Every
+screen built purely from `IDS.Typography.*` constants already respects Dynamic Type correctly,
+with zero code changes needed.
+
+**Building a separate custom `TextScalePreference` on iOS (mirroring Android's exact 3-option UI)
+would be the wrong move** -- it would duplicate and likely conflict with the real, more
+platform-idiomatic mechanism already in place (a genuine system setting, not an app-specific one,
+is the correct default for iOS; Android lacks an equivalent OS-level font-scale hook accessible the
+same way, which is why the custom `TextScalePreference` was the right call there).
+
+**The real remaining gap on iOS**: 86 raw `Font.system(size: N, weight: W)` call sites across 15
+files (`AppLockScreenView.swift`, `ContentView.swift`, `DeviceStepUpView.swift`, `EatsScreen.swift`,
+`InvestScreenView.swift`, `MapScreenView.swift`, `SavingsFlowContainer.swift`, `SettingsScreen.swift`,
+`ShopScreen.swift`, `TalkScreen.swift`, `TransferFlowContainer.swift`,
+`Features/Banking/Sources/BankView.swift`, `Features/Payments/Sources/TransactionHistoryScreen.swift`,
+`Features/Payments/Sources/TransferFlowScreens.swift`, `MerchantApp/Sources/DeviceStepUpDialog.swift`)
+bypass `IDS.Typography`/`IDS.scaledFont` entirely -- plain point sizes that do NOT grow with Dynamic
+Type, unlike every screen using the shared typography constants. **Deliberately not converted this
+pass**: each of the 86 needs individual judgment on the right `relativeTo: UIFont.TextStyle`
+mapping (matching `IDS.Typography`'s own precedent -- e.g. size 15 medium -> `.subheadline`, size 13
+-> `.caption1`, size 20 bold -> `.title2`), and with no physical iOS device available this session
+there is no way to visually confirm a given mapping actually looks right once Dynamic Type is
+cranked up, unlike a change that can be reasoned about purely from source. Converting 86
+judgment-heavy call sites blind risks a real regression (a screen scaling oddly) that would go
+unnoticed until someone actually looks at it on-device.
+
+**How to apply:** if this is ever prioritized, do it with a physical device in hand (or the
+simulator's own Text Size accessibility inspector) so each `relativeTo` choice can be visually
+confirmed, not just source-reasoned. `IDS.scaledFont(size:weight:relativeTo:)` already exists and
+is the correct helper -- this is a mechanical sweep once verification is possible, not a design
+problem.
