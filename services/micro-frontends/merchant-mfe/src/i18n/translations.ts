@@ -254,7 +254,31 @@ export type TranslationKey =
   | 'coupons.regularsOnlySuffix'
   | 'coupons.expiresSuffix'
   | 'coupons.deactivateError'
-  | 'coupons.deactivateButton';
+  | 'coupons.deactivateButton'
+  // Real 10th-localization-pass additions (2026-08-15): AdsScreen -- real
+  // 당근(Karrot) 반경 타기팅-style radius-targeted local ads.
+  | 'ads.loadError'
+  | 'ads.activeTitle'
+  | 'ads.activeBody'
+  | 'ads.geolocationUnsupported'
+  | 'ads.locationSaveError'
+  | 'ads.locationFetchError'
+  | 'ads.locationSetupTitle'
+  | 'ads.locationSetupBody'
+  | 'ads.gettingLocation'
+  | 'ads.shareLocationButton'
+  | 'ads.createTitle'
+  | 'ads.titleLabel'
+  | 'ads.titlePlaceholder'
+  | 'ads.descriptionLabel'
+  | 'ads.descriptionPlaceholder'
+  | 'ads.radiusLabel'
+  | 'ads.durationLabel'
+  | 'ads.durationOption'
+  | 'ads.createError'
+  | 'ads.chargeNotice'
+  | 'ads.starting'
+  | 'ads.payAndRunButton';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -462,6 +486,28 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coupons.expiresSuffix': ' · Expires {{date}}',
     'coupons.deactivateError': 'Could not deactivate this coupon.',
     'coupons.deactivateButton': 'Deactivate',
+    'ads.loadError': 'Could not load your business account.',
+    'ads.activeTitle': 'Your active ad',
+    'ads.activeBody': '{{radius}}m radius · runs until {{date}}',
+    'ads.geolocationUnsupported': 'This browser does not support real location access.',
+    'ads.locationSaveError': 'Could not save your location.',
+    'ads.locationFetchError': 'Could not get your real location. Check your browser permissions.',
+    'ads.locationSetupTitle': 'Set your business location',
+    'ads.locationSetupBody': "A radius-targeted ad needs your business's real location to match nearby customers.",
+    'ads.gettingLocation': 'Getting location…',
+    'ads.shareLocationButton': 'Share my location',
+    'ads.createTitle': 'Run a local ad',
+    'ads.titleLabel': 'Title',
+    'ads.titlePlaceholder': 'Fresh bread every morning',
+    'ads.descriptionLabel': 'Description (optional)',
+    'ads.descriptionPlaceholder': 'Stop by for 10% off this week',
+    'ads.radiusLabel': 'Radius',
+    'ads.durationLabel': 'Duration',
+    'ads.durationOption': '{{days}} days — {{price}} RWF',
+    'ads.createError': 'Could not create this ad.',
+    'ads.chargeNotice': '{{price}} RWF will be charged from your wallet. If you already have an active ad, this extends it.',
+    'ads.starting': 'Starting…',
+    'ads.payAndRunButton': 'Pay {{price}} RWF & run ad',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -668,6 +714,28 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coupons.expiresSuffix': ' · Irangira {{date}}',
     'coupons.deactivateError': 'Ntibishoboka guhagarika iyi kuponi.',
     'coupons.deactivateButton': 'Hagarika',
+    'ads.loadError': 'Ntibishoboka gushakisha konti yawe y\'ubucuruzi.',
+    'ads.activeTitle': 'Itangazo ryawe rikora',
+    'ads.activeBody': 'Uburebure bwa m {{radius}} · rikomeza kugeza {{date}}',
+    'ads.geolocationUnsupported': 'Iyi porogaramu ntabwo ishoboye kubona aho uri.',
+    'ads.locationSaveError': 'Ntibishoboka kubika aho uri.',
+    'ads.locationFetchError': 'Ntibishoboka kumenya aho uri. Reba uburenganzira bwa porogaramu yawe.',
+    'ads.locationSetupTitle': 'Shyiraho aho ubucuruzi bwawe buherereye',
+    'ads.locationSetupBody': 'Itangazo rigenewe abantu bo hafi rikeneye aho ubucuruzi bwawe buherereye kugira ngo rigere ku bakiriya bo hafi.',
+    'ads.gettingLocation': 'Kumenya aho uri…',
+    'ads.shareLocationButton': 'Menyekanisha aho ndi',
+    'ads.createTitle': 'Tangiza itangazo ry\'aho uri',
+    'ads.titleLabel': 'Umutwe',
+    'ads.titlePlaceholder': 'Umugati mushya buri gitondo',
+    'ads.descriptionLabel': 'Ibisobanuro (bitari ngombwa)',
+    'ads.descriptionPlaceholder': 'Ngwino ubone igabanuka rya 10% iki cyumweru',
+    'ads.radiusLabel': 'Uburebure',
+    'ads.durationLabel': 'Igihe',
+    'ads.durationOption': 'Iminsi {{days}} — {{price}} RWF',
+    'ads.createError': 'Ntibishoboka gukora iri tangazo.',
+    'ads.chargeNotice': 'Amafaranga {{price}} RWF azakurwa kuri konti yawe. Niba usanzwe ufite itangazo rikora, iri rirongera igihe.',
+    'ads.starting': 'Gutangira…',
+    'ads.payAndRunButton': 'Ishyura {{price}} RWF utangize itangazo',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -874,5 +942,27 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'coupons.expiresSuffix': ' · Expire le {{date}}',
     'coupons.deactivateError': 'Impossible de désactiver ce coupon.',
     'coupons.deactivateButton': 'Désactiver',
+    'ads.loadError': 'Impossible de charger votre compte professionnel.',
+    'ads.activeTitle': 'Votre publicité active',
+    'ads.activeBody': 'Rayon de {{radius}} m · active jusqu\'au {{date}}',
+    'ads.geolocationUnsupported': "Ce navigateur ne prend pas en charge l'accès réel à la position.",
+    'ads.locationSaveError': 'Impossible d\'enregistrer votre position.',
+    'ads.locationFetchError': "Impossible d'obtenir votre position réelle. Vérifiez les autorisations de votre navigateur.",
+    'ads.locationSetupTitle': 'Définissez la position de votre entreprise',
+    'ads.locationSetupBody': "Une publicité ciblée par rayon a besoin de la position réelle de votre entreprise pour toucher les clients à proximité.",
+    'ads.gettingLocation': 'Récupération de la position…',
+    'ads.shareLocationButton': 'Partager ma position',
+    'ads.createTitle': 'Lancer une publicité locale',
+    'ads.titleLabel': 'Titre',
+    'ads.titlePlaceholder': 'Pain frais chaque matin',
+    'ads.descriptionLabel': 'Description (facultatif)',
+    'ads.descriptionPlaceholder': 'Passez profiter de 10% de réduction cette semaine',
+    'ads.radiusLabel': 'Rayon',
+    'ads.durationLabel': 'Durée',
+    'ads.durationOption': '{{days}} jours — {{price}} RWF',
+    'ads.createError': 'Impossible de créer cette publicité.',
+    'ads.chargeNotice': '{{price}} RWF seront débités de votre portefeuille. Si vous avez déjà une publicité active, celle-ci sera prolongée.',
+    'ads.starting': 'Démarrage…',
+    'ads.payAndRunButton': 'Payer {{price}} RWF et lancer',
   },
 };
