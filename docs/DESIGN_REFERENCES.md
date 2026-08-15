@@ -6018,3 +6018,43 @@ blind rather than honestly scoped -- the same discipline this document already a
 (e.g. this pass's own kyc-mfe REJECTED-state fix, code-verified but explicitly not claimed as
 live-clicked). Real next step once a device is available: a "Scan to Pay" 1x1 widget deep-linking
 into the existing Pay tab's scan flow, same real target Kakao's own widget serves.
+
+## 66. 당근마켓 (Karrot) 바로구매 -- real shipped-item support closes a genuine escrow gap
+
+**Added 2026-08-15**, continuing the standing "keep searching other ecosystems" directive.
+Searched specifically for what's changed recently in Karrot's own real product (rather than
+re-reading the same 2026-08-04 research pass), found 바로구매 (roughly "buy now"): since
+2025-09-17 Karrot lets a seller enter real shipping info on a listing and a buyer pay + provide a
+delivery address in-app, receiving the item via a real CJ대한통운 (CJ Logistics) courier
+partnership -- a genuine product shift beyond Karrot's original hyperlocal-meetup-only model.
+
+### Checked against itunda's own code
+
+itunda already has a real, matching safety concept: `MarketplaceEscrow` ("pay via itunda," item
+2026-07-25) -- a buyer's payment is held by itunda until they confirm receipt, closing the same
+real trust gap Naver Cafe's 안전거래 (Safe Trade) product exists to solve. But reading the entity
+and `confirmReceipt` directly: the whole model still assumes an **in-person** handoff --
+"confirm receipt" means physically receiving the item from the seller, and there was no field
+anywhere (entity, request, DTO) for a delivery address. A buyer wanting to use itunda's own real
+escrow protection for a non-local trade had no way to actually receive a shipped item -- a real,
+confirmed gap, not a guess.
+
+**Fixed same day** (`b3256e5b`): added a nullable `deliveryAddress` to `MarketplaceEscrow`
+(V244 migration), threaded through `payEscrow` end to end, optional and backward-compatible
+(existing callers sending no body are unaffected). Android's `MarketplaceScreen.kt` gained an
+optional "Delivery address (optional, for a shipped item)" field before the real "🔒 Pay via
+itunda" button. Wrote 2 new real unit tests for `payEscrow`'s own happy path, which had **zero**
+test coverage before this (the only existing test covered the rate-limit failure path only).
+
+**Deliberately not built**: a real live courier-tracking integration matching Karrot's actual
+CJ대한통운 API -- itunda has no equivalent logistics partner, and fabricating one would violate
+this project's own standing discipline against inventing fake external integrations (matching how
+KYB verification is honestly a structural pre-check, not a live registry lookup). This is the
+honest v1: a real address field so buyer and seller can actually coordinate shipping themselves.
+
+**Separate, larger, real gap found while researching this, named not built**: Marketplace escrow
+only exists on Android. `payEscrow`/`confirmEscrowReceipt` are called from nowhere in bank-mfe or
+iOS (confirmed by grep, not assumed) -- a buyer/seller on web or iOS has no "pay safely via
+itunda" option at all for Marketplace, only the original off-platform cash handoff. Building a
+whole new escrow UI on two more platforms is a distinctly bigger scope than this delivery-address
+fix, not folded in here.
