@@ -332,7 +332,26 @@ export type TranslationKey =
   | 'booking.statusConfirmed'
   | 'booking.statusDeclined'
   | 'booking.statusCancelled'
-  | 'booking.statusCompleted';
+  | 'booking.statusCompleted'
+  // Real 13th-localization-pass additions (2026-08-15): ReviewsScreen -- real
+  // post-appointment booking reviews + Commerce product reviews, owner-side reply.
+  | 'reviews.bookingTitle'
+  | 'reviews.ratingAverageSingular'
+  | 'reviews.ratingAveragePlural'
+  | 'reviews.loadError'
+  | 'reviews.bookingEmpty'
+  | 'reviews.productTitle'
+  | 'reviews.productLoadError'
+  | 'reviews.productEmpty'
+  | 'reviews.yourReply'
+  | 'reviews.replyPlaceholder'
+  | 'reviews.replyError'
+  | 'reviews.posting'
+  | 'reviews.updateReply'
+  | 'reviews.postReply'
+  | 'reviews.cancel'
+  | 'reviews.editReply'
+  | 'reviews.reply';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -612,6 +631,23 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'booking.statusDeclined': 'Declined',
     'booking.statusCancelled': 'Cancelled',
     'booking.statusCompleted': 'Completed',
+    'reviews.bookingTitle': 'Booking reviews',
+    'reviews.ratingAverageSingular': '{{average}} ★ average ({{count}} review)',
+    'reviews.ratingAveragePlural': '{{average}} ★ average ({{count}} reviews)',
+    'reviews.loadError': 'Could not load your reviews.',
+    'reviews.bookingEmpty': 'No booking reviews yet — reviews will show up here once customers leave them after a booking.',
+    'reviews.productTitle': 'Product reviews',
+    'reviews.productLoadError': 'Could not load your product reviews.',
+    'reviews.productEmpty': 'No product reviews yet — reviews will show up here once customers leave them after a purchase.',
+    'reviews.yourReply': 'Your reply',
+    'reviews.replyPlaceholder': 'Write a reply to this review',
+    'reviews.replyError': 'Could not post your reply.',
+    'reviews.posting': 'Posting…',
+    'reviews.updateReply': 'Update reply',
+    'reviews.postReply': 'Post reply',
+    'reviews.cancel': 'Cancel',
+    'reviews.editReply': 'Edit reply',
+    'reviews.reply': 'Reply',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -890,6 +926,23 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'booking.statusDeclined': 'Yanzwe',
     'booking.statusCancelled': 'Yahagaritswe',
     'booking.statusCompleted': 'Yarangiye',
+    'reviews.bookingTitle': 'Ibitekerezo ku gahunda',
+    'reviews.ratingAverageSingular': 'Impuzandengo ★ {{average}} (igitekerezo {{count}})',
+    'reviews.ratingAveragePlural': 'Impuzandengo ★ {{average}} (ibitekerezo {{count}})',
+    'reviews.loadError': 'Ntibishoboka gushakisha ibitekerezo byawe.',
+    'reviews.bookingEmpty': 'Nta bitekerezo ku gahunda urafite — bizagaragara hano igihe abakiriya bazabitanga nyuma ya gahunda.',
+    'reviews.productTitle': 'Ibitekerezo ku bicuruzwa',
+    'reviews.productLoadError': 'Ntibishoboka gushakisha ibitekerezo ku bicuruzwa byawe.',
+    'reviews.productEmpty': 'Nta bitekerezo ku bicuruzwa urafite — bizagaragara hano igihe abakiriya bazabitanga nyuma yo kugura.',
+    'reviews.yourReply': 'Igisubizo cyawe',
+    'reviews.replyPlaceholder': 'Andika igisubizo kuri iki gitekerezo',
+    'reviews.replyError': 'Ntibishoboka gutanga igisubizo cyawe.',
+    'reviews.posting': 'Kohereza…',
+    'reviews.updateReply': 'Vugurura igisubizo',
+    'reviews.postReply': 'Ohereza igisubizo',
+    'reviews.cancel': 'Hagarika',
+    'reviews.editReply': 'Hindura igisubizo',
+    'reviews.reply': 'Subiza',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -1168,5 +1221,22 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'booking.statusDeclined': 'Refusée',
     'booking.statusCancelled': 'Annulée',
     'booking.statusCompleted': 'Terminée',
+    'reviews.bookingTitle': 'Avis sur les réservations',
+    'reviews.ratingAverageSingular': 'Moyenne de {{average}} ★ ({{count}} avis)',
+    'reviews.ratingAveragePlural': 'Moyenne de {{average}} ★ ({{count}} avis)',
+    'reviews.loadError': 'Impossible de charger vos avis.',
+    'reviews.bookingEmpty': "Aucun avis sur les réservations pour le moment — les avis apparaîtront ici une fois que les clients les laisseront après une réservation.",
+    'reviews.productTitle': 'Avis sur les produits',
+    'reviews.productLoadError': 'Impossible de charger vos avis sur les produits.',
+    'reviews.productEmpty': "Aucun avis produit pour le moment — les avis apparaîtront ici une fois que les clients les laisseront après un achat.",
+    'reviews.yourReply': 'Votre réponse',
+    'reviews.replyPlaceholder': 'Écrivez une réponse à cet avis',
+    'reviews.replyError': 'Impossible de publier votre réponse.',
+    'reviews.posting': 'Publication en cours…',
+    'reviews.updateReply': 'Mettre à jour la réponse',
+    'reviews.postReply': 'Publier la réponse',
+    'reviews.cancel': 'Annuler',
+    'reviews.editReply': 'Modifier la réponse',
+    'reviews.reply': 'Répondre',
   },
 };

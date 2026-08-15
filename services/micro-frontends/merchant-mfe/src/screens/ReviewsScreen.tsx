@@ -5,12 +5,14 @@ import {
   fetchMerchantReviews, fetchProductReviews, getProductCatalog, replyToBookingReview, replyToProductReview,
   type Merchant, type MerchantBookingReview, type ProductReview,
 } from '../lib/merchant';
+import { useI18n } from '../i18n/I18nContext';
 
 // Real post-appointment booking reviews + owner-side reply (item 143) -- see
 // lib/merchant.ts's own doc comment. A merchant can post one real reply per review,
 // editable (re-posting overwrites the same reply, no separate versioning), matching
 // ProductReview/EatsReview's own already-proven reply pattern on the customer side.
 export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
+  const { t } = useI18n();
   const [reviews, setReviews] = useState<MerchantBookingReview[] | null>(null);
   const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
         setReviews(r.reviews);
         setRating(r.rating);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your reviews.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('reviews.loadError')));
   };
 
   useEffect(load, [merchant.id]);
@@ -30,12 +32,14 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
   return (
     <div style={{ maxWidth: '560px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div className="itunda-card">
-        <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Booking reviews</h2>
+        <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{t('reviews.bookingTitle')}</h2>
         {/* Real copy-voice fix (item 244, round 5 of the empty-state pass): honest
             about whose gap this is -- reviews only appear once customers leave
             them after a booking, not something the merchant is missing a step on. */}
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-          {rating?.average != null ? `${rating.average.toFixed(1)} ★ average (${rating.count} review${rating.count === 1 ? '' : 's'})` : 'No reviews yet — reviews will show up here once customers leave them after a booking.'}
+          {rating?.average != null
+            ? t(rating.count === 1 ? 'reviews.ratingAverageSingular' : 'reviews.ratingAveragePlural', { average: rating.average.toFixed(1), count: rating.count })
+            : t('reviews.bookingEmpty')}
         </p>
       </div>
 
@@ -54,7 +58,7 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
           {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
               about whose gap this is, same reasoning as this screen's own summary
               paragraph above. */}
-          <EmptyState message="No booking reviews yet — reviews will show up here once customers leave them after a booking." />
+          <EmptyState message={t('reviews.bookingEmpty')} />
         </div>
       )}
 
@@ -73,6 +77,7 @@ export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
 // across the merchant's own catalog (getProductCatalog), same honest "no aggregate
 // endpoint exists yet" scoping this file's own doc comment names.
 function ProductReviewsSection() {
+  const { t } = useI18n();
   const [reviews, setReviews] = useState<(ProductReview & { productName: string })[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,7 +94,7 @@ function ProductReviewsSection() {
         ),
       )
       .then((perProduct) => setReviews(perProduct.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt))))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your product reviews.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('reviews.productLoadError')));
   };
 
   useEffect(load, []);
@@ -97,7 +102,7 @@ function ProductReviewsSection() {
   return (
     <>
       <div className="itunda-card">
-        <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Product reviews</h2>
+        <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('reviews.productTitle')}</h2>
       </div>
       {error && (
         <div className="itunda-card">
@@ -112,7 +117,7 @@ function ProductReviewsSection() {
           {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
               about whose gap this is -- reviews only appear once customers leave
               them after a purchase. */}
-          <EmptyState message="No product reviews yet — reviews will show up here once customers leave them after a purchase." />
+          <EmptyState message={t('reviews.productEmpty')} />
         </div>
       )}
       {reviews?.map((review) => (
@@ -123,6 +128,7 @@ function ProductReviewsSection() {
 }
 
 function ProductReviewCard({ review, onReplied }: { review: ProductReview & { productName: string }; onReplied: () => void }) {
+  const { t } = useI18n();
   const [replying, setReplying] = useState(false);
   const [reply, setReply] = useState(review.ownerReply ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -137,7 +143,7 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
       setReplying(false);
       onReplied();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post your reply.');
+      setError(err instanceof ApiError ? err.message : t('reviews.replyError'));
     } finally {
       setSubmitting(false);
     }
@@ -154,7 +160,7 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
 
       {review.ownerReply && !replying && (
         <div style={{ padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--itunda-grey-700)', marginBottom: '2px' }}>Your reply</p>
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--itunda-grey-700)', marginBottom: '2px' }}>{t('reviews.yourReply')}</p>
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-900)' }}>{review.ownerReply}</p>
         </div>
       )}
@@ -164,7 +170,7 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
           <textarea
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            placeholder="Write a reply to this review"
+            placeholder={t('reviews.replyPlaceholder')}
             maxLength={1000}
             required
             rows={3}
@@ -175,10 +181,10 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
           )}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting || !reply.trim()}>
-              {submitting ? 'Posting…' : review.ownerReply ? 'Update reply' : 'Post reply'}
+              {submitting ? t('reviews.posting') : review.ownerReply ? t('reviews.updateReply') : t('reviews.postReply')}
             </button>
             <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => setReplying(false)}>
-              Cancel
+              {t('reviews.cancel')}
             </button>
           </div>
         </form>
@@ -188,7 +194,7 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
           style={{ alignSelf: 'flex-start', padding: '8px 12px', fontSize: '13px' }}
           onClick={() => setReplying(true)}
         >
-          {review.ownerReply ? 'Edit reply' : 'Reply'}
+          {review.ownerReply ? t('reviews.editReply') : t('reviews.reply')}
         </button>
       )}
     </div>
@@ -196,6 +202,7 @@ function ProductReviewCard({ review, onReplied }: { review: ProductReview & { pr
 }
 
 function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onReplied: () => void }) {
+  const { t } = useI18n();
   const [replying, setReplying] = useState(false);
   const [reply, setReply] = useState(review.ownerReply ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -210,7 +217,7 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
       setReplying(false);
       onReplied();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not post your reply.');
+      setError(err instanceof ApiError ? err.message : t('reviews.replyError'));
     } finally {
       setSubmitting(false);
     }
@@ -227,7 +234,7 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
 
       {review.ownerReply && !replying && (
         <div style={{ padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--itunda-grey-700)', marginBottom: '2px' }}>Your reply</p>
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--itunda-grey-700)', marginBottom: '2px' }}>{t('reviews.yourReply')}</p>
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-900)' }}>{review.ownerReply}</p>
         </div>
       )}
@@ -237,7 +244,7 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
           <textarea
             value={reply}
             onChange={(e) => setReply(e.target.value)}
-            placeholder="Write a reply to this review"
+            placeholder={t('reviews.replyPlaceholder')}
             maxLength={1000}
             required
             rows={3}
@@ -248,10 +255,10 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
           )}
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting || !reply.trim()}>
-              {submitting ? 'Posting…' : review.ownerReply ? 'Update reply' : 'Post reply'}
+              {submitting ? t('reviews.posting') : review.ownerReply ? t('reviews.updateReply') : t('reviews.postReply')}
             </button>
             <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => setReplying(false)}>
-              Cancel
+              {t('reviews.cancel')}
             </button>
           </div>
         </form>
@@ -261,7 +268,7 @@ function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onRe
           style={{ alignSelf: 'flex-start', padding: '8px 12px', fontSize: '13px' }}
           onClick={() => setReplying(true)}
         >
-          {review.ownerReply ? 'Edit reply' : 'Reply'}
+          {review.ownerReply ? t('reviews.editReply') : t('reviews.reply')}
         </button>
       )}
     </div>
