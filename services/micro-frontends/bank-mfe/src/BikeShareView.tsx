@@ -3,7 +3,7 @@ import { ApiError } from './lib/api';
 import { EmptyState } from './EmptyState';
 import {
   endBikeAssetRental, fetchMyBikeAssetRentalHistory, fetchMyBikeAssets, fetchNearbyBikeAssets, registerBikeAsset, setBikeAssetAvailability,
-  startBikeAssetRental, type BikeAsset, type BikeAssetRentalSession, type BikeAssetType,
+  startBikeAssetRental, updateBikeAssetLocation, type BikeAsset, type BikeAssetRentalSession, type BikeAssetType,
 } from './lib/bikeshare';
 
 // Extracted from BankDashboard.tsx (2026-08-10) into its own lazy-loaded chunk --
@@ -86,6 +86,13 @@ export default function BikeShareView() {
   const [bikeType, setBikeType] = useState<BikeAssetType>('REGULAR');
   const [registering, setRegistering] = useState(false);
   const [ownerError, setOwnerError] = useState<string | null>(null);
+  // Real fix (2026-08-15) -- updateBikeAssetLocation has existed on the backend and in
+  // this file's own lib/bikeshare.ts since day one, called from NEITHER this view NOR
+  // Android/iOS's equivalent screens (confirmed by grep across all 3 clients). A bike
+  // owner could register a bike and toggle its availability, but never update its
+  // location after moving it -- so getNearbyBikes would show a stale position forever
+  // after the first registration, real bug for a real P2P bike-share pool.
+  const [updatingLocationId, setUpdatingLocationId] = useState<string | null>(null);
 
   const loadMyBikes = () => {
     fetchMyBikeAssets().then(setMyBikes).catch((err) => setOwnerError(err instanceof ApiError ? err.message : 'Could not load your bikes.'));
@@ -115,6 +122,23 @@ export default function BikeShareView() {
     setBikeAssetAvailability(bike.id, !bike.available)
       .then(() => { loadMyBikes(); setBusyBikeId(null); })
       .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : 'Could not update this bike.'); setBusyBikeId(null); });
+  };
+
+  const handleUpdateBikeLocation = (bikeId: string) => {
+    if (!navigator.geolocation) {
+      setOwnerError('Location access is required to update this bike.');
+      return;
+    }
+    setUpdatingLocationId(bikeId);
+    setOwnerError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        updateBikeAssetLocation(bikeId, pos.coords.latitude, pos.coords.longitude)
+          .then(() => { loadMyBikes(); setUpdatingLocationId(null); })
+          .catch((err) => { setOwnerError(err instanceof ApiError ? err.message : "Could not update this bike's location."); setUpdatingLocationId(null); });
+      },
+      () => { setOwnerError('Could not access your location.'); setUpdatingLocationId(null); },
+    );
   };
 
   return (
@@ -234,11 +258,19 @@ export default function BikeShareView() {
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bikes</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {myBikes.map((bike) => (
-                  <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={bike.id} className="itunda-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                     <p style={{ fontSize: '13px', fontWeight: 700 }}>{bike.type === 'ELECTRIC' ? '⚡ Electric' : '🚲 Regular'} bike</p>
-                    <button className="itunda-btn itunda-btn-secondary" disabled={busyBikeId === bike.id} onClick={() => handleToggleBikeAvailable(bike)}>
-                      {busyBikeId === bike.id ? '…' : bike.available ? 'Available' : 'Unavailable'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        className="itunda-btn itunda-btn-secondary" disabled={updatingLocationId === bike.id}
+                        onClick={() => handleUpdateBikeLocation(bike.id)} style={{ fontSize: '12px', padding: '8px 10px' }}
+                      >
+                        {updatingLocationId === bike.id ? '…' : 'Update location'}
+                      </button>
+                      <button className="itunda-btn itunda-btn-secondary" disabled={busyBikeId === bike.id} onClick={() => handleToggleBikeAvailable(bike)}>
+                        {busyBikeId === bike.id ? '…' : bike.available ? 'Available' : 'Unavailable'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
