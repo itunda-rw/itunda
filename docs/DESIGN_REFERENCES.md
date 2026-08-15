@@ -6324,3 +6324,42 @@ self-recovered within about a minute with kubelet's normal retry behavior, no da
 change needed. This matches, and does not change, the standing documented conclusion that the
 cluster's real fix is resizing resource requests/limits, which needs the user's go-ahead before
 being attempted.
+
+## 71. Naver Pay "가족 공유 자산 관리" -- instant transfer to a linked family member
+
+**Added 2026-08-15.** Fresh research (not doc-mining) into Naver Pay's own 2026 feature set found
+가족 공유 자산 관리 (family shared asset management): family members can be invited into a shared
+view, with parents/children able to see each other's real payment history live and instantly
+transfer points/money to one another, all in-app.
+
+**Checked against itunda's own code**: `FamilyLinkService.getChildOverview` already gives a guardian
+a real, live read-only view of a linked child's balance and recent transactions (built earlier this
+project) -- but a full audit of `bank-mfe`'s `FamilyLinkCard` component found no send/transfer action
+anywhere in that view. A guardian who wants to top up a linked child's wallet had no faster path than
+leaving the Family card, opening Send Money, and manually typing the child's phone number -- a real,
+confirmed friction gap, not a missing feature category.
+
+**Built as a thin, additive layer on top of already-tested code, not new money-movement logic**:
+`FamilyLinkService.isActiveGuardianOf` is a small, additive read-only helper exposing the exact same
+ACTIVE-link check `getChildOverview` already enforces. `P2pService.sendToFamilyMember` resolves the
+child's real account number through that check, then delegates straight to the existing, unchanged,
+already battle-tested `sendDirect` -- same rate limit, same Naver-Pay-style auto top-up-on-shortfall,
+same fraud check, same round-up auto-save, same "money received" notification, zero duplicated ledger
+logic. (`:p2p` already depended on `:family` for child spend-limit enforcement, so this needed no new
+module dependency and created no circularity -- confirmed by checking `:family`'s own
+`build.gradle.kts` first, since the reverse dependency would have been circular.) New
+`POST /api/v1/p2p/send-to-family`; every exception it can throw was already handled by
+`P2pController`'s existing handlers, so no new exception-handling surface was needed at all. Web
+(bank-mfe): a real "Send money" quick action inside the Family card's child-overview panel.
+
+**Live-verified end to end against the real deployed backend**: linked a real guardian/child pair
+through the actual invite/accept flow, sent a real transfer through the new endpoint, confirmed the
+child's real MAIN wallet balance increased by the exact amount sent (a genuine ledger-posted
+transfer, not a mocked response) -- and confirmed a non-guardian gets an honest 404 attempting the
+same action against someone else's linked child (the same `isActiveGuardianOf` gate correctly denies
+a stranger).
+
+**Same deploy also finally shipped the group-order exception-handler fix from Section 70** (committed
+earlier but not yet redeployed when the cluster was flapping) -- re-verified live in this same pass:
+`MinOrderAmountNotMetException` now correctly surfaces as a real `422 MIN_ORDER_AMOUNT_NOT_MET`
+instead of the raw 500 it gave before.
