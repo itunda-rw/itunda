@@ -387,6 +387,12 @@ export type TranslationKey =
   | 'pos.addProductError'
   | 'pos.adjustStockPrompt'
   | 'pos.updateStockError'
+  | 'pos.surplusDealSetButton'
+  | 'pos.surplusDealClearButton'
+  | 'pos.surplusDealHoursPrompt'
+  | 'pos.surplusDealHoursError'
+  | 'pos.surplusDealStockPrompt'
+  | 'pos.surplusDealError'
   | 'pos.addProductTitle'
   | 'pos.nameLabel'
   | 'pos.priceLabel'
@@ -889,6 +895,12 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.addProductError': 'Could not add this product.',
     'pos.adjustStockPrompt': 'Set available units. Leave blank for unlimited availability.',
     'pos.updateStockError': 'Could not update stock.',
+    'pos.surplusDealSetButton': 'Mark as closing deal',
+    'pos.surplusDealClearButton': 'End closing deal',
+    'pos.surplusDealHoursPrompt': 'Hours until this deal closes',
+    'pos.surplusDealHoursError': 'Enter a real number of hours greater than zero.',
+    'pos.surplusDealStockPrompt': 'How many units are you selling in this closing deal?',
+    'pos.surplusDealError': 'Could not set this closing deal.',
     'pos.addProductTitle': 'Add a product',
     'pos.nameLabel': 'Name',
     'pos.priceLabel': 'Price (RWF)',
@@ -1382,6 +1394,12 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.addProductError': 'Ntibishoboka kongeraho iki gicuruzwa.',
     'pos.adjustStockPrompt': 'Shyiraho umubare uhari. Reka ubusa niba nta mubare uzwi.',
     'pos.updateStockError': 'Ntibishoboka kuvugurura ibicuruzwa.',
+    'pos.surplusDealSetButton': 'Shyiraho nk\'igurisha ryo gufunga',
+    'pos.surplusDealClearButton': 'Hagarika igurisha ryo gufunga',
+    'pos.surplusDealHoursPrompt': 'Amasaha asigaye kugeza iri gurisha rirangiye',
+    'pos.surplusDealHoursError': 'Andika umubare w\'amasaha uruta zeru.',
+    'pos.surplusDealStockPrompt': 'Ni ibicuruzwa bingana iki ugurisha muri iri gurisha ryo gufunga?',
+    'pos.surplusDealError': 'Ntibishoboka gushyiraho iri gurisha ryo gufunga.',
     'pos.addProductTitle': 'Ongeraho igicuruzwa',
     'pos.nameLabel': 'Izina',
     'pos.priceLabel': 'Igiciro (RWF)',
@@ -1875,6 +1893,12 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.addProductError': 'Impossible d\'ajouter ce produit.',
     'pos.adjustStockPrompt': 'Définissez les unités disponibles. Laissez vide pour une disponibilité illimitée.',
     'pos.updateStockError': 'Impossible de mettre à jour le stock.',
+    'pos.surplusDealSetButton': 'Marquer comme vente de clôture',
+    'pos.surplusDealClearButton': 'Terminer la vente de clôture',
+    'pos.surplusDealHoursPrompt': 'Heures avant la fin de cette offre',
+    'pos.surplusDealHoursError': 'Entrez un nombre d\'heures réel supérieur à zéro.',
+    'pos.surplusDealStockPrompt': 'Combien d\'unités vendez-vous dans cette vente de clôture ?',
+    'pos.surplusDealError': 'Impossible de définir cette vente de clôture.',
     'pos.addProductTitle': 'Ajouter un produit',
     'pos.nameLabel': 'Nom',
     'pos.priceLabel': 'Prix (RWF)',

@@ -94,7 +94,7 @@ import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { cancelBillingSubscription, collectPayment, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, fetchSurplusDeals, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant, type SurplusDealResult } from './lib/shopping';
 import { fetchActiveTimeDeals, fetchShopBanners, type TimeDealView } from './lib/timeDeal';
 import { completeShoppingMission, fetchShoppingMissionStatus, type ShoppingMission, type SpinOutcome } from './lib/shoppingMissions';
 import {
@@ -18141,6 +18141,16 @@ function ShopView() {
     fetchShopDeals().then(setDeals).catch(() => {});
   }, []);
 
+  // Real 마감할인 (closing/surplus discount) rail (2026-08-15) -- a real,
+  // government-partnered food-waste-reduction feature that launched 2026-06-15
+  // (기후부/환경부 + Baemin/Yogiyo/Coupang Eats), sourced fresh, see
+  // lib/shopping.ts's own doc comment. Distinct from the "🔥 Deals" rail above:
+  // only genuinely time-boxed, still-in-stock closing sales.
+  const [surplusDeals, setSurplusDeals] = useState<SurplusDealResult[] | null>(null);
+  useEffect(() => {
+    fetchSurplusDeals().then(setSurplusDeals).catch(() => {});
+  }, []);
+
   // Real Coupang 타임특가 (Time Deal, item 226) -- see lib/timeDeal.ts's own doc
   // comment. Distinct from the always-on "🔥 Deals" rail above: a time-boxed,
   // quantity-capped event, not a permanent discount. Re-fetched every 30s so a deal
@@ -18499,6 +18509,33 @@ function ShopView() {
                 <p style={{ fontSize: '11px', color: d.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                   {d.stockQuantity === null || d.stockQuantity === undefined ? 'Available' : d.stockQuantity === 0 ? 'Out of stock' : `${d.stockQuantity} available`}
                 </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Real 마감할인 (closing/surplus discount) rail (2026-08-15) -- see
+          lib/shopping.ts's own doc comment for the full sourced account. Shows a real
+          "closes at HH:mm" time, never a fabricated urgency banner. */}
+      {view === 'BROWSE' && searchResults === null && surplusDeals && surplusDeals.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)', marginBottom: '8px' }}>⏳ Closing deals</p>
+          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
+            {surplusDeals.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => openSearchResult(d)}
+                className="itunda-card"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '120px', flexShrink: 0, gap: '4px' }}
+              >
+                <ProductImageThumb imageUrl={d.imageUrl} size={96} />
+                <p style={{ fontSize: '12px', fontWeight: 700 }}>{d.name}</p>
+                <ProductPriceBlock price={d.price} originalPrice={d.originalPrice} discountPercent={d.discountPercent} />
+                <p style={{ fontSize: '11px', color: 'var(--itunda-red)' }}>
+                  Closes {new Date(d.surplusExpiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{d.stockQuantity} left</p>
               </button>
             ))}
           </div>

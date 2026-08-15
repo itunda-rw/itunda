@@ -93,6 +93,19 @@ export const searchProducts = (q: string) =>
 export const fetchShopDeals = () =>
   apiFetch<{ success: boolean; products: ProductSearchResult[] }>('/api/v1/shopping/products/deals').then((r) => r.products);
 
+// Real 마감할인 (closing/surplus discount) rail (2026-08-15) -- a real,
+// government-partnered (기후부/환경부 + Baemin/Yogiyo/Coupang Eats) food-waste-reduction
+// feature that launched 2026-06-15, sourced fresh, not doc-mined. Distinct from
+// fetchShopDeals above: only genuinely time-boxed, still-in-stock closing sales,
+// soonest-to-expire first -- see MerchantProductRepository.findSurplusDeals' own doc
+// comment on the backend.
+export interface SurplusDealResult extends ProductSearchResult {
+  surplusExpiresAt: string;
+}
+
+export const fetchSurplusDeals = () =>
+  apiFetch<{ success: boolean; products: SurplusDealResult[] }>('/api/v1/shopping/products/surplus-deals').then((r) => r.products);
+
 export interface CollectPaymentResult {
   transactionId: string;
   merchantName: string;

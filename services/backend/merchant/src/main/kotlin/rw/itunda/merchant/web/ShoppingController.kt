@@ -26,6 +26,7 @@ import rw.itunda.core.web.pageMeta
 import rw.itunda.merchant.ShoppingCashbackService
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -286,6 +287,31 @@ class ShoppingController(
                 "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
                 "description" to p.description,
                 "stockQuantity" to p.stockQuantity,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
+    }
+
+    // Real 마감할인 (closing/surplus discount) browse rail (2026-08-15) -- see
+    // MerchantProductRepository.findSurplusDeals' own doc comment for the full sourced
+    // account (기후부/환경부 + Baemin/Yogiyo/Coupang Eats, launched 2026-06-15). A real,
+    // distinct list from getDeals above: only genuinely time-boxed, still-in-stock
+    // closing sales, soonest-to-expire first -- surfaces `surplusExpiresAt` so a client
+    // can show a real "sells out at HH:mm" countdown, not a fabricated urgency banner.
+    @GetMapping("/products/surplus-deals")
+    fun getSurplusDeals(
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = merchantProductRepository.findSurplusDeals(MerchantStatus.ACTIVE, Instant.now(), pageable)
+        val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
+        val products = page.content.map { p ->
+            mapOf(
+                "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
+                "name" to p.name, "price" to p.price,
+                "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
+                "description" to p.description,
+                "stockQuantity" to p.stockQuantity,
+                "surplusExpiresAt" to p.surplusExpiresAt,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))

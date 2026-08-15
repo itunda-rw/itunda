@@ -8,6 +8,7 @@ import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 import {
   addOptionGroup,
   addProduct,
+  setSurplusDeal,
   updateProductStock,
   chargeCard,
   createTimeDeal,
@@ -510,6 +511,44 @@ function CatalogView() {
     }
   };
 
+  // Real 마감할인 (closing/surplus discount) toggle -- see lib/merchant.ts's own doc
+  // comment for the full sourced account.
+  const handleSetSurplusDeal = async (product: MerchantProduct) => {
+    if (product.isSurplusDeal) {
+      try {
+        await setSurplusDeal(product.id, null, null);
+        load();
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : t('pos.surplusDealError'));
+      }
+      return;
+    }
+    const hoursValue = window.prompt(t('pos.surplusDealHoursPrompt'), '2');
+    if (hoursValue === null) return;
+    const hours = Number(hoursValue.trim());
+    if (!Number.isFinite(hours) || hours <= 0) {
+      setError(t('pos.surplusDealHoursError'));
+      return;
+    }
+    let stock = product.stockQuantity;
+    if (stock === null || stock <= 0) {
+      const stockValue = window.prompt(t('pos.surplusDealStockPrompt'), '5');
+      if (stockValue === null) return;
+      stock = Number(stockValue.trim());
+      if (!Number.isInteger(stock) || stock <= 0) {
+        setError(t('pos.stockValidationError'));
+        return;
+      }
+    }
+    try {
+      const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+      await setSurplusDeal(product.id, expiresAt, stock);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('pos.surplusDealError'));
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div className="itunda-card">
@@ -663,6 +702,12 @@ function CatalogView() {
                             style={{ color: 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
                           >
                             {t('pos.adjustStockButton')}
+                          </button>
+                          <button
+                            onClick={() => handleSetSurplusDeal(product)}
+                            style={{ color: product.isSurplusDeal ? 'var(--itunda-red)' : 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            {product.isSurplusDeal ? t('pos.surplusDealClearButton') : t('pos.surplusDealSetButton')}
                           </button>
                           <button
                             onClick={() => removeProduct(product.id).then(load)}

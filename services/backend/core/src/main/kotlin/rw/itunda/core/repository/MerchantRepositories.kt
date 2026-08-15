@@ -128,6 +128,22 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     )
     fun findDeals(@Param("status") status: MerchantStatus, pageable: Pageable): Page<MerchantProduct>
 
+    // Real 마감할인 (closing/surplus discount) browse query (2026-08-15) -- distinct
+    // from findDeals above: only real, merchant-flagged, still-genuinely-in-stock,
+    // not-yet-expired surplus listings, ranked soonest-to-expire first (the real
+    // Baemin/Yogiyo/Coupang Eats urgency framing this feature is sourced from --
+    // "sells out tonight," not just "on sale"). `stockQuantity IS NULL` is
+    // deliberately excluded from "in stock" here (unlike a normal product) -- an
+    // unbounded surplus deal would be a contradiction in terms, so a merchant that
+    // never sets a real quantity simply never appears in this list.
+    @Query(
+        "SELECT p FROM MerchantProduct p JOIN Merchant m ON m.id = p.merchantId " +
+            "WHERE p.active = true AND m.status = :status AND p.isSurplusDeal = true " +
+            "AND p.surplusExpiresAt > :now AND p.stockQuantity IS NOT NULL AND p.stockQuantity > 0 " +
+            "ORDER BY p.surplusExpiresAt ASC",
+    )
+    fun findSurplusDeals(@Param("status") status: MerchantStatus, @Param("now") now: java.time.Instant, pageable: Pageable): Page<MerchantProduct>
+
     // Real Coupang Eats-style dish grid (2026-08-03) -- see EatsController.dishes' own
     // doc comment for the full 100%-UI/UX-parity account. category filters by the
     // same Merchant.category chip Eats' own restaurant-list already filters on

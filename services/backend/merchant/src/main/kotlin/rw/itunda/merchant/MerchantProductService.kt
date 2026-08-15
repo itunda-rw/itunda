@@ -13,6 +13,7 @@ import java.math.RoundingMode
 import java.net.URI
 import java.net.URISyntaxException
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class InvalidProductPriceException(message: String) : RuntimeException(message)
@@ -22,6 +23,7 @@ class InvalidProductDiscountException(message: String) : RuntimeException(messag
 class InvalidProductDurationException(message: String) : RuntimeException(message)
 class InvalidPriceTierException(message: String) : RuntimeException(message)
 class InvalidStockQuantityException(message: String) : RuntimeException(message)
+class InvalidSurplusDealException(message: String) : RuntimeException(message)
 
 data class PriceTierRequest(val minQuantity: Int, val unitPrice: BigDecimal)
 
@@ -206,6 +208,39 @@ class MerchantProductService(
             throw MerchantProductNotFoundException("Product not found")
         }
         product.stockQuantity = validateStockQuantity(stockQuantity)
+        return merchantProductRepository.save(product)
+    }
+
+    /**
+     * Real 마감할인 (closing/surplus discount) toggle -- see MerchantProduct.kt's own
+     * doc comment for the full sourced account. `expiresAt = null` clears the deal
+     * (same "focused operation" reasoning [updateStockQuantity] already established --
+     * marking/unmarking a surplus deal must not touch pricing/description/booking
+     * settings). Purchase itself is completely unchanged: a surplus deal is bought
+     * through the exact same OrderService.placeOrder every other product uses, which
+     * already correctly decrements `stockQuantity` -- this method only ever sets
+     * metadata, never touches money or the ledger.
+     */
+    @Transactional
+    fun setSurplusDeal(ownerUserId: String, productId: String, expiresAt: Instant?, stockQuantity: Int?): MerchantProduct {
+        val merchant = getMyMerchant(ownerUserId)
+        val product = merchantProductRepository.findById(productId)
+            .orElseThrow { MerchantProductNotFoundException("Product not found") }
+        if (product.merchantId != merchant.id) {
+            throw MerchantProductNotFoundException("Product not found")
+        }
+        if (expiresAt != null) {
+            if (!expiresAt.isAfter(Instant.now())) {
+                throw InvalidSurplusDealException("The closing time must be in the future")
+            }
+            val resolvedStock = stockQuantity ?: product.stockQuantity
+            if (resolvedStock == null || resolvedStock <= 0) {
+                throw InvalidSurplusDealException("A surplus deal needs a real, positive quantity")
+            }
+            product.stockQuantity = resolvedStock
+        }
+        product.isSurplusDeal = expiresAt != null
+        product.surplusExpiresAt = expiresAt
         return merchantProductRepository.save(product)
     }
 

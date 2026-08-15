@@ -17,6 +17,7 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
+import java.time.Instant
 
 // imageUrl/originalPrice added 2026-07-21 (see MerchantProduct.kt's own doc comment) --
 // both optional; discountPercent is deliberately NOT part of this request, it's always
@@ -35,6 +36,7 @@ data class AddProductRequest(
     val stockQuantity: Int? = null,
 )
 data class UpdateProductStockRequest(val stockQuantity: Int? = null)
+data class SetSurplusDealRequest(val expiresAt: Instant? = null, val stockQuantity: Int? = null)
 data class AddMenuOptionGroupRequest(
     val name: String,
     val choices: List<MenuOptionChoiceRequest>,
@@ -97,6 +99,19 @@ class MerchantProductController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val product = merchantProductService.updateStockQuantity(currentUser.userId, productId, request.stockQuantity)
+        return ResponseEntity.ok(mapOf("success" to true, "product" to product))
+    }
+
+    // Real 마감할인 (closing/surplus discount) toggle -- see
+    // MerchantProductService.setSurplusDeal's own doc comment. `expiresAt = null`
+    // clears the deal.
+    @PatchMapping("/{productId}/surplus-deal")
+    fun setSurplusDeal(
+        @PathVariable productId: String,
+        @RequestBody request: SetSurplusDealRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val product = merchantProductService.setSurplusDeal(currentUser.userId, productId, request.expiresAt, request.stockQuantity)
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 
@@ -200,6 +215,10 @@ class MerchantProductController(
     @ExceptionHandler(InvalidStockQuantityException::class)
     fun handleInvalidStock(ex: InvalidStockQuantityException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_STOCK_QUANTITY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidSurplusDealException::class)
+    fun handleInvalidSurplusDeal(ex: InvalidSurplusDealException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_SURPLUS_DEAL", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidPriceTierException::class)
     fun handleInvalidPriceTier(ex: InvalidPriceTierException) =

@@ -82,6 +82,8 @@ export interface MerchantProduct {
   durationMinutes: number | null;
   requiresPrepay: boolean;
   stockQuantity: number | null;
+  isSurplusDeal?: boolean;
+  surplusExpiresAt?: string | null;
 }
 
 export interface PaymentIntent {
@@ -333,6 +335,15 @@ export const updateProductStock = (productId: string, stockQuantity: number | nu
   apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}/stock`, {
     method: 'PATCH',
     body: JSON.stringify({ stockQuantity }),
+  }).then((r) => r.product);
+
+// Real 마감할인 (closing/surplus discount) toggle (2026-08-15) -- see
+// MerchantProductService.setSurplusDeal's own doc comment on the backend. Pass
+// expiresAt = null to clear an existing deal.
+export const setSurplusDeal = (productId: string, expiresAt: string | null, stockQuantity: number | null) =>
+  apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}/surplus-deal`, {
+    method: 'PATCH',
+    body: JSON.stringify({ expiresAt, stockQuantity }),
   }).then((r) => r.product);
 
 export const removeProduct = (productId: string) =>

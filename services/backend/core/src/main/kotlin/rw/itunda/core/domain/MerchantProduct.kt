@@ -93,6 +93,22 @@ class MerchantProduct(
     @Column(name = "stock_quantity")
     var stockQuantity: Int? = null,
 
+    // Real 마감할인 (closing/surplus discount) support (2026-08-15) -- a real,
+    // government-partnered (기후부/환경부 + major delivery apps) food-waste-reduction
+    // feature that launched 2026-06-15: bakeries/restaurants/convenience stores list
+    // unsold near-closing food at a time-boxed discount. Deliberately reuses the
+    // existing price/originalPrice/discountPercent/stockQuantity fields (a surplus deal
+    // is still just a real, honestly-discounted product with a real, finite quantity --
+    // MerchantProductService.updateStockQuantity's own existing decrement-at-purchase
+    // logic needs zero changes) -- `isSurplusDeal`/`surplusExpiresAt` are purely
+    // additive metadata distinguishing a genuinely time-boxed closing sale from an
+      // an ordinary discount, for MerchantProductRepository.findSurplusDeals' own filter.
+    @Column(name = "is_surplus_deal", nullable = false)
+    var isSurplusDeal: Boolean = false,
+
+    @Column(name = "surplus_expires_at")
+    var surplusExpiresAt: Instant? = null,
+
     @Version
     var version: Long = 0,
 
