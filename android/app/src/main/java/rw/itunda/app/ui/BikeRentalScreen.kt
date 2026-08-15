@@ -266,6 +266,39 @@ private fun BikeMineContent() {
         onError = { error = it; registering = false },
     )
 
+    // Real fix (2026-08-15) -- updateBikeLocation existed on ApiService and the backend
+    // since day one, but was never called from any client (bank-mfe's identical gap
+    // fixed the same session). A bike owner could register a bike and toggle its
+    // availability, but never update its position after moving it, so getNearbyBikes
+    // would show a stale location forever after the first registration.
+    var updatingLocationBikeId by remember { mutableStateOf<String?>(null) }
+    val requestLocationUpdate = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            val bikeId = updatingLocationBikeId
+            if (bikeId == null) return@rememberRealLocationRequester
+            coroutineScope.launch {
+                try {
+                    NetworkClient.apiService.updateBikeLocation(bikeId, UpdateBikeLocationRequest(lat, lng))
+                    myBikes = NetworkClient.apiService.getMyBikes().bikes
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    updatingLocationBikeId = null
+                }
+            }
+        },
+        onError = { error = it; updatingLocationBikeId = null },
+    )
+
+    fun updateBikeLocationAction(bikeId: String) {
+        updatingLocationBikeId = bikeId
+        error = null
+        requestLocationUpdate()
+    }
+
     fun load() {
         coroutineScope.launch {
             try {
@@ -339,11 +372,18 @@ private fun BikeMineContent() {
                 Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(if (bike.type == "ELECTRIC") "⚡ Electric bike" else "🚲 Regular bike", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Box(
-                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                                .background(if (bike.available) Ids.colors.success else Ids.colors.surfaceSoft)
-                                .clickable(enabled = busyBikeId != bike.id) { toggleAvailable(bike) }.padding(horizontal = 14.dp, vertical = 10.dp),
-                        ) { Text(if (bike.available) "Available" else "Unavailable", color = if (bike.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                                    .clickable(enabled = updatingLocationBikeId != bike.id) { updateBikeLocationAction(bike.id) }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                            ) { Text(if (updatingLocationBikeId == bike.id) "…" else "Update location", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                    .background(if (bike.available) Ids.colors.success else Ids.colors.surfaceSoft)
+                                    .clickable(enabled = busyBikeId != bike.id) { toggleAvailable(bike) }.padding(horizontal = 14.dp, vertical = 10.dp),
+                            ) { Text(if (bike.available) "Available" else "Unavailable", color = if (bike.available) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        }
                     }
                 }
             }
