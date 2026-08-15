@@ -6665,3 +6665,24 @@ Both fixes follow the exact `findByIdForUpdate` convention `WalletRepository`/`F
 `DebitCardRepository` already established. See [[project_itunda_concurrency_audit]] for the fuller
 sourced account, including why this doesn't reopen the 2026-08-09 sweep's own "exhausted" finding --
 both bugs are in code shipped after that sweep ran.
+
+## 80. iOS platform-parity gap: credit-score improvement suggestions never ported from Android
+
+**Added 2026-08-16.** Found while checking whether Section 76's new backend-only "Card usage"
+credit-score factor would surface correctly on native apps without any client changes -- confirmed
+it does for the factor breakdown (both Android and iOS render `factors` generically, keyed by
+name), but discovered along the way that `CreditScoreService.getImprovementSuggestions` (real on the
+backend since 2026-07-26, real on Android's `CreditScoreScreen.kt`) had **zero iOS client at all** --
+`CreditScoreScreenView.swift` only ever fetched `getCreditScore()`, never the suggestions endpoint.
+
+**Built**: `CreditScoreSuggestionDto`/`CreditScoreSuggestionsResponse` + `getCreditScoreSuggestions()`
+added to `NetworkClient.swift` (exact same field shape as Android's DTO), plus a "Ways to raise your
+score" section in `CreditScoreScreenView.swift` mirroring Android's card-per-suggestion layout
+exactly. Full `ItundaApp` xcodebuild succeeded clean.
+
+**How this was found**: not from doc-mining or fresh ecosystem research this time -- a routine
+"does the new backend factor need any client work" check surfaced a real, pre-existing platform gap
+unrelated to the factor itself. Worth remembering as a technique: whenever a backend-only change is
+verified to "just work" on existing clients, it's a cheap moment to also check whether ALL the
+related endpoints for that same feature area are actually wired on every platform, not just the one
+being checked.
