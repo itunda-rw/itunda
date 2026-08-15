@@ -20158,6 +20158,33 @@ const saveRecentTab = (id: Tab, current: Tab[]): Tab[] => {
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
+  // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 4):
+  // ConversationSummary.unreadCount/GroupSummary.unreadCount were already fetched and
+  // rendered per-row *inside* MessagesView's own Direct/Groups lists, but neither
+  // total ever reached PRIMARY_TABS's own render, so a user got zero ambient signal
+  // that a message needed attention without opening Messages first. Named-product rule
+  // cited there: a numeric badge (not a dot) on the tab whose exact count drives the
+  // next action, capped at "99+" so a large count never pushes neighboring tab labels.
+  // Lightweight top-level poll, independent of MessagesView's own -- this only needs
+  // the two totals, not the full conversation/group lists MessagesView renders.
+  const [messagesUnreadCount, setMessagesUnreadCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      Promise.all([fetchConversations(false), fetchGroups()])
+        .then(([conversations, groups]) => {
+          if (cancelled) return;
+          const total = conversations.reduce((sum, c) => sum + c.unreadCount, 0) + groups.reduce((sum, g) => sum + g.unreadCount, 0);
+          setMessagesUnreadCount(total);
+        })
+        .catch(() => {
+          // Non-critical -- a poll failure just leaves the last-known badge count.
+        });
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
   // Real deep-link from the Home coop rail into LoansView's own specific mode
   // (2026-08-10) -- see LoansView's own initialMode doc comment for the full account.
   const [pendingLoansMode, setPendingLoansMode] = useState<LoansMode | null>(null);
@@ -20329,7 +20356,21 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
             }}
           >
-            <Icon size={18} />
+            <div style={{ position: 'relative' }}>
+              <Icon size={18} />
+              {id === 'MESSAGES' && messagesUnreadCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute', top: '-6px', right: '-10px', minWidth: '16px', height: '16px', padding: '0 3px',
+                    borderRadius: '999px', backgroundColor: 'var(--itunda-red)', color: 'var(--itunda-white)',
+                    fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    lineHeight: 1,
+                  }}
+                >
+                  {messagesUnreadCount > 99 ? '99+' : messagesUnreadCount}
+                </span>
+              )}
+            </div>
             {label}
           </button>
         ))}
