@@ -301,7 +301,38 @@ export type TranslationKey =
   | 'payroll.removeButton'
   | 'payroll.paidTitle'
   | 'payroll.employeesPaidCount'
-  | 'payroll.backToRoster';
+  | 'payroll.backToRoster'
+  // Real 12th-localization-pass additions (2026-08-15): BookingScreen -- real local-
+  // business appointment booking, owner side (weekly availability + booking queue).
+  | 'booking.dayMon'
+  | 'booking.dayTue'
+  | 'booking.dayWed'
+  | 'booking.dayThu'
+  | 'booking.dayFri'
+  | 'booking.daySat'
+  | 'booking.daySun'
+  | 'booking.availabilityTitle'
+  | 'booking.availabilityBody'
+  | 'booking.availabilitySaveError'
+  | 'booking.availabilityEmpty'
+  | 'booking.removeButton'
+  | 'booking.timeValidationError'
+  | 'booking.saving'
+  | 'booking.addWindowButton'
+  | 'booking.bookingsTitle'
+  | 'booking.loadError'
+  | 'booking.empty'
+  | 'booking.notePrefix'
+  | 'booking.confirmButton'
+  | 'booking.declineButton'
+  | 'booking.updateError'
+  | 'booking.updating'
+  | 'booking.markCompletedButton'
+  | 'booking.statusRequested'
+  | 'booking.statusConfirmed'
+  | 'booking.statusDeclined'
+  | 'booking.statusCancelled'
+  | 'booking.statusCompleted';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -552,6 +583,35 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'payroll.paidTitle': 'Payroll paid',
     'payroll.employeesPaidCount': '{{count}} employees paid',
     'payroll.backToRoster': 'Back to roster',
+    'booking.dayMon': 'Mon',
+    'booking.dayTue': 'Tue',
+    'booking.dayWed': 'Wed',
+    'booking.dayThu': 'Thu',
+    'booking.dayFri': 'Fri',
+    'booking.daySat': 'Sat',
+    'booking.daySun': 'Sun',
+    'booking.availabilityTitle': 'Weekly availability',
+    'booking.availabilityBody': 'Customers can only request an appointment inside these windows.',
+    'booking.availabilitySaveError': "Couldn't save your availability. Try again.",
+    'booking.availabilityEmpty': 'No availability set yet — add a window below.',
+    'booking.removeButton': 'Remove',
+    'booking.timeValidationError': 'Enter a real start time before the end time (HH:mm).',
+    'booking.saving': 'Saving…',
+    'booking.addWindowButton': 'Add window',
+    'booking.bookingsTitle': 'Bookings',
+    'booking.loadError': 'Could not load your bookings.',
+    'booking.empty': 'No open bookings right now.',
+    'booking.notePrefix': 'Note:',
+    'booking.confirmButton': 'Confirm',
+    'booking.declineButton': 'Decline',
+    'booking.updateError': "Couldn't update this booking.",
+    'booking.updating': 'Updating…',
+    'booking.markCompletedButton': 'Mark completed',
+    'booking.statusRequested': 'Requested',
+    'booking.statusConfirmed': 'Confirmed',
+    'booking.statusDeclined': 'Declined',
+    'booking.statusCancelled': 'Cancelled',
+    'booking.statusCompleted': 'Completed',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -801,6 +861,35 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'payroll.paidTitle': 'Imishahara yatanzwe',
     'payroll.employeesPaidCount': 'Abakozi {{count}} bishyuwe',
     'payroll.backToRoster': 'Subira ku rutonde',
+    'booking.dayMon': 'Mbe',
+    'booking.dayTue': 'Kab',
+    'booking.dayWed': 'Gtu',
+    'booking.dayThu': 'Kan',
+    'booking.dayFri': 'Gnu',
+    'booking.daySat': 'Gnd',
+    'booking.daySun': 'Cyu',
+    'booking.availabilityTitle': 'Igihe ukora buri cyumweru',
+    'booking.availabilityBody': 'Abakiriya bashobora gusaba gahunda gusa muri ibi bihe.',
+    'booking.availabilitySaveError': 'Ntibishoboka kubika igihe wemera. Ongera ugerageze.',
+    'booking.availabilityEmpty': 'Nta gihe washyizeho — ongeraho hepfo.',
+    'booking.removeButton': 'Kuraho',
+    'booking.timeValidationError': 'Andika igihe cy\'itangira mbere y\'iy\'irangira (HH:mm).',
+    'booking.saving': 'Kubika…',
+    'booking.addWindowButton': 'Ongeraho igihe',
+    'booking.bookingsTitle': 'Gahunda',
+    'booking.loadError': 'Ntibishoboka gushakisha gahunda zawe.',
+    'booking.empty': 'Nta gahunda ifunguye ubu.',
+    'booking.notePrefix': 'Icyitonderwa:',
+    'booking.confirmButton': 'Emeza',
+    'booking.declineButton': 'Anga',
+    'booking.updateError': 'Ntibishoboka kuvugurura iyi gahunda.',
+    'booking.updating': 'Kuvugurura…',
+    'booking.markCompletedButton': 'Emeza ko yarangiye',
+    'booking.statusRequested': 'Yasabwe',
+    'booking.statusConfirmed': 'Yemejwe',
+    'booking.statusDeclined': 'Yanzwe',
+    'booking.statusCancelled': 'Yahagaritswe',
+    'booking.statusCompleted': 'Yarangiye',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -1050,5 +1139,34 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'payroll.paidTitle': 'Paie versée',
     'payroll.employeesPaidCount': '{{count}} employés payés',
     'payroll.backToRoster': 'Retour à la liste',
+    'booking.dayMon': 'Lun',
+    'booking.dayTue': 'Mar',
+    'booking.dayWed': 'Mer',
+    'booking.dayThu': 'Jeu',
+    'booking.dayFri': 'Ven',
+    'booking.daySat': 'Sam',
+    'booking.daySun': 'Dim',
+    'booking.availabilityTitle': 'Disponibilités hebdomadaires',
+    'booking.availabilityBody': 'Les clients ne peuvent demander un rendez-vous que dans ces créneaux.',
+    'booking.availabilitySaveError': 'Impossible d\'enregistrer vos disponibilités. Réessayez.',
+    'booking.availabilityEmpty': 'Aucune disponibilité définie pour le moment — ajoutez un créneau ci-dessous.',
+    'booking.removeButton': 'Retirer',
+    'booking.timeValidationError': "Saisissez une heure de début réelle avant l'heure de fin (HH:mm).",
+    'booking.saving': 'Enregistrement…',
+    'booking.addWindowButton': 'Ajouter un créneau',
+    'booking.bookingsTitle': 'Réservations',
+    'booking.loadError': 'Impossible de charger vos réservations.',
+    'booking.empty': 'Aucune réservation ouverte pour le moment.',
+    'booking.notePrefix': 'Remarque :',
+    'booking.confirmButton': 'Confirmer',
+    'booking.declineButton': 'Refuser',
+    'booking.updateError': 'Impossible de mettre à jour cette réservation.',
+    'booking.updating': 'Mise à jour…',
+    'booking.markCompletedButton': 'Marquer comme terminée',
+    'booking.statusRequested': 'Demandée',
+    'booking.statusConfirmed': 'Confirmée',
+    'booking.statusDeclined': 'Refusée',
+    'booking.statusCancelled': 'Annulée',
+    'booking.statusCompleted': 'Terminée',
   },
 };

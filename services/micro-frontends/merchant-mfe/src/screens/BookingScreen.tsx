@@ -11,10 +11,12 @@ import {
   type AvailabilityWindow,
   type MerchantBooking,
 } from '../lib/booking';
+import { useI18n } from '../i18n/I18nContext';
+import type { TranslationKey } from '../i18n/translations';
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-const DAY_LABEL: Record<string, string> = {
-  MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun',
+const DAY_LABEL_KEY: Record<string, TranslationKey> = {
+  MONDAY: 'booking.dayMon', TUESDAY: 'booking.dayTue', WEDNESDAY: 'booking.dayWed', THURSDAY: 'booking.dayThu', FRIDAY: 'booking.dayFri', SATURDAY: 'booking.daySat', SUNDAY: 'booking.daySun',
 };
 
 // Real local-business appointment booking, owner side -- see lib/booking.ts's own
@@ -31,6 +33,7 @@ export default function BookingScreen() {
 }
 
 function AvailabilityEditor() {
+  const { t } = useI18n();
   const [windows, setWindows] = useState<AvailabilityWindow[] | null>(null);
   const [day, setDay] = useState(DAYS[0]);
   const [start, setStart] = useState('09:00');
@@ -51,7 +54,7 @@ function AvailabilityEditor() {
     try {
       setWindows(await setAvailability(next));
     } catch {
-      setError("Couldn't save your availability. Try again.");
+      setError(t('booking.availabilitySaveError'));
     } finally {
       setSaving(false);
     }
@@ -62,7 +65,7 @@ function AvailabilityEditor() {
     const startMinutes = parseHm(start);
     const endMinutes = parseHm(end);
     if (startMinutes === null || endMinutes === null || startMinutes >= endMinutes) {
-      setError('Enter a real start time before the end time (HH:mm).');
+      setError(t('booking.timeValidationError'));
       return;
     }
     save([...(windows ?? []), { dayOfWeek: day, startTime: `${start}:00`, endTime: `${end}:00` }]);
@@ -70,26 +73,26 @@ function AvailabilityEditor() {
 
   return (
     <div className="itunda-card" style={{ padding: '20px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Weekly availability</h3>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>{t('booking.availabilityTitle')}</h3>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-        Customers can only request an appointment inside these windows.
+        {t('booking.availabilityBody')}
       </p>
 
       {windows === null ? (
         <div className="itunda-card skeleton" style={{ height: '80px' }} />
       ) : windows.length === 0 ? (
-        <EmptyState message="No availability set yet — add a window below." icon={CalendarClock} />
+        <EmptyState message={t('booking.availabilityEmpty')} icon={CalendarClock} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
           {windows.map((w, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px' }}>{DAY_LABEL[w.dayOfWeek] ?? w.dayOfWeek} {w.startTime.slice(0, 5)}-{w.endTime.slice(0, 5)}</span>
+              <span style={{ fontSize: '13px' }}>{DAY_LABEL_KEY[w.dayOfWeek] ? t(DAY_LABEL_KEY[w.dayOfWeek]) : w.dayOfWeek} {w.startTime.slice(0, 5)}-{w.endTime.slice(0, 5)}</span>
               <button
                 onClick={() => save(windows.filter((_, j) => j !== i))}
                 disabled={saving}
                 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-red)' }}
               >
-                Remove
+                {t('booking.removeButton')}
               </button>
             </div>
           ))}
@@ -109,7 +112,7 @@ function AvailabilityEditor() {
                 backgroundColor: day === d ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
               }}
             >
-              {DAY_LABEL[d]}
+              {t(DAY_LABEL_KEY[d])}
             </button>
           ))}
         </div>
@@ -125,7 +128,7 @@ function AvailabilityEditor() {
         </div>
         {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={saving} style={{ width: '100%' }}>
-          {saving ? 'Saving…' : 'Add window'}
+          {saving ? t('booking.saving') : t('booking.addWindowButton')}
         </button>
       </form>
     </div>
@@ -142,6 +145,7 @@ function parseHm(v: string): number | null {
 }
 
 function BookingQueue() {
+  const { t } = useI18n();
   const [bookings, setBookings] = useState<MerchantBooking[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -149,7 +153,7 @@ function BookingQueue() {
   const refresh = () => {
     getMerchantBookings()
       .then((b) => { setBookings(b); setError(null); })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your bookings.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('booking.loadError')));
   };
 
   useEffect(() => {
@@ -164,7 +168,7 @@ function BookingQueue() {
       await respondToBooking(bookingId, confirm);
       refresh();
     } catch {
-      setError("Couldn't update this booking.");
+      setError(t('booking.updateError'));
     } finally {
       setBusyId(null);
     }
@@ -176,7 +180,7 @@ function BookingQueue() {
       await completeBooking(bookingId);
       refresh();
     } catch {
-      setError("Couldn't update this booking.");
+      setError(t('booking.updateError'));
     } finally {
       setBusyId(null);
     }
@@ -184,7 +188,7 @@ function BookingQueue() {
 
   return (
     <div>
-      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '10px' }}>Bookings</h3>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '10px' }}>{t('booking.bookingsTitle')}</h3>
       {error && <ErrorCard message={error} onRetry={refresh} />}
       {bookings === null ? (
         <div className="itunda-card skeleton" style={{ height: '120px' }} />
@@ -192,7 +196,7 @@ function BookingQueue() {
         (() => {
           const active = bookings.filter((b) => b.status === 'REQUESTED' || b.status === 'CONFIRMED');
           if (active.length === 0) {
-            return <EmptyState message="No open bookings right now." icon={CalendarClock} />;
+            return <EmptyState message={t('booking.empty')} icon={CalendarClock} />;
           }
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -203,7 +207,7 @@ function BookingQueue() {
                     <span style={{ fontWeight: 700, fontSize: '13px' }}>{booking.bookingDate} {booking.startTime.slice(0, 5)}</span>
                   </div>
                   <p style={{ fontSize: '13px' }}>{booking.serviceName}</p>
-                  {booking.notes && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Note: {booking.notes}</p>}
+                  {booking.notes && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('booking.notePrefix')} {booking.notes}</p>}
                   {booking.status === 'REQUESTED' ? (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                       <button
@@ -212,14 +216,14 @@ function BookingQueue() {
                         disabled={busyId === booking.id}
                         style={{ flex: 1 }}
                       >
-                        Confirm
+                        {t('booking.confirmButton')}
                       </button>
                       <button
                         className="itunda-btn"
                         onClick={() => handleRespond(booking.id, false)}
                         disabled={busyId === booking.id}
                       >
-                        Decline
+                        {t('booking.declineButton')}
                       </button>
                     </div>
                   ) : booking.status === 'CONFIRMED' ? (
@@ -229,7 +233,7 @@ function BookingQueue() {
                       disabled={busyId === booking.id}
                       style={{ width: '100%', marginTop: '10px' }}
                     >
-                      {busyId === booking.id ? 'Updating…' : 'Mark completed'}
+                      {busyId === booking.id ? t('booking.updating') : t('booking.markCompletedButton')}
                     </button>
                   ) : null}
                 </div>
@@ -243,15 +247,16 @@ function BookingQueue() {
 }
 
 function BookingStatusBadge({ status }: { status: string }) {
-  const label = status === 'REQUESTED' ? 'Requested'
-    : status === 'CONFIRMED' ? 'Confirmed'
-    : status === 'DECLINED' ? 'Declined'
-    : status === 'CANCELLED' ? 'Cancelled'
-    : status === 'COMPLETED' ? 'Completed'
-    : status;
+  const { t } = useI18n();
+  const key: TranslationKey | null = status === 'REQUESTED' ? 'booking.statusRequested'
+    : status === 'CONFIRMED' ? 'booking.statusConfirmed'
+    : status === 'DECLINED' ? 'booking.statusDeclined'
+    : status === 'CANCELLED' ? 'booking.statusCancelled'
+    : status === 'COMPLETED' ? 'booking.statusCompleted'
+    : null;
   return (
     <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', backgroundColor: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)' }}>
-      {label}
+      {key ? t(key) : status}
     </span>
   );
 }
