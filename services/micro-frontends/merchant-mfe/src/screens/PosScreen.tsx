@@ -27,6 +27,7 @@ import {
   type PaymentIntent,
   type TimeDeal,
 } from '../lib/merchant';
+import { useI18n } from '../i18n/I18nContext';
 
 type Mode = 'REGISTER' | 'CATALOG';
 
@@ -41,6 +42,7 @@ interface CartLine {
 // chargeCard flows unmodified, just with a cart-derived amount/description instead of a
 // single typed-in amount.
 export default function PosScreen() {
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>('REGISTER');
 
   return (
@@ -60,7 +62,7 @@ export default function PosScreen() {
               backgroundColor: mode === m ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
-            {m === 'REGISTER' ? 'Register' : 'Catalog'}
+            {m === 'REGISTER' ? t('pos.modeRegister') : t('pos.modeCatalog')}
           </button>
         ))}
       </div>
@@ -70,6 +72,7 @@ export default function PosScreen() {
 }
 
 function RegisterView() {
+  const { t } = useI18n();
   const [products, setProducts] = useState<MerchantProduct[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -79,7 +82,7 @@ function RegisterView() {
     setLoadError(null);
     getProductCatalog()
       .then(setProducts)
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Could not load the catalog.'));
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : t('pos.catalogLoadError')));
   };
 
   useEffect(load, []);
@@ -128,14 +131,14 @@ function RegisterView() {
           {loadError}
         </p>
         <button className="itunda-btn itunda-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>
-          Retry
+          {t('pos.retry')}
         </button>
       </div>
     );
   }
 
   if (products === null) {
-    return <div className="itunda-card">Loading…</div>;
+    return <div className="itunda-card">{t('pos.loading')}</div>;
   }
 
   return (
@@ -143,7 +146,7 @@ function RegisterView() {
       <div style={{ flex: 2 }}>
         {products.length === 0 ? (
           <div className="itunda-card">
-            <EmptyState message="No products yet — add some in the Catalog tab first." />
+            <EmptyState message={t('pos.registerEmpty')} />
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px' }}>
@@ -160,7 +163,7 @@ function RegisterView() {
                 <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
                   {product.price.toLocaleString()} RWF
                 </p>
-                {product.stockQuantity !== null && <p style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)', marginTop: '4px' }}>{product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} available`}</p>}
+                {product.stockQuantity !== null && <p style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)', marginTop: '4px' }}>{product.stockQuantity === 0 ? t('pos.outOfStock') : t('pos.stockAvailable', { count: product.stockQuantity })}</p>}
               </button>
             ))}
           </div>
@@ -171,11 +174,11 @@ function RegisterView() {
         <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Store size={18} color="var(--itunda-blue)" />
-            <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Cart</h2>
+            <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{t('pos.cartTitle')}</h2>
           </div>
           {cart.length === 0 ? (
             <p style={{ padding: '0 20px 20px', fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-              Tap a product to add it.
+              {t('pos.cartEmpty')}
             </p>
           ) : (
             <div>
@@ -197,11 +200,11 @@ function RegisterView() {
                         CSS-pixel AA minimum. Real POS use (a merchant tapping fast
                         through a checkout), so this is a real usability risk, not
                         just a compliance checkbox. */}
-                    <button type="button" aria-label={`Decrease quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, -1)} style={{ color: 'var(--itunda-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                    <button type="button" aria-label={t('pos.decreaseQuantityAria', { name: line.product.name })} onClick={() => changeQuantity(line.product.id, -1)} style={{ color: 'var(--itunda-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <Minus size={14} />
                     </button>
                     <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '16px', textAlign: 'center' }}>{line.quantity}</span>
-                    <button type="button" aria-label={`Increase quantity of ${line.product.name}`} onClick={() => changeQuantity(line.product.id, 1)} style={{ color: 'var(--itunda-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                    <button type="button" aria-label={t('pos.increaseQuantityAria', { name: line.product.name })} onClick={() => changeQuantity(line.product.id, 1)} style={{ color: 'var(--itunda-grey-500)', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <Plus size={14} />
                     </button>
                   </div>
@@ -211,7 +214,7 @@ function RegisterView() {
           )}
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--itunda-grey-200)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Total</span>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('pos.total')}</span>
               <span style={{ fontSize: '18px', fontWeight: 700 }}>{total.toLocaleString()} RWF</span>
             </div>
             <button
@@ -220,7 +223,7 @@ function RegisterView() {
               disabled={cart.length === 0}
               onClick={() => setCheckingOut(true)}
             >
-              Checkout
+              {t('pos.checkoutButton')}
             </button>
           </div>
         </div>
@@ -232,11 +235,12 @@ function RegisterView() {
 function CheckoutView({
   total, description, onDone, onCancel,
 }: { total: number; description: string; onDone: () => void; onCancel: () => void }) {
+  const { t } = useI18n();
   const [checkoutMode, setCheckoutMode] = useState<'QR' | 'CARD'>('QR');
 
   return (
     <div className="itunda-card" style={{ maxWidth: '400px' }}>
-      <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Checkout</h2>
+      <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{t('pos.checkoutTitle')}</h2>
       <p style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>{total.toLocaleString()} RWF</p>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>{description}</p>
 
@@ -251,7 +255,7 @@ function CheckoutView({
               backgroundColor: checkoutMode === m ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
-            {m === 'QR' ? 'QR code' : 'Card'}
+            {m === 'QR' ? t('pos.checkoutModeQr') : t('pos.checkoutModeCard')}
           </button>
         ))}
       </div>
@@ -263,13 +267,14 @@ function CheckoutView({
       )}
 
       <button className="itunda-btn itunda-btn-secondary" style={{ width: '100%', marginTop: '12px' }} onClick={onCancel}>
-        Back to cart
+        {t('pos.backToCart')}
       </button>
     </div>
   );
 }
 
 function QrCheckout({ amount, description, onDone }: { amount: number; description: string; onDone: () => void }) {
+  const { t } = useI18n();
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -283,7 +288,7 @@ function QrCheckout({ amount, description, onDone }: { amount: number; descripti
       setIntent(newIntent);
       setQrDataUrl(await QRCode.toDataURL(paymentIntentQrPayload(newIntent.id), { width: 220, margin: 1 }));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not generate a QR code.');
+      setError(err instanceof ApiError ? err.message : t('pos.qrGenerateError'));
     } finally {
       setSubmitting(false);
     }
@@ -296,7 +301,7 @@ function QrCheckout({ amount, description, onDone }: { amount: number; descripti
       <div style={{ textAlign: 'center' }}>
         <img src={qrDataUrl} alt="Payment QR code" width={220} height={220} style={{ borderRadius: '16px', marginBottom: '12px' }} />
         <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={onDone}>
-          Done — new sale
+          {t('pos.doneNewSale')}
         </button>
       </div>
     );
@@ -310,13 +315,14 @@ function QrCheckout({ amount, description, onDone }: { amount: number; descripti
         </p>
       )}
       <button className="itunda-btn itunda-btn-secondary" onClick={generate} disabled={submitting} style={{ gap: '6px' }}>
-        <RefreshCw size={14} /> {submitting ? 'Generating…' : 'Retry'}
+        <RefreshCw size={14} /> {submitting ? t('pos.generating') : t('pos.retry')}
       </button>
     </div>
   );
 }
 
 function CardCheckout({ amount, description, onDone }: { amount: number; description: string; onDone: () => void }) {
+  const { t } = useI18n();
   const [cardNumber, setCardNumber] = useState('');
   const [expiryMonth, setExpiryMonth] = useState('');
   const [expiryYear, setExpiryYear] = useState('');
@@ -339,7 +345,7 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : 'Could not charge this card.');
+        setError(err instanceof ApiError ? err.message : t('pos.cardChargeError'));
       }
     } finally {
       setSubmitting(false);
@@ -350,9 +356,9 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
     return (
       <div style={{ textAlign: 'center' }}>
         <CreditCard size={32} color="var(--itunda-blue)" style={{ marginBottom: '8px' }} />
-        <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px' }}>Card charged — •••• {result.cardLast4}</p>
+        <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px' }}>{t('pos.cardChargedResult', { last4: result.cardLast4 })}</p>
         <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={onDone}>
-          Done — new sale
+          {t('pos.doneNewSale')}
         </button>
       </div>
     );
@@ -391,7 +397,7 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
       ) : (
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-          {submitting ? 'Charging…' : `Charge ${amount.toLocaleString()} RWF`}
+          {submitting ? t('pos.charging') : t('pos.chargeButton', { amount: amount.toLocaleString() })}
         </button>
       )}
     </form>
@@ -399,6 +405,7 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
 }
 
 function CatalogView() {
+  const { t } = useI18n();
   const [products, setProducts] = useState<MerchantProduct[] | null>(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -421,7 +428,7 @@ function CatalogView() {
       const { url } = await uploadFile(file);
       setImageUrl(url);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Check your connection and try again.");
+      setError(err instanceof ApiError ? err.message : t('pos.uploadPhotoError'));
     } finally {
       setUploadingImage(false);
       if (imageInputRef.current) imageInputRef.current.value = '';
@@ -455,15 +462,15 @@ function CatalogView() {
     const previousPrice = originalPrice.trim() ? Number(originalPrice) : undefined;
     const stock = stockQuantity.trim() ? Number(stockQuantity) : undefined;
     if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
-      setError('Enter a price greater than zero.');
+      setError(t('pos.priceValidationError'));
       return;
     }
     if (previousPrice !== undefined && (!Number.isFinite(previousPrice) || previousPrice <= currentPrice)) {
-      setError('The original price must be greater than the current price.');
+      setError(t('pos.originalPriceValidationError'));
       return;
     }
     if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
-      setError('Stock must be a whole number of zero or more. Leave it blank for unlimited availability.');
+      setError(t('pos.stockValidationError'));
       return;
     }
     setSubmitting(true);
@@ -477,7 +484,7 @@ function CatalogView() {
       setStockQuantity('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this product.');
+      setError(err instanceof ApiError ? err.message : t('pos.addProductError'));
     } finally {
       setSubmitting(false);
     }
@@ -485,59 +492,59 @@ function CatalogView() {
 
   const adjustStock = async (product: MerchantProduct) => {
     const value = window.prompt(
-      'Set available units. Leave blank for unlimited availability.',
+      t('pos.adjustStockPrompt'),
       product.stockQuantity === null ? '' : String(product.stockQuantity),
     );
     if (value === null) return;
     const trimmed = value.trim();
     const stock = trimmed === '' ? null : Number(trimmed);
     if (stock !== null && (!Number.isInteger(stock) || stock < 0)) {
-      setError('Stock must be a whole number of zero or more. Leave it blank for unlimited availability.');
+      setError(t('pos.stockValidationError'));
       return;
     }
     try {
       await updateProductStock(product.id, stock);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update stock.');
+      setError(err instanceof ApiError ? err.message : t('pos.updateStockError'));
     }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div className="itunda-card">
-        <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Add a product</h2>
+        <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>{t('pos.addProductTitle')}</h2>
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '160px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Name</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('pos.nameLabel')}</span>
             <input
               type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Latte" required
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '120px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Price (RWF)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('pos.priceLabel')}</span>
             <input
               type="number" min="1" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="2500" required
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '150px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Stock (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('pos.stockLabel')}</span>
             <input
-              type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="Unlimited"
+              type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder={t('pos.stockPlaceholderUnlimited')}
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '120px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Original price (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('pos.originalPriceLabel')}</span>
             <input
               type="number" min="1" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} placeholder="3000"
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '220px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Product photo (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('pos.photoLabel')}</span>
             <input
               ref={imageInputRef}
               type="file"
@@ -554,19 +561,19 @@ function CatalogView() {
                 className="itunda-btn itunda-btn-secondary"
                 style={{ fontSize: '13px', padding: '10px 14px' }}
               >
-                {uploadingImage ? 'Uploading…' : imageUrl ? 'Change photo' : 'Add photo from device'}
+                {uploadingImage ? t('pos.uploading') : imageUrl ? t('pos.changePhoto') : t('pos.addPhotoFromDevice')}
               </button>
             </div>
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexBasis: '100%' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Description (optional)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('pos.descriptionLabel')}</span>
             <textarea
-              value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} rows={2} placeholder="What customers should know about this item"
+              value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} rows={2} placeholder={t('pos.descriptionPlaceholder')}
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px', resize: 'vertical' }}
             />
           </label>
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ height: '46px' }}>
-            {submitting ? 'Adding…' : 'Add'}
+            {submitting ? t('pos.adding') : t('pos.addButton')}
           </button>
         </form>
         {error && (
@@ -579,30 +586,30 @@ function CatalogView() {
       {lowStock.length > 0 && (
         <div className="itunda-card" role="status" style={{ borderLeft: '4px solid #F59E0B', background: '#FFFBEB' }}>
           <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-            {lowStock.length} product{lowStock.length === 1 ? '' : 's'} need stock attention
+            {t(lowStock.length === 1 ? 'pos.lowStockWarningSingular' : 'pos.lowStockWarningPlural', { count: lowStock.length })}
           </p>
           <p style={{ marginTop: '4px', fontSize: '13px', color: 'var(--itunda-grey-700)' }}>
-            {lowStock.map((product) => `${product.name} (${product.stockQuantity === 0 ? 'out of stock' : `${product.stockQuantity} left`})`).join(', ')}
+            {lowStock.map((product) => `${product.name} (${product.stockQuantity === 0 ? t('pos.lowStockOutOfStock') : t('pos.lowStockLeft', { count: product.stockQuantity ?? 0 })})`).join(', ')}
           </p>
         </div>
       )}
 
       {products === null ? (
-        <div className="itunda-card">Loading…</div>
+        <div className="itunda-card">{t('pos.loading')}</div>
       ) : products.length === 0 ? (
         <div className="itunda-card">
           {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): points
               to the real Catalog tab, which has the actual add-product form -- this
               REGISTER-mode checkout view has no add mechanism of its own. */}
-          <EmptyState message='No products yet — switch to Catalog above to add your first one.' />
+          <EmptyState message={t('pos.catalogEmpty')} />
         </div>
       ) : (
         <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
               <tr style={{ backgroundColor: 'var(--itunda-grey-100)', textAlign: 'left' }}>
-                {['Product', 'Price', ''].map((h) => (
-                  <th key={h} style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{h}</th>
+                {[t('pos.columnProduct'), t('pos.columnPrice'), ''].map((h, i) => (
+                  <th key={i === 2 ? 'actions' : h} style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -622,9 +629,9 @@ function CatalogView() {
                       </td>
                       <td style={{ padding: '10px 20px' }}>
                         <div>{product.price.toLocaleString()} RWF</div>
-                        {product.originalPrice && product.discountPercent && <div style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}><s>{product.originalPrice.toLocaleString()} RWF</s> · {product.discountPercent}% off</div>}
+                        {product.originalPrice && product.discountPercent && <div style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}><s>{product.originalPrice.toLocaleString()} RWF</s> · {t('pos.discountOff', { percent: product.discountPercent })}</div>}
                         <div style={{ fontSize: '12px', color: product.stockQuantity === 0 ? 'var(--itunda-red)' : 'var(--itunda-grey-500)', marginTop: '2px' }}>
-                          {product.stockQuantity === null ? 'Unlimited stock' : product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} in stock`}
+                          {product.stockQuantity === null ? t('pos.unlimitedStock') : product.stockQuantity === 0 ? t('pos.outOfStock') : t('pos.inStock', { count: product.stockQuantity })}
                         </div>
                       </td>
                       <td style={{ padding: '10px 20px', textAlign: 'right' }}>
@@ -633,31 +640,31 @@ function CatalogView() {
                             onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
                             style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
-                            Options {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            {t('pos.optionsToggle')} {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => setExpandedPricingProductId(isPricingExpanded ? null : product.id)}
                             style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
-                            Pricing {isPricingExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            {t('pos.pricingToggle')} {isPricingExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => setExpandedTimeDealProductId(isTimeDealExpanded ? null : product.id)}
                             style={{ color: 'var(--itunda-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
-                            Time deal {isTimeDealExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            {t('pos.timeDealToggle')} {isTimeDealExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
                             onClick={() => adjustStock(product)}
                             style={{ color: 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
                           >
-                            Adjust stock
+                            {t('pos.adjustStockButton')}
                           </button>
                           <button
                             onClick={() => removeProduct(product.id).then(load)}
                             style={{ color: 'var(--itunda-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
                           >
-                            <Trash2 size={14} /> Remove
+                            <Trash2 size={14} /> {t('pos.removeButton')}
                           </button>
                         </div>
                       </td>
@@ -706,6 +713,7 @@ interface ChoiceDraft {
 // single-select only, matching MenuOptionGroup.kt's own real, honestly-scoped backend
 // constraint (at least 2 choices per group, enforced server-side too).
 function ProductOptionsPanel({ productId }: { productId: string }) {
+  const { t } = useI18n();
   const [groups, setGroups] = useState<MenuOptionGroup[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [groupName, setGroupName] = useState('');
@@ -716,7 +724,7 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
   const load = () => {
     getOptionGroups(productId)
       .then(setGroups)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load option groups.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('pos.optionGroupsLoadError')));
   };
 
   useEffect(load, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -741,7 +749,7 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
       setChoices([{ name: '', priceDelta: '0' }, { name: '', priceDelta: '0' }]);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this option group.');
+      setError(err instanceof ApiError ? err.message : t('pos.addOptionGroupError'));
     } finally {
       setSubmitting(false);
     }
@@ -753,7 +761,7 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
       await removeOptionGroup(productId, groupId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this option group.');
+      setError(err instanceof ApiError ? err.message : t('pos.removeOptionGroupError'));
     } finally {
       setRemovingId(null);
     }
@@ -762,12 +770,12 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div>
-        <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Existing option groups</p>
+        <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>{t('pos.existingOptionGroups')}</p>
         {groups === null ? (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('pos.loading')}</p>
         ) : groups.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-            No option groups yet -- a buyer will see a plain +/- stepper for this item until you add one (e.g. "Size" with Small/Regular/Large choices).
+            {t('pos.optionGroupsEmpty')}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -785,7 +793,7 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
                     disabled={removingId === group.id}
                     style={{ color: 'var(--itunda-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
                   >
-                    <Trash2 size={12} /> {removingId === group.id ? 'Removing…' : 'Remove'}
+                    <Trash2 size={12} /> {removingId === group.id ? t('pos.removing') : t('pos.removeButton')}
                   </button>
                 </div>
               </div>
@@ -795,9 +803,9 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
       </div>
 
       <form onSubmit={handleAddGroup} style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid var(--itunda-grey-200)', paddingTop: '14px' }}>
-        <p style={{ fontSize: '13px', fontWeight: 700 }}>Add an option group</p>
+        <p style={{ fontSize: '13px', fontWeight: 700 }}>{t('pos.addOptionGroupTitle')}</p>
         <input
-          type="text" value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Group name (e.g. Size)" required
+          type="text" value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder={t('pos.groupNamePlaceholder')} required
           style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', maxWidth: '320px' }}
         />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -805,29 +813,29 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
             <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <input
                 type="text" value={choice.name} onChange={(e) => updateChoice(i, 'name', e.target.value)}
-                placeholder={`Choice ${i + 1} (e.g. ${i === 0 ? 'Small' : 'Large'})`}
+                placeholder={t('pos.choicePlaceholder', { index: i + 1, example: i === 0 ? 'Small' : 'Large' })}
                 style={{ flex: 2, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               <input
                 type="number" value={choice.priceDelta} onChange={(e) => updateChoice(i, 'priceDelta', e.target.value)}
-                placeholder="+RWF" style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
+                placeholder={t('pos.choicePriceDeltaPlaceholder')} style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               {choices.length > 2 && (
-                <button type="button" onClick={() => removeChoiceRow(i)} style={{ color: 'var(--itunda-grey-500)', padding: '5px' }} aria-label="Remove choice">
+                <button type="button" onClick={() => removeChoiceRow(i)} style={{ color: 'var(--itunda-grey-500)', padding: '5px' }} aria-label={t('pos.removeChoiceAria')}>
                   <Minus size={14} />
                 </button>
               )}
             </div>
           ))}
           <button type="button" onClick={addChoiceRow} style={{ alignSelf: 'flex-start', color: 'var(--itunda-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <Plus size={12} /> Add another choice
+            <Plus size={12} /> {t('pos.addAnotherChoice')}
           </button>
         </div>
         {error && (
           <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
         )}
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ alignSelf: 'flex-start' }}>
-          {submitting ? 'Adding…' : 'Add option group'}
+          {submitting ? t('pos.adding') : t('pos.addOptionGroupButton')}
         </button>
       </form>
     </div>
@@ -849,6 +857,7 @@ interface TierDraft {
 // tier below the regular price, max 10 tiers) is the real source of truth -- this form
 // mirrors those same rules client-side only for a faster error round trip.
 function PriceTiersPanel({ productId, regularPrice }: { productId: string; regularPrice: number }) {
+  const { t } = useI18n();
   const [tiers, setTiers] = useState<TierDraft[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -856,8 +865,8 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
 
   const load = () => {
     fetchPriceTiers(productId)
-      .then((real) => setTiers(real.map((t) => ({ minQuantity: String(t.minQuantity), unitPrice: String(t.unitPrice) }))))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load price tiers.'));
+      .then((real) => setTiers(real.map((tier) => ({ minQuantity: String(tier.minQuantity), unitPrice: String(tier.unitPrice) }))))
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('pos.priceTiersLoadError')));
   };
 
   useEffect(load, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -881,31 +890,31 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
     const parsed = (tiers ?? [])
       .filter((t) => t.minQuantity.trim() !== '' || t.unitPrice.trim() !== '')
       .map((t) => ({ minQuantity: Number(t.minQuantity), unitPrice: Number(t.unitPrice) }));
-    for (const t of parsed) {
-      if (!Number.isInteger(t.minQuantity) || t.minQuantity < 1) {
-        setError('Each minimum quantity must be a whole number of at least 1.');
+    for (const tier of parsed) {
+      if (!Number.isInteger(tier.minQuantity) || tier.minQuantity < 1) {
+        setError(t('pos.tierMinQuantityError'));
         return;
       }
-      if (!Number.isFinite(t.unitPrice) || t.unitPrice <= 0) {
-        setError('Each unit price must be greater than zero.');
+      if (!Number.isFinite(tier.unitPrice) || tier.unitPrice <= 0) {
+        setError(t('pos.tierUnitPriceError'));
         return;
       }
-      if (t.unitPrice >= regularPrice) {
-        setError(`Each tier must cost less per unit than the regular price (${regularPrice.toLocaleString()} RWF).`);
+      if (tier.unitPrice >= regularPrice) {
+        setError(t('pos.tierBelowRegularError', { price: regularPrice.toLocaleString() }));
         return;
       }
     }
     if (parsed.length > 10) {
-      setError('Too many price tiers -- 10 is the real limit.');
+      setError(t('pos.tierTooManyError'));
       return;
     }
     setSaving(true);
     try {
       const real = await setPriceTiers(productId, parsed);
-      setTiers(real.map((t) => ({ minQuantity: String(t.minQuantity), unitPrice: String(t.unitPrice) })));
+      setTiers(real.map((tier) => ({ minQuantity: String(tier.minQuantity), unitPrice: String(tier.unitPrice) })));
       setSaved(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save these price tiers.');
+      setError(err instanceof ApiError ? err.message : t('pos.tierSaveError'));
     } finally {
       setSaving(false);
     }
@@ -913,33 +922,33 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <p style={{ fontSize: '13px', fontWeight: 700 }}>Bulk/wholesale pricing</p>
+      <p style={{ fontSize: '13px', fontWeight: 700 }}>{t('pos.bulkPricingTitle')}</p>
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-        A buyer ordering at least the minimum quantity automatically pays the lower unit price at checkout -- real pricing, not a label. Leave empty for no bulk discount.
+        {t('pos.bulkPricingBody')}
       </p>
       {tiers === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('pos.loading')}</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {tiers.map((tier, i) => (
             <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <input
                 type="number" min="1" step="1" value={tier.minQuantity} onChange={(e) => updateTier(i, 'minQuantity', e.target.value)}
-                placeholder="Min quantity (e.g. 10)"
+                placeholder={t('pos.tierMinQuantityPlaceholder')}
                 style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
               <input
                 type="number" min="1" value={tier.unitPrice} onChange={(e) => updateTier(i, 'unitPrice', e.target.value)}
-                placeholder="Unit price (RWF)"
+                placeholder={t('pos.tierUnitPricePlaceholder')}
                 style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
               />
-              <button type="button" onClick={() => removeTierRow(i)} style={{ color: 'var(--itunda-grey-500)', padding: '5px' }} aria-label="Remove tier">
+              <button type="button" onClick={() => removeTierRow(i)} style={{ color: 'var(--itunda-grey-500)', padding: '5px' }} aria-label={t('pos.removeTierAria')}>
                 <Minus size={14} />
               </button>
             </div>
           ))}
           <button type="button" onClick={addTierRow} style={{ alignSelf: 'flex-start', color: 'var(--itunda-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <Plus size={12} /> Add a tier
+            <Plus size={12} /> {t('pos.addTier')}
           </button>
         </div>
       )}
@@ -947,10 +956,10 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
       )}
       {saved && !error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>Saved.</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>{t('pos.saved')}</p>
       )}
       <button type="button" className="itunda-btn itunda-btn-primary" disabled={saving || tiers === null} onClick={handleSave} style={{ alignSelf: 'flex-start' }}>
-        {saving ? 'Saving…' : 'Save price tiers'}
+        {saving ? t('pos.saving') : t('pos.saveTiersButton')}
       </button>
     </div>
   );
@@ -965,6 +974,7 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
 // this one product -- an honest tradeoff for a merchant who rarely has more than a
 // handful of deals running at once, not a real N+1 concern.
 function TimeDealPanel({ productId, regularPrice }: { productId: string; regularPrice: number }) {
+  const { t } = useI18n();
   const [deals, setDeals] = useState<TimeDeal[] | null>(null);
   const [dealPrice, setDealPrice] = useState('');
   const [totalQuantity, setTotalQuantity] = useState('');
@@ -977,7 +987,7 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
   const load = () => {
     fetchMyTimeDeals()
       .then((all) => setDeals(all.filter((d) => d.productId === productId)))
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load time deals.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('pos.timeDealsLoadError')));
   };
 
   useEffect(load, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -991,21 +1001,21 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
     const price = Number(dealPrice);
     const quantity = Number(totalQuantity);
     if (!Number.isFinite(price) || price <= 0 || price >= regularPrice) {
-      setError(`The deal price must be greater than zero and less than the regular price (${regularPrice.toLocaleString()} RWF).`);
+      setError(t('pos.timeDealPriceError', { price: regularPrice.toLocaleString() }));
       return;
     }
     if (!Number.isInteger(quantity) || quantity < 1) {
-      setError('Quantity must be a whole number of at least 1.');
+      setError(t('pos.timeDealQuantityError'));
       return;
     }
     if (!startsAt || !endsAt) {
-      setError('Set both a start and end time.');
+      setError(t('pos.timeDealTimesRequiredError'));
       return;
     }
     const startIso = new Date(startsAt).toISOString();
     const endIso = new Date(endsAt).toISOString();
     if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
-      setError('The end time must be after the start time.');
+      setError(t('pos.timeDealEndAfterStartError'));
       return;
     }
     setSubmitting(true);
@@ -1017,7 +1027,7 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
       setEndsAt('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this time deal.');
+      setError(err instanceof ApiError ? err.message : t('pos.timeDealCreateError'));
     } finally {
       setSubmitting(false);
     }
@@ -1029,7 +1039,7 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
       await endTimeDeal(dealId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not end this deal.');
+      setError(err instanceof ApiError ? err.message : t('pos.timeDealEndError'));
     } finally {
       setBusyDealId(null);
     }
@@ -1037,9 +1047,9 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <p style={{ fontSize: '13px', fontWeight: 700 }}>⏰ Time deal</p>
+      <p style={{ fontSize: '13px', fontWeight: 700 }}>{t('pos.timeDealTitle')}</p>
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-        A real time-boxed, quantity-capped discount -- checkout automatically charges the deal price while it's live and stock remains, then reverts to the regular price.
+        {t('pos.timeDealBody')}
       </p>
       {activeDeals.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -1049,7 +1059,7 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
                 {d.dealPrice.toLocaleString()} RWF · {d.remainingQuantity}/{d.totalQuantity} left · ends {new Date(d.endsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
               <button type="button" onClick={() => handleEnd(d.id)} disabled={busyDealId === d.id} style={{ color: 'var(--itunda-grey-500)', fontSize: '12px' }}>
-                {busyDealId === d.id ? '…' : 'End now'}
+                {busyDealId === d.id ? '…' : t('pos.timeDealEndNow')}
               </button>
             </div>
           ))}
@@ -1057,11 +1067,11 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
       ) : (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <input
-            type="number" min="1" value={dealPrice} onChange={(e) => setDealPrice(e.target.value)} placeholder="Deal price (RWF)"
+            type="number" min="1" value={dealPrice} onChange={(e) => setDealPrice(e.target.value)} placeholder={t('pos.timeDealPricePlaceholder')}
             style={{ flex: 1, minWidth: '140px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
-            type="number" min="1" step="1" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} placeholder="Quantity"
+            type="number" min="1" step="1" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} placeholder={t('pos.timeDealQuantityPlaceholder')}
             style={{ flex: 1, minWidth: '100px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
           />
           <input
@@ -1079,12 +1089,12 @@ function TimeDealPanel({ productId, regularPrice }: { productId: string; regular
       )}
       {activeDeals.length === 0 && (
         <button type="button" className="itunda-btn itunda-btn-primary" disabled={submitting} onClick={handleCreate} style={{ alignSelf: 'flex-start' }}>
-          {submitting ? 'Creating…' : 'Start a time deal'}
+          {submitting ? t('pos.creating') : t('pos.startTimeDeal')}
         </button>
       )}
       {pastDeals.length > 0 && (
         <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>
-          {pastDeals.length} past deal{pastDeals.length === 1 ? '' : 's'} for this product.
+          {t(pastDeals.length === 1 ? 'pos.pastDealsSingular' : 'pos.pastDealsPlural', { count: pastDeals.length })}
         </p>
       )}
     </div>

@@ -351,7 +351,115 @@ export type TranslationKey =
   | 'reviews.postReply'
   | 'reviews.cancel'
   | 'reviews.editReply'
-  | 'reviews.reply';
+  | 'reviews.reply'
+  // Real 14th-localization-pass additions (2026-08-15): PosScreen -- the real
+  // cash-register/POS UI (Register + Catalog modes, with Options/Pricing/Time-deal
+  // sub-panels per product), merchant-mfe's largest and highest-daily-traffic screen.
+  | 'pos.modeRegister'
+  | 'pos.modeCatalog'
+  | 'pos.catalogLoadError'
+  | 'pos.loading'
+  | 'pos.retry'
+  | 'pos.registerEmpty'
+  | 'pos.outOfStock'
+  | 'pos.stockAvailable'
+  | 'pos.cartTitle'
+  | 'pos.cartEmpty'
+  | 'pos.decreaseQuantityAria'
+  | 'pos.increaseQuantityAria'
+  | 'pos.total'
+  | 'pos.checkoutButton'
+  | 'pos.checkoutTitle'
+  | 'pos.checkoutModeQr'
+  | 'pos.checkoutModeCard'
+  | 'pos.backToCart'
+  | 'pos.qrGenerateError'
+  | 'pos.doneNewSale'
+  | 'pos.generating'
+  | 'pos.cardChargeError'
+  | 'pos.cardChargedResult'
+  | 'pos.charging'
+  | 'pos.chargeButton'
+  | 'pos.uploadPhotoError'
+  | 'pos.priceValidationError'
+  | 'pos.originalPriceValidationError'
+  | 'pos.stockValidationError'
+  | 'pos.addProductError'
+  | 'pos.adjustStockPrompt'
+  | 'pos.updateStockError'
+  | 'pos.addProductTitle'
+  | 'pos.nameLabel'
+  | 'pos.priceLabel'
+  | 'pos.stockLabel'
+  | 'pos.stockPlaceholderUnlimited'
+  | 'pos.originalPriceLabel'
+  | 'pos.photoLabel'
+  | 'pos.uploading'
+  | 'pos.changePhoto'
+  | 'pos.addPhotoFromDevice'
+  | 'pos.descriptionLabel'
+  | 'pos.descriptionPlaceholder'
+  | 'pos.adding'
+  | 'pos.addButton'
+  | 'pos.lowStockWarningSingular'
+  | 'pos.lowStockWarningPlural'
+  | 'pos.lowStockOutOfStock'
+  | 'pos.lowStockLeft'
+  | 'pos.catalogEmpty'
+  | 'pos.columnProduct'
+  | 'pos.columnPrice'
+  | 'pos.discountOff'
+  | 'pos.unlimitedStock'
+  | 'pos.inStock'
+  | 'pos.optionsToggle'
+  | 'pos.pricingToggle'
+  | 'pos.timeDealToggle'
+  | 'pos.adjustStockButton'
+  | 'pos.removeButton'
+  | 'pos.optionGroupsLoadError'
+  | 'pos.existingOptionGroups'
+  | 'pos.optionGroupsEmpty'
+  | 'pos.removing'
+  | 'pos.addOptionGroupTitle'
+  | 'pos.groupNamePlaceholder'
+  | 'pos.choicePlaceholder'
+  | 'pos.choicePriceDeltaPlaceholder'
+  | 'pos.removeChoiceAria'
+  | 'pos.addAnotherChoice'
+  | 'pos.addOptionGroupError'
+  | 'pos.addOptionGroupButton'
+  | 'pos.removeOptionGroupError'
+  | 'pos.priceTiersLoadError'
+  | 'pos.tierMinQuantityError'
+  | 'pos.tierUnitPriceError'
+  | 'pos.tierBelowRegularError'
+  | 'pos.tierTooManyError'
+  | 'pos.tierSaveError'
+  | 'pos.bulkPricingTitle'
+  | 'pos.bulkPricingBody'
+  | 'pos.tierMinQuantityPlaceholder'
+  | 'pos.tierUnitPricePlaceholder'
+  | 'pos.removeTierAria'
+  | 'pos.addTier'
+  | 'pos.saved'
+  | 'pos.saving'
+  | 'pos.saveTiersButton'
+  | 'pos.timeDealsLoadError'
+  | 'pos.timeDealPriceError'
+  | 'pos.timeDealQuantityError'
+  | 'pos.timeDealTimesRequiredError'
+  | 'pos.timeDealEndAfterStartError'
+  | 'pos.timeDealCreateError'
+  | 'pos.timeDealEndError'
+  | 'pos.timeDealTitle'
+  | 'pos.timeDealBody'
+  | 'pos.timeDealEndNow'
+  | 'pos.timeDealPricePlaceholder'
+  | 'pos.timeDealQuantityPlaceholder'
+  | 'pos.startTimeDeal'
+  | 'pos.creating'
+  | 'pos.pastDealsSingular'
+  | 'pos.pastDealsPlural';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -648,6 +756,111 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reviews.cancel': 'Cancel',
     'reviews.editReply': 'Edit reply',
     'reviews.reply': 'Reply',
+    'pos.modeRegister': 'Register',
+    'pos.modeCatalog': 'Catalog',
+    'pos.catalogLoadError': 'Could not load the catalog.',
+    'pos.loading': 'Loading…',
+    'pos.retry': 'Retry',
+    'pos.registerEmpty': 'No products yet — add some in the Catalog tab first.',
+    'pos.outOfStock': 'Out of stock',
+    'pos.stockAvailable': '{{count}} available',
+    'pos.cartTitle': 'Cart',
+    'pos.cartEmpty': 'Tap a product to add it.',
+    'pos.decreaseQuantityAria': 'Decrease quantity of {{name}}',
+    'pos.increaseQuantityAria': 'Increase quantity of {{name}}',
+    'pos.total': 'Total',
+    'pos.checkoutButton': 'Checkout',
+    'pos.checkoutTitle': 'Checkout',
+    'pos.checkoutModeQr': 'QR code',
+    'pos.checkoutModeCard': 'Card',
+    'pos.backToCart': 'Back to cart',
+    'pos.qrGenerateError': 'Could not generate a QR code.',
+    'pos.doneNewSale': 'Done — new sale',
+    'pos.generating': 'Generating…',
+    'pos.cardChargeError': 'Could not charge this card.',
+    'pos.cardChargedResult': 'Card charged — •••• {{last4}}',
+    'pos.charging': 'Charging…',
+    'pos.chargeButton': 'Charge {{amount}} RWF',
+    'pos.uploadPhotoError': "Couldn't upload that photo. Check your connection and try again.",
+    'pos.priceValidationError': 'Enter a price greater than zero.',
+    'pos.originalPriceValidationError': 'The original price must be greater than the current price.',
+    'pos.stockValidationError': 'Stock must be a whole number of zero or more. Leave it blank for unlimited availability.',
+    'pos.addProductError': 'Could not add this product.',
+    'pos.adjustStockPrompt': 'Set available units. Leave blank for unlimited availability.',
+    'pos.updateStockError': 'Could not update stock.',
+    'pos.addProductTitle': 'Add a product',
+    'pos.nameLabel': 'Name',
+    'pos.priceLabel': 'Price (RWF)',
+    'pos.stockLabel': 'Stock (optional)',
+    'pos.stockPlaceholderUnlimited': 'Unlimited',
+    'pos.originalPriceLabel': 'Original price (optional)',
+    'pos.photoLabel': 'Product photo (optional)',
+    'pos.uploading': 'Uploading…',
+    'pos.changePhoto': 'Change photo',
+    'pos.addPhotoFromDevice': 'Add photo from device',
+    'pos.descriptionLabel': 'Description (optional)',
+    'pos.descriptionPlaceholder': 'What customers should know about this item',
+    'pos.adding': 'Adding…',
+    'pos.addButton': 'Add',
+    'pos.lowStockWarningSingular': '{{count}} product needs stock attention',
+    'pos.lowStockWarningPlural': '{{count}} products need stock attention',
+    'pos.lowStockOutOfStock': 'out of stock',
+    'pos.lowStockLeft': '{{count}} left',
+    'pos.catalogEmpty': 'No products yet — switch to Catalog above to add your first one.',
+    'pos.columnProduct': 'Product',
+    'pos.columnPrice': 'Price',
+    'pos.discountOff': '{{percent}}% off',
+    'pos.unlimitedStock': 'Unlimited stock',
+    'pos.inStock': '{{count}} in stock',
+    'pos.optionsToggle': 'Options',
+    'pos.pricingToggle': 'Pricing',
+    'pos.timeDealToggle': 'Time deal',
+    'pos.adjustStockButton': 'Adjust stock',
+    'pos.removeButton': 'Remove',
+    'pos.optionGroupsLoadError': 'Could not load option groups.',
+    'pos.existingOptionGroups': 'Existing option groups',
+    'pos.optionGroupsEmpty': 'No option groups yet -- a buyer will see a plain +/- stepper for this item until you add one (e.g. "Size" with Small/Regular/Large choices).',
+    'pos.removing': 'Removing…',
+    'pos.addOptionGroupTitle': 'Add an option group',
+    'pos.groupNamePlaceholder': 'Group name (e.g. Size)',
+    'pos.choicePlaceholder': 'Choice {{index}} (e.g. {{example}})',
+    'pos.choicePriceDeltaPlaceholder': '+RWF',
+    'pos.removeChoiceAria': 'Remove choice',
+    'pos.addAnotherChoice': 'Add another choice',
+    'pos.addOptionGroupError': 'Could not add this option group.',
+    'pos.addOptionGroupButton': 'Add option group',
+    'pos.removeOptionGroupError': 'Could not remove this option group.',
+    'pos.priceTiersLoadError': 'Could not load price tiers.',
+    'pos.tierMinQuantityError': 'Each minimum quantity must be a whole number of at least 1.',
+    'pos.tierUnitPriceError': 'Each unit price must be greater than zero.',
+    'pos.tierBelowRegularError': 'Each tier must cost less per unit than the regular price ({{price}} RWF).',
+    'pos.tierTooManyError': 'Too many price tiers -- 10 is the real limit.',
+    'pos.tierSaveError': 'Could not save these price tiers.',
+    'pos.bulkPricingTitle': 'Bulk/wholesale pricing',
+    'pos.bulkPricingBody': 'A buyer ordering at least the minimum quantity automatically pays the lower unit price at checkout -- real pricing, not a label. Leave empty for no bulk discount.',
+    'pos.tierMinQuantityPlaceholder': 'Min quantity (e.g. 10)',
+    'pos.tierUnitPricePlaceholder': 'Unit price (RWF)',
+    'pos.removeTierAria': 'Remove tier',
+    'pos.addTier': 'Add a tier',
+    'pos.saved': 'Saved.',
+    'pos.saving': 'Saving…',
+    'pos.saveTiersButton': 'Save price tiers',
+    'pos.timeDealsLoadError': 'Could not load time deals.',
+    'pos.timeDealPriceError': 'The deal price must be greater than zero and less than the regular price ({{price}} RWF).',
+    'pos.timeDealQuantityError': 'Quantity must be a whole number of at least 1.',
+    'pos.timeDealTimesRequiredError': 'Set both a start and end time.',
+    'pos.timeDealEndAfterStartError': 'The end time must be after the start time.',
+    'pos.timeDealCreateError': 'Could not create this time deal.',
+    'pos.timeDealEndError': 'Could not end this deal.',
+    'pos.timeDealTitle': '⏰ Time deal',
+    'pos.timeDealBody': "A real time-boxed, quantity-capped discount -- checkout automatically charges the deal price while it's live and stock remains, then reverts to the regular price.",
+    'pos.timeDealEndNow': 'End now',
+    'pos.timeDealPricePlaceholder': 'Deal price (RWF)',
+    'pos.timeDealQuantityPlaceholder': 'Quantity',
+    'pos.startTimeDeal': 'Start a time deal',
+    'pos.creating': 'Creating…',
+    'pos.pastDealsSingular': '{{count}} past deal for this product.',
+    'pos.pastDealsPlural': '{{count}} past deals for this product.',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -943,6 +1156,111 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reviews.cancel': 'Hagarika',
     'reviews.editReply': 'Hindura igisubizo',
     'reviews.reply': 'Subiza',
+    'pos.modeRegister': 'Igurisha',
+    'pos.modeCatalog': 'Ibicuruzwa',
+    'pos.catalogLoadError': 'Ntibishoboka gushakisha ibicuruzwa.',
+    'pos.loading': 'Gushakisha…',
+    'pos.retry': 'Ongera ugerageze',
+    'pos.registerEmpty': 'Nta bicuruzwa ufite — banza wongeremo bimwe muri Ibicuruzwa.',
+    'pos.outOfStock': 'Byashize',
+    'pos.stockAvailable': '{{count}} biracyahari',
+    'pos.cartTitle': 'Ikarito',
+    'pos.cartEmpty': 'Kanda ku gicuruzwa kugira ngo kigongereho.',
+    'pos.decreaseQuantityAria': 'Gabanya umubare wa {{name}}',
+    'pos.increaseQuantityAria': 'Ongera umubare wa {{name}}',
+    'pos.total': 'Igiteranyo',
+    'pos.checkoutButton': 'Kwishyura',
+    'pos.checkoutTitle': 'Kwishyura',
+    'pos.checkoutModeQr': 'QR code',
+    'pos.checkoutModeCard': 'Ikarita',
+    'pos.backToCart': 'Subira ku ikarito',
+    'pos.qrGenerateError': 'Ntibishoboka gukora QR code.',
+    'pos.doneNewSale': 'Byarangiye — igurisha rishya',
+    'pos.generating': 'Gukora…',
+    'pos.cardChargeError': 'Ntibishoboka gukuramo amafaranga kuri iyi karita.',
+    'pos.cardChargedResult': 'Amafaranga yakuwe — •••• {{last4}}',
+    'pos.charging': 'Gukuramo…',
+    'pos.chargeButton': 'Kuramo {{amount}} RWF',
+    'pos.uploadPhotoError': 'Ntibishoboka kohereza iyo foto. Reba interineti yawe hanyuma ugerageze nanone.',
+    'pos.priceValidationError': 'Andika igiciro kiruta zeru.',
+    'pos.originalPriceValidationError': 'Igiciro cy\'umwimerere kigomba kuba kirenze igiciro kigezweho.',
+    'pos.stockValidationError': 'Ibicuruzwa bigomba kuba umubare wuzuye wa zeru cyangwa wenda. Reka ubusa niba nta mubare uzwi.',
+    'pos.addProductError': 'Ntibishoboka kongeraho iki gicuruzwa.',
+    'pos.adjustStockPrompt': 'Shyiraho umubare uhari. Reka ubusa niba nta mubare uzwi.',
+    'pos.updateStockError': 'Ntibishoboka kuvugurura ibicuruzwa.',
+    'pos.addProductTitle': 'Ongeraho igicuruzwa',
+    'pos.nameLabel': 'Izina',
+    'pos.priceLabel': 'Igiciro (RWF)',
+    'pos.stockLabel': 'Ibicuruzwa (bitari ngombwa)',
+    'pos.stockPlaceholderUnlimited': 'Ntabwo bigira umupaka',
+    'pos.originalPriceLabel': 'Igiciro cy\'umwimerere (bitari ngombwa)',
+    'pos.photoLabel': 'Ifoto y\'igicuruzwa (bitari ngombwa)',
+    'pos.uploading': 'Kohereza…',
+    'pos.changePhoto': 'Hindura ifoto',
+    'pos.addPhotoFromDevice': 'Ongeraho ifoto uva kuri telefoni',
+    'pos.descriptionLabel': 'Ibisobanuro (bitari ngombwa)',
+    'pos.descriptionPlaceholder': 'Ibyo abakiriya bagomba kumenya kuri iki gicuruzwa',
+    'pos.adding': 'Kongeraho…',
+    'pos.addButton': 'Ongeraho',
+    'pos.lowStockWarningSingular': 'Igicuruzwa {{count}} gikeneye kwitabwaho',
+    'pos.lowStockWarningPlural': 'Ibicuruzwa {{count}} bikeneye kwitabwaho',
+    'pos.lowStockOutOfStock': 'byashize',
+    'pos.lowStockLeft': '{{count}} bisigaye',
+    'pos.catalogEmpty': 'Nta bicuruzwa ufite — jya ku Bicuruzwa hejuru wongereho icya mbere.',
+    'pos.columnProduct': 'Igicuruzwa',
+    'pos.columnPrice': 'Igiciro',
+    'pos.discountOff': 'Igabanuka rya {{percent}}%',
+    'pos.unlimitedStock': 'Ntabwo bigira umupaka',
+    'pos.inStock': '{{count}} birahari',
+    'pos.optionsToggle': 'Amahitamo',
+    'pos.pricingToggle': 'Ibiciro',
+    'pos.timeDealToggle': 'Igabanuka ry\'igihe',
+    'pos.adjustStockButton': 'Vugurura ibicuruzwa',
+    'pos.removeButton': 'Kuraho',
+    'pos.optionGroupsLoadError': 'Ntibishoboka gushakisha amatsinda y\'amahitamo.',
+    'pos.existingOptionGroups': 'Amatsinda y\'amahitamo asanzwe',
+    'pos.optionGroupsEmpty': 'Nta itsinda ry\'amahitamo ufite -- umukiriya azabona ibare rya +/- gusa kuri iki gicuruzwa kugeza uwongeyeho rimwe (urugero "Ingano" hamwe n\'amahitamo Ntoya/Isanzwe/Nini).',
+    'pos.removing': 'Gukuraho…',
+    'pos.addOptionGroupTitle': 'Ongeraho itsinda ry\'amahitamo',
+    'pos.groupNamePlaceholder': 'Izina ry\'itsinda (urugero Ingano)',
+    'pos.choicePlaceholder': 'Ihitamo {{index}} (urugero {{example}})',
+    'pos.choicePriceDeltaPlaceholder': '+RWF',
+    'pos.removeChoiceAria': 'Kuraho ihitamo',
+    'pos.addAnotherChoice': 'Ongeraho irindi hitamo',
+    'pos.addOptionGroupError': 'Ntibishoboka kongeraho iri tsinda ry\'amahitamo.',
+    'pos.addOptionGroupButton': 'Ongeraho itsinda ry\'amahitamo',
+    'pos.removeOptionGroupError': 'Ntibishoboka gukuraho iri tsinda ry\'amahitamo.',
+    'pos.priceTiersLoadError': 'Ntibishoboka gushakisha ibiciro by\'itumizwa rinini.',
+    'pos.tierMinQuantityError': 'Buri mubare muto ugomba kuba umubare wuzuye w\'nibura 1.',
+    'pos.tierUnitPriceError': 'Buri giciro cy\'kimwe kigomba kuba kiruta zeru.',
+    'pos.tierBelowRegularError': 'Buri rwego rugomba kuba rufite igiciro kiri munsi y\'igiciro gisanzwe ({{price}} RWF).',
+    'pos.tierTooManyError': 'Inzego z\'ibiciro nyinshi cyane -- 10 ni urugero rwemewe.',
+    'pos.tierSaveError': 'Ntibishoboka kubika izi nzego z\'ibiciro.',
+    'pos.bulkPricingTitle': 'Ibiciro by\'itumizwa rinini',
+    'pos.bulkPricingBody': 'Umukiriya utumiza nibura umubare muto agomba kwishyura ako kanya igiciro gito kuri buri kimwe -- ibi ni ibiciro by\'ukuri, ntabwo ari ibare gusa. Reka ubusa niba nta gabanuka rinini uhereye.',
+    'pos.tierMinQuantityPlaceholder': 'Umubare muto (urugero 10)',
+    'pos.tierUnitPricePlaceholder': 'Igiciro cy\'kimwe (RWF)',
+    'pos.removeTierAria': 'Kuraho urwego',
+    'pos.addTier': 'Ongeraho urwego',
+    'pos.saved': 'Byabitswe.',
+    'pos.saving': 'Kubika…',
+    'pos.saveTiersButton': 'Bika inzego z\'ibiciro',
+    'pos.timeDealsLoadError': 'Ntibishoboka gushakisha amagabanuka y\'igihe.',
+    'pos.timeDealPriceError': 'Igiciro cy\'igabanuka kigomba kuba kiruta zeru kandi kiri munsi y\'igiciro gisanzwe ({{price}} RWF).',
+    'pos.timeDealQuantityError': 'Umubare ugomba kuba umubare wuzuye w\'nibura 1.',
+    'pos.timeDealTimesRequiredError': 'Shyiraho igihe cy\'itangira n\'iy\'irangira.',
+    'pos.timeDealEndAfterStartError': 'Igihe cy\'irangira kigomba kuba nyuma y\'igihe cy\'itangira.',
+    'pos.timeDealCreateError': 'Ntibishoboka gutangiza iri gabanuka ry\'igihe.',
+    'pos.timeDealEndError': 'Ntibishoboka guhagarika iri gabanuka.',
+    'pos.timeDealTitle': '⏰ Igabanuka ry\'igihe',
+    'pos.timeDealBody': 'Igabanuka ry\'ukuri rifite igihe n\'umubare ugenwe -- kwishyura bikorwa ako kanya ku giciro cy\'igabanuka igihe rikiriho kandi ibicuruzwa bikiri hafi, hanyuma bikagaruka ku giciro gisanzwe.',
+    'pos.timeDealEndNow': 'Hagarika nonaha',
+    'pos.timeDealPricePlaceholder': 'Igiciro cy\'igabanuka (RWF)',
+    'pos.timeDealQuantityPlaceholder': 'Umubare',
+    'pos.startTimeDeal': 'Tangiza igabanuka ry\'igihe',
+    'pos.creating': 'Gutangiza…',
+    'pos.pastDealsSingular': 'Igabanuka {{count}} rishize kuri iki gicuruzwa.',
+    'pos.pastDealsPlural': 'Amagabanuka {{count}} yashize kuri iki gicuruzwa.',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -1238,5 +1556,110 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reviews.cancel': 'Annuler',
     'reviews.editReply': 'Modifier la réponse',
     'reviews.reply': 'Répondre',
+    'pos.modeRegister': 'Caisse',
+    'pos.modeCatalog': 'Catalogue',
+    'pos.catalogLoadError': 'Impossible de charger le catalogue.',
+    'pos.loading': 'Chargement…',
+    'pos.retry': 'Réessayer',
+    'pos.registerEmpty': "Aucun produit pour le moment — ajoutez-en dans l'onglet Catalogue d'abord.",
+    'pos.outOfStock': 'Épuisé',
+    'pos.stockAvailable': '{{count}} disponible(s)',
+    'pos.cartTitle': 'Panier',
+    'pos.cartEmpty': 'Appuyez sur un produit pour l\'ajouter.',
+    'pos.decreaseQuantityAria': 'Diminuer la quantité de {{name}}',
+    'pos.increaseQuantityAria': 'Augmenter la quantité de {{name}}',
+    'pos.total': 'Total',
+    'pos.checkoutButton': 'Encaisser',
+    'pos.checkoutTitle': 'Encaissement',
+    'pos.checkoutModeQr': 'Code QR',
+    'pos.checkoutModeCard': 'Carte',
+    'pos.backToCart': 'Retour au panier',
+    'pos.qrGenerateError': 'Impossible de générer un code QR.',
+    'pos.doneNewSale': 'Terminé — nouvelle vente',
+    'pos.generating': 'Génération en cours…',
+    'pos.cardChargeError': 'Impossible de débiter cette carte.',
+    'pos.cardChargedResult': 'Carte débitée — •••• {{last4}}',
+    'pos.charging': 'Débit en cours…',
+    'pos.chargeButton': 'Débiter {{amount}} RWF',
+    'pos.uploadPhotoError': "Impossible d'envoyer cette photo. Vérifiez votre connexion et réessayez.",
+    'pos.priceValidationError': 'Saisissez un prix supérieur à zéro.',
+    'pos.originalPriceValidationError': 'Le prix d\'origine doit être supérieur au prix actuel.',
+    'pos.stockValidationError': 'Le stock doit être un nombre entier de zéro ou plus. Laissez vide pour une disponibilité illimitée.',
+    'pos.addProductError': 'Impossible d\'ajouter ce produit.',
+    'pos.adjustStockPrompt': 'Définissez les unités disponibles. Laissez vide pour une disponibilité illimitée.',
+    'pos.updateStockError': 'Impossible de mettre à jour le stock.',
+    'pos.addProductTitle': 'Ajouter un produit',
+    'pos.nameLabel': 'Nom',
+    'pos.priceLabel': 'Prix (RWF)',
+    'pos.stockLabel': 'Stock (facultatif)',
+    'pos.stockPlaceholderUnlimited': 'Illimité',
+    'pos.originalPriceLabel': "Prix d'origine (facultatif)",
+    'pos.photoLabel': 'Photo du produit (facultatif)',
+    'pos.uploading': 'Envoi en cours…',
+    'pos.changePhoto': 'Changer la photo',
+    'pos.addPhotoFromDevice': "Ajouter une photo depuis l'appareil",
+    'pos.descriptionLabel': 'Description (facultatif)',
+    'pos.descriptionPlaceholder': 'Ce que les clients doivent savoir sur cet article',
+    'pos.adding': 'Ajout en cours…',
+    'pos.addButton': 'Ajouter',
+    'pos.lowStockWarningSingular': '{{count}} produit nécessite votre attention',
+    'pos.lowStockWarningPlural': '{{count}} produits nécessitent votre attention',
+    'pos.lowStockOutOfStock': 'épuisé',
+    'pos.lowStockLeft': '{{count}} restant(s)',
+    'pos.catalogEmpty': "Aucun produit pour le moment — passez au Catalogue ci-dessus pour ajouter le premier.",
+    'pos.columnProduct': 'Produit',
+    'pos.columnPrice': 'Prix',
+    'pos.discountOff': '{{percent}}% de réduction',
+    'pos.unlimitedStock': 'Stock illimité',
+    'pos.inStock': '{{count}} en stock',
+    'pos.optionsToggle': 'Options',
+    'pos.pricingToggle': 'Tarification',
+    'pos.timeDealToggle': 'Offre flash',
+    'pos.adjustStockButton': 'Ajuster le stock',
+    'pos.removeButton': 'Retirer',
+    'pos.optionGroupsLoadError': "Impossible de charger les groupes d'options.",
+    'pos.existingOptionGroups': "Groupes d'options existants",
+    'pos.optionGroupsEmpty': 'Aucun groupe d\'options pour le moment -- un client verra un simple sélecteur +/- pour cet article jusqu\'à ce que vous en ajoutiez un (ex. "Taille" avec les choix Petit/Normal/Grand).',
+    'pos.removing': 'Suppression en cours…',
+    'pos.addOptionGroupTitle': "Ajouter un groupe d'options",
+    'pos.groupNamePlaceholder': 'Nom du groupe (ex. Taille)',
+    'pos.choicePlaceholder': 'Choix {{index}} (ex. {{example}})',
+    'pos.choicePriceDeltaPlaceholder': '+RWF',
+    'pos.removeChoiceAria': 'Retirer le choix',
+    'pos.addAnotherChoice': 'Ajouter un autre choix',
+    'pos.addOptionGroupError': "Impossible d'ajouter ce groupe d'options.",
+    'pos.addOptionGroupButton': "Ajouter le groupe d'options",
+    'pos.removeOptionGroupError': "Impossible de retirer ce groupe d'options.",
+    'pos.priceTiersLoadError': 'Impossible de charger les paliers de prix.',
+    'pos.tierMinQuantityError': 'Chaque quantité minimale doit être un nombre entier d\'au moins 1.',
+    'pos.tierUnitPriceError': 'Chaque prix unitaire doit être supérieur à zéro.',
+    'pos.tierBelowRegularError': 'Chaque palier doit coûter moins cher à l\'unité que le prix normal ({{price}} RWF).',
+    'pos.tierTooManyError': 'Trop de paliers de prix -- 10 est la limite réelle.',
+    'pos.tierSaveError': 'Impossible d\'enregistrer ces paliers de prix.',
+    'pos.bulkPricingTitle': 'Tarification en gros',
+    'pos.bulkPricingBody': "Un client commandant au moins la quantité minimale paie automatiquement le prix unitaire réduit à la caisse -- une tarification réelle, pas une simple étiquette. Laissez vide pour aucune remise en gros.",
+    'pos.tierMinQuantityPlaceholder': 'Quantité min. (ex. 10)',
+    'pos.tierUnitPricePlaceholder': 'Prix unitaire (RWF)',
+    'pos.removeTierAria': 'Retirer le palier',
+    'pos.addTier': 'Ajouter un palier',
+    'pos.saved': 'Enregistré.',
+    'pos.saving': 'Enregistrement…',
+    'pos.saveTiersButton': 'Enregistrer les paliers de prix',
+    'pos.timeDealsLoadError': 'Impossible de charger les offres flash.',
+    'pos.timeDealPriceError': "Le prix de l'offre doit être supérieur à zéro et inférieur au prix normal ({{price}} RWF).",
+    'pos.timeDealQuantityError': 'La quantité doit être un nombre entier d\'au moins 1.',
+    'pos.timeDealTimesRequiredError': 'Définissez une heure de début et de fin.',
+    'pos.timeDealEndAfterStartError': "L'heure de fin doit être après l'heure de début.",
+    'pos.timeDealCreateError': 'Impossible de créer cette offre flash.',
+    'pos.timeDealEndError': 'Impossible de terminer cette offre.',
+    'pos.timeDealTitle': '⏰ Offre flash',
+    'pos.timeDealBody': "Une vraie remise limitée dans le temps et en quantité -- la caisse applique automatiquement le prix de l'offre tant qu'elle est active et qu'il reste du stock, puis revient au prix normal.",
+    'pos.timeDealEndNow': 'Terminer maintenant',
+    'pos.timeDealPricePlaceholder': "Prix de l'offre (RWF)",
+    'pos.timeDealQuantityPlaceholder': 'Quantité',
+    'pos.startTimeDeal': 'Lancer une offre flash',
+    'pos.creating': 'Création en cours…',
+    'pos.pastDealsSingular': '{{count}} offre passée pour ce produit.',
+    'pos.pastDealsPlural': '{{count}} offres passées pour ce produit.',
   },
 };
