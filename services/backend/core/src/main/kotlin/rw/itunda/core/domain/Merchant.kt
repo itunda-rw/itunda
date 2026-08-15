@@ -133,6 +133,20 @@ class Merchant(
     @Column(name = "opening_hours", length = 200, nullable = true)
     var openingHours: String? = null,
 
+    // Real per-merchant kitchen-prep time (2026-08-16) -- fresh Baemin research
+    // ("가게배달 배달시간 AI 예측", opened 2026-06-17): merchants input their own real prep
+    // time, and the shown delivery estimate factors in that store's own
+    // characteristics instead of one generic number for every restaurant.
+    // DeliveryEtaEstimator previously used a single hardcoded BASE_PREP_MINUTES for
+    // every merchant regardless of how fast or slow that kitchen actually runs --
+    // this is the honest, merchant-self-reported real signal to replace that flat
+    // constant with, same "real, not fabricated" bar as photoUrl/openingHours above
+    // (itunda has no measured historical prep-time data to compute one itself).
+    // Nullable: unset means DeliveryEtaEstimator falls back to its existing constant,
+    // fully backward-compatible with every merchant that hasn't set one yet.
+    @Column(name = "avg_prep_time_minutes", nullable = true)
+    var avgPrepTimeMinutes: Int? = null,
+
     // Real external-checkout API key (2026-07-21) -- mirrors Partner.apiKeyHash's exact
     // pattern (SHA-256 hash, never the raw key, which is shown to the merchant exactly
     // once at generation time). Nullable: unset means this merchant hasn't opted into

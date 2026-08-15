@@ -146,7 +146,8 @@ class EatsController(
         val rider = order.riderId?.let { riderRepository.findById(it).orElse(null) }
         val riderName = rider?.let { userRepository.findById(it.userId).orElse(null) }?.firstName
         val etaMinutes = order.distanceKm?.let {
-            rw.itunda.core.geo.DeliveryEtaEstimator.estimateDeliveryMinutes(it.toDouble())
+            val prepTimeMinutes = merchantRepository.findById(order.restaurantId).orElse(null)?.avgPrepTimeMinutes
+            rw.itunda.core.geo.DeliveryEtaEstimator.estimateDeliveryMinutes(it.toDouble(), prepTimeMinutes)
         }
         return mapOf(
             "id" to order.id, "buyerId" to order.buyerId, "restaurantId" to order.restaurantId,

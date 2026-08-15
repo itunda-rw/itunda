@@ -43,6 +43,10 @@ export interface Merchant {
   // comment on the backend. Both plain merchant-set free text; null means unset.
   phoneNumber: string | null;
   openingHours: string | null;
+  // Real per-merchant kitchen-prep time (2026-08-16) -- see Merchant.kt's own doc
+  // comment on the backend (Baemin's real "가게배달 배달시간 AI 예측"). Null means the
+  // real customer-facing delivery estimate falls back to itunda's own flat default.
+  avgPrepTimeMinutes: number | null;
 }
 
 export const setMerchantLocation = (latitude: number, longitude: number) =>
@@ -261,6 +265,14 @@ export const setMerchantOpeningHours = (openingHours: string | null) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/hours', {
     method: 'POST',
     body: JSON.stringify({ openingHours }),
+  }).then((r) => r.merchant);
+
+// Real per-merchant kitchen-prep time (2026-08-16) -- see
+// MerchantService.setAvgPrepTimeMinutes's own doc comment on the backend.
+export const setMerchantAvgPrepTimeMinutes = (avgPrepTimeMinutes: number | null) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/prep-time', {
+    method: 'POST',
+    body: JSON.stringify({ avgPrepTimeMinutes }),
   }).then((r) => r.merchant);
 
 // Real Naver Pay-style boosted cashback opt-in -- rate is a fraction 0-0.05 (0-5%);

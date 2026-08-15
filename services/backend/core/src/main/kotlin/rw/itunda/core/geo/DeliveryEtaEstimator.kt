@@ -21,9 +21,15 @@ object DeliveryEtaEstimator {
     private const val MIN_DELIVERY_MINUTES = 15
     private const val MAX_DELIVERY_MINUTES = 90
 
-    fun estimateDeliveryMinutes(distanceKm: Double): Int {
+    // Real per-merchant prep time (2026-08-16, Baemin's own "가게배달 배달시간 AI 예측") --
+    // prepTimeMinutes is the merchant's own real self-reported value
+    // (Merchant.avgPrepTimeMinutes); null (unset, or a merchant not passed at all)
+    // falls back to the previous flat BASE_PREP_MINUTES constant, fully
+    // backward-compatible with every existing caller/merchant.
+    fun estimateDeliveryMinutes(distanceKm: Double, prepTimeMinutes: Int? = null): Int {
         val travelMinutes = (distanceKm / ASSUMED_AVG_SPEED_KMH) * 60.0
-        val total = BASE_PREP_MINUTES + travelMinutes
+        val prep = prepTimeMinutes?.toDouble() ?: BASE_PREP_MINUTES
+        val total = prep + travelMinutes
         val rounded = (Math.round(total / 5.0) * 5).toInt()
         return rounded.coerceIn(MIN_DELIVERY_MINUTES, MAX_DELIVERY_MINUTES)
     }

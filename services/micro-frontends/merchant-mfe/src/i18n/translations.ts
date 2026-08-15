@@ -528,6 +528,7 @@ export type TranslationKey =
   | 'settings.cashbackRateLabel'
   | 'settings.phoneNumberLabel'
   | 'settings.openingHoursLabel'
+  | 'settings.avgPrepTimeMinutesLabel'
   | 'settings.acceptScheduledOrdersTitle'
   | 'settings.acceptScheduledOrdersBody'
   | 'settings.on'
@@ -1032,6 +1033,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.cashbackRateLabel': 'Boosted cashback rate (0-5%, blank = standard rate)',
     'settings.phoneNumberLabel': 'Phone number (shown on the map, blank = hidden)',
     'settings.openingHoursLabel': 'Opening hours (shown on the map, blank = hidden)',
+    'settings.avgPrepTimeMinutesLabel': 'Average kitchen prep time in minutes (blank = itunda default)',
     'settings.acceptScheduledOrdersTitle': 'Accept scheduled orders',
     'settings.acceptScheduledOrdersBody': 'Let buyers pick a future delivery/pickup time.',
     'settings.on': 'On',
@@ -1531,6 +1533,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.cashbackRateLabel': 'Igipimo cy\'amafaranga yongerewe (0-5%, ubusa = igipimo gisanzwe)',
     'settings.phoneNumberLabel': 'Nomero ya telefoni (igaragara kuri ikarita, ubusa = ihishwa)',
     'settings.openingHoursLabel': 'Amasaha yo gukorera (agaragara kuri ikarita, ubusa = ahishwa)',
+    'settings.avgPrepTimeMinutesLabel': 'Iminota isanzwe yo gutegura ibiryo (ubusa = igipimo gisanzwe cya itunda)',
     'settings.acceptScheduledOrdersTitle': 'Kwemera itumiza rigenwe igihe',
     'settings.acceptScheduledOrdersBody': 'Reka abaguzi bahitemo igihe kizaza cyo kohererezwa/gutorwa.',
     'settings.on': 'Birakora',
@@ -2030,6 +2033,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.cashbackRateLabel': 'Taux de cashback boosté (0-5%, vide = taux standard)',
     'settings.phoneNumberLabel': 'Numéro de téléphone (affiché sur la carte, vide = masqué)',
     'settings.openingHoursLabel': "Heures d'ouverture (affichées sur la carte, vide = masquées)",
+    'settings.avgPrepTimeMinutesLabel': 'Temps de préparation moyen en minutes (vide = valeur par défaut d\'itunda)',
     'settings.acceptScheduledOrdersTitle': 'Accepter les commandes programmées',
     'settings.acceptScheduledOrdersBody': 'Permettre aux clients de choisir une heure de livraison/retrait future.',
     'settings.on': 'Activé',

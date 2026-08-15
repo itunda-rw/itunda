@@ -37,6 +37,7 @@ data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class SetPhoneNumberRequest(val phoneNumber: String?)
 data class SetOpeningHoursRequest(val openingHours: String?)
+data class SetAvgPrepTimeMinutesRequest(val avgPrepTimeMinutes: Int?)
 data class CollectPaymentRequest(val couponId: String? = null)
 // Real customer-presented payment code (2026-08-11) -- see
 // MerchantService.chargeByCustomerCode's own doc comment.
@@ -240,6 +241,17 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setOpeningHours(currentUser.userId, request.openingHours)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real per-merchant kitchen-prep time (2026-08-16) -- see
+    // MerchantService.setAvgPrepTimeMinutes's own doc comment.
+    @PostMapping("/prep-time")
+    fun setAvgPrepTimeMinutes(
+        @RequestBody request: SetAvgPrepTimeMinutesRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setAvgPrepTimeMinutes(currentUser.userId, request.avgPrepTimeMinutes)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -474,4 +486,8 @@ class MerchantController(
     @ExceptionHandler(InvalidOpeningHoursException::class)
     fun handleInvalidOpeningHours(ex: InvalidOpeningHoursException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_OPENING_HOURS", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidAvgPrepTimeException::class)
+    fun handleInvalidAvgPrepTime(ex: InvalidAvgPrepTimeException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AVG_PREP_TIME", ex.message ?: "Bad request"))
 }

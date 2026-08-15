@@ -4,7 +4,7 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
+import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantAvgPrepTimeMinutes, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
 import { useI18n } from '../i18n/I18nContext';
 import type { TranslationKey } from '../i18n/translations';
 
@@ -430,6 +430,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
   const [cashbackPercent, setCashbackPercentInput] = useState(merchant.cashbackRate != null ? String(merchant.cashbackRate * 100) : '');
   const [phoneNumber, setPhoneNumberInput] = useState(merchant.phoneNumber ?? '');
   const [openingHours, setOpeningHoursInput] = useState(merchant.openingHours ?? '');
+  const [avgPrepTimeMinutes, setAvgPrepTimeMinutesInput] = useState(merchant.avgPrepTimeMinutes != null ? String(merchant.avgPrepTimeMinutes) : '');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -448,6 +449,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
       updated = await setCashbackRate(rate);
       updated = await setMerchantPhoneNumber(phoneNumber.trim() === '' ? null : phoneNumber.trim());
       updated = await setMerchantOpeningHours(openingHours.trim() === '' ? null : openingHours.trim());
+      updated = await setMerchantAvgPrepTimeMinutes(avgPrepTimeMinutes.trim() === '' ? null : Number(avgPrepTimeMinutes));
       onUpdated(updated);
       setSaved(true);
     } catch (err) {
@@ -524,6 +526,18 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
             value={openingHours}
             onChange={(e) => setOpeningHoursInput(e.target.value)}
             placeholder="Mon-Sat 8:00-20:00"
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.avgPrepTimeMinutesLabel')}</span>
+          <input
+            type="number"
+            min="0"
+            max="90"
+            value={avgPrepTimeMinutes}
+            onChange={(e) => setAvgPrepTimeMinutesInput(e.target.value)}
+            placeholder="15"
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
         </label>

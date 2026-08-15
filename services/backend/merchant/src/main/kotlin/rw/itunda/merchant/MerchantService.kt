@@ -50,6 +50,7 @@ class InvalidPhotoUrlException(message: String) : RuntimeException(message)
 class InvalidMinOrderAmountException(message: String) : RuntimeException(message)
 class InvalidPhoneNumberException(message: String) : RuntimeException(message)
 class InvalidOpeningHoursException(message: String) : RuntimeException(message)
+class InvalidAvgPrepTimeException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
@@ -326,6 +327,22 @@ class MerchantService(
         }
         val merchant = getMyMerchant(ownerUserId)
         merchant.openingHours = trimmed?.ifEmpty { null }
+        return merchantRepository.save(merchant)
+    }
+
+    // Real per-merchant kitchen-prep time (2026-08-16) -- see Merchant.avgPrepTimeMinutes's
+    // own doc comment and DeliveryEtaEstimator's own doc comment for the full sourced
+    // account (Baemin's real "가게배달 배달시간 AI 예측"). A sanity bound, not an arbitrary
+    // one: DeliveryEtaEstimator.MAX_DELIVERY_MINUTES already caps the real customer-facing
+    // total at 90, so a prep time beyond that would be meaningless for this system to
+    // even accept.
+    @Transactional
+    fun setAvgPrepTimeMinutes(ownerUserId: String, avgPrepTimeMinutes: Int?): Merchant {
+        if (avgPrepTimeMinutes != null && (avgPrepTimeMinutes < 0 || avgPrepTimeMinutes > 90)) {
+            throw InvalidAvgPrepTimeException("Average prep time must be between 0 and 90 minutes")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.avgPrepTimeMinutes = avgPrepTimeMinutes
         return merchantRepository.save(merchant)
     }
 
