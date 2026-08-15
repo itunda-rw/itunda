@@ -243,7 +243,7 @@ class MerchantBookingService(
     // status differs. A no-op if this booking was never prepay-required (no HELD
     // deposit exists) or its deposit was already resolved.
     private fun payOutDeposit(booking: MerchantBooking, merchant: Merchant, resultStatus: BookingDepositStatus) {
-        val deposit = getDeposit(booking.id) ?: return
+        val deposit = bookingDepositRepository.findByBookingIdForUpdate(booking.id) ?: return
         if (deposit.status != BookingDepositStatus.HELD) return
         val merchantWallet = walletRepository.findById(merchant.walletId)
             .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
@@ -266,7 +266,7 @@ class MerchantBookingService(
     // penalized, only a real no-show is" rule MerchantBooking.kt's own doc comment
     // names. A no-op if this booking was never prepay-required or already resolved.
     private fun refundDeposit(booking: MerchantBooking) {
-        val deposit = getDeposit(booking.id) ?: return
+        val deposit = bookingDepositRepository.findByBookingIdForUpdate(booking.id) ?: return
         if (deposit.status != BookingDepositStatus.HELD) return
         val customerWallet = walletRepository.findByUserIdAndType(deposit.customerId, WalletType.MAIN)
             ?: throw MerchantNoWalletException("No wallet found for this account")

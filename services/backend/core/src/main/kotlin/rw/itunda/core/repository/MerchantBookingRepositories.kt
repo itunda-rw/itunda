@@ -1,8 +1,12 @@
 package rw.itunda.core.repository
 
+import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.BookingDeposit
 import rw.itunda.core.domain.MerchantAvailabilityWindow
 import rw.itunda.core.domain.MerchantBooking
@@ -42,4 +46,24 @@ interface MerchantBookingRepository : JpaRepository<MerchantBooking, String> {
 
 interface BookingDepositRepository : JpaRepository<BookingDeposit, String> {
     fun findByBookingId(bookingId: String): BookingDeposit?
+
+    // Real fix for a genuine double-payout/double-refund race (found via a fresh
+    // concurrency audit, 2026-08-16): payOutDeposit/refundDeposit both used to
+    // read-check-then-write BookingDeposit.status (HELD -> RELEASED/REFUNDED/
+    // FORFEITED) with no lock. Two near-simultaneous terminal actions on the same
+    // booking (respond(confirm=false) racing the no-show scheduler, or a client retry
+    // hitting markCompleted twice before the first commits) could both read HELD, both
+    // post a real ledger payout/refund, before either committed its new status --
+    // double-paying the merchant or double-refunding the customer from the same
+    // escrowed hold. Locking (not just optimistic @Version) specifically because real
+    // money moves via ledgerService BEFORE the status write in both callers -- a lock
+    // blocks the second caller from even reading a stale HELD status until the first
+    // transaction commits, so it correctly no-ops via the status check before ever
+    // touching the ledger, rather than posting real money and only failing at the
+    // final save. Same findByIdForUpdate convention WalletRepository/
+    // FraudFlagRepository/DebitCardRepository/GroupEatsOrderRepository already
+    // establish for this exact class of bug.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select d from BookingDeposit d where d.bookingId = :bookingId")
+    fun findByBookingIdForUpdate(@Param("bookingId") bookingId: String): BookingDeposit?
 }

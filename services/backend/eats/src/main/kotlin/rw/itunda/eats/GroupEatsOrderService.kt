@@ -216,10 +216,17 @@ class GroupEatsOrderService(
      */
     @Transactional
     fun finalizeOrder(hostId: String, groupOrderId: String): EatsOrderDetail {
-        val groupOrder = getParticipantGroupOrder(hostId, groupOrderId)
-        if (groupOrder.hostUserId != hostId) {
+        val participantCheck = getParticipantGroupOrder(hostId, groupOrderId)
+        if (participantCheck.hostUserId != hostId) {
             throw GroupEatsOrderNotHostException("Only the host can finalize this group order")
         }
+        // Real fix for a genuine double-finalize race (found via a fresh concurrency
+        // audit, 2026-08-16) -- see GroupEatsOrderRepository.findByIdForUpdate's own doc
+        // comment. Locked separately from the participant/host check above (which never
+        // changes concurrently and doesn't need to hold a row lock) so only the actual
+        // status check-then-write is serialized.
+        val groupOrder = groupEatsOrderRepository.findByIdForUpdate(groupOrderId)
+            .orElseThrow { GroupEatsOrderNotFoundException("Group order not found") }
         if (groupOrder.status != GroupEatsOrderStatus.OPEN) {
             throw GroupEatsOrderNotOpenException("This group order is no longer open")
         }
@@ -266,10 +273,15 @@ class GroupEatsOrderService(
 
     @Transactional
     fun cancel(hostId: String, groupOrderId: String): GroupEatsOrder {
-        val groupOrder = getParticipantGroupOrder(hostId, groupOrderId)
-        if (groupOrder.hostUserId != hostId) {
+        val participantCheck = getParticipantGroupOrder(hostId, groupOrderId)
+        if (participantCheck.hostUserId != hostId) {
             throw GroupEatsOrderNotHostException("Only the host can cancel this group order")
         }
+        // Same real race as finalizeOrder above -- a concurrent cancel() racing a
+        // finalizeOrder() (or two cancel() calls) for the same group order must not
+        // both pass the OPEN check before either commits.
+        val groupOrder = groupEatsOrderRepository.findByIdForUpdate(groupOrderId)
+            .orElseThrow { GroupEatsOrderNotFoundException("Group order not found") }
         if (groupOrder.status != GroupEatsOrderStatus.OPEN) {
             throw GroupEatsOrderNotOpenException("This group order is no longer open")
         }
