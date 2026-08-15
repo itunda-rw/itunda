@@ -6610,3 +6610,30 @@ kept shrinking session over session and can no longer cover a realistic deposit 
 the real demo user, confirmed via curl that the availability endpoint returns exactly the 5 weekday
 windows and the deposit endpoint returns a real `HELD` status with the exact ledger-linked amount,
 then confirmed in a real browser that "Deposit held · 10 RWF" renders on the real booking row.
+
+## 78. 가게배달 배달시간 AI 예측 (Baemin per-store AI delivery-time estimate) -- real per-merchant prep time
+
+**Added 2026-08-16.** Baemin (배달의민족) opened "가게배달 배달시간 AI 예측 기능" 2026-06-17: merchants
+input their own real food-prep time (delivery time excluded), and the shown delivery estimate factors
+in that store's own characteristics plus current load, instead of one generic number for every
+restaurant (asiae.co.kr, 2026-06-15: "AI로 '배달 품질경쟁' 기어 올리는 배민").
+
+**Confirmed gap**: `DeliveryEtaEstimator.estimateDeliveryMinutes(distanceKm)` used a single hardcoded
+`BASE_PREP_MINUTES = 15.0` for every restaurant regardless of how fast or slow that kitchen actually
+runs -- this single function backs BOTH real customer-facing ETA surfaces, `ShoppingController`'s
+browse-time estimate and `EatsController`'s in-flight arrival estimate, so the flat constant was
+doubly load-bearing.
+
+**Built as an honest, merchant-self-reported real signal, not a fabricated AI model** -- same "real,
+not fabricated" bar `photoUrl`/`openingHours` already established on `Merchant`: itunda has no
+measured historical prep-time data to compute one itself. `Merchant.avgPrepTimeMinutes` (nullable,
+0-90 min sanity-bounded) threaded through the *already-shared* estimator (promoted out of
+`ShoppingController` specifically to avoid this exact kind of duplication) to both real call sites --
+zero new call sites needed. New `POST /api/v1/merchant/prep-time`; merchant-mfe settings input
+(en/rw/fr), same shape as the existing openingHours/phoneNumber rows.
+
+**Live-verified against the real deployed backend**: a fresh test merchant's real
+`deliveryTimeMinutes` was 15 (the old flat default) before setting a prep time, and exactly 45 after
+`POST /prep-time` with `avgPrepTimeMinutes: 45` -- a real before/after delta, not just a non-null
+check. Confirmed 4 other real merchants with no prep time set kept their unaffected default estimates
+in the same `GET /shopping/merchants` response, proving full backward compatibility.
