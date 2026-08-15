@@ -913,17 +913,31 @@ function PayHub({ onNavigateToTab, onNavigateToCard }: { onNavigateToTab: (tab: 
 // convention instead. groups/tabLabel/recentTabs/onSelect all come from one
 // EXPLORE_TAB_GROUPS source of truth shared by both browsing and search, so a
 // service can't land in one category when browsed and a different one when searched.
-function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
+function ExploreHub({ groups, tabLabel, recentTabs, onSelect, autoFocusSearch, onConsumedAutoFocus }: {
   groups: { title: string; ids: Tab[] }[];
   tabLabel: (id: Tab) => string;
   recentTabs: Tab[];
   onSelect: (id: Tab) => void;
+  autoFocusSearch?: boolean;
+  onConsumedAutoFocus?: () => void;
 }) {
   const [search, setSearch] = useState('');
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const allIds = groups.flatMap((g) => g.ids);
   const matches = search.trim()
     ? allIds.filter((id) => tabLabel(id).toLowerCase().includes(search.trim().toLowerCase()))
     : [];
+
+  // Real hand-off from the header search icon (docs/DESIGN_REFERENCES.md Section 41
+  // item 3) -- focuses this same real search box the moment ExploreHub mounts from
+  // that entry point, rather than making the user find it again themselves.
+  useEffect(() => {
+    if (autoFocusSearch) {
+      searchInputRef.current?.focus();
+      onConsumedAutoFocus?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFocusSearch]);
 
   return (
     <div>
@@ -931,6 +945,7 @@ function ExploreHub({ groups, tabLabel, recentTabs, onSelect }: {
       <div style={{ position: 'relative', marginBottom: '14px' }}>
         <Search size={15} color="var(--itunda-grey-500)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
         <input
+          ref={searchInputRef}
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -20158,6 +20173,16 @@ const saveRecentTab = (id: Tab, current: Tab[]): Tab[] => {
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
+  // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 3):
+  // search only ever existed buried inside the Explore tab, not reachable from
+  // anywhere else without navigating there first and scrolling to find it. The
+  // sourced, named-product rule: an icon-in-header that expands search is the right
+  // choice for a super-app this size (search is secondary to browsing but genuinely
+  // needed for "I know exactly what I want"). Reuses ExploreHub's own already-real,
+  // already-working search box rather than building a second one -- this just adds a
+  // one-tap header entry point that switches tab and focuses it, same
+  // pending-hand-off pattern already used for pendingConversationId above.
+  const [focusExploreSearch, setFocusExploreSearch] = useState(false);
   // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 4):
   // ConversationSummary.unreadCount/GroupSummary.unreadCount were already fetched and
   // rendered per-row *inside* MessagesView's own Direct/Groups lists, but neither
@@ -20327,6 +20352,13 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         <h2 style={{ color: 'var(--itunda-grey-900)', margin: 0, fontSize: '24px', fontWeight: '700', letterSpacing: '-0.5px' }}>Itunda</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {user && <span style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{user.firstName}</span>}
+          <button
+            onClick={() => { setFocusExploreSearch(true); setTab('EXPLORE'); }}
+            style={{ color: 'var(--itunda-grey-500)', display: 'flex', padding: '4px' }}
+            aria-label="Search all services"
+          >
+            <Search size={18} />
+          </button>
           <select
             value={locale}
             onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
@@ -20378,7 +20410,16 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
       {tab === 'HOME' && <HomeView />}
       {tab === 'PAY' && <PayHub onNavigateToTab={setTab} onNavigateToCard={() => setTab('CARD')} />}
-      {tab === 'EXPLORE' && <ExploreHub groups={EXPLORE_TAB_GROUPS} tabLabel={tabLabel} recentTabs={recentMoreTabs} onSelect={navigateFromExplore} />}
+      {tab === 'EXPLORE' && (
+        <ExploreHub
+          groups={EXPLORE_TAB_GROUPS}
+          tabLabel={tabLabel}
+          recentTabs={recentMoreTabs}
+          onSelect={navigateFromExplore}
+          autoFocusSearch={focusExploreSearch}
+          onConsumedAutoFocus={() => setFocusExploreSearch(false)}
+        />
+      )}
       {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
       {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView />}
