@@ -1259,12 +1259,20 @@ private fun ListingDetailScreen(
         onError = { error = it },
     )
 
-    // Real escrow-status lazy fetch (2026-07-25) -- only for the one real buyer of an
-    // already-SOLD listing, since that's the only person `getEscrow` will actually
-    // return data to.
-    val isMyEscrowPurchase = !isMine && listing.status == "SOLD" && currentUserId != null && listing.buyerId == currentUserId
-    LaunchedEffect(listing.id, isMyEscrowPurchase) {
-        if (isMyEscrowPurchase && !loadedEscrow) {
+    // Real escrow-status lazy fetch (2026-07-25). Real bug found+fixed 2026-08-15: this
+    // comment used to claim "only the buyer" could ever see escrow status, and gated
+    // the fetch (and the whole status/delivery-address display below) to buyer-only as
+    // a result -- but the real backend MarketplaceService.getEscrow already allows
+    // BOTH the buyer and seller to read it (`escrow.buyerId != requesterId &&
+    // escrow.sellerId != requesterId` -- only rejects someone who's neither). Without
+    // this fix a seller had no way to ever see the real delivery address a buyer typed
+    // in at pay-escrow time, making that whole feature silently non-functional for
+    // shipped-item trades on this platform.
+    val isMyEscrowTrade = listing.status == "SOLD" && currentUserId != null &&
+        (listing.buyerId == currentUserId || listing.sellerId == currentUserId)
+    val isEscrowBuyer = !isMine && currentUserId != null && listing.buyerId == currentUserId
+    LaunchedEffect(listing.id, isMyEscrowTrade) {
+        if (isMyEscrowTrade && !loadedEscrow) {
             escrow = try { NetworkClient.apiService.getEscrow(listing.id).escrow } catch (e: Exception) { null }
             loadedEscrow = true
         }
@@ -1585,16 +1593,29 @@ private fun ListingDetailScreen(
                     }
                 }
             }
-            // Real buyer-side escrow status (2026-07-25) -- Confirm receipt releases
-            // payment to the seller; Report a problem flags it for real human admin
-            // review instead of an automated resolution. See backend
-            // MarketplaceEscrow.kt's own doc comment.
-            if (isMyEscrowPurchase && escrow != null) {
+            // Real escrow status (2026-07-25) -- Confirm receipt releases payment to the
+            // seller; Report a problem flags it for real human admin review instead of
+            // an automated resolution. See backend MarketplaceEscrow.kt's own doc
+            // comment. Status + real delivery address (2026-08-15 fix, see
+            // isMyEscrowTrade's own comment above) shown to BOTH parties; Confirm
+            // receipt/Report a problem stay buyer-only actions.
+            if (isMyEscrowTrade && escrow != null) {
                 val currentEscrow = escrow!!
+                currentEscrow.deliveryAddress?.let { address ->
+                    Text("📦 Delivery address: $address", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                }
                 when (currentEscrow.status) {
                     "HELD" -> {
-                        Text("🔒 Payment held by itunda until you confirm receipt", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                        if (showDispute) {
+                        Text(
+                            if (isEscrowBuyer) "🔒 Payment held by itunda until you confirm receipt" else "🔒 Payment held by itunda until the buyer confirms receipt",
+                            color = Ids.colors.textSecondary, fontSize = 12.sp,
+                        )
+                        if (!isEscrowBuyer) {
+                            // Seller can see status/address but has no real action to
+                            // take here -- only the buyer can confirm receipt or
+                            // dispute, matching who can actually judge whether the
+                            // real item showed up.
+                        } else if (showDispute) {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 IdsTextField(
                                     value = disputeReason, onValueChange = { disputeReason = it },
@@ -1637,7 +1658,7 @@ private fun ListingDetailScreen(
                     }
                     "DISPUTED" -> Text("⚠️ Reported -- itunda is reviewing this trade", color = Ids.colors.danger, fontSize = 12.sp)
                     "RELEASED" -> Text("✅ Payment released to the seller", color = Ids.colors.success, fontSize = 12.sp)
-                    "REFUNDED" -> Text("↩️ Refunded to you", color = Ids.colors.success, fontSize = 12.sp)
+                    "REFUNDED" -> Text(if (isEscrowBuyer) "↩️ Refunded to you" else "↩️ Refunded to the buyer", color = Ids.colors.success, fontSize = 12.sp)
                 }
             }
             if (!isMine && listing.status == "ACTIVE") {
