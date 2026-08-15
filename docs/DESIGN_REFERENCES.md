@@ -6183,11 +6183,16 @@ before implementation, not a same-session quick fix --
   primitive, but the request-on-behalf-of action itself needs its own explicit authorization scope,
   not implied by an existing read-only spend-limit link.
 
-**Smaller, separable, more tractable half NOT attempted this pass either**: Uber's "Simple Mode" (a
-real, standing UI accessibility toggle -- larger text, fewer buttons -- reachable without any
-family link) is architecturally much simpler than the request-on-behalf-of half, closer in shape to
-Android's existing `AppLocalePreference`/theme-mode toggles. Worth a real look in a focused future
-pass rather than folded into this same-day research note.
+**Smaller, separable, more tractable half: BUILT on Android same day (`7a6fa1b5`).** Uber's
+"Simple Mode" text-scale piece (larger text, no family link required) was architecturally simple
+enough to build immediately rather than defer -- a new `TextScalePreference`
+(Default/Large/Extra large, 1.0x/1.15x/1.3x), same StateFlow + `TokenStore`-backed shape as the
+existing `ThemePreference`/`AppLocalePreference`, applied at `MainActivity`'s root by overriding
+only `LocalDensity`'s `fontScale` component (so text scales without also inflating dp-based
+spacing/icon sizes). New "Text size" row in Settings, real en/rw/fr copy. `:app` compiles clean.
+The "fewer on-screen buttons" half of Simple Mode (a genuinely simplified nav/layout, not just
+larger text) and the request-on-behalf-of half above both remain open -- both need real design
+work, not a quick toggle.
 
 **How to apply:** if request-on-behalf-of is ever prioritized, start with `FamilyLink`'s existing
 guardian/child relationship as the trust primitive (already real, already has consent/revoke), and
