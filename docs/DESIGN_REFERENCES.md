@@ -4440,7 +4440,18 @@ research-body finding** (NN/g, Apple HIG); nothing here is `inferred`.
    numeric styles on the same bar is the one explicitly-named anti-pattern here ("don't mix dot and
    numeric badge designs on the same navigation bar"); a plain dot on `All` (not a number) is the
    correct choice for "something changed" vs. "here's exactly how many."
-   *Target: `PRIMARY_TABS` render, `BankDashboard.tsx` -- not yet built.*
+   *Target: `PRIMARY_TABS` render, `BankDashboard.tsx`.* **Built 2026-08-15 (`22918458`),
+   live-verified end to end** (real second test account, real message sent via direct API,
+   confirmed the real backend `unreadCount`, confirmed the tab badge rendered "1" matching the
+   per-conversation badge). Built the numeric-badge half only, on the current five-tab bar's real
+   Messages icon (`ConversationSummary.unreadCount` + `GroupSummary.unreadCount` summed via a
+   lightweight top-level poll) -- the doc's own "plain dot on `All`" half of this recommendation no
+   longer maps onto anything: by the time this was built, the tab bar had already been rebuilt to
+   Home/Pay/Explore/Messages/You (see "Final nav taxonomy" below, closed the same week this item
+   was originally written), and there is no more `All`/general-notifications tab for a dot to go
+   on. `NotificationsCard`'s own separate unread count still isn't surfaced anywhere outside the
+   card itself -- a real, smaller, separately-scoped follow-up if itunda ever wants ambient
+   general-notification signal too, not folded into this fix.
 5. **[sourced] Home's actual section order roughly matches the real Cash App pattern already**
    (balance prominent at top, `AccountBalance` first in `HomeView`) -- this part of Section 41's
    item 1 finding was too pessimistic; re-checked against Cash App's own documented layout
