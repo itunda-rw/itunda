@@ -6061,5 +6061,11 @@ Live-verified: a real second test account viewed a real listing, the delivery-ad
 Pay button rendered correctly, and submitting round-tripped to the real backend (address +
 Idempotency-Key both carried correctly), surfacing a real `DEVICE_NOT_VERIFIED` error text --
 proof the full request/response cycle works; that specific gate is this test device's own,
-unrelated to the feature itself. iOS still has zero escrow client -- real, smaller remaining gap,
-not built this pass (`payEscrow` doesn't exist anywhere in `ios/`, confirmed by grep).
+unrelated to the feature itself.
+
+**iOS escrow gap CLOSED same session (`dca5436c`).** Built iOS's first escrow client in
+`HoodScreen.swift`'s `ListingCard`, using the same buyer+seller-symmetric design already proven on
+Android/web -- `NetworkClient.swift` gained matching DTOs/methods for
+payEscrow/confirmEscrowReceipt/disputeEscrow/getEscrow. Full `ItundaApp` scheme `xcodebuild`
+(iphonesimulator, Debug) succeeded clean. Not device-verified (no physical device available this
+session), but this closes the feature on all 3 real client platforms plus the backend.
