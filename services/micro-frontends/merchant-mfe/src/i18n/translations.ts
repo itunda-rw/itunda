@@ -547,7 +547,20 @@ export type TranslationKey =
   | 'settings.kybSubmitting'
   | 'settings.kybSubmitButton'
   | 'settings.kybRejectedPlain'
-  | 'settings.kybRejectedWithDetail';
+  | 'settings.kybRejectedWithDetail'
+  // Real 16th-localization-pass additions (2026-08-15): DeviceStepUpPrompt -- the
+  // last remaining gap, a shared component (BusinessAccountScreen, PayrollScreen,
+  // PosScreen, SettingsScreen) rather than any single screen's own responsibility.
+  // Closes out ALL of merchant-mfe's localization backlog, shared components included.
+  | 'deviceStepUp.verifyError'
+  | 'deviceStepUp.title'
+  | 'deviceStepUp.body'
+  | 'deviceStepUp.passwordPlaceholder'
+  | 'deviceStepUp.showPassword'
+  | 'deviceStepUp.hidePassword'
+  | 'deviceStepUp.cancel'
+  | 'deviceStepUp.verifying'
+  | 'deviceStepUp.verifyButton';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -1033,6 +1046,15 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.kybSubmitButton': 'Submit for verification',
     'settings.kybRejectedPlain': 'Previous submission was rejected.',
     'settings.kybRejectedWithDetail': 'Previous submission was rejected: {{detail}}',
+    'deviceStepUp.verifyError': 'Could not verify this device.',
+    'deviceStepUp.title': '🔒 Verify this device',
+    'deviceStepUp.body': 'This is a new device for your account. Re-enter your password to allow it to move money, then try again.',
+    'deviceStepUp.passwordPlaceholder': 'Password',
+    'deviceStepUp.showPassword': 'Show password',
+    'deviceStepUp.hidePassword': 'Hide password',
+    'deviceStepUp.cancel': 'Cancel',
+    'deviceStepUp.verifying': 'Verifying…',
+    'deviceStepUp.verifyButton': 'Verify device',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -1517,6 +1539,15 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.kybSubmitButton': 'Ohereza kugira ngo bisuzumwe',
     'settings.kybRejectedPlain': 'Icyo wohereje mbere cyanzwe.',
     'settings.kybRejectedWithDetail': 'Icyo wohereje mbere cyanzwe: {{detail}}',
+    'deviceStepUp.verifyError': 'Ntibishoboka kwemeza iyi telefoni.',
+    'deviceStepUp.title': '🔒 Emeza iyi telefoni',
+    'deviceStepUp.body': 'Iyi ni telefoni nshya kuri konti yawe. Ongera wandike ijambo ry\'ibanga kugira ngo yemererwe gukoresha amafaranga, hanyuma wongere ugerageze.',
+    'deviceStepUp.passwordPlaceholder': 'Ijambo ry\'ibanga',
+    'deviceStepUp.showPassword': 'Erekana ijambo ry\'ibanga',
+    'deviceStepUp.hidePassword': 'Hisha ijambo ry\'ibanga',
+    'deviceStepUp.cancel': 'Hagarika',
+    'deviceStepUp.verifying': 'Kwemeza…',
+    'deviceStepUp.verifyButton': 'Emeza telefoni',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -2001,5 +2032,14 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.kybSubmitButton': 'Soumettre pour vérification',
     'settings.kybRejectedPlain': 'La soumission précédente a été refusée.',
     'settings.kybRejectedWithDetail': 'La soumission précédente a été refusée : {{detail}}',
+    'deviceStepUp.verifyError': 'Impossible de vérifier cet appareil.',
+    'deviceStepUp.title': '🔒 Vérifier cet appareil',
+    'deviceStepUp.body': "Il s'agit d'un nouvel appareil pour votre compte. Ressaisissez votre mot de passe pour l'autoriser à déplacer de l'argent, puis réessayez.",
+    'deviceStepUp.passwordPlaceholder': 'Mot de passe',
+    'deviceStepUp.showPassword': 'Afficher le mot de passe',
+    'deviceStepUp.hidePassword': 'Masquer le mot de passe',
+    'deviceStepUp.cancel': 'Annuler',
+    'deviceStepUp.verifying': 'Vérification en cours…',
+    'deviceStepUp.verifyButton': "Vérifier l'appareil",
   },
 };
