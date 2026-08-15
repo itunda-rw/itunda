@@ -598,10 +598,14 @@ function CatalogView() {
         <div className="itunda-card">{t('pos.loading')}</div>
       ) : products.length === 0 ? (
         <div className="itunda-card">
-          {/* Real copy-voice fix (item 244, round 6 of the empty-state pass): points
-              to the real Catalog tab, which has the actual add-product form -- this
-              REGISTER-mode checkout view has no add mechanism of its own. */}
-          <EmptyState message={t('pos.catalogEmpty')} />
+          {/* Real copy fix (2026-08-15, live-verified against the actual French build):
+              this list is CatalogView's own -- the item 244-era comment that used to be
+              here ("points to the real Catalog tab... this REGISTER-mode checkout view")
+              was simply wrong about which view this code belongs to, and the message it
+              justified told a merchant already looking at the Catalog tab to "switch to
+              Catalog above." Now points at the real add-product form immediately above
+              this list instead. */}
+          <EmptyState message={t('pos.catalogEmptyOwnForm')} />
         </div>
       ) : (
         <div className="itunda-card" style={{ padding: 0, overflow: 'hidden' }}>

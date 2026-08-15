@@ -405,7 +405,7 @@ export type TranslationKey =
   | 'pos.lowStockWarningPlural'
   | 'pos.lowStockOutOfStock'
   | 'pos.lowStockLeft'
-  | 'pos.catalogEmpty'
+  | 'pos.catalogEmptyOwnForm'
   | 'pos.columnProduct'
   | 'pos.columnPrice'
   | 'pos.discountOff'
@@ -907,7 +907,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.lowStockWarningPlural': '{{count}} products need stock attention',
     'pos.lowStockOutOfStock': 'out of stock',
     'pos.lowStockLeft': '{{count}} left',
-    'pos.catalogEmpty': 'No products yet — switch to Catalog above to add your first one.',
+    'pos.catalogEmptyOwnForm': 'No products yet — use the form above to add your first one.',
     'pos.columnProduct': 'Product',
     'pos.columnPrice': 'Price',
     'pos.discountOff': '{{percent}}% off',
@@ -1400,7 +1400,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.lowStockWarningPlural': 'Ibicuruzwa {{count}} bikeneye kwitabwaho',
     'pos.lowStockOutOfStock': 'byashize',
     'pos.lowStockLeft': '{{count}} bisigaye',
-    'pos.catalogEmpty': 'Nta bicuruzwa ufite — jya ku Bicuruzwa hejuru wongereho icya mbere.',
+    'pos.catalogEmptyOwnForm': 'Nta bicuruzwa ufite — koresha ifishi hejuru wongereho icya mbere.',
     'pos.columnProduct': 'Igicuruzwa',
     'pos.columnPrice': 'Igiciro',
     'pos.discountOff': 'Igabanuka rya {{percent}}%',
@@ -1893,7 +1893,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.lowStockWarningPlural': '{{count}} produits nécessitent votre attention',
     'pos.lowStockOutOfStock': 'épuisé',
     'pos.lowStockLeft': '{{count}} restant(s)',
-    'pos.catalogEmpty': "Aucun produit pour le moment — passez au Catalogue ci-dessus pour ajouter le premier.",
+    'pos.catalogEmptyOwnForm': "Aucun produit pour le moment — utilisez le formulaire ci-dessus pour ajouter le premier.",
     'pos.columnProduct': 'Produit',
     'pos.columnPrice': 'Prix',
     'pos.discountOff': '{{percent}}% de réduction',
