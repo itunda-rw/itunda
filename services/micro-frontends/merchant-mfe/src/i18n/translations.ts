@@ -201,7 +201,30 @@ export type TranslationKey =
   | 'vendorAdvance.repayEarlyTitle'
   | 'vendorAdvance.amountPlaceholder'
   | 'vendorAdvance.repaying'
-  | 'vendorAdvance.repayButton';
+  | 'vendorAdvance.repayButton'
+  // Real 8th-localization-pass additions (2026-08-15): BillingScreen -- the real
+  // Kakao Pay 정기결제/Toss 빌링키-style recurring merchant billing plan management.
+  | 'billing.loadError'
+  | 'billing.plansTitle'
+  | 'billing.plansBody'
+  | 'billing.loading'
+  | 'billing.plansEmpty'
+  | 'billing.createTitle'
+  | 'billing.planNameLabel'
+  | 'billing.planNamePlaceholder'
+  | 'billing.descriptionLabel'
+  | 'billing.descriptionPlaceholder'
+  | 'billing.amountLabel'
+  | 'billing.intervalLabel'
+  | 'billing.createError'
+  | 'billing.creating'
+  | 'billing.createButton'
+  | 'billing.statusActive'
+  | 'billing.statusDeactivated'
+  | 'billing.everyDaySingular'
+  | 'billing.everyDaysPlural'
+  | 'billing.deactivateError'
+  | 'billing.deactivateButton';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -360,6 +383,27 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'vendorAdvance.amountPlaceholder': 'Amount (RWF)',
     'vendorAdvance.repaying': 'Repaying…',
     'vendorAdvance.repayButton': 'Repay now',
+    'billing.loadError': 'Could not load your billing plans.',
+    'billing.plansTitle': 'Your billing plans',
+    'billing.plansBody': 'A customer who subscribes is charged immediately, then again automatically every cycle until they cancel.',
+    'billing.loading': 'Loading…',
+    'billing.plansEmpty': 'No billing plans yet — use the form above to create your first one.',
+    'billing.createTitle': 'Create a billing plan',
+    'billing.planNameLabel': 'Plan name',
+    'billing.planNamePlaceholder': 'Monthly coffee subscription',
+    'billing.descriptionLabel': 'Description (optional)',
+    'billing.descriptionPlaceholder': 'One bag of beans, delivered monthly',
+    'billing.amountLabel': 'Amount (RWF)',
+    'billing.intervalLabel': 'Every (days)',
+    'billing.createError': 'Could not create this plan.',
+    'billing.creating': 'Creating…',
+    'billing.createButton': 'Create plan',
+    'billing.statusActive': 'Active',
+    'billing.statusDeactivated': 'Deactivated',
+    'billing.everyDaySingular': '{{amount}} RWF every {{days}} day',
+    'billing.everyDaysPlural': '{{amount}} RWF every {{days}} days',
+    'billing.deactivateError': 'Could not deactivate this plan.',
+    'billing.deactivateButton': 'Deactivate',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -517,6 +561,27 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'vendorAdvance.amountPlaceholder': 'Amafaranga (RWF)',
     'vendorAdvance.repaying': 'Kwishyura…',
     'vendorAdvance.repayButton': 'Ishyura nonaha',
+    'billing.loadError': 'Ntibishoboka gushakisha gahunda zawe zo kwishyura.',
+    'billing.plansTitle': 'Gahunda zawe zo kwishyura',
+    'billing.plansBody': 'Umukiriya wiyandikisha yishyura ako kanya, hanyuma yishyura buri gihe mu buryo bwikora kugeza ahagaritse.',
+    'billing.loading': 'Gushakisha…',
+    'billing.plansEmpty': 'Nta gahunda yo kwishyura urafite — koresha ifishi hejuru wandike iya mbere.',
+    'billing.createTitle': 'Kora gahunda yo kwishyura',
+    'billing.planNameLabel': 'Izina rya gahunda',
+    'billing.planNamePlaceholder': 'Kwiyandikisha kwa kawa buri kwezi',
+    'billing.descriptionLabel': 'Ibisobanuro (bitari ngombwa)',
+    'billing.descriptionPlaceholder': 'Isaho rimwe ry\'imbuto, ritangwa buri kwezi',
+    'billing.amountLabel': 'Amafaranga (RWF)',
+    'billing.intervalLabel': 'Buri (iminsi)',
+    'billing.createError': 'Ntibishoboka gukora iyi gahunda.',
+    'billing.creating': 'Gukora…',
+    'billing.createButton': 'Kora gahunda',
+    'billing.statusActive': 'Ikora',
+    'billing.statusDeactivated': 'Yahagaritswe',
+    'billing.everyDaySingular': '{{amount}} RWF buri munsi {{days}}',
+    'billing.everyDaysPlural': '{{amount}} RWF buri minsi {{days}}',
+    'billing.deactivateError': 'Ntibishoboka guhagarika iyi gahunda.',
+    'billing.deactivateButton': 'Hagarika',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -674,5 +739,26 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'vendorAdvance.amountPlaceholder': 'Montant (RWF)',
     'vendorAdvance.repaying': 'Remboursement en cours…',
     'vendorAdvance.repayButton': 'Rembourser maintenant',
+    'billing.loadError': 'Impossible de charger vos formules de facturation.',
+    'billing.plansTitle': 'Vos formules de facturation',
+    'billing.plansBody': "Un client qui s'abonne est débité immédiatement, puis à nouveau automatiquement à chaque cycle jusqu'à annulation.",
+    'billing.loading': 'Chargement…',
+    'billing.plansEmpty': "Aucune formule pour le moment — utilisez le formulaire ci-dessus pour créer la première.",
+    'billing.createTitle': 'Créer une formule de facturation',
+    'billing.planNameLabel': 'Nom de la formule',
+    'billing.planNamePlaceholder': 'Abonnement café mensuel',
+    'billing.descriptionLabel': 'Description (facultatif)',
+    'billing.descriptionPlaceholder': 'Un sac de grains, livré chaque mois',
+    'billing.amountLabel': 'Montant (RWF)',
+    'billing.intervalLabel': 'Tous les (jours)',
+    'billing.createError': 'Impossible de créer cette formule.',
+    'billing.creating': 'Création en cours…',
+    'billing.createButton': 'Créer la formule',
+    'billing.statusActive': 'Active',
+    'billing.statusDeactivated': 'Désactivée',
+    'billing.everyDaySingular': '{{amount}} RWF tous les {{days}} jour',
+    'billing.everyDaysPlural': '{{amount}} RWF tous les {{days}} jours',
+    'billing.deactivateError': 'Impossible de désactiver cette formule.',
+    'billing.deactivateButton': 'Désactiver',
   },
 };

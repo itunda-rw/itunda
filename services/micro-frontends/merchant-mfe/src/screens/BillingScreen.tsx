@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
 import { EmptyState } from '../components/EmptyState';
 import { createBillingPlan, deactivateBillingPlan, fetchMyBillingPlans, type MerchantBillingPlan } from '../lib/merchant';
+import { useI18n } from '../i18n/I18nContext';
 
 // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing
 // (item 144) -- see lib/merchant.ts's own doc comment. Merchant-owner-facing
 // plan-management half only.
 export default function BillingScreen() {
+  const { t } = useI18n();
   const [plans, setPlans] = useState<MerchantBillingPlan[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,7 +16,7 @@ export default function BillingScreen() {
     setError(null);
     fetchMyBillingPlans()
       .then(setPlans)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your billing plans.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('billing.loadError')));
   };
 
   useEffect(load, []);
@@ -24,19 +26,19 @@ export default function BillingScreen() {
       <CreatePlanCard onCreated={load} />
 
       <div className="itunda-card">
-        <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Your billing plans</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('billing.plansTitle')}</h2>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-          A customer who subscribes is charged immediately, then again automatically every cycle until they cancel.
+          {t('billing.plansBody')}
         </p>
         {error && (
           <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>
         )}
         {plans === null ? (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('billing.loading')}</p>
         ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): points
         // back to the real CreatePlanCard form right above.
         plans.length === 0 ? (
-          <EmptyState message="No billing plans yet — use the form above to create your first one." />
+          <EmptyState message={t('billing.plansEmpty')} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {plans.map((plan) => (
@@ -50,6 +52,7 @@ export default function BillingScreen() {
 }
 
 function CreatePlanCard({ onCreated }: { onCreated: () => void }) {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -69,7 +72,7 @@ function CreatePlanCard({ onCreated }: { onCreated: () => void }) {
       setIntervalDays('30');
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create this plan.');
+      setError(err instanceof ApiError ? err.message : t('billing.createError'));
     } finally {
       setSubmitting(false);
     }
@@ -77,31 +80,31 @@ function CreatePlanCard({ onCreated }: { onCreated: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Create a billing plan</h2>
+      <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{t('billing.createTitle')}</h2>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Plan name</span>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('billing.planNameLabel')}</span>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Monthly coffee subscription"
+          placeholder={t('billing.planNamePlaceholder')}
           required
           style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
         />
       </label>
       <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Description (optional)</span>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('billing.descriptionLabel')}</span>
         <input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="One bag of beans, delivered monthly"
+          placeholder={t('billing.descriptionPlaceholder')}
           style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
         />
       </label>
       <div style={{ display: 'flex', gap: '10px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Amount (RWF)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('billing.amountLabel')}</span>
           <input
             type="number"
             min="1"
@@ -113,7 +116,7 @@ function CreatePlanCard({ onCreated }: { onCreated: () => void }) {
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Every (days)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('billing.intervalLabel')}</span>
           <input
             type="number"
             min="1"
@@ -128,13 +131,14 @@ function CreatePlanCard({ onCreated }: { onCreated: () => void }) {
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
       )}
       <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-        {submitting ? 'Creating…' : 'Create plan'}
+        {submitting ? t('billing.creating') : t('billing.createButton')}
       </button>
     </form>
   );
 }
 
 function PlanRow({ plan, onChanged }: { plan: MerchantBillingPlan; onChanged: () => void }) {
+  const { t } = useI18n();
   const [deactivating, setDeactivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -145,7 +149,7 @@ function PlanRow({ plan, onChanged }: { plan: MerchantBillingPlan; onChanged: ()
       await deactivateBillingPlan(plan.id);
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not deactivate this plan.');
+      setError(err instanceof ApiError ? err.message : t('billing.deactivateError'));
     } finally {
       setDeactivating(false);
     }
@@ -156,12 +160,12 @@ function PlanRow({ plan, onChanged }: { plan: MerchantBillingPlan; onChanged: ()
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{plan.name}</p>
         <span style={{ fontSize: '12px', fontWeight: 600, color: plan.active ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }}>
-          {plan.active ? 'Active' : 'Deactivated'}
+          {plan.active ? t('billing.statusActive') : t('billing.statusDeactivated')}
         </span>
       </div>
       {plan.description && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>{plan.description}</p>}
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)' }}>
-        {plan.amount.toLocaleString()} RWF every {plan.intervalDays} day{plan.intervalDays === 1 ? '' : 's'}
+        {t(plan.intervalDays === 1 ? 'billing.everyDaySingular' : 'billing.everyDaysPlural', { amount: plan.amount.toLocaleString(), days: plan.intervalDays })}
       </p>
       {error && (
         <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
@@ -173,7 +177,7 @@ function PlanRow({ plan, onChanged }: { plan: MerchantBillingPlan; onChanged: ()
           disabled={deactivating}
           onClick={handleDeactivate}
         >
-          {deactivating ? '…' : 'Deactivate'}
+          {deactivating ? '…' : t('billing.deactivateButton')}
         </button>
       )}
     </div>
