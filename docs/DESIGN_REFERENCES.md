@@ -6363,3 +6363,47 @@ a stranger).
 earlier but not yet redeployed when the cluster was flapping) -- re-verified live in this same pass:
 `MinOrderAmountNotMetException` now correctly surfaces as a real `422 MIN_ORDER_AMOUNT_NOT_MET`
 instead of the raw 500 it gave before.
+
+## 72. 마감할인 (closing/surplus discount) -- a real government-partnered food-waste feature
+
+**Added 2026-08-15.** Fresh, dated research: [welfarehello.com](https://www.welfarehello.com/community/policyInfo/%EB%B0%B0%EB%8B%AC%EC%95%B1-%EB%A7%88%EA%B0%90%ED%95%A0%EC%9D%B8-%EC%84%9C%EB%B9%84%EC%8A%A4-2026%EB%85%84-6%EC%9B%94-15%EC%9D%BC-%EC%98%A4%EB%8A%98%EB%B6%80%ED%84%B0-%EA%B0%9C%EC%8B%9C-%EB%AF%B8%ED%8C%90%EB%A7%A4-%EC%8B%9D%ED%92%88-%EC%A0%80%EB%A0%B4%ED%95%98%EA%B2%8C-%EC%82%AC%EB%8A%94-%EB%B0%A9%EB%B2%95-%EC%86%8C%EA%B0%9C),
+[imnews.imbc.com](https://imnews.imbc.com/replay/2026/nwtoday/article/6830178_37012.html),
+[m.ekn.kr](https://m.ekn.kr/view.php?key=20260629029477128),
+[mt.co.kr](https://www.mt.co.kr/economy/2026/06/14/2026061412201077098),
+[foodtoday.or.kr](https://www.foodtoday.or.kr/news/article.html?no=205568),
+[sedaily.com](https://www.sedaily.com/article/20055702) -- Korea's 기후부 (Climate Ministry)
+partnered with 배달의민족/요기요/쿠팡이츠 (plus independent apps 럭키밀/마구마켓) to launch 마감할인 on
+2026-06-15: bakeries (CJ Foodville/파리바게뜨), restaurants, and convenience stores list unsold
+near-closing food at a real, time-boxed discount, aimed at cutting Korea's ~5 million tonnes/year of
+food waste.
+
+**Checked against itunda's own code first**: a repo-wide grep for "surplus"/"closing sale"/"마감"
+found zero hits -- confirmed itunda's existing `/products/deals` rail (2026-07-25) is a *permanent*
+discount ranking, structurally distinct from a genuinely time-boxed closing sale. A real, confirmed
+gap, not a duplicate of something already built.
+
+**Built as purely additive metadata on the existing `MerchantProduct`**, not a parallel commerce
+system -- `isSurplusDeal`/`surplusExpiresAt` (migration V246) plus `MerchantProductService.
+setSurplusDeal` (mirrors the existing `updateStockQuantity`'s "focused operation" convention: setting
+a deal never touches pricing/description) and a new `findSurplusDeals` query (real, time-boxed,
+still-in-stock listings only, soonest-to-expire first). **Purchase itself needed zero new code**: a
+surplus deal is bought through the exact same, already-tested `OrderService.placeOrder` every other
+Commerce product uses, which already correctly decrements `stockQuantity` -- the single biggest
+scoping decision here was choosing Commerce/Shop (which already has real, tested stock tracking) over
+Eats (which has none) as the home for this feature, even though the real-world 마감할인 use case is
+food -- itunda's packaged-goods Shop model fits a bakery/convenience-store closing sale more honestly
+than Eats' restaurant-order model does anyway.
+
+New endpoints: `PATCH /api/v1/merchant/products/{id}/surplus-deal` (merchant),
+`GET /api/v1/shopping/products/surplus-deals` (buyer browse). Web: a real "Mark as closing deal"
+toggle in merchant-mfe's `PosScreen` (full en/rw/fr i18n, matching this session's standing
+localization discipline), and a "⏳ Closing deals" rail in bank-mfe's `ShopScreen` showing a real
+"closes at HH:mm" countdown, never a fabricated urgency banner.
+
+**Live-verified end to end against the real deployed backend, all three real exit paths tested**:
+marked a real product as a surplus deal, confirmed it appeared in the browse listing, bought a real
+unit through the normal checkout flow and confirmed stock genuinely decremented (3 -> 2) via the
+existing, unchanged decrement logic, confirmed a past `expiresAt` is correctly rejected by
+validation (`INVALID_SURPLUS_DEAL`, 400), and confirmed the deal disappears from the listing the
+instant it expires -- set a real 5-second-future expiry, waited for it to pass, re-queried, got an
+empty list, zero manual cleanup needed (the time filter in the query itself does the work).
