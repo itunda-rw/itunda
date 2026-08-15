@@ -4397,21 +4397,21 @@ research-body finding** (NN/g, Apple HIG); nothing here is `inferred`.
 
 ### What's genuinely still open (ranked, not yet built)
 
-1. **[sourced] Home's own internal hierarchy is flat, not progressive.** `HomeView` currently
-   stacks `AccountBalance` → `QuickActions` → `CooperativeSavingsRail` → `TransactionHistory` →
-   `ScheduledTransfersCard` → `AutoTransfersCard` → `AutoTopUpCard` → `RequestMoneyCard` →
-   `MiniWalletCard` → `DiscoverSection` -- nine full-weight sections with no summary-first
-   structure and no way to collapse anything. This directly contradicts the progressive-disclosure
-   fintech-dashboard finding above (balance → recent activity → deeper detail, not nine peers at
-   once). Real risk: this is precisely the kind of "everything competing for attention" screen the
-   sourced fintech UX guides call out as the anti-pattern.
-   *Target: `HomeView`, `BankDashboard.tsx` -- not yet built.*
-2. **[sourced] No behavior-driven personalization on Home**, unlike `AllHub`'s real recents
-   tracking. `QuickActions`/the section order is static for every user regardless of what they
-   actually use. Since `AllHub` already proves the mechanism (localStorage-backed usage tracking)
-   works end-to-end in this codebase, extending the same real pattern to Home's own section
-   ordering is a proven, low-risk next step, not a new capability to invent.
-   *Target: `HomeView` -- not yet built.*
+1. **[sourced, SUPERSEDED -- checked 2026-08-15, do not build]** Written when `HomeView` really
+   did stack all nine sections listed below. The 2026-08-13 "tabs are access points, not products"
+   restructuring (see `project_itunda_tabs_as_access_points`) moved `AccountBalance`/
+   `QuickActions`/`CooperativeSavingsRail`/`TransactionHistory`/`ScheduledTransfersCard`/
+   `AutoTransfersCard`/`AutoTopUpCard`/`RequestMoneyCard`/`MiniWalletCard` out of `HomeView`
+   entirely and into `PayHub` -- confirmed by reading the current file directly, `HomeView` is now
+   just `<DiscoverSection />`, a single component, not nine peers. The progressive-disclosure
+   critique no longer describes anything real to fix.
+2. **[sourced, SUPERSEDED -- checked 2026-08-15, do not build]** Also predates 2026-08-13's Home
+   restructuring, and separately predates `DiscoverSection` gaining real **server-side** per-user
+   priority ranking on 2026-08-11 (`DiscoverItem.priority`, confirmed in `lib/discover.ts` and the
+   backend -- "computes real per-user eligibility and priority"). Home already has real
+   behavior-driven personalization today, just computed server-side rather than via `AllHub`'s
+   client-side localStorage mechanism this item recommended porting -- a stronger version of the
+   same real goal, not a gap.
 3. **[sourced, re-verified 2026-08-10] Search is not a first-class navigation entry point.** It
    currently only exists inside the `All` tab. Re-searched specifically (previous pass only had a
    partial source): the real, named-product decision rule is that a **visible, always-present**
