@@ -634,6 +634,29 @@ public struct DineInOrdersResponse: Decodable { public let success: Bool; public
 public struct SpendingCategoryDto: Decodable { public let name: String; public let amount: Double }
 public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
 
+// Real Kakao Pay 페이아이 소비 리포트 (AI spending report) -- see
+// WalletService.getMonthlySpendingReport's own doc comment on the backend
+// ([[project_itunda_monthly_spending_report]], real+live-verified since 2026-08-16).
+// Real on bank-mfe/Android the same day it shipped; iOS never got a client at all
+// despite SpendingScreenView.swift already existing for the neighboring all-time
+// getSpendingInsight() endpoint (found via a fresh iOS platform-parity sweep,
+// 2026-08-16). `percentChange` is nullable -- null (not a fabricated 0%) means a
+// category genuinely has no prior-month spend to compare against.
+public struct SpendingComparisonCategoryDto: Decodable, Identifiable {
+    public let name: String
+    public let currentAmount: Double
+    public let previousAmount: Double
+    public let percentChange: Int?
+    public var id: String { name }
+}
+public struct MonthlySpendingReportResponse: Decodable {
+    public let success: Bool
+    public let currentTotal: Double
+    public let previousTotal: Double
+    public let percentChange: Int?
+    public let categories: [SpendingComparisonCategoryDto]
+}
+
 // Real Toss budgets/limits equivalent (item 165/173) -- WalletService.setBudget/
 // getBudgets, exposed on the pre-existing WalletController. bank-mfe (item 165) and
 // Android (item 172) already have this; this is the iOS port.
@@ -1185,6 +1208,7 @@ extension NetworkClient {
     // this feature (item 108, found backend-only via a fresh matrix scan; bank-mfe/
     // Android ported the same day as items 106/107).
     public func getSpendingInsight() async throws -> SpendingInsightResponse { try await get("api/v1/wallet/spending") }
+    public func getMonthlySpendingReport() async throws -> MonthlySpendingReportResponse { try await get("api/v1/wallet/spending/monthly-report") }
 
     public func getBudgets() async throws -> GetBudgetsResponse { try await get("api/v1/wallet/budgets") }
 

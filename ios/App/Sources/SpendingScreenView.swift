@@ -13,6 +13,7 @@ struct SpendingScreenView: View {
     @State private var insight: SpendingInsightResponse?
     @State private var error: String?
     @State private var budgets: [BudgetViewDto]?
+    @State private var monthlyReport: MonthlySpendingReportResponse?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,6 +31,27 @@ struct SpendingScreenView: View {
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
+                    if let monthlyReport {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("This month so far").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            HStack(alignment: .lastTextBaseline, spacing: 8) {
+                                Text("\(formatMoneySpending(monthlyReport.currentTotal)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
+                                if let change = monthlyReport.percentChange {
+                                    Text("\(change > 0 ? "▲" : "▼") \(abs(change))% vs last month")
+                                        .font(.caption).bold().foregroundColor(change > 0 ? .red : .green)
+                                }
+                            }
+                            let changed = monthlyReport.categories.filter { $0.percentChange != nil }
+                                .sorted { abs($0.percentChange ?? 0) > abs($1.percentChange ?? 0) }
+                            ForEach(changed.prefix(3)) { c in
+                                Text("\(c.name): \(formatMoneySpending(c.currentAmount)) RWF (\((c.percentChange ?? 0) > 0 ? "+" : "")\(c.percentChange ?? 0)% vs last month)")
+                                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    }
+
                     if let insight {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Total spent, all time").font(.caption).foregroundColor(IDS.Colors.textSecondary)
@@ -87,6 +109,7 @@ struct SpendingScreenView: View {
             } catch {
                 budgets = []
             }
+            monthlyReport = try? await NetworkClient.shared.getMonthlySpendingReport()
         }
     }
 }
