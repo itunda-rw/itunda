@@ -6539,3 +6539,34 @@ real RBAC-shaped error, not a normal timeout -- and succeeded on a plain retry s
 request under memory/CPU pressure rather than a real permission change, since nothing about RBAC was
 touched and the identical command worked immediately after. Both pods (including the freshly-rolled
 one) settled to healthy `1/1` within a few minutes with no further intervention.
+
+## 76. Nubank NuScore -- a real "card usage" credit-score factor, sourced from Nu International's own model
+
+**Added 2026-08-16.** Fresh research into Nu International's (Nubank's) real, publicly-described
+NuScore model: alongside payment history and account age, it names card-usage data as its own
+distinct scoring input, separate from general transaction activity. Checked against itunda's
+existing `CreditScoreService` (real, live, computed from real ledger/loan/savings/KYC data since
+2026-07-13) -- confirmed it scores general wallet transaction activity but has no factor for the
+itunda Card specifically, even though `DebitCard`/`DebitCardTransaction` (itunda's own real,
+ledger-backed check-card product, see Section entries on card issuance) already exist and are live.
+A real, confirmed gap, additive to an already-real feature rather than a new concept.
+
+**Built the same way every other factor in this file already is**: a plain `countByCardId` query
+against real `DebitCardTransaction` rows (no new table), capped at `MAX_CARD_USAGE_POINTS = 50`,
+`POINTS_PER_CARD_TRANSACTION = 5` -- itunda's own named, honest point values, same convention as
+every other factor's named constants in `CreditScoreService.Companion`. `getImprovementSuggestions`
+correctly branches on whether the user has a card at all: "Get an itunda Card" (full 50 points) if
+they don't, or "Use your itunda Card more" (the real remaining delta to the cap) if they do.
+
+**Live-verified against the real deployed backend**: the demo seed user (`user_1`) has a real
+itunda Card with zero real card transactions yet -- `/api/v1/credit-score` correctly omits "Card
+usage" from `factors` (0 points doesn't clear the same `> 0` threshold every other factor uses), and
+`/api/v1/credit-score/suggestions` correctly returns "Use your itunda Card more, 10 more real card
+purchase(s) reaches the real cap for this factor" rather than "Get an itunda Card", proving the
+has-a-card branch is real and not just compile-verified.
+
+**Test coverage**: extended the existing `CreditScoreServiceTest` (constructor now takes
+`DebitCardRepository`/`DebitCardTransactionRepository`, all 6 existing `Given` blocks stub
+`findByUserId(...) returns null` so a cardless user's existing assertions are unchanged) plus one new
+`Given` block for a user with a real card and 6 real purchases, asserting the exact real point math
+(6 x 5 = 30, under the 50 cap) on both `computeScore` and `getImprovementSuggestions`.
