@@ -6069,3 +6069,35 @@ Android/web -- `NetworkClient.swift` gained matching DTOs/methods for
 payEscrow/confirmEscrowReceipt/disputeEscrow/getEscrow. Full `ItundaApp` scheme `xcodebuild`
 (iphonesimulator, Debug) succeeded clean. Not device-verified (no physical device available this
 session), but this closes the feature on all 3 real client platforms plus the backend.
+
+## 67. 카카오페이 춘식이QR -- itunda DineIn requires a full account; a real gap, scoped not built
+
+**Added 2026-08-15**, continuing the standing "keep searching other ecosystems" directive. Fresh
+search on KakaoPay's own recent 2026 roadmap (not a re-read of old research): KakaoPay is expanding
+'춘식이QR' ("Chunsik QR"), a real, live product already deployed to ~3,000 stores -- a printed QR
+sticker at a table lets a customer order and pay using *only* KakaoTalk (which nearly every Korean
+already has installed for messaging), no separate app install and no merchant POS hardware beyond
+the sticker itself. The whole point is removing account/app-install friction for a one-off diner.
+
+### Checked against itunda's own code
+
+`DineInOrderController.placeOrder` (`services/backend/eats/src/main/kotlin/rw/itunda/eats/web/
+DineInOrderController.kt:60-68`) requires `currentUser.userId` -- i.e. a real, already-authenticated
+itunda account. There is no anonymous/guest path anywhere in the DineIn flow. For Rwanda's market,
+where itunda itself is a new app with no KakaoTalk-level existing install base to piggyback on, this
+is a real, confirmed friction point: a first-time diner at a table has to install the app AND create
+an account before they can order at all, unlike Kakao's zero-install path.
+
+**Deliberately not built this pass** -- this is a genuinely larger, architectural feature (a guest/
+anonymous ordering session, likely phone-number+OTP-scoped rather than full account creation, plus
+a way to later claim/merge that order into a real account if the diner does sign up) that needs
+real design thought before implementation, not a same-session quick fix like the AlreadyX error-
+handling gaps found the same day. Also checked and ruled out as *not* itunda's existing QR flows:
+the real Marketplace/Pay QR code + camera scanner (item 2026-08-11, [[project_itunda_pay_kakaopay_parity]])
+is a P2P payment QR between two existing itunda accounts, not a merchant-table-ordering QR -- a
+different feature with the same "QR" surface, not already covering this gap.
+
+**How to apply:** if guest DineIn ordering is ever prioritized, start with
+`DineInOrderController.placeOrder`'s auth requirement and `DineInRepositories.kt`'s `DineInOrder`
+entity (currently assumes a real `buyerId` FK) -- both would need a real design decision on how a
+guest identity is represented and how payment is captured without an existing itunda wallet.
