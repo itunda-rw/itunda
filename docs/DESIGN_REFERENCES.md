@@ -4422,8 +4422,13 @@ research-body finding** (NN/g, Apple HIG); nothing here is `inferred`.
    (34 real destinations behind one `All` tab, per Section 41's own tab audit), search is secondary
    to browsing but genuinely needed for the "I know exactly what I want" case -- the icon-in-header
    pattern is the correct fit, not the always-visible field a single-purpose search product would use.
-   *Target: header row (next to the language switcher / sign-out icon), `BankDashboard.tsx` --
-   not yet built.*
+   *Target: header row (next to the language switcher / sign-out icon), `BankDashboard.tsx`.*
+   **Built 2026-08-15 (`b53a5ef0`), live-verified.** A `Search` icon in the header switches to
+   Explore and focuses that tab's own already-real search box via a pending-hand-off state (the
+   same pattern `pendingConversationId` already used) -- deliberately did not build a second search
+   implementation. Live-verified: header click landed on Explore with the input already focused
+   (visible focus ring, no extra tap), typed "loan" and confirmed the existing filter correctly
+   matched "Loans".
 
 ### Three more real, verified gaps found while researching search/badges/dashboards (2026-08-10)
 
