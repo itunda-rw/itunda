@@ -6581,3 +6581,32 @@ has-a-card branch is real and not just compile-verified.
 `findByUserId(...) returns null` so a cardless user's existing assertions are unchanged) plus one new
 `Given` block for a user with a real card and 6 real purchases, asserting the exact real point math
 (6 x 5 = 30, under the 50 cap) on both `computeScore` and `getImprovementSuggestions`.
+
+## 77. Uncalled-endpoint sweep, merchant-mfe/kyc-mfe focus -- 2 real gaps closed, 1 false positive ruled out
+
+**Added 2026-08-16.** Past uncalled-endpoint sweeps (see Section 68 and the standing
+[[feedback_uncalled_endpoint_sweep]] technique) mostly scanned bank-mfe's client dir only. This pass
+deliberately focused on merchant-mfe and kyc-mfe, cross-referencing `MerchantController`,
+`MerchantBookingController`, and related controllers against every web client dir (bank-mfe,
+merchant-mfe, kyc-mfe, ops-mfe, pay-checkout).
+
+**False positive, worth naming explicitly**: `POST /pay/customer-code` + `POST /pay/charge-by-code`
+looked uncalled from any web client, but a native-app check confirmed both are real, already-shipped
+endpoints -- Android's customer app (Pay tab QR) and merchant app (camera-scan charge) have called
+them since 2026-08-11 (see [[project_itunda_pay_kakaopay_parity]]). A sweep that only checks web
+client dirs will always misreport native-only endpoints as gaps -- check `android/` and `ios/` too,
+not just the web MFEs, before treating a "zero web callers" finding as a real gap.
+
+**Two real gaps found and closed the same session**:
+- `GET /{merchantId}/booking-availability` -- BookingWidget picked a date blind, only learning "no
+  open times" after the fact. Now shows "Closed on this day" up front.
+- `GET /bookings/{bookingId}/deposit` -- a booking's real held/released/refunded/forfeited deposit
+  status had no UI anywhere. Now a badge on each row in My bookings.
+
+Both **live-verified end to end** against the real deployed backend: a fresh test merchant
+(Mon-Fri-only availability, a 10 RWF prepay service, kept intentionally cheap per the established
+wallet-funding technique in [[project_itunda_group_eats_orders]] -- the demo account's balance has
+kept shrinking session over session and can no longer cover a realistic deposit amount) booked as
+the real demo user, confirmed via curl that the availability endpoint returns exactly the 5 weekday
+windows and the deposit endpoint returns a real `HELD` status with the exact ledger-linked amount,
+then confirmed in a real browser that "Deposit held · 10 RWF" renders on the real booking row.
