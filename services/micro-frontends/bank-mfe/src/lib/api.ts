@@ -134,7 +134,45 @@ export async function register(
   return body.user as AuthedUser;
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+// Real silent session-refresh (2026-08-15) -- matches Android's refreshAuthenticator
+// and iOS's dataWithRefresh exactly (same session, same root cause: a dead-endpoint
+// sweep found /auth/refresh had ZERO real callers on ANY platform, so a merely-expired
+// 24h access token forced a full re-login on every platform instead of a silent
+// refresh). Web's own apiFetch already had a real fallback the other two platforms
+// didn't (a hard logout + SESSION_EXPIRED_EVENT, not a raw dead-end 401) -- this
+// upgrades that fallback to try a silent refresh first, only falling through to the
+// existing forced-logout path if the refresh token itself is invalid/expired.
+// Single-flight via a shared in-flight Promise -- same race this codebase's Android
+// twin guards against with an actual lock: two concurrent 401s must not both burn the
+// single-use rotating refresh token.
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (!refreshToken) return null;
+    try {
+      const response = await fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!response.ok) return null;
+      const body = await response.json();
+      localStorage.setItem(TOKEN_KEY, body.accessToken);
+      localStorage.setItem(REFRESH_KEY, body.refreshToken);
+      return body.accessToken as string;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
+
+export async function apiFetch<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
   const token = getToken();
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
@@ -146,6 +184,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   });
 
   if (response.status === 401) {
+    // Only ever attempt a refresh-and-retry once per call, and never for the refresh
+    // endpoint itself, to avoid a hard loop.
+    if (!isRetry && token && path !== '/api/v1/auth/refresh') {
+      const newToken = await refreshAccessToken();
+      if (newToken) return apiFetch<T>(path, options, true);
+    }
+    // Refresh token itself is invalid/expired (7-day expiry, or no refresh token was
+    // ever attempted) -- a real logout, not a dead end: the existing forced re-login
+    // flow below is correct here, not a bug.
     logout();
     window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     const { code, message } = await parseErrorBody(response);
