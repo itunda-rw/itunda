@@ -49,6 +49,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       // Private-browsing/storage-disabled: locale still works for this session, just
       // doesn't persist across a reload. Not worth failing the language switch over.
     }
+    // Real cross-microfrontend sync (2026-08-15): bank-mfe and kyc-mfe are both loaded
+    // live via Module Federation into host-app's SAME document -- a native 'storage'
+    // event never fires for same-document localStorage writes (it only fires in OTHER
+    // tabs/windows), so without this, host-app's own tab labels would stay in whatever
+    // language they started in until a full page reload. This custom event lets any
+    // itunda surface sharing this locale key react to a change made in a sibling MFE
+    // immediately, in the same page.
+    window.dispatchEvent(new CustomEvent<Locale>('itunda:locale-change', { detail: next }));
   }, []);
 
   const t = useCallback(

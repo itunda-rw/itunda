@@ -21,6 +21,7 @@ export default defineConfig({
       filename: 'remoteEntry.js',
       exposes: {
         './KycDashboard': './src/KycDashboard.tsx',
+        './I18nProvider': './src/RemoteI18nProvider.tsx',
       },
       shared: ['react', 'react-dom']
     })

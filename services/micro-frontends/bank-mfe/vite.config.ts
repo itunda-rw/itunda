@@ -11,6 +11,7 @@ export default defineConfig({
       filename: 'remoteEntry.js',
       exposes: {
         './BankDashboard': './src/BankDashboard.tsx',
+        './I18nProvider': './src/RemoteI18nProvider.tsx',
       },
       shared: ['react', 'react-dom']
     })

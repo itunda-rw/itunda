@@ -38,6 +38,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       // Private-browsing/storage-disabled: locale still works for this session, just
       // doesn't persist across a reload. Not worth failing the language switch over.
     }
+    // Same real cross-microfrontend sync as bank-mfe's I18nContext.tsx (2026-08-15) --
+    // see that file's comment for why a native 'storage' event isn't enough here.
+    window.dispatchEvent(new CustomEvent<Locale>('itunda:locale-change', { detail: next }));
   }, []);
 
   const t = useCallback(
