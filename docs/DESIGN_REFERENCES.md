@@ -6637,3 +6637,31 @@ zero new call sites needed. New `POST /api/v1/merchant/prep-time`; merchant-mfe 
 `POST /prep-time` with `avgPrepTimeMinutes: 45` -- a real before/after delta, not just a non-null
 check. Confirmed 4 other real merchants with no prep time set kept their unaffected default estimates
 in the same `GET /shopping/merchants` response, proving full backward compatibility.
+
+## 79. Fresh concurrency audit -- 2 real missing-lock races found in code shipped this session
+
+**Added 2026-08-16.** Continuing the standing feature/audit rotation (a research fork scoped
+specifically to code added in the last ~2 weeks, not a repeat of the 2026-08-09 backend-wide sweep,
+which is separately exhausted for its own bug class). Found and fixed 2 real, previously-shipped
+missing-lock races:
+
+1. **`GroupEatsOrderService.finalizeOrder`/`cancel`** -- read-checked-then-wrote
+   `GroupEatsOrder.status` (OPEN -> FINALIZED/CANCELLED) with no lock. Two concurrent
+   `finalizeOrder` calls (a real double-tap, or two devices) could both read OPEN, both pass, and
+   both call `EatsOrderService.placeOrder` + `SplitBillService.createDirectSplitBill` before either
+   committed -- two real orders, two real ledger charges, duplicate split-bill requests. Fixed with
+   a new `GroupEatsOrderRepository.findByIdForUpdate`, matching this codebase's own established
+   convention.
+
+2. **`MerchantBookingService.payOutDeposit`/`refundDeposit`** -- same shape: read
+   `BookingDeposit.status`, check `HELD`, post a real ledger payout/refund, THEN write the new
+   status, no lock. 4 real call sites (`respond(confirm=false)`, `markCompleted`, `cancel`,
+   `BookingNoShowScheduler`) could race each other into a double-payout or double-refund from the
+   same escrowed hold. Fixed with pessimistic locking (`findByBookingIdForUpdate`), deliberately not
+   optimistic `@Version` -- real money moves before the status write, so a lock is needed to stop
+   the second caller from ever reading a stale `HELD` status, not just to fail loudly after the fact.
+
+Both fixes follow the exact `findByIdForUpdate` convention `WalletRepository`/`FraudFlagRepository`/
+`DebitCardRepository` already established. See [[project_itunda_concurrency_audit]] for the fuller
+sourced account, including why this doesn't reopen the 2026-08-09 sweep's own "exhausted" finding --
+both bugs are in code shipped after that sweep ran.
