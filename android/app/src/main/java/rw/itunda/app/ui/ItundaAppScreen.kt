@@ -1265,18 +1265,22 @@ fun ItundaAppScreen(
         if (showVehicleInspection) {
             BackHandler { showVehicleInspection = false }
             VehicleInspectionScreen(onBack = { showVehicleInspection = false })
+            return@IdsTheme
         }
         if (showVehicleValuation) {
             BackHandler { showVehicleValuation = false }
             VehicleValuationScreen(onBack = { showVehicleValuation = false })
+            return@IdsTheme
         }
         if (showFamilyLink) {
             BackHandler { showFamilyLink = false }
             FamilyLinkScreen(onBack = { showFamilyLink = false })
+            return@IdsTheme
         }
         if (showSubscriptions) {
             BackHandler { showSubscriptions = false }
             SubscriptionsScreen(onBack = { showSubscriptions = false })
+            return@IdsTheme
         }
         if (showRides) {
             BackHandler { showRides = false }
