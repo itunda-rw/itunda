@@ -10,10 +10,12 @@ import {
   type PayrollEmployee,
   type PayrollRunResult,
 } from '../lib/merchant';
+import { useI18n } from '../i18n/I18nContext';
 
 // Real B2B payroll UI -- see PayrollService.kt's own doc comment for why this is real
 // wallet-to-wallet money movement, not a demo/simulation like CollectScreen's Card tab.
 export default function PayrollScreen() {
+  const { t } = useI18n();
   const [roster, setRoster] = useState<PayrollEmployee[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [runResult, setRunResult] = useState<PayrollRunResult | null>(null);
@@ -22,7 +24,7 @@ export default function PayrollScreen() {
     setLoadError(null);
     getPayrollRoster()
       .then(setRoster)
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Could not load the payroll roster.'));
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : t('payroll.loadError')));
   };
 
   useEffect(load, []);
@@ -46,6 +48,7 @@ export default function PayrollScreen() {
 }
 
 function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
+  const { t } = useI18n();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [salaryAmount, setSalaryAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +64,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
       setSalaryAmount('');
       onAdded();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this employee.');
+      setError(err instanceof ApiError ? err.message : t('payroll.addError'));
     } finally {
       setSubmitting(false);
     }
@@ -69,13 +72,13 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
 
   return (
     <div className="itunda-card">
-      <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Add an employee</h2>
+      <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{t('payroll.addEmployeeTitle')}</h2>
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-        Must be an existing Itunda user's phone number — payroll pays directly into their wallet.
+        {t('payroll.addEmployeeBody')}
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '180px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Phone number</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('payroll.phoneNumberLabel')}</span>
           <input
             type="tel"
             value={phoneNumber}
@@ -86,7 +89,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '140px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Monthly salary (RWF)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('payroll.monthlySalaryLabel')}</span>
           <input
             type="number"
             min="1"
@@ -99,7 +102,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
           />
         </label>
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ height: '46px' }}>
-          {submitting ? 'Adding…' : 'Add'}
+          {submitting ? t('payroll.adding') : t('payroll.addButton')}
         </button>
       </form>
       {error && (
@@ -124,6 +127,7 @@ function RosterTable({
   onRemove: (employeeId: string) => void;
   onRunPayroll: (result: PayrollRunResult) => void;
 }) {
+  const { t } = useI18n();
   const [runError, setRunError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   // Real device step-up (2026-07-28 port) -- a real 403 DEVICE_NOT_VERIFIED (this
@@ -140,7 +144,7 @@ function RosterTable({
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setRunError(err instanceof ApiError ? err.message : 'Could not run payroll.');
+        setRunError(err instanceof ApiError ? err.message : t('payroll.runError'));
       }
     } finally {
       setRunning(false);
@@ -154,14 +158,14 @@ function RosterTable({
           {error}
         </p>
         <button className="itunda-btn itunda-btn-secondary" onClick={onReload} style={{ marginTop: '12px' }}>
-          Retry
+          {t('payroll.retryButton')}
         </button>
       </div>
     );
   }
 
   if (roster === null) {
-    return <div className="itunda-card">Loading…</div>;
+    return <div className="itunda-card">{t('payroll.loading')}</div>;
   }
 
   const total = roster.reduce((acc, e) => acc + e.salaryAmount, 0);
@@ -171,14 +175,14 @@ function RosterTable({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Users size={18} color="var(--itunda-blue)" />
-          <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Roster ({roster.length})</h2>
+          <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{t('payroll.rosterTitle', { count: roster.length })}</h2>
         </div>
         <button
           className="itunda-btn itunda-btn-primary"
           onClick={handleRunPayroll}
           disabled={running || roster.length === 0}
         >
-          {running ? 'Running…' : `Run payroll (${total.toLocaleString()} RWF)`}
+          {running ? t('payroll.running') : t('payroll.runPayrollButton', { total: total.toLocaleString() })}
         </button>
       </div>
       {runError && (
@@ -193,14 +197,14 @@ function RosterTable({
       )}
       {roster.length === 0 ? (
         <p style={{ padding: '0 20px 20px', fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-          No employees on the roster yet.
+          {t('payroll.rosterEmpty')}
         </p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr style={{ backgroundColor: 'var(--itunda-grey-100)', textAlign: 'left' }}>
-              {['Employee', 'Monthly salary', ''].map((h) => (
-                <th key={h} style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
+              {[t('payroll.columnEmployee'), t('payroll.columnMonthlySalary'), ''].map((h, i) => (
+                <th key={i === 2 ? 'actions' : h} style={{ padding: '10px 20px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>
                   {h}
                 </th>
               ))}
@@ -216,7 +220,7 @@ function RosterTable({
                     onClick={() => onRemove(employee.id)}
                     style={{ color: 'var(--itunda-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
                   >
-                    <Trash2 size={14} /> Remove
+                    <Trash2 size={14} /> {t('payroll.removeButton')}
                   </button>
                 </td>
               </tr>
@@ -229,14 +233,15 @@ function RosterTable({
 }
 
 function PayrollRunConfirmation({ result, onDone }: { result: PayrollRunResult; onDone: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center', maxWidth: '480px' }}>
       <CircleCheck size={40} color="var(--itunda-green)" />
-      <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Payroll paid</h2>
+      <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('payroll.paidTitle')}</h2>
       <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
         {result.totalAmount.toLocaleString()} RWF
       </p>
-      <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>{result.employeeCount} employees paid</p>
+      <p style={{ fontSize: '14px', color: 'var(--itunda-grey-500)' }}>{t('payroll.employeesPaidCount', { count: result.employeeCount })}</p>
       <div style={{ width: '100%', textAlign: 'left' }}>
         {result.payslips.map((p) => (
           <div
@@ -249,7 +254,7 @@ function PayrollRunConfirmation({ result, onDone }: { result: PayrollRunResult; 
         ))}
       </div>
       <button className="itunda-btn itunda-btn-secondary" style={{ padding: '10px 20px' }} onClick={onDone}>
-        Back to roster
+        {t('payroll.backToRoster')}
       </button>
     </div>
   );

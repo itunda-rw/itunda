@@ -278,7 +278,30 @@ export type TranslationKey =
   | 'ads.createError'
   | 'ads.chargeNotice'
   | 'ads.starting'
-  | 'ads.payAndRunButton';
+  | 'ads.payAndRunButton'
+  // Real 11th-localization-pass additions (2026-08-15): PayrollScreen -- real B2B
+  // payroll, genuine wallet-to-wallet money movement (not a demo).
+  | 'payroll.loadError'
+  | 'payroll.addEmployeeTitle'
+  | 'payroll.addEmployeeBody'
+  | 'payroll.phoneNumberLabel'
+  | 'payroll.monthlySalaryLabel'
+  | 'payroll.addError'
+  | 'payroll.adding'
+  | 'payroll.addButton'
+  | 'payroll.runError'
+  | 'payroll.retryButton'
+  | 'payroll.loading'
+  | 'payroll.rosterTitle'
+  | 'payroll.running'
+  | 'payroll.runPayrollButton'
+  | 'payroll.rosterEmpty'
+  | 'payroll.columnEmployee'
+  | 'payroll.columnMonthlySalary'
+  | 'payroll.removeButton'
+  | 'payroll.paidTitle'
+  | 'payroll.employeesPaidCount'
+  | 'payroll.backToRoster';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -508,6 +531,27 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'ads.chargeNotice': '{{price}} RWF will be charged from your wallet. If you already have an active ad, this extends it.',
     'ads.starting': 'Starting…',
     'ads.payAndRunButton': 'Pay {{price}} RWF & run ad',
+    'payroll.loadError': 'Could not load the payroll roster.',
+    'payroll.addEmployeeTitle': 'Add an employee',
+    'payroll.addEmployeeBody': "Must be an existing Itunda user's phone number — payroll pays directly into their wallet.",
+    'payroll.phoneNumberLabel': 'Phone number',
+    'payroll.monthlySalaryLabel': 'Monthly salary (RWF)',
+    'payroll.addError': 'Could not add this employee.',
+    'payroll.adding': 'Adding…',
+    'payroll.addButton': 'Add',
+    'payroll.runError': 'Could not run payroll.',
+    'payroll.retryButton': 'Retry',
+    'payroll.loading': 'Loading…',
+    'payroll.rosterTitle': 'Roster ({{count}})',
+    'payroll.running': 'Running…',
+    'payroll.runPayrollButton': 'Run payroll ({{total}} RWF)',
+    'payroll.rosterEmpty': 'No employees on the roster yet.',
+    'payroll.columnEmployee': 'Employee',
+    'payroll.columnMonthlySalary': 'Monthly salary',
+    'payroll.removeButton': 'Remove',
+    'payroll.paidTitle': 'Payroll paid',
+    'payroll.employeesPaidCount': '{{count}} employees paid',
+    'payroll.backToRoster': 'Back to roster',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -736,6 +780,27 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'ads.chargeNotice': 'Amafaranga {{price}} RWF azakurwa kuri konti yawe. Niba usanzwe ufite itangazo rikora, iri rirongera igihe.',
     'ads.starting': 'Gutangira…',
     'ads.payAndRunButton': 'Ishyura {{price}} RWF utangize itangazo',
+    'payroll.loadError': 'Ntibishoboka gushakisha urutonde rw\'abakozi.',
+    'payroll.addEmployeeTitle': 'Ongeraho umukozi',
+    'payroll.addEmployeeBody': 'Igomba kuba nomero ya telefoni y\'ukoresha itunda usanzweho — umushahara ujya ako kanya kuri konti ye.',
+    'payroll.phoneNumberLabel': 'Nomero ya telefoni',
+    'payroll.monthlySalaryLabel': 'Umushahara wa buri kwezi (RWF)',
+    'payroll.addError': 'Ntibishoboka kongeraho uyu mukozi.',
+    'payroll.adding': 'Kongeraho…',
+    'payroll.addButton': 'Ongeraho',
+    'payroll.runError': 'Ntibishoboka gutanga imishahara.',
+    'payroll.retryButton': 'Ongera ugerageze',
+    'payroll.loading': 'Gushakisha…',
+    'payroll.rosterTitle': 'Urutonde ({{count}})',
+    'payroll.running': 'Birimo gutangwa…',
+    'payroll.runPayrollButton': 'Tanga imishahara ({{total}} RWF)',
+    'payroll.rosterEmpty': 'Nta mukozi uri ku rutonde.',
+    'payroll.columnEmployee': 'Umukozi',
+    'payroll.columnMonthlySalary': 'Umushahara wa buri kwezi',
+    'payroll.removeButton': 'Kuraho',
+    'payroll.paidTitle': 'Imishahara yatanzwe',
+    'payroll.employeesPaidCount': 'Abakozi {{count}} bishyuwe',
+    'payroll.backToRoster': 'Subira ku rutonde',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -964,5 +1029,26 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'ads.chargeNotice': '{{price}} RWF seront débités de votre portefeuille. Si vous avez déjà une publicité active, celle-ci sera prolongée.',
     'ads.starting': 'Démarrage…',
     'ads.payAndRunButton': 'Payer {{price}} RWF et lancer',
+    'payroll.loadError': 'Impossible de charger la liste du personnel.',
+    'payroll.addEmployeeTitle': 'Ajouter un employé',
+    'payroll.addEmployeeBody': "Doit être le numéro de téléphone d'un utilisateur itunda existant — la paie est versée directement sur son portefeuille.",
+    'payroll.phoneNumberLabel': 'Numéro de téléphone',
+    'payroll.monthlySalaryLabel': 'Salaire mensuel (RWF)',
+    'payroll.addError': 'Impossible d\'ajouter cet employé.',
+    'payroll.adding': 'Ajout en cours…',
+    'payroll.addButton': 'Ajouter',
+    'payroll.runError': 'Impossible de traiter la paie.',
+    'payroll.retryButton': 'Réessayer',
+    'payroll.loading': 'Chargement…',
+    'payroll.rosterTitle': 'Personnel ({{count}})',
+    'payroll.running': 'Traitement en cours…',
+    'payroll.runPayrollButton': 'Traiter la paie ({{total}} RWF)',
+    'payroll.rosterEmpty': 'Aucun employé sur la liste pour le moment.',
+    'payroll.columnEmployee': 'Employé',
+    'payroll.columnMonthlySalary': 'Salaire mensuel',
+    'payroll.removeButton': 'Retirer',
+    'payroll.paidTitle': 'Paie versée',
+    'payroll.employeesPaidCount': '{{count}} employés payés',
+    'payroll.backToRoster': 'Retour à la liste',
   },
 };
