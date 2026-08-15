@@ -123,6 +123,17 @@ object SessionManager {
         _sessionState.value = SessionState.LoggedOut
     }
 
+    // Real gap found 2026-08-15: NetworkClient's own refresh Authenticator calls this
+    // when the refresh token itself is invalid/expired (JwtService's real 7-day
+    // expiry) -- unlike logout() above, there is no valid access token left to send a
+    // real server-side revocation call with, so this only clears local state and
+    // drops the session back to the real login screen. Not calling the backend here
+    // is correct, not an oversight: the token is already unusable server-side too.
+    fun forceLocalLogout() {
+        NetworkClient.currentTokenStore().clearSession()
+        _sessionState.value = SessionState.LoggedOut
+    }
+
     private suspend fun runAuthCall(call: suspend () -> AuthResponse): AuthResult = try {
         val response = call()
         NetworkClient.currentTokenStore().saveSession(response.user.id, response.accessToken, response.refreshToken)

@@ -110,6 +110,18 @@ interface AuthApi {
     @POST("api/v1/auth/refresh")
     suspend fun refresh(@Body request: RefreshRequest): AuthResponse
 
+    // Synchronous twin of refresh() above, for OkHttp's Authenticator -- see
+    // NetworkClient's real gap found 2026-08-15: a dead-endpoint sweep found refresh()
+    // had ZERO callers anywhere in the client, meaning an expired 24h access token
+    // (JwtService.kt's real expiry) just surfaced as a raw, unrecoverable 401 on every
+    // subsequent screen with no path forward -- exactly the dead-end this codebase's
+    // own standing Toss-style error-handling philosophy exists to eliminate.
+    // Authenticator.authenticate() runs synchronously on a background thread (same
+    // constraint TokenStore's own header comment already documents for the auth
+    // interceptor), so it needs a blocking Call, not a suspend fun.
+    @POST("api/v1/auth/refresh")
+    fun refreshSync(@Body request: RefreshRequest): retrofit2.Call<AuthResponse>
+
     @POST("api/v1/auth/logout")
     suspend fun logout(@Header("Authorization") bearerAccessToken: String, @Body request: LogoutRequest)
 
@@ -4953,9 +4965,70 @@ object NetworkClient {
         }
     }
 
+    // Real silent session-refresh (2026-08-15) -- a dead-endpoint sweep found
+    // AuthApi.refresh() had ZERO callers anywhere in this app, meaning an expired 24h
+    // access token (JwtService's real expiry) just surfaced as a raw, unrecoverable
+    // 401 on every subsequent screen with no path forward. Toss-style: resolve it for
+    // the user invisibly rather than forcing a re-login the moment a session merely
+    // aged out, same philosophy as the AlreadyX resolve-forward fixes made the same
+    // day. Standard OkHttp Authenticator pattern -- runs synchronously on a background
+    // thread (same constraint as authInterceptor above), so refreshSync's blocking
+    // Call is used, not the suspend fun.
+    private val refreshLock = Any()
+
+    private fun responseChainLength(response: okhttp3.Response): Int {
+        var count = 1
+        var prior = response.priorResponse
+        while (prior != null) {
+            count++
+            prior = prior.priorResponse
+        }
+        return count
+    }
+
+    private val refreshAuthenticator = okhttp3.Authenticator { _, response ->
+        // Already retried this exact request once with a fresh token and still got a
+        // 401 -- the refresh token itself is the problem (expired/blacklisted), not
+        // just the access token. Give up rather than looping forever.
+        if (responseChainLength(response) >= 2) return@Authenticator null
+
+        val failedToken = response.request.header("Authorization")?.removePrefix("Bearer ")
+        synchronized(refreshLock) {
+            val currentToken = tokenStore?.getAccessToken()
+            // Another in-flight request already refreshed while this one waited for
+            // the lock -- just retry with the token that's now stored, no redundant
+            // network call.
+            if (currentToken != null && currentToken != failedToken) {
+                return@Authenticator response.request.newBuilder()
+                    .header("Authorization", "Bearer $currentToken")
+                    .build()
+            }
+            val refreshToken = tokenStore?.getRefreshToken() ?: return@Authenticator null
+            val refreshed = try {
+                authApi.refreshSync(RefreshRequest(refreshToken)).execute()
+            } catch (_: Exception) {
+                null
+            }
+            val body = refreshed?.takeIf { it.isSuccessful }?.body()
+            if (body == null) {
+                // Refresh token itself is invalid/expired (7-day expiry, or already
+                // consumed) -- a real logout, not a dead end: SessionManager's own
+                // real login screen takes over from here instead of every remaining
+                // screen showing raw 401s forever.
+                SessionManager.forceLocalLogout()
+                return@Authenticator null
+            }
+            tokenStore?.saveSession(body.user.id, body.accessToken, body.refreshToken)
+            response.request.newBuilder()
+                .header("Authorization", "Bearer ${body.accessToken}")
+                .build()
+        }
+    }
+
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(diagnosticLoggingInterceptor)
         .addInterceptor(authInterceptor)
+        .authenticator(refreshAuthenticator)
         .build()
 
     private val retrofit: Retrofit by lazy {
