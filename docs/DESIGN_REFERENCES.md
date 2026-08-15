@@ -6239,3 +6239,88 @@ simulator's own Text Size accessibility inspector) so each `relativeTo` choice c
 confirmed, not just source-reasoned. `IDS.scaledFont(size:weight:relativeTo:)` already exists and
 is the correct helper -- this is a mechanical sweep once verification is possible, not a design
 problem.
+
+## 70. 배달의민족 함께주문 (Baemin Together Order) -- a real shared-cart gap, built and live-verified
+
+**Added 2026-08-15.** Fresh, dated research (not doc-mining): 우아한형제들 (Woowa Brothers, Baemin's
+operator) added a real 더치페이 (Dutch pay / bill-split) feature to their existing 함께주문 ("Together
+Order", shipped 2022-10) group-ordering service, announced 2026-06-25, rolling out to all customers
+by end of July 2026 -- cross-verified across 8 outlets: [ekn.kr](https://m.ekn.kr/view.php?key=20260625023276441),
+[zdnet.co.kr](https://zdnet.co.kr/view/?no=20260625110853), [hankyung.com](https://www.hankyung.com/article/202606257553g),
+[hankookilbo.com](https://www.hankookilbo.com/news/article/A2026062511280002367),
+[greened.kr](https://www.greened.kr/news/articleView.html?idxno=343324),
+[digitaltoday.co.kr](https://www.digitaltoday.co.kr/en/view/74664/baemin-introduces-dutch-pay-feature-to-group-orders),
+[sedaily.com](https://en.sedaily.com/news/2026/06/25/baemin-adds-bill-splitting-feature-to-group-order-service),
+[asiae.co.kr](https://www.asiae.co.kr/en/article/2026062508465421433).
+
+**How it actually works (confirmed across all 8 sources, not assumed):** multiple people share a
+link for one restaurant, each adds their own items to a combined cart. The person who places the
+order pays for the WHOLE real order up front (every payment method works for this part); only
+*afterward* do they request 더치페이 from the other participants, either split evenly or by each
+person's own itemized share. Settlement itself requires 배민페이 (Baemin Pay) -- requested amounts
+are sent as in-app Baemin Pay Money. **This is a single-payer-then-reimburse model, not a real
+multi-payer atomic checkout** -- an important, easy-to-get-wrong detail that shaped the whole
+implementation below.
+
+**Checked against itunda's own code:** `EatsController`'s `PlaceEatsOrderRequest` is a flat
+single-buyer item list -- `grep`ing the whole backend for "grouporder"/"sharedcart"/"together
+order" found zero hits. A real, confirmed gap, distinct from the already-closed 1:1-chat split-bill
+gap ([[project_itunda_ecosystem_research]]) -- that closes AFTER a solo order already exists;
+Baemin's real feature is a shared cart BEFORE checkout.
+
+**Built, matching Baemin's real mechanism exactly, not a fabricated multi-payer model:** new
+`GroupEatsOrder`/`GroupEatsOrderParticipant`/`GroupEatsOrderItem` entities (a pre-checkout staging
+layer only), `GroupEatsOrderService` at `/api/v1/eats/group-orders` -- `create` (host picks a
+restaurant, gets a real 6-character join code), `join`, `setMyItems` (each participant's own items,
+full-replace semantics), `getDetail` (live per-participant subtotals + grand total), `finalizeOrder`
+(host-only -- merges every participant's items into ONE call to the existing, unchanged
+`EatsOrderService.placeOrder`, then calls the existing, unchanged
+`SplitBillService.createDirectSplitBill` once per other participant with their own real subtotal --
+literally Baemin's own "pay first, Dutch pay after" mechanism, reusing two already-tested code paths
+rather than inventing new money-movement logic), `cancel`. IDOR-safe: a non-participant gets an
+identical 404 `GROUP_ORDER_NOT_FOUND` for both a real and a fake group-order id, same discipline as
+[[project_itunda_idor_audit]]. Web (bank-mfe): new "Together order" tab in `EatsView` -- create/join,
+a live shared-cart view, host finalize/cancel.
+
+**Live-verified end to end via real curl calls against the deployed backend** (not just
+compile-checked): registered two fresh real users, created a group order, joined with the second
+user, both added real menu items via a real seed restaurant, host finalized -- one real `EatsOrder`
+was placed (real ledger transaction, real `itemsSubtotal`), and the other participant received a
+real, correctly-sized Dutch-pay `SplitBill` request (`GET /api/v1/split-bills/direct/{userId}`)
+with their exact subtotal and the description "Together Order at <restaurant>". Confirmed the
+IDOR-safe 404 by comparing a real finalized group-order id against a fabricated one from a third,
+unrelated account -- byte-identical responses.
+
+**Two real bugs found and fixed during this live-verification pass, not just compile-time
+issues:**
+1. `GroupEatsOrderParticipant`'s generated id (`"group_eats_order_participant_" + UUID`, 66 chars)
+   exceeded the `id` column's `VARCHAR(64)` -- a real `DataIntegrityViolationException`
+   ("Data too long for column 'id'") on every single group-order creation, caught only because this
+   was actually exercised against a real MySQL instance, not a mocked/in-memory test. Fixed by
+   shortening the prefix to `"group_eats_participant_"`.
+2. `GroupEatsOrderController.finalize()` was missing exception handlers for the subset of
+   `EatsOrderService.placeOrder`'s own real validations that can legitimately surface through it
+   (`MinOrderAmountNotMetException`, `SelfEatsOrderException`,
+   `MissingRequiredMenuOptionException`/`InvalidMenuOptionSelectionException`) -- each fell through
+   to a raw, unhelpful 500 instead of the same proper 4xx `EatsController` already gives for the
+   identical underlying exception. Fixed by copying the same handlers over. **Deployed to
+   `itunda-dc-a` at image tag `...-group-eats-order-2` (id-length fix only) -- the exception-handler
+   fix is committed in source but not yet redeployed**, since the cluster was flapping under its own
+   known resource pressure (see below) right as this second fix was ready to ship; the core feature
+   itself was already fully live-verified on `-2` before that, so this is a real, minor, tracked gap
+   between source and the currently-running image, not an unverified feature.
+
+**A real, pre-existing infra fragility resurfaced during this session's deploy** (not caused by
+this feature's code): `itunda-dc-a` is a genuinely memory-constrained single-node cluster (see
+[[project_itunda_private_cloud]]) -- the in-cluster image build was refused outright (847MiB
+available vs. a 1536MiB safety floor), so the image was built locally via Colima and pushed directly
+to the cluster's registry instead (a real, working alternative path, not previously documented).
+Rolling the new image out then hit the startup probe's tight 5-minute budget under contention
+(`failureThreshold: 30 * periodSeconds: 10`) -- bumped to 60 (10 minutes), a safe, reversible probe
+tuning change left in place on the deployment, not a resource/capacity change. Even after that, the
+pod later failed its ongoing *liveness* probe (not startup) under sustained interactive load --
+`context deadline exceeded` against a 1-second probe timeout -- and briefly restarted; this
+self-recovered within about a minute with kubelet's normal retry behavior, no data loss, no code
+change needed. This matches, and does not change, the standing documented conclusion that the
+cluster's real fix is resizing resource requests/limits, which needs the user's go-ahead before
+being attempted.
