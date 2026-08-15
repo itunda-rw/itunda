@@ -161,7 +161,22 @@ export type TranslationKey =
   | 'reports.columnCollections'
   | 'reports.columnGross'
   | 'reports.columnFees'
-  | 'reports.columnNet';
+  | 'reports.columnNet'
+  | 'business.title'
+  | 'business.pitchBody'
+  | 'business.opening'
+  | 'business.open'
+  | 'business.loadError'
+  | 'business.openError'
+  | 'business.balanceLabel'
+  | 'business.transactionsTitle'
+  | 'business.transactionsEmpty'
+  | 'business.moveTitle'
+  | 'business.amountPlaceholder'
+  | 'business.amountValidationError'
+  | 'business.moveError'
+  | 'business.toBusiness'
+  | 'business.toPersonal';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -283,6 +298,21 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reports.columnGross': 'Gross',
     'reports.columnFees': 'Fees',
     'reports.columnNet': 'Net',
+    'business.title': 'Business account',
+    'business.pitchBody': "Keep your business money separate from your personal wallet. Your real card/QR collections still settle to your personal wallet as before — move money into your business account whenever you're ready to set it aside.",
+    'business.opening': 'Opening…',
+    'business.open': 'Open business account',
+    'business.loadError': 'Could not load your business account.',
+    'business.openError': 'Could not open a business account.',
+    'business.balanceLabel': 'Business balance',
+    'business.transactionsTitle': 'Business transactions',
+    'business.transactionsEmpty': "No business transactions yet — once you send or receive money, it'll show up here.",
+    'business.moveTitle': 'Move money',
+    'business.amountPlaceholder': 'Amount (RWF)',
+    'business.amountValidationError': 'Enter a real amount.',
+    'business.moveError': "Couldn't move this money. Check your balance.",
+    'business.toBusiness': 'To business',
+    'business.toPersonal': 'To personal',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -403,6 +433,21 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reports.columnGross': 'Igiteranyo',
     'reports.columnFees': 'Amafaranga y\'ubuyobozi',
     'reports.columnNet': 'Asigaye',
+    'business.title': 'Konti y\'ubucuruzi',
+    'business.pitchBody': 'Tandukanya amafaranga y\'ubucuruzi bwawe n\'aya konti yawe bwite. Amafaranga wakira ku ikarita/QR akomeza kujya kuri konti yawe bwite nk\'uko byari bimeze — wimura amafaranga ku konti y\'ubucuruzi igihe cyose ubishaka.',
+    'business.opening': 'Gufungura…',
+    'business.open': 'Fungura konti y\'ubucuruzi',
+    'business.loadError': 'Ntibishoboka gushakisha konti yawe y\'ubucuruzi.',
+    'business.openError': 'Ntibishoboka gufungura konti y\'ubucuruzi.',
+    'business.balanceLabel': 'Amafaranga y\'ubucuruzi',
+    'business.transactionsTitle': 'Ibikorwa by\'ubucuruzi',
+    'business.transactionsEmpty': 'Nta bikorwa by\'ubucuruzi urafite — igihe uzohereza cyangwa wakira amafaranga, bizagaragara hano.',
+    'business.moveTitle': 'Kwimura amafaranga',
+    'business.amountPlaceholder': 'Amafaranga (RWF)',
+    'business.amountValidationError': 'Andika amafaranga y\'ukuri.',
+    'business.moveError': 'Ntibishoboka kwimura aya mafaranga. Reba amafaranga ufite.',
+    'business.toBusiness': 'Ku bucuruzi',
+    'business.toPersonal': 'Ku giti cyawe',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -523,5 +568,20 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reports.columnGross': 'Brut',
     'reports.columnFees': 'Frais',
     'reports.columnNet': 'Net',
+    'business.title': 'Compte professionnel',
+    'business.pitchBody': "Séparez l'argent de votre entreprise de votre portefeuille personnel. Vos encaissements par carte/QR continuent d'être versés sur votre portefeuille personnel comme avant — transférez de l'argent vers votre compte professionnel quand vous le souhaitez.",
+    'business.opening': 'Ouverture…',
+    'business.open': 'Ouvrir un compte professionnel',
+    'business.loadError': 'Impossible de charger votre compte professionnel.',
+    'business.openError': "Impossible d'ouvrir un compte professionnel.",
+    'business.balanceLabel': 'Solde professionnel',
+    'business.transactionsTitle': 'Transactions professionnelles',
+    'business.transactionsEmpty': "Aucune transaction professionnelle pour le moment — dès que vous envoyez ou recevez de l'argent, elle apparaîtra ici.",
+    'business.moveTitle': "Transférer de l'argent",
+    'business.amountPlaceholder': 'Montant (RWF)',
+    'business.amountValidationError': 'Saisissez un montant valide.',
+    'business.moveError': 'Impossible de transférer cet argent. Vérifiez votre solde.',
+    'business.toBusiness': 'Vers professionnel',
+    'business.toPersonal': 'Vers personnel',
   },
 };

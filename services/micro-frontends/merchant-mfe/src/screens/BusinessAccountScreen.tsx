@@ -11,11 +11,13 @@ import {
   type BusinessWallet,
 } from '../lib/merchant';
 import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
+import { useI18n } from '../i18n/I18nContext';
 
 // Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent (item 150)
 // -- see lib/merchant.ts's own doc comment. Android's native merchantapp already has
 // this; this is the first web (merchant-mfe) client.
 export default function BusinessAccountScreen() {
+  const { t } = useI18n();
   const [wallet, setWallet] = useState<BusinessWallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<BusinessLedgerEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export default function BusinessAccountScreen() {
         if (err instanceof ApiError && err.code === 'BUSINESS_ACCOUNT_NOT_FOUND') {
           setWallet(null);
         } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your business account.');
+          setError(err instanceof ApiError ? err.message : t('business.loadError'));
         }
       });
   };
@@ -46,7 +48,7 @@ export default function BusinessAccountScreen() {
       await openBusinessAccount();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open a business account.');
+      setError(err instanceof ApiError ? err.message : t('business.openError'));
     } finally {
       setOpening(false);
     }
@@ -59,14 +61,13 @@ export default function BusinessAccountScreen() {
   if (wallet === null) {
     return (
       <div className="itunda-card" style={{ maxWidth: '480px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Business account</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('business.title')}</h2>
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
-          Keep your business money separate from your personal wallet. Your real card/QR collections still settle
-          to your personal wallet as before — move money into your business account whenever you're ready to set it aside.
+          {t('business.pitchBody')}
         </p>
         {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>}
         <button className="itunda-btn itunda-btn-primary" onClick={handleOpen} disabled={opening}>
-          {opening ? 'Opening…' : 'Open business account'}
+          {opening ? t('business.opening') : t('business.open')}
         </button>
       </div>
     );
@@ -75,7 +76,7 @@ export default function BusinessAccountScreen() {
   return (
     <div style={{ maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div className="itunda-card">
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Business balance</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('business.balanceLabel')}</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{wallet.balance.toLocaleString()} RWF</h2>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{wallet.accountNumber}</p>
       </div>
@@ -83,12 +84,12 @@ export default function BusinessAccountScreen() {
       <MoveMoneyCard onMoved={load} />
 
       <div className="itunda-card">
-        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Business transactions</h3>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>{t('business.transactionsTitle')}</h3>
         {// Real copy-voice fix (item 244, round 6 of the empty-state pass): matches
         // the same pattern as WalletTransactionsView's own already-shipped fix --
         // transactions are auto-recorded, not user-initiated setup.
         transactions.length === 0 ? (
-          <EmptyState message="No business transactions yet — once you send or receive money, it'll show up here." />
+          <EmptyState message={t('business.transactionsEmpty')} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {transactions.map((entry) => (
@@ -110,6 +111,7 @@ export default function BusinessAccountScreen() {
 }
 
 function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
+  const { t } = useI18n();
   const [amount, setAmount] = useState('');
   const [moving, setMoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +120,7 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
   const move = async (direction: 'TO_BUSINESS' | 'TO_PERSONAL') => {
     const value = Number(amount);
     if (!value || value <= 0) {
-      setError('Enter a real amount.');
+      setError(t('business.amountValidationError'));
       return;
     }
     setError(null);
@@ -132,7 +134,7 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
-        setError(err instanceof ApiError ? err.message : "Couldn't move this money. Check your balance.");
+        setError(err instanceof ApiError ? err.message : t('business.moveError'));
       }
     } finally {
       setMoving(false);
@@ -149,22 +151,22 @@ function MoveMoneyCard({ onMoved }: { onMoved: () => void }) {
 
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Move money</h3>
+      <h3 style={{ fontSize: '14px', fontWeight: 700 }}>{t('business.moveTitle')}</h3>
       <input
         type="number"
         min="1"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder="Amount (RWF)"
+        placeholder={t('business.amountPlaceholder')}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
       />
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={moving} onClick={() => move('TO_BUSINESS')}>
-          To business
+          {t('business.toBusiness')}
         </button>
         <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={moving} onClick={() => move('TO_PERSONAL')}>
-          To personal
+          {t('business.toPersonal')}
         </button>
       </div>
     </div>
