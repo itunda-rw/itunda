@@ -17,13 +17,26 @@ function detectInitialLocale(): Locale {
   return DEFAULT_LOCALE;
 }
 
+type TranslationParams = Record<string, string | number>;
+
 interface I18nContextValue {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: keyof (typeof translations)['en']) => string;
+  t: (key: keyof (typeof translations)['en'], params?: TranslationParams) => string;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
+
+// Real {{placeholder}} interpolation (2026-08-15, added alongside VendorCashAdvanceScreen's
+// own real offer-terms sentences, which genuinely need 3-4 dynamic values in one sentence --
+// same real need and same pattern bank-mfe's own I18nContext.tsx already proved out for its
+// overview.* keys, ported here rather than forcing an awkward prefix/suffix fragmentation).
+function interpolate(template: string, params?: TranslationParams): string {
+  if (!params) return template;
+  return template.replace(/\{\{(\w+)\}\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
+}
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(detectInitialLocale);
@@ -39,7 +52,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: keyof (typeof translations)['en']) => translations[locale][key] ?? translations[DEFAULT_LOCALE][key] ?? key,
+    (key: keyof (typeof translations)['en'], params?: TranslationParams) =>
+      interpolate(translations[locale][key] ?? translations[DEFAULT_LOCALE][key] ?? key, params),
     [locale],
   );
 

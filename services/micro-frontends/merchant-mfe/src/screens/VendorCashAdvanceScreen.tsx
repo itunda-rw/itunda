@@ -10,12 +10,14 @@ import {
   type VendorCashAdvance,
   type VendorCashAdvanceOffer,
 } from '../lib/vendorCashAdvance';
+import { useI18n } from '../i18n/I18nContext';
 
 // Real Isoko ("market" in Kinyarwanda) Vendor Cash Advance -- see lib/vendorCashAdvance.ts's
 // own doc comment for the full sourced account. First web client for this feature (v1
 // is web-only, consistent with MerchantBusinessAccountService's own web-first scope --
 // Android/iOS clients are a named follow-up, not built here).
 export default function VendorCashAdvanceScreen({ merchant }: { merchant: Merchant }) {
+  const { t } = useI18n();
   const [advance, setAdvance] = useState<VendorCashAdvance | null | undefined>(undefined);
   const [offer, setOffer] = useState<VendorCashAdvanceOffer | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
             .catch(() => setOffer(null));
         }
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your vendor cash advance.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('vendorAdvance.loadError')));
   };
 
   useEffect(load, [merchant.id]);
@@ -45,7 +47,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       await applyForVendorCashAdvance(merchant.id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't apply for a vendor cash advance.");
+      setError(err instanceof ApiError ? err.message : t('vendorAdvance.applyError'));
     } finally {
       setBusy(false);
     }
@@ -59,7 +61,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       await disburseVendorCashAdvance(advance.id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't disburse this advance.");
+      setError(err instanceof ApiError ? err.message : t('vendorAdvance.disburseError'));
     } finally {
       setBusy(false);
     }
@@ -69,7 +71,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
     if (!advance) return;
     const value = Number(repayAmount);
     if (!value || value <= 0) {
-      setError('Enter a real amount.');
+      setError(t('vendorAdvance.amountValidationError'));
       return;
     }
     setError(null);
@@ -79,7 +81,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       setRepayAmount('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't repay this advance. Check your balance.");
+      setError(err instanceof ApiError ? err.message : t('vendorAdvance.repayError'));
     } finally {
       setBusy(false);
     }
@@ -92,12 +94,9 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
   return (
     <div style={{ maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div className="itunda-card">
-        <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Isoko Vendor Cash Advance</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('vendorAdvance.title')}</h2>
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '0' }}>
-          A cash advance against your own real itunda sales history. There's no fixed repayment schedule --
-          itunda automatically collects a share of your real QR/card sales here each day until it's paid off. This
-          can only see and collect sales that actually go through itunda; cash you collect off-platform isn't part
-          of this at all.
+          {t('vendorAdvance.pitchBody')}
         </p>
       </div>
 
@@ -109,16 +108,19 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
 
       {!advance && offer && offer.eligible && (
         <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>You're eligible for</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('vendorAdvance.eligibleFor')}</p>
           <h3 style={{ fontSize: '24px', fontWeight: 700 }}>{offer.offerAmount?.toLocaleString()} RWF</h3>
           <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-            One-time fee: {offer.feeAmount?.toLocaleString()} RWF -- itunda then collects {offer.collectionRatePercent}% of your
-            real daily itunda-collected sales here until{' '}
-            {((offer.offerAmount ?? 0) + (offer.feeAmount ?? 0)).toLocaleString()} RWF is repaid. Based on your real average of{' '}
-            {offer.averageDailySettlement?.toLocaleString()} RWF/day over your last {offer.tradingDays} real trading days.
+            {t('vendorAdvance.offerBody', {
+              feeAmount: offer.feeAmount?.toLocaleString() ?? '0',
+              ratePercent: offer.collectionRatePercent ?? 0,
+              totalRepay: ((offer.offerAmount ?? 0) + (offer.feeAmount ?? 0)).toLocaleString(),
+              avgDaily: offer.averageDailySettlement?.toLocaleString() ?? '0',
+              tradingDays: offer.tradingDays ?? 0,
+            })}
           </p>
           <button className="itunda-btn itunda-btn-primary" onClick={handleApply} disabled={busy}>
-            {busy ? 'Applying…' : 'Apply for this advance'}
+            {busy ? t('vendorAdvance.applying') : t('vendorAdvance.applyButton')}
           </button>
         </div>
       )}
@@ -126,7 +128,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       {!advance && offer && !offer.eligible && (
         <div className="itunda-card">
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-            Not eligible yet -- {offer.reason}. Keep collecting real QR/card sales through itunda and check back.
+            {t('vendorAdvance.notEligibleBody', { reason: offer.reason ?? '' })}
           </p>
         </div>
       )}
@@ -134,10 +136,10 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       {advance && advance.status === 'REQUESTED' && (
         <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-            Your {advance.principalAmount.toLocaleString()} RWF advance was approved and is ready to disburse to your wallet.
+            {t('vendorAdvance.readyToDisburseBody', { principalAmount: advance.principalAmount.toLocaleString() })}
           </p>
           <button className="itunda-btn itunda-btn-primary" onClick={handleDisburse} disabled={busy}>
-            {busy ? 'Disbursing…' : 'Disburse to my wallet'}
+            {busy ? t('vendorAdvance.disbursing') : t('vendorAdvance.disburseButton')}
           </button>
         </div>
       )}
@@ -145,7 +147,7 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
       {advance && advance.status === 'DISBURSED' && (
         <>
           <div className="itunda-card">
-            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Remaining owed</p>
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('vendorAdvance.remainingOwedLabel')}</p>
             <h3 style={{ fontSize: '24px', fontWeight: 700 }}>{advance.remainingOwed.toLocaleString()} RWF</h3>
             <div
               style={{
@@ -161,24 +163,31 @@ export default function VendorCashAdvanceScreen({ merchant }: { merchant: Mercha
               />
             </div>
             <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '6px' }}>
-              of {advance.totalOwed.toLocaleString()} RWF total owed -- {advance.collectionRatePercent}% of your real daily
-              itunda sales is collected automatically
-              {advance.lastCollectionAt ? `, last collected ${new Date(advance.lastCollectionAt).toLocaleDateString()}` : ''}.
+              {advance.lastCollectionAt
+                ? t('vendorAdvance.progressBodyWithLastCollection', {
+                    totalOwed: advance.totalOwed.toLocaleString(),
+                    ratePercent: advance.collectionRatePercent,
+                    lastCollectionDate: new Date(advance.lastCollectionAt).toLocaleDateString(),
+                  })
+                : t('vendorAdvance.progressBody', {
+                    totalOwed: advance.totalOwed.toLocaleString(),
+                    ratePercent: advance.collectionRatePercent,
+                  })}
             </p>
           </div>
 
           <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Repay early</h3>
+            <h3 style={{ fontSize: '14px', fontWeight: 700 }}>{t('vendorAdvance.repayEarlyTitle')}</h3>
             <input
               type="number"
               min="1"
               value={repayAmount}
               onChange={(e) => setRepayAmount(e.target.value)}
-              placeholder="Amount (RWF)"
+              placeholder={t('vendorAdvance.amountPlaceholder')}
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
             <button className="itunda-btn itunda-btn-secondary" onClick={handleRepayEarly} disabled={busy}>
-              {busy ? 'Repaying…' : 'Repay now'}
+              {busy ? t('vendorAdvance.repaying') : t('vendorAdvance.repayButton')}
             </button>
           </div>
         </>

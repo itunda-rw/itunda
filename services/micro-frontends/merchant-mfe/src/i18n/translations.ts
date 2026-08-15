@@ -176,7 +176,32 @@ export type TranslationKey =
   | 'business.amountValidationError'
   | 'business.moveError'
   | 'business.toBusiness'
-  | 'business.toPersonal';
+  | 'business.toPersonal'
+  // Real 7th-localization-pass additions (2026-08-15): VendorCashAdvanceScreen -- the
+  // real Isoko Vendor Cash Advance flow. First screen in this MFE needing real
+  // {{placeholder}} interpolation (see I18nContext.tsx's own doc comment).
+  | 'vendorAdvance.title'
+  | 'vendorAdvance.pitchBody'
+  | 'vendorAdvance.loadError'
+  | 'vendorAdvance.applyError'
+  | 'vendorAdvance.disburseError'
+  | 'vendorAdvance.amountValidationError'
+  | 'vendorAdvance.repayError'
+  | 'vendorAdvance.eligibleFor'
+  | 'vendorAdvance.offerBody'
+  | 'vendorAdvance.applying'
+  | 'vendorAdvance.applyButton'
+  | 'vendorAdvance.notEligibleBody'
+  | 'vendorAdvance.readyToDisburseBody'
+  | 'vendorAdvance.disbursing'
+  | 'vendorAdvance.disburseButton'
+  | 'vendorAdvance.remainingOwedLabel'
+  | 'vendorAdvance.progressBody'
+  | 'vendorAdvance.progressBodyWithLastCollection'
+  | 'vendorAdvance.repayEarlyTitle'
+  | 'vendorAdvance.amountPlaceholder'
+  | 'vendorAdvance.repaying'
+  | 'vendorAdvance.repayButton';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -313,6 +338,28 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'business.moveError': "Couldn't move this money. Check your balance.",
     'business.toBusiness': 'To business',
     'business.toPersonal': 'To personal',
+    'vendorAdvance.title': 'Isoko Vendor Cash Advance',
+    'vendorAdvance.pitchBody': "A cash advance against your own real itunda sales history. There's no fixed repayment schedule -- itunda automatically collects a share of your real QR/card sales here each day until it's paid off. This can only see and collect sales that actually go through itunda; cash you collect off-platform isn't part of this at all.",
+    'vendorAdvance.loadError': 'Could not load your vendor cash advance.',
+    'vendorAdvance.applyError': "Couldn't apply for a vendor cash advance.",
+    'vendorAdvance.disburseError': "Couldn't disburse this advance.",
+    'vendorAdvance.amountValidationError': 'Enter a real amount.',
+    'vendorAdvance.repayError': "Couldn't repay this advance. Check your balance.",
+    'vendorAdvance.eligibleFor': "You're eligible for",
+    'vendorAdvance.offerBody': 'One-time fee: {{feeAmount}} RWF -- itunda then collects {{ratePercent}}% of your real daily itunda-collected sales here until {{totalRepay}} RWF is repaid. Based on your real average of {{avgDaily}} RWF/day over your last {{tradingDays}} real trading days.',
+    'vendorAdvance.applying': 'Applying…',
+    'vendorAdvance.applyButton': 'Apply for this advance',
+    'vendorAdvance.notEligibleBody': 'Not eligible yet -- {{reason}}. Keep collecting real QR/card sales through itunda and check back.',
+    'vendorAdvance.readyToDisburseBody': 'Your {{principalAmount}} RWF advance was approved and is ready to disburse to your wallet.',
+    'vendorAdvance.disbursing': 'Disbursing…',
+    'vendorAdvance.disburseButton': 'Disburse to my wallet',
+    'vendorAdvance.remainingOwedLabel': 'Remaining owed',
+    'vendorAdvance.progressBody': 'of {{totalOwed}} RWF total owed -- {{ratePercent}}% of your real daily itunda sales is collected automatically.',
+    'vendorAdvance.progressBodyWithLastCollection': 'of {{totalOwed}} RWF total owed -- {{ratePercent}}% of your real daily itunda sales is collected automatically, last collected {{lastCollectionDate}}.',
+    'vendorAdvance.repayEarlyTitle': 'Repay early',
+    'vendorAdvance.amountPlaceholder': 'Amount (RWF)',
+    'vendorAdvance.repaying': 'Repaying…',
+    'vendorAdvance.repayButton': 'Repay now',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -448,6 +495,28 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'business.moveError': 'Ntibishoboka kwimura aya mafaranga. Reba amafaranga ufite.',
     'business.toBusiness': 'Ku bucuruzi',
     'business.toPersonal': 'Ku giti cyawe',
+    'vendorAdvance.title': 'Isoko Vendor Cash Advance',
+    'vendorAdvance.pitchBody': 'Inguzanyo ishingiye ku mateka y\'ukuri y\'ibyo ucuruza kuri itunda. Nta gahunda ihamye yo kwishyura -- itunda ifata igice cy\'amafaranga wakiriye ku QR/ikarita buri munsi kugeza yishyuwe. Iyi nguzanyo ireba gusa amafaranga anyura kuri itunda; amafaranga ukusanya hanze ya itunda ntabwo agize uruhare muri iyi.',
+    'vendorAdvance.loadError': 'Ntibishoboka gushakisha inguzanyo yawe.',
+    'vendorAdvance.applyError': 'Ntibishoboka gusaba iyi nguzanyo.',
+    'vendorAdvance.disburseError': 'Ntibishoboka koherereza iyi nguzanyo.',
+    'vendorAdvance.amountValidationError': 'Andika amafaranga y\'ukuri.',
+    'vendorAdvance.repayError': 'Ntibishoboka kwishyura iyi nguzanyo. Reba amafaranga ufite.',
+    'vendorAdvance.eligibleFor': 'Ushobora kubona',
+    'vendorAdvance.offerBody': 'Amafaranga y\'inshuro imwe: {{feeAmount}} RWF -- itunda hanyuma ifata {{ratePercent}}% by\'ibyo ucuruza kuri itunda buri munsi kugeza {{totalRepay}} RWF yishyuwe. Bishingiye ku ruhare rwawe rwa buri munsi rwa {{avgDaily}} RWF mu minsi {{tradingDays}} ushize wacuruzaga.',
+    'vendorAdvance.applying': 'Gusaba…',
+    'vendorAdvance.applyButton': 'Saba iyi nguzanyo',
+    'vendorAdvance.notEligibleBody': 'Ntabwo wemererwa ubu -- {{reason}}. Komeza gucuruza kuri itunda hanyuma ugaruke.',
+    'vendorAdvance.readyToDisburseBody': 'Inguzanyo yawe ya {{principalAmount}} RWF yemewe kandi iteguye koherezwa kuri konti yawe.',
+    'vendorAdvance.disbursing': 'Kohereza…',
+    'vendorAdvance.disburseButton': 'Ohereza kuri konti yanjye',
+    'vendorAdvance.remainingOwedLabel': 'Asigaye kwishyurwa',
+    'vendorAdvance.progressBody': 'kuri {{totalOwed}} RWF byose ubwiyunge -- {{ratePercent}}% by\'ibyo ucuruza buri munsi bifatwa mu buryo bwikora.',
+    'vendorAdvance.progressBodyWithLastCollection': 'kuri {{totalOwed}} RWF byose ubwiyunge -- {{ratePercent}}% by\'ibyo ucuruza buri munsi bifatwa mu buryo bwikora, byanyuma byafashwe {{lastCollectionDate}}.',
+    'vendorAdvance.repayEarlyTitle': 'Kwishyura mbere y\'igihe',
+    'vendorAdvance.amountPlaceholder': 'Amafaranga (RWF)',
+    'vendorAdvance.repaying': 'Kwishyura…',
+    'vendorAdvance.repayButton': 'Ishyura nonaha',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -583,5 +652,27 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'business.moveError': 'Impossible de transférer cet argent. Vérifiez votre solde.',
     'business.toBusiness': 'Vers professionnel',
     'business.toPersonal': 'Vers personnel',
+    'vendorAdvance.title': 'Avance de trésorerie Isoko',
+    'vendorAdvance.pitchBody': "Une avance de trésorerie basée sur votre propre historique de ventes itunda. Il n'y a pas d'échéancier de remboursement fixe -- itunda prélève automatiquement une part de vos ventes QR/carte réelles chaque jour jusqu'à remboursement complet. Seules les ventes qui passent réellement par itunda sont concernées ; l'argent collecté en dehors de la plateforme n'en fait pas partie.",
+    'vendorAdvance.loadError': 'Impossible de charger votre avance de trésorerie.',
+    'vendorAdvance.applyError': "Impossible de faire une demande d'avance de trésorerie.",
+    'vendorAdvance.disburseError': 'Impossible de débloquer cette avance.',
+    'vendorAdvance.amountValidationError': 'Saisissez un montant valide.',
+    'vendorAdvance.repayError': 'Impossible de rembourser cette avance. Vérifiez votre solde.',
+    'vendorAdvance.eligibleFor': 'Vous êtes éligible à',
+    'vendorAdvance.offerBody': 'Frais unique : {{feeAmount}} RWF -- itunda prélève ensuite {{ratePercent}}% de vos ventes quotidiennes réelles via itunda jusqu\'au remboursement de {{totalRepay}} RWF. Basé sur votre moyenne réelle de {{avgDaily}} RWF/jour sur vos {{tradingDays}} derniers jours d\'activité réels.',
+    'vendorAdvance.applying': 'Envoi en cours…',
+    'vendorAdvance.applyButton': 'Demander cette avance',
+    'vendorAdvance.notEligibleBody': "Pas encore éligible -- {{reason}}. Continuez à encaisser de vraies ventes QR/carte via itunda et revenez plus tard.",
+    'vendorAdvance.readyToDisburseBody': 'Votre avance de {{principalAmount}} RWF a été approuvée et est prête à être versée sur votre portefeuille.',
+    'vendorAdvance.disbursing': 'Déblocage en cours…',
+    'vendorAdvance.disburseButton': 'Verser sur mon portefeuille',
+    'vendorAdvance.remainingOwedLabel': 'Solde restant dû',
+    'vendorAdvance.progressBody': 'sur {{totalOwed}} RWF au total dus -- {{ratePercent}}% de vos ventes quotidiennes réelles via itunda est prélevé automatiquement.',
+    'vendorAdvance.progressBodyWithLastCollection': 'sur {{totalOwed}} RWF au total dus -- {{ratePercent}}% de vos ventes quotidiennes réelles via itunda est prélevé automatiquement, dernier prélèvement le {{lastCollectionDate}}.',
+    'vendorAdvance.repayEarlyTitle': 'Rembourser par anticipation',
+    'vendorAdvance.amountPlaceholder': 'Montant (RWF)',
+    'vendorAdvance.repaying': 'Remboursement en cours…',
+    'vendorAdvance.repayButton': 'Rembourser maintenant',
   },
 };
