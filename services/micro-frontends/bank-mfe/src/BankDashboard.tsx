@@ -21021,6 +21021,28 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     const interval = setInterval(poll, 15000);
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
+  // Real, smaller follow-up named alongside the Messages badge above (Section 41
+  // item 4): NotificationsCard's own real unreadCount was already fetched and shown
+  // *inside* the You tab, but never reached PRIMARY_TABS either, so opening You was
+  // the only way to learn something needed attention. Named-product rule cited in the
+  // same doc section: a plain dot (not a number) is correct here, since this is a
+  // general "something changed" signal, not an exact count that drives the next
+  // action the way an unread message count does -- deliberately not mixed with the
+  // numeric Messages badge on the same bar.
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      fetchNotifications()
+        .then((r) => { if (!cancelled) setHasUnreadNotifications(r.unreadCount > 0); })
+        .catch(() => {
+          // Non-critical -- a poll failure just leaves the last-known dot state.
+        });
+    };
+    poll();
+    const interval = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
   // Real deep-link from the Home coop rail into LoansView's own specific mode
   // (2026-08-10) -- see LoansView's own initialMode doc comment for the full account.
   const [pendingLoansMode, setPendingLoansMode] = useState<LoansMode | null>(null);
@@ -21212,6 +21234,16 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
                 >
                   {messagesUnreadCount > 99 ? '99+' : messagesUnreadCount}
                 </span>
+              )}
+              {id === 'YOU' && hasUnreadNotifications && (
+                <span
+                  style={{
+                    position: 'absolute', top: '-2px', right: '-4px', width: '9px', height: '9px',
+                    borderRadius: '999px', backgroundColor: 'var(--itunda-red)',
+                    border: '1.5px solid var(--itunda-grey-100)',
+                  }}
+                  aria-label="Unread notifications"
+                />
               )}
             </div>
             {label}
