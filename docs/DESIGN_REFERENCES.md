@@ -6144,3 +6144,54 @@ codebase's own standing Toss-style "never leave a dead end" error-handling philo
 
 Android/iOS are compile-verified only (no physical device this session) but rely on the exact same
 already-live-verified backend contract.
+
+## 69. Uber Senior Accounts -- itunda's Family Link can't request a ride for someone else
+
+**Added 2026-08-15**, continuing the standing "keep searching other ecosystems" directive. Fresh
+search on Uber's own real 2025-2026 roadmap (not a re-read of old research): Uber launched "Senior
+Accounts" nationwide in the US (2025-06-04 press release) and has been expanding internationally
+through 2026 -- a family organizer links an elderly relative's account (reusing Uber's existing
+Family Profile feature), then can request rides *on that relative's behalf*, manage their payment
+methods, and follow the trip live, all from the organizer's own phone. A separate "Simple Mode"
+gives an independent older rider a lower-friction UI (larger text, fewer on-screen buttons,
+optional voice commands) without needing a family link at all.
+
+### Checked against itunda's own code
+
+itunda already has a real, matching relationship primitive: `FamilyLinkController`
+(`services/backend/family/src/main/kotlin/rw/itunda/family/web/FamilyLinkController.kt`) --
+guardian/child invites, `childOverview` (read-only spending visibility), and `setSpendLimit`. But
+reading it end to end, the whole feature is strictly **read + limit-setting**, not
+**act-on-behalf-of**: there is no endpoint anywhere that lets a linked guardian actually request a
+ride, book a service, or place an order FOR the linked child/relative. `RideController.requestTrip`
+and every other request-creating controller only ever create the trip/order/booking for the
+authenticated caller themselves -- a real, confirmed gap, not a guess.
+
+**Deliberately not built this pass** -- this is a genuinely larger, architectural feature (unlike
+the same-day Idempotency-Key/decode-shape bug fixes, which were surgical), for the same reason
+Section 67's guest-DineIn-ordering gap was scoped and not built: it needs real design decisions
+before implementation, not a same-session quick fix --
+- **Who is the "rider" of record?** The linked relative must remain the actual passenger a driver
+  picks up and a trip's pickup/dropoff/live-location notifications target -- not silently
+  reassigned to the requesting family member, which would break every existing "the rider is the
+  authenticated caller" assumption baked into `RideTripService`/push notifications/live tracking.
+- **Who pays?** Uber's real version supports the organizer's own card, meaning payment
+  authorization needs to flow from a DIFFERENT wallet than the trip's own rider -- itunda's ledger
+  model currently assumes a trip's payer and rider are the same account.
+- **Consent/scope**: Uber's Family Profile linking is an explicit, mutual, revocable relationship
+  (matching itunda's own `FamilyLink` invite/accept/revoke flow already) -- reusable as the trust
+  primitive, but the request-on-behalf-of action itself needs its own explicit authorization scope,
+  not implied by an existing read-only spend-limit link.
+
+**Smaller, separable, more tractable half NOT attempted this pass either**: Uber's "Simple Mode" (a
+real, standing UI accessibility toggle -- larger text, fewer buttons -- reachable without any
+family link) is architecturally much simpler than the request-on-behalf-of half, closer in shape to
+Android's existing `AppLocalePreference`/theme-mode toggles. Worth a real look in a focused future
+pass rather than folded into this same-day research note.
+
+**How to apply:** if request-on-behalf-of is ever prioritized, start with `FamilyLink`'s existing
+guardian/child relationship as the trust primitive (already real, already has consent/revoke), and
+`RideController.requestTrip`/`DesignatedDriverController.requestTrip` as the first two real
+candidates (rideshare is where Uber's own feature shipped first) -- both would need a new optional
+`onBehalfOfUserId` request field, a real authorization check against `FamilyLinkRepository`, and a
+clear design decision on payer vs. rider wallet routing before writing any client code.
