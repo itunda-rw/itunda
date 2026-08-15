@@ -419,6 +419,12 @@ data class ConfirmTransferResponse(val success: Boolean, val message: String, va
 data class SendDirectP2pRequest(val recipient: String, val amount: java.math.BigDecimal, val description: String = "")
 data class SendDirectP2pResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
 
+// Real Naver Pay "가족 공유 자산 관리" (family shared asset management) -- instant
+// transfer to a linked family member, see backend P2pService.sendToFamilyMember's own
+// doc comment. bank-mfe already has this (2026-08-15); this is the first Android client.
+data class SendToFamilyMemberRequest(val childUserId: String, val amount: java.math.BigDecimal, val description: String = "")
+data class SendToFamilyMemberResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
+
 // Real fixed-amount person-to-person payment request (item 170) -- the P2P counterpart
 // to a merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's own doc
 // comment). A real 15-minute-expiring code the requester shares; anyone who has the
@@ -2377,6 +2383,11 @@ interface ApiService {
     // MainViewModel.sendTransfer.
     @POST("api/v1/p2p/send")
     suspend fun sendDirect(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SendDirectP2pRequest): SendDirectP2pResponse
+
+    // Real Naver Pay "가족 공유 자산 관리" -- see SendToFamilyMemberRequest's own doc
+    // comment.
+    @POST("api/v1/p2p/send-to-family")
+    suspend fun sendToFamilyMember(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SendToFamilyMemberRequest): SendToFamilyMemberResponse
 
     @POST("api/v1/p2p/request")
     suspend fun generateP2pRequest(@Body request: GenerateP2pRequest): GenerateP2pRequestResponse

@@ -72,6 +72,11 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
     var editingLimitFor by remember { mutableStateOf<String?>(null) }
     var limitInput by remember { mutableStateOf("") }
     var limitBusyId by remember { mutableStateOf<String?>(null) }
+    // Real Naver Pay "가족 공유 자산 관리" -- instant transfer to a linked family
+    // member, see ApiService.sendToFamilyMember's own doc comment.
+    var sendAmountInput by remember { mutableStateOf("") }
+    var sendBusy by remember { mutableStateOf(false) }
+    var sendDone by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -156,11 +161,37 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
             return
         }
         openOverviewFor = childUserId
+        sendAmountInput = ""
+        sendDone = false
         coroutineScope.launch {
             try {
                 overview = NetworkClient.apiService.getChildOverview(childUserId).overview
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
+            }
+        }
+    }
+
+    fun sendToChild(childUserId: String) {
+        val amount = sendAmountInput.trim().toBigDecimalOrNull()
+        if (amount == null || amount <= java.math.BigDecimal.ZERO) return
+        sendBusy = true
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.sendToFamilyMember(
+                    idempotencyKey = java.util.UUID.randomUUID().toString(),
+                    request = rw.itunda.core.network.SendToFamilyMemberRequest(childUserId, amount, "Sent from Family"),
+                )
+                sendDone = true
+                sendAmountInput = ""
+                overview = NetworkClient.apiService.getChildOverview(childUserId).overview
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                sendBusy = false
             }
         }
     }
@@ -286,6 +317,20 @@ fun FamilyLinkScreen(onBack: () -> Unit) {
                                         o.recentTransactions.take(5).forEach { t ->
                                             Text("${t.description} · ${"%,.0f".format(t.amount)} RWF", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                         }
+                                    }
+                                    // Real Naver Pay "family shared asset management" --
+                                    // instant transfer to this linked family member.
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                        IdsTextField(value = sendAmountInput, onValueChange = { sendAmountInput = it; sendDone = false }, label = "Amount (RWF)", modifier = Modifier.weight(1f))
+                                        Box(
+                                            modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                                                .background(if (sendBusy || sendAmountInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
+                                                .clickable(enabled = !sendBusy && sendAmountInput.isNotBlank()) { sendToChild(c.link.childUserId) }
+                                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                        ) { Text(if (sendBusy) "…" else "Send", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                                    }
+                                    if (sendDone) {
+                                        Text("Sent.", color = Ids.colors.success, fontSize = 12.sp)
                                     }
                                 }
                             }
