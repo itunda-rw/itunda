@@ -241,6 +241,24 @@ import {
 // render directly, exactly as they did before either hub existed.
 type Tab = 'HOME' | 'PAY' | 'EXPLORE' | 'YOU' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'EATS' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
+// Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 6):
+// `tab` lived only in local useState, never in the URL -- refreshing the page or
+// sharing a link always landed back on Home, unlike every native app's own real
+// itunda:// deep-link scheme (Section 1). This is the runtime mirror of the `Tab`
+// union above (TypeScript types don't exist at runtime, so an incoming `?tab=` value
+// needs a real Set to validate against, not just a cast) -- kept next to the type so
+// the two can't silently drift apart when a tab is added or removed.
+const ALL_TAB_IDS = new Set<Tab>(['HOME', 'PAY', 'EXPLORE', 'YOU', 'CERTIFICATE', 'SHOPPING', 'SHOP', 'EATS', 'MARKETPLACE', 'COMMUNITY', 'JOBS', 'PROPERTY', 'STOCKS', 'SAVINGS', 'MESSAGES', 'RIDES', 'DESIGNATED_DRIVER', 'BIKESHARE', 'PARKING', 'BUS', 'KNOWLEDGE', 'MAP', 'DEVICES', 'CARD', 'OVERVIEW', 'LOANS', 'CREDIT_SCORE', 'TRUST_SCORE', 'IDENTITY', 'SUPPORT', 'MY', 'SUBSCRIPTIONS', 'SPENDING', 'FOREIGN_CURRENCY', 'REWARDS', 'INSURANCE', 'BILLS', 'AGENT', 'USSD']);
+const TAB_QUERY_PARAM = 'tab';
+const readTabFromUrl = (): Tab => {
+  try {
+    const raw = new URLSearchParams(window.location.search).get(TAB_QUERY_PARAM);
+    return raw && ALL_TAB_IDS.has(raw as Tab) ? (raw as Tab) : 'HOME';
+  } catch {
+    return 'HOME';
+  }
+};
+
 function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: Wallet | null; onTransferClick: () => void; onClaimInterest: () => void }) {
   const { t } = useI18n();
   // Real Toss Bank reference (user-provided, 2026-08-12): the account detail screen
@@ -20948,7 +20966,23 @@ const saveRecentTab = (id: Tab, current: Tab[]): Tab[] => {
 };
 
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
-  const [tab, setTab] = useState<Tab>('HOME');
+  const [tab, setTabState] = useState<Tab>(() => readTabFromUrl());
+  // Keeps `tab` deep-linkable: every real navigation both updates state and pushes a
+  // real URL (?tab=X) so refresh/share/back-button all land where the user actually
+  // was, not always Home. `history.pushState` (not `replaceState`) so the browser's
+  // real back button steps through tab history one screen at a time, matching every
+  // native app's own real back-stack behavior (Section 1's itunda:// deep links).
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set(TAB_QUERY_PARAM, next);
+    window.history.pushState({ tab: next }, '', url);
+  };
+  useEffect(() => {
+    const onPopState = () => setTabState(readTabFromUrl());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
   // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 3):
   // search only ever existed buried inside the Explore tab, not reachable from
