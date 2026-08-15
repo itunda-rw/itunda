@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useQueue } from '../hooks/useQueue';
 import { getReport } from '../lib/merchant';
 import { QueueError, QueueSkeleton } from '../QueueState';
+import { useI18n } from '../i18n/I18nContext';
 
 // `<input type="date">` is a calendar-date control, so preserve the merchant's
 // local calendar day rather than converting (and potentially shifting it) to UTC.
@@ -20,6 +21,7 @@ function rangeEndingToday(days: number) {
 }
 
 export default function ReportsScreen() {
+  const { t } = useI18n();
   const initialRange = rangeEndingToday(7);
   const [from, setFrom] = useState(initialRange.from);
   const [to, setTo] = useState(initialRange.to);
@@ -34,17 +36,17 @@ export default function ReportsScreen() {
 
   const applyRange = (nextFrom = draftFrom, nextTo = draftTo) => {
     if (!nextFrom || !nextTo) {
-      setValidationError('Choose both a start and end date.');
+      setValidationError(t('reports.validationBothDates'));
       return;
     }
     const start = new Date(`${nextFrom}T00:00:00Z`);
     const end = new Date(`${nextTo}T00:00:00Z`);
     if (start > end) {
-      setValidationError('The start date must be on or before the end date.');
+      setValidationError(t('reports.validationStartBeforeEnd'));
       return;
     }
     if ((end.getTime() - start.getTime()) / 86_400_000 > 30) {
-      setValidationError('Reports can cover up to 31 days at a time.');
+      setValidationError(t('reports.validationMaxRange'));
       return;
     }
     setValidationError(null);
@@ -79,16 +81,17 @@ export default function ReportsScreen() {
   if (error) return <QueueError message={error} onRetry={reload} />;
   if (items === null || totals === null) return <QueueSkeleton />;
 
-  const rangeLabel = `${from} to ${to}`;
+  const rangeLabel = `${from} ${t('reports.rangeSeparator')} ${to}`;
+  const presetKey: Record<number, 'reports.last7Days' | 'reports.last30Days'> = { 7: 'reports.last7Days', 30: 'reports.last30Days' };
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Collections report</h2>
-          <p style={{ color: 'var(--itunda-grey-500)', fontSize: '13px', marginTop: '4px' }}>{rangeLabel} · settled collections</p>
+          <h2 style={{ fontSize: '20px', fontWeight: 700 }}>{t('reports.title')}</h2>
+          <p style={{ color: 'var(--itunda-grey-500)', fontSize: '13px', marginTop: '4px' }}>{rangeLabel} · {t('reports.settledSuffix')}</p>
         </div>
         <button className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 14px' }} disabled={refreshing} onClick={reload}>
-          Refresh
+          {t('reports.refresh')}
         </button>
       </div>
 
@@ -100,33 +103,33 @@ export default function ReportsScreen() {
         <div style={{ display: 'flex', gap: '8px' }} aria-label="Report period shortcuts">
           {[7, 30].map((days) => (
             <button key={days} type="button" className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 12px' }} onClick={() => selectPreset(days)}>
-              Last {days} days
+              {t(presetKey[days])}
             </button>
           ))}
         </div>
         <label style={{ display: 'grid', gap: '5px', fontSize: '13px', fontWeight: 600 }}>
-          From
+          {t('reports.fromLabel')}
           <input type="date" value={draftFrom} max={draftTo} onChange={(event) => setDraftFrom(event.target.value)} />
         </label>
         <label style={{ display: 'grid', gap: '5px', fontSize: '13px', fontWeight: 600 }}>
-          To
+          {t('reports.toLabel')}
           <input type="date" value={draftTo} min={draftFrom} max={isoDate(new Date())} onChange={(event) => setDraftTo(event.target.value)} />
         </label>
-        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ padding: '9px 14px' }}>Apply</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ padding: '9px 14px' }}>{t('reports.apply')}</button>
         {validationError && <p role="alert" style={{ width: '100%', fontSize: '13px', color: 'var(--itunda-red)' }}>{validationError}</p>}
       </form>
 
       <div className="itunda-card" style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
-        <Metric label="Collections" value={totals.collections.toLocaleString()} />
-        <Metric label="Gross" value={`${totals.gross.toLocaleString()} RWF`} />
-        <Metric label="Fees" value={`${totals.fees.toLocaleString()} RWF`} />
-        <Metric label="Net settled" value={`${totals.net.toLocaleString()} RWF`} highlighted />
+        <Metric label={t('reports.metricCollections')} value={totals.collections.toLocaleString()} />
+        <Metric label={t('reports.metricGross')} value={`${totals.gross.toLocaleString()} RWF`} />
+        <Metric label={t('reports.metricFees')} value={`${totals.fees.toLocaleString()} RWF`} />
+        <Metric label={t('reports.metricNet')} value={`${totals.net.toLocaleString()} RWF`} highlighted />
       </div>
 
       <div className="itunda-card">
-        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Collection channels</h3>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>{t('reports.channelsTitle')}</h3>
         {totals.channels.length === 0 ? (
-          <p style={{ color: 'var(--itunda-grey-500)', fontSize: '14px' }}>No settled collections in this range.</p>
+          <p style={{ color: 'var(--itunda-grey-500)', fontSize: '14px' }}>{t('reports.channelsEmpty')}</p>
         ) : totals.channels.map(([channel, count]) => (
           <div key={channel} style={{ display: 'grid', gridTemplateColumns: '88px 1fr auto', gap: '10px', alignItems: 'center', marginTop: '10px', fontSize: '14px' }}>
             <span style={{ fontWeight: 600 }}>{channel.replace('_', ' ')}</span>
@@ -141,7 +144,7 @@ export default function ReportsScreen() {
       <div className="itunda-card" style={{ padding: 0, overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '640px' }}>
           <thead><tr style={{ backgroundColor: 'var(--itunda-grey-100)' }}>
-            {['Date', 'Collections', 'Gross', 'Fees', 'Net'].map((heading, index) => <th key={heading} style={{ textAlign: index === 0 ? 'left' : 'right', padding: '12px 16px' }}>{heading}</th>)}
+            {(['reports.columnDate', 'reports.columnCollections', 'reports.columnGross', 'reports.columnFees', 'reports.columnNet'] as const).map((headingKey, index) => <th key={headingKey} style={{ textAlign: index === 0 ? 'left' : 'right', padding: '12px 16px' }}>{t(headingKey)}</th>)}
           </tr></thead>
           <tbody>{items.map((day) => (
             <tr key={day.date} style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>

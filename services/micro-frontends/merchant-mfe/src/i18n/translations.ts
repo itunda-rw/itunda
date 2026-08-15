@@ -94,7 +94,74 @@ export type TranslationKey =
   | 'collect.cardExpiryYear'
   | 'collect.cardCvc'
   | 'collect.cardCharging'
-  | 'collect.cardChargeButton';
+  | 'collect.cardChargeButton'
+  // Real 4th-localization-pass additions (2026-08-15): EatsOrdersScreen -- the real
+  // Coupang Eats/Baemin-style restaurant order queue, second-highest-traffic content
+  // screen after Collect for any merchant running a restaurant.
+  | 'eatsOrders.statusPlaced'
+  | 'eatsOrders.statusAccepted'
+  | 'eatsOrders.statusPreparing'
+  | 'eatsOrders.statusReadyForPickup'
+  | 'eatsOrders.statusRiderAssigned'
+  | 'eatsOrders.statusPickedUp'
+  | 'eatsOrders.statusDelivered'
+  | 'eatsOrders.statusCancelled'
+  | 'eatsOrders.pickupSuffix'
+  | 'eatsOrders.loadError'
+  | 'eatsOrders.updateError'
+  | 'eatsOrders.completePickupError'
+  | 'eatsOrders.notePrefix'
+  | 'eatsOrders.updating'
+  | 'eatsOrders.markPickedUp'
+  | 'eatsOrders.markPrefix'
+  | 'eatsOrders.empty'
+  // Real 5th-localization-pass additions (2026-08-15): DineInScreen -- the real
+  // 배민오더-style table/QR in-store ordering screen (QR generator + live table-order
+  // queue), a real daily-use screen for any sit-down restaurant merchant.
+  | 'dineIn.qrTitle'
+  | 'dineIn.qrBody'
+  | 'dineIn.tableNumberPlaceholder'
+  | 'dineIn.generate'
+  | 'dineIn.tablePrefix'
+  | 'dineIn.ordersTitle'
+  | 'dineIn.connectionError'
+  | 'dineIn.updateError'
+  | 'dineIn.empty'
+  | 'dineIn.statusNew'
+  | 'dineIn.statusAccepted'
+  | 'dineIn.statusPreparing'
+  | 'dineIn.statusServed'
+  | 'dineIn.statusCancelled'
+  | 'dineIn.actionAccept'
+  | 'dineIn.actionStartPreparing'
+  | 'dineIn.actionMarkServed'
+  | 'dineIn.notePrefix'
+  // Real 6th-localization-pass additions (2026-08-15): ReportsScreen -- real
+  // settlement/collections reporting a merchant checks for reconciliation and tax
+  // filing, and BusinessAccountScreen -- the real business profile/loan-gating screen.
+  | 'reports.title'
+  | 'reports.rangeSeparator'
+  | 'reports.settledSuffix'
+  | 'reports.refresh'
+  | 'reports.last7Days'
+  | 'reports.last30Days'
+  | 'reports.fromLabel'
+  | 'reports.toLabel'
+  | 'reports.apply'
+  | 'reports.validationBothDates'
+  | 'reports.validationStartBeforeEnd'
+  | 'reports.validationMaxRange'
+  | 'reports.metricCollections'
+  | 'reports.metricGross'
+  | 'reports.metricFees'
+  | 'reports.metricNet'
+  | 'reports.channelsTitle'
+  | 'reports.channelsEmpty'
+  | 'reports.columnDate'
+  | 'reports.columnCollections'
+  | 'reports.columnGross'
+  | 'reports.columnFees'
+  | 'reports.columnNet';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -158,6 +225,64 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'collect.cardCvc': 'CVC',
     'collect.cardCharging': 'Charging…',
     'collect.cardChargeButton': 'Charge card',
+    'eatsOrders.statusPlaced': 'Placed',
+    'eatsOrders.statusAccepted': 'Accepted',
+    'eatsOrders.statusPreparing': 'Preparing',
+    'eatsOrders.statusReadyForPickup': 'Ready for pickup',
+    'eatsOrders.statusRiderAssigned': 'Rider on the way',
+    'eatsOrders.statusPickedUp': 'Picked up — on the way',
+    'eatsOrders.statusDelivered': 'Delivered',
+    'eatsOrders.statusCancelled': 'Cancelled — refunded',
+    'eatsOrders.pickupSuffix': ' · Pickup',
+    'eatsOrders.loadError': 'Could not load your restaurant orders.',
+    'eatsOrders.updateError': 'Could not update this order.',
+    'eatsOrders.completePickupError': 'Could not complete this pickup.',
+    'eatsOrders.notePrefix': 'Note:',
+    'eatsOrders.updating': 'Updating…',
+    'eatsOrders.markPickedUp': 'Mark picked up',
+    'eatsOrders.markPrefix': 'Mark',
+    'eatsOrders.empty': 'No Eats orders yet. Orders placed against your restaurant will show up here.',
+    'dineIn.qrTitle': 'Table QR codes',
+    'dineIn.qrBody': 'Print this and leave it on a table -- a customer scans it to order straight to that table.',
+    'dineIn.tableNumberPlaceholder': 'Table number',
+    'dineIn.generate': 'Generate',
+    'dineIn.tablePrefix': 'Table',
+    'dineIn.ordersTitle': 'Table orders',
+    'dineIn.connectionError': "Couldn't reach itunda. Check your connection and try again.",
+    'dineIn.updateError': "Couldn't update this order. Try again.",
+    'dineIn.empty': 'No open table orders right now.',
+    'dineIn.statusNew': 'New order',
+    'dineIn.statusAccepted': 'Accepted',
+    'dineIn.statusPreparing': 'Preparing',
+    'dineIn.statusServed': 'Served',
+    'dineIn.statusCancelled': 'Cancelled',
+    'dineIn.actionAccept': 'Accept order',
+    'dineIn.actionStartPreparing': 'Start preparing',
+    'dineIn.actionMarkServed': 'Mark served',
+    'dineIn.notePrefix': 'Note:',
+    'reports.title': 'Collections report',
+    'reports.rangeSeparator': 'to',
+    'reports.settledSuffix': 'settled collections',
+    'reports.refresh': 'Refresh',
+    'reports.last7Days': 'Last 7 days',
+    'reports.last30Days': 'Last 30 days',
+    'reports.fromLabel': 'From',
+    'reports.toLabel': 'To',
+    'reports.apply': 'Apply',
+    'reports.validationBothDates': 'Choose both a start and end date.',
+    'reports.validationStartBeforeEnd': 'The start date must be on or before the end date.',
+    'reports.validationMaxRange': 'Reports can cover up to 31 days at a time.',
+    'reports.metricCollections': 'Collections',
+    'reports.metricGross': 'Gross',
+    'reports.metricFees': 'Fees',
+    'reports.metricNet': 'Net settled',
+    'reports.channelsTitle': 'Collection channels',
+    'reports.channelsEmpty': 'No settled collections in this range.',
+    'reports.columnDate': 'Date',
+    'reports.columnCollections': 'Collections',
+    'reports.columnGross': 'Gross',
+    'reports.columnFees': 'Fees',
+    'reports.columnNet': 'Net',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -220,6 +345,64 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'collect.cardCvc': 'CVC',
     'collect.cardCharging': 'Gukuramo…',
     'collect.cardChargeButton': 'Kuramo amafaranga',
+    'eatsOrders.statusPlaced': 'Byatanzwe',
+    'eatsOrders.statusAccepted': 'Byemewe',
+    'eatsOrders.statusPreparing': 'Bitegurwa',
+    'eatsOrders.statusReadyForPickup': 'Biteguye gutorwa',
+    'eatsOrders.statusRiderAssigned': 'Umutwara ari mu nzira',
+    'eatsOrders.statusPickedUp': 'Byatorewe — biri mu nzira',
+    'eatsOrders.statusDelivered': 'Byageze',
+    'eatsOrders.statusCancelled': 'Byahagaritswe — hasubijwe amafaranga',
+    'eatsOrders.pickupSuffix': ' · Gutora',
+    'eatsOrders.loadError': 'Ntibishoboka gushakisha itumiza ryawe ry\'ibiryo.',
+    'eatsOrders.updateError': 'Ntibishoboka kuvugurura iri tumiza.',
+    'eatsOrders.completePickupError': 'Ntibishoboka kurangiza iri torwa.',
+    'eatsOrders.notePrefix': 'Icyitonderwa:',
+    'eatsOrders.updating': 'Kuvugurura…',
+    'eatsOrders.markPickedUp': 'Emeza ko byatorewe',
+    'eatsOrders.markPrefix': 'Emeza',
+    'eatsOrders.empty': 'Nta itumiza ry\'ibiryo urafite. Itumiza ryakorewe resitora yawe rizagaragara hano.',
+    'dineIn.qrTitle': 'QR code z\'ameza',
+    'dineIn.qrBody': 'Chapa iyi uyishyire ku meza -- umukiriya ayisikana atumiza akoresheje iryo tebulo.',
+    'dineIn.tableNumberPlaceholder': 'Nomero y\'itebulo',
+    'dineIn.generate': 'Kora',
+    'dineIn.tablePrefix': 'Itebulo',
+    'dineIn.ordersTitle': 'Itumiza ry\'ameza',
+    'dineIn.connectionError': 'Ntibishoboka kwihuza na itunda. Reba interineti yawe hanyuma ugerageze nanone.',
+    'dineIn.updateError': 'Ntibishoboka kuvugurura iri tumiza. Ongera ugerageze.',
+    'dineIn.empty': 'Nta itumiza ry\'ameza rifunguye ubu.',
+    'dineIn.statusNew': 'Itumiza rishya',
+    'dineIn.statusAccepted': 'Byemewe',
+    'dineIn.statusPreparing': 'Bitegurwa',
+    'dineIn.statusServed': 'Byatanzwe',
+    'dineIn.statusCancelled': 'Byahagaritswe',
+    'dineIn.actionAccept': 'Emeza itumiza',
+    'dineIn.actionStartPreparing': 'Tangira gutegura',
+    'dineIn.actionMarkServed': 'Emeza ko byatanzwe',
+    'dineIn.notePrefix': 'Icyitonderwa:',
+    'reports.title': 'Raporo y\'amafaranga yakiriwe',
+    'reports.rangeSeparator': 'kugeza',
+    'reports.settledSuffix': 'amafaranga yakiriwe yishyuwe',
+    'reports.refresh': 'Vugurura',
+    'reports.last7Days': 'Iminsi 7 ishize',
+    'reports.last30Days': 'Iminsi 30 ishize',
+    'reports.fromLabel': 'Guhera',
+    'reports.toLabel': 'Kugeza',
+    'reports.apply': 'Emeza',
+    'reports.validationBothDates': 'Hitamo itariki y\'itangira n\'iy\'irangira.',
+    'reports.validationStartBeforeEnd': 'Itariki y\'itangira igomba kuba mbere cyangwa ingana n\'iy\'irangira.',
+    'reports.validationMaxRange': 'Raporo ishobora kugera ku minsi 31 icyarimwe.',
+    'reports.metricCollections': 'Amafaranga yakiriwe',
+    'reports.metricGross': 'Igiteranyo',
+    'reports.metricFees': 'Amafaranga y\'ubuyobozi',
+    'reports.metricNet': 'Amafaranga asigaye',
+    'reports.channelsTitle': 'Uburyo bwo kwakira amafaranga',
+    'reports.channelsEmpty': 'Nta mafaranga yakiriwe muri iki gihe.',
+    'reports.columnDate': 'Itariki',
+    'reports.columnCollections': 'Amafaranga yakiriwe',
+    'reports.columnGross': 'Igiteranyo',
+    'reports.columnFees': 'Amafaranga y\'ubuyobozi',
+    'reports.columnNet': 'Asigaye',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -282,5 +465,63 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'collect.cardCvc': 'CVC',
     'collect.cardCharging': 'Débit en cours…',
     'collect.cardChargeButton': 'Débiter la carte',
+    'eatsOrders.statusPlaced': 'Passée',
+    'eatsOrders.statusAccepted': 'Acceptée',
+    'eatsOrders.statusPreparing': 'En préparation',
+    'eatsOrders.statusReadyForPickup': 'Prête pour le retrait',
+    'eatsOrders.statusRiderAssigned': 'Livreur en route',
+    'eatsOrders.statusPickedUp': 'Récupérée — en route',
+    'eatsOrders.statusDelivered': 'Livrée',
+    'eatsOrders.statusCancelled': 'Annulée — remboursée',
+    'eatsOrders.pickupSuffix': ' · Retrait',
+    'eatsOrders.loadError': 'Impossible de charger vos commandes de restaurant.',
+    'eatsOrders.updateError': 'Impossible de mettre à jour cette commande.',
+    'eatsOrders.completePickupError': 'Impossible de finaliser ce retrait.',
+    'eatsOrders.notePrefix': 'Remarque :',
+    'eatsOrders.updating': 'Mise à jour…',
+    'eatsOrders.markPickedUp': 'Marquer comme récupérée',
+    'eatsOrders.markPrefix': 'Marquer',
+    'eatsOrders.empty': 'Aucune commande Eats pour le moment. Les commandes passées à votre restaurant apparaîtront ici.',
+    'dineIn.qrTitle': 'Codes QR des tables',
+    'dineIn.qrBody': 'Imprimez-le et laissez-le sur une table -- un client le scanne pour commander directement à cette table.',
+    'dineIn.tableNumberPlaceholder': 'Numéro de table',
+    'dineIn.generate': 'Générer',
+    'dineIn.tablePrefix': 'Table',
+    'dineIn.ordersTitle': 'Commandes de table',
+    'dineIn.connectionError': "Connexion à itunda impossible. Vérifiez votre connexion et réessayez.",
+    'dineIn.updateError': 'Impossible de mettre à jour cette commande. Réessayez.',
+    'dineIn.empty': 'Aucune commande de table ouverte pour le moment.',
+    'dineIn.statusNew': 'Nouvelle commande',
+    'dineIn.statusAccepted': 'Acceptée',
+    'dineIn.statusPreparing': 'En préparation',
+    'dineIn.statusServed': 'Servie',
+    'dineIn.statusCancelled': 'Annulée',
+    'dineIn.actionAccept': 'Accepter la commande',
+    'dineIn.actionStartPreparing': 'Commencer la préparation',
+    'dineIn.actionMarkServed': 'Marquer comme servie',
+    'dineIn.notePrefix': 'Remarque :',
+    'reports.title': 'Rapport des encaissements',
+    'reports.rangeSeparator': 'au',
+    'reports.settledSuffix': 'encaissements réglés',
+    'reports.refresh': 'Actualiser',
+    'reports.last7Days': '7 derniers jours',
+    'reports.last30Days': '30 derniers jours',
+    'reports.fromLabel': 'Du',
+    'reports.toLabel': 'Au',
+    'reports.apply': 'Appliquer',
+    'reports.validationBothDates': 'Choisissez une date de début et de fin.',
+    'reports.validationStartBeforeEnd': 'La date de début doit être antérieure ou égale à la date de fin.',
+    'reports.validationMaxRange': 'Un rapport peut couvrir jusqu\'à 31 jours à la fois.',
+    'reports.metricCollections': 'Encaissements',
+    'reports.metricGross': 'Brut',
+    'reports.metricFees': 'Frais',
+    'reports.metricNet': 'Net réglé',
+    'reports.channelsTitle': 'Canaux d\'encaissement',
+    'reports.channelsEmpty': 'Aucun encaissement réglé sur cette période.',
+    'reports.columnDate': 'Date',
+    'reports.columnCollections': 'Encaissements',
+    'reports.columnGross': 'Brut',
+    'reports.columnFees': 'Frais',
+    'reports.columnNet': 'Net',
   },
 };

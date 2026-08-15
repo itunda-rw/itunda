@@ -2,21 +2,23 @@ import { useEffect, useState } from 'react';
 import { ApiError } from '../lib/api';
 import { ErrorCard } from '../components/EmptyState';
 import { advanceRestaurantOrder, completePickupOrder, fetchRestaurantOrders, type EatsOrder, type EatsOrderStatus } from '../lib/eats';
+import { useI18n } from '../i18n/I18nContext';
+import type { TranslationKey } from '../i18n/translations';
 
 // Real Coupang Eats/Baemin-style restaurant order queue (item 208) -- see lib/eats.ts's
 // own doc comment. This is merchant-mfe's first client for these real, already-live-
 // verified endpoints (accept/prepare/ready, plus the Pickup-specific "mark picked up"
 // terminal edge) -- previously only bank-mfe's RestaurantOrdersView had them.
 
-const EATS_STATUS_LABEL: Record<EatsOrderStatus, string> = {
-  PLACED: 'Placed',
-  ACCEPTED: 'Accepted',
-  PREPARING: 'Preparing',
-  READY_FOR_PICKUP: 'Ready for pickup',
-  RIDER_ASSIGNED: 'Rider on the way',
-  PICKED_UP: 'Picked up — on the way',
-  DELIVERED: 'Delivered',
-  CANCELLED: 'Cancelled — refunded',
+const EATS_STATUS_KEY: Record<EatsOrderStatus, TranslationKey> = {
+  PLACED: 'eatsOrders.statusPlaced',
+  ACCEPTED: 'eatsOrders.statusAccepted',
+  PREPARING: 'eatsOrders.statusPreparing',
+  READY_FOR_PICKUP: 'eatsOrders.statusReadyForPickup',
+  RIDER_ASSIGNED: 'eatsOrders.statusRiderAssigned',
+  PICKED_UP: 'eatsOrders.statusPickedUp',
+  DELIVERED: 'eatsOrders.statusDelivered',
+  CANCELLED: 'eatsOrders.statusCancelled',
 };
 
 const RESTAURANT_STATUS_CHAIN: EatsOrderStatus[] = ['PLACED', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP'];
@@ -27,6 +29,7 @@ function nextInChain(current: EatsOrderStatus): EatsOrderStatus | null {
 }
 
 export default function EatsOrdersScreen() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
@@ -40,7 +43,7 @@ export default function EatsOrdersScreen() {
         if (err instanceof ApiError && err.code === 'RESTAURANT_NOT_FOUND') {
           setOrders([]);
         } else {
-          setError(err instanceof ApiError ? err.message : 'Could not load your restaurant orders.');
+          setError(err instanceof ApiError ? err.message : t('eatsOrders.loadError'));
         }
       });
   };
@@ -60,7 +63,7 @@ export default function EatsOrdersScreen() {
       await advanceRestaurantOrder(order.id, next);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this order.');
+      setError(err instanceof ApiError ? err.message : t('eatsOrders.updateError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -73,7 +76,7 @@ export default function EatsOrdersScreen() {
       await completePickupOrder(order.id);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not complete this pickup.');
+      setError(err instanceof ApiError ? err.message : t('eatsOrders.completePickupError'));
     } finally {
       setBusyOrderId(null);
     }
@@ -87,7 +90,7 @@ export default function EatsOrdersScreen() {
     return (
       <div className="itunda-card">
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-          No Eats orders yet. Orders placed against your restaurant will show up here.
+          {t('eatsOrders.empty')}
         </p>
       </div>
     );
@@ -103,7 +106,7 @@ export default function EatsOrdersScreen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
-                  {EATS_STATUS_LABEL[o.status]}{o.fulfillmentType === 'PICKUP' ? ' · Pickup' : ''}
+                  {t(EATS_STATUS_KEY[o.status])}{o.fulfillmentType === 'PICKUP' ? t('eatsOrders.pickupSuffix') : ''}
                 </p>
                 <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{o.deliveryAddress}</p>
               </div>
@@ -111,16 +114,16 @@ export default function EatsOrdersScreen() {
             </div>
             {o.deliveryNotes && (
               <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
-                Note: {o.deliveryNotes}
+                {t('eatsOrders.notePrefix')} {o.deliveryNotes}
               </p>
             )}
             {readyForPickupHandoff ? (
               <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleCompletePickup(o)}>
-                {busyOrderId === o.id ? 'Updating…' : 'Mark picked up'}
+                {busyOrderId === o.id ? t('eatsOrders.updating') : t('eatsOrders.markPickedUp')}
               </button>
             ) : next && (
               <button className="itunda-btn itunda-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
-                {busyOrderId === o.id ? 'Updating…' : `Mark ${EATS_STATUS_LABEL[next].toLowerCase()}`}
+                {busyOrderId === o.id ? t('eatsOrders.updating') : `${t('eatsOrders.markPrefix')} ${t(EATS_STATUS_KEY[next]).toLowerCase()}`}
               </button>
             )}
           </div>
