@@ -45,6 +45,8 @@ import rw.itunda.app.R
 import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.NotificationDto
+import rw.itunda.core.network.TextScaleOption
+import rw.itunda.core.network.TextScalePreference
 import rw.itunda.core.network.ThemeMode
 import rw.itunda.core.network.ThemePreference
 import rw.itunda.core.designsystem.theme.Ids
@@ -191,6 +193,39 @@ fun SettingsScreen(
         )
     }
 
+    // Real Uber Simple Mode-style text-scale accessibility picker (2026-08-15) --
+    // see docs/DESIGN_REFERENCES.md Section 69 and TextScalePreference's own doc
+    // comment. Same dialog-from-a-row shape as the theme picker directly above.
+    var showTextScaleDialog by remember { mutableStateOf(false) }
+    if (showTextScaleDialog) {
+        val textScale by TextScalePreference.option.collectAsState()
+        AlertDialog(
+            onDismissRequest = { showTextScaleDialog = false },
+            title = { Text(stringResource(R.string.settings_text_size)) },
+            text = {
+                Column {
+                    TextScaleOption.values().forEach { option ->
+                        val selected = textScale == option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { TextScalePreference.set(option) }
+                                .padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(option.label, color = Ids.colors.textPrimary, fontSize = (15 * option.multiplier).sp)
+                            if (selected) Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.brand)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTextScaleDialog = false }) { Text(stringResource(R.string.settings_confirm)) }
+            },
+        )
+    }
+
     Box(Modifier.fillMaxSize().nestedScroll(pullToRefreshState.nestedScrollConnection)) {
     Column(
         modifier = Modifier
@@ -305,6 +340,7 @@ fun SettingsScreen(
                         }
                     }
                     SettingsChevronRow(stringResource(R.string.settings_theme_vibration)) { showThemeDialog = true }
+                    SettingsChevronRow(stringResource(R.string.settings_text_size)) { showTextScaleDialog = true }
                 }
             }
 

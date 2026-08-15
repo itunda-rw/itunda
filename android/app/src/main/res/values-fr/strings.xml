@@ -80,6 +80,7 @@
     <string name="settings_display">Affichage</string>
     <string name="settings_theme">Thème</string>
     <string name="settings_theme_vibration">Thème et vibration</string>
+    <string name="settings_text_size">Taille du texte</string>
     <string name="settings_theme_body">Suivre l\'appareil, ou forcer clair/sombre</string>
     <string name="settings_theme_system">Système</string>
     <string name="settings_theme_light">Clair</string>

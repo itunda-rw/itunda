@@ -15,6 +15,7 @@ import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SessionManager
+import rw.itunda.core.network.TextScalePreference
 import rw.itunda.core.network.ThemePreference
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -112,6 +113,7 @@ class ItundaApplication : Application(), ReactApplication, ImageLoaderFactory {
         SessionManager.restoreSession()
         ThemePreference.restore()
         AppLocalePreference.restore(this)
+        TextScalePreference.restore()
         // Real push notifications (2026-08-12) -- channels must exist before any
         // notification can post; see NotificationChannels.kt's own doc comment.
         NotificationChannels.createAll(this)

@@ -116,12 +116,26 @@ class TokenStore(context: Context) {
         prefs.edit().putString(KEY_THEME_MODE, mode.name.lowercase()).apply()
     }
 
+    // Real Uber Simple Mode-style text-scale accessibility setting (2026-08-15) --
+    // see TextScalePreference's own doc comment for the full sourced account. Same
+    // "default preserves existing behavior for everyone who never touches the new
+    // Settings row" discipline as getThemeMode above.
+    fun getTextScaleOption(): TextScaleOption = when (prefs.getString(KEY_TEXT_SCALE, null)) {
+        "large" -> TextScaleOption.LARGE
+        "extra_large" -> TextScaleOption.EXTRA_LARGE
+        else -> TextScaleOption.DEFAULT
+    }
+    fun setTextScaleOption(option: TextScaleOption) {
+        prefs.edit().putString(KEY_TEXT_SCALE, option.name.lowercase()).apply()
+    }
+
     private companion object {
         const val KEY_USER_ID = "user_id"
         const val KEY_ACCESS_TOKEN = "access_token"
         const val KEY_REFRESH_TOKEN = "refresh_token"
         const val KEY_APP_LOCK_ENABLED = "app_lock_enabled"
         const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_TEXT_SCALE = "text_scale_option"
         const val KEY_PIN_HASH = "app_lock_pin_hash"
         const val KEY_PIN_SALT = "app_lock_pin_salt"
     }

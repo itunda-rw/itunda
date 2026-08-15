@@ -79,6 +79,7 @@
     <string name="settings_display">Kwerekana</string>
     <string name="settings_theme">Ibara ry\'ikoranabuhanga</string>
     <string name="settings_theme_vibration">Ibara n\'Ihinda</string>
+    <string name="settings_text_size">Ingano y\'inyandiko</string>
     <string name="settings_theme_body">Koresha irya telefoni, cyangwa uhitemo umucyo/umwijima</string>
     <string name="settings_theme_system">Nk\'iya telefoni</string>
     <string name="settings_theme_light">Umucyo</string>

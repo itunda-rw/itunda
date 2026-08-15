@@ -104,6 +104,7 @@
     <string name="settings_display">Display</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_vibration">Theme &amp; vibration</string>
+    <string name="settings_text_size">Text size</string>
     <string name="settings_theme_body">Match device, or force light/dark</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>

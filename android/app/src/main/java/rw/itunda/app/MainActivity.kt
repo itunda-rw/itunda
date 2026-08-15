@@ -16,12 +16,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rw.itunda.core.network.AppLocalePreference
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SessionManager
 import rw.itunda.core.network.SessionState
+import rw.itunda.core.network.TextScalePreference
 import rw.itunda.core.network.ThemeMode
 import rw.itunda.core.network.ThemePreference
 import java.util.Locale
@@ -141,7 +144,21 @@ class MainActivity : FragmentActivity() {
             // directly instead of relying on chain-walking, so screens needing the real Activity
             // (biometrics, app-lock) must
             // read LocalRealActivity.current instead. See LocalRealActivity.kt.
-            CompositionLocalProvider(LocalContext provides localizedContext, LocalRealActivity provides this) {
+            // Real Uber Simple Mode-style text-scale accessibility setting (2026-08-15,
+            // see docs/DESIGN_REFERENCES.md Section 69 and TextScalePreference's own
+            // doc comment) -- overrides only the density's fontScale component, not
+            // the whole layout density, so this scales text sizes across every screen
+            // without also inflating dp-based spacing/icon sizes.
+            val textScale by TextScalePreference.option.collectAsStateWithLifecycle()
+            val baseDensity = LocalDensity.current
+            val scaledDensity = remember(baseDensity, textScale) {
+                Density(baseDensity.density, baseDensity.fontScale * textScale.multiplier)
+            }
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalRealActivity provides this,
+                LocalDensity provides scaledDensity,
+            ) {
                 val themeMode by ThemePreference.mode.collectAsStateWithLifecycle()
                 val darkTheme = when (themeMode) {
                     ThemeMode.LIGHT -> false
