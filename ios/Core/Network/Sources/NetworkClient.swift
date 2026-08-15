@@ -5371,6 +5371,18 @@ public struct ChargeCardResponse: Decodable { public let success: Bool; public l
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }
 
+// Real actionable next-steps -- CreditScoreService.getImprovementSuggestions existed on
+// the backend since 2026-07-26 with a real Android client (CreditScoreScreen.kt) but
+// zero iOS UI until now (2026-08-16, found while checking whether this session's new
+// backend-only "Card usage" factor would surface correctly on Android/iOS -- it does
+// for the factor breakdown via the same generic ForEach(result.factors) pattern
+// CreditScoreScreenView.swift already has, but iOS never got the suggestions half at
+// all). Distinct from the factor breakdown above (what makes up your score today):
+// this is what to do NEXT to raise it (action + real point gain + why), mirroring
+// Android's exact DTO shape.
+public struct CreditScoreSuggestionDto: Decodable, Identifiable { public let action: String; public let pointsGain: Int; public let description: String; public var id: String { action } }
+public struct CreditScoreSuggestionsResponse: Decodable { public let success: Bool; public let suggestions: [CreditScoreSuggestionDto] }
+
 // Real Karrot-Score-style numeric trust/reputation badge (item 152) -- distinct from
 // the per-listing trustScores batch map used for seller/poster/lister badges on Hood
 // cards. GET /api/v1/trust-score returns a user's own full factor breakdown,
@@ -5637,6 +5649,7 @@ extension NetworkClient {
     }
 
     public func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }
+    public func getCreditScoreSuggestions() async throws -> CreditScoreSuggestionsResponse { try await get("api/v1/credit-score/suggestions") }
     public func getTrustScore() async throws -> TrustScoreResponse { try await get("api/v1/trust-score") }
 
     // Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own

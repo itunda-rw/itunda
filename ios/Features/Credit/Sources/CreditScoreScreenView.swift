@@ -16,6 +16,7 @@ public struct CreditScoreScreenView: View {
     }
 
     @State private var result: CreditScoreResponse?
+    @State private var suggestions: [CreditScoreSuggestionDto] = []
     @State private var error: String?
 
     public var body: some View {
@@ -55,6 +56,23 @@ public struct CreditScoreScreenView: View {
                             }
                         }
                         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+
+                        if !suggestions.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Ways to raise your score").bold()
+                                ForEach(suggestions) { s in
+                                    HStack {
+                                        VStack(alignment: .leading) {
+                                            Text(s.action).font(.subheadline)
+                                            Text(s.description).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        }
+                                        Spacer()
+                                        Text("+\(s.pointsGain)").bold()
+                                    }
+                                }
+                            }
+                            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        }
                     } else { ProgressView() }
                 }
                 .padding(IDS.Layout.screenHorizontal)
@@ -64,6 +82,7 @@ public struct CreditScoreScreenView: View {
         .task {
             do { result = try await NetworkClient.shared.getCreditScore() }
             catch { self.error = "Could not load your credit score." }
+            suggestions = (try? await NetworkClient.shared.getCreditScoreSuggestions().suggestions) ?? []
         }
     }
 }
