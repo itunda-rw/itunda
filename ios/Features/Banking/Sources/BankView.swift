@@ -21,14 +21,23 @@ import CoreNetwork
 // the same UserDefaults key ("itunda.locale") every other screen writes to. Same
 // honesty note as every prior screen: careful, good-faith translation, not verified
 // by a native Kinyarwanda speaker.
-private enum BankingLocale: String { case en, rw }
+// Widened to French (2026-08-15) -- real gap found: this is iOS's actual default
+// Home tab (see this file's own 2026-08-09 doc comment above) and had zero French
+// entries even after the App target's own AppLocale gained .fr the same session,
+// because this is a structurally separate, self-contained enum (module-boundary
+// necessity). Same class of staleness found and fixed the same day across
+// SettingsScreen.swift/DeviceStepUpView.swift/TransferFlowContainer.swift/
+// TransferFlowScreens.swift.
+private enum BankingLocale: String { case en, rw, fr }
 
 private func loadBankingLocale() -> BankingLocale {
     if let raw = UserDefaults.standard.string(forKey: "itunda.locale"), let locale = BankingLocale(rawValue: raw) {
         return locale
     }
     let preferred = Locale.preferredLanguages.first ?? "en"
-    return preferred.hasPrefix("rw") ? .rw : .en
+    if preferred.hasPrefix("rw") { return .rw }
+    if preferred.hasPrefix("fr") { return .fr }
+    return .en
 }
 
 private let bankingStrings: [BankingLocale: [String: String]] = [
@@ -129,6 +138,52 @@ private let bankingStrings: [BankingLocale: [String: String]] = [
         "goalSaverSubtitle": "Imigendekere y'ubwizigame bw'ibihe bikomeye",
         "coopRailTitle": "itunda Bank",
         "bankStatusDisclosure": "itunda si banki ifite uruhushya, kandi iki si ubwishingizi nyakuri bw'ubwizigame bwa Leta. \"itunda Bank\" ni izina ry'ibicuruzwa bya itunda ku bwizigame, SACCO/Ikimina, inguzanyo, no gushora imari -- ntabwo ari urwego rwihariye rufite uruhushya rwa banki.",
+    ],
+    .fr: [
+        "goodMorning": "Bonjour",
+        "notifications": "Notifications",
+        "profile": "Profil",
+        "totalBalance": "Solde total itunda",
+        "balanceSubtitle": "Portefeuille, banque et mobile money au même endroit",
+        "mainWallet": "Portefeuille principal",
+        "spendToday": "Dépensé aujourd'hui",
+        "sendMoneyNow": "Envoyer de l'argent",
+        "quickTransfer": "Virement",
+        "quickBills": "Factures",
+        "quickMoMo": "MoMo",
+        "quickSavings": "Épargne",
+        "savingsTitle": "Épargne",
+        "view": "Voir",
+        "connectedMoneyTitle": "Comptes liés",
+        "manage": "Gérer",
+        "spentThisMonth": "Dépensé ce mois-ci",
+        "viewTransactionHistory": "Voir l'historique des transactions",
+        "rwandaServicesTitle": "Pour la vie au Rwanda",
+        "more": "Plus",
+        "rewardsTitle": "Récompenses et épargne",
+        "discoverTitle": "Découvrir",
+        "discoverNew": "NOUVEAU",
+        "bkAccountTitle": "Compte BK Bank",
+        "bkAccountSubtitle": "Salaire et règlement par carte",
+        "momoSubtitle": "Portefeuille de dépenses quotidiennes",
+        "airtelTitle": "Airtel Money",
+        "airtelSubtitle": "Ligne de retrait de secours",
+        "connected": "Connecté",
+        "cashPowerTitle": "Payer CashPower",
+        "cashPowerSubtitle": "Rechargez l'électricité instantanément",
+        "open": "Ouvrir",
+        "iremboTitle": "Services Irembo",
+        "iremboSubtitle": "Paiements gouvernementaux et documents",
+        "browse": "Parcourir",
+        "mySpendingTitle": "Mes dépenses",
+        "mySpendingSubtitle": "Voir les catégories et tendances mensuelles",
+        "seeAll": "Tout voir",
+        "rewardsRowTitle": "Récompenses itunda",
+        "rewardsRowSubtitle": "Réclamez le cashback et les offres du jour",
+        "goalSaverTitle": "Épargne objectif",
+        "goalSaverSubtitle": "Progression du fonds d'urgence",
+        "coopRailTitle": "itunda Bank",
+        "bankStatusDisclosure": "itunda n'est pas une banque agréée, et ceci n'est pas une véritable assurance-dépôts gouvernementale. « itunda Bank » est le nom de produit d'itunda pour ces fonctionnalités d'épargne, de SACCO/Ikimina, de prêt et d'investissement -- ce n'est pas une entité bancaire agréée distincte.",
     ],
 ]
 

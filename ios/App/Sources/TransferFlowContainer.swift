@@ -30,6 +30,17 @@ private let transferContainerStrings: [AppLocale: [String: String]] = [
         "report": "Ohereza raporo",
         "biometricFailed": "Ntibyashobotse kwemeza. Ongera ugerageze.",
     ],
+    // Real gap found 2026-08-15: this dict had zero French entries -- same class of
+    // staleness as SettingsScreen.swift/DeviceStepUpView.swift's identical gap, found
+    // the same day.
+    .fr: [
+        "scamReasonPlaceholder": "Pourquoi signalez-vous ce numéro ?",
+        "scamReasonTitle": "Signaler comme arnaque",
+        "cancel": "Annuler",
+        "reporting": "Signalement en cours…",
+        "report": "Signaler",
+        "biometricFailed": "Impossible de vérifier. Réessayez.",
+    ],
 ]
 
 private func tc(_ key: String) -> String {

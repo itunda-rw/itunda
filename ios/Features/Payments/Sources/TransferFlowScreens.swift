@@ -26,14 +26,22 @@ import CoreDesignSystem
 // App-target switcher writes to, so both targets stay in sync without either
 // depending on the other. Same honesty note as every prior screen/platform: a
 // careful, good-faith translation, NOT verified by a native Kinyarwanda speaker.
-private enum PaymentsLocale: String { case en, rw }
+// Widened to French (2026-08-15) -- real gap found: had zero French entries even
+// after the App target's own AppLocale gained .fr the same session, because this is
+// a structurally separate, self-contained enum (module-boundary necessity, see this
+// file's own doc comment above), not a usage of AppLocale itself. Same class of
+// staleness as App/Sources' SettingsScreen.swift/DeviceStepUpView.swift/
+// TransferFlowContainer.swift, all found and fixed the same day.
+private enum PaymentsLocale: String { case en, rw, fr }
 
 private func loadPaymentsLocale() -> PaymentsLocale {
     if let raw = UserDefaults.standard.string(forKey: "itunda.locale"), let locale = PaymentsLocale(rawValue: raw) {
         return locale
     }
     let preferred = Locale.preferredLanguages.first ?? "en"
-    return preferred.hasPrefix("rw") ? .rw : .en
+    if preferred.hasPrefix("rw") { return .rw }
+    if preferred.hasPrefix("fr") { return .fr }
+    return .en
 }
 
 private let paymentsStrings: [PaymentsLocale: [String: String]] = [
@@ -92,6 +100,34 @@ private let paymentsStrings: [PaymentsLocale: [String: String]] = [
         "amountInsufficient": "Amafaranga ntahagije -- ufite RWF %@",
         "send": "Ohereza",
         "deleteDigit": "Siba",
+    ],
+    .fr: [
+        "recipientHeadline": "Vers quel compte\ndevons-nous envoyer ?",
+        "recipientInputLabel": "Entrez un numéro de téléphone ou de compte",
+        "recipientInputDescription": "Numéro de téléphone ou de compte, jusqu'à 16 chiffres",
+        "selectBank": "Choisir la banque",
+        "selectBankHint": "Facultatif, pour votre propre référence",
+        "contacts": "Contacts",
+        "addContact": "+ Ajouter",
+        "cancel": "Annuler",
+        "namePlaceholder": "Nom",
+        "phonePlaceholder": "Numéro de téléphone",
+        "saveContact": "Enregistrer le contact",
+        "noContacts": "Aucun contact enregistré pour l'instant.",
+        "next": "Suivant",
+        "fromWallet": "Depuis le portefeuille Itunda",
+        "availableBalance": "Disponible RWF %@",
+        "toAccount": "Vers le compte %@",
+        "newRecipient": "Nouveau destinataire",
+        "scamWarningTitle": "Prudence avant ce virement",
+        "scamWarningBody": "Ce destinataire a été signalé par %d autre(s) utilisateur(s) itunda. Vérifiez bien avant d'envoyer.",
+        "scamReportedThanks": "Merci -- ce numéro a été signalé.",
+        "reportScam": "Signaler ce numéro comme arnaque",
+        "amountQuestion": "Combien voulez-vous envoyer ?",
+        "amountMax": "Max",
+        "amountInsufficient": "Solde insuffisant -- vous avez RWF %@",
+        "send": "Envoyer",
+        "deleteDigit": "Supprimer",
     ],
 ]
 

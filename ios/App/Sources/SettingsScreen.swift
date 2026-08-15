@@ -77,6 +77,38 @@ private let settingsStrings: [AppLocale: [String: String]] = [
         "confirm": "Emeza",
         "confirmPasswordBody": "Andika ijambo ry'ibanga rimwe kugira ngo wemeze ibimenyetso by'umubiri ku gikoresho.",
     ],
+    // Real gap found 2026-08-15: this dict had zero French entries even after AppLocale
+    // itself was widened to .fr (LoginScreen.swift, d6a909b2) -- a user whose locale
+    // was already set to French would silently fall back to English on this specific
+    // screen (see t()'s own fallback below), the exact staleness this session's own
+    // AlreadyX/localization sweeps were built to catch, just missed on this one file.
+    .fr: [
+        "back": "Retour",
+        "title": "Paramètres",
+        "language": "Langue",
+        "myInfo": "Mes informations",
+        "devices": "Appareils",
+        "unknownDevice": "Appareil inconnu",
+        "thisDevice": " (cet appareil)",
+        "trusted": "Approuvé -- peut envoyer de l'argent",
+        "notVerified": "Non vérifié -- ne peut pas encore envoyer d'argent",
+        "remove": "Retirer",
+        "noNotifications": "Aucune notification",
+        "notifications": "Notifications",
+        "markAllRead": "Tout marquer comme lu",
+        "security": "Sécurité",
+        "unlockBiometrics": "Déverrouiller avec la biométrie",
+        "unlockBiometricsBody": "Exiger Face/Touch ID pour ouvrir Itunda",
+        "verifyBiometrics": "Vérifier cet appareil avec la biométrie",
+        "verifyBiometricsBody": "Évitez de retaper votre mot de passe pour la vérification renforcée",
+        "logOut": "Se déconnecter",
+        "confirmPassword": "Confirmez votre mot de passe",
+        "password": "Mot de passe",
+        "cancel": "Annuler",
+        "verifying": "Vérification…",
+        "confirm": "Confirmer",
+        "confirmPasswordBody": "Entrez votre mot de passe une fois pour activer la vérification biométrique de l'appareil.",
+    ],
 ]
 
 struct SettingsScreen: View {
@@ -112,13 +144,17 @@ struct SettingsScreen: View {
                 // Real in-app language switcher for logged-in users (2026-08-08) -- see
                 // this file's own top-of-file doc comment: LoginScreen.swift's own
                 // toggle is unreachable once signed in, so this is the only place a
-                // logged-in user can change it. Same simple EN/RW toggle, same
-                // UserDefaults key, so both screens agree on the current language.
+                // logged-in user can change it. Same UserDefaults key, so both screens
+                // agree on the current language. Widened to a 3-way cycle (2026-08-15,
+                // matching LoginScreen.swift's own identical fix) -- was still a binary
+                // EN/RW toggle here, missed when AppLocale itself gained .fr.
                 Button(action: {
-                    locale = (locale == .en) ? .rw : .en
+                    let locales: [AppLocale] = [.en, .rw, .fr]
+                    let currentIndex = locales.firstIndex(of: locale) ?? 0
+                    locale = locales[(currentIndex + 1) % locales.count]
                     UserDefaults.standard.set(locale.rawValue, forKey: localeStorageKey)
                 }) {
-                    Text(locale == .en ? "EN" : "RW")
+                    Text(locale.rawValue.uppercased())
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(.secondary)
                 }

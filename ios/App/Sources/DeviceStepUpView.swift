@@ -37,6 +37,18 @@ private let deviceStepUpStrings: [AppLocale: [String: String]] = [
         "verifying": "Kwemeza…",
         "verifyDevice": "Emeza terefoni",
     ],
+    // Real gap found 2026-08-15: this dict had zero French entries -- same class of
+    // staleness as SettingsScreen.swift's identical gap, found the same day.
+    .fr: [
+        "title": "\u{1F512} Vérifiez cet appareil",
+        "body": "Il s'agit d'un nouvel appareil pour votre compte. Ressaisissez votre mot de passe pour l'autoriser à envoyer de l'argent, puis réessayez.",
+        "password": "Mot de passe",
+        "showPassword": "Afficher le mot de passe",
+        "hidePassword": "Masquer le mot de passe",
+        "cancel": "Annuler",
+        "verifying": "Vérification…",
+        "verifyDevice": "Vérifier l'appareil",
+    ],
 ]
 
 private func dsu(_ key: String) -> String {
