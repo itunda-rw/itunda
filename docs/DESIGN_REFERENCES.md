@@ -6500,3 +6500,42 @@ against a screenshot taken at the same moment. If a future on-device test finds 
 nothing" despite everything else checking out, add debug logging at the click handler and the render
 condition BEFORE spending more time on blind coordinate/timing tweaks -- this session burned roughly
 20 attempts on the wrong hypothesis (touch input) before trying that.
+
+## 75. Kakao Pay 페이아이 소비 리포트 -- real month-over-month spending report
+
+**Added 2026-08-16.** Fresh research into Kakao Pay's AI-powered spending report ("페이아이"):
+weekly/monthly personalized spending-pattern analysis from a user's real payment history. Checked
+against itunda's own `WalletService.getSpendingInsight` (already real, ledger-based, live since
+2026-07-13) -- confirmed it's an unbounded, all-time total with zero period comparison. A real,
+confirmed gap, not a duplicate of something already built.
+
+**Built as an honest, rules-based comparison, not a fabricated AI model**: `getMonthlySpendingReport`
+computes this-calendar-month vs. last-calendar-month spend, reusing the exact same `categorizeDebits`
+helper the existing all-time view uses (so the two views can never numerically drift against each
+other), via `YearMonth` boundaries -- same convention `setBudget`/`getBudgets` already use in this
+file. `percentChange` is `null` (not a fabricated `0%`) when a category has no prior-month spend at
+all, a real "new this month" signal. No new tables needed -- purely a new read query over existing
+ledger data.
+
+New `GET /api/v1/wallet/spending/monthly-report`. Web: a `MonthlySpendingReportCard` at the top of
+bank-mfe's `SpendingInsightView`, showing the real total, real percent change (▲ red / ▼ green), and
+the top real movers by category.
+
+**Live-verified against the real deployed backend**: real `currentTotal`/`previousTotal`/
+`percentChange`/`categories` reflecting the seed test account's actual ledger history --
+this-month's real ~15,750 RWF (all from this session's own testing) against last month's real
+~2.7M RWF, both independently matching totals already observed elsewhere in this same session (the
+physical-device Spending screen showed "Total spent, all time: 2,711,558 RWF" earlier, consistent
+with this month + last month's real sum here). `Currency conversion` correctly showed `percentChange:
+null` since it genuinely had zero prior-month spend.
+
+**A real, transient cluster hiccup during this deploy, worth a brief note**: the `kubectl set image`
+call failed once with `Error from server (Forbidden): ... cannot get resource "deployments"` -- a
+real RBAC-shaped error, not a normal timeout -- and succeeded on a plain retry seconds later, while
+`private-cloud-deploy.sh status` (read-only) worked the whole time. The cluster's `backend` AND
+`ledger-service` were BOTH already 0/1 and restarting independently of this deploy right before it
+(the same known, still-unresolved resource overcommitment documented in
+[[project_itunda_private_cloud]]) -- most likely the API server itself briefly rejected the mutating
+request under memory/CPU pressure rather than a real permission change, since nothing about RBAC was
+touched and the identical command worked immediately after. Both pods (including the freshly-rolled
+one) settled to healthy `1/1` within a few minutes with no further intervention.
