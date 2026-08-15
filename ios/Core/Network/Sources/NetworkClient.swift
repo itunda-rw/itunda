@@ -2680,6 +2680,36 @@ public struct HoodReviewDto: Decodable, Identifiable {
 }
 public struct HoodReviewResponse: Decodable { public let success: Bool; public let review: HoodReviewDto }
 public struct HoodReviewsResponse: Decodable { public let success: Bool; public let reviews: [HoodReviewDto] }
+
+// Real "pay via itunda" Marketplace escrow (backend since 2026-07-25) -- an opt-in
+// safer alternative to the existing in-person cash handoff, never replacing it. Real
+// gap found+closed 2026-08-15: this had existed on the backend and Android for weeks
+// with ZERO client on iOS or bank-mfe (confirmed by grep). First iOS client, mirroring
+// bank-mfe's own web client (built the same session) and Android's own real bug fix
+// found while researching this: escrow status is fetched and shown for BOTH the buyer
+// and seller of a SOLD listing (the real backend already allows both via
+// MarketplaceService.getEscrow), not buyer-only -- otherwise a seller has no way to
+// ever see the real delivery address a buyer typed in. deliveryAddress is real,
+// optional (당근마켓 바로구매-style shipped-item support) -- leaving it blank keeps
+// the original in-person handoff this feature has always assumed.
+public struct MarketplaceEscrowDto: Decodable {
+    public let id: String
+    public let listingId: String
+    public let buyerId: String
+    public let sellerId: String
+    public let amount: Double
+    public let fee: Double
+    public let status: String
+    public let holdTransactionId: String
+    public let resolutionTransactionId: String?
+    public let disputeReason: String?
+    public let deliveryAddress: String?
+    public let createdAt: String
+    public let updatedAt: String
+}
+public struct MarketplaceEscrowResponse: Decodable { public let success: Bool; public let escrow: MarketplaceEscrowDto }
+public struct PayEscrowRequest: Encodable { public let deliveryAddress: String? }
+public struct DisputeEscrowRequest: Encodable { public let reason: String }
 // trustScores added 2026-07-24 -- backend has spread this alongside every listing/
 // job-post/property-listing browse response since 2026-07-21
 // (rw.itunda.core.web.TrustScoreSupport), but no client ever parsed or rendered it.
@@ -4098,6 +4128,28 @@ extension NetworkClient {
 
     public func contactSeller(listingId: String) async throws -> ContactSellerResponse {
         try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/contact-seller", body: EmptyBody())
+    }
+
+    // Real "pay via itunda" Marketplace escrow -- see MarketplaceEscrowDto's own doc
+    // comment for the full account (2026-08-15, first iOS client).
+    public func payEscrow(_ listingId: String, deliveryAddress: String? = nil) async throws -> MarketplaceEscrowResponse {
+        try await authenticatedPost(
+            "api/v1/marketplace/listings/\(listingId)/pay-escrow",
+            body: PayEscrowRequest(deliveryAddress: deliveryAddress?.isEmpty == true ? nil : deliveryAddress),
+            idempotencyKey: UUID().uuidString,
+        )
+    }
+
+    public func confirmEscrowReceipt(_ listingId: String) async throws -> MarketplaceEscrowResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/confirm-receipt", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func disputeEscrow(_ listingId: String, reason: String) async throws -> MarketplaceEscrowResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/dispute-escrow", body: DisputeEscrowRequest(reason: reason))
+    }
+
+    public func getEscrow(_ listingId: String) async throws -> MarketplaceEscrowResponse {
+        try await get("api/v1/marketplace/listings/\(listingId)/escrow")
     }
 
     // Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService.

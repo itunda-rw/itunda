@@ -962,6 +962,23 @@ private struct ListingCard: View {
     @State private var showRoute = false
     @StateObject private var locationFetcher = HoodLocationFetcher()
 
+    // Real "pay via itunda" Marketplace escrow -- see NetworkClient's own
+    // MarketplaceEscrowDto doc comment for the full account (2026-08-15, first iOS
+    // client). Escrow status/delivery address fetched+shown for BOTH the buyer and
+    // seller of a SOLD listing, mirroring the real bug found+fixed on Android and
+    // web's own client built the same session.
+    @State private var paying = false
+    @State private var deliveryAddress = ""
+    @State private var escrow: MarketplaceEscrowDto?
+    @State private var loadedEscrow = false
+    @State private var showDispute = false
+    @State private var disputeReason = ""
+    @State private var resolvingEscrow = false
+    private var isMyEscrowTrade: Bool {
+        listing.status == "SOLD" && currentUserId != nil && (listing.sellerId == currentUserId || listing.buyerId == currentUserId)
+    }
+    private var isEscrowBuyer: Bool { isMyEscrowTrade && !isMine }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -1109,6 +1126,15 @@ private struct ListingCard: View {
                     Text("Loading boost options…").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
                 }
             }
+            // Real gap closed 2026-08-15 -- see NetworkClient's own MarketplaceEscrowDto
+            // doc comment (당근마켓 바로구매-style shipped-item support). Deliberately
+            // optional and blank by default: the original in-person handoff still
+            // works with nothing typed here.
+            if !isMine, listing.status == "ACTIVE", !offering {
+                TextField("Delivery address (optional, for a shipped item)", text: $deliveryAddress)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.footnote)
+            }
             HStack(spacing: 10) {
                 if isMine {
                     if listing.status == "ACTIVE" && !markingSold {
@@ -1128,7 +1154,49 @@ private struct ListingCard: View {
                         onMessageSeller(listing.id)
                     }
                     actionButton("Make an offer", filled: true) { offering = true }
+                    // Real "pay via itunda" Marketplace escrow -- an opt-in safer
+                    // alternative to the existing in-person cash handoff, never
+                    // replacing it. First iOS client (2026-08-15).
+                    actionButton(paying ? "Paying…" : "🔒 Pay via itunda", filled: false) { await payViaItunda() }
                     actionButton("Report", filled: false) { showingReportOptions = true }
+                }
+            }
+            // Real escrow status -- shown to BOTH the buyer and seller of a SOLD
+            // listing (the real backend already allows both to read it), not
+            // buyer-only, so a seller can actually see the real delivery address a
+            // buyer typed in. Confirm receipt/Report a problem stay buyer-only
+            // actions -- only the buyer can judge whether the real item arrived.
+            if isMyEscrowTrade, let escrow {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let deliveryAddress = escrow.deliveryAddress {
+                        Text("📦 Delivery address: \(deliveryAddress)").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    if escrow.status == "HELD" {
+                        Text(isEscrowBuyer ? "🔒 Payment held by itunda until you confirm receipt" : "🔒 Payment held by itunda until the buyer confirms receipt")
+                            .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        if isEscrowBuyer {
+                            if showDispute {
+                                TextField("What went wrong?", text: $disputeReason)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.footnote)
+                                HStack(spacing: 10) {
+                                    actionButton("Cancel", filled: false) { showDispute = false }
+                                    actionButton("Submit", filled: true) { await submitDispute() }
+                                }
+                            } else {
+                                HStack(spacing: 10) {
+                                    actionButton(resolvingEscrow ? "Working…" : "Confirm receipt", filled: true) { await confirmReceipt() }
+                                    actionButton("Report a problem", filled: false) { showDispute = true }
+                                }
+                            }
+                        }
+                    } else if escrow.status == "DISPUTED" {
+                        Text("⚠️ Reported -- itunda is reviewing this trade").font(.footnote).foregroundColor(.red)
+                    } else if escrow.status == "RELEASED" {
+                        Text("✅ Payment released to the seller").font(.footnote).foregroundColor(.green)
+                    } else if escrow.status == "REFUNDED" {
+                        Text(isEscrowBuyer ? "↩️ Refunded to you" : "↩️ Refunded to the buyer").font(.footnote).foregroundColor(.green)
+                    }
                 }
             }
             if !isMine, listing.status == "ACTIVE", let toLat = listing.latitude, let toLng = listing.longitude {
@@ -1163,6 +1231,54 @@ private struct ListingCard: View {
             if let newValue { error = newValue }
         }
         .task { await loadHoodReviews() }
+        .task { await loadEscrow() }
+    }
+
+    // Real escrow status fetch -- see NetworkClient's own MarketplaceEscrowDto doc
+    // comment for the buyer+seller visibility account.
+    private func loadEscrow() async {
+        guard isMyEscrowTrade, !loadedEscrow else { return }
+        escrow = try? await NetworkClient.shared.getEscrow(listing.id).escrow
+        loadedEscrow = true
+    }
+
+    private func payViaItunda() async {
+        paying = true
+        defer { paying = false }
+        do {
+            _ = try await NetworkClient.shared.payEscrow(listing.id, deliveryAddress: deliveryAddress)
+            onChanged()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func confirmReceipt() async {
+        resolvingEscrow = true
+        defer { resolvingEscrow = false }
+        do {
+            escrow = try await NetworkClient.shared.confirmEscrowReceipt(listing.id).escrow
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func submitDispute() async {
+        guard !disputeReason.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        resolvingEscrow = true
+        defer { resolvingEscrow = false }
+        do {
+            escrow = try await NetworkClient.shared.disputeEscrow(listing.id, reason: disputeReason.trimmingCharacters(in: .whitespaces)).escrow
+            showDispute = false
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
     }
 
     // Real read-back for the review above (item 192/198/199).
