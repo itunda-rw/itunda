@@ -1165,12 +1165,19 @@ extension NetworkClient {
 
     public func getUpfrontDeposits() async throws -> UpfrontDepositsResponse { try await get("api/v1/upfront-deposits") }
 
+    // Real bug found 2026-08-15 (same pass that found WeeklySavings' identical gap --
+    // a full cross-reference of every backend endpoint requiring a non-nullable
+    // Idempotency-Key header against every authenticatedPost call in this file that
+    // omits idempotencyKey): UpfrontInterestDepositController's create and withdraw
+    // both declare `@RequestHeader("Idempotency-Key") idempotencyKey: String`
+    // (non-nullable), but neither call here ever sent it -- both have been silently
+    // 400ing with IDEMPOTENCY_KEY_REQUIRED since they shipped.
     public func openUpfrontDeposit(_ request: OpenUpfrontDepositRequest) async throws -> OpenUpfrontDepositResponse {
-        try await authenticatedPost("api/v1/upfront-deposits", body: request)
+        try await authenticatedPost("api/v1/upfront-deposits", body: request, idempotencyKey: UUID().uuidString)
     }
 
     public func withdrawUpfrontDeposit(id: String) async throws -> OpenUpfrontDepositResponse {
-        try await authenticatedPost("api/v1/upfront-deposits/\(id)/withdraw", body: EmptyBody())
+        try await authenticatedPost("api/v1/upfront-deposits/\(id)/withdraw", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
@@ -4733,8 +4740,12 @@ extension NetworkClient {
             URLQueryItem(name: "serviceId", value: serviceId), URLQueryItem(name: "date", value: date),
         ])
     }
+    // Real bug found 2026-08-15 (same Idempotency-Key audit as UpfrontDeposit above):
+    // MerchantBookingController's own doc comment explicitly says "Idempotency-Key IS
+    // required on POST /bookings -- found live in a 2026-08-02 audit," but this iOS
+    // call never actually sent it -- has been silently 400ing since it shipped.
     public func createBooking(_ request: CreateBookingRequest) async throws -> MerchantBookingDetailResponse {
-        try await authenticatedPost("api/v1/merchant/bookings", body: request)
+        try await authenticatedPost("api/v1/merchant/bookings", body: request, idempotencyKey: UUID().uuidString)
     }
     public func getMyBookings() async throws -> MerchantBookingsResponse { try await get("api/v1/merchant/bookings/my-bookings") }
     public func cancelBooking(_ bookingId: String) async throws -> MerchantBookingDetailResponse {
@@ -5884,18 +5895,29 @@ extension NetworkClient {
         try await get("api/v1/weekly-savings/plans/\(id)")
     }
 
+    // Real bug found 2026-08-15 (while porting Grow31 savings to iOS, checking this
+    // file's own established idempotencyKey convention against every other
+    // authenticatedPost call): these 3 calls never passed idempotencyKey, so the
+    // param's `= nil` default meant the real, backend-required "Idempotency-Key"
+    // header (WeeklySavingsController.create/cancel/withdraw all declare
+    // `@RequestHeader("Idempotency-Key") idempotencyKey: String`, non-nullable) was
+    // simply never sent -- every create/cancel/withdraw call on this screen has been
+    // silently 400ing with IDEMPOTENCY_KEY_REQUIRED since it shipped. Fixed to match
+    // every other real money-moving call in this file (e.g. depositMiniWallet,
+    // contributeToIkimina).
     public func createWeeklySavingsPlan(name: String, baseWeeklyAmount: Double, escalationRate: Double) async throws -> WeeklySavingsActionResponse {
         try await authenticatedPost(
             "api/v1/weekly-savings/plans",
-            body: CreateWeeklySavingsPlanRequest(name: name, baseWeeklyAmount: baseWeeklyAmount, escalationRate: escalationRate)
+            body: CreateWeeklySavingsPlanRequest(name: name, baseWeeklyAmount: baseWeeklyAmount, escalationRate: escalationRate),
+            idempotencyKey: UUID().uuidString
         )
     }
 
     public func cancelWeeklySavingsPlan(id: String) async throws -> WeeklySavingsActionResponse {
-        try await authenticatedPost("api/v1/weekly-savings/plans/\(id)/cancel", body: EmptyBody())
+        try await authenticatedPost("api/v1/weekly-savings/plans/\(id)/cancel", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func withdrawWeeklySavingsPlan(id: String) async throws -> WeeklySavingsActionResponse {
-        try await authenticatedPost("api/v1/weekly-savings/plans/\(id)/withdraw", body: EmptyBody())
+        try await authenticatedPost("api/v1/weekly-savings/plans/\(id)/withdraw", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 }
