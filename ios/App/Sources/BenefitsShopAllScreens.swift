@@ -115,6 +115,10 @@ struct EntireMenuScreen: View {
     // above; this feature's backend has been real (ledger-backed, scheduler-driven)
     // since day one but had zero iOS UI until now.
     @State private var showWeeklySavings = false
+    // Real Toss Bank 키워봐요 31일적금 (2026-08-15) -- last remaining client platform
+    // for this feature (Android since 2026-08-12, bank-mfe since earlier the same
+    // session as this).
+    @State private var showGrow31Savings = false
     // Real KakaoBank mini-style capped starter wallet (2026-07-28, item 101) -- last
     // remaining client platform for this feature (bank-mfe/Android already have it).
     @State private var showMiniWallet = false
@@ -243,6 +247,7 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showRewardTasksMiniApp = true }),
                 FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                 FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
+                FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", symbol: "flame.fill", tint: .accentOrange, action: { showGrow31Savings = true }),
                 FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
                 FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentBlue, action: { showCard = true }),
                 FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
@@ -404,6 +409,7 @@ struct EntireMenuScreen: View {
                 FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showRewardTasksMiniApp = true }),
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                         FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
+                FlatRow(title: "31-Day Savings", subtitle: "Daily save, streak-tiered bonus rate", symbol: "flame.fill", tint: .accentOrange, action: { showGrow31Savings = true }),
                         FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
                         FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentBlue, action: { showCard = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
@@ -701,6 +707,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showWeeklySavings) {
             WeeklySavingsScreenView(onBack: { showWeeklySavings = false })
+        }
+        .sheet(isPresented: $showGrow31Savings) {
+            Grow31SavingsScreenView(onBack: { showGrow31Savings = false })
         }
         .sheet(isPresented: $showMiniWallet) {
             MiniWalletScreenView(onBack: { showMiniWallet = false })
