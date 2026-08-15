@@ -19,7 +19,15 @@ import CoreDesignSystem
 // same target) needs the exact same locale-detection logic -- promoted once real duplication
 // appeared, same "promote to shared only once it's needed twice" precedent
 // packages/design-tokens already established for this codebase, not speculative reuse.
-enum AppLocale: String { case en, rw }
+//
+// Widened to French (2026-08-15), matching the identical fix made the same day to
+// Android's own AppLocale/AppLocalePreference (see LoginScreen.kt's LanguageSwitcher
+// doc comment) -- Rwanda's three official languages, not just two. `.fr` case added
+// rather than a separate enum, so every existing `[AppLocale: [String: String]]`
+// dictionary and every `locale ==` comparison across both files keeps working
+// unchanged; only the dictionaries themselves and the switcher's cycle logic below
+// needed new entries.
+enum AppLocale: String { case en, rw, fr }
 
 private let loginStrings: [AppLocale: [String: String]] = [
     .en: [
@@ -50,16 +58,34 @@ private let loginStrings: [AppLocale: [String: String]] = [
         "switchToRegister": "Uri mushya kuri itunda? Fungura konti",
         "language": "Ururimi",
     ],
+    .fr: [
+        "tagline_register": "Créez votre compte",
+        "tagline_login": "Connectez-vous pour continuer",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "referralCode": "Code de parrainage (facultatif)",
+        "phoneNumber": "Numéro de téléphone",
+        "password": "Mot de passe",
+        "createAccount": "Créer un compte",
+        "logIn": "Se connecter",
+        "switchToLogin": "Vous avez déjà un compte ? Connectez-vous",
+        "switchToRegister": "Nouveau sur itunda ? Créez un compte",
+        "language": "Langue",
+    ],
 ]
 
 let localeStorageKey = "itunda.locale"
+
+private let supportedLocales: [AppLocale] = [.en, .rw, .fr]
 
 func loadStoredLocale() -> AppLocale {
     if let raw = UserDefaults.standard.string(forKey: localeStorageKey), let locale = AppLocale(rawValue: raw) {
         return locale
     }
     let preferred = Locale.preferredLanguages.first ?? "en"
-    return preferred.hasPrefix("rw") ? .rw : .en
+    if preferred.hasPrefix("rw") { return .rw }
+    if preferred.hasPrefix("fr") { return .fr }
+    return .en
 }
 
 /// The login/register screen this app never had (see SessionManager.swift) --
@@ -102,16 +128,16 @@ struct LoginScreen: View {
                             .font(IDS.Typography.header)
                             .foregroundColor(IDS.Colors.textPrimary)
                         Spacer()
-                        // Real first in-app language switcher (2026-08-08) -- see this
-                        // file's own top-of-file doc comment for the full context. Only
-                        // 2 locales exist right now, so a simple toggle (shows the
-                        // current selection, tap switches to the other) is the honest
-                        // minimum, matching web/Android's own identical choice.
+                        // Real first in-app language switcher (2026-08-08), widened to
+                        // a 3-way cycle (2026-08-15) when French joined as a real
+                        // locale here too -- see this file's own top-of-file doc
+                        // comment for the full context.
                         Button(action: {
-                            locale = (locale == .en) ? .rw : .en
+                            let currentIndex = supportedLocales.firstIndex(of: locale) ?? 0
+                            locale = supportedLocales[(currentIndex + 1) % supportedLocales.count]
                             UserDefaults.standard.set(locale.rawValue, forKey: localeStorageKey)
                         }) {
-                            Text(locale == .en ? "EN" : "RW")
+                            Text(locale.rawValue.uppercased())
                                 .font(IDS.Typography.bodyMedium)
                                 .foregroundColor(IDS.Colors.textSecondary)
                         }

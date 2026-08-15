@@ -67,6 +67,31 @@ private let overviewStrings: [AppLocale: [String: String]] = [
         "unlinkError": "Ntibishoboka kuraho iyo konti.",
         "verificationFailed": "Ntibishoboka kwemeza iyo konti ya %@. Ntiyahujwe.",
     ],
+    // Real French added 2026-08-15, same session as LoginScreen.swift's AppLocale
+    // widening to .fr -- kept together, not left English-only a second time (the
+    // exact mistake this file's own doc comment above already names web's first pass
+    // over this same screen making with `verification failed`, now avoided here too).
+    .fr: [
+        "title": "Mon patrimoine",
+        "loadError": "Impossible de charger votre aperçu.",
+        "netWorth": "Valeur nette",
+        "accounts": "Comptes",
+        "savings": "Épargne : RWF %d sur %d objectif(s)",
+        "loans": "Prêts : RWF %d restant, %d actif(s)",
+        "investments": "Investissements : RWF %d de valeur d'acquisition, %d position(s)",
+        "insurance": "Assurance : %d plan(s) actif(s), RWF %d/mois",
+        "linkedAccounts": "Comptes liés",
+        "demoBalance": "Solde de démonstration : %@ %d",
+        "unlink": "Dissocier",
+        "linkPrompt": "Lier un compte bancaire ou mobile money",
+        "providerNamePlaceholder": "Nom du fournisseur",
+        "accountPhonePlaceholder": "Compte / numéro de téléphone",
+        "linking": "Liaison en cours…",
+        "linkAccount": "Lier le compte",
+        "linkError": "Impossible de lier ce compte.",
+        "unlinkError": "Impossible de dissocier ce compte.",
+        "verificationFailed": "Impossible de vérifier ce compte %@. Il n'a pas été lié.",
+    ],
 ]
 
 struct OverviewScreenView: View {
