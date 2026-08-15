@@ -49,6 +49,11 @@ import {
   WEEKLY_SAVINGS_ESCALATION_RATES, WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS, WEEKLY_SAVINGS_TERM_WEEKS,
   type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
 } from './lib/weeklySavings';
+import {
+  cancelGrow31SavingsPlan, createGrow31SavingsPlan, depositGrow31SavingsToday, fetchGrow31SavingsPlan, fetchGrow31SavingsPlans,
+  withdrawGrow31SavingsPlan, grow31BonusRateForStreak, GROW31_TERM_DAYS,
+  type Grow31SavingsPlan, type Grow31SavingsPlanDetail,
+} from './lib/grow31Savings';
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, type P2pPaymentRequestDto, type P2pPaymentRequestStatus } from './lib/p2p';
 import { getCertificateStatus, getMyCertificate, issueCertificate, revokeCertificate, verifyCertificateSignature, type Certificate, type VerifyCertificateSignatureResult } from './lib/certificate';
@@ -20024,6 +20029,302 @@ function WeeklySavingsSection() {
   );
 }
 
+// Real Toss Bank 키워봐요 31일적금 (Grow-it 31-day savings) equivalent -- see
+// lib/grow31Savings.ts's own doc comment. Distinct from WeeklySavings above: a deposit
+// is an explicit daily user action ("Save today"), not a scheduled auto-debit.
+function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const [detail, setDetail] = useState<Grow31SavingsPlanDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real fix (2026-08-10 pattern, same as WeeklySavingsPlanDetailView above): deposit/
+  // cancel/withdraw all share this one flag+prompt, so retrying has to redo whichever
+  // one was actually pending.
+  const pendingDeviceRetryRef = useRef<(() => void) | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchGrow31SavingsPlan(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this plan.'));
+  };
+  useEffect(load, []);
+
+  const handleDeposit = async () => {
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      const result = await depositGrow31SavingsToday(id);
+      setDetail(result);
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = handleDeposit;
+        setNeedsDeviceVerification(true);
+      } else setError(err instanceof ApiError ? err.message : 'Could not save today.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      const result = await cancelGrow31SavingsPlan(id);
+      setMessage(result.message);
+      setConfirmingCancel(false);
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = handleCancel;
+        setNeedsDeviceVerification(true);
+      } else setError(err instanceof ApiError ? err.message : 'Could not cancel this plan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      const result = await withdrawGrow31SavingsPlan(id);
+      setMessage(result.message);
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        pendingDeviceRetryRef.current = handleWithdraw;
+        setNeedsDeviceVerification(true);
+      } else setError(err instanceof ApiError ? err.message : 'Could not withdraw this plan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (error && !detail) {
+    return (
+      <div className="itunda-card">
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+        <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
+      </div>
+    );
+  }
+  if (detail === null) return <div className="itunda-card skeleton" style={{ height: '260px' }} />;
+
+  const { plan, walletBalance, deposits } = detail;
+  const pct = Math.min(100, Math.round((plan.daysElapsed / GROW31_TERM_DAYS) * 100));
+  const bonus = grow31BonusRateForStreak(plan.longestStreak);
+  const today = new Date().toISOString().slice(0, 10);
+  const alreadyDepositedToday = plan.lastDepositDate === today;
+
+  return (
+    <div>
+      <button className="itunda-btn itunda-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to 31-day savings</button>
+
+      <div className="itunda-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--itunda-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+        <p style={{ fontSize: '13px', opacity: 0.85 }}>{plan.name} · Day {Math.min(plan.daysElapsed, GROW31_TERM_DAYS)} of {GROW31_TERM_DAYS}</p>
+        <p style={{ fontSize: '28px', fontWeight: 800, margin: '6px 0' }}>{walletBalance.toLocaleString()} RWF</p>
+        <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#fff' }} />
+        </div>
+        <p style={{ fontSize: '12px', marginTop: '10px', opacity: 0.9 }}>
+          Current streak {plan.currentStreak} days · longest {plan.longestStreak} days
+        </p>
+        <p style={{ fontSize: '12px', opacity: 0.9 }}>
+          {bonus > 0 ? `+${bonus}% bonus locked in on top of the ${plan.baseRate}% base rate` : 'Save 3 days in a row to unlock your first bonus tier'}
+        </p>
+      </div>
+
+      <div className="itunda-card" style={{ marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Plan details</h3>
+        <Row label="Status" value={plan.status} />
+        <Row label="Daily amount" value={`${plan.dailyAmount.toLocaleString()} RWF`} />
+        <Row label="Base rate" value={`${plan.baseRate}%`} />
+        {plan.totalInterestPaid != null && <Row label="Total interest paid" value={`${plan.totalInterestPaid.toLocaleString()} RWF`} />}
+      </div>
+
+      {deposits.length > 0 && (
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Deposits</h3>
+          {[...deposits].sort((a, b) => b.dayNumber - a.dayNumber).map((d) => (
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: '13px' }}>
+              <span style={{ color: 'var(--itunda-grey-500)' }}>Day {d.dayNumber} · streak {d.streakAtDeposit}</span>
+              <span style={{ fontWeight: 600 }}>{d.amount.toLocaleString()} RWF</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', marginBottom: '10px' }}>{message}</p>}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
+
+      {needsDeviceVerification ? (
+        <DeviceStepUpPrompt
+          onVerified={() => { const retry = pendingDeviceRetryRef.current; pendingDeviceRetryRef.current = null; retry?.(); }}
+          onCancel={() => { pendingDeviceRetryRef.current = null; setNeedsDeviceVerification(false); setConfirmingCancel(false); }}
+        />
+      ) : (
+        <>
+          {plan.status === 'ACTIVE' && !confirmingCancel && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {!alreadyDepositedToday ? (
+                <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={handleDeposit} disabled={busy}>
+                  {busy ? '…' : `Save today (+${plan.dailyAmount.toLocaleString()} RWF)`}
+                </button>
+              ) : (
+                <p style={{ fontSize: '13px', color: 'var(--itunda-green)', fontWeight: 600 }}>
+                  You've already saved today — come back tomorrow to keep your streak.
+                </p>
+              )}
+              <button className="itunda-btn itunda-btn-secondary" style={{ width: '100%' }} onClick={() => setConfirmingCancel(true)} disabled={busy}>
+                Cancel plan (early withdrawal)
+              </button>
+            </div>
+          )}
+
+          {plan.status === 'ACTIVE' && confirmingCancel && (
+            <div className="itunda-card">
+              <p style={{ fontSize: '13px', marginBottom: '10px' }}>
+                Cancelling now forfeits your streak bonus — you'll only get principal plus base-rate interest, paid out immediately. This can't be undone.
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmingCancel(false)} disabled={busy}>Keep plan</button>
+                <button className="itunda-btn itunda-btn-danger" style={{ flex: 1 }} onClick={handleCancel} disabled={busy}>{busy ? '…' : 'Confirm cancel'}</button>
+              </div>
+            </div>
+          )}
+
+          {plan.status === 'MATURED' && !plan.withdrawnAt && (
+            <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={busy}>
+              {busy ? '…' : `Withdraw ${walletBalance.toLocaleString()} RWF to main wallet`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [dailyAmount, setDailyAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button
+        className="itunda-btn itunda-btn-secondary"
+        style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+        onClick={() => setOpen(true)}
+      >
+        <Plus size={16} /> New 31-day plan
+      </button>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await createGrow31SavingsPlan(name, Number(dailyAmount));
+      setName('');
+      setDailyAmount('');
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this plan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+        Pick a small amount you can realistically save every single day for {GROW31_TERM_DAYS} days. Miss a day and your streak resets — but your
+        longest streak still locks in a bonus rate at maturity, up to +10% for a full unbroken run.
+      </p>
+      <input
+        type="text" required placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+      />
+      <input
+        type="number" min="1" required placeholder="Daily amount (RWF)" value={dailyAmount} onChange={(e) => setDailyAmount(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+      />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function Grow31SavingsSection() {
+  const [plans, setPlans] = useState<Grow31SavingsPlan[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchGrow31SavingsPlans().then(setPlans).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your 31-day savings plans.'));
+  };
+  useEffect(load, []);
+
+  if (openId) {
+    return <Grow31SavingsPlanDetailView id={openId} onBack={() => { setOpenId(null); load(); }} />;
+  }
+
+  return (
+    <div>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>31-day savings</h3>
+      <CreateGrow31SavingsPlanForm onCreated={load} />
+      {error && (
+        <div className="itunda-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>
+        </div>
+      )}
+      {plans === null ? (
+        <div className="itunda-card skeleton" style={{ height: '64px' }} />
+      ) : plans.length === 0 ? (
+        <EmptyState message="No 31-day plans yet — save a small fixed amount every real day for an escalating streak bonus." />
+      ) : (
+        plans.map((p) => {
+          const pct = Math.min(100, Math.round((p.daysElapsed / GROW31_TERM_DAYS) * 100));
+          const bonus = grow31BonusRateForStreak(p.longestStreak);
+          return (
+            <button
+              key={p.id}
+              onClick={() => setOpenId(p.id)}
+              className="itunda-card"
+              style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <p style={{ fontSize: '14px', fontWeight: 700 }}>{p.name}</p>
+                <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{p.status}</p>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+                {p.totalSaved.toLocaleString()} RWF · day {Math.min(p.daysElapsed, GROW31_TERM_DAYS)}/{GROW31_TERM_DAYS} · streak {p.currentStreak}
+              </p>
+              <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--itunda-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: bonus > 0 ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }} />
+              </div>
+            </button>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 // Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit) equivalent
 // (item 153) -- see lib/upfrontDeposit.ts's own doc comment. The one product in this
 // module where opening pays real, immediately-spendable interest -- distinct from every
@@ -20214,6 +20515,9 @@ function SavingsView({ initialScrollTarget, onConsumedInitialScrollTarget, onNav
       </div>
       <div style={{ marginTop: '24px' }}>
         <WeeklySavingsSection />
+      </div>
+      <div style={{ marginTop: '24px' }}>
+        <Grow31SavingsSection />
       </div>
       <div style={{ marginTop: '24px' }}>
         <UpfrontDepositSection />
