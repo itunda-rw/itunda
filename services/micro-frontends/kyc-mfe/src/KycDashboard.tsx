@@ -3,6 +3,8 @@ import { overlay } from 'overlay-kit';
 import './KycDashboard.css';
 import { getToken, ApiError } from './lib/api';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
+import { useI18n } from './i18n/I18nContext';
+import { LOCALES } from './i18n/translations';
 
 // Real personal KYC identity submission (2026-07-26) -- this whole module used to be a
 // fully mocked, unwired shell: typing any 6 digits into a fake "OTP" field flipped
@@ -16,6 +18,7 @@ import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type Ky
 // row for human review -- there is no instant "verified" step, honestly, because that
 // is not how real KYC review actually works.
 export default function KycDashboard() {
+  const { t, locale, setLocale } = useI18n();
   const [submissions, setSubmissions] = useState<KycSubmission[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loggedIn = getToken() !== null;
@@ -25,7 +28,7 @@ export default function KycDashboard() {
     setError(null);
     fetchIdentityStatus()
       .then(setSubmissions)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your identity status.'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t('kyc.loadError')));
   };
 
   useEffect(refresh, [loggedIn]);
@@ -33,8 +36,8 @@ export default function KycDashboard() {
   if (!loggedIn) {
     return (
       <div className="kyc-card">
-        <h2 className="kyc-card__title">KYC Verification</h2>
-        <p className="kyc-card__subtitle">Sign in from the Home tab first, then come back here to verify your identity.</p>
+        <h2 className="kyc-card__title">{t('kyc.title')}</h2>
+        <p className="kyc-card__subtitle">{t('kyc.signInFirst')}</p>
       </div>
     );
   }
@@ -44,8 +47,23 @@ export default function KycDashboard() {
 
   return (
     <div className="kyc-card">
-      <h2 className="kyc-card__title">KYC Verification</h2>
-      <p className="kyc-card__subtitle">Rwanda National ID (NIDA) or passport verification.</p>
+      {/* Real first language switcher for kyc-mfe (2026-08-15) -- shares the same
+          'itunda.locale' localStorage key bank-mfe's own login writes, so a language
+          already chosen elsewhere in itunda is honored here too. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '4px' }}>
+        <select
+          value={locale}
+          onChange={(e) => setLocale(e.target.value as 'en' | 'rw' | 'fr')}
+          aria-label="Language"
+          style={{ fontSize: '11px', padding: '3px 5px', borderRadius: '6px', border: '1px solid var(--itunda-grey-200)', color: 'var(--itunda-grey-700)', background: '#fff' }}
+        >
+          {LOCALES.map((l) => (
+            <option key={l.code} value={l.code}>{l.label}</option>
+          ))}
+        </select>
+      </div>
+      <h2 className="kyc-card__title">{t('kyc.title')}</h2>
+      <p className="kyc-card__subtitle">{t('kyc.subtitle')}</p>
 
       {error && <p className="kyc-error" role="alert">{error}</p>}
 
@@ -74,13 +92,14 @@ export default function KycDashboard() {
           ));
         }}
       >
-        {hasPending ? 'Submission pending review' : 'Verify your identity'}
+        {hasPending ? t('kyc.pendingReview') : t('kyc.verifyIdentity')}
       </button>
     </div>
   );
 }
 
 function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close: () => void; onSubmitted: () => void }) {
+  const { t } = useI18n();
   const [documentType, setDocumentType] = useState<IdentityDocumentType>('NATIONAL_ID');
   const [documentNumber, setDocumentNumber] = useState('');
   const [documentReference, setDocumentReference] = useState('');
@@ -99,7 +118,7 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
       setSubmitted(submission);
       onSubmitted();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'That submission could not be completed.');
+      setError(err instanceof ApiError ? err.message : t('kyc.submitError'));
     } finally {
       setBusy(false);
     }
@@ -113,27 +132,26 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
             <div className="kyc-success__badge">
               <span className="kyc-success__check">✓</span>
             </div>
-            <h2 className="kyc-step__title">Submitted for review</h2>
+            <h2 className="kyc-step__title">{t('kyc.submittedTitle')}</h2>
             <p className="kyc-success__body">
-              A real reviewer will check your {submitted.documentType.replace('_', ' ').toLowerCase()} and update your status --
-              this isn't instant, real KYC review never is.
+              {t('kyc.submittedBodyPrefix')} {submitted.documentType.replace('_', ' ').toLowerCase()} {t('kyc.submittedBodySuffix')}
             </p>
-            <button onClick={close} className="kyc-success__done">Done</button>
+            <button onClick={close} className="kyc-success__done">{t('kyc.done')}</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="kyc-step">
-            <h2 className="kyc-step__title">Verify your identity</h2>
-            <p className="kyc-step__subtitle">Choose a document type and enter its number.</p>
+            <h2 className="kyc-step__title">{t('kyc.verifyIdentity')}</h2>
+            <p className="kyc-step__subtitle">{t('kyc.chooseDocType')}</p>
 
             <div className="kyc-doctype-row">
-              {(['NATIONAL_ID', 'PASSPORT'] as IdentityDocumentType[]).map((t) => (
+              {(['NATIONAL_ID', 'PASSPORT'] as IdentityDocumentType[]).map((docType) => (
                 <button
                   type="button"
-                  key={t}
-                  className={documentType === t ? 'kyc-doctype-btn kyc-doctype-btn--active' : 'kyc-doctype-btn'}
-                  onClick={() => setDocumentType(t)}
+                  key={docType}
+                  className={documentType === docType ? 'kyc-doctype-btn kyc-doctype-btn--active' : 'kyc-doctype-btn'}
+                  onClick={() => setDocumentType(docType)}
                 >
-                  {t === 'NATIONAL_ID' ? 'National ID' : 'Passport'}
+                  {docType === 'NATIONAL_ID' ? t('kyc.nationalId') : t('kyc.passport')}
                 </button>
               ))}
             </div>
@@ -151,19 +169,19 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
                 the field's name survives even after typing starts. */}
             <input
               autoFocus
-              aria-label={documentType === 'NATIONAL_ID' ? '16-digit Rwandan ID number' : 'Passport number'}
+              aria-label={documentType === 'NATIONAL_ID' ? t('kyc.nationalIdNumberLabel') : t('kyc.passportNumberLabel')}
               value={documentNumber}
               onChange={(e) => setDocumentNumber(e.target.value)}
-              placeholder={documentType === 'NATIONAL_ID' ? '16-digit Rwandan ID number' : 'Passport number'}
+              placeholder={documentType === 'NATIONAL_ID' ? t('kyc.nationalIdNumberLabel') : t('kyc.passportNumberLabel')}
               className="kyc-step__input"
               style={{ fontSize: '16px', marginBottom: '10px' }}
               required
             />
             <input
-              aria-label="Document reference (scan/photo reference)"
+              aria-label={t('kyc.documentReferenceLabel')}
               value={documentReference}
               onChange={(e) => setDocumentReference(e.target.value)}
-              placeholder="Document reference (scan/photo reference)"
+              placeholder={t('kyc.documentReferenceLabel')}
               className="kyc-step__input"
               style={{ fontSize: '16px', marginBottom: 0 }}
               required
@@ -174,7 +192,7 @@ function KycSubmitModal({ isOpen, close, onSubmitted }: { isOpen: boolean; close
               disabled={busy || documentNumber.trim().length === 0 || documentReference.trim().length === 0}
               className={busy || documentNumber.trim().length === 0 || documentReference.trim().length === 0 ? 'kyc-step__next kyc-step__next--disabled' : 'kyc-step__next kyc-step__next--enabled'}
             >
-              {busy ? 'Submitting…' : 'Submit for review'}
+              {busy ? t('kyc.submitting') : t('kyc.submitForReview')}
             </button>
           </form>
         )}
