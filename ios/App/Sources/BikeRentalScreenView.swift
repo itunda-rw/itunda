@@ -200,11 +200,20 @@ private struct BikeRentContent: View {
 
 private struct BikeMineContent: View {
     @StateObject private var locationFetcher = BikeRentalLocationFetcher()
+    // Real fix (2026-08-15) -- updateBikeLocation existed on NetworkClient and the
+    // backend since day one, but was never called from any client (bank-mfe's/
+    // Android's identical gap fixed the same session). A bike owner could register a
+    // bike and toggle its availability, but never update its position after moving
+    // it, so getNearbyBikes would show a stale location forever after the first
+    // registration. Own location fetcher instance, mirroring how `register()` and
+    // BikeRentContent's own fetcher are each independently owned in this same file.
+    @StateObject private var updateLocationFetcher = BikeRentalLocationFetcher()
     @State private var myBikes: [BikeDto] = []
     @State private var loaded = false
     @State private var bikeType = "ELECTRIC"
     @State private var registering = false
     @State private var busyBikeId: String?
+    @State private var updatingLocationBikeId: String?
     @State private var error: String?
 
     var body: some View {
@@ -241,6 +250,13 @@ private struct BikeMineContent: View {
                         HStack {
                             Text(bike.type == "ELECTRIC" ? "⚡ Electric bike" : "🚲 Regular bike").bold().foregroundColor(IDS.Colors.textPrimary)
                             Spacer()
+                            Button(action: { Task { await updateBikeLocation(bike.id) } }) {
+                                Text(updatingLocationBikeId == bike.id ? "…" : "Update location").font(.caption).bold()
+                                    .foregroundColor(IDS.Colors.textPrimary)
+                                    .padding(.horizontal, 12).padding(.vertical, 10)
+                                    .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                            }
+                            .disabled(updatingLocationBikeId == bike.id)
                             Button(action: { Task { await toggleAvailable(bike) } }) {
                                 Text(bike.available ? "Available" : "Unavailable").font(.caption).bold()
                                     .foregroundColor(bike.available ? .white : IDS.Colors.textPrimary)
@@ -286,6 +302,30 @@ private struct BikeMineContent: View {
             self.error = "Could not register this bike."
         }
         registering = false
+    }
+
+    private func updateBikeLocation(_ bikeId: String) async {
+        updatingLocationBikeId = bikeId
+        error = nil
+        updateLocationFetcher.requestLocation()
+        // Same honest poll bound register() above already accepts for this fetcher's
+        // async delegate callback.
+        for _ in 0..<20 {
+            if updateLocationFetcher.coordinate != nil { break }
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+        guard let coordinate = updateLocationFetcher.coordinate else {
+            error = "Could not access your real location right now."
+            updatingLocationBikeId = nil
+            return
+        }
+        do {
+            _ = try await NetworkClient.shared.updateBikeLocation(bikeId: bikeId, latitude: coordinate.latitude, longitude: coordinate.longitude)
+            await load()
+        } catch {
+            self.error = "Could not update this bike's location."
+        }
+        updatingLocationBikeId = nil
     }
 
     private func toggleAvailable(_ bike: BikeDto) async {
