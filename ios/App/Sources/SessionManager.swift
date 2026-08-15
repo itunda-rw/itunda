@@ -22,7 +22,20 @@ final class SessionManager: ObservableObject {
 
     @Published private(set) var sessionState: SessionState = .loggedOut
 
-    private init() {}
+    private init() {
+        // Real gap found 2026-08-15 (matches Android's identical SessionManager.kt
+        // fix): NetworkClient's refresh-retry logic clears the Keychain session and
+        // posts this notification when the refresh token itself is invalid/expired --
+        // without this observer, sessionState would keep claiming .loggedIn while
+        // every screen silently got a fresh, unrecoverable 401 forever.
+        NotificationCenter.default.addObserver(
+            forName: NetworkClient.sessionExpiredNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.sessionState = .loggedOut
+            }
+        }
+    }
 
     func restoreSession() {
         let store = KeychainTokenStore.shared

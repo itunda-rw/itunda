@@ -391,6 +391,83 @@ public final class NetworkClient {
 
     private init() {}
 
+    // Real silent session-refresh (2026-08-15) -- Android's twin `refreshAuthenticator`
+    // in ApiService.kt has the full account: a dead-endpoint sweep found `refresh()`
+    // had ZERO callers anywhere on ANY platform, meaning an expired 24h access token
+    // (JwtService's real expiry) just surfaced as a raw, unrecoverable 401 with no
+    // path forward -- iOS's gap was actually the plainer of the two, since it didn't
+    // even have Android's pre-existing "hard logout on any error" fallback. An `actor`
+    // here (not a plain stored `Task?`) is load-bearing: NetworkClient.shared is hit
+    // concurrently from many screens' own Tasks, and a data race between two 401s each
+    // independently deciding "no refresh in flight yet" would burn the single-use
+    // rotating refresh token twice, permanently locking the second caller out.
+    private actor RefreshCoordinator {
+        private var inFlight: Task<String?, Never>?
+
+        func refreshedToken(_ refresh: @escaping () async -> String?) async -> String? {
+            if let inFlight { return await inFlight.value }
+            let task = Task<String?, Never> { await refresh() }
+            inFlight = task
+            let result = await task.value
+            inFlight = nil
+            return result
+        }
+    }
+    private let refreshCoordinator = RefreshCoordinator()
+
+    /// Every raw `session.data(for:)` call site in this file should route through
+    /// here instead -- on a real 401 from an authenticated request, refreshes once
+    /// (single-flight, see RefreshCoordinator above) and retries the exact same
+    /// request with the new token. `/auth/refresh` itself is excluded from the retry
+    /// to avoid a hard loop if the refresh call somehow 401s.
+    private func dataWithRefresh(for request: URLRequest) async throws -> (Data, URLResponse) {
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 401,
+              request.value(forHTTPHeaderField: "Authorization") != nil,
+              request.url?.path.hasSuffix("/auth/refresh") != true
+        else {
+            return (data, response)
+        }
+        guard let newToken = await refreshCoordinator.refreshedToken({ [weak self] in
+            await self?.performTokenRefresh()
+        }) else {
+            return (data, response)
+        }
+        var retried = request
+        retried.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
+        return try await session.data(for: retried)
+    }
+
+    private func performTokenRefresh() async -> String? {
+        guard let refreshToken = KeychainTokenStore.shared.getRefreshToken() else { return nil }
+        do {
+            let response: AuthResponse = try await post(
+                "api/v1/auth/refresh", body: RefreshRequest(refreshToken: refreshToken), authToken: nil
+            )
+            KeychainTokenStore.shared.saveSession(
+                userId: response.user.id, accessToken: response.accessToken, refreshToken: response.refreshToken
+            )
+            return response.accessToken
+        } catch {
+            // Refresh token itself is invalid/expired (7-day expiry, or already
+            // consumed) -- a real logout, not a dead end: clear the local session and
+            // notify (CoreNetwork can't import App -> SessionManager directly, one-way
+            // dependency, see Project.swift's own comment on this exact boundary) so
+            // App's SessionManager can take the session back to a real login screen
+            // instead of every remaining screen showing raw 401s forever. Matches
+            // Android's forceLocalLogout exactly, just decoupled across the module
+            // boundary Android doesn't have (SessionManager.kt lives IN :core:network).
+            KeychainTokenStore.shared.clearSession()
+            NotificationCenter.default.post(name: NetworkClient.sessionExpiredNotification, object: nil)
+            return nil
+        }
+    }
+
+    /// Posted when a refresh token itself is invalid/expired and the local session had
+    /// to be cleared -- App's SessionManager observes this to flip `sessionState` back
+    /// to `.loggedOut` (see SessionManager.swift's own observer, added alongside this).
+    public static let sessionExpiredNotification = Notification.Name("rw.itunda.sessionExpired")
+
     public func register(_ request: RegisterRequest) async throws -> AuthResponse {
         try await post("api/v1/auth/register", body: request, authToken: nil)
     }
@@ -426,7 +503,7 @@ public final class NetworkClient {
         }
         urlRequest.httpBody = try encoder.encode(body)
 
-        let (data, response) = try await session.data(for: urlRequest)
+        let (data, response) = try await dataWithRefresh(for: urlRequest)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
@@ -1710,7 +1787,7 @@ extension NetworkClient {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         request.httpBody = try encoder.encode(body)
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
         return try decoder.decode(Response.self, from: data)
@@ -1740,7 +1817,7 @@ extension NetworkClient {
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = body
 
-        let (responseData, response) = try await session.data(for: request)
+        let (responseData, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
         return try decoder.decode(UploadResponse.self, from: responseData)
@@ -1754,7 +1831,7 @@ extension NetworkClient {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         request.httpBody = try encoder.encode(body)
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             if let errorBody = try? decoder.decode(ApiErrorBody.self, from: data) {
@@ -1780,7 +1857,7 @@ extension NetworkClient {
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
@@ -1800,7 +1877,7 @@ extension NetworkClient {
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
@@ -1826,7 +1903,7 @@ extension NetworkClient {
             request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
         }
         request.httpBody = try encoder.encode(body)
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             // Real device binding (2026-07-21 port) -- only checked when this call
@@ -1861,7 +1938,7 @@ extension NetworkClient {
         }
         request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
         request.httpBody = try encoder.encode(body)
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             if httpResponse.statusCode == 403,
@@ -4608,7 +4685,7 @@ extension NetworkClient {
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
@@ -4627,7 +4704,7 @@ extension NetworkClient {
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
@@ -4937,7 +5014,7 @@ extension NetworkClient {
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
@@ -5049,7 +5126,7 @@ extension NetworkClient {
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
@@ -5559,7 +5636,7 @@ extension NetworkClient {
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataWithRefresh(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
             if httpResponse.statusCode == 403,
