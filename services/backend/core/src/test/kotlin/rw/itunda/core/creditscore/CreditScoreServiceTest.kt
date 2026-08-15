@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.core.domain.DebitCard
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
 import rw.itunda.core.domain.SavingsGoal
@@ -14,6 +15,8 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
+import rw.itunda.core.repository.DebitCardRepository
+import rw.itunda.core.repository.DebitCardTransactionRepository
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -36,13 +39,16 @@ class CreditScoreServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
-        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository)
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository, debitCardRepository, debitCardTransactionRepository)
 
         val user = User(id = "user_1", phoneNumber = "0788000001", firstName = "New", lastName = "User", passwordHash = "hash", kycVerified = false, createdAt = Instant.now())
         every { userRepository.findById("user_1") } returns Optional.of(user)
         every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_1", "user_1") } returns emptyList()
         every { loanAccountRepository.findByUserId("user_1") } returns emptyList()
         every { savingsGoalRepository.findByUserId("user_1") } returns emptyList()
+        every { debitCardRepository.findByUserId("user_1") } returns null
         every { userRepository.save(any()) } answers { firstArg() }
 
         When("computing the score") {
@@ -65,7 +71,9 @@ class CreditScoreServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
-        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository)
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository, debitCardRepository, debitCardTransactionRepository)
 
         val oldCreatedAt = Instant.now().minus(1000, ChronoUnit.DAYS)
         val user = User(id = "user_2", phoneNumber = "0788000002", firstName = "Established", lastName = "User", passwordHash = "hash", kycVerified = true, createdAt = oldCreatedAt)
@@ -78,6 +86,7 @@ class CreditScoreServiceTest : BehaviorSpec({
         every { savingsGoalRepository.findByUserId("user_2") } returns listOf(
             SavingsGoal(id = "goal_1", userId = "user_2", walletId = "w1", name = "Rainy day", targetAmount = BigDecimal("50000"), currentAmount = BigDecimal("10000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
         )
+        every { debitCardRepository.findByUserId("user_2") } returns null
         every { userRepository.save(any()) } answers { firstArg() }
 
         When("computing the score") {
@@ -98,7 +107,9 @@ class CreditScoreServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
-        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository)
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository, debitCardRepository, debitCardTransactionRepository)
 
         val user = User(id = "user_3", phoneNumber = "0788000003", firstName = "Borrower", lastName = "User", passwordHash = "hash", createdAt = Instant.now())
         every { userRepository.findById("user_3") } returns Optional.of(user)
@@ -107,6 +118,7 @@ class CreditScoreServiceTest : BehaviorSpec({
             LoanAccount(id = "loan_2", userId = "user_3", walletId = "w1", offerId = "offer_1", principal = BigDecimal("50000"), outstanding = BigDecimal("30000"), interestRate = 0.1, status = LoanStatus.ACTIVE),
         )
         every { savingsGoalRepository.findByUserId("user_3") } returns emptyList()
+        every { debitCardRepository.findByUserId("user_3") } returns null
         every { userRepository.save(any()) } answers { firstArg() }
 
         When("computing the score") {
@@ -124,24 +136,28 @@ class CreditScoreServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
-        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository)
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository, debitCardRepository, debitCardTransactionRepository)
 
         val user = User(id = "user_4", phoneNumber = "0788000004", firstName = "New", lastName = "User", passwordHash = "hash", kycVerified = false, createdAt = Instant.now())
         every { userRepository.findById("user_4") } returns Optional.of(user)
         every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_4", "user_4") } returns emptyList()
         every { loanAccountRepository.findByUserId("user_4") } returns emptyList()
         every { savingsGoalRepository.findByUserId("user_4") } returns emptyList()
+        every { debitCardRepository.findByUserId("user_4") } returns null
 
         When("getting suggestions") {
             val suggestions = service.getImprovementSuggestions("user_4")
 
-            Then("it real-suggests KYC, more transactions, and starting savings -- but NOT paying off a loan, since they have none") {
+            Then("it real-suggests KYC, more transactions, starting savings, and getting a card -- but NOT paying off a loan, since they have none") {
                 suggestions.map { it.action } shouldBe listOf(
-                    "Verify your identity", "Complete more real transactions", "Start a savings goal",
+                    "Verify your identity", "Complete more real transactions", "Start a savings goal", "Get an itunda Card",
                 )
                 suggestions.first { it.action == "Verify your identity" }.pointsGain shouldBe 100
                 suggestions.first { it.action == "Complete more real transactions" }.pointsGain shouldBe 100
                 suggestions.first { it.action == "Start a savings goal" }.pointsGain shouldBe 50
+                suggestions.first { it.action == "Get an itunda Card" }.pointsGain shouldBe 50
             }
             Then("it never mutates real state -- unlike computeScore, this is read-only") {
                 verify(exactly = 0) { userRepository.save(any()) }
@@ -154,7 +170,9 @@ class CreditScoreServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
-        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository)
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository, debitCardRepository, debitCardTransactionRepository)
 
         val user = User(id = "user_5", phoneNumber = "0788000005", firstName = "Borrower", lastName = "User", passwordHash = "hash", kycVerified = true, createdAt = Instant.now())
         every { userRepository.findById("user_5") } returns Optional.of(user)
@@ -165,13 +183,56 @@ class CreditScoreServiceTest : BehaviorSpec({
         every { savingsGoalRepository.findByUserId("user_5") } returns listOf(
             SavingsGoal(id = "goal_2", userId = "user_5", walletId = "w1", name = "Fund", targetAmount = BigDecimal("50000"), currentAmount = BigDecimal("10000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
         )
+        every { debitCardRepository.findByUserId("user_5") } returns null
 
         When("getting suggestions") {
             val suggestions = service.getImprovementSuggestions("user_5")
 
-            Then("it real-suggests paying off the loan for the exact real 80-point delta (100 paid - 20 active), and nothing else -- KYC/transactions/savings are all already maxed or satisfied") {
-                suggestions.map { it.action } shouldBe listOf("Pay off your active loan in full")
+            Then("it real-suggests paying off the loan for the exact real 80-point delta (100 paid - 20 active) ahead of getting a card, and nothing else -- KYC/transactions/savings are all already maxed or satisfied") {
+                suggestions.map { it.action } shouldBe listOf("Pay off your active loan in full", "Get an itunda Card")
                 suggestions[0].pointsGain shouldBe 80
+            }
+        }
+    }
+
+    Given("a user with an itunda Card and real card purchase history") {
+        val userRepository = mockk<UserRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val loanAccountRepository = mockk<LoanAccountRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository, debitCardRepository, debitCardTransactionRepository)
+
+        val user = User(id = "user_6", phoneNumber = "0788000006", firstName = "Card", lastName = "Holder", passwordHash = "hash", kycVerified = false, createdAt = Instant.now())
+        val card = DebitCard(id = "card_1", userId = "user_6", last4 = "1234", dailyLimit = DebitCard.DEFAULT_DAILY_LIMIT, monthlyLimit = DebitCard.DEFAULT_MONTHLY_LIMIT)
+        every { userRepository.findById("user_6") } returns Optional.of(user)
+        every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_6", "user_6") } returns emptyList()
+        every { loanAccountRepository.findByUserId("user_6") } returns emptyList()
+        every { savingsGoalRepository.findByUserId("user_6") } returns emptyList()
+        every { debitCardRepository.findByUserId("user_6") } returns card
+        every { debitCardTransactionRepository.countByCardId("card_1") } returns 6L
+        every { userRepository.save(any()) } answers { firstArg() }
+
+        When("computing the score") {
+            val result = service.computeScore("user_6")
+
+            Then("card usage contributes real points, capped at the real max for this factor") {
+                // 6 purchases * 5 points = 30, under the 50-point cap
+                val cardFactor = result.factors.first { it.name == "Card usage" }
+                cardFactor.points shouldBe 30
+                result.score shouldBe 330
+            }
+        }
+
+        When("getting suggestions") {
+            val suggestions = service.getImprovementSuggestions("user_6")
+
+            Then("it real-suggests more card purchases to reach the real cap, not getting a card (already has one)") {
+                val cardSuggestion = suggestions.first { it.action == "Use your itunda Card more" }
+                // 30 current points, 20 more needed, 4 more txns at 5 points each reaches 50
+                cardSuggestion.pointsGain shouldBe 20
+                suggestions.none { it.action == "Get an itunda Card" } shouldBe true
             }
         }
     }
@@ -181,7 +242,9 @@ class CreditScoreServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
-        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository)
+        val debitCardRepository = mockk<DebitCardRepository>()
+        val debitCardTransactionRepository = mockk<DebitCardTransactionRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository, debitCardRepository, debitCardTransactionRepository)
 
         every { userRepository.findById("ghost") } returns Optional.empty()
 

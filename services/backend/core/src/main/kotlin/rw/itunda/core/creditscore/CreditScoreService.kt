@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LoanStatus
 import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.repository.DebitCardRepository
+import rw.itunda.core.repository.DebitCardTransactionRepository
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -38,6 +40,8 @@ class CreditScoreService(
     private val transactionRepository: TransactionRepository,
     private val loanAccountRepository: LoanAccountRepository,
     private val savingsGoalRepository: SavingsGoalRepository,
+    private val debitCardRepository: DebitCardRepository,
+    private val debitCardTransactionRepository: DebitCardTransactionRepository,
 ) {
     companion object {
         // Named, not inline literals (2026-07-26) -- extracted so
@@ -52,6 +56,13 @@ class CreditScoreService(
         const val LOAN_PAID_POINTS = 100
         const val LOAN_ACTIVE_POINTS = 20
         const val SAVINGS_ACTIVITY_POINTS = 50
+        // Real Nubank NuScore-style factor (2026-08-16, sourced from Nu International's
+        // own real launch coverage: "credit card usage data" is one of NuScore's named
+        // real factors alongside spending behavior and savings habits) -- see this
+        // class's own doc comment for the full account of why this was a genuine,
+        // confirmed gap before this addition.
+        const val MAX_CARD_USAGE_POINTS = 50
+        const val POINTS_PER_CARD_TRANSACTION = 5
         const val MAX_SCORE = 850
     }
 
@@ -91,6 +102,15 @@ class CreditScoreService(
         val hasSavingsActivity = savingsGoalRepository.findByUserId(userId).any { it.currentAmount.signum() > 0 }
         if (hasSavingsActivity) {
             factors += CreditScoreFactor("Savings activity", SAVINGS_ACTIVITY_POINTS, "At least one savings goal with real contributions")
+        }
+
+        val card = debitCardRepository.findByUserId(userId)
+        if (card != null) {
+            val cardTransactionCount = debitCardTransactionRepository.countByCardId(card.id)
+            val cardPoints = min(MAX_CARD_USAGE_POINTS, (cardTransactionCount * POINTS_PER_CARD_TRANSACTION).toInt())
+            if (cardPoints > 0) {
+                factors += CreditScoreFactor("Card usage", cardPoints, "$cardTransactionCount real card purchase(s)")
+            }
         }
 
         val score = min(MAX_SCORE, factors.sumOf { it.points })
@@ -154,6 +174,24 @@ class CreditScoreService(
                 "Start a savings goal", SAVINGS_ACTIVITY_POINTS,
                 "Make a real contribution to any savings goal",
             )
+        }
+
+        val card = debitCardRepository.findByUserId(userId)
+        if (card == null) {
+            suggestions += CreditScoreSuggestion(
+                "Get an itunda Card", MAX_CARD_USAGE_POINTS,
+                "Issue a real itunda Card and use it -- card usage is its own real scoring factor",
+            )
+        } else {
+            val cardTransactionCount = debitCardTransactionRepository.countByCardId(card.id)
+            val currentCardPoints = min(MAX_CARD_USAGE_POINTS, (cardTransactionCount * POINTS_PER_CARD_TRANSACTION).toInt())
+            if (currentCardPoints < MAX_CARD_USAGE_POINTS) {
+                val txnsToMax = (MAX_CARD_USAGE_POINTS - currentCardPoints + POINTS_PER_CARD_TRANSACTION - 1) / POINTS_PER_CARD_TRANSACTION
+                suggestions += CreditScoreSuggestion(
+                    "Use your itunda Card more", MAX_CARD_USAGE_POINTS - currentCardPoints,
+                    "$txnsToMax more real card purchase(s) reaches the real cap for this factor",
+                )
+            }
         }
 
         return suggestions.sortedByDescending { it.pointsGain }

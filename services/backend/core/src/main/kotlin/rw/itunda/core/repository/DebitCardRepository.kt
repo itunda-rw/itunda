@@ -37,6 +37,12 @@ interface DebitCardRepository : JpaRepository<DebitCard, String> {
 interface DebitCardTransactionRepository : JpaRepository<DebitCardTransaction, String> {
     fun findByCardIdOrderByCreatedAtDesc(cardId: String, pageable: Pageable): Page<DebitCardTransaction>
 
+    // Real Nubank NuScore-style credit-score factor (2026-08-16) -- see
+    // CreditScoreService's own doc comment. A plain count, same "real, honest signal
+    // from itunda's own data" discipline every other real credit-score factor already
+    // uses.
+    fun countByCardId(cardId: String): Long
+
     /** Real spend-window check backing CardService's daily/monthly limit enforcement --
      * sums real posted rows rather than a running counter, so there's nothing to reset
      * and nothing that can drift out of sync with the real transaction history. */
