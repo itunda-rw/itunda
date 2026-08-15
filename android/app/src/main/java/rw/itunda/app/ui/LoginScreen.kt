@@ -409,22 +409,30 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
  * Real first in-app language switcher (2026-08-08) -- see values/strings.xml's and
  * LoginScreen's own doc comments for the full context, including why this is
  * Configuration-override-based rather than AppCompatDelegate-based (found live on the
- * emulator that the latter silently no-ops against a FragmentActivity). Only 2 locales
- * exist right now, so a simple toggle (shows the current selection, tap switches to the
- * other) is the honest minimum -- matching bank-mfe's own "don't add weight this scope
- * doesn't need yet" reasoning, not a full language picker for locales that don't exist yet.
+ * emulator that the latter silently no-ops against a FragmentActivity). Originally a
+ * simple EN/RW toggle when only 2 locales existed.
+ *
+ * Widened to a 3-way cycle (2026-08-15) when French (values-fr/) was added as itunda's
+ * third real locale, matching Rwanda's own three official languages -- a binary toggle
+ * can't represent 3 states, and a dropdown would be heavier UI than this compact corner
+ * control needs. Same "honest minimum for how many locales actually exist" reasoning
+ * as before, just re-applied to 3 instead of 2. A real gap this closes: adding
+ * values-fr/strings.xml alone would have been dead weight with zero way to reach it --
+ * the resources existing doesn't mean the UI offers them.
  */
+private val SUPPORTED_LOCALES = listOf("en", "rw", "fr")
+
 @Composable
 private fun LanguageSwitcher(locale: String, onLocaleChange: (String) -> Unit) {
-    val isKinyarwanda = locale == "rw"
     val label = stringResource(R.string.login_language_switcher_label)
+    val currentIndex = SUPPORTED_LOCALES.indexOf(locale).coerceAtLeast(0)
     Text(
-        text = if (isKinyarwanda) "RW" else "EN",
+        text = locale.uppercase(),
         style = IdsTypography.Body2.copy(fontWeight = FontWeight.SemiBold),
         color = Ids.colors.textSecondary,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .clickable { onLocaleChange(if (isKinyarwanda) "en" else "rw") }
+            .clickable { onLocaleChange(SUPPORTED_LOCALES[(currentIndex + 1) % SUPPORTED_LOCALES.size]) }
             .padding(horizontal = 10.dp, vertical = 6.dp)
             .semantics { contentDescription = label },
     )

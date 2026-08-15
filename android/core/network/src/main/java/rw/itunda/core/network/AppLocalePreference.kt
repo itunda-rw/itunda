@@ -31,7 +31,12 @@ object AppLocalePreference {
 
     fun restore(context: Context) {
         val stored = context.getSharedPreferences(LOCALE_PREFS_NAME, Context.MODE_PRIVATE).getString(LOCALE_PREFS_KEY, null)
-        _locale.value = stored ?: if (java.util.Locale.getDefault().language == "rw") "rw" else "en"
+        // French (values-fr/) added 2026-08-15 as itunda's third real locale -- a
+        // device already set to French used to silently fall through to English here,
+        // the same class of gap as the LanguageSwitcher toggle that couldn't reach it
+        // either (see LoginScreen.kt's own doc comment on that fix).
+        val systemLanguage = java.util.Locale.getDefault().language
+        _locale.value = stored ?: if (systemLanguage == "rw" || systemLanguage == "fr") systemLanguage else "en"
     }
 
     fun set(context: Context, locale: String) {

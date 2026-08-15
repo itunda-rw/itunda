@@ -258,7 +258,16 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { AppLocalePreference.set(baseContext, if (locale == "en") "rw" else "en") }
+                            .clickable {
+                                // Real 3-way cycle (2026-08-15), widened from the
+                                // original EN/RW toggle when French (values-fr/) was
+                                // added as itunda's third real locale -- see
+                                // LoginScreen.kt's LanguageSwitcher doc comment for
+                                // the full account of this same fix made there.
+                                val locales = listOf("en", "rw", "fr")
+                                val next = locales[(locales.indexOf(locale).coerceAtLeast(0) + 1) % locales.size]
+                                AppLocalePreference.set(baseContext, next)
+                            }
                             .padding(vertical = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
@@ -268,7 +277,12 @@ fun SettingsScreen(
                         // -- every row in this card ends with a chevron, including this
                         // one (value + chevron together), not just a bare value.
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(if (locale == "en") "English" else "Kinyarwanda", color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                            val languageName = when (locale) {
+                                "rw" -> "Kinyarwanda"
+                                "fr" -> "Français"
+                                else -> "English"
+                            }
+                            Text(languageName, color = Ids.colors.brand, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                             Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
                         }
                     }

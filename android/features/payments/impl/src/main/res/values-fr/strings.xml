@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Real French localization for TransferFlow.kt (2026-08-15), matching this module's own
+  existing values-rw/ coverage and completing itunda's third locale across the app.
+  Mirrors values/strings.xml exactly, key for key; see that file's own header comment
+  for the real screen-by-screen rollout history.
+-->
+<resources>
+    <string name="transfer_recipient_headline">Vers quel compte\ndevons-nous envoyer ?</string>
+    <string name="transfer_recipient_input_label">Entrez un numéro de téléphone ou de compte</string>
+    <string name="transfer_recipient_input_description">Numéro de téléphone ou de compte, jusqu\'à 16 chiffres</string>
+    <string name="transfer_select_bank">Choisir la banque</string>
+    <string name="transfer_select_bank_hint">Facultatif, pour votre propre référence</string>
+    <string name="transfer_tab_account">Compte</string>
+    <string name="transfer_tab_friends">Amis</string>
+    <string name="transfer_search_friends_placeholder">Rechercher par nom</string>
+    <string name="transfer_search_friends_description">Rechercher des amis par nom</string>
+    <string name="transfer_contacts_label">Contacts</string>
+    <string name="transfer_add_contact">+ Ajouter</string>
+    <string name="transfer_cancel">Annuler</string>
+    <string name="transfer_contact_name_placeholder">Nom</string>
+    <string name="transfer_contact_name_description">Nom du contact</string>
+    <string name="transfer_contact_phone_placeholder">Numéro de téléphone</string>
+    <string name="transfer_contact_phone_description">Numéro de téléphone du contact</string>
+    <string name="transfer_save_contact">Enregistrer le contact</string>
+    <string name="transfer_no_contacts">Aucun contact enregistré pour l\'instant — ajoutez-en un ci-dessus pour envoyer plus vite la prochaine fois.</string>
+    <string name="transfer_next">Suivant</string>
+    <string name="transfer_from_wallet">Depuis le portefeuille Itunda</string>
+    <string name="transfer_available_balance">Disponible RWF %1$s</string>
+    <string name="transfer_to_account">Vers le compte %1$s</string>
+    <string name="transfer_new_recipient">Nouveau destinataire</string>
+    <string name="transfer_scam_warning_title">Prudence avant ce virement</string>
+    <string name="transfer_scam_warning_body">Ce destinataire a été signalé par %1$d autre(s) utilisateur(s) itunda. Vérifiez bien avant d\'envoyer.</string>
+    <string name="transfer_scam_reported_thanks">Merci — ce numéro a été signalé.</string>
+    <string name="transfer_report_scam">Signaler ce numéro comme arnaque</string>
+    <string name="transfer_amount_question">Combien voulez-vous envoyer ?</string>
+    <string name="transfer_amount_max">Max</string>
+    <string name="transfer_amount_insufficient">Solde insuffisant — vous avez RWF %1$s</string>
+    <string name="transfer_send">Envoyer</string>
+    <string name="transfer_device_verify_title">🔒 Vérifiez cet appareil</string>
+    <string name="transfer_device_verify_body">Il s\'agit d\'un nouvel appareil pour votre compte. Ressaisissez votre mot de passe pour l\'autoriser à envoyer de l\'argent, puis réessayez.</string>
+    <string name="transfer_password_description">Mot de passe</string>
+    <string name="transfer_show_password">Afficher le mot de passe</string>
+    <string name="transfer_hide_password">Masquer le mot de passe</string>
+    <string name="transfer_verifying">Vérification…</string>
+    <string name="transfer_verify_device">Vérifier l\'appareil</string>
+    <string name="transfer_delete_digit">Supprimer</string>
+</resources>
