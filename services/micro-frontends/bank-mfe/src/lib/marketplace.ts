@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real 당근마켓-style marketplace (rw.itunda.marketplace, 2026-07-18) -- the second
 // "super app" phase, built right after messaging so "message seller" could reuse it.
@@ -101,6 +102,52 @@ export const markListingSold = (listingId: string, buyerPhoneNumber?: string) =>
     method: 'POST',
     body: JSON.stringify({ buyerPhoneNumber }),
   }).then((r) => r.listing);
+
+// Real "pay via itunda" Marketplace escrow (backend since 2026-07-25) -- an opt-in
+// safer alternative to the existing in-person cash handoff, never replacing it. Real
+// gap found 2026-08-15: this had existed on the backend and Android for weeks with
+// ZERO client on web (confirmed by grep -- no caller anywhere in this MFE). First web
+// client for these endpoints, mirroring Android's own MarketplaceScreen.kt flow.
+// deliveryAddress is real, optional (당근마켓 바로구매-style shipped-item support,
+// see backend MarketplaceEscrow.deliveryAddress's own doc comment) -- leaving it
+// blank keeps the original in-person handoff this feature has always assumed.
+export interface MarketplaceEscrow {
+  id: string;
+  listingId: string;
+  buyerId: string;
+  sellerId: string;
+  amount: number;
+  fee: number;
+  status: 'HELD' | 'RELEASED' | 'REFUNDED' | 'DISPUTED';
+  holdTransactionId: string;
+  resolutionTransactionId: string | null;
+  disputeReason: string | null;
+  deliveryAddress: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const payEscrow = (listingId: string, deliveryAddress?: string) =>
+  apiFetch<{ success: boolean; escrow: MarketplaceEscrow }>(`/api/v1/marketplace/listings/${listingId}/pay-escrow`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ deliveryAddress: deliveryAddress?.trim() || undefined }),
+  }).then((r) => r.escrow);
+
+export const confirmEscrowReceipt = (listingId: string) =>
+  apiFetch<{ success: boolean; escrow: MarketplaceEscrow }>(`/api/v1/marketplace/listings/${listingId}/confirm-receipt`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.escrow);
+
+export const disputeEscrow = (listingId: string, reason: string) =>
+  apiFetch<{ success: boolean; escrow: MarketplaceEscrow }>(`/api/v1/marketplace/listings/${listingId}/dispute-escrow`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  }).then((r) => r.escrow);
+
+export const getEscrow = (listingId: string) =>
+  apiFetch<{ success: boolean; escrow: MarketplaceEscrow }>(`/api/v1/marketplace/listings/${listingId}/escrow`).then((r) => r.escrow);
 
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
 // -- see backend HoodReviewService's own doc comment.

@@ -114,10 +114,10 @@ import {
   attachSplitBillReceipt, createDirectSplitBill, createSplitBill, fetchDirectSplitBills, fetchSplitBillsForGroup, paySplitBillShare, requestSplitBillNextRound, type SplitBillWithParticipants,
 } from './lib/splitBill';
 import {
-  addKeywordAlert, addListingFavorite, contactSeller, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingReviews, fetchListings,
-  fetchListingsMyNeighborhood, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, makeOffer,
-  markListingSold, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
-  submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type PriceOffer, type TrustScores,
+  addKeywordAlert, addListingFavorite, confirmEscrowReceipt, contactSeller, createListing, disputeEscrow, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingReviews, fetchListings,
+  fetchListingsMyNeighborhood, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, getEscrow, makeOffer,
+  markListingSold, payEscrow, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
+  submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type MarketplaceEscrow, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
 import { clearSecondNeighborhood, fetchProfile, setBirthDate, setNeighborhood, setSecondNeighborhood, updateProfilePhoto } from './lib/neighborhood';
 import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
@@ -9760,6 +9760,27 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   // Skip, either way the sale completes.
   const [markingSold, setMarkingSold] = useState(false);
   const [buyerPhone, setBuyerPhone] = useState('');
+  const myUserId = getStoredUser()?.id;
+
+  // Real "pay via itunda" Marketplace escrow -- first web client for these endpoints
+  // (2026-08-15, real gap found: existed on backend+Android for weeks with zero
+  // client here). Mirrors Android's own MarketplaceScreen.kt flow, including its own
+  // same-day fix: escrow status is fetched for BOTH the buyer and seller of a SOLD
+  // listing (the real backend already allows both), not buyer-only -- otherwise a
+  // seller would have no way to ever see the real delivery address a buyer typed in.
+  const [paying, setPaying] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [escrow, setEscrow] = useState<MarketplaceEscrow | null>(null);
+  const [loadedEscrow, setLoadedEscrow] = useState(false);
+  const [showDispute, setShowDispute] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [resolvingEscrow, setResolvingEscrow] = useState(false);
+  const isMyEscrowTrade = listing.status === 'SOLD' && myUserId != null && (listing.sellerId === myUserId || listing.buyerId === myUserId);
+  const isEscrowBuyer = isMyEscrowTrade && !isMine;
+  useEffect(() => {
+    if (!isMyEscrowTrade || loadedEscrow) return;
+    getEscrow(listing.id).then(setEscrow).catch(() => {}).finally(() => setLoadedEscrow(true));
+  }, [isMyEscrowTrade, loadedEscrow, listing.id]);
 
   // Real post-transaction review with asymmetric public/private visibility
   // (2026-07-24) -- see backend HoodReviewService's own doc comment.
@@ -9772,7 +9793,6 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   // comment: without this, reviewSubmitted above was purely local/optimistic and reset
   // on every refresh, silently re-offering the form for an already-reviewed sale.
   const [hoodReviews, setHoodReviews] = useState<HoodReview[] | null>(null);
-  const myUserId = getStoredUser()?.id;
   useEffect(() => {
     if (!(isMine && listing.status === 'SOLD' && listing.buyerId)) return;
     fetchListingReviews(listing.id)
@@ -9888,6 +9908,45 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
     }
   };
 
+  const handlePayEscrow = async () => {
+    setPaying(true);
+    setError(null);
+    try {
+      await payEscrow(listing.id, deliveryAddress);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not pay via itunda.');
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const handleConfirmReceipt = async () => {
+    setResolvingEscrow(true);
+    setError(null);
+    try {
+      setEscrow(await confirmEscrowReceipt(listing.id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not confirm receipt.');
+    } finally {
+      setResolvingEscrow(false);
+    }
+  };
+
+  const handleDisputeEscrow = async () => {
+    if (!disputeReason.trim()) return;
+    setResolvingEscrow(true);
+    setError(null);
+    try {
+      setEscrow(await disputeEscrow(listing.id, disputeReason.trim()));
+      setShowDispute(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not report this problem.');
+    } finally {
+      setResolvingEscrow(false);
+    }
+  };
+
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -9981,6 +10040,19 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           </button>
         )
       )}
+      {/* Real gap closed 2026-08-15 -- see backend MarketplaceEscrow.deliveryAddress's
+          own doc comment (당근마켓 바로구매-style shipped-item support). Deliberately
+          optional and blank by default: the original in-person handoff still works
+          with nothing typed here. */}
+      {!isMine && listing.status === 'ACTIVE' && !offering && (
+        <input
+          type="text"
+          value={deliveryAddress}
+          onChange={(e) => setDeliveryAddress(e.target.value)}
+          placeholder="Delivery address (optional, for a shipped item)"
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
+        />
+      )}
       <div style={{ display: 'flex', gap: '8px' }}>
         {isMine ? (
           <>
@@ -10004,10 +10076,70 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
               <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
                 Make an offer
               </button>
+              {/* Real "pay via itunda" Marketplace escrow -- an opt-in safer
+                  alternative to the existing in-person cash handoff, never replacing
+                  it. First web client for this real backend feature (2026-08-15). */}
+              <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={paying} onClick={handlePayEscrow}>
+                {paying ? 'Paying…' : '🔒 Pay via itunda'}
+              </button>
             </>
           )
         )}
       </div>
+      {/* Real escrow status -- shown to BOTH the buyer and seller of a SOLD listing
+          (the real backend already allows both to read it), not buyer-only, so a
+          seller can actually see the real delivery address a buyer typed in.
+          Confirm receipt/Report a problem stay buyer-only actions -- only the buyer
+          can judge whether the real item arrived. */}
+      {isMyEscrowTrade && escrow && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {escrow.deliveryAddress && (
+            <p style={{ fontSize: '12px', color: 'var(--itunda-grey-600)', margin: 0 }}>📦 Delivery address: {escrow.deliveryAddress}</p>
+          )}
+          {escrow.status === 'HELD' && (
+            <>
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: 0 }}>
+                {isEscrowBuyer ? '🔒 Payment held by itunda until you confirm receipt' : '🔒 Payment held by itunda until the buyer confirms receipt'}
+              </p>
+              {isEscrowBuyer && (
+                showDispute ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={disputeReason}
+                      onChange={(e) => setDisputeReason(e.target.value)}
+                      placeholder="What went wrong?"
+                      style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px' }}
+                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={resolvingEscrow} onClick={() => setShowDispute(false)}>
+                        Cancel
+                      </button>
+                      <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={resolvingEscrow || !disputeReason.trim()} onClick={handleDisputeEscrow}>
+                        Submit
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={resolvingEscrow} onClick={handleConfirmReceipt}>
+                      {resolvingEscrow ? 'Working…' : 'Confirm receipt'}
+                    </button>
+                    <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} disabled={resolvingEscrow} onClick={() => setShowDispute(true)}>
+                      Report a problem
+                    </button>
+                  </div>
+                )
+              )}
+            </>
+          )}
+          {escrow.status === 'DISPUTED' && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: 0 }}>⚠️ Reported -- itunda is reviewing this trade</p>}
+          {escrow.status === 'RELEASED' && <p style={{ fontSize: '12px', color: 'var(--itunda-green)', margin: 0 }}>✅ Payment released to the seller</p>}
+          {escrow.status === 'REFUNDED' && (
+            <p style={{ fontSize: '12px', color: 'var(--itunda-green)', margin: 0 }}>{isEscrowBuyer ? '↩️ Refunded to you' : '↩️ Refunded to the buyer'}</p>
+          )}
+        </div>
+      )}
       {!isMine && <HoodReportButton targetType="MARKETPLACE_LISTING" targetId={listing.id} />}
       {!isMine && listing.status === 'ACTIVE' && listing.latitude != null && listing.longitude != null && (
         <button className="itunda-btn itunda-btn-secondary" disabled={locating} onClick={handleShowDirections}>
