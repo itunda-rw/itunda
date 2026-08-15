@@ -6460,3 +6460,43 @@ driver-side `acceptsWomenOnlyRequests` toggle (mirrors its existing `available: 
 rider-side preference is naturally a new optional param on `RideTripService.requestTrip`, matching
 how `scheduledFor`/`stops` were both added as backward-compatible optional params to that same
 function for their own real features.
+
+## 74. Real Android bug found live: 4 screens silently unreachable, missing `return@IdsTheme`
+
+**Found 2026-08-15/16**, while porting the family send-money feature (Section 71) to Android and
+live-verifying it on a physical device. Tapping the "Family" row in the Explore tab's "Accounts &
+cards" section never navigated anywhere -- but every adjacent row in the same list (Card, Spending,
+Group account) navigated correctly on the first tap. Roughly 20 blind `uiautomator`-based attempts
+(fresh coordinates, a full app restart, ruling out overlay windows/notification interference/
+accessibility services) found nothing, because the actual bug wasn't in touch handling at all.
+
+**Root-caused with a real diagnostic, not more guessing**: added temporary `Log.d` lines at the
+click lambda and the recomposition check. The log conclusively showed the click fired, the
+`showFamilyLink` state correctly flipped to `true`, and Compose DID invoke `FamilyLinkScreen(...)` --
+but the screenshot taken at that exact moment still showed the untouched Explore list. Reading
+`ItundaAppScreen.kt`'s full sequence of `if (showX) { BackHandler...; XScreen(...); }` blocks (one
+per full-screen destination -- Card, WeeklySavings, GroupAccount, Rides, etc., ~30 of them) revealed
+that every one of them ends with a `return@IdsTheme` right after rendering, to stop the rest of the
+composable function from executing (and re-rendering the tab content on top in the same pass) --
+except a contiguous run of exactly 4: `VehicleInspection`, `VehicleValuation`, `FamilyLink`,
+`Subscriptions`. A real, pre-existing gap (not introduced this session, not by this session's own
+family-send-money port) -- likely all 4 added in one batch at some point without the established
+pattern being followed.
+
+**Fixed by adding the missing `return@IdsTheme` to all 4 blocks** (commit `4f04bdff`). Live-verified
+2 of the 4 directly on-device after the fix: Family now correctly loads and shows real linked-child
+data (balance, transaction history, and the new send-money form from Section 71, which correctly hit
+a real `DEVICE_NOT_VERIFIED` security gate on an unverified test device -- proof the request round
+trip works without needing the real account password); Subscriptions now correctly loads its real
+(empty) recurring-payment state. VehicleInspection/VehicleValuation got the mechanically identical
+fix in the same commit but weren't separately re-tapped on-device this pass.
+
+**How to apply**: this class of bug (a full-screen overlay composable that renders in Compose's
+logical tree but is invisibly overdrawn by sibling content in the same frame) will NOT show up as a
+crash, an exception, or even an obviously-wrong log -- `dumpsys window`, `logcat` filtered to
+exceptions, and screenshot diffing all looked completely normal throughout. The only way it surfaced
+was adding real `Log.d` lines at the exact state-check and render call sites and comparing that
+against a screenshot taken at the same moment. If a future on-device test finds a row that "does
+nothing" despite everything else checking out, add debug logging at the click handler and the render
+condition BEFORE spending more time on blind coordinate/timing tweaks -- this session burned roughly
+20 attempts on the wrong hypothesis (touch input) before trying that.
