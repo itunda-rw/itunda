@@ -149,11 +149,11 @@ import {
 } from './lib/realestate';
 import { uploadFile } from './lib/upload';
 import {
-  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, completePickupOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
-  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchMyRiderProfile, fetchRestaurantCategories,
-  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS, registerRider,
-  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setRiderAvailability, subscribeMembership, subscribePlatformMembership, submitEatsReview,
-  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type MenuItem, type PlatformMembership, type RatingSummary, type Rider,
+  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, cancelGroupEatsOrder, claimDelivery, completePickupOrder, createGroupEatsOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
+  fetchEatsOrder, fetchGroupEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchMyRiderProfile, fetchRestaurantCategories,
+  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, finalizeGroupEatsOrder, joinGroupEatsOrder, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS, registerRider,
+  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, setRiderAvailability, subscribeMembership, subscribePlatformMembership, submitEatsReview,
+  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type GroupEatsOrderDetail, type MenuItem, type PlatformMembership, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
@@ -16077,22 +16077,22 @@ function DineInCustomerView() {
 }
 
 function EatsView() {
-  const [mode, setMode] = useState<'ORDER' | 'DELIVER' | 'DINE_IN'>('ORDER');
+  const [mode, setMode] = useState<'ORDER' | 'TOGETHER' | 'DELIVER' | 'DINE_IN'>('ORDER');
 
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
-        {(['ORDER', 'DELIVER', 'DINE_IN'] as const).map((v) => (
+        {(['ORDER', 'TOGETHER', 'DELIVER', 'DINE_IN'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setMode(v)}
             style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap',
               color: mode === v ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
               backgroundColor: mode === v ? 'var(--itunda-blue)' : 'transparent',
             }}
           >
-            {v === 'ORDER' ? 'Order food' : v === 'DELIVER' ? 'Deliver' : 'Dine-in'}
+            {v === 'ORDER' ? 'Order food' : v === 'TOGETHER' ? 'Together order' : v === 'DELIVER' ? 'Deliver' : 'Dine-in'}
           </button>
         ))}
       </div>
@@ -16103,6 +16103,8 @@ function EatsView() {
           <RestaurantOrdersView />
           <OrderFoodView />
         </div>
+      ) : mode === 'TOGETHER' ? (
+        <GroupOrderView />
       ) : mode === 'DELIVER' ? (
         <DeliverView />
       ) : (
@@ -16110,6 +16112,229 @@ function EatsView() {
           <DineInRestaurantOrdersView />
           <DineInCustomerView />
         </div>
+      )}
+    </div>
+  );
+}
+
+// Real 배달의민족 함께주문 (Baemin "Together Order") -- see lib/eats.ts's own doc
+// comment for the full account. A join-code-shared cart in front of the same real
+// checkout/payment path OrderFoodView already uses (GroupEatsOrderService.finalizeOrder
+// calls the exact same backend EatsOrderService.placeOrder underneath).
+function GroupOrderView() {
+  const [groupOrderId, setGroupOrderId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<GroupEatsOrderDetail | null>(null);
+  const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
+  const [restaurantId, setRestaurantId] = useState('');
+  const [address, setAddress] = useState('');
+  const [joinCodeInput, setJoinCodeInput] = useState('');
+  const [menu, setMenu] = useState<MenuItem[] | null>(null);
+  const [menuItemId, setMenuItemId] = useState('');
+  const [qty, setQty] = useState(1);
+  // My own accumulated selections, since setMyGroupEatsOrderItems replaces the
+  // caller's entire item list on every call rather than incrementally appending --
+  // this client keeps the running list locally and resends the whole thing each time,
+  // same "resend full current state" convention the backend's own doc comment expects.
+  const [myItems, setMyItems] = useState<{ menuItemId: string; quantity: number }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [placedOrder, setPlacedOrder] = useState<EatsOrder | null>(null);
+
+  useEffect(() => {
+    fetchRestaurants().then(setRestaurants).catch(() => setRestaurants([]));
+  }, []);
+
+  const refresh = (id: string) => {
+    fetchGroupEatsOrder(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load group order.'));
+  };
+
+  const handleCreate = async () => {
+    if (!restaurantId || !address.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const groupOrder = await createGroupEatsOrder(restaurantId, address.trim());
+      setGroupOrderId(groupOrder.id);
+      const menuResult = await fetchMenu(restaurantId);
+      setMenu(menuResult.products);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not start a group order.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!joinCodeInput.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const groupOrder = await joinGroupEatsOrder(joinCodeInput.trim());
+      setGroupOrderId(groupOrder.id);
+      const menuResult = await fetchMenu(groupOrder.restaurantId);
+      setMenu(menuResult.products);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not join -- check the code.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!groupOrderId || !menuItemId || qty < 1) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const nextItems = [...myItems, { menuItemId, quantity: qty }];
+      const nextDetail = await setMyGroupEatsOrderItems(groupOrderId, nextItems);
+      setMyItems(nextItems);
+      setDetail(nextDetail);
+      setMenuItemId('');
+      setQty(1);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not add item.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleFinalize = async () => {
+    if (!groupOrderId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await finalizeGroupEatsOrder(groupOrderId);
+      setPlacedOrder(result.order);
+      refresh(groupOrderId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not finalize the group order.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!groupOrderId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await cancelGroupEatsOrder(groupOrderId);
+      setGroupOrderId(null);
+      setDetail(null);
+      setMyItems([]);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel the group order.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (placedOrder) {
+    return (
+      <div className="itunda-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Order placed</h3>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+          Real order #{placedOrder.id.slice(-8)} placed for {placedOrder.totalAmount.toLocaleString()} RWF. Every other participant with items in the cart has been sent a real Dutch-pay request via Split Bill.
+        </p>
+      </div>
+    );
+  }
+
+  if (!groupOrderId) {
+    return (
+      <div>
+        <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Start a together order</h3>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+            Share one restaurant's cart with friends -- everyone adds their own items, you place one real order, and itunda asks each of them for their own share afterward.
+          </p>
+          <select value={restaurantId} onChange={(e) => setRestaurantId(e.target.value)} className="itunda-input" style={{ marginBottom: '8px', width: '100%' }}>
+            <option value="">Select a restaurant…</option>
+            {(restaurants ?? []).map((r) => (
+              <option key={r.merchantId} value={r.merchantId}>{r.businessName}</option>
+            ))}
+          </select>
+          <input
+            className="itunda-input"
+            placeholder="Delivery address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            style={{ marginBottom: '8px', width: '100%' }}
+          />
+          <button className="itunda-btn itunda-btn-primary" disabled={busy || !restaurantId || !address.trim()} onClick={handleCreate} style={{ width: '100%' }}>
+            {busy ? '…' : 'Start together order'}
+          </button>
+        </div>
+        <div className="itunda-card" style={{ padding: '16px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Have a join code?</h3>
+          <input
+            className="itunda-input"
+            placeholder="e.g. K3F9XQ"
+            value={joinCodeInput}
+            onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+            style={{ marginBottom: '8px', width: '100%' }}
+          />
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy || !joinCodeInput.trim()} onClick={handleJoin} style={{ width: '100%' }}>
+            {busy ? '…' : 'Join'}
+          </button>
+        </div>
+        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>}
+      </div>
+    );
+  }
+
+  const currentUser = getStoredUser();
+  const isHost = !!detail && !!currentUser && detail.groupOrder.hostUserId === currentUser.id;
+
+  return (
+    <div>
+      <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Join code: {detail?.groupOrder.joinCode}</h3>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Share this code -- anyone with it can join and add their own items.</p>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
+      <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Add your own item</h3>
+        <select value={menuItemId} onChange={(e) => setMenuItemId(e.target.value)} className="itunda-input" style={{ marginBottom: '8px', width: '100%' }}>
+          <option value="">Select an item…</option>
+          {(menu ?? []).map((m) => (
+            <option key={m.id} value={m.id}>{m.name} -- {m.price.toLocaleString()} RWF</option>
+          ))}
+        </select>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input type="number" min={1} value={qty} onChange={(e) => setQty(Number(e.target.value))} className="itunda-input" style={{ width: '80px' }} />
+          <button className="itunda-btn itunda-btn-secondary" disabled={busy || !menuItemId} onClick={handleAddItem} style={{ flex: 1 }}>
+            {busy ? '…' : 'Add to my cart'}
+          </button>
+        </div>
+      </div>
+      <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Everyone's items -- {detail?.grandTotal.toLocaleString() ?? 0} RWF total</h3>
+        {(detail?.participants ?? []).map((p) => (
+          <div key={p.userId} style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--itunda-grey-100)' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700 }}>
+              {p.userId === detail?.groupOrder.hostUserId ? 'Host' : 'Participant'} -- {p.subtotal.toLocaleString()} RWF
+            </p>
+            {p.items.length === 0 ? (
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>No items yet</p>
+            ) : (
+              p.items.map((i, idx) => (
+                <p key={idx} style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{i.quantity}x {i.productName} -- {i.lineTotal.toLocaleString()} RWF</p>
+              ))
+            )}
+          </div>
+        ))}
+        <button className="itunda-btn" onClick={() => groupOrderId && refresh(groupOrderId)} style={{ width: '100%', fontSize: '13px' }}>Refresh</button>
+      </div>
+      {isHost && (
+        <>
+          <button className="itunda-btn itunda-btn-primary" disabled={busy || !detail || detail.grandTotal <= 0} onClick={handleFinalize} style={{ width: '100%', marginBottom: '8px' }}>
+            {busy ? '…' : 'Place the real order'}
+          </button>
+          <button className="itunda-btn" disabled={busy} onClick={handleCancel} style={{ width: '100%', fontSize: '13px' }}>
+            Cancel group order
+          </button>
+        </>
       )}
     </div>
   );

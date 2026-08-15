@@ -13,6 +13,10 @@ dependencyManagement {
 dependencies {
     implementation(project(":core"))
     implementation(project(":auth"))
+    // For SplitBillService.createDirectSplitBill -- real 배달의민족 함께주문 Dutch-pay
+    // requests after a group order is finalized, see GroupEatsOrderService.kt's own doc
+    // comment.
+    implementation(project(":splitbill"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
