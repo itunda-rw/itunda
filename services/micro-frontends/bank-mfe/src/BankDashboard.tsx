@@ -165,7 +165,7 @@ import {
   captureReferralCodeFromUrl, createAffiliateLink, fetchMyAffiliateCommissions, fetchMyAffiliateLinks, getStoredReferralCode,
   type AffiliateCommission, type AffiliateLink,
 } from './lib/affiliate';
-import { cancelBooking, createBooking, fetchAvailableSlots, fetchCouponsForCustomer, fetchMerchantReviews, fetchMyBookings, submitBookingReview, type BookingSlot, type MerchantBooking, type MerchantBookingReview, type MerchantCoupon } from './lib/booking';
+import { cancelBooking, createBooking, fetchAvailableSlots, fetchBookingDeposit, fetchCouponsForCustomer, fetchMerchantAvailability, fetchMerchantReviews, fetchMyBookings, submitBookingReview, type BookingDeposit, type BookingDepositStatus, type BookingSlot, type MerchantAvailabilityWindow, type MerchantBooking, type MerchantBookingReview, type MerchantCoupon } from './lib/booking';
 // Real fix (2026-08-10): MapView pulls in the full maplibre-gl WebGL engine (+CSS)
 // at module scope -- a static import here meant every user downloaded and parsed
 // that whole library on first load, whether or not they ever open the Map tab. Real
@@ -4886,15 +4886,39 @@ function MyBookingsCard() {
             <p style={{ fontWeight: 600 }}>{b.serviceName}</p>
             <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{b.bookingDate} · {b.startTime.slice(0, 5)} · {b.status}</p>
           </div>
-          {(b.status === 'REQUESTED' || b.status === 'CONFIRMED') && (
-            <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => cancel(b.id)} disabled={cancelling === b.id}>
-              {cancelling === b.id ? '…' : 'Cancel'}
-            </button>
-          )}
-          {b.status === 'COMPLETED' && <BookingReviewButton booking={b} />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <BookingDepositBadge bookingId={b.id} />
+            {(b.status === 'REQUESTED' || b.status === 'CONFIRMED') && (
+              <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => cancel(b.id)} disabled={cancelling === b.id}>
+                {cancelling === b.id ? '…' : 'Cancel'}
+              </button>
+            )}
+            {b.status === 'COMPLETED' && <BookingReviewButton booking={b} />}
+          </div>
         </div>
       ))}
     </div>
+  );
+}
+
+// Real, previously-uncalled-anywhere endpoint (found via a fresh uncalled-endpoint
+// sweep, 2026-08-16) -- see lib/booking.ts's own fetchBookingDeposit doc comment. Most
+// bookings have no deposit at all (their service never required prepay), which the
+// backend correctly reports as a 404 -- that's the expected, silent, no-badge case
+// here, not an error to surface.
+const DEPOSIT_STATUS_LABEL: Record<BookingDepositStatus, string> = {
+  HELD: 'Deposit held', RELEASED: 'Deposit released', REFUNDED: 'Deposit refunded', FORFEITED: 'Deposit forfeited',
+};
+function BookingDepositBadge({ bookingId }: { bookingId: string }) {
+  const [deposit, setDeposit] = useState<BookingDeposit | null>(null);
+  useEffect(() => {
+    fetchBookingDeposit(bookingId).then(setDeposit).catch(() => setDeposit(null));
+  }, [bookingId]);
+  if (!deposit) return null;
+  return (
+    <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 6px', borderRadius: '999px', background: 'var(--itunda-grey-100)', color: 'var(--itunda-grey-700)' }}>
+      {DEPOSIT_STATUS_LABEL[deposit.status]} · {deposit.amount.toLocaleString()} RWF
+    </span>
   );
 }
 
@@ -16696,6 +16720,10 @@ function PriceTiersDisplay({ productId, regularPrice }: { productId: string; reg
 // appointment booking (item 220) -- see lib/booking.ts's own doc comment. A product
 // with durationMinutes set is bookable; requiresPrepay means the customer's deposit is
 // held automatically the moment they request the slot (no separate payment step).
+const JS_DAY_TO_AVAILABILITY_DAY: MerchantAvailabilityWindow['dayOfWeek'][] = [
+  'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
+];
+
 function BookingWidget({ merchantId, product }: { merchantId: string; product: CommerceProduct }) {
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<BookingSlot[] | null>(null);
@@ -16703,14 +16731,31 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
   const [requesting, setRequesting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requested, setRequested] = useState(false);
+  const [openDays, setOpenDays] = useState<Set<MerchantAvailabilityWindow['dayOfWeek']> | null>(null);
+
+  useEffect(() => {
+    fetchMerchantAvailability(merchantId)
+      .then((windows) => setOpenDays(new Set(windows.map((w) => w.dayOfWeek))))
+      .catch(() => setOpenDays(null));
+  }, [merchantId]);
 
   if (!product.durationMinutes) return null;
+
+  const isClosedOn = (d: string) => {
+    if (!openDays || openDays.size === 0) return false;
+    const day = JS_DAY_TO_AVAILABILITY_DAY[new Date(`${d}T00:00:00`).getDay()];
+    return !openDays.has(day);
+  };
 
   const loadSlots = (d: string) => {
     setDate(d);
     setSlots(null);
     setSlotsError(null);
     if (!d) return;
+    if (isClosedOn(d)) {
+      setSlots([]);
+      return;
+    }
     fetchAvailableSlots(merchantId, product.id, d)
       .then(setSlots)
       .catch((err) => setSlotsError(err instanceof ApiError ? err.message : 'Could not load available times.'));
@@ -16757,7 +16802,7 @@ function BookingWidget({ merchantId, product }: { merchantId: string; product: C
       {error && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }}>{error}</p>}
       {date && slots !== null && (
         slots.length === 0 ? (
-          <EmptyState message="No open times on this date — try another day." />
+          <EmptyState message={isClosedOn(date) ? 'Closed on this day — try another date.' : 'No open times on this date — try another day.'} />
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {slots.map((slot) => (

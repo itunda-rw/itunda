@@ -33,6 +33,21 @@ export const fetchAvailableSlots = (merchantId: string, serviceId: string, date:
     `/api/v1/merchant/${merchantId}/booking-slots?serviceId=${encodeURIComponent(serviceId)}&date=${date}`,
   ).then((r) => r.slots);
 
+// Real, previously-uncalled-anywhere endpoint (found via a fresh uncalled-endpoint
+// sweep, 2026-08-16) -- BookingWidget below already had to pick a date blind and only
+// discover "no open times" after the fact; this is the merchant's real weekly
+// open/closed windows so a closed day can be flagged before a customer wastes a pick.
+export interface MerchantAvailabilityWindow {
+  dayOfWeek: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
+  startTime: string;
+  endTime: string;
+}
+
+export const fetchMerchantAvailability = (merchantId: string) =>
+  apiFetch<{ success: boolean; windows: MerchantAvailabilityWindow[] }>(`/api/v1/merchant/${merchantId}/booking-availability`).then(
+    (r) => r.windows,
+  );
+
 export const createBooking = (merchantId: string, serviceId: string, date: string, startTime: string, notes?: string) =>
   apiFetch<{ success: boolean; booking: MerchantBooking }>('/api/v1/merchant/bookings', {
     method: 'POST',
@@ -46,6 +61,28 @@ export const cancelBooking = (bookingId: string) =>
   apiFetch<{ success: boolean; booking: MerchantBooking }>(`/api/v1/merchant/bookings/${bookingId}/cancel`, {
     method: 'POST',
   }).then((r) => r.booking);
+
+// Real, previously-uncalled-anywhere endpoint (same sweep as fetchMerchantAvailability
+// above) -- BookingWidget already tells a customer a deposit will be held
+// (product.requiresPrepay), but once held there was no way to check its real status
+// (still held / released back on completion / refunded on cancel / forfeited on a
+// no-show) anywhere in any client. Backend throws a real 404 ("This booking has no
+// deposit") for a booking whose service never required prepay -- that 404 is the
+// correct, expected shape for most bookings, not an error to surface.
+export type BookingDepositStatus = 'HELD' | 'RELEASED' | 'REFUNDED' | 'FORFEITED';
+
+export interface BookingDeposit {
+  id: string;
+  bookingId: string;
+  amount: number;
+  fee: number;
+  status: BookingDepositStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const fetchBookingDeposit = (bookingId: string) =>
+  apiFetch<{ success: boolean; deposit: BookingDeposit }>(`/api/v1/merchant/bookings/${bookingId}/deposit`).then((r) => r.deposit);
 
 // Real post-appointment reviews (item 143) -- see backend MerchantBookingReviewController's
 // own doc comment. The owner-side list+reply half has been real on merchant-mfe since
