@@ -64,6 +64,15 @@ fun apiErrorMessage(e: retrofit2.HttpException): String? = try {
     null
 }
 
+// Generic ApiError.code reader, same shape as isDeviceNotVerifiedError above --
+// used for Toss-style resolve-forward handling (e.g. MERCHANT_ALREADY_REGISTERED).
+fun apiErrorCode(e: retrofit2.HttpException): String? = try {
+    val body = e.response()?.errorBody()?.string() ?: return null
+    com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString
+} catch (_: Exception) {
+    null
+}
+
 // Mirrors rw.itunda.merchant's real Merchant/MerchantProduct/PaymentIntent entities
 // exactly (same field names merchant-mfe's own lib/merchant.ts already uses).
 data class MerchantDto(

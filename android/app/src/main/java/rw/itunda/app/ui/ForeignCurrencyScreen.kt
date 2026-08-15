@@ -92,7 +92,14 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                 NetworkClient.apiService.openForeignWallet(OpenForeignWalletRequest(currency))
                 refreshKey++
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                if (rw.itunda.core.network.apiErrorCode(e) == "FOREIGN_WALLET_ALREADY_EXISTS") {
+                    // Real Toss-style resolution, not a dead-end error: the wallet
+                    // genuinely already exists -- reload and show it instead of
+                    // erroring on every retry.
+                    refreshKey++
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {

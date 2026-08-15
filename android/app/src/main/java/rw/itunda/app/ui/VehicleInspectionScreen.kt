@@ -259,7 +259,15 @@ private fun InspectionMechanicContent() {
                 profile = NetworkClient.apiService.registerAsInspectionMechanic(RegisterInspectionMechanicRequest(businessName.trim())).mechanic
                 load()
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                if (rw.itunda.core.network.apiErrorCode(e) == "MECHANIC_ALREADY_REGISTERED") {
+                    // Real Toss-style resolution, not a dead-end error: a fresh
+                    // install/reinstall has no local memory of a prior registration,
+                    // but the account genuinely IS already a registered mechanic --
+                    // load the existing profile and move forward.
+                    load()
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {

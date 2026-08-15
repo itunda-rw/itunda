@@ -103,7 +103,14 @@ fun CardScreen(onBack: () -> Unit) {
                 NetworkClient.apiService.issueCard()
                 load()
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                if (apiErrorCode(e) == "CARD_ALREADY_ISSUED") {
+                    // Real Toss-style resolution, not a dead-end error: the account
+                    // genuinely already has a card -- load it and move forward
+                    // instead of erroring on every retry.
+                    load()
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {

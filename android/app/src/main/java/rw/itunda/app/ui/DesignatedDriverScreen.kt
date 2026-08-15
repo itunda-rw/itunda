@@ -320,7 +320,20 @@ private fun DesignatedDriverDriveContent() {
                 driver = NetworkClient.apiService.registerAsDesignatedDriver(RegisterDesignatedDriverRequest(licenseNumber.trim())).driver
                 licenseNumber = ""
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                if (rw.itunda.core.network.apiErrorCode(e) == "DESIGNATED_DRIVER_ALREADY_REGISTERED") {
+                    // Real Toss-style resolution, not a dead-end error: a fresh
+                    // install/reinstall has no local memory of a prior registration,
+                    // but the account genuinely IS already a registered driver --
+                    // load the existing profile and move forward.
+                    try {
+                        driver = NetworkClient.apiService.getMyDesignatedDriverProfile().driver
+                        licenseNumber = ""
+                    } catch (e2: Exception) {
+                        error = "You're already registered, but we couldn't load your profile right now. Try again."
+                    }
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {

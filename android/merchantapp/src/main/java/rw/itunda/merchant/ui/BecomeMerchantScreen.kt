@@ -25,9 +25,21 @@ import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.RegisterMerchantRequest
+import rw.itunda.merchant.network.apiErrorCode
+import rw.itunda.merchant.network.apiErrorMessage
 import java.io.IOException
 
-/** Shown once for any logged-in itunda user who hasn't registered a business yet. */
+/**
+ * Shown once for any logged-in itunda user who hasn't registered a business yet.
+ *
+ * Real gap found 2026-08-15 (backend AlreadyX audit): a fresh install/reinstall has no
+ * local memory of a prior registration, so this screen is reachable by an account
+ * that's already a real registered merchant. That real, specific
+ * MERCHANT_ALREADY_REGISTERED backend error used to be caught by a plain
+ * `catch (e: Exception)` and replaced with a hardcoded "couldn't register, try again"
+ * message -- a dead loop on every retry. Same Toss-style resolve-forward fix as
+ * riderapp's BecomeRiderScreen: load the existing merchant profile and proceed.
+ */
 @Composable
 fun BecomeMerchantScreen(onRegistered: (MerchantDto) -> Unit, onLogout: () -> Unit) {
     var businessName by remember { mutableStateOf("") }
@@ -66,10 +78,22 @@ fun BecomeMerchantScreen(onRegistered: (MerchantDto) -> Unit, onLogout: () -> Un
                     try {
                         val merchant = NetworkClient.apiService.registerMerchant(RegisterMerchantRequest(businessName.trim())).merchant
                         onRegistered(merchant)
+                    } catch (e: retrofit2.HttpException) {
+                        if (apiErrorCode(e) == "MERCHANT_ALREADY_REGISTERED") {
+                            // Real Toss-style resolution, not a dead-end error: the
+                            // account genuinely IS already a registered merchant, so
+                            // move them forward instead of erroring on every retry.
+                            try {
+                                onRegistered(NetworkClient.apiService.getMyMerchant().merchant)
+                            } catch (e2: Exception) {
+                                error = "You're already registered, but we couldn't load your business right now. Try again."
+                            }
+                        } else {
+                            error = apiErrorMessage(e)
+                                ?: "itunda is having a brief hiccup on our end -- not something you did. Try again in a moment."
+                        }
                     } catch (e: IOException) {
                         error = "Couldn't reach itunda. Check your connection and try again."
-                    } catch (e: Exception) {
-                        error = "Couldn't register your business right now. Try again."
                     } finally {
                         busy = false
                     }

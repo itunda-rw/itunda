@@ -138,7 +138,16 @@ fun HarvestAdvanceScreen(onBack: () -> Unit) {
                 error = null
                 load()
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                if (rw.itunda.core.network.apiErrorCode(e) == "ALREADY_MEMBER") {
+                    // Real Toss-style resolution, not a dead-end error: the account
+                    // genuinely IS already a member of this cooperative -- load
+                    // existing membership state and move forward instead of erroring.
+                    coopId = ""
+                    error = null
+                    load()
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
