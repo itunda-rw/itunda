@@ -6686,3 +6686,29 @@ unrelated to the factor itself. Worth remembering as a technique: whenever a bac
 verified to "just work" on existing clients, it's a cheap moment to also check whether ALL the
 related endpoints for that same feature area are actually wired on every platform, not just the one
 being checked.
+
+## 81. iOS platform-parity gap: monthly spending report never ported (2nd found via a targeted sweep)
+
+**Added 2026-08-16.** A follow-up to Section 80's fix, this time from a deliberately targeted
+sweep (not "uncalled anywhere" -- specifically "called by Android and/or web but iOS's sibling
+screen never got it"). `WalletService.getMonthlySpendingReport` (Section 75, real since this same
+session, shipped same-day on bank-mfe and Android) had zero iOS client at all, despite
+`SpendingScreenView.swift` already existing for the neighboring all-time `getSpendingInsight()`
+endpoint.
+
+**Built**: `MonthlySpendingReportResponse`/`SpendingComparisonCategoryDto` + `getMonthlySpendingReport()`
+added to `NetworkClient.swift` (exact same field shape as the backend/bank-mfe), plus a "This month
+so far" section at the top of `SpendingScreenView.swift` mirroring bank-mfe's own
+`MonthlySpendingReportCard` exactly -- real `percentChange` (▲/▼, red/green), top 3 movers by
+category, `percentChange` left `null` (never fabricated `0%`) when a category has no prior-month
+spend. Full `ItundaApp` xcodebuild succeeded clean.
+
+**Sweep methodology note, worth keeping**: the fork that found this hit two real false-positive
+sources before landing on this candidate -- iOS Swift call sites omit the leading `/` that
+Kotlin/TS retain (unstripped comparison produced ~270 false positives), and iOS has **4 separate
+`NetworkClient.swift` files** across `Core/Network`/`MerchantApp`/`RiderApp`/`AgentApp` (checking
+only `Core/Network`'s falsely flagged every merchant/agent/rides/bus/parking endpoint, which DO have
+real clients in their own app's file). Also correctly ruled out several bigger, pre-existing,
+already-known gaps as NOT small wire-up jobs: `Insurance`/`Bills` Feature modules are placeholder-only
+(whole features never built), and `eats/group-orders`/`loans/student/*` are whole multi-endpoint
+sub-products, not single-endpoint gaps -- don't re-scope those as quick fixes.
