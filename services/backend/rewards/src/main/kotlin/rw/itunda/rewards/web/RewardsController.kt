@@ -47,6 +47,19 @@ class RewardsController(
         return ResponseEntity.ok(mapOf("success" to true, "tasks" to result.tasks, "rewardsTotal" to result.rewardsTotal))
     }
 
+    // Real Naver Pay 페이펫-inspired collectible companion -- see
+    // RewardsService.getPet's own doc comment.
+    @GetMapping("/pet")
+    fun getPet(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val pet = rewardsService.getPet(currentUser.userId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true, "level" to pet.level, "stageName" to pet.stageName, "emoji" to pet.emoji,
+                "claimedTaskCount" to pet.claimedTaskCount, "activeRewardDays" to pet.activeRewardDays,
+            ),
+        )
+    }
+
     // Real referral subsystem (2026-07-17): the caller's own share code plus real
     // progress toward task_referral -- see RewardsService.getReferralInfo.
     @GetMapping("/referral")

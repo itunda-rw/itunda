@@ -60,6 +60,21 @@ export interface TodayStepsResult {
   tiers: StepRewardTierInfo[];
 }
 
+// Real Naver Pay 페이펫-inspired collectible companion (2026-08-16) -- see
+// RewardsService.getPet's own doc comment on the backend. Purely cosmetic, grown from
+// real already-tracked engagement (claimed tasks + active reward days), not a new
+// points currency.
+export interface Pet {
+  level: number;
+  stageName: string;
+  emoji: string;
+  claimedTaskCount: number;
+  activeRewardDays: number;
+}
+
+export const fetchPet = () =>
+  apiFetch<{ success: boolean } & Pet>('/api/v1/rewards/pet').then((r) => r);
+
 export const fetchRewardTasks = () =>
   apiFetch<{ success: boolean } & RewardTasksResult>('/api/v1/rewards/tasks').then((r) => r);
 

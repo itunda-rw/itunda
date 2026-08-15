@@ -10,6 +10,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.DailyStepRewardRepository
 import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -31,6 +32,17 @@ data class RewardTasksResult(val tasks: List<RewardTaskView>, val rewardsTotal: 
 data class ClaimRewardResult(val message: String, val rewardAmount: BigDecimal, val newBalance: BigDecimal)
 data class ReferralInfo(val referralCode: String?, val referredCount: Int, val completedReferralCount: Int)
 
+// Real Naver Pay 페이펫-inspired collectible companion (2026-08-16, sourced from
+// Naver Pay's real 2026 페이펫 upgrade) -- a purely cosmetic layer over real, already-
+// tracked engagement, not a new points currency or fabricated AI. `level` grows from
+// two real, already-stored signals: one-time task claims (RewardClaimRepository, max
+// 5 today) and distinct real days the user has engaged with the step-reward system
+// (DailyStepRewardRepository) -- deliberately NOT shopping-mission days for this v1,
+// to keep the level computation to two clean COUNT queries rather than parsing
+// ShoppingMissionReward's per-flag row shape; a real, honest, smaller v1 slice, not
+// the full 7-category/4-minigame Naver version.
+data class PetView(val level: Int, val stageName: String, val emoji: String, val claimedTaskCount: Int, val activeRewardDays: Long)
+
 @Service
 class RewardsService(
     private val rewardClaimRepository: RewardClaimRepository,
@@ -39,6 +51,7 @@ class RewardsService(
     private val transactionRepository: TransactionRepository,
     private val savingsGoalRepository: SavingsGoalRepository,
     private val userRepository: UserRepository,
+    private val dailyStepRewardRepository: DailyStepRewardRepository,
 ) {
 
     // Static catalog, same convention as InsuranceService's insurancePlans / LoansService's
@@ -86,6 +99,27 @@ class RewardsService(
         val referred = userRepository.findAllByReferredByUserId(userId)
         val completed = referred.count { transactionRepository.existsBySenderIdAndTypeAndStatus(it.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED) }
         return ReferralInfo(user.referralCode, referred.size, completed)
+    }
+
+    // Named stages (not just a bare number) mirror the real Naver Pay 페이펫 growth
+    // framing (an egg that hatches and grows) -- deliberately plain emoji, not custom
+    // art, since itunda has no image-asset pipeline to invent one (same honest bar
+    // photoUrl-style fields already establish elsewhere in this codebase).
+    private data class PetStage(val minLevel: Int, val name: String, val emoji: String)
+    private val petStages = listOf(
+        PetStage(1, "Egg", "🥚"),
+        PetStage(2, "Hatchling", "🐣"),
+        PetStage(4, "Chick", "🐤"),
+        PetStage(7, "Fledgling", "🕊️"),
+        PetStage(11, "Soaring", "🦅"),
+    )
+
+    fun getPet(userId: String): PetView {
+        val claimedTaskCount = rewardClaimRepository.findByUserId(userId).size
+        val activeRewardDays = dailyStepRewardRepository.countByUserId(userId)
+        val level = 1 + claimedTaskCount + activeRewardDays.toInt()
+        val stage = petStages.last { level >= it.minLevel }
+        return PetView(level, stage.name, stage.emoji, claimedTaskCount, activeRewardDays)
     }
 
     fun getTasks(userId: String): RewardTasksResult {

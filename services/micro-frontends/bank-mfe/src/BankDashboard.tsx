@@ -65,7 +65,7 @@ import {
 } from './lib/loans';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
-import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, type RewardTasksResult, type ReferralInfo, type StepRewardTierInfo } from './lib/rewards';
+import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, fetchPet, type RewardTasksResult, type ReferralInfo, type StepRewardTierInfo, type Pet } from './lib/rewards';
 import { fetchBillProviders, fetchPendingBills, payBill, buyAirtime, type BillProvider, type PendingBill } from './lib/bills';
 import {
   fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount,
@@ -3444,6 +3444,24 @@ function TrustScoreView() {
 // comment: real on Android/iOS since day one via the Saronite mini-app bridge, but
 // bank-mfe (the actual banking app) never had a client for it. Same task-list +
 // referral-code + step-counter shape those native bridges already expose.
+// Real Naver Pay 페이펫-inspired collectible companion -- see lib/rewards.ts's own
+// fetchPet doc comment. Self-contained (its own load effect), so a fetch failure just
+// hides this card rather than blocking the rest of RewardsView from rendering.
+function PetCard() {
+  const [pet, setPet] = useState<Pet | null>(null);
+  useEffect(() => { fetchPet().then(setPet).catch(() => setPet(null)); }, []);
+  if (!pet) return null;
+  return (
+    <div className="itunda-card" style={{ padding: '20px', textAlign: 'center' }}>
+      <div style={{ fontSize: '48px' }}>{pet.emoji}</div>
+      <p style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px' }}>{pet.stageName}</p>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+        Level {pet.level} · {pet.claimedTaskCount} task{pet.claimedTaskCount === 1 ? '' : 's'} · {pet.activeRewardDays} active day{pet.activeRewardDays === 1 ? '' : 's'}
+      </p>
+    </div>
+  );
+}
+
 function RewardsView() {
   const [tasks, setTasks] = useState<RewardTasksResult | null>(null);
   const [referral, setReferral] = useState<ReferralInfo | null>(null);
@@ -3513,6 +3531,7 @@ function RewardsView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: '13px', color: 'var(--itunda-blue)' }}>{message}</p>}
+      <PetCard />
       <div className="itunda-card" style={{ padding: '24px' }}>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Total earned</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{tasks.rewardsTotal} RWF</h2>
