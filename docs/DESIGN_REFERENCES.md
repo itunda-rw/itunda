@@ -6407,3 +6407,56 @@ existing, unchanged decrement logic, confirmed a past `expiresAt` is correctly r
 validation (`INVALID_SURPLUS_DEAL`, 400), and confirmed the deal disappears from the listing the
 instant it expires -- set a real 5-second-future expiry, waited for it to pass, re-queried, got an
 empty list, zero manual cleanup needed (the time filter in the query itself does the work).
+
+## 73. Uber Women Preferences -- a real, sourced safety-matching gap, scoped not built
+
+**Added 2026-08-15.** Fresh, dated research, cross-verified across multiple outlets
+([gadgetreview.com](https://www.gadgetreview.com/ubers-women-only-driver-preference-feature-launches-nationwide),
+[news.designrush.com](https://news.designrush.com/uber-women-only-rides-us-launch),
+[time.com](https://time.com/article/2026/03/09/uber-women-driver-passenger-feature/),
+[axios.com](https://axios.com/2026/03/09/uber-women-preferences-drivers-expansion/),
+[uber.com/newsroom](https://www.uber.com/us/en/newsroom/expanding-women-preferences/)): Uber's "Women
+Preferences" launched nationwide 2026-03-09 after an August-2025 pilot -- women riders can request a
+woman driver (on-demand, reserved in advance, or as a standing preference); women drivers separately
+toggle "Women Rider Preference" to receive trip requests only from women riders. **Real, bidirectional
+safety matching** -- confirmed both directions matter, not just riders choosing drivers (the driver
+side exists specifically for driver safety too, matching the feature's own original 2025 motivation).
+Powered 230M+ trips globally across 40+ countries by the time of this research.
+
+**Checked against itunda's own code**: `rw.itunda.rideshare` has a real, mature ride-hailing dispatch
+pipeline (`RideTripService.requestTrip` + `RideDispatchScheduler`, a 3-second-poll exclusive-offer
+dispatch loop -- the same real pattern `EatsOrderService`'s delivery dispatch already established,
+confirmed by reading both). A repo-wide check found no gender field anywhere on `User`, and no
+preference/matching concept in `RideDriver` -- a real, confirmed gap. **Interesting, real, adjacent
+finding along the way**: `DemoNidaVerificationService` (Rwanda NIDA identity verification) already
+parses a real gender digit out of a valid NIDA number's checksum -- but `IdentityService` never
+persists it anywhere; it's extracted and silently discarded. A future build of this feature could
+use that as a real, already-verified gender source instead of self-declaration, closing two gaps at
+once.
+
+**Deliberately scoped, not built this pass** -- unlike this session's other three shipped features
+(group ordering, family send, closing deals, all safely additive on top of already-tested code), a
+correct women-preference matching filter needs to reach into `RideTripService`'s real driver-candidate
+ranking/dispatch logic itself (the same class of already-tested, real-time, safety-relevant code this
+session has consistently avoided modifying without strong cause) -- and getting a SAFETY feature
+subtly wrong (e.g. a rider who set the preference still getting matched with a male driver under some
+edge case, or a driver's "women riders only" toggle silently not being honored) is a materially worse
+failure mode than a bug in, say, a discount rail. Real open design questions before this should be
+built: (1) is gender self-declared (fast, matches existing `birthDate`/`neighborhood` optional-profile
+precedent) or NIDA-verified (slower, more trustworthy, and the parsing already exists unused per the
+finding above) -- or does v1 need to require verification specifically because this is safety-facing,
+unlike every other optional profile field; (2) exact matching semantics when a driver has enabled
+"women riders only" but the incoming rider did NOT request a woman driver -- should that driver simply
+be excluded from that rider's candidate pool entirely, silently, or does the rider need to be told why
+fewer drivers are available; (3) whether "reserved in advance" and "standing preference" modes (real
+per Uber's own launch) are in v1 scope or a bounded on-demand-only start, mirroring how
+`DesignatedDriverService`/`RideTripService` already scope their own real-world counterparts down to
+an honest v1 rather than the full original feature.
+
+**How to apply**: if this is ever prioritized, start by reading `RideTripService`'s real candidate-
+ranking method in full (not yet done this pass beyond confirming it exists) and resolve the gender-
+source question first -- it changes the data model. `RideDriver` is the natural home for the
+driver-side `acceptsWomenOnlyRequests` toggle (mirrors its existing `available: Boolean`); the
+rider-side preference is naturally a new optional param on `RideTripService.requestTrip`, matching
+how `scheduledFor`/`stops` were both added as backward-compatible optional params to that same
+function for their own real features.
