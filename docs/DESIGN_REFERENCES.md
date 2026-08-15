@@ -6101,3 +6101,46 @@ different feature with the same "QR" surface, not already covering this gap.
 `DineInOrderController.placeOrder`'s auth requirement and `DineInRepositories.kt`'s `DineInOrder`
 entity (currently assumes a real `buyerId` FK) -- both would need a real design decision on how a
 guest identity is represented and how payment is captured without an existing itunda wallet.
+
+## 68. Silent session refresh -- a real dead-end found by the sweep methodology, not research
+
+**Added 2026-08-15.** Not sourced from an external ecosystem this time -- found by this session's
+own periodic dead-endpoint sweep (see [[feedback_uncalled_endpoint_sweep]]/
+[[project_itunda_full_ecosystem_polish]]), which flagged `refresh` as having zero callers anywhere
+in `android/`/`ios/`. Checked the real backend: `JwtService.kt` issues a 24-hour access token and a
+7-day refresh token. With `AuthApi.refresh()`/`NetworkClient.refresh()` never called by ANY client,
+any session left open past 24 hours got a raw, unrecoverable 401 on every subsequent screen -- and
+Android/iOS didn't even have a forced-logout fallback (only bank-mfe did, via a hard
+`logout()` + `SESSION_EXPIRED_EVENT` on any 401). A real, previously-undiscovered violation of this
+codebase's own standing Toss-style "never leave a dead end" error-handling philosophy
+([[feedback_toss_error_handling]]).
+
+**Fixed on all 3 platforms, same session:**
+- **Android** (`3c1f917a`): a real OkHttp `Authenticator` (`refreshAuthenticator` in
+  `core/network/ApiService.kt`'s `NetworkClient`) that, on 401, calls a new synchronous
+  `refreshSync()` twin of the existing suspend `refresh()`, persists the rotated token pair, and
+  retries the original request -- fully silent. Guards concurrent-401 races with a lock and gives
+  up after one retry to avoid a loop. `SessionManager.kt` gained `forceLocalLogout()` for the one
+  real case a session must still end (refresh token itself invalid/expired).
+- **iOS** (`014ed309`): `dataWithRefresh(for:)` in `NetworkClient.swift`, which all 13 of that
+  file's raw `session.data(for:)` call sites now route through. Single-flight via a private
+  `actor` (`RefreshCoordinator`), the correct Swift-concurrency-safe equivalent of Android's lock.
+  Real module-boundary catch made while building this: `CoreNetwork` (NetworkClient's module)
+  cannot import `App` (`SessionManager`'s module) -- decoupled via
+  `NotificationCenter`/`sessionExpiredNotification` instead of a direct reference.
+- **bank-mfe** (`48dab178`): `apiFetch` in `lib/api.ts` now attempts a silent refresh (single-flight
+  via a shared in-flight `Promise`) before falling through to its existing forced-logout path.
+
+**Live-verified twice, two different ways:**
+1. The real backend refresh contract itself, via direct `curl` against the live cluster
+   (`127.0.0.1:30081`): confirmed refresh rotates BOTH tokens, the new access token authenticates,
+   the OLD refresh token is correctly rejected (`INVALID_REFRESH_TOKEN`, proving rotation), and the
+   new refresh token itself chains correctly for a second refresh.
+2. bank-mfe end to end in a real browser (Claude-in-Chrome): registered a real test account,
+   corrupted the stored access token to simulate expiry while leaving the real refresh token
+   intact, reloaded -- confirmed via `localStorage` inspection that the corrupted token was
+   silently replaced with a new valid one (proving the 401-refresh-retry path actually ran) and the
+   dashboard rendered fully logged-in with zero forced logout.
+
+Android/iOS are compile-verified only (no physical device this session) but rely on the exact same
+already-live-verified backend contract.
