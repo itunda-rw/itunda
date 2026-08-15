@@ -32,6 +32,7 @@ import java.math.BigDecimal
 
 data class GenerateP2pRequest(val amount: BigDecimal, val description: String)
 data class SendDirectP2pRequest(val recipient: String, val amount: BigDecimal, val description: String = "")
+data class SendToFamilyMemberRequest(val childUserId: String, val amount: BigDecimal, val description: String = "")
 
 // Person-to-person QR -- see docs/API_SPECIFICATION.md's P2P section and
 // docs/TOSS_PARITY_MATRIX.md's QR Pay row.
@@ -75,6 +76,22 @@ class P2pController(private val p2pService: P2pService, private val idempotencyS
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/p2p/send", idempotencyKey, request) {
             val (transaction, newBalance) = p2pService.sendDirect(currentUser.userId, request.recipient, request.amount, request.description)
+            200 to mapOf("success" to true, "message" to "Transfer successful", "transaction" to transaction, "newBalance" to newBalance)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    // Real Naver Pay "가족 공유 자산 관리" (family shared asset management) -- instant
+    // transfer to a linked family member, see P2pService.sendToFamilyMember's own doc
+    // comment.
+    @PostMapping("/send-to-family")
+    fun sendToFamilyMember(
+        @RequestBody request: SendToFamilyMemberRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/p2p/send-to-family", idempotencyKey, request) {
+            val (transaction, newBalance) = p2pService.sendToFamilyMember(currentUser.userId, request.childUserId, request.amount, request.description)
             200 to mapOf("success" to true, "message" to "Transfer successful", "transaction" to transaction, "newBalance" to newBalance)
         }
         return ResponseEntity.status(status).body(body)

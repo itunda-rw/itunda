@@ -320,6 +320,27 @@ class P2pService(
         return transaction to updatedSenderWallet.balance
     }
 
+    /**
+     * Real Naver Pay "가족 공유 자산 관리" (family shared asset management) -- instant
+     * transfer to a linked family member straight from the guardian's own family
+     * overview, sourced from fresh 2026-08 research (see docs/DESIGN_REFERENCES.md's
+     * own entry for the full account). A real, additive convenience on top of [sendDirect],
+     * not a new money-movement mechanism: resolves the child's own account number via a
+     * verified ACTIVE [FamilyLinkService.isActiveGuardianOf] gate, then delegates straight
+     * to the exact same, already-tested [sendDirect] the plain "type a phone number"
+     * flow uses -- same rate limit, same auto top-up, same fraud check, same round-up,
+     * same notification, zero duplicated ledger logic.
+     */
+    @Transactional
+    fun sendToFamilyMember(guardianUserId: String, childUserId: String, amount: BigDecimal, description: String): Pair<Transaction, BigDecimal> {
+        if (!familyLinkService.isActiveGuardianOf(guardianUserId, childUserId)) {
+            throw P2pRecipientNotFoundException("No active family link with this account")
+        }
+        val childWallet = walletRepository.findByUserIdAndType(childUserId, WalletType.MAIN)
+            ?: throw P2pRecipientNotFoundException("No itunda account found for this family member")
+        return sendDirect(guardianUserId, childWallet.accountNumber, amount, description)
+    }
+
     // Real-time "money received" notification (2026-07-22) -- modeled on one of Toss
     // Bank's most iconic, signature UX elements: an instant in-app notification the
     // moment money arrives (real Toss shows "OOO님이 5,000원을 보냈어요" -- "OOO sent you

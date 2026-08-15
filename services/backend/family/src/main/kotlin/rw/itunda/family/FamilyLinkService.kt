@@ -189,4 +189,14 @@ class FamilyLinkService(
             recentTransactions = transactions,
         )
     }
+
+    // Real, small, additive authorization check -- exposes the exact same real ACTIVE-link
+    // gate [getChildOverview] already enforces, as its own reusable boolean, for
+    // P2pService.sendToFamilyMember's own real Naver Pay "family shared asset
+    // management -- instant transfer to a linked family member" feature (2026-08-15). Kept
+    // read-only and this small on purpose -- money movement itself stays entirely in
+    // :p2p, reusing the already-tested sendDirect unchanged rather than duplicating ledger
+    // logic here.
+    fun isActiveGuardianOf(guardianUserId: String, childUserId: String): Boolean =
+        familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus(guardianUserId, childUserId, FamilyLinkStatus.ACTIVE) != null
 }

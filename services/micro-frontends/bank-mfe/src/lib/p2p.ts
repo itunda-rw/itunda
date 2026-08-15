@@ -50,3 +50,13 @@ export const payP2pRequest = (requestId: string) =>
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
   });
+
+// Real Naver Pay "가족 공유 자산 관리" (family shared asset management) -- instant
+// transfer to a linked family member straight from the Family card, see
+// P2pService.sendToFamilyMember's own doc comment on the backend.
+export const sendToFamilyMember = (childUserId: string, amount: number, description: string) =>
+  apiFetch<{ success: boolean; message: string; transaction: Transaction; newBalance: number }>('/api/v1/p2p/send-to-family', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ childUserId, amount, description }),
+  });

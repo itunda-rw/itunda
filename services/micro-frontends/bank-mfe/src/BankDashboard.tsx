@@ -55,7 +55,7 @@ import {
   type Grow31SavingsPlan, type Grow31SavingsPlanDetail,
 } from './lib/grow31Savings';
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
-import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, type P2pPaymentRequestDto, type P2pPaymentRequestStatus } from './lib/p2p';
+import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, sendToFamilyMember, type P2pPaymentRequestDto, type P2pPaymentRequestStatus } from './lib/p2p';
 import { getCertificateStatus, getMyCertificate, issueCertificate, revokeCertificate, verifyCertificateSignature, type Certificate, type VerifyCertificateSignatureResult } from './lib/certificate';
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
 import {
@@ -5435,6 +5435,9 @@ function FamilyLinkCard() {
   const [error, setError] = useState<string | null>(null);
   const [openOverviewFor, setOpenOverviewFor] = useState<string | null>(null);
   const [overview, setOverview] = useState<ChildOverview | null>(null);
+  const [sendAmount, setSendAmount] = useState('');
+  const [sendBusy, setSendBusy] = useState(false);
+  const [sendDone, setSendDone] = useState(false);
 
   const load = () => {
     fetchMyInvites().then(setInvites).catch(() => {});
@@ -5494,10 +5497,29 @@ function FamilyLinkCard() {
       return;
     }
     setOpenOverviewFor(childUserId);
+    setSendAmount('');
+    setSendDone(false);
     try {
       setOverview(await fetchChildOverview(childUserId));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not load this overview.');
+    }
+  };
+
+  const handleSendToChild = async (childUserId: string) => {
+    const amount = Number(sendAmount);
+    if (!amount || amount <= 0) return;
+    setSendBusy(true);
+    setError(null);
+    try {
+      await sendToFamilyMember(childUserId, amount, 'Sent from Family');
+      setSendDone(true);
+      setSendAmount('');
+      setOverview(await fetchChildOverview(childUserId));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this transfer.');
+    } finally {
+      setSendBusy(false);
     }
   };
 
@@ -5562,6 +5584,23 @@ function FamilyLinkCard() {
                     <p key={t.id}>{t.description} · {t.amount.toLocaleString()} RWF</p>
                   ))}
                   {overview.recentTransactions.length === 0 && <EmptyState message="Nothing here yet — your activity will show up as you use itunda." />}
+                  {/* Real Naver Pay "family shared asset management" -- instant transfer
+                      to this linked family member, see lib/p2p.ts's own doc comment. */}
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                    <input
+                      type="number" min={1} placeholder="Amount (RWF)" value={sendAmount}
+                      onChange={(e) => { setSendAmount(e.target.value); setSendDone(false); }}
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '12px' }}
+                    />
+                    <button
+                      className="itunda-btn itunda-btn-primary" disabled={sendBusy || !sendAmount}
+                      onClick={() => handleSendToChild(c.link.childUserId)}
+                      style={{ fontSize: '12px', padding: '8px 12px' }}
+                    >
+                      {sendBusy ? '…' : 'Send'}
+                    </button>
+                  </div>
+                  {sendDone && <p style={{ color: 'var(--itunda-green)', marginTop: '4px' }}>Sent.</p>}
                 </div>
               )}
             </div>
