@@ -328,9 +328,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Real savings-goal creation (2026-08-14). The backend endpoint and bank-mfe's own
      * createGoal have both existed for a long time, but Android only ever had the GET,
-     * so "Save & grow" could never show a goal on this platform. No Idempotency-Key
-     * here deliberately: the backend's own createGoal doesn't require one (unlike
-     * deposit/transfer), since creating a duplicate goal moves no money.
+     * so "Save & grow" could never show a goal on this platform. Idempotency-Key added
+     * 2026-08-15 -- a periodic backend coverage sweep found createGoal was missing the
+     * same replayOrExecute protection its own sibling endpoints (deposit,
+     * interest-jar/claim) already had, a real gap matching this codebase's established
+     * risk signature (creates a brand-new row, no uniqueness constraint to catch a
+     * retried duplicate). Fixed on the backend first, wired through here to match.
      */
     suspend fun createSavingsGoal(
         name: String,
@@ -340,7 +343,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ): MoneyActionResult {
         return try {
             NetworkClient.apiService.createSavingsGoal(
-                CreateSavingsGoalRequest(
+                idempotencyKey = UUID.randomUUID().toString(),
+                request = CreateSavingsGoalRequest(
                     name = name,
                     targetAmount = BigDecimal(targetAmountRwf),
                     monthlyContribution = monthlyContributionRwf?.let { BigDecimal(it) },

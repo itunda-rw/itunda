@@ -2338,7 +2338,7 @@ interface ApiService {
     // "Save & grow" goal list could never be anything but empty on this platform
     // (found 2026-08-14). Mirrors backend SavingsController.CreateGoalRequest exactly.
     @POST("api/v1/savings/goals")
-    suspend fun createSavingsGoal(@Body request: CreateSavingsGoalRequest): CreateSavingsGoalResponse
+    suspend fun createSavingsGoal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: CreateSavingsGoalRequest): CreateSavingsGoalResponse
 
     @GET("api/v1/savings/interest-jar")
     suspend fun getInterestJar(): InterestJarResponse

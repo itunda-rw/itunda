@@ -37,9 +37,16 @@ class SavingsController(
         ResponseEntity.ok(mapOf("success" to true, "goals" to savingsService.getGoals(currentUser.userId)))
 
     @PostMapping("/goals")
-    fun createGoal(@RequestBody request: CreateGoalRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val goal = savingsService.createGoal(currentUser.userId, request.name, request.targetAmount, request.monthlyContribution, request.targetDate, request.category)
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "goal" to goal))
+    fun createGoal(
+        @RequestBody request: CreateGoalRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/savings/goals", idempotencyKey, request) {
+            val goal = savingsService.createGoal(currentUser.userId, request.name, request.targetAmount, request.monthlyContribution, request.targetDate, request.category)
+            HttpStatus.CREATED.value() to mapOf("success" to true, "goal" to goal)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @PostMapping("/deposit")
