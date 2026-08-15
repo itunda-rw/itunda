@@ -459,7 +459,95 @@ export type TranslationKey =
   | 'pos.startTimeDeal'
   | 'pos.creating'
   | 'pos.pastDealsSingular'
-  | 'pos.pastDealsPlural';
+  | 'pos.pastDealsPlural'
+  // Real 15th (and final)-localization-pass additions (2026-08-15): SettingsScreen --
+  // the last remaining tab-content screen, closing merchant-mfe's entire backlog.
+  // Covers webhook config, followers broadcast, API integration, devices, category,
+  // store settings, Eats Club opt-in, fee waiver, and KYB verification.
+  | 'settings.saveError'
+  | 'settings.saved'
+  | 'settings.saving'
+  | 'settings.saveButton'
+  | 'settings.merchantIdPrefix'
+  | 'settings.webhookUrlLabel'
+  | 'settings.webhookUrlBody'
+  | 'settings.followersTitle'
+  | 'settings.loading'
+  | 'settings.followersCountSingular'
+  | 'settings.followersCountPlural'
+  | 'settings.broadcastTitleLabel'
+  | 'settings.broadcastTitlePlaceholder'
+  | 'settings.broadcastMessageLabel'
+  | 'settings.broadcastMessagePlaceholder'
+  | 'settings.sending'
+  | 'settings.broadcastButton'
+  | 'settings.broadcastNeedsFollower'
+  | 'settings.broadcastError'
+  | 'settings.broadcastSentSingular'
+  | 'settings.broadcastSentPlural'
+  | 'settings.webhookDeliveriesLoadError'
+  | 'settings.apiKeyGenerateError'
+  | 'settings.replayError'
+  | 'settings.apiIntegrationTitle'
+  | 'settings.apiIntegrationBody'
+  | 'settings.generating'
+  | 'settings.generateApiKeyButton'
+  | 'settings.recentDeliveriesTitle'
+  | 'settings.deliveriesEmpty'
+  | 'settings.attemptSingular'
+  | 'settings.attemptPlural'
+  | 'settings.statusDelivered'
+  | 'settings.statusPending'
+  | 'settings.statusExhausted'
+  | 'settings.replaying'
+  | 'settings.replayButton'
+  | 'settings.devicesLoadError'
+  | 'settings.deviceRemoveError'
+  | 'settings.devicesTitle'
+  | 'settings.devicesBody'
+  | 'settings.devicesEmpty'
+  | 'settings.unknownDevice'
+  | 'settings.thisDeviceSuffix'
+  | 'settings.deviceVerified'
+  | 'settings.deviceNotVerified'
+  | 'settings.lastSeenPrefix'
+  | 'settings.removing'
+  | 'settings.removeButton'
+  | 'settings.categoryTitle'
+  | 'settings.categoryExamplesLabel'
+  | 'settings.categoryPlaceholder'
+  | 'settings.storeSettingsTitle'
+  | 'settings.storePhotoUrlLabel'
+  | 'settings.minOrderAmountLabel'
+  | 'settings.cashbackRateLabel'
+  | 'settings.phoneNumberLabel'
+  | 'settings.openingHoursLabel'
+  | 'settings.acceptScheduledOrdersTitle'
+  | 'settings.acceptScheduledOrdersBody'
+  | 'settings.on'
+  | 'settings.off'
+  | 'settings.eatsClubTitle'
+  | 'settings.eatsClubBody'
+  | 'settings.eatsClubParticipating'
+  | 'settings.eatsClubOptIn'
+  | 'settings.feeWaiverTitle'
+  | 'settings.feeWaiverActiveBody'
+  | 'settings.feeWaiverEligibleBody'
+  | 'settings.feeWaiverError'
+  | 'settings.feeWaiverApplyButton'
+  | 'settings.kybSubmitError'
+  | 'settings.kybAutoMatched'
+  | 'settings.kybAutoNotFound'
+  | 'settings.kybAutoInvalidFormat'
+  | 'settings.kybAutoDefault'
+  | 'settings.kybTitle'
+  | 'settings.kybVerifiedBadge'
+  | 'settings.kybReviewingBody'
+  | 'settings.kybTinLabel'
+  | 'settings.kybSubmitting'
+  | 'settings.kybSubmitButton'
+  | 'settings.kybRejectedPlain'
+  | 'settings.kybRejectedWithDetail';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -861,6 +949,90 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.creating': 'Creating…',
     'pos.pastDealsSingular': '{{count}} past deal for this product.',
     'pos.pastDealsPlural': '{{count}} past deals for this product.',
+    'settings.saveError': 'Could not save.',
+    'settings.saved': 'Saved.',
+    'settings.saving': 'Saving…',
+    'settings.saveButton': 'Save',
+    'settings.merchantIdPrefix': 'Merchant ID',
+    'settings.webhookUrlLabel': 'Webhook URL',
+    'settings.webhookUrlBody': "We'll notify this address every time a payment completes. If it doesn't respond, we'll keep retrying for about 3 days.",
+    'settings.followersTitle': 'Followers',
+    'settings.loading': 'Loading…',
+    'settings.followersCountSingular': '{{count}} customer following your store',
+    'settings.followersCountPlural': '{{count}} customers following your store',
+    'settings.broadcastTitleLabel': 'Title',
+    'settings.broadcastTitlePlaceholder': 'New arrivals this week',
+    'settings.broadcastMessageLabel': 'Message',
+    'settings.broadcastMessagePlaceholder': "Tell your followers what's new.",
+    'settings.sending': 'Sending…',
+    'settings.broadcastButton': 'Broadcast to followers',
+    'settings.broadcastNeedsFollower': 'You need at least one follower to send a broadcast.',
+    'settings.broadcastError': 'Could not send this broadcast.',
+    'settings.broadcastSentSingular': 'Sent to {{count}} follower.',
+    'settings.broadcastSentPlural': 'Sent to {{count}} followers.',
+    'settings.webhookDeliveriesLoadError': 'Could not load webhook deliveries.',
+    'settings.apiKeyGenerateError': 'Could not generate an API key.',
+    'settings.replayError': 'Could not replay this delivery.',
+    'settings.apiIntegrationTitle': 'API integration',
+    'settings.apiIntegrationBody': 'For merchants integrating their own systems with itunda.',
+    'settings.generating': 'Generating…',
+    'settings.generateApiKeyButton': 'Generate a new API key',
+    'settings.recentDeliveriesTitle': 'Recent webhook deliveries',
+    'settings.deliveriesEmpty': 'No webhook deliveries yet — deliveries will show up here once an event triggers your webhook.',
+    'settings.attemptSingular': '{{count}} attempt',
+    'settings.attemptPlural': '{{count}} attempts',
+    'settings.statusDelivered': 'Delivered',
+    'settings.statusPending': 'Pending',
+    'settings.statusExhausted': 'Exhausted',
+    'settings.replaying': 'Replaying…',
+    'settings.replayButton': 'Replay',
+    'settings.devicesLoadError': 'Could not load your devices.',
+    'settings.deviceRemoveError': 'Could not remove this device.',
+    'settings.devicesTitle': 'Devices',
+    'settings.devicesBody': 'Devices that have signed in to this account. A device must be verified before it can move money.',
+    'settings.devicesEmpty': 'No devices recorded yet — devices will show up here once you sign in.',
+    'settings.unknownDevice': 'Unknown device',
+    'settings.thisDeviceSuffix': '(this device)',
+    'settings.deviceVerified': '✓ Verified — can move money',
+    'settings.deviceNotVerified': '⚠ Not verified — sign-in only',
+    'settings.lastSeenPrefix': 'Last seen',
+    'settings.removing': 'Removing…',
+    'settings.removeButton': 'Remove',
+    'settings.categoryTitle': 'Category',
+    'settings.categoryExamplesLabel': 'e.g. Rwandan, Chinese, Bakery, Cafe',
+    'settings.categoryPlaceholder': 'Category',
+    'settings.storeSettingsTitle': 'Store settings',
+    'settings.storePhotoUrlLabel': 'Store photo URL',
+    'settings.minOrderAmountLabel': 'Minimum order amount (RWF, blank = none)',
+    'settings.cashbackRateLabel': 'Boosted cashback rate (0-5%, blank = standard rate)',
+    'settings.phoneNumberLabel': 'Phone number (shown on the map, blank = hidden)',
+    'settings.openingHoursLabel': 'Opening hours (shown on the map, blank = hidden)',
+    'settings.acceptScheduledOrdersTitle': 'Accept scheduled orders',
+    'settings.acceptScheduledOrdersBody': 'Let buyers pick a future delivery/pickup time.',
+    'settings.on': 'On',
+    'settings.off': 'Off',
+    'settings.eatsClubTitle': 'Eats Club',
+    'settings.eatsClubBody': 'Offer free delivery to buyers with an active Eats Club membership.',
+    'settings.eatsClubParticipating': 'Participating',
+    'settings.eatsClubOptIn': 'Opt in',
+    'settings.feeWaiverTitle': 'Small-merchant fee waiver',
+    'settings.feeWaiverActiveBody': 'Active -- you pay no platform fee on payments you collect.',
+    'settings.feeWaiverEligibleBody': 'If your payment volume over the last 30 days is small, you may qualify for a full fee waiver.',
+    'settings.feeWaiverError': 'Could not apply for a fee waiver.',
+    'settings.feeWaiverApplyButton': 'Apply',
+    'settings.kybSubmitError': 'Could not submit for KYB review.',
+    'settings.kybAutoMatched': 'Your TIN checked out automatically.',
+    'settings.kybAutoNotFound': "We couldn't find a match yet — a team member will take a look.",
+    'settings.kybAutoInvalidFormat': 'The TIN format looked off — a team member will double-check it.',
+    'settings.kybAutoDefault': 'A team member will take a look soon.',
+    'settings.kybTitle': 'Business verification (KYB)',
+    'settings.kybVerifiedBadge': '✓ Verified',
+    'settings.kybReviewingBody': "We're reviewing your business details.",
+    'settings.kybTinLabel': 'Business TIN (9 digits)',
+    'settings.kybSubmitting': 'Submitting…',
+    'settings.kybSubmitButton': 'Submit for verification',
+    'settings.kybRejectedPlain': 'Previous submission was rejected.',
+    'settings.kybRejectedWithDetail': 'Previous submission was rejected: {{detail}}',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -1261,6 +1433,90 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.creating': 'Gutangiza…',
     'pos.pastDealsSingular': 'Igabanuka {{count}} rishize kuri iki gicuruzwa.',
     'pos.pastDealsPlural': 'Amagabanuka {{count}} yashize kuri iki gicuruzwa.',
+    'settings.saveError': 'Ntibishoboka kubika.',
+    'settings.saved': 'Byabitswe.',
+    'settings.saving': 'Kubika…',
+    'settings.saveButton': 'Bika',
+    'settings.merchantIdPrefix': 'Nomero y\'ucuruza',
+    'settings.webhookUrlLabel': 'URL ya Webhook',
+    'settings.webhookUrlBody': 'Tuzamenyesha iyi aderesi buri gihe kwishyura kurangiye. Niba itagisubiza, tuzakomeza kugerageza mu minsi 3.',
+    'settings.followersTitle': 'Abakurikira',
+    'settings.loading': 'Gushakisha…',
+    'settings.followersCountSingular': 'Umukiriya {{count}} akurikira iduka ryawe',
+    'settings.followersCountPlural': 'Abakiriya {{count}} bakurikira iduka ryawe',
+    'settings.broadcastTitleLabel': 'Umutwe',
+    'settings.broadcastTitlePlaceholder': 'Ibicuruzwa bishya iki cyumweru',
+    'settings.broadcastMessageLabel': 'Ubutumwa',
+    'settings.broadcastMessagePlaceholder': 'Bwira abakurikira bawe ikintu gishya.',
+    'settings.sending': 'Kohereza…',
+    'settings.broadcastButton': 'Ohereza ubutumwa ku bakurikira',
+    'settings.broadcastNeedsFollower': 'Ukeneye nibura umukurikira umwe kugira ngo wohereze ubutumwa.',
+    'settings.broadcastError': 'Ntibishoboka kohereza ubu butumwa.',
+    'settings.broadcastSentSingular': 'Byoherejwe ku mukurikira {{count}}.',
+    'settings.broadcastSentPlural': 'Byoherejwe ku bakurikira {{count}}.',
+    'settings.webhookDeliveriesLoadError': 'Ntibishoboka gushakisha amakuru ya webhook.',
+    'settings.apiKeyGenerateError': 'Ntibishoboka gukora API key.',
+    'settings.replayError': 'Ntibishoboka kongera kohereza iyi porogaramu.',
+    'settings.apiIntegrationTitle': 'Guhuza na API',
+    'settings.apiIntegrationBody': 'Ku bacuruza bahuza ibikoresho byabo na itunda.',
+    'settings.generating': 'Gukora…',
+    'settings.generateApiKeyButton': 'Kora API key nshya',
+    'settings.recentDeliveriesTitle': 'Amakuru ya webhook aheruka',
+    'settings.deliveriesEmpty': 'Nta makuru ya webhook urafite — azagaragara hano igihe ikintu kizakoresha webhook yawe.',
+    'settings.attemptSingular': 'Kugerageza {{count}}',
+    'settings.attemptPlural': 'Kugerageza {{count}}',
+    'settings.statusDelivered': 'Byoherejwe',
+    'settings.statusPending': 'Bitegereje',
+    'settings.statusExhausted': 'Byanze burundu',
+    'settings.replaying': 'Kongera kohereza…',
+    'settings.replayButton': 'Kongera kohereza',
+    'settings.devicesLoadError': 'Ntibishoboka gushakisha telefoni zawe.',
+    'settings.deviceRemoveError': 'Ntibishoboka gukuraho iyi telefoni.',
+    'settings.devicesTitle': 'Telefoni',
+    'settings.devicesBody': 'Telefoni zinjiye kuri iyi konti. Telefoni igomba kwemezwa mbere yo gukoresha amafaranga.',
+    'settings.devicesEmpty': 'Nta telefoni yanditswe — izagaragara hano igihe uzinjira.',
+    'settings.unknownDevice': 'Telefoni itazwi',
+    'settings.thisDeviceSuffix': '(iyi telefoni)',
+    'settings.deviceVerified': '✓ Yemejwe — ishobora gukoresha amafaranga',
+    'settings.deviceNotVerified': '⚠ Ntiyemejwe — kwinjira gusa',
+    'settings.lastSeenPrefix': 'Yagaragaye bwa nyuma',
+    'settings.removing': 'Gukuraho…',
+    'settings.removeButton': 'Kuraho',
+    'settings.categoryTitle': 'Ubwoko',
+    'settings.categoryExamplesLabel': 'urugero: Ibinyarwanda, Ibishinwa, Umukate, Kafe',
+    'settings.categoryPlaceholder': 'Ubwoko',
+    'settings.storeSettingsTitle': 'Igenamiterere ry\'iduka',
+    'settings.storePhotoUrlLabel': 'URL y\'ifoto y\'iduka',
+    'settings.minOrderAmountLabel': 'Amafaranga make yo gutumiza (RWF, ubusa = nta nkeneye)',
+    'settings.cashbackRateLabel': 'Igipimo cy\'amafaranga yongerewe (0-5%, ubusa = igipimo gisanzwe)',
+    'settings.phoneNumberLabel': 'Nomero ya telefoni (igaragara kuri ikarita, ubusa = ihishwa)',
+    'settings.openingHoursLabel': 'Amasaha yo gukorera (agaragara kuri ikarita, ubusa = ahishwa)',
+    'settings.acceptScheduledOrdersTitle': 'Kwemera itumiza rigenwe igihe',
+    'settings.acceptScheduledOrdersBody': 'Reka abaguzi bahitemo igihe kizaza cyo kohererezwa/gutorwa.',
+    'settings.on': 'Birakora',
+    'settings.off': 'Ntibikora',
+    'settings.eatsClubTitle': 'Eats Club',
+    'settings.eatsClubBody': 'Tanga ubwoherezwa kubuntu ku baguzi bafite Eats Club ikora.',
+    'settings.eatsClubParticipating': 'Urimo',
+    'settings.eatsClubOptIn': 'Injiramo',
+    'settings.feeWaiverTitle': 'Ihagarikwa ry\'amafaranga y\'abacuruza bato',
+    'settings.feeWaiverActiveBody': 'Birakora -- nta mafaranga y\'urubuga wishyura ku byo wakiriye.',
+    'settings.feeWaiverEligibleBody': 'Niba amafaranga wakiriye mu minsi 30 ishize ari make, ushobora kwemererwa ihagarikwa ryuzuye ry\'amafaranga.',
+    'settings.feeWaiverError': 'Ntibishoboka gusaba ihagarikwa ry\'amafaranga.',
+    'settings.feeWaiverApplyButton': 'Saba',
+    'settings.kybSubmitError': 'Ntibishoboka kohereza kugira ngo bisuzumwe (KYB).',
+    'settings.kybAutoMatched': 'TIN yawe yemejwe mu buryo bwikora.',
+    'settings.kybAutoNotFound': 'Ntitwabashije kubona ihuza -- umukozi azabireba.',
+    'settings.kybAutoInvalidFormat': 'Imiterere ya TIN ntabwo isa neza -- umukozi azabireba nanone.',
+    'settings.kybAutoDefault': 'Umukozi azabireba vuba.',
+    'settings.kybTitle': 'Kwemeza ubucuruzi (KYB)',
+    'settings.kybVerifiedBadge': '✓ Byemejwe',
+    'settings.kybReviewingBody': 'Turi gusuzuma amakuru y\'ubucuruzi bwawe.',
+    'settings.kybTinLabel': 'TIN y\'ubucuruzi (imibare 9)',
+    'settings.kybSubmitting': 'Kohereza…',
+    'settings.kybSubmitButton': 'Ohereza kugira ngo bisuzumwe',
+    'settings.kybRejectedPlain': 'Icyo wohereje mbere cyanzwe.',
+    'settings.kybRejectedWithDetail': 'Icyo wohereje mbere cyanzwe: {{detail}}',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -1661,5 +1917,89 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.creating': 'Création en cours…',
     'pos.pastDealsSingular': '{{count}} offre passée pour ce produit.',
     'pos.pastDealsPlural': '{{count}} offres passées pour ce produit.',
+    'settings.saveError': 'Impossible d\'enregistrer.',
+    'settings.saved': 'Enregistré.',
+    'settings.saving': 'Enregistrement…',
+    'settings.saveButton': 'Enregistrer',
+    'settings.merchantIdPrefix': 'ID marchand',
+    'settings.webhookUrlLabel': 'URL du webhook',
+    'settings.webhookUrlBody': "Nous informerons cette adresse à chaque paiement complété. Si elle ne répond pas, nous continuerons à réessayer pendant environ 3 jours.",
+    'settings.followersTitle': 'Abonnés',
+    'settings.loading': 'Chargement…',
+    'settings.followersCountSingular': '{{count}} client suit votre boutique',
+    'settings.followersCountPlural': '{{count}} clients suivent votre boutique',
+    'settings.broadcastTitleLabel': 'Titre',
+    'settings.broadcastTitlePlaceholder': 'Nouveautés cette semaine',
+    'settings.broadcastMessageLabel': 'Message',
+    'settings.broadcastMessagePlaceholder': 'Dites à vos abonnés ce qui est nouveau.',
+    'settings.sending': 'Envoi en cours…',
+    'settings.broadcastButton': 'Diffuser aux abonnés',
+    'settings.broadcastNeedsFollower': 'Vous avez besoin d\'au moins un abonné pour envoyer une diffusion.',
+    'settings.broadcastError': 'Impossible d\'envoyer cette diffusion.',
+    'settings.broadcastSentSingular': 'Envoyé à {{count}} abonné.',
+    'settings.broadcastSentPlural': 'Envoyé à {{count}} abonnés.',
+    'settings.webhookDeliveriesLoadError': 'Impossible de charger les livraisons du webhook.',
+    'settings.apiKeyGenerateError': 'Impossible de générer une clé API.',
+    'settings.replayError': 'Impossible de relancer cette livraison.',
+    'settings.apiIntegrationTitle': 'Intégration API',
+    'settings.apiIntegrationBody': 'Pour les commerçants intégrant leurs propres systèmes à itunda.',
+    'settings.generating': 'Génération en cours…',
+    'settings.generateApiKeyButton': 'Générer une nouvelle clé API',
+    'settings.recentDeliveriesTitle': 'Livraisons récentes du webhook',
+    'settings.deliveriesEmpty': "Aucune livraison de webhook pour le moment — les livraisons apparaîtront ici dès qu'un événement déclenchera votre webhook.",
+    'settings.attemptSingular': '{{count}} tentative',
+    'settings.attemptPlural': '{{count}} tentatives',
+    'settings.statusDelivered': 'Livrée',
+    'settings.statusPending': 'En attente',
+    'settings.statusExhausted': 'Épuisée',
+    'settings.replaying': 'Relance en cours…',
+    'settings.replayButton': 'Relancer',
+    'settings.devicesLoadError': 'Impossible de charger vos appareils.',
+    'settings.deviceRemoveError': 'Impossible de retirer cet appareil.',
+    'settings.devicesTitle': 'Appareils',
+    'settings.devicesBody': "Appareils connectés à ce compte. Un appareil doit être vérifié avant de pouvoir déplacer de l'argent.",
+    'settings.devicesEmpty': 'Aucun appareil enregistré pour le moment — les appareils apparaîtront ici dès votre connexion.',
+    'settings.unknownDevice': 'Appareil inconnu',
+    'settings.thisDeviceSuffix': '(cet appareil)',
+    'settings.deviceVerified': "✓ Vérifié — peut déplacer de l'argent",
+    'settings.deviceNotVerified': '⚠ Non vérifié — connexion uniquement',
+    'settings.lastSeenPrefix': 'Vu pour la dernière fois',
+    'settings.removing': 'Suppression en cours…',
+    'settings.removeButton': 'Retirer',
+    'settings.categoryTitle': 'Catégorie',
+    'settings.categoryExamplesLabel': 'ex. Rwandais, Chinois, Boulangerie, Café',
+    'settings.categoryPlaceholder': 'Catégorie',
+    'settings.storeSettingsTitle': 'Paramètres de la boutique',
+    'settings.storePhotoUrlLabel': 'URL de la photo de la boutique',
+    'settings.minOrderAmountLabel': 'Montant minimum de commande (RWF, vide = aucun)',
+    'settings.cashbackRateLabel': 'Taux de cashback boosté (0-5%, vide = taux standard)',
+    'settings.phoneNumberLabel': 'Numéro de téléphone (affiché sur la carte, vide = masqué)',
+    'settings.openingHoursLabel': "Heures d'ouverture (affichées sur la carte, vide = masquées)",
+    'settings.acceptScheduledOrdersTitle': 'Accepter les commandes programmées',
+    'settings.acceptScheduledOrdersBody': 'Permettre aux clients de choisir une heure de livraison/retrait future.',
+    'settings.on': 'Activé',
+    'settings.off': 'Désactivé',
+    'settings.eatsClubTitle': 'Eats Club',
+    'settings.eatsClubBody': 'Offrez la livraison gratuite aux clients ayant un abonnement Eats Club actif.',
+    'settings.eatsClubParticipating': 'Participant',
+    'settings.eatsClubOptIn': 'Participer',
+    'settings.feeWaiverTitle': 'Exonération de frais pour petits commerçants',
+    'settings.feeWaiverActiveBody': "Active -- vous ne payez aucun frais de plateforme sur les paiements que vous encaissez.",
+    'settings.feeWaiverEligibleBody': 'Si votre volume de paiements sur les 30 derniers jours est faible, vous pourriez être éligible à une exonération complète des frais.',
+    'settings.feeWaiverError': "Impossible de faire une demande d'exonération de frais.",
+    'settings.feeWaiverApplyButton': 'Demander',
+    'settings.kybSubmitError': "Impossible de soumettre pour vérification KYB.",
+    'settings.kybAutoMatched': 'Votre TIN a été vérifié automatiquement.',
+    'settings.kybAutoNotFound': "Nous n'avons pas encore trouvé de correspondance — un membre de l'équipe va vérifier.",
+    'settings.kybAutoInvalidFormat': "Le format du TIN semblait incorrect — un membre de l'équipe va le revérifier.",
+    'settings.kybAutoDefault': "Un membre de l'équipe va vérifier bientôt.",
+    'settings.kybTitle': 'Vérification professionnelle (KYB)',
+    'settings.kybVerifiedBadge': '✓ Vérifié',
+    'settings.kybReviewingBody': 'Nous examinons les informations de votre entreprise.',
+    'settings.kybTinLabel': 'TIN professionnel (9 chiffres)',
+    'settings.kybSubmitting': 'Envoi en cours…',
+    'settings.kybSubmitButton': 'Soumettre pour vérification',
+    'settings.kybRejectedPlain': 'La soumission précédente a été refusée.',
+    'settings.kybRejectedWithDetail': 'La soumission précédente a été refusée : {{detail}}',
   },
 };

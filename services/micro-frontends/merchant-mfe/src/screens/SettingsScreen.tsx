@@ -5,8 +5,11 @@ import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
 import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
+import { useI18n } from '../i18n/I18nContext';
+import type { TranslationKey } from '../i18n/translations';
 
 export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const { t } = useI18n();
   const [webhookUrl, setWebhookUrlInput] = useState(merchant.webhookUrl ?? '');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -22,7 +25,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
       onUpdated(updated);
       setSaved(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save.');
+      setError(err instanceof ApiError ? err.message : t('settings.saveError'));
     } finally {
       setSubmitting(false);
     }
@@ -33,12 +36,12 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
       <div className="itunda-card">
         <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{merchant.businessName}</h2>
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '20px' }}>
-          Merchant ID {merchant.id}
+          {t('settings.merchantIdPrefix')} {merchant.id}
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Webhook URL</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.webhookUrlLabel')}</span>
             <input
               type="url"
               value={webhookUrl}
@@ -47,7 +50,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
             />
             <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-              We'll notify this address every time a payment completes. If it doesn't respond, we'll keep retrying for about 3 days.
+              {t('settings.webhookUrlBody')}
             </span>
           </label>
 
@@ -57,11 +60,11 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
             </p>
           )}
           {saved && !error && (
-            <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>Saved.</p>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>{t('settings.saved')}</p>
           )}
 
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Save'}
+            {submitting ? t('settings.saving') : t('settings.saveButton')}
           </button>
         </form>
       </div>
@@ -84,6 +87,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
 // on bank-mfe/Android/iOS (item 117). First client anywhere for this half, found via
 // the same content-grep sweep that found item 117.
 function FollowersCard() {
+  const { t } = useI18n();
   const [count, setCount] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -110,7 +114,7 @@ function FollowersCard() {
       setTitle('');
       setBody('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this broadcast.');
+      setError(err instanceof ApiError ? err.message : t('settings.broadcastError'));
     } finally {
       setSending(false);
     }
@@ -118,29 +122,29 @@ function FollowersCard() {
 
   return (
     <div className="itunda-card">
-      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Followers</h2>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.followersTitle')}</h2>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-        {count === null ? 'Loading…' : `${count} customer${count === 1 ? '' : 's'} following your store`}
+        {count === null ? t('settings.loading') : t(count === 1 ? 'settings.followersCountSingular' : 'settings.followersCountPlural', { count })}
       </p>
       <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Title</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.broadcastTitleLabel')}</span>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="New arrivals this week"
+            placeholder={t('settings.broadcastTitlePlaceholder')}
             maxLength={100}
             required
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Message</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.broadcastMessageLabel')}</span>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Tell your followers what's new."
+            placeholder={t('settings.broadcastMessagePlaceholder')}
             maxLength={500}
             required
             rows={3}
@@ -148,16 +152,16 @@ function FollowersCard() {
           />
         </label>
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={sending || count === 0}>
-          {sending ? 'Sending…' : 'Broadcast to followers'}
+          {sending ? t('settings.sending') : t('settings.broadcastButton')}
         </button>
         {count === 0 && !error && (
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: 0 }}>You need at least one follower to send a broadcast.</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', margin: 0 }}>{t('settings.broadcastNeedsFollower')}</p>
         )}
         {error && (
           <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
         )}
         {sentCount !== null && !error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>Sent to {sentCount} follower{sentCount === 1 ? '' : 's'}.</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>{t(sentCount === 1 ? 'settings.broadcastSentSingular' : 'settings.broadcastSentPlural', { count: sentCount })}</p>
         )}
       </form>
     </div>
@@ -170,6 +174,7 @@ function FollowersCard() {
 // delivery attempts (with a Replay action for any exhausted -- all 7 real retries used
 // up -- delivery).
 function ApiIntegrationCard() {
+  const { t } = useI18n();
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -180,7 +185,7 @@ function ApiIntegrationCard() {
   const loadDeliveries = () => {
     getWebhookDeliveries()
       .then(setDeliveries)
-      .catch((err) => setDeliveriesError(err instanceof ApiError ? err.message : 'Could not load webhook deliveries.'));
+      .catch((err) => setDeliveriesError(err instanceof ApiError ? err.message : t('settings.webhookDeliveriesLoadError')));
   };
   useEffect(loadDeliveries, []);
 
@@ -190,7 +195,7 @@ function ApiIntegrationCard() {
     try {
       setApiKey(await generateApiKey());
     } catch (err) {
-      setGenerateError(err instanceof ApiError ? err.message : 'Could not generate an API key.');
+      setGenerateError(err instanceof ApiError ? err.message : t('settings.apiKeyGenerateError'));
     } finally {
       setGenerating(false);
     }
@@ -203,7 +208,7 @@ function ApiIntegrationCard() {
       await replayWebhookDelivery(deliveryId);
       loadDeliveries();
     } catch (err) {
-      setDeliveriesError(err instanceof ApiError ? err.message : 'Could not replay this delivery.');
+      setDeliveriesError(err instanceof ApiError ? err.message : t('settings.replayError'));
     } finally {
       setReplayingId(null);
     }
@@ -214,17 +219,22 @@ function ApiIntegrationCard() {
     PENDING: 'var(--itunda-grey-500)',
     EXHAUSTED: 'var(--itunda-red)',
   };
+  const statusLabelKey: Record<WebhookDelivery['status'], TranslationKey> = {
+    DELIVERED: 'settings.statusDelivered',
+    PENDING: 'settings.statusPending',
+    EXHAUSTED: 'settings.statusExhausted',
+  };
 
   return (
     <div className="itunda-card">
-      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>API integration</h2>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.apiIntegrationTitle')}</h2>
       <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-        For merchants integrating their own systems with itunda.
+        {t('settings.apiIntegrationBody')}
       </p>
 
       <div style={{ marginBottom: '20px' }}>
         <button type="button" className="itunda-btn itunda-btn-secondary" disabled={generating} onClick={handleGenerate}>
-          {generating ? 'Generating…' : 'Generate a new API key'}
+          {generating ? t('settings.generating') : t('settings.generateApiKeyButton')}
         </button>
         {apiKey && (
           <p style={{ fontSize: '12px', fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '10px', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '8px' }}>
@@ -236,16 +246,16 @@ function ApiIntegrationCard() {
         )}
       </div>
 
-      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Recent webhook deliveries</h3>
+      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>{t('settings.recentDeliveriesTitle')}</h3>
       {deliveriesError && (
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{deliveriesError}</p>
       )}
       {deliveries === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('settings.loading')}</p>
       ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
       // that this is event-driven, not something to set up further here.
       deliveries.length === 0 ? (
-        <EmptyState message="No webhook deliveries yet — deliveries will show up here once an event triggers your webhook." />
+        <EmptyState message={t('settings.deliveriesEmpty')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {deliveries.slice(0, 20).map((d) => (
@@ -253,7 +263,7 @@ function ApiIntegrationCard() {
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 700 }}>{d.eventType}</p>
                 <p style={{ fontSize: '12px', color: statusColor[d.status] }}>
-                  {d.status} · {d.attemptCount} attempt{d.attemptCount === 1 ? '' : 's'}
+                  {t(statusLabelKey[d.status])} · {t(d.attemptCount === 1 ? 'settings.attemptSingular' : 'settings.attemptPlural', { count: d.attemptCount })}
                 </p>
                 {d.lastError && <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{d.lastError}</p>}
               </div>
@@ -264,7 +274,7 @@ function ApiIntegrationCard() {
                   onClick={() => handleReplay(d.id)}
                   style={{ padding: '8px 12px', fontSize: '12px' }}
                 >
-                  {replayingId === d.id ? 'Replaying…' : 'Replay'}
+                  {replayingId === d.id ? t('settings.replaying') : t('settings.replayButton')}
                 </button>
               )}
             </div>
@@ -280,6 +290,7 @@ function ApiIntegrationCard() {
 // by the same real GET/DELETE /api/v1/auth/devices endpoints. See lib/device.ts's own
 // doc comment.
 function DevicesCard() {
+  const { t } = useI18n();
   const [devices, setDevices] = useState<TrustedDevice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -287,7 +298,7 @@ function DevicesCard() {
 
   const load = () => {
     setError(null);
-    fetchMyDevices().then(setDevices).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your devices.'));
+    fetchMyDevices().then(setDevices).catch((err) => setError(err instanceof ApiError ? err.message : t('settings.devicesLoadError')));
   };
   useEffect(load, []);
 
@@ -298,7 +309,7 @@ function DevicesCard() {
       await revokeDevice(deviceId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not remove this device.');
+      setError(err instanceof ApiError ? err.message : t('settings.deviceRemoveError'));
     } finally {
       setRevokingId(null);
     }
@@ -306,31 +317,31 @@ function DevicesCard() {
 
   return (
     <div className="itunda-card">
-      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Devices</h2>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.devicesTitle')}</h2>
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-        Devices that have signed in to this account. A device must be verified before it can move money.
+        {t('settings.devicesBody')}
       </p>
       {error && (
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{error}</p>
       )}
       {devices === null ? (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('settings.loading')}</p>
       ) : // Real copy-voice fix (item 244, round 6 of the empty-state pass): honest
       // that this is auto-recorded on sign-in, not a setup step to take here.
       devices.length === 0 ? (
-        <EmptyState message="No devices recorded yet — devices will show up here once you sign in." />
+        <EmptyState message={t('settings.devicesEmpty')} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {devices.map((d) => (
             <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
               <div>
                 <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>
-                  {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-blue)' }}>(this device)</span>}
+                  {d.deviceName ?? t('settings.unknownDevice')} {d.deviceId === myDeviceId && <span style={{ color: 'var(--itunda-blue)' }}>{t('settings.thisDeviceSuffix')}</span>}
                 </p>
                 <p style={{ fontSize: '12px', color: d.trusted ? 'var(--itunda-green)' : 'var(--itunda-red)' }}>
-                  {d.trusted ? '✓ Verified — can move money' : '⚠ Not verified — sign-in only'}
+                  {d.trusted ? t('settings.deviceVerified') : t('settings.deviceNotVerified')}
                 </p>
-                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{t('settings.lastSeenPrefix')} {new Date(d.lastSeenAt).toLocaleString()}</p>
               </div>
               <button
                 className="itunda-btn itunda-btn-danger"
@@ -338,7 +349,7 @@ function DevicesCard() {
                 onClick={() => handleRevoke(d.deviceId)}
                 style={{ padding: '8px 12px', fontSize: '12px' }}
               >
-                {revokingId === d.deviceId ? 'Removing…' : 'Remove'}
+                {revokingId === d.deviceId ? t('settings.removing') : t('settings.removeButton')}
               </button>
             </div>
           ))}
@@ -352,6 +363,7 @@ function DevicesCard() {
 // category, which powers the buyer-side category chips + search/filter on bank-mfe's
 // Eats tab (GET /api/v1/shopping/merchants?category=...&q=...).
 function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const { t } = useI18n();
   const [category, setCategoryInput] = useState(merchant.category ?? '');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -367,7 +379,7 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
       onUpdated(updated);
       setSaved(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save.');
+      setError(err instanceof ApiError ? err.message : t('settings.saveError'));
     } finally {
       setSubmitting(false);
     }
@@ -375,22 +387,22 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
 
   return (
     <div className="itunda-card">
-      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>Category</h2>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>{t('settings.categoryTitle')}</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>e.g. Rwandan, Chinese, Bakery, Cafe</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.categoryExamplesLabel')}</span>
           <input
             type="text"
             value={category}
             onChange={(e) => setCategoryInput(e.target.value)}
-            placeholder="Category"
+            placeholder={t('settings.categoryPlaceholder')}
             required
             maxLength={64}
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '15px' }}
           />
         </label>
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ height: '46px' }}>
-          {submitting ? 'Saving…' : 'Save'}
+          {submitting ? t('settings.saving') : t('settings.saveButton')}
         </button>
       </form>
       {error && (
@@ -399,7 +411,7 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
         </p>
       )}
       {saved && !error && (
-        <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: '8px 0 0' }}>Saved.</p>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: '8px 0 0' }}>{t('settings.saved')}</p>
       )}
     </div>
   );
@@ -412,6 +424,7 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
 // a dead-endpoint sweep, not a dead-field-on-one-platform gap like this row's other
 // entries.
 function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const { t } = useI18n();
   const [photoUrl, setPhotoUrlInput] = useState(merchant.photoUrl ?? '');
   const [minOrderAmount, setMinOrderAmountInput] = useState(merchant.minOrderAmount != null ? String(merchant.minOrderAmount) : '');
   const [cashbackPercent, setCashbackPercentInput] = useState(merchant.cashbackRate != null ? String(merchant.cashbackRate * 100) : '');
@@ -438,7 +451,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
       onUpdated(updated);
       setSaved(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save.');
+      setError(err instanceof ApiError ? err.message : t('settings.saveError'));
     } finally {
       setSubmitting(false);
     }
@@ -450,7 +463,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
     try {
       onUpdated(await setAcceptsScheduledOrders(!merchant.acceptsScheduledOrders));
     } catch (err) {
-      setScheduledError(err instanceof ApiError ? err.message : 'Could not save.');
+      setScheduledError(err instanceof ApiError ? err.message : t('settings.saveError'));
     } finally {
       setScheduledBusy(false);
     }
@@ -458,10 +471,10 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
 
   return (
     <div className="itunda-card">
-      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>Store settings</h2>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>{t('settings.storeSettingsTitle')}</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Store photo URL</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.storePhotoUrlLabel')}</span>
           <input
             type="url"
             value={photoUrl}
@@ -471,7 +484,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Minimum order amount (RWF, blank = none)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.minOrderAmountLabel')}</span>
           <input
             type="number"
             min="0"
@@ -482,7 +495,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Boosted cashback rate (0-5%, blank = standard rate)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.cashbackRateLabel')}</span>
           <input
             type="number"
             min="0"
@@ -495,7 +508,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Phone number (shown on the map, blank = hidden)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.phoneNumberLabel')}</span>
           <input
             type="tel"
             value={phoneNumber}
@@ -505,7 +518,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Opening hours (shown on the map, blank = hidden)</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.openingHoursLabel')}</span>
           <input
             type="text"
             value={openingHours}
@@ -518,19 +531,19 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
           <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: 0 }} role="alert">{error}</p>
         )}
         {saved && !error && (
-          <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>Saved.</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-blue)', margin: 0 }}>{t('settings.saved')}</p>
         )}
         <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-          {submitting ? 'Saving…' : 'Save'}
+          {submitting ? t('settings.saving') : t('settings.saveButton')}
         </button>
       </form>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
         <div>
-          <p style={{ fontSize: '14px', fontWeight: 600 }}>Accept scheduled orders</p>
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Let buyers pick a future delivery/pickup time.</p>
+          <p style={{ fontSize: '14px', fontWeight: 600 }}>{t('settings.acceptScheduledOrdersTitle')}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('settings.acceptScheduledOrdersBody')}</p>
         </div>
         <button className="itunda-btn itunda-btn-secondary" disabled={scheduledBusy} onClick={handleToggleScheduledOrders}>
-          {scheduledBusy ? '…' : merchant.acceptsScheduledOrders ? 'On' : 'Off'}
+          {scheduledBusy ? '…' : merchant.acceptsScheduledOrders ? t('settings.on') : t('settings.off')}
         </button>
       </div>
       {scheduledError && (
@@ -545,6 +558,7 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
 // delivery for a buyer's Eats Club membership only applies when the restaurant has
 // itself opted in here -- never a blanket waiver.
 function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -555,7 +569,7 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
       const updated = await setParticipatesInEatsMembership(!merchant.participatesInEatsMembership);
       onUpdated(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save.');
+      setError(err instanceof ApiError ? err.message : t('settings.saveError'));
     } finally {
       setBusy(false);
     }
@@ -565,9 +579,9 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
     <div className="itunda-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Eats Club</h2>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.eatsClubTitle')}</h2>
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-            Offer free delivery to buyers with an active Eats Club membership.
+            {t('settings.eatsClubBody')}
           </p>
         </div>
         <button
@@ -577,7 +591,7 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
           onClick={handleToggle}
           style={{ fontSize: '13px', padding: '8px 14px', whiteSpace: 'nowrap' }}
         >
-          {busy ? '…' : merchant.participatesInEatsMembership ? 'Participating' : 'Opt in'}
+          {busy ? '…' : merchant.participatesInEatsMembership ? t('settings.eatsClubParticipating') : t('settings.eatsClubOptIn')}
         </button>
       </div>
       {error && (
@@ -594,6 +608,7 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
 // payment-volume threshold) is checked server-side; this card just surfaces the current
 // state and lets an eligible merchant apply.
 function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const waived = merchant.feeRateOverride === 0;
@@ -605,7 +620,7 @@ function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated:
       const updated = await applyForFeeWaiver();
       onUpdated(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not apply for a fee waiver.');
+      setError(err instanceof ApiError ? err.message : t('settings.feeWaiverError'));
     } finally {
       setBusy(false);
     }
@@ -615,11 +630,9 @@ function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated:
     <div className="itunda-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Small-merchant fee waiver</h2>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>{t('settings.feeWaiverTitle')}</h2>
           <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-            {waived
-              ? 'Active -- you pay no platform fee on payments you collect.'
-              : "If your payment volume over the last 30 days is small, you may qualify for a full fee waiver."}
+            {waived ? t('settings.feeWaiverActiveBody') : t('settings.feeWaiverEligibleBody')}
           </p>
         </div>
         {!waived && (
@@ -627,7 +640,7 @@ function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated:
             type="button" className="itunda-btn itunda-btn-primary" disabled={busy} onClick={handleApply}
             style={{ fontSize: '13px', padding: '8px 14px', whiteSpace: 'nowrap' }}
           >
-            {busy ? '…' : 'Apply'}
+            {busy ? '…' : t('settings.feeWaiverApplyButton')}
           </button>
         )}
       </div>
@@ -645,6 +658,7 @@ function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated:
 // validator plus a real human-review queue (the same ops-mfe Compliance queue personal
 // KYC already uses), never auto-decided.
 function KybCard({ merchant }: { merchant: Merchant }) {
+  const { t } = useI18n();
   const [submissions, setSubmissions] = useState<IdentitySubmission[] | null>(null);
   const [tin, setTin] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -667,7 +681,7 @@ function KybCard({ merchant }: { merchant: Merchant }) {
       setTin('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit for KYB review.');
+      setError(err instanceof ApiError ? err.message : t('settings.kybSubmitError'));
     } finally {
       setSubmitting(false);
     }
@@ -676,34 +690,34 @@ function KybCard({ merchant }: { merchant: Merchant }) {
   const latestKyb = submissions?.filter((s) => s.documentType === 'BUSINESS_TIN').sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))[0] ?? null;
   const pending = latestKyb?.status === 'PENDING';
 
-  const autoCheckLabel: Record<string, string> = {
-    MATCHED: 'Your TIN checked out automatically.',
-    NOT_FOUND: "We couldn't find a match yet — a team member will take a look.",
-    INVALID_FORMAT: 'The TIN format looked off — a team member will double-check it.',
+  const autoCheckLabelKey: Record<string, TranslationKey> = {
+    MATCHED: 'settings.kybAutoMatched',
+    NOT_FOUND: 'settings.kybAutoNotFound',
+    INVALID_FORMAT: 'settings.kybAutoInvalidFormat',
   };
 
   return (
     <div className="itunda-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
         <ShieldCheck size={18} color={merchant.kybVerified ? 'var(--itunda-green)' : 'var(--itunda-grey-500)'} />
-        <h2 style={{ fontSize: '16px', fontWeight: 700 }}>Business verification (KYB)</h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 700 }}>{t('settings.kybTitle')}</h2>
       </div>
 
       {merchant.kybVerified ? (
-        <Badge text="✓ Verified" tint="var(--itunda-green)" />
+        <Badge text={t('settings.kybVerifiedBadge')} tint="var(--itunda-green)" />
       ) : pending ? (
         <div>
-          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', marginBottom: '4px' }}>We're reviewing your business details.</p>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', marginBottom: '4px' }}>{t('settings.kybReviewingBody')}</p>
           {latestKyb?.autoVerificationStatus && (
             <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-              {autoCheckLabel[latestKyb.autoVerificationStatus] ?? 'A team member will take a look soon.'}
+              {t(autoCheckLabelKey[latestKyb.autoVerificationStatus] ?? 'settings.kybAutoDefault')}
             </p>
           )}
         </div>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginTop: '12px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>Business TIN (9 digits)</span>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--itunda-grey-700)' }}>{t('settings.kybTinLabel')}</span>
             <input
               type="text"
               inputMode="numeric"
@@ -718,13 +732,13 @@ function KybCard({ merchant }: { merchant: Merchant }) {
               doesn't say what happens -- this starts a real verification process (see the
               autoCheckLabel/"team member will take a look" copy above), not an instant action. */}
           <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting} style={{ height: '46px' }}>
-            {submitting ? 'Submitting…' : 'Submit for verification'}
+            {submitting ? t('settings.kybSubmitting') : t('settings.kybSubmitButton')}
           </button>
         </form>
       )}
       {latestKyb?.status === 'REJECTED' && (
         <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '8px' }}>
-          Previous submission was rejected{latestKyb.autoVerificationDetail ? `: ${latestKyb.autoVerificationDetail}` : '.'}
+          {latestKyb.autoVerificationDetail ? t('settings.kybRejectedWithDetail', { detail: latestKyb.autoVerificationDetail }) : t('settings.kybRejectedPlain')}
         </p>
       )}
       {error && (
