@@ -6052,9 +6052,14 @@ this project's own standing discipline against inventing fake external integrati
 KYB verification is honestly a structural pre-check, not a live registry lookup). This is the
 honest v1: a real address field so buyer and seller can actually coordinate shipping themselves.
 
-**Separate, larger, real gap found while researching this, named not built**: Marketplace escrow
-only exists on Android. `payEscrow`/`confirmEscrowReceipt` are called from nowhere in bank-mfe or
-iOS (confirmed by grep, not assumed) -- a buyer/seller on web or iOS has no "pay safely via
-itunda" option at all for Marketplace, only the original off-platform cash handoff. Building a
-whole new escrow UI on two more platforms is a distinctly bigger scope than this delivery-address
-fix, not folded in here.
+**Web escrow gap CLOSED same session (`4ad097ce`), live-verified.** Built the first web client for
+payEscrow/confirmEscrowReceipt/disputeEscrow/getEscrow in bank-mfe's `ListingCard`, mirroring
+Android's flow -- and, informed by the real buyer-only-visibility bug just found and fixed on
+Android (`c6a344f1`), built web's version correctly from the start: escrow status and the real
+delivery address are shown to BOTH the buyer and seller of a SOLD listing, not buyer-only.
+Live-verified: a real second test account viewed a real listing, the delivery-address field and
+Pay button rendered correctly, and submitting round-tripped to the real backend (address +
+Idempotency-Key both carried correctly), surfacing a real `DEVICE_NOT_VERIFIED` error text --
+proof the full request/response cycle works; that specific gate is this test device's own,
+unrelated to the feature itself. iOS still has zero escrow client -- real, smaller remaining gap,
+not built this pass (`payEscrow` doesn't exist anywhere in `ios/`, confirmed by grep).
