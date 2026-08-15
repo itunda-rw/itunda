@@ -4457,6 +4457,11 @@ research-body finding** (NN/g, Apple HIG); nothing here is `inferred`.
    on. `NotificationsCard`'s own separate unread count still isn't surfaced anywhere outside the
    card itself -- a real, smaller, separately-scoped follow-up if itunda ever wants ambient
    general-notification signal too, not folded into this fix.
+   **Built 2026-08-16**: a plain dot (not a number, deliberately not mixed with Messages' numeric
+   badge on the same bar -- the same named rule as above) on the You tab icon, from a lightweight
+   top-level poll of `fetchNotifications().unreadCount`, independent of `NotificationsCard`'s own
+   fetch. Live-verified: the demo user's 2 real unread notifications showed the dot; clicking
+   "Mark all read" inside You and waiting for the next 15s poll cleared it.
 5. **[sourced] Home's actual section order roughly matches the real Cash App pattern already**
    (balance prominent at top, `AccountBalance` first in `HomeView`) -- this part of Section 41's
    item 1 finding was too pessimistic; re-checked against Cash App's own documented layout
