@@ -224,7 +224,37 @@ export type TranslationKey =
   | 'billing.everyDaySingular'
   | 'billing.everyDaysPlural'
   | 'billing.deactivateError'
-  | 'billing.deactivateButton';
+  | 'billing.deactivateButton'
+  // Real 9th-localization-pass additions (2026-08-15): CouponsScreen -- real merchant
+  // coupons + 단골 loyalty gating, create/list/deactivate half.
+  | 'coupons.loadError'
+  | 'coupons.title'
+  | 'coupons.body'
+  | 'coupons.loading'
+  | 'coupons.empty'
+  | 'coupons.createTitle'
+  | 'coupons.titleLabel'
+  | 'coupons.titlePlaceholder'
+  | 'coupons.descriptionLabel'
+  | 'coupons.descriptionPlaceholder'
+  | 'coupons.discountTypeLabel'
+  | 'coupons.discountTypePercent'
+  | 'coupons.discountTypeFixed'
+  | 'coupons.percentLabel'
+  | 'coupons.fixedAmountLabel'
+  | 'coupons.expiresLabel'
+  | 'coupons.regularsOnlyLabel'
+  | 'coupons.createError'
+  | 'coupons.creating'
+  | 'coupons.createButton'
+  | 'coupons.statusActive'
+  | 'coupons.statusDeactivated'
+  | 'coupons.percentOff'
+  | 'coupons.fixedOff'
+  | 'coupons.regularsOnlySuffix'
+  | 'coupons.expiresSuffix'
+  | 'coupons.deactivateError'
+  | 'coupons.deactivateButton';
 
 export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
@@ -404,6 +434,34 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'billing.everyDaysPlural': '{{amount}} RWF every {{days}} days',
     'billing.deactivateError': 'Could not deactivate this plan.',
     'billing.deactivateButton': 'Deactivate',
+    'coupons.loadError': 'Could not load your coupons.',
+    'coupons.title': 'Your coupons',
+    'coupons.body': "A customer applies a coupon when paying by code — it's redeemed once per customer.",
+    'coupons.loading': 'Loading…',
+    'coupons.empty': 'No coupons yet — use the form above to create your first one.',
+    'coupons.createTitle': 'Create a coupon',
+    'coupons.titleLabel': 'Title',
+    'coupons.titlePlaceholder': '10% off your next visit',
+    'coupons.descriptionLabel': 'Description (optional)',
+    'coupons.descriptionPlaceholder': 'Valid on any purchase',
+    'coupons.discountTypeLabel': 'Discount type',
+    'coupons.discountTypePercent': 'Percent off',
+    'coupons.discountTypeFixed': 'Fixed amount off',
+    'coupons.percentLabel': 'Percent (1-100)',
+    'coupons.fixedAmountLabel': 'Amount (RWF)',
+    'coupons.expiresLabel': 'Expires (optional)',
+    'coupons.regularsOnlyLabel': 'Reserve for regular customers only (3+ past payments)',
+    'coupons.createError': 'Could not create this coupon.',
+    'coupons.creating': 'Creating…',
+    'coupons.createButton': 'Create coupon',
+    'coupons.statusActive': 'Active',
+    'coupons.statusDeactivated': 'Deactivated',
+    'coupons.percentOff': '{{value}}% off',
+    'coupons.fixedOff': '{{value}} RWF off',
+    'coupons.regularsOnlySuffix': ' · Regulars only',
+    'coupons.expiresSuffix': ' · Expires {{date}}',
+    'coupons.deactivateError': 'Could not deactivate this coupon.',
+    'coupons.deactivateButton': 'Deactivate',
   },
   rw: {
     'login.tagline': 'Injira kuri konti yawe ya Itunda.',
@@ -582,6 +640,34 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'billing.everyDaysPlural': '{{amount}} RWF buri minsi {{days}}',
     'billing.deactivateError': 'Ntibishoboka guhagarika iyi gahunda.',
     'billing.deactivateButton': 'Hagarika',
+    'coupons.loadError': 'Ntibishoboka gushakisha amakuponi yawe.',
+    'coupons.title': 'Amakuponi yawe',
+    'coupons.body': 'Umukiriya akoresha kuponi igihe yishyura akoresheje kode — ikoreshwa rimwe kuri buri mukiriya.',
+    'coupons.loading': 'Gushakisha…',
+    'coupons.empty': 'Nta kuponi ufite — koresha ifishi hejuru wandike iya mbere.',
+    'coupons.createTitle': 'Kora kuponi',
+    'coupons.titleLabel': 'Umutwe',
+    'coupons.titlePlaceholder': 'Igabanuka rya 10% ku ruzuma rwawe rukurikira',
+    'coupons.descriptionLabel': 'Ibisobanuro (bitari ngombwa)',
+    'coupons.descriptionPlaceholder': 'Ikora kuri buri kiguzi',
+    'coupons.discountTypeLabel': 'Ubwoko bw\'igabanuka',
+    'coupons.discountTypePercent': 'Igabanuka rya %',
+    'coupons.discountTypeFixed': 'Igabanuka ry\'amafaranga ahamye',
+    'coupons.percentLabel': 'Ijanisha (1-100)',
+    'coupons.fixedAmountLabel': 'Amafaranga (RWF)',
+    'coupons.expiresLabel': 'Irangira (bitari ngombwa)',
+    'coupons.regularsOnlyLabel': 'Byemererwa gusa abakiriya basanzwe (kwishyura inshuro 3+)',
+    'coupons.createError': 'Ntibishoboka gukora iyi kuponi.',
+    'coupons.creating': 'Gukora…',
+    'coupons.createButton': 'Kora kuponi',
+    'coupons.statusActive': 'Ikora',
+    'coupons.statusDeactivated': 'Yahagaritswe',
+    'coupons.percentOff': 'Igabanuka rya {{value}}%',
+    'coupons.fixedOff': 'Igabanuka rya {{value}} RWF',
+    'coupons.regularsOnlySuffix': ' · Abakiriya basanzwe gusa',
+    'coupons.expiresSuffix': ' · Irangira {{date}}',
+    'coupons.deactivateError': 'Ntibishoboka guhagarika iyi kuponi.',
+    'coupons.deactivateButton': 'Hagarika',
   },
   fr: {
     'login.tagline': 'Connectez-vous à votre compte Itunda.',
@@ -760,5 +846,33 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'billing.everyDaysPlural': '{{amount}} RWF tous les {{days}} jours',
     'billing.deactivateError': 'Impossible de désactiver cette formule.',
     'billing.deactivateButton': 'Désactiver',
+    'coupons.loadError': 'Impossible de charger vos coupons.',
+    'coupons.title': 'Vos coupons',
+    'coupons.body': "Un client applique un coupon en payant par code — il est utilisé une seule fois par client.",
+    'coupons.loading': 'Chargement…',
+    'coupons.empty': 'Aucun coupon pour le moment — utilisez le formulaire ci-dessus pour créer le premier.',
+    'coupons.createTitle': 'Créer un coupon',
+    'coupons.titleLabel': 'Titre',
+    'coupons.titlePlaceholder': '10% de réduction sur votre prochaine visite',
+    'coupons.descriptionLabel': 'Description (facultatif)',
+    'coupons.descriptionPlaceholder': 'Valable sur tout achat',
+    'coupons.discountTypeLabel': 'Type de remise',
+    'coupons.discountTypePercent': 'Pourcentage de réduction',
+    'coupons.discountTypeFixed': 'Montant fixe de réduction',
+    'coupons.percentLabel': 'Pourcentage (1-100)',
+    'coupons.fixedAmountLabel': 'Montant (RWF)',
+    'coupons.expiresLabel': 'Expiration (facultatif)',
+    'coupons.regularsOnlyLabel': 'Réserver aux clients réguliers uniquement (3+ paiements passés)',
+    'coupons.createError': 'Impossible de créer ce coupon.',
+    'coupons.creating': 'Création en cours…',
+    'coupons.createButton': 'Créer le coupon',
+    'coupons.statusActive': 'Actif',
+    'coupons.statusDeactivated': 'Désactivé',
+    'coupons.percentOff': '{{value}}% de réduction',
+    'coupons.fixedOff': '{{value}} RWF de réduction',
+    'coupons.regularsOnlySuffix': ' · Clients réguliers uniquement',
+    'coupons.expiresSuffix': ' · Expire le {{date}}',
+    'coupons.deactivateError': 'Impossible de désactiver ce coupon.',
+    'coupons.deactivateButton': 'Désactiver',
   },
 };
