@@ -173,6 +173,14 @@ struct HarvestAdvanceScreenView: View {
             coopId = ""
             error = nil
             await load()
+        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+            // ALREADY_MEMBER in practice (matches Android's identical
+            // HarvestAdvanceScreen.kt fix, 2026-08-15) -- the account genuinely IS
+            // already a member of this cooperative. Resolve forward: load existing
+            // membership instead of a dead-end error.
+            coopId = ""
+            error = nil
+            await load()
         } catch {
             self.error = "Could not join this cooperative."
         }

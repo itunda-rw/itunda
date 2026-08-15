@@ -34,6 +34,12 @@ struct ForeignCurrencyScreenView: View {
         do {
             _ = try await NetworkClient.shared.openForeignWallet(OpenForeignWalletRequest(currency: currency))
             await load()
+        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+            // FOREIGN_WALLET_ALREADY_EXISTS in practice (matches Android's identical
+            // ForeignCurrencyScreen.kt fix, 2026-08-15) -- the wallet genuinely
+            // already exists. Resolve forward: reload and show it instead of a
+            // dead-end error.
+            await load()
         } catch {
             self.error = "Could not open this account."
         }

@@ -285,6 +285,11 @@ private struct InspectionMechanicContent: View {
         do {
             profile = try await NetworkClient.shared.registerAsInspectionMechanic(businessName: businessName).mechanic
             await load()
+        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+            // MECHANIC_ALREADY_REGISTERED in practice (matches Android's identical
+            // VehicleInspectionScreen.kt fix, 2026-08-15) -- resolve forward: load the
+            // existing profile instead of a dead-end error.
+            await load()
         } catch {
             self.error = "Couldn't register as a mechanic."
         }

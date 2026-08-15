@@ -348,6 +348,14 @@ private struct DesignatedDriverDriveContent: View {
         do {
             driver = try await NetworkClient.shared.registerAsDesignatedDriver(licenseNumber: licenseNumber).driver
             licenseNumber = ""
+        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+            // DESIGNATED_DRIVER_ALREADY_REGISTERED in practice (matches Android's
+            // identical DesignatedDriverScreen.kt fix, 2026-08-15) -- a fresh
+            // install/reinstall has no local memory of a prior registration, but the
+            // account genuinely IS already registered. Resolve forward: load the
+            // existing profile instead of a dead-end error.
+            await loadDriver()
+            licenseNumber = ""
         } catch {
             self.error = "Could not register as a designated driver."
         }
