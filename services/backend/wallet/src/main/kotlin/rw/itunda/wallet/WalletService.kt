@@ -92,6 +92,44 @@ class WalletService(
         return categorizeDebits(debits)
     }
 
+    /**
+     * Real Kakao Pay 페이아이 소비 리포트 (AI spending report, sourced 2026-08) -- a
+     * period-over-period comparison [getSpendingInsight] never had (it's a real but
+     * unbounded, all-time total). This month vs. last calendar month, reusing the exact
+     * same [categorizeDebits] categorization so the numbers here can never drift from
+     * what a plain spending-insight view would show for the same transactions. Real
+     * month boundaries via [YearMonth], same convention [setBudget]/[getBudgets] already
+     * use in this file -- not a fabricated "AI" model, an honest rules-based comparison
+     * against the user's own real ledger history.
+     */
+    fun getMonthlySpendingReport(userId: String): MonthlySpendingReport {
+        val walletIds = walletRepository.findByUserId(userId).map { it.id }.toSet()
+        val startOfLastMonth = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
+        val startOfThisMonth = YearMonth.now().atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()
+        val debitsSinceLastMonth = walletIds
+            .flatMap { ledgerEntryRepository.findByAccountIdAndCreatedAtAfter(it, startOfLastMonth) }
+            .filter { it.direction == LedgerDirection.DEBIT }
+        val (currentMonthDebits, lastMonthDebits) = debitsSinceLastMonth.partition { !it.createdAt.isBefore(startOfThisMonth) }
+
+        val current = categorizeDebits(currentMonthDebits)
+        val previous = categorizeDebits(lastMonthDebits)
+        val previousByCategory = previous.categories.associate { it.name to it.amount }
+
+        val categories = current.categories.map { c ->
+            val previousAmount = previousByCategory[c.name] ?: BigDecimal.ZERO
+            SpendingComparisonCategory(c.name, c.amount, previousAmount, percentChange(c.amount, previousAmount))
+        }
+        return MonthlySpendingReport(current.totalSpent, previous.totalSpent, percentChange(current.totalSpent, previous.totalSpent), categories)
+    }
+
+    // Null (not 0%) when there's genuinely nothing to compare against -- a real "new
+    // this month" signal, same "never fabricate a derived number" discipline
+    // MerchantProduct.discountPercent's own doc comment already established elsewhere.
+    private fun percentChange(current: BigDecimal, previous: BigDecimal): Int? {
+        if (previous.compareTo(BigDecimal.ZERO) == 0) return null
+        return current.subtract(previous).divide(previous, 4, RoundingMode.HALF_UP).multiply(BigDecimal(100)).toInt()
+    }
+
     // Real business expense summary (2026-08-11) -- see LoanOffer.requiresBusinessAccount's
     // own doc comment for the broader real business-banking gap this closes alongside.
     // Toss Bank's real "세금 신고용 이용내역 자동발송" (auto-send tax-filing usage summary,

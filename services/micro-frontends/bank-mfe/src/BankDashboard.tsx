@@ -8,7 +8,7 @@ import { LOCALES, type TranslationKey } from './i18n/translations';
 import { Badge } from './Badge';
 import { IdsButton } from './IdsButton';
 import { EmptyState, ErrorCard } from './EmptyState';
-import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
+import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchMonthlySpendingReport, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
@@ -4328,6 +4328,45 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
   );
 }
 
+// Real Kakao Pay 페이아이 소비 리포트 (AI spending report, sourced 2026-08) -- see
+// lib/wallet.ts's own doc comment for the full account. A real month-over-month
+// comparison, never a fabricated AI narrative.
+function MonthlySpendingReportCard() {
+  const [report, setReport] = useState<Awaited<ReturnType<typeof fetchMonthlySpendingReport>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchMonthlySpendingReport()
+      .then(setReport)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your monthly report.'));
+  }, []);
+
+  if (!report) {
+    return error ? null : <div className="itunda-card skeleton" style={{ height: '120px' }} />;
+  }
+
+  const changed = report.categories.filter((c) => c.percentChange !== null).sort((a, b) => Math.abs(b.percentChange ?? 0) - Math.abs(a.percentChange ?? 0));
+
+  return (
+    <div className="itunda-card" style={{ padding: '16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>This month so far</p>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+        <h3 style={{ fontSize: '22px', fontWeight: 700 }}>{report.currentTotal.toLocaleString()} RWF</h3>
+        {report.percentChange !== null && (
+          <span style={{ fontSize: '13px', fontWeight: 700, color: report.percentChange > 0 ? 'var(--itunda-red)' : 'var(--itunda-green)' }}>
+            {report.percentChange > 0 ? '▲' : '▼'} {Math.abs(report.percentChange)}% vs last month
+          </span>
+        )}
+      </div>
+      {changed.slice(0, 3).map((c) => (
+        <p key={c.name} style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
+          {c.name}: {c.currentAmount.toLocaleString()} RWF ({(c.percentChange ?? 0) > 0 ? '+' : ''}{c.percentChange}% vs last month)
+        </p>
+      ))}
+    </div>
+  );
+}
+
 // Real Kakao Pay 소비 리포트-style spending categorization (2026-07-13, wired 2026-07-28
 // as item 106) -- see lib/wallet.ts's own doc comment. Found backend-only via a fresh
 // matrix scan: real, ledger-based, and live since well before this session, but never
@@ -4351,6 +4390,7 @@ function SpendingInsightView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <MonthlySpendingReportCard />
       <div className="itunda-card" style={{ padding: '24px' }}>
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Total spent, all time</p>
         <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{totalSpent.toLocaleString()} RWF</h2>

@@ -68,6 +68,22 @@ class WalletController(
         return ResponseEntity.ok(mapOf("success" to true, "categories" to result.categories, "totalSpent" to result.totalSpent))
     }
 
+    // Real Kakao Pay 페이아이 소비 리포트 (AI spending report) -- see
+    // WalletService.getMonthlySpendingReport's own doc comment.
+    @GetMapping("/spending/monthly-report")
+    fun getMonthlySpendingReport(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val report = walletService.getMonthlySpendingReport(currentUser.userId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "currentTotal" to report.currentTotal,
+                "previousTotal" to report.previousTotal,
+                "percentChange" to report.percentChange,
+                "categories" to report.categories,
+            ),
+        )
+    }
+
     // Real business expense summary (2026-08-11) -- see WalletService.getBusinessExpenseSummary's
     // own doc comment for the real Toss Bank 세금 신고용 이용내역 자동발송 (tax-filing usage
     // summary) pattern this closes the honest slice of.

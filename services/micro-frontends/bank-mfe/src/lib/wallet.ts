@@ -82,6 +82,24 @@ export interface SpendingCategory {
 export const fetchSpendingInsight = () =>
   apiFetch<{ success: boolean; categories: SpendingCategory[]; totalSpent: number }>('/api/v1/wallet/spending');
 
+// Real Kakao Pay 페이아이 소비 리포트 (AI spending report, sourced 2026-08) -- a real
+// month-over-month comparison the all-time fetchSpendingInsight above never had. See
+// WalletService.getMonthlySpendingReport's own doc comment on the backend -- an honest
+// rules-based comparison against the user's own real ledger history, not a fabricated
+// AI model. percentChange is null (not 0%), a real "nothing to compare against yet"
+// signal, when a category has no prior-month spend at all.
+export interface SpendingComparisonCategory {
+  name: string;
+  currentAmount: number;
+  previousAmount: number;
+  percentChange: number | null;
+}
+
+export const fetchMonthlySpendingReport = () =>
+  apiFetch<{ success: boolean; currentTotal: number; previousTotal: number; percentChange: number | null; categories: SpendingComparisonCategory[] }>(
+    '/api/v1/wallet/spending/monthly-report',
+  );
+
 // Real Toss-style monthly budgets/limits (item 165, found via a fresh discovery pass:
 // WalletService.setBudget/getBudgets and the POST/GET /api/v1/wallet/budgets endpoints
 // were already real -- including real 80%/100%-threshold in-app + push notifications,
