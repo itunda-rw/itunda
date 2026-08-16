@@ -43,7 +43,12 @@ import rw.itunda.eats.EatsOrderItemRequest
 import rw.itunda.eats.EatsOrderAllItemsUnavailableException
 import rw.itunda.eats.EatsOrderItemAlreadyUnavailableException
 import rw.itunda.eats.EatsOrderItemNotFoundException
+import rw.itunda.eats.EatsOrderAlreadyTippedException
+import rw.itunda.eats.EatsOrderNoRiderException
+import rw.itunda.eats.EatsOrderNotDeliveredException
 import rw.itunda.eats.EatsOrderNotFoundException
+import rw.itunda.eats.EatsOrderTipWindowExpiredException
+import rw.itunda.eats.InvalidEatsTipAmountException
 import rw.itunda.eats.EatsOrderNotYetDeliveredException
 import rw.itunda.eats.EatsOrderService
 import rw.itunda.eats.EatsReviewNotFoundException
@@ -104,6 +109,7 @@ data class UpdateEatsOrderStatusRequest(
 )
 data class SetRiderAvailabilityRequest(val available: Boolean)
 data class UpdateRiderLocationRequest(val latitude: Double, val longitude: Double)
+data class TipEatsOrderRequest(val amount: java.math.BigDecimal)
 data class SubmitEatsReviewRequest(
     val restaurantRating: Int,
     val restaurantComment: String? = null,
@@ -494,6 +500,17 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
+    // Real Uber Eats post-delivery tip -- see EatsOrderService.tipRider's own doc comment.
+    @PostMapping("/orders/{orderId}/tip")
+    fun tipRider(
+        @PathVariable orderId: String,
+        @RequestBody request: TipEatsOrderRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = eatsOrderService.tipRider(currentUser.userId, orderId, request.amount)
+        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
     // Real post-delivery ratings & reviews (2026-07-18) -- see EatsReviewService's own
     // doc comment for the full account.
     @PostMapping("/orders/{orderId}/review")
@@ -675,6 +692,26 @@ class EatsController(
     @ExceptionHandler(EatsOrderNotFoundException::class)
     fun handleOrderNotFound(ex: EatsOrderNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ORDER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(EatsOrderNotDeliveredException::class)
+    fun handleOrderNotDelivered(ex: EatsOrderNotDeliveredException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ORDER_NOT_DELIVERED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(EatsOrderAlreadyTippedException::class)
+    fun handleOrderAlreadyTipped(ex: EatsOrderAlreadyTippedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ORDER_ALREADY_TIPPED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(EatsOrderTipWindowExpiredException::class)
+    fun handleOrderTipWindowExpired(ex: EatsOrderTipWindowExpiredException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("ORDER_TIP_WINDOW_EXPIRED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidEatsTipAmountException::class)
+    fun handleInvalidTipAmount(ex: InvalidEatsTipAmountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_TIP_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(EatsOrderNoRiderException::class)
+    fun handleOrderNoRider(ex: EatsOrderNoRiderException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("ORDER_NO_RIDER", ex.message ?: "Bad request"))
 
     @ExceptionHandler(EatsOrderOwnRestaurantException::class)
     fun handleOwnRestaurant(ex: EatsOrderOwnRestaurantException) =

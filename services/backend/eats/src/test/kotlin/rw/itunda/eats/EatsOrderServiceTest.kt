@@ -2374,6 +2374,135 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real delivered order with an assigned rider") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val riderRepository = mockk<RiderRepository>()
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = EatsOrderService(
+            merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
+        )
+        val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
+        val riderWallet = wallet("wallet_rider", "rider_user_1")
+        val buyerWallet = wallet("wallet_buyer", "buyer_1")
+        every { riderRepository.findById("rider_1") } returns Optional.of(rider)
+        every { walletRepository.findById("wallet_rider") } returns Optional.of(riderWallet)
+        every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+        every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+        fun deliveredOrder(updatedAt: java.time.Instant = java.time.Instant.now(), tipAmount: BigDecimal? = null) = EatsOrder(
+            id = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+            itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+            totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_1", riderId = "rider_1",
+            status = EatsOrderStatus.DELIVERED, updatedAt = updatedAt, tipAmount = tipAmount,
+        )
+
+        When("the buyer tips the rider a real amount") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder())
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("tip_txn_1", emptyList())
+
+            val result = service.tipRider("buyer_1", "eats_order_1", BigDecimal("500"))
+
+            Then("it moves the real tip straight from the buyer's wallet to the rider's wallet") {
+                result.tipAmount shouldBe BigDecimal("500")
+                result.tipTransactionId shouldBe "tip_txn_1"
+                val legs = legsSlot.captured
+                legs.first { it.accountId == "wallet_buyer" }.amount shouldBe BigDecimal("500")
+                legs.first { it.accountId == "wallet_rider" }.amount shouldBe BigDecimal("500")
+            }
+
+            Then("it real-notifies the rider they received a tip") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "rider_user_1" && it.type == "EATS_TIP_RECEIVED" }) }
+            }
+        }
+
+        When("the order hasn't been delivered yet") {
+            val placedOrder = deliveredOrder().also { it.status = EatsOrderStatus.PICKED_UP }
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(placedOrder)
+
+            Then("it throws EatsOrderNotDeliveredException and never touches the ledger") {
+                try {
+                    service.tipRider("buyer_1", "eats_order_1", BigDecimal("500"))
+                    error("expected EatsOrderNotDeliveredException")
+                } catch (e: EatsOrderNotDeliveredException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("the order has already been tipped once") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder(tipAmount = BigDecimal("300")))
+
+            Then("it throws EatsOrderAlreadyTippedException") {
+                try {
+                    service.tipRider("buyer_1", "eats_order_1", BigDecimal("500"))
+                    error("expected EatsOrderAlreadyTippedException")
+                } catch (e: EatsOrderAlreadyTippedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("the tip amount is zero") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder())
+
+            Then("it throws InvalidEatsTipAmountException") {
+                try {
+                    service.tipRider("buyer_1", "eats_order_1", BigDecimal.ZERO)
+                    error("expected InvalidEatsTipAmountException")
+                } catch (e: InvalidEatsTipAmountException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("the 30-day tip window has expired") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder(updatedAt = java.time.Instant.now().minus(EatsOrderService.TIP_WINDOW).minusSeconds(60)))
+
+            Then("it throws EatsOrderTipWindowExpiredException") {
+                try {
+                    service.tipRider("buyer_1", "eats_order_1", BigDecimal("500"))
+                    error("expected EatsOrderTipWindowExpiredException")
+                } catch (e: EatsOrderTipWindowExpiredException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("someone who isn't the buyer tries to tip") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder())
+
+            Then("it throws EatsOrderNotFoundException, the same real-vs-fake IDOR discipline every other order lookup uses") {
+                try {
+                    service.tipRider("stranger", "eats_order_1", BigDecimal("500"))
+                    error("expected EatsOrderNotFoundException")
+                } catch (e: EatsOrderNotFoundException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

@@ -28,6 +28,7 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.GeocodeSuggestion
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
+import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.push.PushNotificationService
@@ -75,6 +76,11 @@ class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
 class EatsOrderItemNotFoundException(message: String) : RuntimeException(message)
 class EatsOrderItemAlreadyUnavailableException(message: String) : RuntimeException(message)
 class EatsOrderAllItemsUnavailableException(message: String) : RuntimeException(message)
+class EatsOrderNotDeliveredException(message: String) : RuntimeException(message)
+class EatsOrderAlreadyTippedException(message: String) : RuntimeException(message)
+class EatsOrderTipWindowExpiredException(message: String) : RuntimeException(message)
+class InvalidEatsTipAmountException(message: String) : RuntimeException(message)
+class EatsOrderNoRiderException(message: String) : RuntimeException(message)
 
 // Real menu-options selection (2026-07-21, v1: required single-select only) --
 // `selectedChoiceIds` is empty for the overwhelming majority of pre-existing menu items
@@ -142,6 +148,11 @@ class EatsOrderService(
         // feature is scoped to "오늘"/"내일" (today/tomorrow), a real, bounded window,
         // not an open-ended future date. See placeOrder's own doc comment.
         val SCHEDULED_ORDER_MAX_WINDOW: java.time.Duration = java.time.Duration.ofDays(2)
+
+        // Real Uber Eats post-delivery tip window -- matches RideTripService.TIP_WINDOW's
+        // own real 30-day rule exactly, same real product/team, same rail. See
+        // tipRider's own doc comment.
+        val TIP_WINDOW: java.time.Duration = java.time.Duration.ofDays(30)
 
         // Real exclusive accept window for automatic dispatch -- see
         // dispatchToNextCandidate's own doc comment for the full account. Long enough
@@ -613,6 +624,86 @@ class EatsOrderService(
                 pushNotificationService.sendToUser(ownerUserId, title, body, mapOf("orderId" to orderId))
             } catch (e: Exception) {
                 logger.warn("Could not send new-order push for eats order {}", orderId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
+    }
+
+    /**
+     * Real Uber Eats post-delivery tip (2026-08-17,
+     * help.uber.com/en/ubereats/restaurants/article/add-or-change-tip-amount-for-a-past-order)
+     * -- "You're free to add a tip... for up to 40 days after your order is delivered."
+     * A direct real buyer-wallet-to-rider-wallet transfer, never routed through
+     * `eats_delivery_holding` (unlike the delivery fee itself) since a tip isn't
+     * itunda's revenue to hold or take a cut of -- same real mechanism
+     * [rw.itunda.rideshare.RideTripService.tipDriver] already establishes for ride
+     * tips, just ported to Eats. Scoped to real `DELIVERY` orders with an assigned
+     * rider only -- a `PICKUP` order has no rider to tip. Real once-only
+     * ([EatsOrderAlreadyTippedException]) and real window ([EatsOrderTipWindowExpiredException],
+     * [TIP_WINDOW]) enforcement.
+     */
+    @Transactional
+    fun tipRider(buyerId: String, orderId: String, amount: BigDecimal): EatsOrder {
+        val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        if (order.buyerId != buyerId) {
+            throw EatsOrderNotFoundException("Order not found")
+        }
+        if (amount <= BigDecimal.ZERO) {
+            throw InvalidEatsTipAmountException("Tip amount must be greater than zero")
+        }
+        if (order.status != EatsOrderStatus.DELIVERED) {
+            throw EatsOrderNotDeliveredException("Only a delivered order can be tipped")
+        }
+        if (order.tipAmount != null) {
+            throw EatsOrderAlreadyTippedException("This order has already been tipped")
+        }
+        if (Instant.now().isAfter(order.updatedAt.plus(TIP_WINDOW))) {
+            throw EatsOrderTipWindowExpiredException("Tips can only be added within ${TIP_WINDOW.toDays()} days of delivery")
+        }
+        val riderId = order.riderId ?: throw EatsOrderNoRiderException("This order has no assigned rider to tip")
+        val rider = riderRepository.findById(riderId).orElseThrow { EatsOrderNoRiderException("This order has no assigned rider to tip") }
+        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
+            ?: throw EatsBuyerNoWalletException("No wallet found for this account")
+        val riderWallet = walletRepository.findById(rider.walletId)
+            .orElseThrow { EatsOrderNoRiderException("Rider settlement wallet not found") }
+        if (buyerWallet.availableBalance < amount) {
+            throw InsufficientFundsException("Insufficient available balance for this tip")
+        }
+        val result = ledgerService.postLedgerTransaction(
+            buyerWallet.currency,
+            listOf(
+                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Tip for order at ${order.restaurantId}"),
+                LedgerLeg(riderWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
+            ),
+        )
+        order.tipAmount = amount
+        order.tipTransactionId = result.transactionId
+        val saved = eatsOrderRepository.save(order)
+        val title = "You received a tip"
+        val body = "You received a $amount RWF tip for a recent delivery."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = rider.userId, type = "EATS_TIP_RECEIVED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
+            ),
+        )
+        sendTipReceivedPushAfterCommit(rider.userId, title, body, order.id)
+        return saved
+    }
+
+    /** A tip alert must never announce a payment whose enclosing transaction rolled back. */
+    private fun sendTipReceivedPushAfterCommit(riderUserId: String, title: String, body: String, orderId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(riderUserId, title, body, mapOf("orderId" to orderId))
+            } catch (e: Exception) {
+                logger.warn("Could not send tip-received push for eats order {}", orderId, e)
             }
         }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {

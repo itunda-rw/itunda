@@ -181,6 +181,18 @@ class EatsOrder(
     @Column(name = "pickup_discount", nullable = false, precision = 18, scale = 2)
     val pickupDiscount: BigDecimal = BigDecimal.ZERO,
 
+    // Real Uber Eats-style post-delivery tip (2026-08-17, migration V269,
+    // help.uber.com/en/ubereats "Add or change tip amount for a past order") -- see
+    // EatsOrderService.tipRider's own doc comment. Null until a real tip is given
+    // (DELIVERY orders with an assigned rider only -- a PICKUP order has no rider to
+    // tip), same nullable-until-real-event convention deliveryProofPhotoUrl above
+    // already establishes.
+    @Column(name = "tip_amount", precision = 18, scale = 2)
+    var tipAmount: BigDecimal? = null,
+
+    @Column(name = "tip_transaction_id", length = 64)
+    var tipTransactionId: String? = null,
+
     // Restaurant, rider, scheduler, and cancellation actions advance the same order
     // through different request paths.  Protect the row so a concurrent terminal
     // transition cannot post a duplicate delivery payout or refund.
