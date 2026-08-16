@@ -655,7 +655,8 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
       {isGift && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-            Held until they claim it -- auto-refunded to you after 7 days if unclaimed.
+            Held until they claim it -- auto-refunded to you after 7 days if unclaimed. Enter their
+            phone number above -- gifts can't be sent to an account number.
           </p>
           <input
             type="text" value={giftNote} onChange={(e) => setGiftNote(e.target.value)} placeholder="Add a note (optional)" maxLength={200}
