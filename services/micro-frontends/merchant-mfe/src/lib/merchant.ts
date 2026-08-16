@@ -109,6 +109,13 @@ export interface ReportDay {
   byChannel: Record<string, number>;
 }
 
+export interface TopSellingProduct {
+  productId: string;
+  productName: string;
+  unitsSold: number;
+  revenue: number;
+}
+
 export interface CardChargeResult {
   transactionId: string;
   merchantName: string;
@@ -452,6 +459,19 @@ export const getReport = (from?: string, to?: string) => {
   const qs = params.toString();
   return apiFetch<{ success: boolean; from: string; to: string; days: ReportDay[] }>(
     `/api/v1/merchant/reports${qs ? `?${qs}` : ''}`,
+  );
+};
+
+// Real Coupang WING-style 베스트 상품 (best-selling products) report (2026-08-16) --
+// see backend MerchantService.getTopSellingProducts's own doc comment.
+export const getTopSellingProducts = (from?: string, to?: string, limit?: number) => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  if (limit) params.set('limit', String(limit));
+  const qs = params.toString();
+  return apiFetch<{ success: boolean; from: string; to: string; products: TopSellingProduct[] }>(
+    `/api/v1/merchant/reports/top-products${qs ? `?${qs}` : ''}`,
   );
 };
 

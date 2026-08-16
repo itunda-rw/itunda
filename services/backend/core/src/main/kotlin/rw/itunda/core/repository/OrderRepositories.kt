@@ -8,6 +8,7 @@ import rw.itunda.core.domain.OrderItem
 import rw.itunda.core.domain.OrderReturnRequest
 import rw.itunda.core.domain.OrderReturnStatus
 import rw.itunda.core.domain.OrderStatus
+import java.time.Instant
 
 interface OrderRepository : JpaRepository<Order, String> {
     // Real pagination from day one -- this session's own established convention since
@@ -20,10 +21,16 @@ interface OrderRepository : JpaRepository<Order, String> {
     fun findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(status: OrderStatus, pageable: Pageable): Page<Order>
     fun findByRiderIdOrderByCreatedAtDesc(riderId: String, pageable: Pageable): Page<Order>
     fun existsByRiderIdAndStatusIn(riderId: String, statuses: List<OrderStatus>): Boolean
+
+    // Real Coupang WING-style top-selling-products report (2026-08-16) -- see
+    // MerchantService.getTopSellingProducts's own doc comment. Unpaginated, same as
+    // MerchantService.getReport's own bounded-31-day-window transaction fetch.
+    fun findByMerchantIdAndCreatedAtBetween(merchantId: String, from: Instant, to: Instant): List<Order>
 }
 
 interface OrderItemRepository : JpaRepository<OrderItem, String> {
     fun findByOrderId(orderId: String): List<OrderItem>
+    fun findByOrderIdIn(orderIds: List<String>): List<OrderItem>
 }
 
 interface OrderReturnRequestRepository : JpaRepository<OrderReturnRequest, String> {

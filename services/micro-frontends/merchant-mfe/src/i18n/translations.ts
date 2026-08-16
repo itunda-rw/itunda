@@ -162,6 +162,11 @@ export type TranslationKey =
   | 'reports.columnGross'
   | 'reports.columnFees'
   | 'reports.columnNet'
+  | 'reports.topProductsTitle'
+  | 'reports.topProductsEmpty'
+  | 'reports.columnProduct'
+  | 'reports.columnUnits'
+  | 'reports.columnRevenue'
   | 'business.title'
   | 'business.pitchBody'
   | 'business.opening'
@@ -689,6 +694,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reports.columnGross': 'Gross',
     'reports.columnFees': 'Fees',
     'reports.columnNet': 'Net',
+    'reports.topProductsTitle': 'Best-selling products',
+    'reports.topProductsEmpty': 'No products sold in this range.',
+    'reports.columnProduct': 'Product',
+    'reports.columnUnits': 'Units sold',
+    'reports.columnRevenue': 'Revenue',
     'business.title': 'Business account',
     'business.pitchBody': "Keep your business money separate from your personal wallet. Your real card/QR collections still settle to your personal wallet as before — move money into your business account whenever you're ready to set it aside.",
     'business.opening': 'Opening…',
@@ -1189,6 +1199,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reports.columnGross': 'Igiteranyo',
     'reports.columnFees': 'Amafaranga y\'ubuyobozi',
     'reports.columnNet': 'Asigaye',
+    'reports.topProductsTitle': 'Ibicuruzwa bigurwa cyane',
+    'reports.topProductsEmpty': 'Nta bicuruzwa byagurishijwe muri iki gihe.',
+    'reports.columnProduct': 'Igicuruzwa',
+    'reports.columnUnits': 'Umubare wagurishijwe',
+    'reports.columnRevenue': 'Amafaranga yinjiye',
     'business.title': 'Konti y\'ubucuruzi',
     'business.pitchBody': 'Tandukanya amafaranga y\'ubucuruzi bwawe n\'aya konti yawe bwite. Amafaranga wakira ku ikarita/QR akomeza kujya kuri konti yawe bwite nk\'uko byari bimeze — wimura amafaranga ku konti y\'ubucuruzi igihe cyose ubishaka.',
     'business.opening': 'Gufungura…',
@@ -1689,6 +1704,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'reports.columnGross': 'Brut',
     'reports.columnFees': 'Frais',
     'reports.columnNet': 'Net',
+    'reports.topProductsTitle': 'Produits les plus vendus',
+    'reports.topProductsEmpty': 'Aucun produit vendu sur cette période.',
+    'reports.columnProduct': 'Produit',
+    'reports.columnUnits': 'Unités vendues',
+    'reports.columnRevenue': 'Revenu',
     'business.title': 'Compte professionnel',
     'business.pitchBody': "Séparez l'argent de votre entreprise de votre portefeuille personnel. Vos encaissements par carte/QR continuent d'être versés sur votre portefeuille personnel comme avant — transférez de l'argent vers votre compte professionnel quand vous le souhaitez.",
     'business.opening': 'Ouverture…',

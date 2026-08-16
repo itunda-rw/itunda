@@ -89,6 +89,15 @@ data class MerchantReportDay(
     val byChannel: Map<String, Int>,
 )
 
+// Real Coupang WING-style 베스트 상품 (best-selling products) report -- see
+// MerchantService.getTopSellingProducts's own doc comment.
+data class TopSellingProduct(
+    val productId: String,
+    val productName: String,
+    val unitsSold: Int,
+    val revenue: BigDecimal,
+)
+
 /**
  * A real, minimal subset of docs/MERCHANT_SERVICES.md's product surface --
  * registration + QR-style fixed-amount payment collection into the merchant's
@@ -116,6 +125,8 @@ class MerchantService(
     private val merchantCouponService: MerchantCouponService,
     private val pushNotificationService: PushNotificationService,
     private val customerPaymentCodeRepository: CustomerPaymentCodeRepository,
+    private val orderRepository: rw.itunda.core.repository.OrderRepository,
+    private val orderItemRepository: rw.itunda.core.repository.OrderItemRepository,
 ) {
     // Real customer-presented code lifetime (2026-08-11) -- short enough that a
     // screenshotted/shoulder-surfed code is only exploitable for a couple minutes,
@@ -1125,5 +1136,43 @@ class MerchantService(
                 )
             }
             .sortedBy { it.date }
+    }
+
+    // Real Coupang WING seller dashboard "베스트 상품" (best-selling products) report
+    // (2026-08-16) -- WING's own real seller analytics tab ranks products by units/
+    // revenue sold, distinct from a raw revenue total, so a seller can see WHAT is
+    // driving sales, not just how much. OrderItem already snapshots productId/
+    // productName/unitPrice/quantity at purchase time (Coupang-style multi-item
+    // Order); grouped in-memory over a bounded window, same real reason getReport's
+    // own doc comment gives for not using a JPQL date-function GROUP BY. Deliberately
+    // does not filter by OrderStatus -- matches getReport's own definition of
+    // "revenue" (gross collected at placement, not fulfillment-gated); a cancelled
+    // order's reversal is a separate real refund Transaction, not a retroactive
+    // rewrite of what was sold.
+    fun getTopSellingProducts(ownerUserId: String, from: LocalDate, to: LocalDate, limit: Int = 10): List<TopSellingProduct> {
+        if (from.isAfter(to)) {
+            throw InvalidReportRangeException("Report start date must be on or before the end date")
+        }
+        if (from.plusDays(30).isBefore(to)) {
+            throw InvalidReportRangeException("Reports are limited to 31 days at a time")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        val fromInstant = from.atStartOfDay(ZoneOffset.UTC).toInstant()
+        val toInstant = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+        val orders = orderRepository.findByMerchantIdAndCreatedAtBetween(merchant.id, fromInstant, toInstant)
+        if (orders.isEmpty()) return emptyList()
+        val items = orderItemRepository.findByOrderIdIn(orders.map { it.id })
+        return items
+            .groupBy { it.productId }
+            .map { (productId, productItems) ->
+                TopSellingProduct(
+                    productId = productId,
+                    productName = productItems.first().productName,
+                    unitsSold = productItems.sumOf { it.quantity },
+                    revenue = productItems.fold(BigDecimal.ZERO) { acc, i -> acc + i.unitPrice.multiply(BigDecimal(i.quantity)) },
+                )
+            }
+            .sortedByDescending { it.revenue }
+            .take(limit)
     }
 }

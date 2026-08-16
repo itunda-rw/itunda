@@ -81,7 +81,9 @@ class MerchantServiceTest : BehaviorSpec({
         val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository)
+        val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>(relaxed = true)
+        val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -872,7 +874,9 @@ class MerchantServiceTest : BehaviorSpec({
         val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository)
+        val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>(relaxed = true)
+        val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -915,7 +919,9 @@ class MerchantServiceTest : BehaviorSpec({
         val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository)
+        val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>()
+        val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>()
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant
@@ -1001,6 +1007,61 @@ class MerchantServiceTest : BehaviorSpec({
                     error("expected InvalidReportRangeException")
                 } catch (e: InvalidReportRangeException) {
                     verify(exactly = 0) { transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween(any(), any(), any(), any()) }
+                }
+            }
+        }
+
+        fun order(id: String, day: LocalDate) = rw.itunda.core.domain.Order(
+            id = id, buyerId = "buyer_x", merchantId = "merchant_4", deliveryAddress = "Kigali",
+            totalAmount = BigDecimal("1000"), fee = BigDecimal("15"), transactionId = "ledgertxn_$id",
+            createdAt = day.atTime(9, 0).toInstant(ZoneOffset.UTC),
+        )
+
+        fun item(id: String, orderId: String, productId: String, name: String, price: String, qty: Int) =
+            rw.itunda.core.domain.OrderItem(id = id, orderId = orderId, productId = productId, productName = name, unitPrice = BigDecimal(price), quantity = qty)
+
+        When("requesting the top-selling-products report for a range with two products sold across two orders") {
+            every {
+                orderRepository.findByMerchantIdAndCreatedAtBetween("merchant_4", any(), any())
+            } returns listOf(order("o1", day1), order("o2", day2))
+            every {
+                orderItemRepository.findByOrderIdIn(listOf("o1", "o2"))
+            } returns listOf(
+                item("i1", "o1", "prod_a", "Rwandan Coffee 1kg", "5000", 2),
+                item("i2", "o1", "prod_b", "Sugar 1kg", "1000", 1),
+                item("i3", "o2", "prod_a", "Rwandan Coffee 1kg", "5000", 3),
+            )
+
+            val products = service.getTopSellingProducts("owner_4", day1, day2)
+
+            Then("it aggregates units and revenue per real product, ranked by revenue descending") {
+                products.size shouldBe 2
+                products[0].productId shouldBe "prod_a"
+                products[0].unitsSold shouldBe 5
+                products[0].revenue shouldBe BigDecimal("25000")
+                products[1].productId shouldBe "prod_b"
+                products[1].unitsSold shouldBe 1
+                products[1].revenue shouldBe BigDecimal("1000")
+            }
+        }
+
+        When("requesting the top-selling-products report for a range with no orders") {
+            every { orderRepository.findByMerchantIdAndCreatedAtBetween("owner_4", any(), any()) } returns emptyList()
+            every { orderRepository.findByMerchantIdAndCreatedAtBetween("merchant_4", any(), any()) } returns emptyList()
+
+            Then("it returns an empty list without ever querying order items") {
+                service.getTopSellingProducts("owner_4", day1, day1).size shouldBe 0
+                verify(exactly = 0) { orderItemRepository.findByOrderIdIn(any()) }
+            }
+        }
+
+        When("requesting the top-selling-products report with an inverted date range") {
+            Then("it rejects the request before querying orders") {
+                try {
+                    service.getTopSellingProducts("owner_4", day2, day1)
+                    error("expected InvalidReportRangeException")
+                } catch (e: InvalidReportRangeException) {
+                    verify(exactly = 0) { orderRepository.findByMerchantIdAndCreatedAtBetween(any(), any(), any()) }
                 }
             }
         }

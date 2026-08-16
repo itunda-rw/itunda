@@ -355,6 +355,21 @@ class MerchantController(
         return ResponseEntity.ok(mapOf("success" to true, "from" to fromDate.toString(), "to" to toDate.toString(), "days" to report))
     }
 
+    // Real Coupang WING-style top-selling-products report -- see
+    // MerchantService.getTopSellingProducts's own doc comment.
+    @GetMapping("/reports/top-products")
+    fun getTopSellingProducts(
+        @RequestParam(required = false) from: String?,
+        @RequestParam(required = false) to: String?,
+        @RequestParam(required = false) limit: Int?,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val toDate = to?.let { LocalDate.parse(it) } ?: LocalDate.now()
+        val fromDate = from?.let { LocalDate.parse(it) } ?: toDate.minusDays(6)
+        val products = merchantService.getTopSellingProducts(currentUser.userId, fromDate, toDate, limit ?: 10)
+        return ResponseEntity.ok(mapOf("success" to true, "from" to fromDate.toString(), "to" to toDate.toString(), "products" to products))
+    }
+
     @ExceptionHandler(DateTimeParseException::class)
     fun handleBadDate(ex: DateTimeParseException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DATE_FORMAT", "from/to must be in YYYY-MM-DD format"))

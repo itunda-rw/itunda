@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQueue } from '../hooks/useQueue';
-import { getReport } from '../lib/merchant';
+import { getReport, getTopSellingProducts } from '../lib/merchant';
 import { QueueError, QueueSkeleton } from '../QueueState';
 import { useI18n } from '../i18n/I18nContext';
 
@@ -33,6 +33,12 @@ export default function ReportsScreen() {
   // which is exactly what applying a different report range should do.
   const fetchReport = useCallback(() => getReport(from, to).then((report) => report.days), [from, to]);
   const { items, error, refreshing, reload } = useQueue(fetchReport);
+
+  // Real Coupang WING-style best-selling-products report (2026-08-16) -- same range,
+  // fetched separately since it's a distinct backend aggregation, not derived from
+  // `items` above (daily collection totals carry no product-level breakdown at all).
+  const fetchTopProducts = useCallback(() => getTopSellingProducts(from, to).then((r) => r.products), [from, to]);
+  const { items: topProducts, reload: reloadTopProducts } = useQueue(fetchTopProducts);
 
   const applyRange = (nextFrom = draftFrom, nextTo = draftTo) => {
     if (!nextFrom || !nextTo) {
@@ -90,7 +96,7 @@ export default function ReportsScreen() {
           <h2 style={{ fontSize: '20px', fontWeight: 700 }}>{t('reports.title')}</h2>
           <p style={{ color: 'var(--itunda-grey-500)', fontSize: '13px', marginTop: '4px' }}>{rangeLabel} · {t('reports.settledSuffix')}</p>
         </div>
-        <button className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 14px' }} disabled={refreshing} onClick={reload}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ padding: '8px 14px' }} disabled={refreshing} onClick={() => { reload(); reloadTopProducts(); }}>
           {t('reports.refresh')}
         </button>
       </div>
@@ -139,6 +145,30 @@ export default function ReportsScreen() {
             <span style={{ color: 'var(--itunda-grey-500)' }}>{count} ({Math.round((count / totals.collections) * 100)}%)</span>
           </div>
         ))}
+      </div>
+
+      <div className="itunda-card">
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>{t('reports.topProductsTitle')}</h3>
+        {topProducts === null ? (
+          <div className="itunda-card skeleton" style={{ height: '60px' }} />
+        ) : topProducts.length === 0 ? (
+          <p style={{ color: 'var(--itunda-grey-500)', fontSize: '14px' }}>{t('reports.topProductsEmpty')}</p>
+        ) : (
+          <div style={{ overflow: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', minWidth: '480px' }}>
+              <thead><tr style={{ backgroundColor: 'var(--itunda-grey-100)' }}>
+                {(['reports.columnProduct', 'reports.columnUnits', 'reports.columnRevenue'] as const).map((headingKey, index) => <th key={headingKey} style={{ textAlign: index === 0 ? 'left' : 'right', padding: '10px 14px' }}>{t(headingKey)}</th>)}
+              </tr></thead>
+              <tbody>{topProducts.map((p) => (
+                <tr key={p.productId} style={{ borderTop: '1px solid var(--itunda-grey-200)' }}>
+                  <td style={{ padding: '10px 14px' }}>{p.productName}</td>
+                  <td style={{ textAlign: 'right', padding: '10px 14px' }}>{p.unitsSold.toLocaleString()}</td>
+                  <td style={{ textAlign: 'right', padding: '10px 14px', fontWeight: 600 }}>{p.revenue.toLocaleString()} RWF</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="itunda-card" style={{ padding: 0, overflow: 'auto' }}>
