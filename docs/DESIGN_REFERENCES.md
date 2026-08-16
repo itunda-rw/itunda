@@ -7109,3 +7109,31 @@ The identical query WITHOUT `sortBy` returned the same 3 restaurants in the oppo
 25) -- proving the sort is real, not a coincidence of already-sorted data. `sortBy=delivery_time`
 WITHOUT buyer coordinates returned a real 200 with every `deliveryTimeMinutes` correctly `null` and
 original order preserved -- a genuine no-op, not a crash.
+
+## 93. Real agent location reporting (uncalled-endpoint sweep)
+
+**Added 2026-08-16.** A fresh uncalled-endpoint sweep found a real, live gap: the only endpoint
+that could ever set `Agent.latitude`/`longitude` lived on the deprecated admin controller
+(`AgentAdminController`) with zero caller anywhere -- superseded everywhere else by the real
+operator-facing `AgentOperatorController` (`/me`, `/till`, `/cash-ins`, `/cash-outs`,
+`/till-reconciliations`), which had no location endpoint at all. Meanwhile a real, already-live
+customer-facing feature (`AgentDiscoveryController.getNearbyAgents`, cash-point discovery)
+depended entirely on that same data being current -- no real agent in the field had any way to
+report where they actually are.
+
+**Built**: `AgentService.setLocationForOperator`, resolving the caller's own agent from their JWT
+(the same `activeOperator` pattern `cashInForOperator` already establishes -- callers never supply
+an agent id), and `POST /api/v1/agent/location` on the real operator-facing controller. Android's
+`AgentOperatorScreen` (the real store-facing till console) gained a "Report my location" button,
+using the same permission-gated `rememberRealLocationRequester` pattern `EatsScreen`/`RideScreen`
+already establish. 2 new Kotest blocks (`AgentOperatorAccessTest.kt`): a real success case and an
+outside-Rwanda case (real `IllegalArgumentException`, reusing `GeoUtils.isWithinRwanda`'s existing
+validation).
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: the demo user's real
+seeded agent ("Itunda Demo Agent Kigali") started with `latitude`/`longitude` both `NULL`. `POST
+/agent/location` with real Kigali coordinates returned a real success with the updated coordinates
+in the response. A subsequent `GET /agents/nearby` search from a nearby point returned that exact
+agent with the real coordinates just set and a real computed `distanceKm` (0.087 km) -- proving the
+whole real pipeline (report → store → customer-facing discovery) works end to end, not just that
+the write succeeded in isolation.
