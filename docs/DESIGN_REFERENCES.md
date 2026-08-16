@@ -7168,3 +7168,54 @@ equality (`ListingRepository.kt`'s `l.category = :category`) with no explicit ca
 MySQL's own default collation is case-insensitive -- pre-existing free-text listings stored as
 lowercase ("electronics") still matched the new curated, capitalized category name ("Electronics")
 correctly, with zero extra code needed.
+
+## 95. Naver Maps-style colored merchant pins
+
+**Added 2026-08-16.** A real, previously-named-but-unbuilt gap: every merchant marker on
+bank-mfe's `MapView` rendered as a single hardcoded blue dot (`#3182F6`) regardless of merchant
+category, unlike Naver Maps' own real category-colored POI pins (restaurants red, cafes brown,
+shopping purple, etc.) that let a user visually scan a dense map without opening every pin.
+
+**Built**: `merchantPinColor(category)` in `MapView.tsx` -- real substring/contains matching over
+itunda's own free-text merchant `category` field (no backend change: this is a purely client-side
+rendering change), with an honest neutral gray (`#6B7280`) fallback for any unmapped or null
+category rather than guessing. Applied at the one marker-creation call site
+(`new maplibregl.Marker({ color: merchantPinColor(m.category) })`).
+
+**Verified**: a standalone script ran the real function against every real distinct merchant
+category value confirmed via direct DB query (`Rwandan`, `Fast Food`, `Coffee & Bakery`,
+`Electronics`, `Fashion`) plus `null`/unmapped cases -- every one resolved to a distinct, sensible
+color or the neutral fallback correctly. No browser round-trip was done for this pass (a
+deliberate call, matching [[feedback_verification_pace]]'s "match verification pace to risk" for a
+purely cosmetic, deterministic, already-type-checked function with no server round-trip to prove).
+
+## 96. Uber Eats-style "Message restaurant" (Live Order Chat)
+
+**Added 2026-08-16.** Uber Eats' real official "Live Order Chat" lets a buyer message the
+restaurant directly from an active order (delayed pickup, missing item, special instruction) --
+itunda's Eats module had a full order lifecycle (`EatsOrderService`, review/reply, rider tracking)
+but zero way for a buyer to contact the restaurant at all once an order was placed.
+
+**Built**: `POST /api/v1/eats/orders/{orderId}/contact-restaurant` on `EatsController`, resolved at
+the controller layer (not `EatsOrderService`, already at 28 constructor params) -- verifies the
+caller is the order's real buyer (real 404 for anyone else, same IDOR discipline as every other
+resource-ownership check in this codebase), then reuses `MessagingService.startOrGetConversation`
+between the buyer and the restaurant's `ownerUserId`, mirroring `MarketplaceService.contactSeller`'s
+exact existing pattern byte-for-byte (including catching `SelfConversationException` and rethrowing
+as a feature-specific `EatsOrderOwnRestaurantException` for the case where the buyer owns their own
+restaurant). Required adding `implementation(project(":messaging"))` directly to
+`eats/build.gradle.kts` -- confirmed Gradle's `implementation(...)` is not transitive here, so
+`eats`'s existing `implementation(project(":splitbill"))` (which itself depends on `messaging`)
+does not expose `MessagingService` to `eats`. bank-mfe's `MyEatsOrdersView` gained a "💬 Message
+restaurant" button on any order that isn't yet `DELIVERED`/`CANCELLED`, threaded through
+`EatsOrderCard` → `MyEatsOrdersView` → `OrderFoodView` → `EatsView` → the top-level Messages-tab
+hand-off, reusing the exact same `handleMessageSeller` function `MarketplaceView` already
+established.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: called as the real
+demo buyer against a real active order (`PLACED`, buyer `user_1`) -- returned a real new
+conversation between the buyer and the real restaurant owner. A second identical call returned the
+exact same conversation id (proving `startOrGetConversation`'s reuse, not a duplicate thread per
+click). A freshly-registered, unrelated account calling the same endpoint against the same order
+got a real `404 ORDER_NOT_FOUND` -- confirmed the IDOR check holds for a real non-buyer, not just
+an unauthenticated request.
