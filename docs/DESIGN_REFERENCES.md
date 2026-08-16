@@ -7631,3 +7631,41 @@ ride status: IN_PROGRESS\nFrom: Kicukiro\nTo: Kanombe\nDriver's last known locat
 placeholder text. A different, non-passenger real account calling the same endpoint against the
 same trip got a real `404 RIDE_TRIP_NOT_FOUND`. The real passenger attempting to share into a real
 conversation they were never a participant of got a real `404 CONVERSATION_NOT_FOUND`.
+
+## 110. Uber Destination Filter for ride-hailing drivers
+
+**Added 2026-08-16.** Uber's own official Destination Filter (help.uber.com/en-GB/driving-and-
+delivering/article/driver-destination-filter) lets a driver nearing the end of their shift set a
+destination up to twice a day, resetting at midnight local, and get preferentially matched with
+trips whose dropoff genuinely moves them closer to it -- Uber's own documented condition being
+"the dropoff location should bring you closer to your final destination."
+
+**Built**: `RideDriver.destinationLatitude/Longitude/UsesToday/UsesResetDate` (migration `V258`).
+`RideDriverService.setDestination`/`clearDestination` -- the real 2-per-day limit resets at real
+Africa/Kigali midnight (same timezone convention `Merchant.isClosedToday()` already established);
+clearing nulls the active filter but deliberately does NOT reset the daily use count, matching the
+real distinction between "how many times you set it" and "whether it's currently active." `POST
+/rides/drivers/destination` (+`/clear`). `RideTripService.rankNearbyDrivers` now excludes a driver
+with an active filter from a trip's candidate pool unless the trip's real dropoff genuinely reduces
+their real haversine distance to their own chosen destination versus their current position -- a
+real eligibility restriction, never a fabricated preference boost (this backend has no real signal
+to honestly weight one). 8 new Kotest blocks across a new `RideDriverServiceTest.kt` and
+`RideTripServiceTest.kt`. Backend-only this pass -- itunda's driver-facing client lives in
+Android's `RiderApp`, not bank-mfe, so no client UI was extended, same precedent Section 106's
+driver-earnings report set.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**, using fresh, isolated
+coordinates to keep the candidate pool unambiguous: **exclusion** -- driver A set a destination
+filter east of their position; a real trip requested with a dropoff genuinely FARTHER from that
+destination than driver A's own current position was offered to a real, different, more-distant
+driver instead of driver A (despite driver A being by far the nearest driver to pickup) --
+confirmed by comparing the trip's real `offeredDriverId` against driver A's own real id (they
+didn't match), and driver A's own accept attempt real-404'd. **Inclusion** -- driver B set an
+identically-shaped filter; a real trip requested with a dropoff genuinely CLOSER to that
+destination was offered to driver B specifically (`offeredDriverId` exactly matched driver B's real
+id), and driver B successfully real-accepted it (`DRIVER_ASSIGNED`). **Daily limit** -- a fresh
+driver's first two `POST /destination` calls succeeded with `destinationUsesToday` incrementing
+1 → 2 exactly; the third real-`429`'d `DESTINATION_FILTER_LIMIT_EXCEEDED`. **Clear semantics** --
+`POST /destination/clear` real-nulled the active filter but left `destinationUsesToday` at 2, and
+an immediately-following `POST /destination` still real-429'd -- proving clearing is genuinely free
+to undo but does not refund a daily use, exactly as designed.
