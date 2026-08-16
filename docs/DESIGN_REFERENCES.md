@@ -7464,3 +7464,35 @@ pause itself. Separately, at a different real restaurant: gave it one real miss
 (`consecutiveMissedOrders` confirmed at 1), then placed and real-`ACCEPTED` a second order --
 confirmed `consecutiveMissedOrders` genuinely reset to 0, proving the reset-on-accept path fires on
 a real nonzero streak, not just showing the default value on a restaurant that never missed.
+
+## 105. Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule)
+
+**Added 2026-08-16.** Baemin's own real seller guide (ceo.baemin.com: "가게 관리 > 휴무일 설정")
+confirms restaurants can declare which days of the week they're regularly closed -- distinct from
+both existing itunda pause mechanisms: Section 101's `isAcceptingOrders` is a one-off manual toggle
+a merchant flips by hand, and Section 104's `consecutiveMissedOrders` auto-pause is a reactive
+streak-driven safety net. Neither expresses a standing, recurring "closed every Sunday" fact a
+restaurant knows about itself in advance.
+
+**Built**: `Merchant.closedWeekdays` (comma-separated `1=Monday..7=Sunday`, ISO-8601 numbering
+matching `java.time.DayOfWeek.getValue()`, migration `V256__merchant_closed_weekdays.sql`) and
+`Merchant.isClosedToday()` as the single real source of truth (real `Africa/Kigali` local time,
+matching this codebase's existing real-timezone convention) -- shared by
+`EatsOrderService.placeOrder`'s server-side enforcement (checked, not just a UI hint, reusing the
+same `RestaurantNotAcceptingOrdersException` the manual pause already throws) and
+`ShoppingController`'s `closedToday` browse-card flag, so the two can never drift into disagreeing
+about the same real business day. `POST /merchant/closed-weekdays` with real 1-7 range validation.
+merchant-mfe's `SettingsScreen` gets a 7-day toggle grid with full en/rw/fr translations; bank-mfe's
+restaurant browse shows a "Closed today" badge. Real Kotest coverage: `MerchantServiceTest`
+(set/clear/validate) plus a new `MerchantTest.kt` exercising `isClosedToday()`'s real current-day
+logic directly, not mocked.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16** (2026-08-16 is real ISO
+weekday 7/Sunday in Africa/Kigali time): registered a fresh real restaurant, set
+`closedWeekdays: [7]`. A fresh real buyer's order attempt got a real `400
+RESTAURANT_NOT_ACCEPTING_ORDERS` with the exact message "This restaurant is closed today", and
+`GET /shopping/merchants` showed `closedToday: true`. Clearing the schedule (`weekdays: []`) real-
+flipped `closedToday` to `false`, and the identical order retry succeeded with a real `201`.
+Separately, `POST /merchant/closed-weekdays {"weekdays":[8]}` (out of the real 1-7 range) got a
+real `400 INVALID_CLOSED_WEEKDAYS` -- confirming server-side validation holds, not just a client-
+side range check.
