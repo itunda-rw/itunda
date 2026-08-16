@@ -141,6 +141,15 @@ class LedgerAccount(
             // this file's own warning that the bug is only ever caught live.)
             "deposit_protection_expense" to "Deposit Protection Fund Contribution Expense",
             "deposit_protection_reserve" to "Deposit Protection Fund Reserve",
+            // Real Baemin-style tiered order-amount promotion (2026-08-16) -- see
+            // EatsPromotionCalculator's own doc comment. Learned from this exact file's
+            // own documented history (EIGHT prior instances of the identical bug class
+            // above): seeded here BEFORE the first real live-verification order, not
+            // after a live 500 discovers it's missing. (Missed once anyway on first
+            // live-verification -- confirming this file's own standing warning that a
+            // missing seed row is invisible to compile and to this codebase's own
+            // mocked-LedgerService unit tests, only ever caught live.)
+            "promotion_expense" to "Eats Order Promotion Expense",
         )
     }
 }
