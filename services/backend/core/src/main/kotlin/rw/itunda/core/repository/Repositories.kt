@@ -72,6 +72,14 @@ interface StockTradeRepository : JpaRepository<StockTrade, String> {
 interface SavingsGoalRepository : JpaRepository<SavingsGoal, String> {
     fun findByUserId(userId: String): List<SavingsGoal>
     fun existsByUserId(userId: String): Boolean
+
+    // Real KB국민은행-style 상품만기알림서비스 (product maturity alert) candidate query --
+    // see SavingsMaturityReminderScheduler's own doc comment. `targetDate` is a real,
+    // unvalidated free-text field set at goal-creation time (never parsed or format-
+    // enforced there), so this only narrows to real candidates -- the actual
+    // date-arrived comparison happens in Kotlin, which can defensively skip a
+    // genuinely unparseable value instead of a JPQL date function silently erroring.
+    fun findByStatusAndTargetDateIsNotNullAndMaturityNotifiedAtIsNull(status: rw.itunda.core.domain.SavingsGoalStatus): List<SavingsGoal>
 }
 
 interface InterestJarRepository : JpaRepository<InterestJar, String>

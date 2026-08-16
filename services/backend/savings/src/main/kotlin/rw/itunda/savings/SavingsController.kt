@@ -30,6 +30,7 @@ class SavingsController(
     private val savingsService: SavingsService,
     private val idempotencyService: IdempotencyService,
     private val depositProtectionService: DepositProtectionService,
+    private val savingsMaturityReminderScheduler: SavingsMaturityReminderScheduler,
 ) {
 
     @GetMapping("/goals")
@@ -83,6 +84,17 @@ class SavingsController(
     @GetMapping("/deposit-protection")
     fun getDepositProtectionStatus(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "status" to depositProtectionService.getStatus(currentUser.userId)))
+
+    // Real KB국민은행-style 상품만기알림서비스 (product maturity alert) manual trigger --
+    // same "expose the scheduler's own real logic as a callable endpoint" convention
+    // WeeklySavingsController.processDue already establishes, so a real goal's real
+    // targetDate can be verified without waiting actual wall-clock days for it to
+    // arrive.
+    @PostMapping("/goals/process-maturity-reminders")
+    fun processMaturityReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = savingsMaturityReminderScheduler.processDue()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
+    }
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

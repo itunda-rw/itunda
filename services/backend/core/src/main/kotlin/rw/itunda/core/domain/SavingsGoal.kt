@@ -62,6 +62,13 @@ class SavingsGoal(
     @Column(name = "last_auto_contribution_at")
     var lastAutoContributionAt: Instant? = null,
 
+    // Real KB국민은행-style 상품만기알림서비스 (product maturity alert service) (2026-08-17)
+    // -- see SavingsMaturityReminderScheduler's own doc comment. Null means no maturity
+    // reminder has fired yet for this goal; set once the real reminder actually sends,
+    // so a goal past its targetDate is never re-notified on every scheduler poll.
+    @Column(name = "maturity_notified_at")
+    var maturityNotifiedAt: Instant? = null,
+
     // Manual deposits and the recurring auto-save scheduler update this balance
     // independently.  Versioning prevents a lost contribution update.
     @Version

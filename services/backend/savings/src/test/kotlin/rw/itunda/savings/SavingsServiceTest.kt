@@ -3,6 +3,7 @@ package rw.itunda.savings
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -40,7 +41,9 @@ class SavingsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
         When("depositing to an owned goal from the default MAIN wallet") {
             val goal = SavingsGoal(
@@ -185,7 +188,9 @@ class SavingsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
         fun goal(id: String, monthlyContribution: String, lastAutoContributionAt: Instant?, status: SavingsGoalStatus = SavingsGoalStatus.active) = SavingsGoal(
             id = id, userId = "user_1", walletId = "wallet_savings", name = "Goal $id",
@@ -247,7 +252,9 @@ class SavingsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
 
         fun jar(userId: String, nextPayoutAt: Instant, rate: Double = 7.5) = InterestJar(
             userId = userId, walletId = "wallet_$userId", balance = BigDecimal.ZERO, rate = rate,
@@ -342,7 +349,9 @@ class SavingsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
         every { rateLimiter.checkLimit("savings:goal:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to create another real goal") {
@@ -353,6 +362,77 @@ class SavingsServiceTest : BehaviorSpec({
                 } catch (e: RateLimitExceededException) {
                     verify(exactly = 0) { savingsGoalRepository.save(any()) }
                 }
+            }
+        }
+    }
+
+    Given("a real KB국민은행-style savings goal maturity reminder") {
+        val walletRepository = mockk<WalletRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val interestJarRepository = mockk<InterestJarRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>()
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, transactionRepository, notificationRepository, pushNotificationService)
+
+        fun goalWithTarget(id: String, userId: String, targetDate: String?, status: SavingsGoalStatus = SavingsGoalStatus.active, maturityNotifiedAt: Instant? = null) = SavingsGoal(
+            id = id, userId = userId, walletId = "wallet_$userId", name = "Goal $id",
+            targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("500000"),
+            monthlyContribution = BigDecimal.ZERO, interestRate = 7.5, targetDate = targetDate,
+            status = status, maturityNotifiedAt = maturityNotifiedAt,
+        )
+
+        When("a real active goal's targetDate has already passed") {
+            val past = goalWithTarget("sg_past", "user_a", java.time.LocalDate.now().minusDays(1).toString())
+            every { savingsGoalRepository.findByStatusAndTargetDateIsNotNullAndMaturityNotifiedAtIsNull(SavingsGoalStatus.active) } returns listOf(past)
+
+            Then("it is a real due candidate") {
+                service.getGoalsDueForMaturityReminder().map { it.id } shouldBe listOf("sg_past")
+            }
+        }
+
+        When("a real active goal's targetDate is genuinely still in the future") {
+            val future = goalWithTarget("sg_future", "user_b", java.time.LocalDate.now().plusDays(5).toString())
+            every { savingsGoalRepository.findByStatusAndTargetDateIsNotNullAndMaturityNotifiedAtIsNull(SavingsGoalStatus.active) } returns listOf(future)
+
+            Then("it is real-excluded -- not due yet") {
+                service.getGoalsDueForMaturityReminder() shouldBe emptyList()
+            }
+        }
+
+        When("a real goal's targetDate is genuinely unparseable free text") {
+            val bad = goalWithTarget("sg_bad", "user_c", "not-a-real-date")
+            every { savingsGoalRepository.findByStatusAndTargetDateIsNotNullAndMaturityNotifiedAtIsNull(SavingsGoalStatus.active) } returns listOf(bad)
+
+            Then("it is real-skipped rather than crashing the whole sweep") {
+                service.getGoalsDueForMaturityReminder() shouldBe emptyList()
+            }
+        }
+
+        When("sending a real reminder for a genuinely due goal") {
+            val goal = goalWithTarget("sg_due", "user_d", java.time.LocalDate.now().toString())
+            every { savingsGoalRepository.findById("sg_due") } returns Optional.of(goal)
+            every { savingsGoalRepository.save(any()) } answers { firstArg() }
+
+            service.sendMaturityReminder("sg_due")
+
+            Then("it real-notifies once and real-marks maturityNotifiedAt") {
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "SAVINGS_GOAL_MATURED" && it.userId == "user_d" }) }
+                goal.maturityNotifiedAt shouldNotBe null
+            }
+        }
+
+        When("sending a reminder for a goal that already has one") {
+            val goal = goalWithTarget("sg_already", "user_e", java.time.LocalDate.now().toString(), maturityNotifiedAt = Instant.now())
+            every { savingsGoalRepository.findById("sg_already") } returns Optional.of(goal)
+
+            service.sendMaturityReminder("sg_already")
+
+            Then("it real-skips -- no double notification for the same real maturity") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
     }

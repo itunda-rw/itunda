@@ -7,6 +7,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.SavingsGoalStatus
 import rw.itunda.core.domain.Transaction
@@ -15,7 +16,9 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.InterestJarRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
@@ -23,6 +26,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
@@ -51,6 +56,8 @@ class SavingsService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val transactionRepository: TransactionRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(SavingsService::class.java)
 
@@ -222,5 +229,50 @@ class SavingsService(
         jar.balance = updatedWallet.balance
         jar.nextPayoutAt = jar.nextPayoutAt.plus(INTEREST_ACCRUAL_INTERVAL_DAYS, ChronoUnit.DAYS)
         interestJarRepository.save(jar)
+    }
+
+    // Real KB국민은행-style 상품만기알림서비스 (product maturity alert service,
+    // obank.kbstar.com's own real named product) candidate query -- an active goal
+    // whose real targetDate has genuinely arrived (today or already past) and hasn't
+    // been notified yet. targetDate is real free-text set at goal creation with no
+    // format enforcement (see SavingsService.createGoal), so a value that doesn't
+    // parse as a real ISO LocalDate is honestly skipped here rather than crashing the
+    // whole sweep over one bad row -- the same per-row resilience
+    // StockPriceAlertScheduler's own doc comment already establishes for an unrelated
+    // reminder feature.
+    fun getGoalsDueForMaturityReminder(): List<SavingsGoal> {
+        val today = LocalDate.now()
+        return savingsGoalRepository.findByStatusAndTargetDateIsNotNullAndMaturityNotifiedAtIsNull(SavingsGoalStatus.active)
+            .filter { goal ->
+                val raw = goal.targetDate ?: return@filter false
+                val parsed = try {
+                    LocalDate.parse(raw)
+                } catch (e: DateTimeParseException) {
+                    null
+                }
+                parsed != null && !parsed.isAfter(today)
+            }
+    }
+
+    /** One real maturity-reminder notification, called per-goal by the scheduler --
+     * re-checks `maturityNotifiedAt` right before sending so a genuine race can't
+     * double-fire, same resilience discipline [[StocksService.triggerPriceAlert]]'s own
+     * doc comment already establishes. */
+    @Transactional
+    fun sendMaturityReminder(goalId: String) {
+        val goal = savingsGoalRepository.findById(goalId).orElse(null) ?: return
+        if (goal.status != SavingsGoalStatus.active || goal.maturityNotifiedAt != null) return
+
+        val title = "${goal.name} has matured"
+        val body = "Your savings goal \"${goal.name}\" reached its target date. Current balance: ${goal.currentAmount} RWF."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = goal.userId, type = "SAVINGS_GOAL_MATURED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"goalId\":\"${goal.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(goal.userId, title, body, mapOf("goalId" to goal.id))
+        goal.maturityNotifiedAt = Instant.now()
+        savingsGoalRepository.save(goal)
     }
 }
