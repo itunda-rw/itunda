@@ -152,7 +152,7 @@ import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, cancelGroupEatsOrder, claimDelivery, completePickupOrder, contactRestaurant, createGroupEatsOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
   fetchEatsOrder, fetchGroupEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchMyRiderProfile, fetchRestaurantCategories,
   fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, finalizeGroupEatsOrder, joinGroupEatsOrder, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS, registerRider,
-  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, setRiderAvailability, subscribeMembership, subscribePlatformMembership, submitEatsReview,
+  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, setRiderAvailability, shareFavoritesToConversation, subscribeMembership, subscribePlatformMembership, submitEatsReview,
   type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type GroupEatsOrderDetail, type MenuItem, type PlatformMembership, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
@@ -14502,10 +14502,58 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
 // Real bookmarked/favorited restaurants (2026-07-19) -- self-contained, mirroring
 // MyEatsOrdersView's own load/local-state pattern; onChanged resyncs OrderFoodView's
 // favoriteIds set so the Browse tab's stars stay correct after an unfavorite here.
+// Real Baemin-style 찜 리스트 공유하기 (share favorites list, 2026-08-16) -- DIRECT-only
+// (unlike ForwardPickerModal's DIRECT+GROUP picker), matching backend
+// EatsFavoriteService.shareFavoritesToConversation's own 1:1-conversation-only
+// capability (built on MessagingService, not GroupMessagingService).
+function ShareFavoritesModal({ onShare, onClose }: { onShare: (conversationId: string) => void; onClose: () => void }) {
+  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+
+  useEffect(() => {
+    fetchConversations().then(setConversations).catch(() => setConversations([]));
+  }, []);
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }}
+      onClick={onClose}
+    >
+      <div
+        className="itunda-card"
+        style={{ width: '100%', maxHeight: '60vh', overflowY: 'auto', borderRadius: '16px 16px 0 0', margin: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Share favorites to…</p>
+        {conversations === null ? (
+          <div className="itunda-card skeleton" style={{ height: '100px' }} />
+        ) : conversations.length === 0 ? (
+          <EmptyState message="No conversations to share to yet — start a chat first." />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {conversations.map((c) => (
+              <button
+                key={c.conversationId}
+                className="itunda-card"
+                style={{ width: '100%', textAlign: 'left' }}
+                onClick={() => onShare(c.conversationId)}
+              >
+                {c.otherUserName}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: FavoriteRestaurant) => void; onChanged: () => void }) {
   const [favorites, setFavorites] = useState<FavoriteRestaurant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shared, setShared] = useState(false);
 
   const load = () => {
     setError(null);
@@ -14513,6 +14561,18 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
   };
 
   useEffect(load, []);
+
+  const handleShare = async (conversationId: string) => {
+    setShowShareModal(false);
+    setShareError(null);
+    try {
+      await shareFavoritesToConversation(conversationId);
+      setShared(true);
+      setTimeout(() => setShared(false), 3000);
+    } catch (err) {
+      setShareError(err instanceof ApiError ? err.message : 'Could not share favorites.');
+    }
+  };
 
   const handleRemove = async (restaurantId: string) => {
     setRemovingId(restaurantId);
@@ -14540,6 +14600,14 @@ function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: Fav
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+        {shared && <span style={{ fontSize: '12px', color: 'var(--itunda-green-600, #16a34a)' }}>Shared!</span>}
+        <button className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px' }} onClick={() => setShowShareModal(true)}>
+          ❤️ Share favorites
+        </button>
+      </div>
+      {shareError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{shareError}</p>}
+      {showShareModal && <ShareFavoritesModal onShare={handleShare} onClose={() => setShowShareModal(false)} />}
       {favorites.map((f) => (
         <div
           key={f.restaurantId}

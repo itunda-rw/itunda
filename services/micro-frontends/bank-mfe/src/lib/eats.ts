@@ -342,6 +342,14 @@ export const removeFavoriteRestaurant = (restaurantId: string) =>
 export const fetchMyFavoriteRestaurants = () =>
   apiFetch<{ success: boolean; favorites: FavoriteRestaurant[] }>('/api/v1/eats/favorites').then((r) => r.favorites);
 
+// Real Baemin-style 찜 리스트 공유하기 (share your favorites list, 2026-08-16) -- see
+// backend EatsFavoriteService.shareFavoritesToConversation's own doc comment.
+export const shareFavoritesToConversation = (conversationId: string) =>
+  apiFetch<{ success: boolean; message: unknown }>('/api/v1/eats/favorites/share', {
+    method: 'POST',
+    body: JSON.stringify({ conversationId }),
+  });
+
 // Real Baemin Club (배민클럽)-style free-delivery membership (rw.itunda.eats.
 // EatsMembershipService, 2026-07-26) -- backend-only until now (item 102), first client
 // UI for this feature. Free delivery only applies at a restaurant that has itself

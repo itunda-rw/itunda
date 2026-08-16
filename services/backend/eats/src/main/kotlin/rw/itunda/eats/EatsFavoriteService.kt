@@ -1,14 +1,19 @@
 package rw.itunda.eats
 
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.EatsFavorite
+import rw.itunda.core.domain.Message
 import rw.itunda.core.repository.EatsFavoriteRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.messaging.MessagingService
 import java.time.Instant
 import java.util.UUID
+
+class NoFavoritesToShareException(message: String) : RuntimeException(message)
 
 data class FavoriteRestaurant(
     val restaurantId: String,
@@ -33,6 +38,7 @@ data class FavoriteRestaurant(
 class EatsFavoriteService(
     private val eatsFavoriteRepository: EatsFavoriteRepository,
     private val merchantRepository: MerchantRepository,
+    private val messagingService: MessagingService,
 ) {
     @Transactional
     fun addFavorite(userId: String, restaurantId: String): EatsFavorite {
@@ -63,5 +69,23 @@ class EatsFavoriteService(
                 favoritedAt = favorite.createdAt,
             )
         }
+    }
+
+    // Real Baemin-style 찜 리스트 공유하기 (share your favorites list) -- Baemin lets a
+    // buyer share their bookmarked-restaurant list with a friend. itunda has no public,
+    // unauthenticated share-link surface (every screen is auth-gated), so the honest
+    // analogue is itunda's own established "send a real message into a real Talk
+    // conversation" convention -- same shape GiftVoucherService.purchaseVoucher and
+    // MarketplaceService's sold-notification already use, just a plain formatted text
+    // body rather than a bespoke rendered card (no custom message-type infrastructure
+    // exists to build one of those yet). Top 5, newest-favorited-first, matching
+    // getMyFavorites' own existing ordering.
+    @Transactional
+    fun shareFavoritesToConversation(userId: String, conversationId: String): Message {
+        messagingService.getConversationForParticipant(userId, conversationId)
+        val top = getMyFavorites(userId, PageRequest.of(0, 5)).content
+        if (top.isEmpty()) throw NoFavoritesToShareException("You have no favorite restaurants to share yet")
+        val body = "\u2764\uFE0F My favorite restaurants:\n" + top.mapIndexed { i, f -> "${i + 1}. ${f.businessName}" }.joinToString("\n")
+        return messagingService.sendMessage(userId, conversationId, body)
     }
 }

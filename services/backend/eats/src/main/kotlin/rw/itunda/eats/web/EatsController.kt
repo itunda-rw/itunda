@@ -105,6 +105,7 @@ data class SubmitEatsReviewRequest(
     val photoUrl: String? = null,
 )
 data class ReplyToEatsReviewRequest(val reply: String)
+data class ShareFavoritesRequest(val conversationId: String)
 
 // Real edge case, same "don't leak a raw messaging exception as an unhandled 500"
 // discipline MarketplaceService.contactSeller's own OwnListingException already
@@ -545,6 +546,25 @@ class EatsController(
         val page = eatsFavoriteService.getMyFavorites(currentUser.userId, pageable)
         return ResponseEntity.ok(mapOf("success" to true, "favorites" to page.content) + pageMeta(page))
     }
+
+    // Real Baemin-style 찜 리스트 공유하기 (share favorites list) -- see
+    // EatsFavoriteService.shareFavoritesToConversation's own doc comment.
+    @PostMapping("/favorites/share")
+    fun shareFavorites(
+        @RequestBody request: ShareFavoritesRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val message = eatsFavoriteService.shareFavoritesToConversation(currentUser.userId, request.conversationId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
+    }
+
+    @ExceptionHandler(rw.itunda.eats.NoFavoritesToShareException::class)
+    fun handleNoFavoritesToShare(ex: rw.itunda.eats.NoFavoritesToShareException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NO_FAVORITES_TO_SHARE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(rw.itunda.messaging.ConversationNotFoundException::class)
+    fun handleConversationNotFound(ex: rw.itunda.messaging.ConversationNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CONVERSATION_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RestaurantNotFoundException::class)
     fun handleRestaurantNotFound(ex: RestaurantNotFoundException) =
