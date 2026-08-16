@@ -5,18 +5,24 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.CurrencyConversion
+import rw.itunda.core.domain.ExchangeRateAlert
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fx.ForeignCurrencyRateClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CurrencyConversionRepository
+import rw.itunda.core.repository.ExchangeRateAlertRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.wallet.AccountNumberGenerator
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.util.UUID
 
 class UnsupportedCurrencyException(message: String) : RuntimeException(message)
@@ -24,6 +30,8 @@ class ForeignCurrencyWalletAlreadyExistsException(message: String) : RuntimeExce
 class ForeignCurrencyWalletNotFoundException(message: String) : RuntimeException(message)
 class InvalidConversionException(message: String) : RuntimeException(message)
 class ExchangeRateUnavailableException(message: String) : RuntimeException(message)
+class InvalidRateAlertException(message: String) : RuntimeException(message)
+class ExchangeRateAlertNotFoundException(message: String) : RuntimeException(message)
 
 /**
  * A real 토스뱅크 외화통장 (foreign-currency account) equivalent -- closes the gap named
@@ -57,6 +65,9 @@ class ForeignCurrencyWalletService(
     private val rateClient: ForeignCurrencyRateClient,
     private val currencyConversionRepository: CurrencyConversionRepository,
     private val accountNumberGenerator: AccountNumberGenerator,
+    private val exchangeRateAlertRepository: ExchangeRateAlertRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         val SUPPORTED_CURRENCIES = setOf("USD", "EUR", "GBP")
@@ -181,4 +192,94 @@ class ForeignCurrencyWalletService(
 
     fun getMyConversions(userId: String, pageable: Pageable): Page<CurrencyConversion> =
         currencyConversionRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+
+    // Real Toss 외환 환율 알림 (exchange rate alert) (2026-08-17) -- see
+    // ExchangeRateAlert's own doc comment. Setting a new target on an already-alerted
+    // pair re-arms it (clears alertTriggeredAt), same "your new choice replaces the
+    // old one" shape StocksService.setPriceAlert already establishes.
+    @Transactional
+    fun setRateAlert(userId: String, fromCurrency: String, toCurrency: String, targetRate: Double, direction: String): ExchangeRateAlert {
+        val from = fromCurrency.trim().uppercase()
+        val to = toCurrency.trim().uppercase()
+        if (direction != "ABOVE" && direction != "BELOW") {
+            throw InvalidRateAlertException("direction must be ABOVE or BELOW")
+        }
+        if (targetRate <= 0.0) {
+            throw InvalidRateAlertException("Target rate must be greater than zero")
+        }
+        if (from == to) {
+            throw InvalidConversionException("Cannot set an alert on a currency against itself")
+        }
+        val foreignCode = if (from == "RWF") to else if (to == "RWF") from else null
+            ?: throw InvalidConversionException("Alerts must be between RWF and one foreign currency")
+        if (foreignCode !in SUPPORTED_CURRENCIES) {
+            throw UnsupportedCurrencyException("$foreignCode isn't a supported currency -- itunda currently supports ${SUPPORTED_CURRENCIES.sorted().joinToString()}")
+        }
+
+        val alert = exchangeRateAlertRepository.findByUserIdAndFromCurrencyAndToCurrency(userId, from, to)
+            ?: ExchangeRateAlert(id = "fx_alert_${UUID.randomUUID()}", userId = userId, fromCurrency = from, toCurrency = to, targetRate = targetRate, direction = direction)
+        alert.targetRate = targetRate
+        alert.direction = direction
+        alert.alertTriggeredAt = null
+        return exchangeRateAlertRepository.save(alert)
+    }
+
+    @Transactional
+    fun clearRateAlert(userId: String, fromCurrency: String, toCurrency: String) {
+        val alert = exchangeRateAlertRepository.findByUserIdAndFromCurrencyAndToCurrency(userId, fromCurrency.trim().uppercase(), toCurrency.trim().uppercase())
+            ?: throw ExchangeRateAlertNotFoundException("You don't have an alert set on this pair")
+        exchangeRateAlertRepository.delete(alert)
+    }
+
+    fun getMyRateAlerts(userId: String): List<ExchangeRateAlert> =
+        exchangeRateAlertRepository.findByUserIdOrderByCreatedAtDesc(userId)
+
+    // Real due-alert query backing ExchangeRateAlertScheduler -- a real, not-yet-fired
+    // alert whose real live rate (ForeignCurrencyRateClient) has actually crossed its
+    // real target, in the real direction the user asked for. Unlike
+    // StocksService.getDuePriceAlerts (a free in-memory simulated-price lookup),
+    // rateClient.getRate is a real, cached, potentially-null external call -- a
+    // currently-unreachable pair is honestly skipped, never treated as "not due."
+    fun getDueRateAlerts(): List<ExchangeRateAlert> {
+        val candidates = exchangeRateAlertRepository.findByAlertTriggeredAtIsNull()
+        if (candidates.isEmpty()) return emptyList()
+        return candidates.filter { alert ->
+            val currentRate = rateClient.getRate(alert.fromCurrency, alert.toCurrency) ?: return@filter false
+            when (alert.direction) {
+                "ABOVE" -> currentRate >= alert.targetRate
+                "BELOW" -> currentRate <= alert.targetRate
+                else -> false
+            }
+        }
+    }
+
+    /** One real alert notification, called per-row by the scheduler -- same
+     * re-check-right-before-firing resilience StocksService.triggerPriceAlert's own
+     * doc comment already establishes, so a genuine race (or the rate moving back
+     * between the batch snapshot and this call) can't double-fire or wrongly fire. */
+    @Transactional
+    fun triggerRateAlert(alertId: String) {
+        val alert = exchangeRateAlertRepository.findById(alertId).orElse(null) ?: return
+        if (alert.alertTriggeredAt != null) return
+        val currentRate = rateClient.getRate(alert.fromCurrency, alert.toCurrency) ?: return
+        val crossed = when (alert.direction) {
+            "ABOVE" -> currentRate >= alert.targetRate
+            "BELOW" -> currentRate <= alert.targetRate
+            else -> false
+        }
+        if (!crossed) return
+
+        val title = "${alert.fromCurrency}/${alert.toCurrency} hit your target rate"
+        val body = "${alert.fromCurrency}/${alert.toCurrency} is now ${"%.6f".format(currentRate)} (target: ${alert.targetRate})"
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = alert.userId, type = "EXCHANGE_RATE_ALERT",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"fromCurrency\":\"${alert.fromCurrency}\",\"toCurrency\":\"${alert.toCurrency}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(alert.userId, title, body, mapOf("fromCurrency" to alert.fromCurrency, "toCurrency" to alert.toCurrency))
+        alert.alertTriggeredAt = Instant.now()
+        exchangeRateAlertRepository.save(alert)
+    }
 }

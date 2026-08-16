@@ -5,6 +5,7 @@ import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.PostMapping
@@ -21,6 +22,7 @@ import java.math.BigDecimal
 
 data class OpenForeignWalletRequest(val currency: String)
 data class ConvertCurrencyRequest(val fromCurrency: String, val toCurrency: String, val amount: BigDecimal)
+data class SetRateAlertRequest(val fromCurrency: String, val toCurrency: String, val targetRate: Double, val direction: String)
 
 // Real 토스뱅크 외화통장 (foreign-currency account) equivalent -- see
 // ForeignCurrencyWalletService's own doc comment for the full account. Not
@@ -67,6 +69,31 @@ class ForeignCurrencyController(
         return ResponseEntity.ok(mapOf("success" to true, "conversions" to page.content) + pageMeta(page))
     }
 
+    // Real Toss 외환 환율 알림 (exchange rate alert) -- see
+    // ForeignCurrencyWalletService.setRateAlert's own doc comment.
+    @PostMapping("/rate-alert")
+    fun setRateAlert(
+        @RequestBody request: SetRateAlertRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val alert = foreignCurrencyWalletService.setRateAlert(currentUser.userId, request.fromCurrency, request.toCurrency, request.targetRate, request.direction)
+        return ResponseEntity.ok(mapOf("success" to true, "alert" to alert))
+    }
+
+    @DeleteMapping("/rate-alert")
+    fun clearRateAlert(
+        @RequestParam fromCurrency: String,
+        @RequestParam toCurrency: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        foreignCurrencyWalletService.clearRateAlert(currentUser.userId, fromCurrency, toCurrency)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/rate-alerts")
+    fun getMyRateAlerts(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "alerts" to foreignCurrencyWalletService.getMyRateAlerts(currentUser.userId)))
+
     @ExceptionHandler(UnsupportedCurrencyException::class)
     fun handleUnsupportedCurrency(ex: UnsupportedCurrencyException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("UNSUPPORTED_CURRENCY", ex.message ?: "Bad request"))
@@ -86,6 +113,14 @@ class ForeignCurrencyController(
     @ExceptionHandler(ExchangeRateUnavailableException::class)
     fun handleRateUnavailable(ex: ExchangeRateUnavailableException) =
         ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(ApiError("EXCHANGE_RATE_UNAVAILABLE", ex.message ?: "Service unavailable"))
+
+    @ExceptionHandler(InvalidRateAlertException::class)
+    fun handleInvalidRateAlert(ex: InvalidRateAlertException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_RATE_ALERT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(ExchangeRateAlertNotFoundException::class)
+    fun handleRateAlertNotFound(ex: ExchangeRateAlertNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RATE_ALERT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(WalletNotFoundException::class)
     fun handleWalletNotFound(ex: WalletNotFoundException) =
