@@ -7704,3 +7704,32 @@ genuine, severe cluster-overload spike (idle 0%, load average 62.30) -- now docu
 self-resolving condition in a new `feedback_private_cloud_severe_overload_registry_refused` memory,
 resolved the same way as the prior two occurrences: waited for the primary node's `vmstat` to
 genuinely recover before retrying.
+
+## 112. KakaoTalk-style Today's Birthday in Talk
+
+**Added 2026-08-16 (verified 2026-08-17).** KakaoTalk's real "오늘의 생일" (Today's Birthday) feature
+surfaces friends with a birthday today in a dedicated section at the top of the friend list. itunda
+already had both real ingredients unconnected: a real Talk-contacts directory (`listTalkContacts`)
+and a real, already-settable `User.birthDate` (previously only used for Mini-wallet age
+eligibility) -- this feature is purely joining the two.
+
+**Built**: `MessagingService.getTodaysBirthdays(userId)` -- reuses the exact same real
+saved-contacts-only privacy discipline `listTalkContacts` already establishes (a birthday is only
+ever visible for someone the caller has saved as a real phone contact who is also a real itunda
+user, never a public search that would leak a stranger's birthday). Compares month+day only, never
+year, since a birthday recurs annually. Real `Africa/Kigali` local date, matching
+`Merchant.isClosedToday()`'s existing timezone convention. `GET
+/messages/contacts/birthdays-today`. bank-mfe's Friends tab gained a "Today's birthday" card above
+the regular contact list, rendering nothing when the list is empty. 3 new Kotest blocks.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a real user
+A and set their birth date to today's real date (`1995-08-16` -- caught and corrected a test-setup
+mistake along the way: an earlier system note claimed the date had rolled to 2026-08-17, but the
+real backend's own clock, checked via `date -u` and `TZ=Africa/Kigali date`, was still genuinely
+2026-08-16 at verification time; used the real clock, not the stale note). Registered a real user C
+with a birth date NOT matching today. Registered a real viewer B who saved both A and C as real
+Talk contacts. `GET /messages/contacts/birthdays-today` as B returned exactly user A (real
+`userId`/`name`) and correctly did NOT include C in the same real response -- both the inclusion
+and exclusion paths proven by a single real call, not two separately-trusted assertions. A control
+call from a fresh user D with zero saved contacts returned a real empty list with a real `200`, not
+an error.
