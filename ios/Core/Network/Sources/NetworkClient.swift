@@ -3815,6 +3815,11 @@ public struct EatsOrderDto: Decodable, Identifiable {
     public let deliveryFee: Double
     public let platformFee: Double
     public let totalAmount: Double
+    // Real Baemin-style tiered order-amount promotion (2026-08-16) -- itunda-funded,
+    // not restaurant-funded. See EatsPromotionCalculator's own doc comment on the
+    // backend. Zero for every order below the lowest real tier; the backend always
+    // includes this field now, matching every other required Double here.
+    public let promotionDiscount: Double
     public let transactionId: String
     public let deliveryPayoutTransactionId: String?
     public let status: String

@@ -1231,6 +1231,11 @@ private struct EatsOrderConfirmationView: View {
             Spacer()
             Text("Order placed").font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
             Text("\(Int(order.totalAmount)) RWF").font(IDS.Typography.largeAmount).foregroundColor(IDS.Colors.textPrimary)
+            // Real Baemin-style tiered order-amount promotion (2026-08-16) -- see
+            // EatsPromotionCalculator's own doc comment on the backend.
+            if order.promotionDiscount > 0 {
+                Text("\(Int(order.promotionDiscount)) RWF off, on us").font(.caption).foregroundColor(.green)
+            }
             Text("Delivering to \(order.deliveryAddress)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             Spacer()
             Button(action: onDone) {
