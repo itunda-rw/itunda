@@ -135,6 +135,18 @@ class RideTrip(
     @Column(name = "pin", length = 4)
     var pin: String? = null,
 
+    // Real Uber post-trip tipping (2026-08-16, uber.com/us/en/ride/how-it-works/tips) --
+    // "Tips go directly to drivers; Uber doesn't charge service fees on tips," addable
+    // "up to 30 days after your trip." Null means never tipped -- every existing trip's
+    // behavior completely unchanged. See RideTripService.tipDriver's own doc comment for
+    // the exact real enforcement (once only, COMPLETED trips only, 30-day window, no
+    // platform fee).
+    @Column(name = "tip_amount", precision = 18, scale = 2)
+    var tipAmount: BigDecimal? = null,
+
+    @Column(name = "tip_transaction_id", length = 64)
+    var tipTransactionId: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 

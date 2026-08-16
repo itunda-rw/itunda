@@ -77,6 +77,8 @@ data class RequestTripRequest(
 // the driver, told to them verbally by the passenger right before pickup.
 data class StartTripRequest(val pin: String)
 data class ShareTripStatusRequest(val conversationId: String)
+// Real Uber post-trip tipping -- see RideTripService.tipDriver's own doc comment.
+data class TipTripRequest(val amount: java.math.BigDecimal)
 
 // Real Kakao T-style ride-hailing -- see RideTripService's own doc comment for the full
 // sourced account. Normal itunda-user JWT gate.
@@ -226,6 +228,25 @@ class RideController(
     fun completeTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.completeTrip(currentUser.userId, tripId)))
 
+    // Real Uber post-trip tipping -- see RideTripService.tipDriver's own doc comment.
+    // Real Idempotency-Key required, same convention every other real money-moving
+    // endpoint in this codebase (requestTrip above, purchaseVoucher, placeOrder, ...)
+    // already establishes -- a tip is a real wallet-to-wallet transfer, never safe to
+    // silently retry.
+    @PostMapping("/trips/{tripId}/tip")
+    fun tipDriver(
+        @PathVariable tripId: String,
+        @RequestBody request: TipTripRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/rides/trips/$tripId/tip", idempotencyKey, request) {
+            val trip = rideTripService.tipDriver(currentUser.userId, tripId, request.amount)
+            200 to mapOf("success" to true, "trip" to trip)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
     @PostMapping("/trips/{tripId}/cancel")
     fun cancelTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.cancelTrip(currentUser.userId, tripId)))
@@ -354,6 +375,22 @@ class RideController(
     @ExceptionHandler(InvalidEarningsRangeException::class)
     fun handleInvalidEarningsRange(ex: InvalidEarningsRangeException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_EARNINGS_RANGE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(rw.itunda.rideshare.RideTripNotCompletedException::class)
+    fun handleRideTripNotCompleted(ex: rw.itunda.rideshare.RideTripNotCompletedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDE_TRIP_NOT_COMPLETED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(rw.itunda.rideshare.RideTripAlreadyTippedException::class)
+    fun handleRideTripAlreadyTipped(ex: rw.itunda.rideshare.RideTripAlreadyTippedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDE_TRIP_ALREADY_TIPPED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(rw.itunda.rideshare.RideTripTipWindowExpiredException::class)
+    fun handleRideTripTipWindowExpired(ex: rw.itunda.rideshare.RideTripTipWindowExpiredException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("RIDE_TRIP_TIP_WINDOW_EXPIRED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(rw.itunda.rideshare.InvalidTipAmountException::class)
+    fun handleInvalidTipAmount(ex: rw.itunda.rideshare.InvalidTipAmountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_TIP_AMOUNT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(java.time.format.DateTimeParseException::class)
     fun handleBadDate(ex: java.time.format.DateTimeParseException) =

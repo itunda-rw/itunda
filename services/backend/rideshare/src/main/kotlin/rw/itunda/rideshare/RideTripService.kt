@@ -51,6 +51,10 @@ class RideTooManyStopsException(message: String) : RuntimeException(message)
 class RideNoRemainingStopsException(message: String) : RuntimeException(message)
 class RidePinMismatchException(message: String) : RuntimeException(message)
 class InvalidEarningsRangeException(message: String) : RuntimeException(message)
+class RideTripNotCompletedException(message: String) : RuntimeException(message)
+class RideTripAlreadyTippedException(message: String) : RuntimeException(message)
+class RideTripTipWindowExpiredException(message: String) : RuntimeException(message)
+class InvalidTipAmountException(message: String) : RuntimeException(message)
 
 // Real Kakao T-style multi-stop waypoint input (item 214) -- see RideTripStop.kt's own
 // doc comment.
@@ -145,6 +149,12 @@ class RideTripService(
         // Real Kakao T-style multi-stop rides (item 214) -- Kakao T's own real,
         // currently-live cap on extra waypoints between pickup and dropoff.
         const val MAX_STOPS = 3
+
+        // Real Uber post-trip tipping window (uber.com/us/en/ride/how-it-works/tips):
+        // "you have 30 days to add a tip in the app." itunda's real trip has no separate
+        // completedAt column -- updatedAt is only ever touched again after COMPLETED by
+        // a tip itself, so it's the honest real completion timestamp to measure from.
+        val TIP_WINDOW: Duration = Duration.ofDays(30)
     }
 
     private val log = LoggerFactory.getLogger(RideTripService::class.java)
@@ -560,6 +570,64 @@ class RideTripService(
             // Real push (item 124) -- see acceptTrip's own doc comment above.
             sendTripPushAfterCommit(trip.passengerId, title, body, trip.id)
         }
+        return saved
+    }
+
+    /**
+     * Real Uber post-trip tipping (2026-08-16, uber.com/us/en/ride/how-it-works/tips) --
+     * "Tips go directly to drivers; Uber doesn't charge service fees on tips." A direct
+     * real passenger-wallet-to-driver-wallet transfer, never routed through
+     * `ride_holding` (unlike the fare itself) since a tip isn't itunda's revenue to hold
+     * or take a cut of. Real once-only ([RideTripAlreadyTippedException]) and real
+     * 30-day-window ([RideTripTipWindowExpiredException]) enforcement, matching Uber's
+     * own real published rules exactly.
+     */
+    @Transactional
+    fun tipDriver(passengerUserId: String, tripId: String, amount: BigDecimal): RideTrip {
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.passengerId != passengerUserId) {
+            throw RideTripNotFoundException("Trip not found")
+        }
+        if (amount <= BigDecimal.ZERO) {
+            throw InvalidTipAmountException("Tip amount must be greater than zero")
+        }
+        if (trip.status != RideTripStatus.COMPLETED) {
+            throw RideTripNotCompletedException("Only a completed trip can be tipped")
+        }
+        if (trip.tipAmount != null) {
+            throw RideTripAlreadyTippedException("This trip has already been tipped")
+        }
+        if (Instant.now().isAfter(trip.updatedAt.plus(TIP_WINDOW))) {
+            throw RideTripTipWindowExpiredException("Tips can only be added within ${TIP_WINDOW.toDays()} days of trip completion")
+        }
+        val driverId = trip.driverId ?: throw RideDriverNotRegisteredException("Driver not found")
+        val driver = rideDriverRepository.findById(driverId).orElseThrow { RideDriverNotRegisteredException("Driver not found") }
+        val passengerWallet = walletRepository.findByUserIdAndType(passengerUserId, WalletType.MAIN)
+            ?: throw RideDriverNoWalletException("No wallet found for this account")
+        val driverWallet = walletRepository.findById(driver.walletId)
+            .orElseThrow { RideDriverNoWalletException("Driver settlement wallet not found") }
+        if (passengerWallet.availableBalance < amount) {
+            throw InsufficientFundsException("Insufficient available balance for this tip")
+        }
+        val result = ledgerService.postLedgerTransaction(
+            passengerWallet.currency,
+            listOf(
+                LedgerLeg(passengerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Tip for ride to ${trip.dropoffAddress}"),
+                LedgerLeg(driverWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Tip received"),
+            ),
+        )
+        trip.tipAmount = amount
+        trip.tipTransactionId = result.transactionId
+        val saved = rideTripRepository.save(trip)
+        val title = "You received a tip"
+        val body = "You received a ${amount} RWF tip for a recent trip."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = driver.userId, type = "RIDE_TIP_RECEIVED",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+            ),
+        )
+        sendTripPushAfterCommit(driver.userId, title, body, trip.id)
         return saved
     }
 

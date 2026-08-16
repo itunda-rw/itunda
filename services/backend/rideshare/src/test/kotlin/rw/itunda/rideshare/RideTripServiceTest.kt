@@ -751,6 +751,143 @@ class RideTripServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real completed trip, eligible to be tipped") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
+        )
+
+        val driver = RideDriver(id = "driver_tip", userId = "driver_user_tip", walletId = "wallet_driver_tip")
+        val driverWallet = Wallet(
+            id = "wallet_driver_tip", userId = "driver_user_tip", accountNumber = "1000000002", accountName = "Driver",
+            type = WalletType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
+        )
+        val passengerWallet = Wallet(
+            id = "wallet_passenger_tip", userId = "passenger_tip", accountNumber = "1000000003", accountName = "Passenger",
+            type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        )
+        val trip = RideTrip(
+            id = "ride_trip_tip_1", passengerId = "passenger_tip", driverId = "driver_tip",
+            pickupAddress = "Kigali Center", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
+            dropoffAddress = "Nyamirambo", dropoffLatitude = -1.9700, dropoffLongitude = 30.0450,
+            distanceKm = BigDecimal("3.660"),
+            fare = BigDecimal("2000"), platformFee = BigDecimal("30"), transactionId = "ledgertxn_tip_1",
+            status = RideTripStatus.COMPLETED, updatedAt = java.time.Instant.now(),
+        )
+
+        every { rideTripRepository.findById("ride_trip_tip_1") } returns java.util.Optional.of(trip)
+        every { rideDriverRepository.findById("driver_tip") } returns java.util.Optional.of(driver)
+        every { walletRepository.findByUserIdAndType("passenger_tip", WalletType.MAIN) } returns passengerWallet
+        every { walletRepository.findById("wallet_driver_tip") } returns java.util.Optional.of(driverWallet)
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_tip_result", emptyList())
+        every { rideTripRepository.save(any()) } answers { firstArg() }
+
+        When("the real passenger tips the driver") {
+            val result = service.tipDriver("passenger_tip", "ride_trip_tip_1", BigDecimal("500"))
+
+            Then("it records the real tip amount and a real transaction id, no platform fee leg") {
+                result.tipAmount shouldBe BigDecimal("500")
+                result.tipTransactionId shouldBe "ledgertxn_tip_result"
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(
+                        any(),
+                        match { legs -> legs.size == 2 && legs.none { it.accountType == rw.itunda.core.domain.LedgerAccountType.FEE_REVENUE } },
+                    )
+                }
+            }
+
+            Then("it notifies the real driver they received a tip") {
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "RIDE_TIP_RECEIVED" && it.userId == "driver_user_tip" }) }
+            }
+        }
+
+        When("the same trip is tipped a second time") {
+            val tipped = trip.also { it.tipAmount = BigDecimal("500"); it.tipTransactionId = "ledgertxn_tip_result" }
+            every { rideTripRepository.findById("ride_trip_tip_1") } returns java.util.Optional.of(tipped)
+
+            Then("it throws RideTripAlreadyTippedException before touching the ledger") {
+                try {
+                    service.tipDriver("passenger_tip", "ride_trip_tip_1", BigDecimal("500"))
+                    error("expected RideTripAlreadyTippedException")
+                } catch (e: RideTripAlreadyTippedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("a trip that isn't COMPLETED yet is tipped") {
+            val inProgress = RideTrip(
+                id = "ride_trip_tip_1", passengerId = "passenger_tip", driverId = "driver_tip",
+                pickupAddress = "Kigali Center", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
+                dropoffAddress = "Nyamirambo", dropoffLatitude = -1.9700, dropoffLongitude = 30.0450,
+                distanceKm = BigDecimal("3.660"),
+                fare = BigDecimal("2000"), platformFee = BigDecimal("30"), transactionId = "ledgertxn_tip_1",
+                status = RideTripStatus.IN_PROGRESS,
+            )
+            every { rideTripRepository.findById("ride_trip_tip_1") } returns java.util.Optional.of(inProgress)
+
+            Then("it throws RideTripNotCompletedException before touching the ledger") {
+                try {
+                    service.tipDriver("passenger_tip", "ride_trip_tip_1", BigDecimal("500"))
+                    error("expected RideTripNotCompletedException")
+                } catch (e: RideTripNotCompletedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("someone who isn't this trip's real passenger tries to tip") {
+            Then("it throws RideTripNotFoundException before touching the ledger") {
+                try {
+                    service.tipDriver("a_stranger", "ride_trip_tip_1", BigDecimal("500"))
+                    error("expected RideTripNotFoundException")
+                } catch (e: RideTripNotFoundException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("the real passenger tips more than 30 days after real trip completion") {
+            val stale = RideTrip(
+                id = "ride_trip_tip_1", passengerId = "passenger_tip", driverId = "driver_tip",
+                pickupAddress = "Kigali Center", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
+                dropoffAddress = "Nyamirambo", dropoffLatitude = -1.9700, dropoffLongitude = 30.0450,
+                distanceKm = BigDecimal("3.660"),
+                fare = BigDecimal("2000"), platformFee = BigDecimal("30"), transactionId = "ledgertxn_tip_1",
+                status = RideTripStatus.COMPLETED, updatedAt = java.time.Instant.now().minus(java.time.Duration.ofDays(31)),
+            )
+            every { rideTripRepository.findById("ride_trip_tip_1") } returns java.util.Optional.of(stale)
+
+            Then("it throws RideTripTipWindowExpiredException before touching the ledger") {
+                try {
+                    service.tipDriver("passenger_tip", "ride_trip_tip_1", BigDecimal("500"))
+                    error("expected RideTripTipWindowExpiredException")
+                } catch (e: RideTripTipWindowExpiredException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("the real passenger tries to tip a non-positive amount") {
+            Then("it throws InvalidTipAmountException before touching the ledger") {
+                try {
+                    service.tipDriver("passenger_tip", "ride_trip_tip_1", BigDecimal.ZERO)
+                    error("expected InvalidTipAmountException")
+                } catch (e: InvalidTipAmountException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }
