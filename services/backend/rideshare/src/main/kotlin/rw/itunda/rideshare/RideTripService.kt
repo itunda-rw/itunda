@@ -10,6 +10,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.RideDriver
 import rw.itunda.core.domain.RideTrip
@@ -30,6 +31,7 @@ import rw.itunda.core.repository.RideTripRepository
 import rw.itunda.core.repository.RideTripStopRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
@@ -107,6 +109,7 @@ class RideTripService(
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
     private val pushNotificationService: PushNotificationService,
+    private val messagingService: MessagingService,
 ) {
     companion object {
         private val platformFeeRate = BigDecimal("0.015")
@@ -443,6 +446,40 @@ class RideTripService(
         val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
         if (trip.passengerId != passengerUserId) throw RideTripNotFoundException("Trip not found")
         return trip.pin ?: ""
+    }
+
+    // Real Uber "Share Trip Status" (2026-08-16, help.uber.com/en/riders/article/
+    // sharing-your-trip-status-faq) -- Uber's own real feature sends an unauthenticated
+    // public link (no app required) showing a live map + driver name/plate to up to 5
+    // contacts. itunda has no public, unauthenticated share-link surface anywhere (every
+    // screen is auth-gated, same real constraint EatsFavoriteService
+    // .shareFavoritesToConversation's own doc comment already names for an identical
+    // gap), so the honest analogue is itunda's own established "send a real message into
+    // a real Talk conversation" convention -- same shape that favorites-sharing already
+    // uses, just a plain formatted text snapshot rather than a live-updating link (no
+    // push-driven message-edit infrastructure exists to keep it live either). Also
+    // honestly scoped to what RideDriver actually has: no name/vehicle-plate field
+    // exists on this entity at all (the same real limitation DriverRatingSection's own
+    // doc comment already names), so the shared message includes trip status, pickup/
+    // dropoff addresses, and the driver's real current coordinates (if assigned) --
+    // never a fabricated name or plate.
+    @Transactional
+    fun shareTripStatus(passengerUserId: String, tripId: String, conversationId: String): Message {
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.passengerId != passengerUserId) throw RideTripNotFoundException("Trip not found")
+        messagingService.getConversationForParticipant(passengerUserId, conversationId)
+
+        val driverLocation = trip.driverId?.let { driverId ->
+            rideDriverRepository.findById(driverId).orElse(null)
+                ?.takeIf { it.currentLatitude != null && it.currentLongitude != null }
+        }
+        val locationLine = driverLocation?.let {
+            "\nDriver's last known location: ${it.currentLatitude}, ${it.currentLongitude}"
+        } ?: ""
+        val body = "🚗 My ride status: ${trip.status}\n" +
+            "From: ${trip.pickupAddress}\n" +
+            "To: ${trip.dropoffAddress}$locationLine"
+        return messagingService.sendMessage(passengerUserId, conversationId, body)
     }
 
     @Transactional

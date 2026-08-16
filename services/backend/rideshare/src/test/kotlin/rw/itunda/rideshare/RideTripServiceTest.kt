@@ -10,6 +10,7 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.RideDriver
 import rw.itunda.core.domain.RideTrip
 import rw.itunda.core.domain.RideTripStatus
@@ -26,6 +27,8 @@ import rw.itunda.core.repository.RideTripRepository
 import rw.itunda.core.repository.RideTripStopRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.messaging.ConversationNotFoundException
+import rw.itunda.messaging.MessagingService
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
@@ -50,9 +53,10 @@ class RideTripServiceTest : BehaviorSpec({
         notificationRepository: NotificationRepository = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
+        messagingService: rw.itunda.messaging.MessagingService = mockk(relaxed = true),
     ) = RideTripService(
         rideDriverRepository, rideTripRepository, rideTripStopRepository, walletRepository, ledgerService,
-        transactionRepository, notificationRepository, rateLimiter, pushNotificationService,
+        transactionRepository, notificationRepository, rateLimiter, pushNotificationService, messagingService,
     )
 
     Given("a real passenger with sufficient balance and one real nearby driver") {
@@ -615,6 +619,72 @@ class RideTripServiceTest : BehaviorSpec({
                     error("expected InvalidEarningsRangeException")
                 } catch (e: InvalidEarningsRangeException) {
                     verify(exactly = 0) { rideTripRepository.findByDriverIdAndStatusAndCreatedAtBetween(any(), any(), any(), any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real completed trip with a driver whose location is known, and a real Talk conversation") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val messagingService = mockk<MessagingService>()
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            messagingService = messagingService,
+        )
+
+        val trip = RideTrip(
+            id = "ride_trip_share_1", passengerId = "passenger_share", driverId = "driver_share",
+            pickupAddress = "Kigali Center", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
+            dropoffAddress = "Nyamirambo", dropoffLatitude = -1.9700, dropoffLongitude = 30.0450,
+            distanceKm = BigDecimal("3.660"),
+            fare = BigDecimal("2000"), platformFee = BigDecimal("30"), transactionId = "ledgertxn_share_1",
+            status = RideTripStatus.IN_PROGRESS,
+        )
+        val driver = RideDriver(
+            id = "driver_share", userId = "driver_user_share", walletId = "wallet_share",
+            currentLatitude = -1.9600, currentLongitude = 30.0500,
+        )
+        every { rideTripRepository.findById("ride_trip_share_1") } returns Optional.of(trip)
+        every { rideDriverRepository.findById("driver_share") } returns Optional.of(driver)
+
+        When("the real passenger shares it into a real conversation they're a participant of") {
+            every { messagingService.getConversationForParticipant("passenger_share", "conv_1") } returns mockk()
+            val sentMessage = mockk<Message>()
+            val bodySlot = slot<String>()
+            every { messagingService.sendMessage("passenger_share", "conv_1", capture(bodySlot)) } returns sentMessage
+
+            val result = service.shareTripStatus("passenger_share", "ride_trip_share_1", "conv_1")
+
+            Then("it sends a real message with the trip's real status, addresses, and the driver's real current location") {
+                result shouldBe sentMessage
+                bodySlot.captured shouldBe
+                    "🚗 My ride status: IN_PROGRESS\nFrom: Kigali Center\nTo: Nyamirambo\n" +
+                    "Driver's last known location: -1.96, 30.05"
+            }
+        }
+
+        When("someone who isn't this trip's real passenger tries to share it") {
+            Then("it throws RideTripNotFoundException before ever touching messaging") {
+                try {
+                    service.shareTripStatus("a_stranger", "ride_trip_share_1", "conv_1")
+                    error("expected RideTripNotFoundException")
+                } catch (e: RideTripNotFoundException) {
+                    verify(exactly = 0) { messagingService.sendMessage(any(), any(), any()) }
+                }
+            }
+        }
+
+        When("the real passenger shares it into a conversation they aren't actually a participant of") {
+            every { messagingService.getConversationForParticipant("passenger_share", "conv_2") } throws
+                ConversationNotFoundException("Conversation not found")
+
+            Then("the real ConversationNotFoundException propagates and no message is sent") {
+                try {
+                    service.shareTripStatus("passenger_share", "ride_trip_share_1", "conv_2")
+                    error("expected ConversationNotFoundException")
+                } catch (e: ConversationNotFoundException) {
+                    verify(exactly = 0) { messagingService.sendMessage(any(), any(), any()) }
                 }
             }
         }

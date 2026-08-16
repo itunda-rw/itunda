@@ -132,6 +132,16 @@ export const fetchRideTripPin = (tripId: string) =>
 export const completeRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/complete`, { method: 'POST' }).then((r) => r.trip);
 
+// Real Uber "Share Trip Status" (2026-08-16, help.uber.com/en/riders/article/
+// sharing-your-trip-status-faq) -- see backend RideTripService.shareTripStatus's own
+// doc comment for why this sends into a real Talk conversation rather than an
+// unauthenticated public link (itunda has no such surface).
+export const shareRideTripStatus = (tripId: string, conversationId: string) =>
+  apiFetch<{ success: boolean; message: { id: string } }>(`/api/v1/rides/trips/${tripId}/share`, {
+    method: 'POST',
+    body: JSON.stringify({ conversationId }),
+  }).then((r) => r.message);
+
 export const cancelRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/cancel`, { method: 'POST' }).then((r) => r.trip);
 

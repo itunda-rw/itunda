@@ -73,6 +73,7 @@ data class RequestTripRequest(
 // Real Uber "Verify Your Ride" PIN (see RideTrip.pin's own doc comment) -- entered by
 // the driver, told to them verbally by the passenger right before pickup.
 data class StartTripRequest(val pin: String)
+data class ShareTripStatusRequest(val conversationId: String)
 
 // Real Kakao T-style ride-hailing -- see RideTripService's own doc comment for the full
 // sourced account. Normal itunda-user JWT gate.
@@ -191,6 +192,18 @@ class RideController(
     fun getTripPin(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "pin" to rideTripService.getTripPin(currentUser.userId, tripId)))
 
+    // Real Uber "Share Trip Status" -- see RideTripService.shareTripStatus's own doc
+    // comment.
+    @PostMapping("/trips/{tripId}/share")
+    fun shareTripStatus(
+        @PathVariable tripId: String,
+        @RequestBody request: ShareTripStatusRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val message = rideTripService.shareTripStatus(currentUser.userId, tripId, request.conversationId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
+    }
+
     @PostMapping("/trips/{tripId}/complete")
     fun completeTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.completeTrip(currentUser.userId, tripId)))
@@ -287,6 +300,10 @@ class RideController(
     @ExceptionHandler(RideTripNotFoundException::class)
     fun handleTripNotFound(ex: RideTripNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RIDE_TRIP_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(rw.itunda.messaging.ConversationNotFoundException::class)
+    fun handleConversationNotFound(ex: rw.itunda.messaging.ConversationNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CONVERSATION_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RideTripAlreadyClaimedException::class)
     fun handleAlreadyClaimed(ex: RideTripAlreadyClaimedException) =

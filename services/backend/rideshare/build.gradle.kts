@@ -13,6 +13,10 @@ dependencyManagement {
 dependencies {
     implementation(project(":core"))
     implementation(project(":auth"))
+    // Real Uber "Share Trip Status" (2026-08-16) -- see RideTripService.shareTripStatus's
+    // own doc comment. Mirrors EatsFavoriteService.shareFavoritesToConversation's exact
+    // existing use of MessagingService.
+    implementation(project(":messaging"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

@@ -202,7 +202,7 @@ import {
 import {
   acceptRideTrip, arriveAtRideStop, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
   fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchRideTripPin, fetchTripStops, registerAsDriver, requestRideTrip, setDriverAvailability,
-  startRideTrip, submitRideReview, updateDriverLocation,
+  shareRideTripStatus, startRideTrip, submitRideReview, updateDriverLocation,
   type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop,
 } from './lib/rideshare';
 import {
@@ -14550,7 +14550,9 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
 // (unlike ForwardPickerModal's DIRECT+GROUP picker), matching backend
 // EatsFavoriteService.shareFavoritesToConversation's own 1:1-conversation-only
 // capability (built on MessagingService, not GroupMessagingService).
-function ShareFavoritesModal({ onShare, onClose }: { onShare: (conversationId: string) => void; onClose: () => void }) {
+function ShareFavoritesModal({
+  onShare, onClose, title = 'Share favorites to…',
+}: { onShare: (conversationId: string) => void; onClose: () => void; title?: string }) {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
 
   useEffect(() => {
@@ -14567,7 +14569,7 @@ function ShareFavoritesModal({ onShare, onClose }: { onShare: (conversationId: s
         style={{ width: '100%', maxHeight: '60vh', overflowY: 'auto', borderRadius: '16px 16px 0 0', margin: 0 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Share favorites to…</p>
+        <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>{title}</p>
         {conversations === null ? (
           <div className="itunda-card skeleton" style={{ height: '100px' }} />
         ) : conversations.length === 0 ? (
@@ -15162,6 +15164,9 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   // Real Uber "Verify Your Ride" PIN -- see lib/rideshare.ts's own doc comment. Fetched
   // once a driver is assigned so the passenger can read it aloud before pickup.
   const [activeTripPin, setActiveTripPin] = useState<string | null>(null);
+  // Real Uber "Share Trip Status" -- see lib/rideshare.ts's own doc comment.
+  const [showShareTripModal, setShowShareTripModal] = useState(false);
+  const [shareTripError, setShareTripError] = useState<string | null>(null);
   // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- 'now' is unchanged
   // ASAP dispatch; 'later' holds a datetime-local value the passenger picks.
   const [rideTiming, setRideTiming] = useState<'now' | 'later'>('now');
@@ -15232,6 +15237,16 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       setRideError(err instanceof ApiError ? err.message : 'Could not cancel this trip.');
     } finally {
       setBusyTripId(null);
+    }
+  };
+
+  const handleShareTripStatus = async (tripId: string, conversationId: string) => {
+    setShareTripError(null);
+    try {
+      await shareRideTripStatus(tripId, conversationId);
+      setShowShareTripModal(false);
+    } catch (err) {
+      setShareTripError(err instanceof ApiError ? err.message : 'Could not share your trip status.');
     }
   };
 
@@ -15400,6 +15415,10 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                       </div>
                     )}
                     {activeTrip.driverId && <DriverRatingSection driverId={activeTrip.driverId} />}
+                    <button className="itunda-btn itunda-btn-secondary" onClick={() => setShowShareTripModal(true)}>
+                      Share trip status
+                    </button>
+                    {shareTripError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{shareTripError}</p>}
                     {activeTrip.status !== 'IN_PROGRESS' && (
                       <button className="itunda-btn itunda-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
                         {busyTripId === activeTrip.id ? 'Cancelling…' : 'Cancel ride'}
@@ -15408,6 +15427,13 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                   </>
                 )}
               />
+              {showShareTripModal && (
+                <ShareFavoritesModal
+                  title="Share ride status to…"
+                  onShare={(conversationId) => handleShareTripStatus(activeTrip.id, conversationId)}
+                  onClose={() => setShowShareTripModal(false)}
+                />
+              )}
             </div>
           ) : (
             <div className="itunda-card" style={{ marginBottom: '20px' }}>
