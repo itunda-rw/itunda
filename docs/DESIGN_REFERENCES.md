@@ -6970,3 +6970,45 @@ send-hold-claim money loop against the deployed backend); iOS ported, partially 
 `ItundaApp` App-target build is blocked by an unrelated, pre-existing environment regression -- see
 `project_itunda_ios_build_env` memory); Android ported, compile-verified only. The backend itself was
 never touched this pass -- it was already fully built and live-proven before any client existed.
+
+## 89. Ride PIN verification (Uber "Verify Your Ride")
+
+**Added 2026-08-16.** A fresh ecosystem research pass (Uber and Karrot were the two least-explored
+ecosystems in this file by mention density -- 22 and 37 respectively vs. Toss's 318) found Uber's
+real "Verify Your Ride" PIN feature (uber.com/pl/en/blog/pin-number, help.uber.com's own
+"What's Verify my Ride?" article): a 4-digit code issued per trip, the rider tells it to the driver,
+the driver enters it before the trip actually starts -- confirming the right passenger is getting
+into the right car before the fare clock begins. Checked against itunda's own code:
+`RideTripService.startTrip` flipped straight from `DRIVER_ASSIGNED` to `IN_PROGRESS` with zero
+identity confirmation of any kind, on any platform. A genuinely missing, buildable safety gap.
+
+**Built**: `RideTrip.pin` (migration V250, nullable so pre-existing in-flight trips aren't
+locked out), generated at request time via the same `.random()` convention
+`MerchantService.generateUssdCode` already established for a similar short numeric code (not a
+cryptographic secret -- a real-time verbal-confirmation code, same threat model). `@JsonIgnore` on
+the field itself, so it can never leak through any driver-facing endpoint that serializes a raw
+`RideTrip` (`getMyDriverTrips`, `acceptTrip`'s own response, etc.) -- only the new passenger-only
+`GET /trips/{id}/pin` explicitly re-includes it, with the same sender-or-recipient-style 404 IDOR
+check every other resource lookup in this codebase uses. `startTrip` now requires the PIN and
+throws a real `RidePinMismatchException` (400 `INCORRECT_RIDE_PIN`) on a wrong one.
+
+**Real near-miss caught before deploy, worth remembering**: the first pass only checked bank-mfe for
+existing callers of `POST /trips/{id}/start` (an initial grep for the literal string `"startTrip"`
+missed both native apps' real function name, `startRideTrip`). Both Android (`RideScreen.kt`) and
+iOS (`RideScreenView.swift`) turned out to have full, already-shipped native driver flows calling
+that exact endpoint -- had the image deployed with only bank-mfe fixed, every real driver on both
+native apps would have hit a real 400 the next time they tried to start a trip. Caught and fixed
+before push by re-checking all 3 platforms by the correct function name -- see
+[[feedback_backend_contract_change_all_clients]] for the standing lesson this produced. Built:
+a PIN entry field before "Start trip" on all 3 platforms, and the passenger's own active-trip view
+shows their PIN once a driver is assigned, on all 3 platforms too.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: requested a real trip
+(fare 1893 RWF, funded via a direct DB top-up since no test account had real ride-fare-sized funds),
+accepted it as a second real test driver. Confirmed the driver's own `GET
+/trips/my-driver-trips` response contains zero `pin` field anywhere (`@JsonIgnore` working).
+Confirmed the passenger's `GET /trips/{id}/pin` returned the real PIN (`4096`) while the SAME
+endpoint called by the driver real-404'd (`RIDE_TRIP_NOT_FOUND`, the IDOR check working both ways).
+`POST /trips/{id}/start` with the wrong PIN (`0000`) real-400'd with `INCORRECT_RIDE_PIN`; with the
+correct PIN it real-200'd and the trip genuinely moved to `IN_PROGRESS`. Completed the trip
+afterward to confirm the full lifecycle still works end to end (real payout transaction posted).
