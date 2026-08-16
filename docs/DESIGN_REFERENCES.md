@@ -6826,3 +6826,35 @@ field was silently dropped by both Android's `EatsOrderDto` (Gson ignores unknow
 crash, just a quiet display gap) and iOS's `EatsOrderDto`. Added the field to both, plus a "X RWF
 off, on us" line to each platform's own `EatsOrderConfirmationView`, mirroring bank-mfe's identical
 addition -- now all 3 platforms show the real discount consistently.
+
+## 86. USSD merchant payment completion (Toss Payments ARS결제-style)
+
+**Added 2026-08-16.** Toss Payments' real ARS결제 feature (docs.tosspayments.com/resources/
+release-note, 2026) confirms a pending payment over the phone -- built for call-center/telesales
+contexts where the customer has no app or browser open. itunda already had both real halves this
+needs: the external "Pay with itunda" checkout API (`PaymentsApiController`) creates a real
+`PaymentIntent`, and `UssdService` already operates a real `*XXX#`-style feature-phone channel
+(check balance, send money, mini statement, set PIN) -- but zero path connected them. A customer
+told a payment reference over the phone had no way to complete it without a smartphone/data.
+
+**The real blocker, found and closed**: `PaymentIntent`'s existing id (`"pi_<uuid>"`) is unusable
+on a feature-phone numeric keypad. Added a real, short, collision-checked 6-digit `ussdCode`
+generated alongside every intent (migration V249) specifically for USSD use, resolved via a new
+`PaymentIntentRepository.findByUssdCode`.
+
+**Built**: new USSD menu option "5. Pay a merchant" -- enter the code, enter PIN, completes via the
+exact same, already-proven `MerchantService.collect` every other channel (QR, Face Pay, static QR)
+already uses. No new money-movement logic, purely a new real entry point into it. Added a real
+`"USSD"` channel label so the transaction memo correctly reflects the channel rather than falling
+through to the QR default. `:ussd` now depends on `:merchant`, mirroring the existing `:p2p`
+dependency `handleSendMoney` already has.
+
+**No client-side work needed, by design**: USSD's whole real point is working without a
+smartphone/app/data connection -- there is no bank-mfe/Android/iOS UI for this feature to have, the
+existing `*XXX#` gateway webhook is the entire real interface.
+
+**Verified**: full backend compiles clean, all `:ussd`/`:merchant` tests pass (2 existing
+`MerchantServiceTest` cases needed a new `existsByUssdCode` stub; 1 new `UssdServiceTest` Given
+block covers both the real success path and a not-found code). `scripts/verify-ledger-account-seeds.py`
+confirmed clean -- this feature reuses `collect()`'s existing ledger accounts, no new
+`LedgerAccountType` introduced.
