@@ -1,5 +1,6 @@
 package rw.itunda.bills
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.BillAutoPaySetting
@@ -61,6 +62,8 @@ class BillsService(
     private val transactionRepository: TransactionRepository,
     private val billAutoPaySettingRepository: BillAutoPaySettingRepository,
 ) {
+    private val log = LoggerFactory.getLogger(BillsService::class.java)
+
     fun getProviders() = BillsCatalog.providers
     fun getPendingBills() = BillsCatalog.pendingBills
 
@@ -111,10 +114,22 @@ class BillsService(
             if (pendingBill.id == setting.lastPaidBillId) continue
             if (BigDecimal(pendingBill.amount) > setting.maxAmount) continue
 
-            val payment = payBill(setting.userId, pendingBill.id, BigDecimal(pendingBill.amount), setting.accountNumber, null)
-            setting.lastPaidBillId = pendingBill.id
-            billAutoPaySettingRepository.save(setting)
-            results.add(payment + mapOf("providerId" to provider.id, "billId" to pendingBill.id))
+            // Real per-user resilience -- this whole method is one @Transactional unit
+            // (payBill's own @Transactional has no effect on internal self-invocation, a
+            // well-known Spring pitfall), so an uncaught InsufficientFundsException or
+            // ProviderDeclinedException for one user here would silently roll back every
+            // other user's already-processed auto-payment in the same sweep. Caught and
+            // logged instead, same per-row resilience discipline
+            // OrderAcceptanceExpiryScheduler/StockPriceAlertScheduler's own schedulers
+            // already establish for an identical class of "one bad row" risk.
+            try {
+                val payment = payBill(setting.userId, pendingBill.id, BigDecimal(pendingBill.amount), setting.accountNumber, null)
+                setting.lastPaidBillId = pendingBill.id
+                billAutoPaySettingRepository.save(setting)
+                results.add(payment + mapOf("providerId" to provider.id, "billId" to pendingBill.id))
+            } catch (e: Exception) {
+                log.error("Auto-pay failed for user {} provider {}: {}", setting.userId, provider.id, e.message)
+            }
         }
         return results
     }

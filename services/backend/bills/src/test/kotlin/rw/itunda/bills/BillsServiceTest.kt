@@ -186,6 +186,43 @@ class BillsServiceTest : BehaviorSpec({
                 saved.captured.active shouldBe false
             }
         }
+
+        When("one of two active settings fails against the ledger") {
+            val wallet2 = Wallet(
+                id = "wallet_2", userId = "user_2", accountNumber = "ACC-2", accountName = "Test wallet 2",
+                type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
+            )
+            every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns wallet2
+
+            val failingSetting = setting(BigDecimal("50000"))
+            val succeedingSetting = BillAutoPaySetting(
+                id = "setting_2", userId = "user_2", providerId = "b2",
+                accountNumber = "WASAC-67890", maxAmount = BigDecimal("50000"), active = true, lastPaidBillId = null,
+            )
+            every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(failingSetting, succeedingSetting)
+
+            // failingSetting (user_1/bill_1) is processed first and throws; this proves the
+            // self-invocation @Transactional pitfall fix -- without the per-row try/catch this
+            // whole sweep is really one DB transaction, so an uncaught exception here would
+            // silently roll back succeedingSetting's already-committed payment too.
+            every {
+                ledgerService.postLedgerTransaction(any(), any())
+            } throws IllegalStateException("insufficient funds") andThen LedgerPostResult("ledgertxn_2", emptyList())
+
+            val results = service.processAutoPayments()
+
+            Then("the failing setting is skipped but the other user's payment still succeeds") {
+                results.size shouldBe 1
+                results[0]["billId"] shouldBe "bill_2"
+                verify(exactly = 2) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 1) {
+                    billAutoPaySettingRepository.save(match { it.id == "setting_2" && it.lastPaidBillId == "bill_2" })
+                }
+                verify(exactly = 0) {
+                    billAutoPaySettingRepository.save(match { it.id == "setting_1" })
+                }
+            }
+        }
     }
 })  {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
