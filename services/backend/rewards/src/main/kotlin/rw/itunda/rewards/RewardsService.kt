@@ -11,6 +11,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DailyStepRewardRepository
+import rw.itunda.core.repository.KnowledgeAnswerRepository
 import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -52,6 +53,7 @@ class RewardsService(
     private val savingsGoalRepository: SavingsGoalRepository,
     private val userRepository: UserRepository,
     private val dailyStepRewardRepository: DailyStepRewardRepository,
+    private val knowledgeAnswerRepository: KnowledgeAnswerRepository,
 ) {
 
     // Static catalog, same convention as InsuranceService's insurancePlans / LoansService's
@@ -63,6 +65,13 @@ class RewardsService(
         RewardTaskDef("task_first_bill", "Pay your first bill", "Use itunda to pay any utility bill", BigDecimal("500")),
         RewardTaskDef("task_savings_goal", "Set a savings goal", "Start building your savings with itunda", BigDecimal("300")),
         RewardTaskDef("task_referral", "Refer a friend", "Invite a friend who completes their first transaction", BigDecimal("5000")),
+        // Real Naver Pay non-transactional engagement reward (sourced: Naver Pay's real
+        // points system pays out for Knowledge iN Q&A participation, not just spending)
+        // -- itunda's own KnowledgeService is a real, already-shipped Naver 지식iN-style
+        // Q&A feature whose own doc comment already named this exact gap as a deferred
+        // follow-up. Every other catalog task rewards a transaction or a one-time setup
+        // step; this is the first that rewards genuine community help.
+        RewardTaskDef("task_knowledge_answer_adopted", "Get an answer adopted", "Help someone in Community Q&A and have your answer marked best", BigDecimal("500")),
     )
 
     // Real-activity verification (2026-07-16/17). Closes the parity matrix's "claiming
@@ -89,6 +98,7 @@ class RewardsService(
         "task_profile" -> userRepository.findById(userId)
             .map { it.profilePhotoUrl != null && it.emailVerified }
             .orElse(false)
+        "task_knowledge_answer_adopted" -> knowledgeAnswerRepository.countByAnswererIdAndIsAdoptedTrue(userId) > 0
         else -> false
     }
 
