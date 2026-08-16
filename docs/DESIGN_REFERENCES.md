@@ -7303,3 +7303,41 @@ of every 0-favorite merchant in the list -- a real, correct descending sort. The
 WITHOUT `sortBy` still returned `favoriteCount` on every merchant but in a genuinely different,
 unsorted order (a 0-favorite merchant ranked ahead of the 3-favorite Grill) -- proving the sort
 param does real work rather than being silently ignored.
+
+## 100. Baemin-style favorites-list sharing (찜 리스트 공유하기)
+
+**Added 2026-08-16.** Baemin lets a buyer share their bookmarked-restaurant list with a friend --
+distinct from Section 99's favorite-*count* feature. itunda has no public, unauthenticated
+share-link surface anywhere (every screen is auth-gated), so the honest analogue is itunda's own
+established "send a real message into a real Talk conversation" convention -- same shape
+`GiftVoucherService.purchaseVoucher` and Marketplace's sold-notification already use, a plain
+formatted text body rather than a bespoke rendered card (no custom message-type infrastructure
+exists yet to build one of those).
+
+**Built**: `EatsFavoriteService.shareFavoritesToConversation(userId, conversationId)` -- real IDOR
+check via `MessagingService.getConversationForParticipant` (a non-participant gets a real 404, not
+a leak), takes the caller's top 5 favorites (newest-first, matching `getMyFavorites`'s own existing
+order), formats them as a numbered list, and sends via the existing `MessagingService.sendMessage`.
+Real `NO_FAVORITES_TO_SHARE` rejection for a caller with zero favorites. `POST
+/api/v1/eats/favorites/share`. bank-mfe's `FavoriteRestaurantsView` gained a "Share favorites"
+button opening `ShareFavoritesModal`, a DIRECT-only conversation picker mirroring
+`ForwardPickerModal` but deliberately scoped to what the backend actually supports (no group
+sharing). 3 new Kotest blocks: real send, zero-favorites rejection, non-participant IDOR check.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered 3 fresh real
+users (A, B, C). A favorited 2 real restaurants and started a real DIRECT conversation with B.
+`POST /eats/favorites/share` as A returned a real `201` with a message body reading `"❤️ My
+favorite restaurants:\n1. Popular Kigali Grill\n2. Heaven Kigali"` -- A's actual favorites, in the
+real newest-first order. C (never a participant in that conversation) calling the identical
+endpoint with the same `conversationId` got a real `404 CONVERSATION_NOT_FOUND`. C, with zero
+favorites of their own, calling it against a real conversation C legitimately started with B got a
+real `400 NO_FAVORITES_TO_SHARE` -- all three real code paths confirmed, not just the happy path.
+
+This deploy's own docker build was killed once by local disk pressure (reclaimable image space at
+93% from a day of rapid iterative builds -- fixed with `docker image prune -f`, freed 4.7GB, clean
+retry succeeded -- see the new `feedback_docker_build_killed_disk_pressure` memory) and the
+subsequent registry push initially failed with `connection refused` during a real, unusually severe
+cluster load spike (idle 0%, load average 60.77, worse than this project's routine documented
+instability pattern) -- both resolved by waiting for the underlying condition to clear rather than
+retrying blind, then completing normally once the primary node's `vmstat` genuinely showed idle
+capacity again.
