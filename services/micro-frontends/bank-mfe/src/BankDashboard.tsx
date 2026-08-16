@@ -114,7 +114,7 @@ import {
   sendGroupEmoticon,
   type Emoticon, type EmoticonPack, type OwnedEmoticonPack,
 } from './lib/emoticons';
-import { extendGiftVoucherExpiry, fetchGiftVouchersForConversation, purchaseGiftVoucher, type GiftVoucher, type GiftVoucherStatus } from './lib/giftVouchers';
+import { extendGiftVoucherExpiry, fetchGiftVouchersForConversation, purchaseGiftVoucher, redeemGiftVoucher, type GiftVoucher, type GiftVoucherStatus } from './lib/giftVouchers';
 import {
   attachSplitBillReceipt, createDirectSplitBill, createSplitBill, fetchDirectSplitBills, fetchSplitBillsForGroup, paySplitBillShare, requestSplitBillNextRound, type SplitBillWithParticipants,
 } from './lib/splitBill';
@@ -17534,6 +17534,66 @@ function MerchantReturnQueueView() {
   );
 }
 
+// Real gift-voucher redemption (2026-08-16, Kakao 기프티콘-sourced) -- closes the
+// terminal step of an already-shipped feature: a recipient could receive a voucher via
+// purchaseGiftVoucher but no merchant had any way to actually redeem one. The recipient
+// presents the voucher's id in person (same "physical presentation" convention as a
+// paper gifticon barcode); the merchant types it in here. See
+// GiftVoucherService.redeemVoucher's own doc comment for why this must be
+// merchant-authenticated rather than recipient self-serve.
+function MerchantRedeemVoucherCard() {
+  const [voucherId, setVoucherId] = useState('');
+  const [redeemed, setRedeemed] = useState<GiftVoucher | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setRedeemed(null);
+    const trimmed = voucherId.trim();
+    if (!trimmed) return;
+    setSubmitting(true);
+    try {
+      const voucher = await redeemGiftVoucher(trimmed);
+      setRedeemed(voucher);
+      setVoucherId('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not redeem this voucher.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="itunda-card" style={{ marginBottom: '20px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Redeem a gift voucher</h4>
+      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+        Ask the customer for their voucher id and enter it below to redeem it in person.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text"
+          value={voucherId}
+          onChange={(e) => setVoucherId(e.target.value)}
+          placeholder="giftvoucher_..."
+          className="itunda-input"
+          style={{ flex: 1 }}
+        />
+        <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting || !voucherId.trim()}>
+          {submitting ? 'Redeeming…' : 'Redeem'}
+        </button>
+      </form>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
+      {redeemed && (
+        <p style={{ fontSize: '13px', color: 'var(--itunda-green-600, #16a34a)', marginTop: '8px' }}>
+          ✅ Redeemed {redeemed.productNameSnapshot ?? `${redeemed.amount.toLocaleString()} RWF`}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification this
 // row's own text named. Keyed by merchantId so a buyer can browse merchant A, add
@@ -18761,6 +18821,7 @@ function ShopView() {
     <div>
       <MerchantOrdersView />
       <MerchantReturnQueueView />
+      <MerchantRedeemVoucherCard />
 
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px', overflowX: 'auto' }}>
         {(['BROWSE', 'ORDERS', 'WISHLIST'] as const).map((v) => (

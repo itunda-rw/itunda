@@ -45,3 +45,14 @@ export const fetchGiftVouchersForConversation = (conversationId: string) =>
 
 export const extendGiftVoucherExpiry = (voucherId: string) =>
   apiFetch<{ success: boolean; voucher: GiftVoucher }>(`/api/v1/gift-vouchers/${voucherId}/extend`, { method: 'POST' }).then((r) => r.voucher);
+
+// Real merchant-side redemption UI (2026-08-16) -- the terminal step of this feature
+// had zero client anywhere: a recipient could receive a voucher but no merchant could
+// ever actually redeem it. See GiftVoucherService.redeemVoucher's own doc comment for
+// why this is merchant-authenticated (the recipient presents the voucher id in person),
+// never a self-serve redeem the recipient could fake.
+export const redeemGiftVoucher = (voucherId: string) =>
+  apiFetch<{ success: boolean; voucher: GiftVoucher }>(`/api/v1/gift-vouchers/${voucherId}/redeem`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.voucher);
