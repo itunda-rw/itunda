@@ -7794,3 +7794,89 @@ real-set on "Matured Goal" alone -- both "Future Goal" and "Unparseable Goal" st
 `process-maturity-reminders` a second time returned `processed: 0`, and the real
 `SAVINGS_GOAL_MATURED` notification count stayed at exactly 1 -- confirming the no-double-fire
 guarantee holds for real, not just in the unit test.
+
+## 115. Kakao Pay-style auto bill pay (자동납부), plus two real Spring-transaction bugs found and fixed pre-deploy
+
+**Added 2026-08-16/17.** Kakao Pay's real 자동납부 lets a user register a recurring bill (electricity,
+water, etc.) once and have it paid automatically whenever it's due, up to a self-set safety cap.
+Built by a research fork: `BillAutoPaySetting` entity (migration `V262`) --
+`userId`/`providerId`/`accountNumber`/`maxAmount`/`active`/`lastPaidBillId`.
+`POST`/`GET`/`DELETE /bills/auto-pay` for the user-facing setup, and an ADMIN-gated
+`POST /bills/process-auto-payments` exposing the sweep as a manually-callable endpoint (same
+"expose scheduler logic as a real POST" convention as `WeeklySavingsController.processDue`), same
+as Sections 113/114.
+
+**Two real bugs found and fixed pre-deploy during this session's own code review of the fork's
+diff** -- not caught by the fork's own passing unit tests, only by reasoning about real Spring
+transaction semantics and then confirming live:
+
+1. The fork's original `processAutoPayments()` looped over every active setting and called
+   `payBill()` on `this` with no per-row exception handling. Since `processAutoPayments()` was
+   itself `@Transactional` and the call to `payBill()` was a self-invocation (bypasses Spring's
+   proxy, a well-known Kotlin/Spring pitfall), the whole sweep was really one physical
+   transaction -- one user's uncaught `InsufficientFundsException` would silently roll back every
+   other user's already-processed payment in the same poll. First fix attempt: wrapped the
+   per-setting logic in try/catch, matching the established per-row resilience convention
+   `OrderAcceptanceExpiryScheduler`/`StockPriceAlertScheduler`/`SavingsMaturityReminderScheduler`
+   already use elsewhere.
+
+2. **That first fix was itself insufficient.** Live-testing it produced a real
+   `500 Internal Server Error` -- `org.springframework.transaction.UnexpectedRollbackException:
+   Transaction silently rolled back because it has been marked as rollback-only`, confirmed via the
+   real pod logs. Root cause: `LedgerService.postLedgerTransaction` is a *separately-proxied* Spring
+   bean call (not self-invocation), so when it threw for the insufficient-funds row, Spring's own
+   `TransactionInterceptor` marked the *ambient, shared* transaction rollback-only right there --
+   catching the exception one level up in `processAutoPayments()` could not undo that mark. When the
+   outer transaction later tried to commit (since no exception escaped `processAutoPayments()`
+   itself), Spring threw `UnexpectedRollbackException` instead -- turning "one bad row" into "the
+   whole endpoint 500s." **Real fix**: extracted the loop out of `BillsService` entirely into a new,
+   plain `BillAutoPayProcessor` bean (not itself `@Transactional`) that calls
+   `billsService.payBill()` -- now a genuine *cross-bean* call through `BillsService`'s real proxy,
+   giving each row its own independent physical transaction (the same effect as
+   `Propagation.REQUIRES_NEW`, without needing it). This is exactly the "loop lives in a separate
+   class, calls a `@Transactional` method on a *different* bean" structure
+   `OrderAcceptanceExpiryScheduler` already uses -- restructuring to match it, rather than trying to
+   force self-invocation to behave, was the actual fix. **Lesson for future sessions**: catching an
+   exception around a self-invoked call is not sufficient to fix a poisoned Spring transaction when
+   the throw actually came from a separately-proxied bean deeper in the call -- the loop and the
+   transactional per-row unit of work must live in different beans, not just be wrapped in try/catch.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16, against the corrected
+fix**: two real users -- user1 with an active auto-pay setting for REG - Electricity (`bill_1`,
+35,000 RWF) but a genuine `0` MAIN wallet balance, and user2 with an active auto-pay setting for
+WASAC - Water (`bill_2`, 8,500 RWF) funded with a real 20,000 RWF via an actual agent cash-in
+(`POST /agent/cash-ins`, itunda's only real money-creation rail -- transfers are outbound-only).
+`POST /bills/process-auto-payments` as the real seeded admin (`+250788999000`) returned a real
+`200` (not the previous `500`) with exactly one result: user2's `bill_2` payment, `8,500 RWF`,
+`COMPLETED`. A direct DB check confirmed `bill_auto_pay_settings.last_paid_bill_id` was genuinely
+`'bill_2'` for user2's row and still `NULL` for user1's -- user1's real insufficient-funds failure
+no longer poisoned user2's real successful payment in the same sweep. Calling the sweep a second
+time returned an empty `processed: []` -- no double-fire. A third user registered with an
+auto-pay setting whose `maxAmount` (1,000) was below `bill_1`'s real amount (35,000) was correctly
+skipped in the same sweep alongside user1's insufficient-funds row, with the endpoint still
+returning a clean `200`.
+
+## 116. Coupang/Baemin/Naver-style photo-review reward (포토리뷰 적립금)
+
+**Added 2026-08-17.** Every major Korean delivery/e-commerce platform pays a small one-time
+reward for a review that includes a real photo, since photo-bearing reviews are disproportionately
+trusted by other buyers -- the same real motivation `EatsReview.photoUrl`'s own doc comment already
+cites for ranking photo reviews first. itunda's `EatsReview.photoUrl` has existed since migration
+`V224` (2026-08-04) with zero incentive ever attached to actually using it. Built by a research
+fork: new `task_first_photo_review` (300 RWF) in `RewardsService`'s existing static task catalog,
+eligibility checked via a real repository query
+(`EatsReviewRepository.existsByBuyerIdAndPhotoUrlIsNotNull`), same "check a real activity, never an
+honor-system flag" convention every other catalog task already follows. No new migration or ledger
+account -- reuses the existing `REWARDS_EXPENSE` rail every other task claim already uses. 2 new
+Kotest cases (14 existing sites updated for the new constructor dependency).
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered a fresh
+buyer, funded via a real agent cash-in (`POST /agent/cash-ins`, 10,000 RWF). Placed a real PICKUP
+order against the seeded `merchant_seed_1` restaurant (Beef brochettes, 3,500 RWF), progressed it
+through the real merchant-owner status chain (`ACCEPTED` → `PREPARING` → `READY_FOR_PICKUP` →
+`POST /complete-pickup` → `DELIVERED`). Submitted a real review with a non-null `photoUrl`.
+`POST /rewards/claim` for `task_first_photo_review` returned a real `200` with `rewardAmount: 300`
+-- the buyer's real MAIN wallet balance moved from `6,500` to exactly `6,800` RWF. A direct DB
+check confirmed a real `reward_claims` row (`amount: 300.00`, real `claimed_at` timestamp). Claiming
+a second time real-`409`'d `REWARD_TASK_ALREADY_CLAIMED`. A separate fresh user who never submitted
+a photo review real-`403`'d `REWARD_TASK_NOT_ELIGIBLE` on the same claim call.
