@@ -17,6 +17,10 @@ dependencies {
     // requests after a group order is finalized, see GroupEatsOrderService.kt's own doc
     // comment.
     implementation(project(":splitbill"))
+    // Real "message restaurant" (2026-08-16, Uber Eats-sourced) -- see
+    // EatsController.contactRestaurant's own doc comment. Mirrors
+    // MarketplaceService.contactSeller's exact existing use of MessagingService.
+    implementation(project(":messaging"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

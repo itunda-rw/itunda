@@ -149,7 +149,7 @@ import {
 } from './lib/realestate';
 import { uploadFile } from './lib/upload';
 import {
-  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, cancelGroupEatsOrder, claimDelivery, completePickupOrder, createGroupEatsOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
+  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, cancelGroupEatsOrder, claimDelivery, completePickupOrder, contactRestaurant, createGroupEatsOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
   fetchEatsOrder, fetchGroupEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchMyRiderProfile, fetchRestaurantCategories,
   fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, finalizeGroupEatsOrder, joinGroupEatsOrder, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS, registerRider,
   removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setMyGroupEatsOrderItems, setRiderAvailability, subscribeMembership, subscribePlatformMembership, submitEatsReview,
@@ -13335,9 +13335,15 @@ function nextInChain<T>(chain: T[], current: T): T | null {
   return idx >= 0 && idx + 1 < chain.length ? chain[idx + 1] : null;
 }
 
-function EatsOrderCard({ order, restaurant, action }: { order: EatsOrder; restaurant?: ShoppingMerchant; action?: React.ReactNode }) {
+function EatsOrderCard({ order, restaurant, action, onMessageRestaurant }: { order: EatsOrder; restaurant?: ShoppingMerchant; action?: React.ReactNode; onMessageRestaurant?: () => void }) {
   const [showRoute, setShowRoute] = useState(false);
   const [showLiveTracking, setShowLiveTracking] = useState(false);
+  // Real "message restaurant" (2026-08-16, Uber Eats' own real Live Order Chat) --
+  // only offered on the buyer's own active orders (onMessageRestaurant is only ever
+  // passed by MyEatsOrdersView, never the rider/restaurant-facing renders of this same
+  // card), and only while there's still something to coordinate about -- a delivered
+  // or cancelled order has nothing left to confirm before the fact.
+  const canMessageRestaurant = onMessageRestaurant && order.status !== 'DELIVERED' && order.status !== 'CANCELLED';
   const canShowRoute = restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null;
   // Real live rider tracking (2026-07-20) -- only meaningful while a real rider is
   // actually en route, matching EatsOrderService.getRiderLocation's own real state gate
@@ -13357,6 +13363,11 @@ function EatsOrderCard({ order, restaurant, action }: { order: EatsOrder; restau
         <p style={{ fontSize: '12px', color: 'var(--itunda-grey-700)', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
           Note: {order.deliveryNotes}
         </p>
+      )}
+      {canMessageRestaurant && (
+        <button className="itunda-btn itunda-btn-secondary" onClick={onMessageRestaurant}>
+          💬 Message restaurant
+        </button>
       )}
       {canShowLiveTracking && (
         <button className="itunda-btn itunda-btn-primary" onClick={() => { setShowLiveTracking((v) => !v); setShowRoute(false); }}>
@@ -14059,10 +14070,24 @@ function MenuView({
   );
 }
 
-function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null; restaurants: ShoppingMerchant[] | null }) {
+function MyEatsOrdersView({ onReorder, reorderingId, restaurants, onMessageSeller }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null; restaurants: ShoppingMerchant[] | null; onMessageSeller: (conversationId: string) => void }) {
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [messagingOrderId, setMessagingOrderId] = useState<string | null>(null);
+
+  const handleMessageRestaurant = async (orderId: string) => {
+    setMessagingOrderId(orderId);
+    setError(null);
+    try {
+      const conversation = await contactRestaurant(orderId);
+      onMessageSeller(conversation.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not start a conversation with this restaurant.');
+    } finally {
+      setMessagingOrderId(null);
+    }
+  };
 
   const load = () => {
     setError(null);
@@ -14105,6 +14130,7 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder:
           key={o.id}
           order={o}
           restaurant={restaurants?.find((r) => r.merchantId === o.restaurantId)}
+          onMessageRestaurant={messagingOrderId === o.id ? undefined : () => handleMessageRestaurant(o.id)}
           action={
             o.status === 'PLACED' ? (
               <button className="itunda-btn itunda-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
@@ -14190,7 +14216,7 @@ function SearchAndCategoryChips({
   );
 }
 
-function OrderFoodView() {
+function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
   const [view, setView] = useState<'BROWSE' | 'FAVORITES' | 'ORDERS'>('BROWSE');
   const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
   // Unfiltered, fetched once -- used to resolve a past order's restaurant for Reorder
@@ -14343,7 +14369,7 @@ function OrderFoodView() {
       {view === 'ORDERS' ? (
         <>
           {reorderError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{reorderError}</p>}
-          <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} restaurants={allRestaurants} />
+          <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} restaurants={allRestaurants} onMessageSeller={onMessageSeller} />
         </>
       ) : view === 'FAVORITES' ? (
         <FavoriteRestaurantsView
@@ -16488,7 +16514,7 @@ function DineInCustomerView() {
   );
 }
 
-function EatsView() {
+function EatsView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
   const [mode, setMode] = useState<'ORDER' | 'TOGETHER' | 'DELIVER' | 'DINE_IN'>('ORDER');
 
   return (
@@ -16513,7 +16539,7 @@ function EatsView() {
           <PlatformMembershipCard />
           <EatsMembershipCard />
           <RestaurantOrdersView />
-          <OrderFoodView />
+          <OrderFoodView onMessageSeller={onMessageSeller} />
         </div>
       ) : mode === 'TOGETHER' ? (
         <GroupOrderView />
@@ -21635,7 +21661,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'YOU' && <YouHub onNavigateToTab={setTab} />}
       {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView />}
-      {tab === 'EATS' && <EatsView />}
+      {tab === 'EATS' && <EatsView onMessageSeller={handleMessageSeller} />}
       {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
       {tab === 'COMMUNITY' && <CommunityView onOpenGroupChat={handleMessageSeller} />}
       {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}

@@ -106,6 +106,14 @@ data class SubmitEatsReviewRequest(
 )
 data class ReplyToEatsReviewRequest(val reply: String)
 
+// Real edge case, same "don't leak a raw messaging exception as an unhandled 500"
+// discipline MarketplaceService.contactSeller's own OwnListingException already
+// establishes -- a merchant owner who placed a real order at their own restaurant
+// (a real, if unusual, possibility: nothing stops one itunda account from being both)
+// would otherwise hit MessagingService.startOrGetConversation's own
+// SelfConversationException with no controller-layer translation.
+class EatsOrderOwnRestaurantException(message: String) : RuntimeException(message)
+
 // Real Coupang Eats-style food ordering + delivery. Restaurant browsing/menus
 // deliberately reuse the existing GET /api/v1/shopping/merchants and GET
 // /api/v1/shopping/merchants/{id}/products endpoints (a restaurant IS a Merchant, a menu
@@ -128,6 +136,7 @@ class EatsController(
     private val riderRepository: rw.itunda.core.repository.RiderRepository,
     private val userRepository: rw.itunda.core.repository.UserRepository,
     private val eatsOrderRepository: rw.itunda.core.repository.EatsOrderRepository,
+    private val messagingService: rw.itunda.messaging.MessagingService,
 ) {
     // Real fresh Uber Eats research (2026-08-15, restaurantdive.com's coverage of Uber
     // Eats' own delivery-tracker redesign, sourced from real internal research across
@@ -368,6 +377,37 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "available" to (location != null), "location" to location))
     }
 
+    // Real "message restaurant" (2026-08-16, Uber Eats' own real Live Order Chat --
+    // "merchants can initiate chats directly with customers once an order has been
+    // received" to confirm substitutions/special requests/allergies before delivery
+    // rather than discovering an issue after). itunda's own `MarketplaceService
+    // .contactSeller` already established the exact real pattern this reuses
+    // unmodified: `MessagingService.startOrGetConversation`, IDOR-checked via the
+    // same real buyer/restaurant-owner resolution `EatsOrderService.getOrderDetail`
+    // already does. Deliberately resolved at the controller layer, matching this
+    // file's own `withRiderEtaFields` precedent, rather than growing
+    // `EatsOrderService`'s already-28-parameter constructor for a read-adjacent
+    // enrichment with nothing to do with that service's real order-lifecycle logic.
+    @PostMapping("/orders/{orderId}/contact-restaurant")
+    fun contactRestaurant(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = eatsOrderRepository.findById(orderId).orElseThrow { rw.itunda.eats.EatsOrderNotFoundException("Order not found") }
+        if (order.buyerId != currentUser.userId) {
+            // Same "don't reveal a resource exists to someone who shouldn't act on it"
+            // discipline every other real ownership check in this codebase uses.
+            throw rw.itunda.eats.EatsOrderNotFoundException("Order not found")
+        }
+        val restaurant = merchantRepository.findById(order.restaurantId).orElseThrow { rw.itunda.eats.EatsOrderNotFoundException("Order not found") }
+        val conversation = try {
+            messagingService.startOrGetConversation(currentUser.userId, restaurant.ownerUserId)
+        } catch (e: rw.itunda.messaging.SelfConversationException) {
+            throw EatsOrderOwnRestaurantException("This is your own restaurant")
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "conversation" to conversation))
+    }
+
     @PostMapping("/orders/{orderId}/status")
     fun updateRestaurantStatus(
         @PathVariable orderId: String,
@@ -573,6 +613,10 @@ class EatsController(
     @ExceptionHandler(EatsOrderNotFoundException::class)
     fun handleOrderNotFound(ex: EatsOrderNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ORDER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(EatsOrderOwnRestaurantException::class)
+    fun handleOwnRestaurant(ex: EatsOrderOwnRestaurantException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("CANNOT_MESSAGE_OWN_RESTAURANT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(EatsOrderNotYetDeliveredException::class)
     fun handleOrderNotYetDelivered(ex: EatsOrderNotYetDeliveredException) =

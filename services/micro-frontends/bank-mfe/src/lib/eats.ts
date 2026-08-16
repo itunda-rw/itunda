@@ -200,6 +200,15 @@ export interface RiderLocation {
 export const fetchRiderLocation = (orderId: string) =>
   apiFetch<{ success: boolean; available: boolean; location: RiderLocation | null }>(`/api/v1/eats/orders/${orderId}/rider-location`);
 
+// Real "message restaurant" (2026-08-16, Uber Eats-sourced Live Order Chat) -- reuses
+// the exact same messaging system (see lib/messaging.ts) under the hood, same shape as
+// lib/marketplace.ts's own contactSeller; the returned conversation id is a genuine
+// messaging conversation id, openable straight into the Messages tab's real chat thread.
+export const contactRestaurant = (orderId: string) =>
+  apiFetch<{ success: boolean; conversation: { id: string } }>(`/api/v1/eats/orders/${orderId}/contact-restaurant`, {
+    method: 'POST',
+  }).then((r) => r.conversation);
+
 // Real rider role -- any itunda user can opt in.
 export interface Rider {
   id: string;
