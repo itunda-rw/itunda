@@ -8028,3 +8028,35 @@ it again with `{"status":"DELIVERED","deliveryPhotoUrl":"...real-proof.jpg"}` re
 DB-confirmed `delivery_proof_photo_url` set to exactly that URL. A second, independent order+rider
 cycle called `DELIVERED` with no `deliveryPhotoUrl` at all -- confirmed it stayed `null`, proving
 full backward compatibility on the exact same code path.
+
+## 121. Toss-style exchange rate alert (외환 환율 알림)
+
+**Added 2026-08-17.** A real Toss feature: set a target rate on a currency pair and get notified
+once the real live mid-market rate crosses it. Unlike Section 113's stock alert (which rides
+itunda's own simulated price), this rides a genuinely live external rate --
+`ForeignCurrencyRateClient` (open.er-api.com, ECB-sourced, refreshed hourly) already backed
+`ForeignCurrencyWalletService` with zero alert mechanism attached.
+
+**Built**: `ExchangeRateAlert` (migration `V266`), its own table rather than piggybacking
+`StockWatchlist` -- there's no "watch a currency pair without an alert" concept in the real product.
+`setRateAlert`/`clearRateAlert`/`getMyRateAlerts`/`getDueRateAlerts`/`triggerRateAlert` on
+`ForeignCurrencyWalletService` mirror `StocksService`'s real target-price-alert shape exactly:
+explicit `ABOVE`/`BELOW` direction, one-shot fire with re-arm-on-new-target, a re-check right before
+firing so a race can't double-fire. A new `ExchangeRateAlertScheduler` follows the established
+"loop lives in a separate, non-`@Transactional` bean, calls the real `@Transactional` method on a
+*different* bean" structure `StockPriceAlertScheduler`/`BillAutoPayProcessor` already establish --
+each `triggerRateAlert` call is a genuine cross-bean proxied call, so one bad row (or one
+currently-unreachable rate) can never poison the sweep for every other due alert. `POST`/
+`DELETE /wallet/foreign-currency/rate-alert`, `GET /wallet/foreign-currency/rate-alerts`. 7 new
+Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: checked the real live
+rate via `GET /wallet/foreign-currency/rate?from=RWF&to=USD` -- `0.0006775629` at verification time.
+Set a real alert (`{"targetRate": 0.0006, "direction": "ABOVE"}`) already crossed by that live rate.
+Within the real 60-second scheduler window, a direct DB check confirmed `alert_triggered_at` had
+genuinely been set. `GET /notifications` confirmed a real `EXCHANGE_RATE_ALERT` notification with
+the exact expected content: `"RWF/USD hit your target rate"` / `"RWF/USD is now 0.000678 (target:
+6.0E-4)"`. Setting a new target re-armed the alert (`alertTriggeredAt` back to `null` in the real
+response). An invalid direction (`"SIDEWAYS"`) and a non-positive target rate both real-`400`'d
+`INVALID_RATE_ALERT`. `DELETE /rate-alert` real-cleared the alert; calling it again on the same,
+now-nonexistent pair real-`404`'d `RATE_ALERT_NOT_FOUND`.
