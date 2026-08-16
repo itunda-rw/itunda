@@ -117,6 +117,9 @@ class MarketplaceServiceTest : BehaviorSpec({
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository,
         )
+        // getListing (called directly below, and internally by contactSeller) now also
+        // real-increments the view count -- stub it here once for every When in this block.
+        every { listingRepository.incrementViewCount(any()) } returns 1
         val listing = Listing(
             id = "listing_1", sellerId = "seller_1", title = "Bicycle", description = "desc",
             price = BigDecimal("15000"), category = "sports",
@@ -133,6 +136,18 @@ class MarketplaceServiceTest : BehaviorSpec({
             }
             Then("the real Karrot-Score-style trust badge is recomputed for the seller immediately") {
                 io.mockk.verify(exactly = 1) { trustScoreService.computeScore("seller_1") }
+            }
+        }
+
+        When("a buyer views the listing detail page") {
+            every { listingRepository.findById("listing_1") } returns Optional.of(listing)
+            every { listingRepository.incrementViewCount("listing_1") } returns 1
+
+            val result = service.getListing("listing_1")
+
+            Then("it returns a real view count bumped by one, and atomically increments it in the database") {
+                result.viewCount shouldBe 1
+                io.mockk.verify(exactly = 1) { listingRepository.incrementViewCount("listing_1") }
             }
         }
 

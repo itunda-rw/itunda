@@ -633,8 +633,17 @@ class MarketplaceService(
     // "판매완료"/sold badge rather than 404ing it), and a seller needs to see their own
     // REMOVED listings too. `browse()` above is what actually hides non-ACTIVE ones
     // from general discovery.
-    fun getListing(listingId: String): Listing =
-        listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
+    // Real 당근마켓 조회수 (view count) -- see ListingRepository.incrementViewCount's own
+    // doc comment for the atomic-update reasoning. The fetched entity predates the
+    // increment, so the returned viewCount is bumped by 1 in memory to reflect this
+    // real view without a second round-trip read.
+    @Transactional
+    fun getListing(listingId: String): Listing {
+        val listing = listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
+        listingRepository.incrementViewCount(listingId)
+        listing.viewCount += 1
+        return listing
+    }
 
     fun getMyListings(sellerId: String, pageable: Pageable): Page<Listing> =
         listingRepository.findBySellerIdOrderByCreatedAtDesc(sellerId, pageable)

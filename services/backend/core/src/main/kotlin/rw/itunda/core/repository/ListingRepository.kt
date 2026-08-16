@@ -120,4 +120,12 @@ interface ListingRepository : JpaRepository<Listing, String> {
         nativeQuery = true,
     )
     fun searchFullText(@Param("status") status: ListingStatus, @Param("booleanQuery") booleanQuery: String, pageable: Pageable): Page<Listing>
+
+    // Real 조회수 (view count) increment (2026-08-16) -- an atomic JPQL bulk update,
+    // same discipline EmailVerificationTokenRepository.invalidateUnusedByUserId already
+    // establishes, so two concurrent detail-page views can never lose one increment to
+    // a read-modify-write race on the fetched entity.
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Listing l SET l.viewCount = l.viewCount + 1 WHERE l.id = :id")
+    fun incrementViewCount(@Param("id") id: String): Int
 }

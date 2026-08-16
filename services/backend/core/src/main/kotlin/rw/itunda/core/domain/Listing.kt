@@ -141,6 +141,18 @@ class Listing(
     // immutable creation time.
     @Column(name = "bumped_at", nullable = true)
     var bumpedAt: Instant? = null,
+
+    // Real 당근마켓 조회수 (view count), 2026-08-16 -- every real Karrot listing detail
+    // screen shows a real view counter alongside 관심 (likes) and 채팅 (chats); itunda
+    // already had likeCount but no view counter at all. Incremented via a real atomic
+    // JPQL bulk update (ListingRepository.incrementViewCount), never a read-modify-write
+    // on the fetched entity -- same lost-update discipline this session's concurrency
+    // audit already established elsewhere. Honest v1: counts every real detail-page
+    // fetch, including the seller's own and repeat views from the same buyer -- no
+    // per-viewer dedup exists (that would need a session/device identity this endpoint
+    // doesn't have), same scoping choice as a plain page-view counter.
+    @Column(name = "view_count", nullable = false)
+    var viewCount: Long = 0,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

@@ -35,6 +35,11 @@ export interface Listing {
   // despite createListing already accepting it server-side. Set once at creation time
   // only (no separate edit-photo endpoint).
   photoUrl?: string | null;
+  // Real 당근마켓 조회수 (view count), 2026-08-16 -- see backend Listing.viewCount's own
+  // doc comment. Real-incremented server-side on every real GET of this listing's
+  // detail page; optional since older cached listing objects (e.g. a browse-list item
+  // fetched before this field existed) may not carry it.
+  viewCount?: number;
 }
 
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
@@ -62,6 +67,17 @@ export const fetchListings = (category?: string) =>
   apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>(
     `/api/v1/marketplace/listings${category ? `?category=${encodeURIComponent(category)}` : ''}`,
   ).then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
+
+// Real per-listing detail fetch (2026-08-16) -- GET /marketplace/listings/{id} existed
+// on the backend already (sellerTrustScore comes from here) but had zero real caller
+// on any platform; bank-mfe's own ListingCard renders straight off the already-fetched
+// browse-list item, never a fresh per-listing round trip. Wired in now specifically to
+// give the real backend 조회수 (view count) increment (Listing.viewCount) a genuine
+// trigger -- see ListingCard's own doc comment for where this is called.
+export const fetchListingDetail = (listingId: string) =>
+  apiFetch<{ success: boolean; listing: Listing; sellerTrustScore: number | null }>(
+    `/api/v1/marketplace/listings/${listingId}`,
+  );
 
 // Real Karrot 중고거래 category taxonomy -- see backend MarketplaceService
 // .CATEGORIES's own doc comment.

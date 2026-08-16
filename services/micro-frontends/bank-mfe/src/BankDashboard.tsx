@@ -119,7 +119,7 @@ import {
   attachSplitBillReceipt, createDirectSplitBill, createSplitBill, fetchDirectSplitBills, fetchSplitBillsForGroup, paySplitBillShare, requestSplitBillNextRound, type SplitBillWithParticipants,
 } from './lib/splitBill';
 import {
-  addKeywordAlert, addListingFavorite, confirmEscrowReceipt, contactSeller, createListing, disputeEscrow, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingReviews, fetchListings,
+  addKeywordAlert, addListingFavorite, confirmEscrowReceipt, contactSeller, createListing, disputeEscrow, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingDetail, fetchListingReviews, fetchListings,
   fetchListingsMyNeighborhood, fetchMarketplaceCategories, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, getEscrow, makeOffer,
   markListingSold, payEscrow, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
   submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type MarketplaceEscrow, type PriceOffer, type TrustScores,
@@ -10095,6 +10095,19 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
     getEscrow(listing.id).then(setEscrow).catch(() => {}).finally(() => setLoadedEscrow(true));
   }, [isMyEscrowTrade, loadedEscrow, listing.id]);
 
+  // Real 당근마켓 조회수 (view count) (2026-08-16) -- ListingCard already renders the
+  // full listing inline (no separate detail-page navigation exists in bank-mfe), so a
+  // real "view" here is a non-owner seeing this card at all. Fetches the real, freshly
+  // server-incremented count once per card mount; falls back to the stale prop value
+  // (or nothing) if the fetch fails, same "non-critical" discipline the review
+  // read-back above already establishes.
+  const [freshViewCount, setFreshViewCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (isMine) return;
+    fetchListingDetail(listing.id).then((r) => setFreshViewCount(r.listing.viewCount ?? null)).catch(() => {});
+  }, [isMine, listing.id]);
+  const displayedViewCount = freshViewCount ?? listing.viewCount;
+
   // Real post-transaction review with asymmetric public/private visibility
   // (2026-07-24) -- see backend HoodReviewService's own doc comment.
   const [showReviewSheet, setShowReviewSheet] = useState(false);
@@ -10272,7 +10285,10 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
               </span>
             )}
           </p>
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{listing.category}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+            {listing.category}
+            {displayedViewCount != null && <> · Views {displayedViewCount.toLocaleString()}</>}
+          </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
