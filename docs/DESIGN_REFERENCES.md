@@ -7562,3 +7562,41 @@ Placed one real Commerce order for that product. `GET /merchant/products/{id}/an
 real owner returned `viewCount: 3, orderCount: 1` -- an exact match to the real actions taken. A
 second, unrelated real merchant owner calling analytics on the FIRST owner's product got a real
 `404 MERCHANT_PRODUCT_NOT_FOUND`, confirming the cross-merchant IDOR check holds.
+
+## 108. Uber-style trip issue report from a completed ride
+
+**Added 2026-08-16.** Uber's real post-trip support flow lets a rider report a problem -- unsafe
+driving, overcharge, lost item -- directly from a specific completed trip. itunda's generic
+`SupportTicket` system already let a user attach any transaction to a ticket, but had no
+ride-specific category and no contextual "report an issue" entry point anywhere on a completed
+trip.
+
+**Built**: `SupportTicketCategory.RIDE_ISSUE` with its own real 24-hour SLA (faster than the default
+`GENERAL` 72h, slower than the wallet-freezing `ACCOUNT_TAKEOVER` 4h) and, correctly, no wallet
+freeze -- `SupportService.createTicket`'s freeze branch is `ACCOUNT_TAKEOVER`-only by construction,
+so `RIDE_ISSUE` was free to add without touching that logic at all. bank-mfe's `RidesView` gained a
+"Report an issue" button on completed trips that hands off to `SupportView` with the trip's real
+`transactionId` and `RIDE_ISSUE` pre-selected, reusing the exact same `pendingConversationId`
+hand-off convention already established elsewhere. Fixed a real side-gap found along the way:
+bank-mfe's `RideTrip` client type never declared `transactionId` even though the backend always
+returned it. ops-mfe's `SupportQueue` gained a matching category label. Real Kotest coverage:
+`RIDE_ISSUE`'s SLA and no-wallet-freeze behavior.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**, running a full real
+ride-trip lifecycle (register driver + passenger, request, accept, real PIN fetch/start, complete
+-- Sections 89/106's proven recipe) to get a real completed trip with a real transaction: `POST
+/support/tickets` with that trip's real `transactionId` and `category: RIDE_ISSUE` returned a real
+ticket with `frozeWalletId: null` and a real `dueBy` timestamp exactly 24 hours after `createdAt`
+(`2026-08-16T15:01:39` → `2026-08-17T15:01:39`) -- the SLA constant applied correctly at creation
+time, not just asserted in a unit test. The ticket appeared in a real `GET /support/tickets` call
+for that passenger. A direct DB check confirmed the passenger's wallet `is_active: 1` (genuinely
+never frozen), matching the `frozeWalletId: null` in the API response -- proving `RIDE_ISSUE`
+behaves distinctly from `ACCOUNT_TAKEOVER` for real, not just by code inspection.
+
+One real dispatch-matching quirk hit and worked around during setup, worth noting: requesting a
+trip from Kigali Center's coordinates (this session's default test location, reused across many
+prior features) repeatedly offered the trip to a different, pre-existing driver from earlier test
+runs rather than the freshly-registered one, since real distance-based matching correctly preferred
+whichever driver was actually closer. Resolved by moving the fresh driver to a distinct location
+(Kicukiro) and requesting the trip from there -- a real driver-matching behavior working as
+designed, not a bug in this feature.
