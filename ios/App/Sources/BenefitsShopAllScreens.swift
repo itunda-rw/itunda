@@ -1208,6 +1208,7 @@ struct IdsSearchBar: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(IDS.Colors.textTertiary)
                 }
+                .accessibilityLabel("Clear search")
             }
         }
         .padding(.horizontal, 16)
