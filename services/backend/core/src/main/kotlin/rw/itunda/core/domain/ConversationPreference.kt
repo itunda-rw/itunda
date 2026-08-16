@@ -38,6 +38,17 @@ class ConversationPreference(
     @Column(name = "archived", nullable = false)
     var archived: Boolean = false,
 
+    // Real KakaoTalk "채팅방 상단 고정" (pin chat room to top) (2026-08-17) -- the third
+    // real long-press room action alongside quiet/archived above. Same
+    // private-to-one-participant model: pinning is never visible to or forced on the
+    // other participant. Sort order lives at the DB level in
+    // ConversationRepository.findByParticipantNotArchived (not post-hoc in-app, same
+    // "pagination stays correct" discipline archived's own doc comment already
+    // establishes) -- a pinned room sorts above every unpinned room regardless of
+    // lastMessageAt, matching real KakaoTalk behavior.
+    @Column(name = "pinned", nullable = false)
+    var pinned: Boolean = false,
+
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 ) {

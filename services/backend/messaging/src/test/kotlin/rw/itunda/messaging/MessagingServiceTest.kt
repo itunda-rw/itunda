@@ -216,6 +216,47 @@ class MessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("a user pins a conversation to the top for the first time (no preference row yet)") {
+            val conversation = Conversation(id = "conversation_pin_top_new", participantAId = "user_a", participantBId = "user_b")
+            every { conversationRepository.findById("conversation_pin_top_new") } returns Optional.of(conversation)
+            every { conversationPreferenceRepository.findByConversationIdAndUserId("conversation_pin_top_new", "user_a") } returns null
+            val savedSlot = slot<ConversationPreference>()
+            every { conversationPreferenceRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.setConversationPinnedToTop("user_a", "conversation_pin_top_new", true)
+
+            Then("it creates a real preference row with pinned=true, private to this user") {
+                savedSlot.captured.userId shouldBe "user_a"
+                savedSlot.captured.conversationId shouldBe "conversation_pin_top_new"
+                savedSlot.captured.pinned shouldBe true
+            }
+        }
+
+        When("a user unpins an already-pinned conversation") {
+            val conversation = Conversation(id = "conversation_unpin", participantAId = "user_a", participantBId = "user_b")
+            val preference = ConversationPreference("preference_pin_1", "conversation_unpin", "user_a", pinned = true)
+            every { conversationRepository.findById("conversation_unpin") } returns Optional.of(conversation)
+            every { conversationPreferenceRepository.findByConversationIdAndUserId("conversation_unpin", "user_a") } returns preference
+            every { conversationPreferenceRepository.save(any()) } answers { firstArg() }
+
+            service.setConversationPinnedToTop("user_a", "conversation_unpin", false)
+
+            Then("it flips the existing row back to false rather than deleting it") {
+                preference.pinned shouldBe false
+            }
+        }
+
+        When("a non-participant tries to pin someone else's conversation") {
+            val conversation = Conversation(id = "conversation_pin_safe_2", participantAId = "user_a", participantBId = "user_b")
+            every { conversationRepository.findById("conversation_pin_safe_2") } returns Optional.of(conversation)
+
+            Then("it rejects with the same non-disclosing 404 as every other conversation preference check") {
+                shouldThrow<ConversationNotFoundException> {
+                    service.setConversationPinnedToTop("user_c", "conversation_pin_safe_2", true)
+                }
+            }
+        }
+
         When("a recipient tries to delete another person's direct message") {
             val conversation = Conversation(id = "conversation_delete_owner", participantAId = "user_a", participantBId = "user_b")
             val message = Message(id = "message_delete_owner", conversationId = "conversation_delete_owner", senderId = "user_a", body = "keep")
@@ -286,6 +327,23 @@ class MessagingServiceTest : BehaviorSpec({
                 page.content[0].otherUserName shouldBe "Beata Test"
                 page.content[0].lastMessagePreview shouldBe "hi!"
                 page.content[0].unreadCount shouldBe 3L
+            }
+        }
+
+        When("listing conversations where one has been pinned to top") {
+            val pinnedConversation = Conversation(id = "conversation_pinned_list", participantAId = "user_a", participantBId = "user_b")
+            every { conversationRepository.findByParticipantNotArchived("user_a", PageRequest.of(0, 20)) } returns
+                PageImpl(listOf(pinnedConversation), PageRequest.of(0, 20), 1)
+            every { userRepository.findAllById(listOf("user_b")) } returns listOf(user("user_b", "Beata"))
+            every { messageRepository.findByConversationIdInOrderBySentAtDesc(listOf("conversation_pinned_list"), any()) } returns emptyList()
+            every { messageRepository.countUnreadByConversationIds(listOf("conversation_pinned_list"), "user_a") } returns emptyList()
+            every { conversationPreferenceRepository.findByUserIdAndConversationIdIn("user_a", listOf("conversation_pinned_list")) } returns
+                listOf(ConversationPreference("preference_pinned_list", "conversation_pinned_list", "user_a", pinned = true))
+
+            val page = service.listConversations("user_a", PageRequest.of(0, 20))
+
+            Then("the summary reflects this user's own real pinned-to-top preference") {
+                page.content[0].pinnedToTop shouldBe true
             }
         }
 

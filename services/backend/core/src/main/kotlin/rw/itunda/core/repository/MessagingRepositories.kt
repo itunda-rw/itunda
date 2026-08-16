@@ -32,10 +32,15 @@ interface ConversationRepository : JpaRepository<Conversation, String> {
     // archived by me") only excludes rows this user actually archived; a user with no
     // ConversationPreference row at all still sees the conversation, matching quiet's
     // own "no row = default false" semantics.
+    // Real KakaoTalk pin-to-top ordering, done at the DB level for the same
+    // "pagination stays correct" reason archived filtering above already is -- a
+    // post-hoc in-app re-sort of an already-paged result would put a pinned room from
+    // page 2 above unpinned rooms already returned on page 1. The CASE subselect
+    // mirrors the archived NOT IN subselect's own shape/cost, just for `pinned = true`.
     @Query(
         "SELECT c FROM Conversation c WHERE (c.participantAId = :userId OR c.participantBId = :userId) " +
             "AND c.id NOT IN (SELECT p.conversationId FROM ConversationPreference p WHERE p.userId = :userId AND p.archived = true) " +
-            "ORDER BY c.lastMessageAt DESC",
+            "ORDER BY (CASE WHEN c.id IN (SELECT p2.conversationId FROM ConversationPreference p2 WHERE p2.userId = :userId AND p2.pinned = true) THEN 0 ELSE 1 END), c.lastMessageAt DESC",
     )
     fun findByParticipantNotArchived(@Param("userId") userId: String, pageable: Pageable): Page<Conversation>
 

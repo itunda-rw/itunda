@@ -48,6 +48,7 @@ data class ConversationSummary(
     val quiet: Boolean,
     val pinnedMessageId: String?,
     val archived: Boolean,
+    val pinnedToTop: Boolean,
 )
 data class TalkContact(val userId: String, val name: String)
 
@@ -510,6 +511,7 @@ class MessagingService(
                 quiet = preference?.quiet ?: false,
                 pinnedMessageId = conversation.pinnedMessageId,
                 archived = preference?.archived ?: false,
+                pinnedToTop = preference?.pinned ?: false,
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)
@@ -540,5 +542,33 @@ class MessagingService(
     fun isConversationArchived(userId: String, conversationId: String): Boolean {
         requireParticipant(userId, conversationId)
         return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.archived ?: false
+    }
+
+    // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) -- see
+    // ConversationPreference.pinned's own doc comment. Same private-to-one-participant
+    // shape as setConversationQuiet/setConversationArchived above.
+    @Transactional
+    fun setConversationPinnedToTop(userId: String, conversationId: String, pinned: Boolean) {
+        requireParticipant(userId, conversationId)
+        val preference = conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)
+        if (preference == null) {
+            if (pinned) conversationPreferenceRepository.save(
+                rw.itunda.core.domain.ConversationPreference(
+                    id = "conversation_preference_${UUID.randomUUID()}",
+                    conversationId = conversationId,
+                    userId = userId,
+                    pinned = true,
+                ),
+            )
+        } else {
+            preference.pinned = pinned
+            preference.updatedAt = Instant.now()
+            conversationPreferenceRepository.save(preference)
+        }
+    }
+
+    fun isConversationPinnedToTop(userId: String, conversationId: String): Boolean {
+        requireParticipant(userId, conversationId)
+        return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.pinned ?: false
     }
 }

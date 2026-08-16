@@ -49,6 +49,7 @@ data class SendMessageRequest(val body: String, val replyToMessageId: String? = 
 data class ToggleReactionRequest(val emoji: String)
 data class SetConversationQuietRequest(val quiet: Boolean)
 data class SetConversationArchivedRequest(val archived: Boolean)
+data class SetConversationPinnedToTopRequest(val pinned: Boolean)
 // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc comment.
 data class ForwardMessageRequest(val destinationType: String, val destinationId: String)
 
@@ -290,6 +291,29 @@ class MessagingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "archived" to messagingService.isConversationArchived(currentUser.userId, conversationId)))
+
+    // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) -- see
+    // ConversationPreference.pinned's own doc comment. `/pin-to-top`, not `/pin`, to
+    // stay distinct from the existing per-message pin at POST/GET
+    // /conversations/{conversationId}/pin(/{messageId}) above -- pinning a MESSAGE
+    // inside a room and pinning the ROOM itself to the top of the chat list are two
+    // real, different KakaoTalk features.
+    @PostMapping("/conversations/{conversationId}/pin-to-top")
+    fun setConversationPinnedToTop(
+        @PathVariable conversationId: String,
+        @RequestBody request: SetConversationPinnedToTopRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> {
+        messagingService.setConversationPinnedToTop(currentUser.userId, conversationId, request.pinned)
+        return ResponseEntity.ok(mapOf("success" to true, "pinned" to request.pinned))
+    }
+
+    @GetMapping("/conversations/{conversationId}/pin-to-top")
+    fun getConversationPinnedToTop(
+        @PathVariable conversationId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "pinned" to messagingService.isConversationPinnedToTop(currentUser.userId, conversationId)))
 
     // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
     // own doc comment. Works for any set of user ids, not just 1:1 conversation
