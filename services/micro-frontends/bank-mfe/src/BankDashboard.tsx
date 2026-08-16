@@ -127,7 +127,7 @@ import {
 import { clearSecondNeighborhood, fetchProfile, setBirthDate, setNeighborhood, setSecondNeighborhood, updateProfilePhoto } from './lib/neighborhood';
 import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
 import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
-import { claimGift, fetchGiftsForConversation, sendGiftInConversation, GIFT_THEME_LABELS, type Gift, type GiftStatus, type GiftTheme } from './lib/gift';
+import { claimGift, fetchGiftsForConversation, sendGift, sendGiftInConversation, GIFT_THEME_LABELS, type Gift, type GiftStatus, type GiftTheme } from './lib/gift';
 import {
   addCommunityComment, checkIntoMeetupSession, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
   fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMeetupSessions, fetchMyCommunityPosts, finalizeGroupBuy, joinCommunityMeetup,
@@ -477,6 +477,16 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
   // doing so (this codebase has no such protection scheme to withdraw, so proceeding
   // here is simply the sender's own informed choice).
   const [scamCheck, setScamCheck] = useState<ScamCheckResult | null>(null);
+  // Real standalone "gift" send (KakaoTalk 선물하기-style, GiftController's own
+  // POST /api/v1/gifts) -- found fully built server-side with zero client caller
+  // anywhere; only the chat-embedded sibling had a UI. Money moves into escrow, not
+  // straight to the recipient's wallet, until they explicitly claim it -- so this
+  // reuses the same recipient/amount fields as a plain transfer but branches at
+  // confirm-time into a different backend call and a different result panel.
+  const [isGift, setIsGift] = useState(false);
+  const [giftTheme, setGiftTheme] = useState<GiftTheme | ''>('');
+  const [giftNote, setGiftNote] = useState('');
+  const [giftResult, setGiftResult] = useState<Gift | null>(null);
 
   const loadContacts = () => fetchContacts().then(setContacts).catch(() => {});
   useEffect(() => { loadContacts(); }, []);
@@ -519,6 +529,12 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
     setNeedsDeviceVerification(false);
     setBusy(true);
     try {
+      if (isGift) {
+        const gift = await sendGift(recipient.trim(), Number(amount), giftNote, giftTheme || null);
+        setGiftResult(gift);
+        onBalanceRefresh?.();
+        return;
+      }
       const res = await sendDirect(recipient.trim(), Number(amount), '');
       setResult({ message: res.message, newBalance: res.newBalance });
       // Real fix (2026-08-13, direct live-testing catch): the top-level balance
@@ -542,6 +558,19 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
       setBusy(false);
     }
   };
+
+  if (giftResult) {
+    return (
+      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px', marginBottom: '16px' }}>
+        <span style={{ fontSize: '36px', display: 'block', marginBottom: '10px' }}>🎁</span>
+        <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Gift sent!</h3>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
+          {giftResult.amount.toLocaleString()} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
+        </p>
+        <button className="itunda-btn itunda-btn-secondary" onClick={onSuccess}>{t('transfer.done')}</button>
+      </div>
+    );
+  }
 
   if (result) {
     return (
@@ -588,7 +617,11 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
                   prevention rules require CTA labels to name the specific action, not a
                   generic verb, matching the "Clear Action" principle. */}
               <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
-                {busy ? t('transfer.sending') : t('transfer.send', { amount: Number(amount).toLocaleString() })}
+                {busy
+                  ? t('transfer.sending')
+                  : isGift
+                    ? `🎁 Send gift · ${Number(amount).toLocaleString()} RWF`
+                    : t('transfer.send', { amount: Number(amount).toLocaleString() })}
               </IdsButton>
             </div>
             {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
@@ -614,6 +647,30 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
         <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }}>
           {t('transfer.insufficientBalance', { amount: walletBalance.toLocaleString() })}
         </p>
+      )}
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}>
+        <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
+        🎁 Send as a gift instead
+      </label>
+      {isGift && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+            Held until they claim it -- auto-refunded to you after 7 days if unclaimed.
+          </p>
+          <input
+            type="text" value={giftNote} onChange={(e) => setGiftNote(e.target.value)} placeholder="Add a note (optional)" maxLength={200}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+          />
+          <select
+            value={giftTheme} onChange={(e) => setGiftTheme(e.target.value as GiftTheme | '')}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+          >
+            <option value="">No theme (plain gift)</option>
+            {(Object.keys(GIFT_THEME_LABELS) as GiftTheme[]).map((theme) => (
+              <option key={theme} value={theme}>{GIFT_THEME_LABELS[theme]}</option>
+            ))}
+          </select>
+        </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>{t('transfer.contactsLabel')}</p>

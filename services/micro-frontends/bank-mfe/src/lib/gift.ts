@@ -48,6 +48,21 @@ export const sendGiftInConversation = (conversationId: string, amount: number, n
     body: JSON.stringify({ amount, note: note?.trim() || null, theme: theme || null }),
   }).then((r) => r.gift);
 
+// Real standalone send-by-phone-number -- the general "gift anyone with an itunda
+// account" entry point (GiftController's own POST /api/v1/gifts), distinct from the
+// chat-embedded flow above. Was fully built server-side (idempotent, rate-limited)
+// with zero client caller anywhere until now -- a user could only gift someone they
+// were already chatting with.
+export const sendGift = (recipientPhoneNumber: string, amount: number, note?: string, theme?: GiftTheme | null) =>
+  apiFetch<{ success: boolean; gift: Gift }>('/api/v1/gifts', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ recipientPhoneNumber: recipientPhoneNumber.trim(), amount, note: note?.trim() || null, theme: theme || null }),
+  }).then((r) => r.gift);
+
+export const fetchGift = (giftId: string) =>
+  apiFetch<{ success: boolean; gift: Gift }>(`/api/v1/gifts/${giftId}`).then((r) => r.gift);
+
 export const claimGift = (giftId: string) =>
   apiFetch<{ success: boolean; gift: Gift }>(`/api/v1/gifts/${giftId}/claim`, {
     method: 'POST',
