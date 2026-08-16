@@ -7397,3 +7397,32 @@ orders, `GET /shopping/merchants` showed `isBusy: false`, `deliveryTimeMinutes: 
 5th order and re-querying the identical endpoint flipped it to `isBusy: true`,
 `deliveryTimeMinutes: 25` -- exactly a real +10-minute bump at exactly the real
 `BUSY_ORDER_THRESHOLD = 5` boundary, not just eventual busy-ness sometime after enough orders.
+
+## 103. Baemin CEO app/DoorDash-style "86" (temporarily mark sold out)
+
+**Added 2026-08-16.** Both Baemin's own real seller (사장님/CEO) app and DoorDash's real merchant
+portal let a restaurant temporarily mark a single dish sold out without permanently deleting it
+from the menu -- itunda's only existing lever, `MerchantProduct.active`, is a real permanent
+soft-delete (`removeProduct`) that also drops the item from the merchant's OWN catalog view
+(`findByMerchantIdAndActiveTrue`), so there was no honest way to say "temporarily out of this dish,
+back soon" and bring it back later.
+
+**Built**: `MerchantProduct.soldOut` (new field, distinct from `active`, migration
+`V254__merchant_product_sold_out.sql`), `MerchantProductService.setSoldOut` (same
+focused-single-field-update shape `updateStockQuantity`/`setSurplusDeal` already establish, with a
+real cross-merchant IDOR check -- a 404, never a 403, matching this codebase's IDOR discipline
+everywhere else). `PATCH /merchant/products/{id}/sold-out`. Real **server-side enforcement** in
+both `EatsOrderService.placeOrder` and `DineInOrderService` -- a distinct
+`MenuItemSoldOutException`/`DineInMenuItemSoldOutException`, a real `409 MENU_ITEM_SOLD_OUT` (not a
+misleading `404`, since the item genuinely exists and stays visible on the menu). merchant-mfe's
+`PosScreen` gets a Mark sold out/Mark available toggle mirroring the existing surplus-deal button;
+bank-mfe's restaurant menu shows a "Sold out" badge and disables adding the item to cart. 4 new
+Kotest blocks: toggle on, toggle off, cross-merchant IDOR, and a real `placeOrder` rejection.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered a fresh real
+restaurant with a real menu item. `PATCH .../sold-out {"soldOut": true}` real-flipped the flag. A
+fresh real buyer's order attempt for that item got a real `409 MENU_ITEM_SOLD_OUT`. Toggling back
+to `{"soldOut": false}` and retrying (after funding the buyer's wallet) succeeded with a real `201`
+and a real order id. A second, unrelated real restaurant owner attempting to toggle the FIRST
+owner's product got a real `404 MERCHANT_PRODUCT_NOT_FOUND` -- confirming the cross-merchant IDOR
+check holds for a real second account, not just an unauthenticated request.
