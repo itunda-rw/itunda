@@ -7532,3 +7532,33 @@ cluster-overload spike this session (idle 0%, load average 51.41 -- the same pat
 deploy hit once already), resolved the same way: waited for the primary node's `vmstat` to
 genuinely show idle capacity again before retrying, rather than pushing through a connection-
 refused state.
+
+## 107. Coupang WING-style product view count + analytics (전환율)
+
+**Added 2026-08-16.** Coupang WING's real seller portal 상품분석 tab pairs per-product views with
+order volume/conversion. bank-mfe's `ProductDetailView` rendered straight off the merchant's
+already-fetched catalog list with zero real per-product fetch anywhere -- the exact same gap
+Section 98 (Marketplace listing view count) already fixed for `ListingCard`, just never ported to
+Commerce products.
+
+**Built**: `MerchantProduct.viewCount` (atomic JPQL increment, migration
+`V257__merchant_product_view_count.sql`, same "increment then bump the returned entity by 1"
+pattern `MarketplaceService.getListing` already established for Section 98). `GET
+/shopping/products/{productId}` as the real customer-facing view trigger -- any authenticated buyer
+can view a real active product. `GET /merchant/products/{id}/analytics` pairs the real view count
+with a real order count (`OrderItemRepository.countByProductId`, matching
+`MerchantService.getTopSellingProducts`'s own "gross collected at placement" definition -- a
+cancelled order's reversal is a separate real refund, not a retroactive rewrite of what was
+genuinely ordered) for Coupang WING's own 전환율 (conversion rate) signal. bank-mfe's
+`ProductDetailView` fetches the fresh count on mount. Real Kotest coverage: view-increment, owner
+analytics fetch, cross-merchant IDOR. Merchant-facing analytics UI (a real display for the new
+endpoint in merchant-mfe's `PosScreen`) is a natural follow-up, deliberately out of scope for this
+pass -- same precedent Section 106's driver-earnings report set.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered a fresh real
+merchant + product. 3 real sequential `GET /shopping/products/{id}` calls from a fresh buyer
+returned `viewCount` 1, then 2, then 3 -- a genuine atomic increment, not cached or duplicated.
+Placed one real Commerce order for that product. `GET /merchant/products/{id}/analytics` as the
+real owner returned `viewCount: 3, orderCount: 1` -- an exact match to the real actions taken. A
+second, unrelated real merchant owner calling analytics on the FIRST owner's product got a real
+`404 MERCHANT_PRODUCT_NOT_FOUND`, confirming the cross-merchant IDOR check holds.
