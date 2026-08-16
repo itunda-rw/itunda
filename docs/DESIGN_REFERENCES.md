@@ -8060,3 +8060,34 @@ the exact expected content: `"RWF/USD hit your target rate"` / `"RWF/USD is now 
 response). An invalid direction (`"SIDEWAYS"`) and a non-positive target rate both real-`400`'d
 `INVALID_RATE_ALERT`. `DELETE /rate-alert` real-cleared the alert; calling it again on the same,
 now-nonexistent pair real-`404`'d `RATE_ALERT_NOT_FOUND`.
+
+## 122. Baemin-style pickup discount (포장할인)
+
+**Added 2026-08-17.** A real Baemin merchant-facing feature, sourced from Baemin's own seller guide
+(ceo.baemin.com/guide/2991, "픽업의 이해"): a restaurant can set an extra discount specifically for
+pickup orders, distinct from the delivery-fee waiver every itunda `PICKUP` order already gets
+unconditionally.
+
+**Built**: `Merchant.pickupDiscountPercent` (migration `V267`, nullable, 1-100). `MerchantService
+.setPickupDiscount` + `POST /merchant/pickup-discount`, same validation/setter convention
+`setMinOrderAmount`/`setAvgPrepTimeMinutes` already establish. `EatsOrderService.placeOrder`
+computes `pickupDiscount` only when `fulfillmentType` is `PICKUP` and the restaurant has opted in --
+**restaurant-funded**, unlike the existing itunda-funded tiered promotion: `netToRestaurant` is
+reduced by exactly this amount and the buyer is charged less, while itunda's own `platformFee`
+revenue is completely untouched, matching real reporting that Baemin still charges its normal
+commission on pickup orders regardless of whatever discount the restaurant itself offers. New
+`EatsOrder.pickupDiscount` field for receipt transparency. Single `@Transactional` call inside an
+existing method, no loop -- not subject to the transaction-poisoning pitfall closed in Sections
+115/118. 2 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: set a real 10% pickup
+discount on `merchant_seed_1` (`POST /merchant/pickup-discount {"pickupDiscountPercent": 10}`).
+Placed a real PICKUP order for Beef brochettes (3,500 RWF) -- the order response showed real
+`pickupDiscount: 350.0` and `totalAmount: 3150.0`, with `platformFee` unchanged at `52.5`. The
+buyer's real MAIN wallet balance moved from `10,000` to exactly `6,850` (debited `3,150`). A direct
+DB check on `ledger_entries` confirmed the exact real double-entry split: `fee_revenue` credited
+`52.50` (untouched), the restaurant wallet credited exactly `3,097.50` (`3,500 - 52.50 - 350`
+pickup discount absorbed) -- both sides of the ledger balance exactly. A second, separate order at
+the same restaurant with `fulfillmentType: DELIVERY` showed real `pickupDiscount: 0` -- the discount
+never applies outside `PICKUP`. Setting `pickupDiscountPercent` to `0`, `-5`, and `150` all
+real-`400`'d `INVALID_PICKUP_DISCOUNT`.
