@@ -33,6 +33,11 @@ interface EatsOrderRepository : JpaRepository<EatsOrder, String> {
     // order whose exclusive offer window has expired, backing DispatchOfferScheduler.
     fun findByOfferExpiresAtBeforeAndRiderIdIsNull(cutoff: Instant): List<EatsOrder>
 
+    // Real Uber Eats-style order-acceptance timeout (2026-08-16) -- every real order
+    // still PLACED (never accepted or rejected by the restaurant) past
+    // EatsOrderService.ORDER_ACCEPTANCE_TIMEOUT, backing OrderAcceptanceExpiryScheduler.
+    fun findByStatusAndCreatedAtBefore(status: EatsOrderStatus, cutoff: Instant): List<EatsOrder>
+
     // Real 단건배달 (single-order delivery) enforcement (2026-07-26) -- see
     // EatsOrderService.claimDelivery's own doc comment. Backs the real guarantee that a
     // rider only ever carries one active delivery at a time, same Coupang Eats/배민1

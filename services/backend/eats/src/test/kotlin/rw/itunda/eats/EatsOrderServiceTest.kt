@@ -1078,6 +1078,77 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real order times out unaccepted, below the real consecutive-miss threshold") {
+            val originalEntries = listOf(
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("7500"), currency = "RWF", balanceAfter = BigDecimal("92500"), memo = "Eats order - Kigali Grill"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_restaurant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Eats order collection - Kigali Grill"),
+            )
+            val restaurantOneMiss = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, consecutiveMissedOrders = 1,
+            )
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantOneMiss)
+            every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("refund_txn_3", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            val merchantSaveSlot = slot<Merchant>()
+            every { merchantRepository.save(capture(merchantSaveSlot)) } answers { firstArg() }
+
+            service.expireUnacceptedOrder(order)
+
+            Then("it real-cancels and refunds the order, and increments the streak without pausing the restaurant") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.title == "Order cancelled" }) }
+                merchantSaveSlot.captured.consecutiveMissedOrders shouldBe 2
+                merchantSaveSlot.captured.isAcceptingOrders shouldBe true
+            }
+        }
+
+        When("a real order times out unaccepted, reaching the real consecutive-miss threshold") {
+            val originalEntries = listOf(
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("7500"), currency = "RWF", balanceAfter = BigDecimal("92500"), memo = "Eats order - Kigali Grill"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_restaurant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Eats order collection - Kigali Grill"),
+            )
+            val restaurantAtThreshold = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, consecutiveMissedOrders = 2,
+            )
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantAtThreshold)
+            every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("refund_txn_4", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            val merchantSaveSlot = slot<Merchant>()
+            every { merchantRepository.save(capture(merchantSaveSlot)) } answers { firstArg() }
+
+            service.expireUnacceptedOrder(order)
+
+            Then("it real-auto-pauses the restaurant (same isAcceptingOrders field the manual toggle uses) and resets the streak") {
+                merchantSaveSlot.captured.isAcceptingOrders shouldBe false
+                merchantSaveSlot.captured.consecutiveMissedOrders shouldBe 0
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "RESTAURANT_AUTO_PAUSED" }) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
+            }
+        }
+
+        When("the real restaurant owner accepts a real order after a nonzero real miss streak") {
+            val restaurantWithMisses = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, consecutiveMissedOrders = 2,
+            )
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurantWithMisses
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            val merchantSaveSlot = slot<Merchant>()
+            every { merchantRepository.save(capture(merchantSaveSlot)) } answers { firstArg() }
+
+            service.updateRestaurantStatus("owner_1", "eats_order_1", EatsOrderStatus.ACCEPTED)
+
+            Then("it real-resets the miss streak back to zero -- a prompt real accept clears past misses") {
+                merchantSaveSlot.captured.consecutiveMissedOrders shouldBe 0
+            }
+        }
+
         When("the real restaurant marks a real Baemin-style PICKUP order READY_FOR_PICKUP") {
             val pickupOrder = EatsOrder(
                 id = "eats_order_pickup", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "Pickup at Kigali Grill",

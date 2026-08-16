@@ -145,6 +145,23 @@ class EatsOrderService(
         // for a real rider to actually notice a push notification and respond, short
         // enough that a real buyer isn't kept waiting on one unresponsive candidate.
         val OFFER_WINDOW: Duration = Duration.ofSeconds(90)
+
+        // Real Uber Eats-style order-acceptance timeout (2026-08-16) -- see
+        // expireUnacceptedOrder's own doc comment. itunda's own honestly-chosen
+        // threshold (this backend has no historical restaurant-response-time data to
+        // derive one from, same "itunda's own chosen policy, not a claimed real figure
+        // this project has no way to verify" honesty this session's own
+        // BUSY_ORDER_THRESHOLD/customerCodeValidity constants already model) -- long
+        // enough a busy real kitchen can genuinely notice a new order, short enough a
+        // real buyer isn't left waiting on a restaurant that never responds at all.
+        val ORDER_ACCEPTANCE_TIMEOUT: Duration = Duration.ofMinutes(10)
+
+        // Real Uber Eats-style automatic-pausing threshold (2026-08-16) -- see Uber's
+        // own official "Automatic pausing for merchants" blog post: "stores may be
+        // paused... when multiple orders in a row go unaccepted." itunda's own honest
+        // number (Uber doesn't publish theirs) -- see
+        // Merchant.consecutiveMissedOrders's own doc comment.
+        const val CONSECUTIVE_MISSES_TO_AUTO_PAUSE: Int = 3
     }
 
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
@@ -750,7 +767,17 @@ class EatsOrderService(
         order.updatedAt = Instant.now()
         val saved = eatsOrderRepository.save(order)
         when (newStatus) {
-            EatsOrderStatus.ACCEPTED -> notifyBuyer(saved, "Order accepted", "${restaurant.businessName} accepted your order and will start preparing it.")
+            EatsOrderStatus.ACCEPTED -> {
+                notifyBuyer(saved, "Order accepted", "${restaurant.businessName} accepted your order and will start preparing it.")
+                // Real accept resets the real consecutive-miss streak -- see
+                // Merchant.consecutiveMissedOrders's own doc comment. A restaurant that
+                // just responded promptly shouldn't stay one miss away from an
+                // auto-pause because of misses from before this real accept.
+                if (restaurant.consecutiveMissedOrders != 0) {
+                    restaurant.consecutiveMissedOrders = 0
+                    merchantRepository.save(restaurant)
+                }
+            }
             EatsOrderStatus.PREPARING -> notifyBuyer(saved, "Preparing your order", "${restaurant.businessName} is now preparing your order.")
             else -> {}
         }
@@ -1022,6 +1049,22 @@ class EatsOrderService(
             throw InvalidEatsOrderStatusTransitionException("Only a PLACED order can be cancelled -- this order is already ${order.status}")
         }
 
+        val saved = refundAndCancel(order)
+        // Only notify when the RESTAURANT cancelled -- a buyer who cancelled their own
+        // order already knows, same "don't notify someone about their own action"
+        // discipline every other Notification call site in this codebase already uses.
+        if (isRestaurant) {
+            notifyBuyer(saved, "Order cancelled", "${restaurant?.businessName ?: "The restaurant"} cancelled your order. Your payment has been refunded.")
+        }
+        return saved
+    }
+
+    // Real shared refund-and-cancel core, extracted 2026-08-16 (was inline in
+    // cancelOrder only) so expireUnacceptedOrder can reuse the exact same real
+    // reverse-every-ledger-leg refund mechanic rather than a second, divergent copy.
+    // Callers own their own status/ownership checks -- this only ever touches a real
+    // PLACED order (both call sites already guarantee that before calling in).
+    private fun refundAndCancel(order: EatsOrder): EatsOrder {
         val originalEntries = ledgerEntryRepository.findByTransactionId(order.transactionId)
         val reversedLegs = originalEntries.map { entry ->
             val flipped = if (entry.direction == LedgerDirection.DEBIT) LedgerDirection.CREDIT else LedgerDirection.DEBIT
@@ -1032,14 +1075,50 @@ class EatsOrderService(
         order.status = EatsOrderStatus.CANCELLED
         order.refundTransactionId = refund.transactionId
         order.updatedAt = Instant.now()
-        val saved = eatsOrderRepository.save(order)
-        // Only notify when the RESTAURANT cancelled -- a buyer who cancelled their own
-        // order already knows, same "don't notify someone about their own action"
-        // discipline every other Notification call site in this codebase already uses.
-        if (isRestaurant) {
-            notifyBuyer(saved, "Order cancelled", "${restaurant?.businessName ?: "The restaurant"} cancelled your order. Your payment has been refunded.")
+        return eatsOrderRepository.save(order)
+    }
+
+    // Real Uber Eats-style order-acceptance timeout query -- see
+    // ORDER_ACCEPTANCE_TIMEOUT's own doc comment, backs OrderAcceptanceExpiryScheduler.
+    fun getExpiredUnacceptedOrders(): List<EatsOrder> =
+        eatsOrderRepository.findByStatusAndCreatedAtBefore(EatsOrderStatus.PLACED, Instant.now().minus(ORDER_ACCEPTANCE_TIMEOUT))
+
+    /**
+     * Real Uber Eats-style order-acceptance timeout (2026-08-16) -- sourced from Uber's
+     * own official "Automatic pausing for merchants" blog post: a restaurant that
+     * doesn't respond to a real order within [ORDER_ACCEPTANCE_TIMEOUT] never left the
+     * buyer's payment held hostage on an unresponsive kitchen -- the order is
+     * auto-cancelled and refunded via the exact same real ledger-reversal
+     * [refundAndCancel] already uses for a normal cancellation. Also increments the
+     * restaurant's real [Merchant.consecutiveMissedOrders] streak; once it reaches
+     * [CONSECUTIVE_MISSES_TO_AUTO_PAUSE], the restaurant is automatically paused
+     * (`isAcceptingOrders = false`, the exact same field/enforcement
+     * `MerchantService.setAcceptingOrders`/this class's own `placeOrder` check already
+     * established for the manual pause) and notified why -- a real, sourced Uber
+     * pattern, not a fabricated penalty.
+     */
+    @Transactional
+    fun expireUnacceptedOrder(order: EatsOrder) {
+        if (order.status != EatsOrderStatus.PLACED) return
+        val restaurant = merchantRepository.findById(order.restaurantId).orElse(null) ?: return
+        val saved = refundAndCancel(order)
+        notifyBuyer(saved, "Order cancelled", "${restaurant.businessName} didn't respond in time, so your order was cancelled and refunded.")
+
+        restaurant.consecutiveMissedOrders += 1
+        if (restaurant.consecutiveMissedOrders >= CONSECUTIVE_MISSES_TO_AUTO_PAUSE) {
+            restaurant.isAcceptingOrders = false
+            restaurant.consecutiveMissedOrders = 0
+            val title = "Orders temporarily paused"
+            val body = "$CONSECUTIVE_MISSES_TO_AUTO_PAUSE orders in a row went unaccepted, so ${restaurant.businessName} has been paused. Turn orders back on from your merchant settings when you're ready."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = restaurant.ownerUserId, type = "RESTAURANT_AUTO_PAUSED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"merchantId\":\"${restaurant.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(restaurant.ownerUserId, title, body, mapOf("merchantId" to restaurant.id))
         }
-        return saved
+        merchantRepository.save(restaurant)
     }
 
     /** A real, available rider claims a READY_FOR_PICKUP order no one else has claimed

@@ -221,6 +221,24 @@ class Merchant(
     // behavior is completely unchanged.
     @Column(name = "is_accepting_orders", nullable = false)
     var isAcceptingOrders: Boolean = true,
+
+    // Real Uber Eats-style automatic pausing for merchants (2026-08-16) -- sourced from
+    // Uber's own official "Automatic pausing for merchants" blog post
+    // (uber.com/nz/en/blog/automatic-pausing-for-merchants): "stores may be paused when
+    // multiple orders in a row go unaccepted". This is the real counter that drives it
+    // -- see EatsOrderService.expireUnacceptedOrder's own doc comment for the increment
+    // side and updateRestaurantStatus's own reset-on-accept. Distinct from
+    // isAcceptingOrders itself: this is a rolling streak, that's the resulting on/off
+    // switch. Deliberately does NOT auto-resume the merchant on any timer (unlike
+    // Uber's own real "unpaused by 6am the next day") -- itunda has no scheduled-job
+    // precedent for a variable multi-hour cooldown, and setAcceptingOrders's own doc
+    // comment already establishes "no auto-expiry timer exists" as this codebase's
+    // chosen design for isAcceptingOrders; a real merchant resumes it manually via the
+    // same toggle either way, an honest, simpler v1 than replicating Uber's exact
+    // schedule this project has no way to verify against Rwanda's own real usage
+    // patterns.
+    @Column(name = "consecutive_missed_orders", nullable = false)
+    var consecutiveMissedOrders: Int = 0,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }
