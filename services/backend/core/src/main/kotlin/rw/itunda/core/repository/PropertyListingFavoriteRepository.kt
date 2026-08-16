@@ -11,4 +11,8 @@ interface PropertyListingFavoriteRepository : JpaRepository<PropertyListingFavor
     fun findByUserIdOrderByCreatedAtDesc(userId: String, pageable: Pageable): Page<PropertyListingFavorite>
 
     fun deleteByUserIdAndPropertyListingId(userId: String, propertyListingId: String): Long
+
+    // Real Karrot(당근마켓)-style price-drop notification -- see
+    // PropertyListingService.updatePrice's own doc comment.
+    fun findByPropertyListingId(propertyListingId: String): List<PropertyListingFavorite>
 }

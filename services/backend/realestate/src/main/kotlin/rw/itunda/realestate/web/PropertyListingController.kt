@@ -67,6 +67,7 @@ data class CreatePropertyListingRequest(
 data class MakePropertyOfferRequest(val amount: BigDecimal)
 data class RespondToPropertyOfferRequest(val action: PropertyOfferResponseAction, val counterAmount: BigDecimal? = null)
 data class MarkTakenRequest(val counterpartyPhoneNumber: String? = null)
+data class UpdatePropertyPriceRequest(val price: BigDecimal)
 data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
 data class SubmitOwnershipVerificationRequest(val documentUrl: String)
 
@@ -207,6 +208,16 @@ class PropertyListingController(
                 "listing" to propertyListingService.markTaken(currentUser.userId, propertyListingId, request?.counterpartyPhoneNumber),
             ),
         )
+
+    // Real Karrot(당근마켓)-style price-drop notification -- see
+    // PropertyListingService.updatePrice's own doc comment.
+    @PostMapping("/listings/{propertyListingId}/price")
+    fun updatePrice(
+        @PathVariable propertyListingId: String,
+        @RequestBody request: UpdatePropertyPriceRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "listing" to propertyListingService.updatePrice(currentUser.userId, propertyListingId, request.price)))
 
     // Real ownership verification (2026-07-25) -- see PropertyOwnershipService's own doc
     // comment. Document should already be a real /api/v1/uploads/{name} URL from

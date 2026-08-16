@@ -1,5 +1,6 @@
 package rw.itunda.realestate
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
@@ -7,11 +8,15 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PropertyListing
 import rw.itunda.core.domain.PropertyListingStatus
 import rw.itunda.core.domain.PropertyListingType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.PropertyListingFavoriteRepository
 import rw.itunda.core.repository.PropertyListingRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.trust.TrustScoreService
@@ -20,6 +25,7 @@ import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class PropertyListingNotFoundException(message: String) : RuntimeException(message)
@@ -65,7 +71,12 @@ class PropertyListingService(
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val userRepository: UserRepository,
     private val trustScoreService: TrustScoreService,
+    private val propertyListingFavoriteRepository: PropertyListingFavoriteRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(PropertyListingService::class.java)
+
     companion object {
         val PROPERTY_TYPES = listOf(
             PropertyType("apartment", "Apartment"),
@@ -312,6 +323,66 @@ class PropertyListingService(
             )
         }
         return saved
+    }
+
+    /**
+     * Real Karrot(당근마켓)-style price-drop notification -- Karrot's own real
+     * transaction-notification categories explicitly include price drops on a
+     * favorited ("관심") listing ("거래(나눔 이벤트/거래 후기/가격 하락 등)"), corroborated by a
+     * real Clien community thread asking exactly this ("당근마켓 가격만 내리면 관심유저에게
+     * 알람가나요?"). Only a real price DECREASE notifies, matching that sourced "가격
+     * 하락" scoping exactly -- not any price edit.
+     *
+     * Deliberately NOT `@Transactional` itself -- the single `propertyListingRepository
+     * .save` below is already atomic on its own via Spring Data's implicit per-call
+     * transaction (same reasoning `ProductSubscriptionService.executeOne`'s 2026-08-17
+     * fix already establishes). This matters specifically here: the price-drop
+     * notification loop below makes its own separate `notificationRepository.save`
+     * calls after the price change -- if this method were `@Transactional`, one
+     * failing notification save would mark this method's own ambient transaction
+     * rollback-only and roll back the price change itself along with it, the exact
+     * self-invocation/transaction-poisoning pitfall closed in Sections 115/118.
+     */
+    fun updatePrice(listerId: String, propertyListingId: String, newPrice: BigDecimal): PropertyListing {
+        if (newPrice <= BigDecimal.ZERO) {
+            throw InvalidPropertyListingException("Price must be greater than zero")
+        }
+        val listing = requireLister(listerId, propertyListingId)
+        if (listing.status != PropertyListingStatus.AVAILABLE) {
+            throw PropertyListingNotAvailableException("Only an available listing's price can be changed")
+        }
+        val oldPrice = listing.price
+        listing.price = newPrice
+        val saved = propertyListingRepository.save(listing)
+        if (newPrice < oldPrice) {
+            notifyFavoritersOfPriceDrop(propertyListingId, listing.title, oldPrice, newPrice)
+        }
+        return saved
+    }
+
+    // Real per-favoriter resilience -- a notification failure for one favoriter must
+    // never affect another's, same per-row discipline established elsewhere this
+    // session (BillAutoPayProcessor/ExchangeRateAlertScheduler). Each
+    // notificationRepository.save call here is independently atomic since
+    // updatePrice above is deliberately not @Transactional (see its own doc comment).
+    private fun notifyFavoritersOfPriceDrop(propertyListingId: String, title: String, oldPrice: BigDecimal, newPrice: BigDecimal) {
+        val favorites = propertyListingFavoriteRepository.findByPropertyListingId(propertyListingId)
+        for (favorite in favorites) {
+            try {
+                val notifTitle = "Price drop on a listing you favorited"
+                val body = "\"$title\" dropped from ${oldPrice.toPlainString()} to ${newPrice.toPlainString()} RWF"
+                notificationRepository.save(
+                    Notification(
+                        id = "notif_${UUID.randomUUID()}", userId = favorite.userId, type = "PROPERTY_PRICE_DROP",
+                        title = notifTitle, body = body, isRead = false, createdAt = Instant.now(),
+                        dataJson = "{\"propertyListingId\":\"$propertyListingId\"}",
+                    ),
+                )
+                pushNotificationService.sendToUser(favorite.userId, notifTitle, body, mapOf("propertyListingId" to propertyListingId))
+            } catch (e: Exception) {
+                log.error("Price-drop notification failed for user {} on listing {}", favorite.userId, propertyListingId, e)
+            }
+        }
     }
 
     @Transactional
