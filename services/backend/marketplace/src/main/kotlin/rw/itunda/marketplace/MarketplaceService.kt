@@ -105,6 +105,27 @@ class MarketplaceService(
         // 당근's own 끌어올리기 enforces to keep it a genuine "still available, still
         // want to sell this" signal rather than a way to spam the top of the feed.
         val BUMP_COOLDOWN: Duration = Duration.ofHours(24)
+
+        // Real Karrot (당근마켓) 중고거래 category taxonomy (2026-08-16, uncalled-
+        // endpoint-sweep-adjacent research) -- sourced from Karrot's own official Korea
+        // App Store listing (apps.apple.com/kr/app/당근/id1018769995), a real fixed
+        // ~24-category list. `category` itself was already a real, stored, filterable
+        // field on every `Listing` (see `browse`'s own `category` param below) -- what
+        // was missing was any real curated taxonomy driving it, same "backend has the
+        // filter, no real taxonomy or UI to use it" shape Eats/Shop already closed via
+        // `MerchantService.CATEGORIES`. Adapted honestly to general secondhand goods
+        // relevant to Rwanda rather than translated verbatim -- itunda's own `vehicle`/
+        // `realestate` modules already own those categories elsewhere, so they're
+        // deliberately not duplicated here. Purely additive: existing free-text
+        // listings (confirmed live via direct DB check -- real seeded values include
+        // "Electronics"/"Sports"/"Furniture"/"other") keep working unchanged; this is a
+        // real curated list to browse BY, not a validation change to what a seller can
+        // type when creating a listing.
+        val CATEGORIES = listOf(
+            "Electronics", "Furniture", "Home & Kitchen", "Kids & Baby", "Fashion",
+            "Beauty & Health", "Sports & Outdoors", "Books & Media", "Toys & Games",
+            "Musical Instruments", "Pet Supplies", "Other",
+        )
     }
 
     private fun requireOwner(sellerId: String, listingId: String): Listing {

@@ -63,6 +63,11 @@ export const fetchListings = (category?: string) =>
     `/api/v1/marketplace/listings${category ? `?category=${encodeURIComponent(category)}` : ''}`,
   ).then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
 
+// Real Karrot 중고거래 category taxonomy -- see backend MarketplaceService
+// .CATEGORIES's own doc comment.
+export const fetchMarketplaceCategories = () =>
+  apiFetch<{ success: boolean; categories: string[] }>('/api/v1/marketplace/categories').then((r) => r.categories);
+
 export const fetchMyListings = () =>
   apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>('/api/v1/marketplace/my-listings')
     .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));

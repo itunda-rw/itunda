@@ -112,6 +112,12 @@ class MarketplaceController(
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "listing" to listing))
     }
 
+    // Real Karrot 중고거래 category taxonomy -- see MarketplaceService.CATEGORIES's own
+    // doc comment.
+    @GetMapping("/categories")
+    fun getCategories(): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "categories" to MarketplaceService.CATEGORIES))
+
     @GetMapping("/listings")
     fun browse(
         @RequestParam(required = false) category: String?,

@@ -120,7 +120,7 @@ import {
 } from './lib/splitBill';
 import {
   addKeywordAlert, addListingFavorite, confirmEscrowReceipt, contactSeller, createListing, disputeEscrow, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingReviews, fetchListings,
-  fetchListingsMyNeighborhood, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, getEscrow, makeOffer,
+  fetchListingsMyNeighborhood, fetchMarketplaceCategories, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, getEscrow, makeOffer,
   markListingSold, payEscrow, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
   submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type MarketplaceEscrow, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
@@ -10765,6 +10765,18 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
+  // Real Karrot 중고거래 category taxonomy (2026-08-16) -- see backend
+  // MarketplaceService.CATEGORIES's own doc comment. Only meaningful in BROWSE (the
+  // other views have their own real scoping already -- a specific neighborhood, "my
+  // own listings", etc -- layering a second filter on top would be noise).
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchMarketplaceCategories().then(setCategories).catch(() => {
+      // Real, non-critical -- browsing without category chips still works.
+    });
+  }, []);
 
   const loadFavoriteIds = () => {
     fetchMyFavoriteListings().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.listingId)))).catch(() => {
@@ -10795,7 +10807,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
       return;
     }
     if (view === 'WISHLIST' || view === 'ALERTS' || view === 'INSPECTIONS') return;
-    const fetcher = view === 'BROWSE' ? fetchListings() : view === 'PURCHASES' ? fetchMyPurchases() : fetchMyListings();
+    const fetcher = view === 'BROWSE' ? fetchListings(selectedCategory ?? undefined) : view === 'PURCHASES' ? fetchMyPurchases() : fetchMyListings();
     fetcher
       .then((result) => {
         setListings(result.listings);
@@ -10804,7 +10816,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
   };
 
-  useEffect(load, [view]);
+  useEffect(load, [view, selectedCategory]);
 
   // Real Marketplace listing wishlist (2026-07-21) -- mirrors Shop's own product
   // wishlist toggle (ProductCatalogView.toggleFavorite) field-for-field.
@@ -10842,6 +10854,34 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
           </button>
         ))}
       </div>
+
+      {view === 'BROWSE' && categories.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '14px' }}>
+          <button
+            onClick={() => setSelectedCategory(null)}
+            style={{
+              flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
+              color: selectedCategory === null ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+              backgroundColor: selectedCategory === null ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+            }}
+          >
+            All
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c}
+              onClick={() => setSelectedCategory(c === selectedCategory ? null : c)}
+              style={{
+                flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
+                color: selectedCategory === c ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                backgroundColor: selectedCategory === c ? 'var(--itunda-blue)' : 'var(--itunda-grey-100)',
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
 
       {view === 'WISHLIST' ? (
         <ListingWishlistView />
