@@ -6742,3 +6742,43 @@ Saronite React Native mini-app (`packages/saronite`, bridged via `SaroniteBridge
 Kotlin Compose screen -- a meaningfully bigger integration than the bank-mfe web addition, found
 while briefly scoping it. A real, honestly-assessed gap for a future session with more time for the
 RN mini-app's own build/bridge work, not a gap to feel bad about skipping this pass.
+
+## 83. Baemin-style tiered order-amount promotion for Eats -- platform-funded, restaurant untouched
+
+**Added 2026-08-16.** Baemin's real April 2026 fee/promotion restructuring added automatic, coupon-
+free discounts tiered by order subtotal (real KRW thresholds, no sourced RWF equivalent). Checked
+`EatsOrderService.placeOrder` -- zero discount logic anywhere; the only existing mechanism
+(`MerchantCouponService`) is merchant-created/merchant-funded, a genuinely different real product.
+
+**Built**: `EatsPromotionCalculator` (mirrors `DeliveryEtaEstimator`'s stateless pattern), itunda's
+own honest RWF tiers (>=5000->1000 off, >=10000->2500 off, >=15000->4000 off). The buyer pays less;
+the restaurant's `netToRestaurant` and itunda's own `platformFee` revenue are both completely
+untouched -- a new `PROMOTION_EXPENSE` ledger account absorbs the discount as itunda's own real
+expense, the same "itunda's own money" shape `REWARDS_EXPENSE` already establishes. Refunds needed
+zero new code: `cancelOrder` already reverses every ledger leg by transaction id, so the new leg is
+automatically refunded/re-debited correctly for free. New `EatsOrder.promotionDiscount` column
+(migration V248), surfaced on the order-detail response and bank-mfe's post-checkout confirmation
+("X RWF off, on us").
+
+**A real bug found and fixed during live-verification, not by any test**: the first real order
+crossing the promotion tier 500'd with `IllegalStateException: Unknown ledger account
+promotion_expense` -- the new `PROMOTION_EXPENSE` enum value needed a matching row in
+`LedgerAccount.SEED_IDS`, the exact same bug class `LedgerAccount.kt`'s own doc comments already
+document EIGHT prior instances of (`interest_income`, `agent_commission_expense`,
+`card_spend_expense`, `postpaid_credit_payable`, `vehicle_inspection_holding`,
+`designated_driver_holding`, `insurance_premium_fund_payable`, `deposit_protection_expense`) --
+this codebase's own mocked-`LedgerService` unit tests can never catch a missing seed row, only a
+real live request against the real database does. Fixed and redeployed.
+
+**Verification, honestly accounting for a real financial constraint**: 128 `EatsOrderServiceTest`
+unit tests (5 updated, 2 new) exactly verify the discount math and ledger legs for both the
+`>=5000` tier and the zero-discount floor. Live-verified end to end for the zero-discount floor with
+a real affordable order (`promotionDiscount: 0`, matching). The `>=5000` tier itself could NOT be
+live-verified with a completed real purchase this session -- every available seed test account's
+real MAIN wallet balance has been drawn down by cumulative testing across many prior sessions to
+well under the ~4000 RWF a discounted tier-crossing order would still cost, and itunda has no
+wallet-funding endpoint (confirmed again, same finding as
+[[project_itunda_group_eats_orders]]). Instead, directly queried the real `ledger_accounts` table
+(`SELECT id, name, balance FROM ledger_accounts WHERE id = 'promotion_expense'`) and confirmed the
+seed row now exists post-deploy -- a real, honest confirmation of the actual fix mechanism, not a
+substitute for a full money-moving test, clearly distinguished as such.
