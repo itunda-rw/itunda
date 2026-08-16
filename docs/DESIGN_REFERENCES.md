@@ -6811,3 +6811,18 @@ tracking (blocked on the same MTN/Airtel provider-credential gap already documen
 open Toss-parity item) and Coupang Eats' expanded-delivery-radius feature (itunda's merchant search
 has no distance restriction to begin with, so there's no radius-bypass gap to close without first
 inventing a restriction system -- a bigger two-part feature, not a quick win).
+
+## 85. Fresh IDOR audit (pass 4) + Android/iOS Eats promotion discount parity
+
+**Added 2026-08-16.** A 4th IDOR pass, scoped to code this session's own new feature work actually
+touched (bookings, group orders, family send-money, surplus deals, split bill, vendor advance,
+student loans, linked accounts) rather than a full re-sweep -- pass 3 had already covered
+essentially the whole backend. See [[project_itunda_idor_audit]] for the full account. **Result:
+clean, no new finding** -- every checked resource-id lookup still uses the identical-404 discipline
+the first 3 passes established and fixed 3 real violations of.
+
+**Also closed a same-day platform-parity gap**: Section 83's new `EatsOrder.promotionDiscount`
+field was silently dropped by both Android's `EatsOrderDto` (Gson ignores unknown fields, no
+crash, just a quiet display gap) and iOS's `EatsOrderDto`. Added the field to both, plus a "X RWF
+off, on us" line to each platform's own `EatsOrderConfirmationView`, mirroring bank-mfe's identical
+addition -- now all 3 platforms show the real discount consistently.
