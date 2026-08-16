@@ -30,7 +30,11 @@ data class SetAutoPayRequest(val providerId: String, val accountNumber: String, 
 
 @RestController
 @RequestMapping("/api/v1/bills")
-class BillsController(private val billsService: BillsService, private val idempotencyService: IdempotencyService) {
+class BillsController(
+    private val billsService: BillsService,
+    private val billAutoPayProcessor: BillAutoPayProcessor,
+    private val idempotencyService: IdempotencyService,
+) {
 
     @GetMapping("/providers")
     fun getProviders() = ResponseEntity.ok(mapOf("success" to true, "providers" to billsService.getProviders()))
@@ -85,7 +89,7 @@ class BillsController(private val billsService: BillsService, private val idempo
     @PostMapping("/process-auto-payments")
     @PreAuthorize("hasRole('ADMIN')")
     fun processAutoPayments(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val processed = billsService.processAutoPayments()
+        val processed = billAutoPayProcessor.process()
         return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
     }
 

@@ -115,6 +115,7 @@ class BillsServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val billAutoPaySettingRepository = mockk<BillAutoPaySettingRepository>()
         val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository)
+        val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
         every { transactionRepository.save(any()) } answers { firstArg() }
@@ -141,7 +142,7 @@ class BillsServiceTest : BehaviorSpec({
         When("the due bill is within the cap and not yet paid") {
             every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(setting(BigDecimal("50000")))
 
-            val results = service.processAutoPayments()
+            val results = processor.process()
 
             Then("it pays the bill via the real payBill path and records lastPaidBillId") {
                 results.size shouldBe 1
@@ -156,7 +157,7 @@ class BillsServiceTest : BehaviorSpec({
         When("the due bill exceeds the user's maxAmount cap") {
             every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(setting(BigDecimal("10000")))
 
-            val results = service.processAutoPayments()
+            val results = processor.process()
 
             Then("it skips the bill and never touches the ledger") {
                 results.size shouldBe 0
@@ -167,7 +168,7 @@ class BillsServiceTest : BehaviorSpec({
         When("the bill was already paid in a prior poll") {
             every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(setting(BigDecimal("50000"), lastPaidBillId = "bill_1"))
 
-            val results = service.processAutoPayments()
+            val results = processor.process()
 
             Then("it skips the bill and never re-pays it") {
                 results.size shouldBe 0
@@ -209,7 +210,7 @@ class BillsServiceTest : BehaviorSpec({
                 ledgerService.postLedgerTransaction(any(), any())
             } throws IllegalStateException("insufficient funds") andThen LedgerPostResult("ledgertxn_2", emptyList())
 
-            val results = service.processAutoPayments()
+            val results = processor.process()
 
             Then("the failing setting is skipped but the other user's payment still succeeds") {
                 results.size shouldBe 1
