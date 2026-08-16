@@ -11,6 +11,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.DailyStepRewardRepository
+import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.KnowledgeAnswerRepository
 import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
@@ -54,6 +55,7 @@ class RewardsService(
     private val userRepository: UserRepository,
     private val dailyStepRewardRepository: DailyStepRewardRepository,
     private val knowledgeAnswerRepository: KnowledgeAnswerRepository,
+    private val eatsReviewRepository: EatsReviewRepository,
 ) {
 
     // Static catalog, same convention as InsuranceService's insurancePlans / LoansService's
@@ -72,6 +74,14 @@ class RewardsService(
         // follow-up. Every other catalog task rewards a transaction or a one-time setup
         // step; this is the first that rewards genuine community help.
         RewardTaskDef("task_knowledge_answer_adopted", "Get an answer adopted", "Help someone in Community Q&A and have your answer marked best", BigDecimal("500")),
+        // Real Coupang/Baemin/Naver-sourced 포토리뷰 incentive -- every major Korean
+        // delivery/e-commerce platform pays a small one-time reward for a review that
+        // includes a real photo of the food/product, since photo-bearing reviews are
+        // disproportionately trusted by other buyers (the same real motivation
+        // EatsReview.photoUrl's own doc comment already cites for ranking photo
+        // reviews first). itunda's EatsReview.photoUrl has existed since migration
+        // V224 with zero incentive attached to actually using it -- this closes that.
+        RewardTaskDef("task_first_photo_review", "Write a photo review", "Add a real photo to any Eats order review", BigDecimal("300")),
     )
 
     // Real-activity verification (2026-07-16/17). Closes the parity matrix's "claiming
@@ -99,6 +109,7 @@ class RewardsService(
             .map { it.profilePhotoUrl != null && it.emailVerified }
             .orElse(false)
         "task_knowledge_answer_adopted" -> knowledgeAnswerRepository.countByAnswererIdAndIsAdoptedTrue(userId) > 0
+        "task_first_photo_review" -> eatsReviewRepository.existsByBuyerIdAndPhotoUrlIsNotNull(userId)
         else -> false
     }
 

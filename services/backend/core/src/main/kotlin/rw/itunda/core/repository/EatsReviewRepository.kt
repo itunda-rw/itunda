@@ -21,6 +21,8 @@ interface RestaurantRatingSummaryProjection {
 interface EatsReviewRepository : JpaRepository<EatsReview, String> {
     fun findByOrderId(orderId: String): EatsReview?
 
+    fun existsByBuyerIdAndPhotoUrlIsNotNull(buyerId: String): Boolean
+
     fun findByRestaurantIdOrderByCreatedAtDesc(restaurantId: String, pageable: Pageable): Page<EatsReview>
 
     @Query("SELECT AVG(r.restaurantRating) as average, COUNT(r) as count FROM EatsReview r WHERE r.restaurantId = :restaurantId")
