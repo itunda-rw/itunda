@@ -105,7 +105,7 @@ import {
 } from './lib/stocks';
 import {
   addGroupMember, connectMessagingSocket, createGroup, createOpenGroup, joinGroupByCode, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroupThread, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage, fetchThread,
-  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationArchived, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, fetchTodaysBirthdays, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationArchived, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
@@ -9842,6 +9842,56 @@ function MessagesView({ initialConversationId, onConsumedInitial }: { initialCon
 // directory. The backend infra (`GET /messages/contacts`, `GET /messages/presence`)
 // was already fully real and already used inline in the New-chat/add-group-member
 // composers on all 3 platforms -- this is a client-only addition, no new endpoint.
+// Real KakaoTalk "오늘의 생일" (Today's Birthday) (2026-08-17) -- KakaoTalk's own real
+// feature shows friends with a birthday today at the top of the friend list with a
+// cake icon, letting you message them directly without hunting through the full
+// contact list. Reuses FriendsList's own onOpenConversation hand-off convention.
+// Renders nothing when the caller has no real contacts with a birthday today -- never
+// an empty placeholder card.
+function TodaysBirthdaySection({ onOpenConversation }: { onOpenConversation: (conversationId: string) => void }) {
+  const [birthdays, setBirthdays] = useState<TalkContact[] | null>(null);
+  const [startingId, setStartingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTodaysBirthdays().then(setBirthdays).catch(() => setBirthdays([]));
+  }, []);
+
+  const handleTap = async (contact: TalkContact) => {
+    setStartingId(contact.userId);
+    try {
+      const conversation = await startConversationWithUser(contact.userId);
+      onOpenConversation(conversation.id);
+    } catch {
+      // Fails quietly -- the user can still reach this same person from the regular
+      // Friends list below, same non-blocking discipline FriendsList's own handleTap
+      // already establishes for a failed chat start.
+    } finally {
+      setStartingId(null);
+    }
+  };
+
+  if (!birthdays || birthdays.length === 0) return null;
+
+  return (
+    <div className="itunda-card" style={{ background: 'var(--itunda-blue-light)' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>🎂 Today's birthday</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {birthdays.map((c) => (
+          <button
+            key={c.userId}
+            onClick={() => handleTap(c)}
+            disabled={startingId === c.userId}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 10px', borderRadius: '8px', background: 'var(--itunda-white)', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+          >
+            <span style={{ fontSize: '14px', fontWeight: 600 }}>{c.name}</span>
+            <span style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700 }}>{startingId === c.userId ? '…' : 'Say happy birthday'}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FriendsList({ onOpenConversation }: { onOpenConversation: (conversationId: string) => void }) {
   const [contacts, setContacts] = useState<TalkContact[] | null>(null);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
@@ -9884,6 +9934,7 @@ function FriendsList({ onOpenConversation }: { onOpenConversation: (conversation
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <TodaysBirthdaySection onOpenConversation={onOpenConversation} />
       {contacts.map((c) => (
         <button
           key={c.userId}

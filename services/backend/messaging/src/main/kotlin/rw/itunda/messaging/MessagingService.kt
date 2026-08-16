@@ -350,6 +350,29 @@ class MessagingService(
             .distinctBy { it.userId }.sortedBy { it.name.lowercase() }
     }
 
+    // Real KakaoTalk "오늘의 생일" (Today's Birthday) (2026-08-17) -- KakaoTalk's own real
+    // feature: friends with a birthday today surface in a dedicated section at the top
+    // of the friend list, letting you message or gift them directly without hunting
+    // through the full contact list. Reuses the exact same real Talk-contact pool
+    // listTalkContacts already establishes (a contact must be a saved phone contact who
+    // is also a real itunda user -- never a public search that would leak a stranger's
+    // birthday) and the real, already-settable User.birthDate
+    // (POST /auth/profile/birth-date, previously only used for Mini-wallet age-
+    // eligibility). Only ever compares month+day, never year, since a birthday recurs
+    // annually regardless of age. Africa/Kigali local date, same real-timezone
+    // convention Merchant.isClosedToday() already established.
+    fun getTodaysBirthdays(userId: String): List<TalkContact> {
+        val contacts = contactRepository.findByUserId(userId)
+        val usersByPhone = userRepository.findAllByPhoneNumberIn(contacts.map { it.phoneNumber }.distinct()).associateBy { it.phoneNumber }
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali"))
+        return contacts.mapNotNull { contact ->
+            usersByPhone[contact.phoneNumber]
+                ?.takeIf { it.id != userId }
+                ?.takeIf { it.birthDate?.monthValue == today.monthValue && it.birthDate?.dayOfMonth == today.dayOfMonth }
+                ?.let { TalkContact(it.id, contact.name) }
+        }.distinctBy { it.userId }.sortedBy { it.name.lowercase() }
+    }
+
     // Real emoji reactions (2026-07-19) -- closes the "message reactions" item on the
     // Talk polish roadmap. Deliberately a toggle: tapping an already-active reaction
     // removes it rather than erroring, the same "add is idempotent-by-toggling, not by

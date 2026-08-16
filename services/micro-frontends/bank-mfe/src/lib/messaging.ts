@@ -67,6 +67,11 @@ export const fetchConversations = (archived = false) =>
 export const fetchTalkContacts = () =>
   apiFetch<{ success: boolean; contacts: TalkContact[] }>('/api/v1/messages/contacts').then((r) => r.contacts);
 
+// Real KakaoTalk-style "오늘의 생일" (Today's Birthday) (2026-08-17) -- see backend
+// MessagingService.getTodaysBirthdays's own doc comment.
+export const fetchTodaysBirthdays = () =>
+  apiFetch<{ success: boolean; contacts: TalkContact[] }>('/api/v1/messages/contacts/birthdays-today').then((r) => r.contacts);
+
 // Real phone-number-based start -- the human-friendly entry point
 // MessagingService.startOrGetConversationByPhoneNumber added specifically for this UI
 // (a user only ever knows someone else's phone number, never their internal user id).

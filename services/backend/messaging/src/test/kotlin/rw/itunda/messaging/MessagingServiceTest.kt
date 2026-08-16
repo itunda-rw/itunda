@@ -379,6 +379,49 @@ class MessagingServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali"))
+        val notToday = today.plusDays(1).let { if (it.monthValue == today.monthValue) today.minusDays(1) else it }
+
+        fun contact(id: String, name: String, phone: String) =
+            rw.itunda.core.domain.Contact(id = id, userId = "user_a", name = name, bank = "BK", acc = "0000", phoneNumber = phone, color = "#000", letter = "T")
+
+        When("a real saved contact's birthday is today") {
+            every { contactRepository.findByUserId("user_a") } returns listOf(contact("contact_1", "Birthday Beata", "+250780000002"))
+            every { userRepository.findAllByPhoneNumberIn(listOf("+250780000002")) } returns listOf(
+                user("user_b", "Beata").apply { phoneNumber = "+250780000002"; birthDate = today },
+            )
+
+            val birthdays = service.getTodaysBirthdays("user_a")
+
+            Then("it appears in the real Today's Birthday list, using the caller's own saved name") {
+                birthdays.size shouldBe 1
+                birthdays[0].userId shouldBe "user_b"
+                birthdays[0].name shouldBe "Birthday Beata"
+            }
+        }
+
+        When("a real saved contact's birthday is a different day") {
+            every { contactRepository.findByUserId("user_a") } returns listOf(contact("contact_2", "Not Today Chantal", "+250780000003"))
+            every { userRepository.findAllByPhoneNumberIn(listOf("+250780000003")) } returns listOf(
+                user("user_c", "Chantal").apply { phoneNumber = "+250780000003"; birthDate = notToday },
+            )
+
+            Then("it is correctly excluded from the real Today's Birthday list") {
+                service.getTodaysBirthdays("user_a").size shouldBe 0
+            }
+        }
+
+        When("a real saved contact has never set a birth date") {
+            every { contactRepository.findByUserId("user_a") } returns listOf(contact("contact_3", "No Birthday David", "+250780000004"))
+            every { userRepository.findAllByPhoneNumberIn(listOf("+250780000004")) } returns listOf(
+                user("user_d", "David").apply { phoneNumber = "+250780000004" },
+            )
+
+            Then("it is safely excluded, not a null-pointer crash") {
+                service.getTodaysBirthdays("user_a").size shouldBe 0
+            }
+        }
     }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf

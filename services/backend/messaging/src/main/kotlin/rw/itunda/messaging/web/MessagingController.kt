@@ -91,6 +91,12 @@ class MessagingController(
     fun listTalkContacts(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "contacts" to messagingService.listTalkContacts(currentUser.userId)))
 
+    // Real KakaoTalk "오늘의 생일" (Today's Birthday) -- see
+    // MessagingService.getTodaysBirthdays's own doc comment.
+    @GetMapping("/contacts/birthdays-today")
+    fun getTodaysBirthdays(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "contacts" to messagingService.getTodaysBirthdays(currentUser.userId)))
+
     @GetMapping("/conversations/{conversationId}/messages")
     fun getMessages(
         @PathVariable conversationId: String,
