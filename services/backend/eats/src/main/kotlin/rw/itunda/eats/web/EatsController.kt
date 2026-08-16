@@ -127,6 +127,7 @@ class EatsController(
     private val merchantRepository: rw.itunda.core.repository.MerchantRepository,
     private val riderRepository: rw.itunda.core.repository.RiderRepository,
     private val userRepository: rw.itunda.core.repository.UserRepository,
+    private val eatsOrderRepository: rw.itunda.core.repository.EatsOrderRepository,
 ) {
     // Real fresh Uber Eats research (2026-08-15, restaurantdive.com's coverage of Uber
     // Eats' own delivery-tracker redesign, sourced from real internal research across
@@ -178,19 +179,35 @@ class EatsController(
     @GetMapping("/dishes")
     fun getDishes(
         @RequestParam(required = false) category: String?,
+        // Real Coupang Eats-style budget filter (2026-08-16, "AI 개인화 메뉴 추천" --
+        // see EatsPromotionCalculator-adjacent research: budget-aware dish browsing).
+        // Just the price cap, not Coupang's own real delivery-fee-aware total budget
+        // (would need a per-merchant distance/fee computation at browse time -- a
+        // bigger v2, not this pass).
+        @RequestParam(required = false) maxBudget: java.math.BigDecimal?,
         @PageableDefault(size = 30) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         // businessType=RESTAURANT added 2026-08-13 -- see MerchantBusinessType's own doc
         // comment. Without it, any non-food merchant's photographed product (a phone, a
         // t-shirt) qualified as a "dish" purely by having imageUrl set.
-        val page = merchantProductRepository.findDishes(rw.itunda.core.domain.MerchantStatus.ACTIVE, category, rw.itunda.core.domain.MerchantBusinessType.RESTAURANT, pageable)
+        val page = merchantProductRepository.findDishes(rw.itunda.core.domain.MerchantStatus.ACTIVE, category, rw.itunda.core.domain.MerchantBusinessType.RESTAURANT, maxBudget, pageable)
         val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
-        val dishes = page.content.map { p ->
-            mapOf(
-                "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
-                "name" to p.name, "price" to p.price, "imageUrl" to p.imageUrl,
-            )
-        }
+        // Real "recommended for you" ranking (2026-08-16) -- a plain, honest re-sort
+        // (never a re-fetch, so this page's own real pagination/count stays exact) by
+        // whether the buyer has actually ordered from that dish's restaurant before,
+        // not a fabricated ML ranking. sortedByDescending is stable, so within each
+        // group the existing real p.createdAt DESC ordering from the query is preserved.
+        val familiarRestaurantIds = eatsOrderRepository.findDistinctRestaurantIdsByBuyerId(currentUser.userId).toSet()
+        val dishes = page.content
+            .sortedByDescending { it.merchantId in familiarRestaurantIds }
+            .map { p ->
+                mapOf(
+                    "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
+                    "name" to p.name, "price" to p.price, "imageUrl" to p.imageUrl,
+                    "recommended" to (p.merchantId in familiarRestaurantIds),
+                )
+            }
         return ResponseEntity.ok(mapOf("success" to true, "dishes" to dishes) + pageMeta(page))
     }
 

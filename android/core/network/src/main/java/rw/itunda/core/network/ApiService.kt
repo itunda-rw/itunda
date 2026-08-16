@@ -1153,7 +1153,11 @@ data class DealsResponse(val success: Boolean, val products: List<DealProductDto
 // own doc comment for the full 100%-UI/UX-parity sourcing. Same shape as
 // DealProductDto above (this app's established "product-in-a-list" DTO shape) minus
 // the discount fields, which don't apply here.
-data class EatsDishDto(val id: String, val merchantId: String, val merchantName: String, val name: String, val price: Double, val imageUrl: String? = null)
+// Real Coupang Eats-style budget filter + "recommended for you" ranking (2026-08-16,
+// "AI 개인화 메뉴 추천") -- recommended is real, not fabricated: true only when the
+// buyer has actually ordered from that dish's restaurant before. See
+// EatsController.getDishes' own doc comment on the backend.
+data class EatsDishDto(val id: String, val merchantId: String, val merchantName: String, val name: String, val price: Double, val imageUrl: String? = null, val recommended: Boolean = false)
 data class EatsDishesResponse(val success: Boolean, val dishes: List<EatsDishDto>)
 data class MembershipDayStatusResponse(val success: Boolean, val isMembershipDay: Boolean, val multiplier: Double)
 
@@ -3164,7 +3168,7 @@ interface ApiService {
     // Real Coupang Eats-style dish grid (2026-08-03) -- see EatsDishDto's own doc
     // comment for the sourcing.
     @GET("api/v1/eats/dishes")
-    suspend fun getEatsDishes(@Query("category") category: String? = null): EatsDishesResponse
+    suspend fun getEatsDishes(@Query("category") category: String? = null, @Query("maxBudget") maxBudget: Double? = null): EatsDishesResponse
 
     // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment.
     @GET("api/v1/time-deals")

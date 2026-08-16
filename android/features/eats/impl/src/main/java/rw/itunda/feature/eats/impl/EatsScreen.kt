@@ -427,6 +427,20 @@ private fun EatsDishGrid(dishes: List<EatsDishDto>, onOpen: (EatsDishDto) -> Uni
                     } else {
                         RestaurantPhotoPlaceholder()
                     }
+                    // Real "recommended for you" signal (2026-08-16) -- see
+                    // EatsDishDto.recommended's own doc comment. Kept as a small corner
+                    // tag, not a full redesign, to preserve this grid's own deliberately
+                    // bare-tile intent (real, sourced Coupang Eats research above).
+                    if (dish.recommended) {
+                        Text(
+                            "For you", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(4.dp)
+                                .background(Ids.colors.brand, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                        )
+                    }
                 }
                 Text(dish.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
                 Text(dish.merchantName, color = Ids.colors.textSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

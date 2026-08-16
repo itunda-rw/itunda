@@ -47,6 +47,14 @@ interface EatsOrderRepository : JpaRepository<EatsOrder, String> {
     // reassignExpiredOffers's own doc comment already establishes.
     @Query("SELECT DISTINCT o.riderId FROM EatsOrder o WHERE o.status IN :statuses AND o.riderId IS NOT NULL")
     fun findDistinctRiderIdsByStatusIn(@Param("statuses") statuses: List<EatsOrderStatus>): List<String>
+
+    // Real Coupang Eats-style "recommended for you" ranking signal (2026-08-16, "AI
+    // 개인화 메뉴 추천" -- see EatsController.getDishes' own doc comment). A plain,
+    // honest set of real restaurants this buyer has actually ordered from before --
+    // used to rank familiar merchants' dishes ahead of unfamiliar ones, not a
+    // fabricated ML model.
+    @Query("SELECT DISTINCT o.restaurantId FROM EatsOrder o WHERE o.buyerId = :buyerId")
+    fun findDistinctRestaurantIdsByBuyerId(@Param("buyerId") buyerId: String): List<String>
 }
 
 interface EatsOrderItemRepository : JpaRepository<EatsOrderItem, String> {

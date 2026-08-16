@@ -10,6 +10,7 @@ import rw.itunda.core.domain.MerchantBusinessType
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.PaymentIntent
+import java.math.BigDecimal
 
 interface MerchantRepository : JpaRepository<Merchant, String> {
     fun findByOwnerUserId(ownerUserId: String): Merchant?
@@ -160,17 +161,24 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     // without this, any non-restaurant merchant's photographed product (the Fashion
     // seed merchant's t-shirt/sneakers, the Electronics merchant's phone -- all real,
     // all have imageUrl set) qualified as a "dish" purely by having a photo.
+    // Real Coupang Eats-style budget filter (2026-08-16, "AI 개인화 메뉴 추천" -- see
+    // EatsController.getDishes' own doc comment for the full sourced account).
+    // Deliberately just the price cap, not Coupang's own real delivery-fee-aware total
+    // budget (which would need a per-merchant distance/fee computation at browse time,
+    // a bigger v2, not this pass) -- itunda's own honest, smaller v1 slice.
     @Query(
         "SELECT p FROM MerchantProduct p JOIN Merchant m ON m.id = p.merchantId " +
             "WHERE p.active = true AND m.status = :status AND p.imageUrl IS NOT NULL " +
             "AND (:category IS NULL OR m.category = :category) " +
             "AND (:businessType IS NULL OR m.businessType = :businessType) " +
+            "AND (:maxBudget IS NULL OR p.price <= :maxBudget) " +
             "ORDER BY p.createdAt DESC",
     )
     fun findDishes(
         @Param("status") status: MerchantStatus,
         @Param("category") category: String?,
         @Param("businessType") businessType: MerchantBusinessType?,
+        @Param("maxBudget") maxBudget: BigDecimal?,
         pageable: Pageable,
     ): Page<MerchantProduct>
 }
