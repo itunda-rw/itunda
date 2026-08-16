@@ -4,7 +4,7 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptingOrders, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantAvgPrepTimeMinutes, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
+import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptingOrders, setAcceptsScheduledOrders, setCashbackRate, setCategory, setClosedWeekdays, setMerchantAvgPrepTimeMinutes, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
 import { useI18n } from '../i18n/I18nContext';
 import type { TranslationKey } from '../i18n/translations';
 
@@ -438,6 +438,8 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
   const [scheduledError, setScheduledError] = useState<string | null>(null);
   const [acceptingBusy, setAcceptingBusy] = useState(false);
   const [acceptingError, setAcceptingError] = useState<string | null>(null);
+  const [closedWeekdaysBusy, setClosedWeekdaysBusy] = useState(false);
+  const [closedWeekdaysError, setClosedWeekdaysError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -487,6 +489,29 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
       setAcceptingBusy(false);
     }
   };
+
+  // Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule) (2026-08-16)
+  // -- see MerchantService.setClosedWeekdays's own doc comment. Same real toggle-array
+  // shape a day-of-week picker needs; weekdays are 1=Monday..7=Sunday.
+  const closedWeekdaySet = new Set((merchant.closedWeekdays ?? '').split(',').filter(Boolean).map(Number));
+  const handleToggleClosedWeekday = async (day: number) => {
+    setClosedWeekdaysBusy(true);
+    setClosedWeekdaysError(null);
+    try {
+      const next = new Set(closedWeekdaySet);
+      if (next.has(day)) next.delete(day); else next.add(day);
+      onUpdated(await setClosedWeekdays([...next]));
+    } catch (err) {
+      setClosedWeekdaysError(err instanceof ApiError ? err.message : t('settings.saveError'));
+    } finally {
+      setClosedWeekdaysBusy(false);
+    }
+  };
+  const weekdayLabels: { day: number; key: 'settings.weekdayMon' | 'settings.weekdayTue' | 'settings.weekdayWed' | 'settings.weekdayThu' | 'settings.weekdayFri' | 'settings.weekdaySat' | 'settings.weekdaySun' }[] = [
+    { day: 1, key: 'settings.weekdayMon' }, { day: 2, key: 'settings.weekdayTue' }, { day: 3, key: 'settings.weekdayWed' },
+    { day: 4, key: 'settings.weekdayThu' }, { day: 5, key: 'settings.weekdayFri' }, { day: 6, key: 'settings.weekdaySat' },
+    { day: 7, key: 'settings.weekdaySun' },
+  ];
 
   return (
     <div className="itunda-card">
@@ -591,6 +616,30 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
       </div>
       {acceptingError && (
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">{acceptingError}</p>
+      )}
+      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
+        <p style={{ fontSize: '14px', fontWeight: 600 }}>{t('settings.closedWeekdaysTitle')}</p>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>{t('settings.closedWeekdaysBody')}</p>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {weekdayLabels.map(({ day, key }) => {
+            const active = closedWeekdaySet.has(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                disabled={closedWeekdaysBusy}
+                onClick={() => handleToggleClosedWeekday(day)}
+                className={active ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
+                style={{ padding: '8px 12px', fontSize: '13px' }}
+              >
+                {t(key)}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {closedWeekdaysError && (
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">{closedWeekdaysError}</p>
       )}
     </div>
   );

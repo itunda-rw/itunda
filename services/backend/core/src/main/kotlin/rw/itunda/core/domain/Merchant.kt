@@ -239,6 +239,31 @@ class Merchant(
     // patterns.
     @Column(name = "consecutive_missed_orders", nullable = false)
     var consecutiveMissedOrders: Int = 0,
+
+    // Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule) (2026-08-16)
+    // -- sourced from Baemin's own real seller guide (ceo.baemin.com: "가게 관리 > 휴무일
+    // 설정" lets a restaurant declare which days of the week it's regularly closed, e.g.
+    // "매주 월요일 휴무"). Distinct from both existing pause mechanisms: isAcceptingOrders
+    // is a one-off manual toggle a merchant flips and un-flips by hand, and
+    // consecutiveMissedOrders is an automatic streak-driven pause -- neither expresses "I
+    // am never open on Mondays" as a standing, real, recurring fact. Nullable string of
+    // comma-separated java.time.DayOfWeek values (1=MONDAY..7=SUNDAY, matching
+    // DayOfWeek.getValue()'s own real ISO-8601 numbering) rather than a mapped
+    // collection table -- same "plain field over a second JPA table for a small,
+    // rarely-multi-valued property" convention openingHours/phoneNumber already use on
+    // this entity. Null/blank means no recurring closed days (every existing merchant's
+    // behavior is completely unchanged).
+    @Column(name = "closed_weekdays", length = 20)
+    var closedWeekdays: String? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
+
+    // Single real source of truth for "is this restaurant closed on its own recurring
+    // schedule right now" -- shared by EatsOrderService.placeOrder's own server-side
+    // enforcement and ShoppingController's own browse-card badge, so the two can never
+    // drift into disagreeing about the same real Rwanda business day.
+    fun isClosedToday(): Boolean {
+        val todayWeekday = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali")).dayOfWeek.value
+        return closedWeekdays?.split(",")?.mapNotNull { it.toIntOrNull() }?.contains(todayWeekday) == true
+    }
 }

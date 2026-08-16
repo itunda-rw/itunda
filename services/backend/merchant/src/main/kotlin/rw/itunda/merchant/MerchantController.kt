@@ -34,6 +34,7 @@ data class SetCashbackRateRequest(val rate: BigDecimal?)
 data class SetParticipatesInEatsMembershipRequest(val participates: Boolean)
 data class SetAcceptsScheduledOrdersRequest(val accepts: Boolean)
 data class SetAcceptingOrdersRequest(val accepting: Boolean)
+data class SetClosedWeekdaysRequest(val weekdays: Set<Int>)
 data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class SetPhoneNumberRequest(val phoneNumber: String?)
@@ -211,6 +212,17 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setAcceptingOrders(currentUser.userId, request.accepting)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule) -- see
+    // MerchantService.setClosedWeekdays's own doc comment.
+    @PostMapping("/closed-weekdays")
+    fun setClosedWeekdays(
+        @RequestBody request: SetClosedWeekdaysRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setClosedWeekdays(currentUser.userId, request.weekdays)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -481,6 +493,10 @@ class MerchantController(
     @ExceptionHandler(InvalidCategoryException::class)
     fun handleInvalidCategory(ex: InvalidCategoryException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CATEGORY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidClosedWeekdaysException::class)
+    fun handleInvalidClosedWeekdays(ex: InvalidClosedWeekdaysException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CLOSED_WEEKDAYS", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidCashbackRateException::class)
     fun handleInvalidCashbackRate(ex: InvalidCashbackRateException) =

@@ -161,6 +161,40 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real merchant sets a recurring weekly closed-day schedule (Baemin CEO app 휴무일 설정)") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { merchantRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setClosedWeekdays("owner_1", setOf(7, 1))
+
+            Then("it stores the real weekdays sorted, comma-separated") {
+                result.closedWeekdays shouldBe "1,7"
+            }
+        }
+
+        When("a real merchant clears their closed-day schedule") {
+            merchant.closedWeekdays = "6,7"
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { merchantRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setClosedWeekdays("owner_1", emptySet())
+
+            Then("it real-clears the field back to null, not an empty string") {
+                result.closedWeekdays shouldBe null
+            }
+        }
+
+        When("setting an out-of-range weekday") {
+            Then("it rejects the request before touching the merchant") {
+                try {
+                    service.setClosedWeekdays("owner_1", setOf(8))
+                    error("expected InvalidClosedWeekdaysException")
+                } catch (e: InvalidClosedWeekdaysException) {
+                    verify(exactly = 0) { merchantRepository.save(any()) }
+                }
+            }
+        }
+
         When("setting a real valid location") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
             every { merchantRepository.save(any()) } answers { firstArg() }

@@ -14493,6 +14493,10 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                       this is true; this badge is why it's longer than usual, not a
                       separate/contradictory number. */}
                   {r.isBusy && <span>· 🔥 Busy, delivery may take longer</span>}
+                  {/* Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day
+                      schedule) (2026-08-16) -- see Merchant.isClosedToday's own doc
+                      comment. */}
+                  {r.closedToday && <span>· 🚫 Closed today</span>}
                   {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}
                   {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
                 </p>

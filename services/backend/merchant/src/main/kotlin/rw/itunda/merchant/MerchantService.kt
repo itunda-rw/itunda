@@ -45,6 +45,7 @@ class MerchantNotFoundException(message: String) : RuntimeException(message)
 class MerchantNoWalletException(message: String) : RuntimeException(message)
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class InvalidCategoryException(message: String) : RuntimeException(message)
+class InvalidClosedWeekdaysException(message: String) : RuntimeException(message)
 class InvalidCashbackRateException(message: String) : RuntimeException(message)
 class InvalidPhotoUrlException(message: String) : RuntimeException(message)
 class InvalidMinOrderAmountException(message: String) : RuntimeException(message)
@@ -258,6 +259,20 @@ class MerchantService(
     fun setAcceptingOrders(ownerUserId: String, accepting: Boolean): Merchant {
         val merchant = getMyMerchant(ownerUserId)
         merchant.isAcceptingOrders = accepting
+        return merchantRepository.save(merchant)
+    }
+
+    // Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule) -- see
+    // Merchant.closedWeekdays's own doc comment. Real values 1-7 (java.time.DayOfWeek's
+    // own ISO-8601 numbering: 1=MONDAY..7=SUNDAY); an empty set clears the schedule back
+    // to "open every day", same real "no forced state" shape setAcceptingOrders already
+    // establishes.
+    fun setClosedWeekdays(ownerUserId: String, weekdays: Set<Int>): Merchant {
+        if (weekdays.any { it !in 1..7 }) {
+            throw InvalidClosedWeekdaysException("Each weekday must be between 1 (Monday) and 7 (Sunday)")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.closedWeekdays = if (weekdays.isEmpty()) null else weekdays.sorted().joinToString(",")
         return merchantRepository.save(merchant)
     }
 

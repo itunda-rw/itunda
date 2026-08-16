@@ -42,6 +42,10 @@ export interface Merchant {
   // Real Baemin CEO app 영업일시중지 (temporarily pause business) (2026-08-16) -- see
   // Merchant.isAcceptingOrders's own doc comment. Defaults true.
   isAcceptingOrders: boolean;
+  // Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule)
+  // (2026-08-16) -- see backend Merchant.closedWeekdays's own doc comment.
+  // Comma-separated 1=Monday..7=Sunday; null means no recurring closed days.
+  closedWeekdays: string | null;
   // Real phone number + opening hours (2026-08-09) -- see Merchant.kt's own doc
   // comment on the backend. Both plain merchant-set free text; null means unset.
   phoneNumber: string | null;
@@ -310,6 +314,15 @@ export const setAcceptingOrders = (accepting: boolean) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/accepting-orders', {
     method: 'POST',
     body: JSON.stringify({ accepting }),
+  }).then((r) => r.merchant);
+
+// Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule) (2026-08-16) --
+// see backend Merchant.closedWeekdays's own doc comment. weekdays: 1=Monday..7=Sunday
+// (java.time.DayOfWeek's own real ISO-8601 numbering), empty array clears the schedule.
+export const setClosedWeekdays = (weekdays: number[]) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/closed-weekdays', {
+    method: 'POST',
+    body: JSON.stringify({ weekdays }),
   }).then((r) => r.merchant);
 
 // Real Baemin Club-style participating-restaurant opt-in (2026-07-26) -- first client

@@ -156,6 +156,11 @@ class ShoppingController(
                     // this surfaced on the browse card itself, not just discovered as a
                     // real 400 after trying to check out.
                     "isAcceptingOrders" to merchant.isAcceptingOrders,
+                    // Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day
+                    // schedule) -- see Merchant.isClosedToday's own doc comment. So the
+                    // buyer sees this on the browse card itself rather than discovering
+                    // it as a 400 after trying to check out.
+                    "closedToday" to merchant.isClosedToday(),
                     // Real Uber Eats-style "busy kitchen" signal (2026-08-16) -- see
                     // EatsOrderRepository.getActiveKitchenOrderCounts's own doc comment.
                     // deliveryTimeMinutes above already includes this restaurant's real

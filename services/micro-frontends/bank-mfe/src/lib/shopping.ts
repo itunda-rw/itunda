@@ -44,6 +44,12 @@ export interface ShoppingMerchant {
   // ShoppingController.getEligibleMerchants's own doc comment. deliveryTimeMinutes
   // above already includes the real delay bump when this is true.
   isBusy?: boolean;
+  // Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule)
+  // (2026-08-16) -- see Merchant.isClosedToday's own doc comment. Computed
+  // server-side from the real restaurant's own closed-weekday schedule against
+  // real current Rwanda local time, so this can never drift from what
+  // EatsOrderService.placeOrder's own enforcement actually checks.
+  closedToday?: boolean;
 }
 
 // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see the backend's

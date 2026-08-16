@@ -544,6 +544,15 @@ export type TranslationKey =
   | 'settings.on'
   | 'settings.off'
   | 'settings.paused'
+  | 'settings.closedWeekdaysTitle'
+  | 'settings.closedWeekdaysBody'
+  | 'settings.weekdayMon'
+  | 'settings.weekdayTue'
+  | 'settings.weekdayWed'
+  | 'settings.weekdayThu'
+  | 'settings.weekdayFri'
+  | 'settings.weekdaySat'
+  | 'settings.weekdaySun'
   | 'settings.eatsClubTitle'
   | 'settings.eatsClubBody'
   | 'settings.eatsClubParticipating'
@@ -1060,6 +1069,15 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.on': 'On',
     'settings.off': 'Off',
     'settings.paused': 'Paused',
+    'settings.closedWeekdaysTitle': 'Regular closed days',
+    'settings.closedWeekdaysBody': 'Select the days you\'re always closed. Buyers see this before ordering, and it\'s enforced automatically.',
+    'settings.weekdayMon': 'Mon',
+    'settings.weekdayTue': 'Tue',
+    'settings.weekdayWed': 'Wed',
+    'settings.weekdayThu': 'Thu',
+    'settings.weekdayFri': 'Fri',
+    'settings.weekdaySat': 'Sat',
+    'settings.weekdaySun': 'Sun',
     'settings.eatsClubTitle': 'Eats Club',
     'settings.eatsClubBody': 'Offer free delivery to buyers with an active Eats Club membership.',
     'settings.eatsClubParticipating': 'Participating',
@@ -1571,6 +1589,15 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.on': 'Birakora',
     'settings.off': 'Ntibikora',
     'settings.paused': 'Byahagaritswe',
+    'settings.closedWeekdaysTitle': 'Iminsi isanzwe ifunze',
+    'settings.closedWeekdaysBody': 'Hitamo iminsi usanzwe ufunze buri cyumweru. Abaguzi barabibona mbere yo gutumiza, kandi bikurikizwa mu buryo bwikora.',
+    'settings.weekdayMon': 'Kuw.',
+    'settings.weekdayTue': 'Kab.',
+    'settings.weekdayWed': 'Gtu.',
+    'settings.weekdayThu': 'Kan.',
+    'settings.weekdayFri': 'Gnu.',
+    'settings.weekdaySat': 'Gcu.',
+    'settings.weekdaySun': 'Cyu.',
     'settings.eatsClubTitle': 'Eats Club',
     'settings.eatsClubBody': 'Tanga ubwoherezwa kubuntu ku baguzi bafite Eats Club ikora.',
     'settings.eatsClubParticipating': 'Urimo',
@@ -2082,6 +2109,15 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.on': 'Activé',
     'settings.off': 'Désactivé',
     'settings.paused': 'Suspendu',
+    'settings.closedWeekdaysTitle': 'Jours de fermeture réguliers',
+    'settings.closedWeekdaysBody': 'Sélectionnez les jours où vous êtes toujours fermé. Les acheteurs le voient avant de commander, et c\'est appliqué automatiquement.',
+    'settings.weekdayMon': 'Lun',
+    'settings.weekdayTue': 'Mar',
+    'settings.weekdayWed': 'Mer',
+    'settings.weekdayThu': 'Jeu',
+    'settings.weekdayFri': 'Ven',
+    'settings.weekdaySat': 'Sam',
+    'settings.weekdaySun': 'Dim',
     'settings.eatsClubTitle': 'Eats Club',
     'settings.eatsClubBody': 'Offrez la livraison gratuite aux clients ayant un abonnement Eats Club actif.',
     'settings.eatsClubParticipating': 'Participant',

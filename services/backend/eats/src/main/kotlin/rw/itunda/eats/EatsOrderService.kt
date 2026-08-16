@@ -306,6 +306,13 @@ class EatsOrderService(
         if (!restaurant.isAcceptingOrders) {
             throw RestaurantNotAcceptingOrdersException("This restaurant isn't accepting orders right now")
         }
+        // Real Baemin CEO app 휴무일 설정 (recurring weekly closed-day schedule)
+        // enforcement -- see Merchant.isClosedToday's own doc comment. Same "checked
+        // server-side, not just a UI badge" discipline the manual pause check above
+        // already establishes.
+        if (restaurant.isClosedToday()) {
+            throw RestaurantNotAcceptingOrdersException("This restaurant is closed today")
+        }
         // Real, honest display value for PICKUP -- `deliveryAddress` stays NOT NULL,
         // and a real "collect from the restaurant" order genuinely has no delivery
         // address of its own to store.
