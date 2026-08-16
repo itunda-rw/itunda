@@ -69,6 +69,18 @@ class SupportServiceTest : BehaviorSpec({
             }
         }
 
+        When("the sender files a RIDE_ISSUE ticket about it") {
+            val ticket = service.createTicket("user_1", "ledgertxn_1", SupportTicketCategory.RIDE_ISSUE, "Driver took a much longer route")
+
+            Then("its SLA due date is real itunda policy for RIDE_ISSUE (24 hours), faster than GENERAL") {
+                val hoursUntilDue = java.time.Duration.between(Instant.now(), ticket.dueBy).toHours()
+                (hoursUntilDue in 23..24) shouldBe true
+            }
+            Then("it does not freeze any wallet, unlike ACCOUNT_TAKEOVER") {
+                ticket.frozeWalletId shouldBe null
+            }
+        }
+
         // Real IDOR fix (2026-08-02): this used to throw SupportTransactionNotOwnedException
         // (403), confirming to a stranger that a guessed/leaked transactionId is real.
         // Now the same SupportTransactionNotFoundException (404) as a bogus id.

@@ -317,7 +317,7 @@ export interface SupportTicket {
   id: string;
   userId: string;
   transactionId: string | null;
-  category: 'GENERAL' | 'PAYMENT_DISPUTE' | 'ACCOUNT_TAKEOVER';
+  category: 'GENERAL' | 'PAYMENT_DISPUTE' | 'ACCOUNT_TAKEOVER' | 'RIDE_ISSUE';
   description: string;
   status: 'OPEN' | 'RESOLVED';
   resolution: 'REFUNDED' | 'REJECTED' | null;

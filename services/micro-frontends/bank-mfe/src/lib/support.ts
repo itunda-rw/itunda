@@ -6,7 +6,7 @@ import { apiFetch } from './api';
 // own doc comment on why a ticket is always tied to a specific transaction, not a
 // free-floating complaint.
 
-export type SupportTicketCategory = 'GENERAL' | 'PAYMENT_DISPUTE' | 'ACCOUNT_TAKEOVER';
+export type SupportTicketCategory = 'GENERAL' | 'PAYMENT_DISPUTE' | 'ACCOUNT_TAKEOVER' | 'RIDE_ISSUE';
 
 export interface SupportTicket {
   id: string;

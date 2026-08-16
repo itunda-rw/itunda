@@ -44,6 +44,7 @@ class SupportService(
         // user is locked out of moving money on it until reviewed.
         val SLA_HOURS = mapOf(
             SupportTicketCategory.ACCOUNT_TAKEOVER to 4L,
+            SupportTicketCategory.RIDE_ISSUE to 24L,
             SupportTicketCategory.PAYMENT_DISPUTE to 48L,
             SupportTicketCategory.GENERAL to 72L,
         )

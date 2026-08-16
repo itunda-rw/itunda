@@ -9,6 +9,9 @@ const CATEGORY_LABEL: Record<SupportTicket['category'], string> = {
   GENERAL: 'General',
   PAYMENT_DISPUTE: 'Payment dispute',
   ACCOUNT_TAKEOVER: 'Account takeover',
+  // Real Uber "trip issue report" category (2026-08-16) -- see backend
+  // SupportTicketCategory.RIDE_ISSUE's own doc comment.
+  RIDE_ISSUE: 'Ride issue',
 };
 
 function isOverdue(dueBy: string) {

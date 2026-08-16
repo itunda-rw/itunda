@@ -4839,16 +4839,21 @@ function IdentityView() {
 // specific transaction (see SupportTicket.kt's own doc comment for why), so this view
 // has the user pick one from their real transaction history rather than filing a
 // free-floating complaint.
-const SUPPORT_CATEGORIES: SupportTicketCategory[] = ['GENERAL', 'PAYMENT_DISPUTE', 'ACCOUNT_TAKEOVER'];
+const SUPPORT_CATEGORIES: SupportTicketCategory[] = ['GENERAL', 'PAYMENT_DISPUTE', 'ACCOUNT_TAKEOVER', 'RIDE_ISSUE'];
 
-function SupportView() {
+// Real Uber "trip issue report" hand-off (2026-08-16) -- a completed ride's own
+// "Report an issue" button lands here with the trip's real transactionId/RIDE_ISSUE
+// category already chosen, same pending-hand-off pattern pendingConversationId already
+// established, rather than dropping the rider on a blank category picker they'd have
+// to know to select the right transaction from themselves.
+function SupportView({ initialTransactionId, initialCategory, onConsumedInitial }: { initialTransactionId?: string | null; initialCategory?: SupportTicketCategory; onConsumedInitial?: () => void } = {}) {
   const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [showNewForm, setShowNewForm] = useState(false);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
-  const [category, setCategory] = useState<SupportTicketCategory>('GENERAL');
+  const [showNewForm, setShowNewForm] = useState(!!initialTransactionId);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(initialTransactionId ?? null);
+  const [category, setCategory] = useState<SupportTicketCategory>(initialCategory ?? 'GENERAL');
   const [description, setDescription] = useState('');
 
   const refresh = () => {
@@ -4859,6 +4864,13 @@ function SupportView() {
   };
 
   useEffect(refresh, []);
+  // Consume the pending ride-issue hand-off exactly once on mount -- clears the
+  // parent's pending state so navigating back to Support later for an unrelated
+  // ticket doesn't keep re-pre-filling the same stale ride transaction.
+  useEffect(() => {
+    if (initialTransactionId) onConsumedInitial?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -4883,6 +4895,11 @@ function SupportView() {
         <button className="itunda-btn itunda-btn-primary" onClick={() => setShowNewForm(true)}>Report an issue with a transaction</button>
       ) : (
         <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+          {initialTransactionId && (
+            <p style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700 }}>
+              🚗 Reporting an issue with this ride's payment
+            </p>
+          )}
           <p style={{ fontSize: '12px', fontWeight: 700 }}>Which transaction?</p>
           {transactions.slice(0, 10).map((tx) => (
             <label key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -15128,7 +15145,7 @@ function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted
   );
 }
 
-function RidesView() {
+function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) => void }) {
   const [subTab, setSubTab] = useState<'RIDE' | 'DRIVE'>('RIDE');
 
   // Passenger side
@@ -15454,8 +15471,21 @@ function RidesView() {
                 {pastTrips.map((t) => (
                   <RideTripCard
                     key={t.id} trip={t}
-                    action={t.status === 'COMPLETED' && t.driverId && !reviewedTripIds.has(t.id) && (
-                      <RideReviewPrompt tripId={t.id} onSubmitted={() => setReviewedTripIds((prev) => new Set(prev).add(t.id))} />
+                    action={(
+                      <>
+                        {t.status === 'COMPLETED' && t.driverId && !reviewedTripIds.has(t.id) && (
+                          <RideReviewPrompt tripId={t.id} onSubmitted={() => setReviewedTripIds((prev) => new Set(prev).add(t.id))} />
+                        )}
+                        {t.status === 'COMPLETED' && (
+                          <button
+                            className="itunda-btn itunda-btn-secondary"
+                            style={{ marginTop: '8px', fontSize: '12px' }}
+                            onClick={() => onReportIssue(t.transactionId)}
+                          >
+                            Report an issue
+                          </button>
+                        )}
+                      </>
                     )}
                   />
                 ))}
@@ -21580,6 +21610,9 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
+  // Real Uber "trip issue report" hand-off -- see SupportView's own doc comment on
+  // initialTransactionId. Same pending-hand-off shape as pendingConversationId above.
+  const [pendingRideIssueTransactionId, setPendingRideIssueTransactionId] = useState<string | null>(null);
   // Real gap named in docs/DESIGN_REFERENCES.md's own IA research (Section 41 item 3):
   // search only ever existed buried inside the Explore tab, not reachable from
   // anywhere else without navigating there first and scrolling to find it. The
@@ -21670,6 +21703,14 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const handleMessageSeller = (conversationId: string) => {
     setPendingConversationId(conversationId);
     setTab('MESSAGES');
+  };
+
+  // Real "report an issue" hand-off from a completed ride: switches straight to
+  // Support with that ride's real payment transaction + RIDE_ISSUE category already
+  // selected, same shape as handleMessageSeller above.
+  const handleReportRideIssue = (transactionId: string) => {
+    setPendingRideIssueTransactionId(transactionId);
+    setTab('SUPPORT');
   };
 
   const TABS: { id: Tab; label: string }[] = [
@@ -21883,7 +21924,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
           onConsumedInitial={() => setPendingConversationId(null)}
         />
       )}
-      {tab === 'RIDES' && <RidesView />}
+      {tab === 'RIDES' && <RidesView onReportIssue={handleReportRideIssue} />}
       {tab === 'DESIGNATED_DRIVER' && <DesignatedDriverView />}
       {tab === 'BIKESHARE' && (
         <Suspense fallback={<div className="itunda-card skeleton" style={{ height: '200px' }} />}>
@@ -21927,7 +21968,13 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
       {tab === 'IDENTITY' && <IdentityView />}
-      {tab === 'SUPPORT' && <SupportView />}
+      {tab === 'SUPPORT' && (
+        <SupportView
+          initialTransactionId={pendingRideIssueTransactionId}
+          initialCategory={pendingRideIssueTransactionId ? 'RIDE_ISSUE' : undefined}
+          onConsumedInitial={() => setPendingRideIssueTransactionId(null)}
+        />
+      )}
     </div>
   );
 }

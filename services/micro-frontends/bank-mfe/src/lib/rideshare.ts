@@ -28,6 +28,11 @@ export interface RideTrip {
   // request, unchanged from before. See the backend's RideTrip.scheduledFor doc comment.
   scheduledFor: string | null;
   createdAt: string;
+  // Real gap found 2026-08-16: the backend has always returned this (RideTrip.kt's own
+  // transactionId), but this client type never declared it, so it was silently
+  // discarded on every response -- see the "report a trip issue" feature's own need to
+  // pre-fill SupportTicket.transactionId with a specific completed ride's payment.
+  transactionId: string;
 }
 
 // Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt

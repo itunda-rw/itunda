@@ -9,7 +9,14 @@ import jakarta.persistence.Table
 import jakarta.persistence.Version
 import java.time.Instant
 
-enum class SupportTicketCategory { GENERAL, PAYMENT_DISPUTE, ACCOUNT_TAKEOVER }
+// RIDE_ISSUE added 2026-08-16 -- real Uber "trip issue report" pattern (Uber's own
+// real post-trip support flow lets a rider report a problem -- unsafe driving,
+// overcharge, lost item -- directly from a specific completed trip). itunda's generic
+// ticket system already let a user pick ANY transaction including a ride's own
+// payment, so this isn't a new capability -- it's a real, distinct category (own SLA,
+// own framing) plus a real trip-contextual entry point, not a bespoke second ticket
+// system.
+enum class SupportTicketCategory { GENERAL, PAYMENT_DISPUTE, ACCOUNT_TAKEOVER, RIDE_ISSUE }
 enum class SupportTicketStatus { OPEN, RESOLVED }
 enum class SupportTicketResolution { REFUNDED, REJECTED }
 
