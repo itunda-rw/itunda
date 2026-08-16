@@ -7040,3 +7040,41 @@ claimed, the same pattern 3 of the other 5 tasks already use with no dedicated p
 `task_knowledge_answer_adopted` (previously false). `POST /rewards/claim` succeeded with a real 500
 RWF reward -- the answerer's real wallet balance moved 1964.6 -> 2464.6 RWF, exactly +500, confirmed
 via a direct wallet fetch before and after, not just trusting the claim response.
+
+## 91. KakaoTalk Open Chat (오픈채팅)-style join-by-code groups
+
+**Added 2026-08-16.** This document itself had already flagged KakaoTalk's real Open Chat
+(join-by-link/search public rooms, no prior friend relationship required) as unresearched (line
+620). A fresh pass confirmed it real and sourced (kakaocorp.com/page/service/service/KakaoTalk;
+talksafety.kakao.com/en/report/enforcement/openchat) and checked it against itunda's actual group
+messaging: `GroupMessagingService.createGroup`/`createGroupByPhoneNumbers` are the *only* two ways
+to form a group, and both require the creator to already know every member's real userId or phone
+number -- there was no way to form a group with a stranger at all.
+
+**Built, mirroring an existing precedent rather than inventing a new pattern**:
+`GroupConversation.joinCode` (migration V251, nullable -- unset means an ordinary invite-only
+group, every existing group's real, unchanged behavior) generated via the exact same 6-character
+alphabet/collision-retry convention `GroupEatsOrderService.generateUniqueJoinCode` already
+established for an identical real invite-code shape. New `GroupMessagingService.createOpenGroup`/
+`joinByCode`, `POST /messages/groups/open` and `POST /messages/groups/join`. `bank-mfe` gained a
+new `OpenChatCard` (create-with-code / join-by-code) in the Talk tab, alongside the existing
+`NewGroupCard`.
+
+**Deliberately NOT ported**: Kakao's own real pseudonymous "Open Profile" layer (up to 3 per user,
+participate under a name distinct from your real KakaoTalk identity) -- itunda's entire identity
+model is KYC-verified real names tied to a real wallet, unlike Kakao's separate pseudonymous layer.
+Porting that honestly needs an explicit scoping decision about whether pseudonymous participation
+belongs in a real-money app at all, not something to build silently as a side effect of this
+feature -- every member of an itunda open group is a real, real-name user, same as any other group.
+The 4,000-member cap and search/recommendation indexing from Kakao's own real feature are also
+deliberately left out of this first pass as real scope-growers, not needed for the core "join
+without an invite" mechanic this closes.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: created a real open
+group (`POST /messages/groups/open`), got back a real generated code (`7ATE8G`). A SECOND real
+user, never invited by phone number or userId, joined with just that code (`POST
+/messages/groups/join`) -- confirmed via a direct `GET /messages/groups` fetch from the joiner's
+own session that the group now shows `memberCount: 2`, not just trusting the join call's own
+response. Confirmed lowercase input (`7ate8g`) normalizes correctly. Confirmed idempotent re-join
+(`memberCount` stayed 2, no duplicate member row). Confirmed an unknown code real-404's with
+`INVALID_GROUP_JOIN_CODE`.
