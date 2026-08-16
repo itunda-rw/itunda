@@ -50,6 +50,9 @@ import rw.itunda.rideshare.RideTripService
 
 data class SetDriverAvailabilityRequest(val available: Boolean)
 data class UpdateDriverLocationRequest(val latitude: Double, val longitude: Double)
+// Real Uber "Destination Filter" -- see RideDriverService.setDestination's own doc
+// comment.
+data class SetDriverDestinationRequest(val latitude: Double, val longitude: Double)
 // Real Kakao T-style post-trip driver rating (item 213) -- see RideTripReview.kt's own
 // doc comment.
 data class SubmitRideReviewRequest(val rating: Int, val comment: String? = null)
@@ -108,6 +111,21 @@ class RideController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "driver" to rideDriverService.updateLocation(currentUser.userId, request.latitude, request.longitude)))
+
+    // Real Uber "Destination Filter" -- see RideDriverService.setDestination's own doc
+    // comment.
+    @PostMapping("/drivers/destination")
+    fun setDestination(
+        @RequestBody request: SetDriverDestinationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "driver" to rideDriverService.setDestination(currentUser.userId, request.latitude, request.longitude)))
+
+    // Real Uber "cancel Destination Filter" -- see RideDriverService.clearDestination's
+    // own doc comment.
+    @PostMapping("/drivers/destination/clear")
+    fun clearDestination(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "driver" to rideDriverService.clearDestination(currentUser.userId)))
 
     @PostMapping("/trips")
     fun requestTrip(
@@ -264,6 +282,10 @@ class RideController(
     @ExceptionHandler(InvalidRideDriverLocationException::class)
     fun handleInvalidDriverLocation(ex: InvalidRideDriverLocationException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LOCATION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(rw.itunda.rideshare.DestinationFilterLimitExceededException::class)
+    fun handleDestinationFilterLimitExceeded(ex: rw.itunda.rideshare.DestinationFilterLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("DESTINATION_FILTER_LIMIT_EXCEEDED", ex.message ?: "Too many requests"))
 
     @ExceptionHandler(InvalidRideLocationException::class)
     fun handleInvalidTripLocation(ex: InvalidRideLocationException) =

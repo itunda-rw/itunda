@@ -63,6 +63,26 @@ class RideDriver(
     @Column(name = "total_accepted", nullable = false)
     var totalAccepted: Int = 0,
 
+    // Real Uber "Destination Filter" (2026-08-16, help.uber.com/en-GB/driving-and-
+    // delivering/article/driver-destination-filter) -- a driver nearing the end of
+    // their shift sets a real destination and gets preferentially matched with trips
+    // whose dropoff genuinely moves them closer to it, "up to twice a day" (Uber's own
+    // real published limit, resets at midnight local -- see
+    // RideDriverService.setDestination's own doc comment for the exact enforcement).
+    // Null means no active destination filter, every existing driver's dispatch
+    // behavior completely unchanged.
+    @Column(name = "destination_latitude")
+    var destinationLatitude: Double? = null,
+
+    @Column(name = "destination_longitude")
+    var destinationLongitude: Double? = null,
+
+    @Column(name = "destination_uses_today", nullable = false)
+    var destinationUsesToday: Int = 0,
+
+    @Column(name = "destination_uses_reset_date")
+    var destinationUsesResetDate: java.time.LocalDate? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

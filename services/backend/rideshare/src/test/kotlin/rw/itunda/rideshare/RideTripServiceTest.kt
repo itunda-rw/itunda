@@ -130,6 +130,68 @@ class RideTripServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real driver with an active Uber-style Destination Filter") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
+        )
+
+        val passengerWallet = Wallet(
+            id = "wallet_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
+            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        )
+        // Real destination far east of the driver's current position -- a dropoff also
+        // east of the driver moves them genuinely closer; a dropoff west moves them
+        // genuinely further, same real haversine-distance-reduction check
+        // RideTripService.rankNearbyDrivers's own doc comment describes.
+        val filteredDriver = RideDriver(
+            id = "driver_filtered", userId = "driver_user_filtered", walletId = "wallet_driver_filtered",
+            available = true, currentLatitude = -1.9536, currentLongitude = 30.0605,
+            destinationLatitude = -1.9300, destinationLongitude = 30.1300,
+        )
+
+        every { walletRepository.findByUserIdAndType("passenger_1", WalletType.MAIN) } returns passengerWallet
+        every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(filteredDriver)
+        every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        every { rideTripRepository.save(any()) } answers { firstArg() }
+        every { rideDriverRepository.save(any()) } answers { firstArg() }
+
+        When("the only real nearby driver's Destination Filter is active and the trip's real dropoff moves them further away") {
+            val savedSlot = slot<RideTrip>()
+            every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val result = service.requestTrip(
+                "passenger_1", "Kigali Heights", -1.9536, 30.0605, "Nyamirambo", -1.9700, 29.9800,
+            )
+
+            Then("the filtered driver is real-excluded from the candidate pool and the trip falls to the real open list") {
+                result.offeredDriverId shouldBe null
+                verify(exactly = 0) { notificationRepository.save(match { it.type == "RIDE_TRIP_OFFER" }) }
+            }
+        }
+
+        When("the only real nearby driver's Destination Filter is active and the trip's real dropoff genuinely brings them closer") {
+            val savedSlot = slot<RideTrip>()
+            every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val result = service.requestTrip(
+                "passenger_1", "Kigali Heights", -1.9536, 30.0605, "Kanombe", -1.9350, 30.1250,
+            )
+
+            Then("the filtered driver is real-eligible and gets the real exclusive offer") {
+                result.offeredDriverId shouldBe "driver_filtered"
+            }
+        }
+    }
+
     Given("a real passenger with insufficient balance") {
         val rideDriverRepository = mockk<RideDriverRepository>(relaxed = true)
         val rideTripRepository = mockk<RideTripRepository>(relaxed = true)

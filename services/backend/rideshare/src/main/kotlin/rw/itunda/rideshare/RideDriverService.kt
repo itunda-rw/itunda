@@ -15,6 +15,7 @@ class RideDriverNoWalletException(message: String) : RuntimeException(message)
 class RideDriverAlreadyRegisteredException(message: String) : RuntimeException(message)
 class RideDriverNotRegisteredException(message: String) : RuntimeException(message)
 class InvalidRideDriverLocationException(message: String) : RuntimeException(message)
+class DestinationFilterLimitExceededException(message: String) : RuntimeException(message)
 
 /**
  * Real driver registration for Kakao T-style ride-hailing -- any itunda user can opt in,
@@ -62,6 +63,45 @@ class RideDriverService(
         driver.currentLatitude = latitude
         driver.currentLongitude = longitude
         driver.locationUpdatedAt = Instant.now()
+        return rideDriverRepository.save(driver)
+    }
+
+    // Real Uber "Destination Filter" (help.uber.com/en-GB/driving-and-delivering/
+    // article/driver-destination-filter) -- Uber's own real published limit is "up to
+    // twice a day", resetting at midnight local; itunda's own honest choice of "local"
+    // is Africa/Kigali, same real-timezone convention Merchant.isClosedToday() already
+    // established. See RideTripService.rankNearbyDrivers's own doc comment for how a
+    // driver with an active filter is actually preferred in dispatch.
+    private val maxDestinationUsesPerDay = 2
+
+    fun setDestination(userId: String, latitude: Double, longitude: Double): RideDriver {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidRideDriverLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        val driver = rideDriverRepository.findByUserId(userId)
+            ?: throw RideDriverNotRegisteredException("This account is not registered as a driver")
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali"))
+        if (driver.destinationUsesResetDate != today) {
+            driver.destinationUsesToday = 0
+            driver.destinationUsesResetDate = today
+        }
+        if (driver.destinationUsesToday >= maxDestinationUsesPerDay) {
+            throw DestinationFilterLimitExceededException("Destination filter can only be set $maxDestinationUsesPerDay times per day")
+        }
+        driver.destinationLatitude = latitude
+        driver.destinationLongitude = longitude
+        driver.destinationUsesToday += 1
+        return rideDriverRepository.save(driver)
+    }
+
+    // Real Uber "cancel Destination Filter" counterpart -- clearing does not consume a
+    // real daily use, same "undo your own choice is always free" shape this backend's
+    // other real toggles (MerchantService.setAcceptingOrders) already establish.
+    fun clearDestination(userId: String): RideDriver {
+        val driver = rideDriverRepository.findByUserId(userId)
+            ?: throw RideDriverNotRegisteredException("This account is not registered as a driver")
+        driver.destinationLatitude = null
+        driver.destinationLongitude = null
         return rideDriverRepository.save(driver)
     }
 }

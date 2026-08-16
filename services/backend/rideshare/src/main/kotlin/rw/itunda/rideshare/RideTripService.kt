@@ -272,9 +272,23 @@ class RideTripService(
     // Real acceptance-rate-filtered, distance-ranked candidate pool -- see this class's
     // own doc comment for the full honest-v1 account of what real Kakao dispatch signal
     // each piece stands in for.
+    //
+    // Real Uber "Destination Filter" restriction (2026-08-16, help.uber.com/en-GB/
+    // driving-and-delivering/article/driver-destination-filter) -- Uber's own real
+    // account: "the dropoff location should bring you closer to your final
+    // destination." A driver with an active filter is excluded from a trip's candidate
+    // pool unless this trip's real dropoff genuinely reduces their real haversine
+    // distance to their own chosen destination versus their current position -- never a
+    // driver preference boost (this backend has no real signal to honestly weight one),
+    // just the same real eligibility restriction Uber's own help article describes. A
+    // driver with no active filter (the default, `destinationLatitude == null`) is
+    // completely unaffected, same backward-compatible shape every other real toggle in
+    // this class already establishes.
     private fun rankNearbyDrivers(
         pickupLat: Double,
         pickupLng: Double,
+        dropoffLat: Double,
+        dropoffLng: Double,
         excludedUserIds: Set<String> = emptySet(),
         candidatePool: List<RideDriver>? = null,
         busyDriverIds: Set<String>? = null,
@@ -288,6 +302,17 @@ class RideTripService(
                 driver.totalOffers >= MIN_OFFERS_FOR_ACCEPTANCE_FILTER &&
                     BigDecimal(driver.totalAccepted).divide(BigDecimal(driver.totalOffers), 4, RoundingMode.HALF_UP) < MIN_ACCEPTANCE_RATE
             }
+            .filterNot { driver ->
+                val destLat = driver.destinationLatitude
+                val destLng = driver.destinationLongitude
+                if (destLat == null || destLng == null) {
+                    false
+                } else {
+                    val distanceFromCurrent = GeoUtils.haversineKm(driver.currentLatitude!!, driver.currentLongitude!!, destLat, destLng)
+                    val distanceFromDropoff = GeoUtils.haversineKm(dropoffLat, dropoffLng, destLat, destLng)
+                    distanceFromDropoff >= distanceFromCurrent
+                }
+            }
             .map { driver -> driver to GeoUtils.haversineKm(pickupLat, pickupLng, driver.currentLatitude!!, driver.currentLongitude!!) }
             .sortedBy { (_, distanceKm) -> distanceKm }
     }
@@ -295,7 +320,7 @@ class RideTripService(
     private fun dispatchToNextDriver(trip: RideTrip, candidatePool: List<RideDriver>? = null, busyDriverIds: Set<String>? = null) {
         try {
             val excluded = trip.excludedDriverUserIds?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
-            val ranked = rankNearbyDrivers(trip.pickupLatitude, trip.pickupLongitude, excluded, candidatePool, busyDriverIds)
+            val ranked = rankNearbyDrivers(trip.pickupLatitude, trip.pickupLongitude, trip.dropoffLatitude, trip.dropoffLongitude, excluded, candidatePool, busyDriverIds)
             val next = ranked.firstOrNull()?.first
 
             if (next == null) {
