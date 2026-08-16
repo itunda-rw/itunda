@@ -40,6 +40,7 @@ data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class SetPhoneNumberRequest(val phoneNumber: String?)
 data class SetOpeningHoursRequest(val openingHours: String?)
 data class SetAvgPrepTimeMinutesRequest(val avgPrepTimeMinutes: Int?)
+data class SetPickupDiscountRequest(val pickupDiscountPercent: Int?)
 data class CollectPaymentRequest(val couponId: String? = null)
 // Real customer-presented payment code (2026-08-11) -- see
 // MerchantService.chargeByCustomerCode's own doc comment.
@@ -276,6 +277,17 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setAvgPrepTimeMinutes(currentUser.userId, request.avgPrepTimeMinutes)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real Baemin 포장할인 (pickup discount) -- see MerchantService.setPickupDiscount's
+    // own doc comment.
+    @PostMapping("/pickup-discount")
+    fun setPickupDiscount(
+        @RequestBody request: SetPickupDiscountRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setPickupDiscount(currentUser.userId, request.pickupDiscountPercent)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -533,4 +545,8 @@ class MerchantController(
     @ExceptionHandler(InvalidAvgPrepTimeException::class)
     fun handleInvalidAvgPrepTime(ex: InvalidAvgPrepTimeException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AVG_PREP_TIME", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidPickupDiscountException::class)
+    fun handleInvalidPickupDiscount(ex: InvalidPickupDiscountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PICKUP_DISCOUNT", ex.message ?: "Bad request"))
 }

@@ -52,6 +52,7 @@ class InvalidMinOrderAmountException(message: String) : RuntimeException(message
 class InvalidPhoneNumberException(message: String) : RuntimeException(message)
 class InvalidOpeningHoursException(message: String) : RuntimeException(message)
 class InvalidAvgPrepTimeException(message: String) : RuntimeException(message)
+class InvalidPickupDiscountException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
@@ -379,6 +380,18 @@ class MerchantService(
         }
         val merchant = getMyMerchant(ownerUserId)
         merchant.avgPrepTimeMinutes = avgPrepTimeMinutes
+        return merchantRepository.save(merchant)
+    }
+
+    // Real Baemin 포장할인 (pickup discount) -- see Merchant.pickupDiscountPercent's own
+    // doc comment.
+    @Transactional
+    fun setPickupDiscount(ownerUserId: String, pickupDiscountPercent: Int?): Merchant {
+        if (pickupDiscountPercent != null && (pickupDiscountPercent < 1 || pickupDiscountPercent > 100)) {
+            throw InvalidPickupDiscountException("Pickup discount must be between 1 and 100 percent")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.pickupDiscountPercent = pickupDiscountPercent
         return merchantRepository.save(merchant)
     }
 

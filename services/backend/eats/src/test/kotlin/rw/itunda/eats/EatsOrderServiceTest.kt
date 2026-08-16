@@ -269,6 +269,62 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real buyer places a PICKUP order at a restaurant with a real 10% Baemin-style 포장할인 set") {
+            val restaurantWithPickupDiscount = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, pickupDiscountPercent = 10,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithPickupDiscount)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_pickup_discount", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            // itemsSubtotal = 1 x 3000 = 3000, below the lowest real promotion tier
+            // (5000) so promotionDiscount stays a clean zero -- isolates the real
+            // pickupDiscount math from EatsPromotionCalculator's own tiers.
+            val detail = service.placeOrder(
+                "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), deliveryAddress = "",
+                fulfillmentType = EatsFulfillmentType.PICKUP,
+            )
+
+            Then("the restaurant absorbs the real 10% discount, the buyer pays less, and itunda's own platform fee is untouched") {
+                // pickupDiscount = 3000 * 10% = 300. platformFee = 3000 * 1.5% = 45.
+                // buyerCharge = 3000 - 0 (promotion) - 300 (pickup) = 2700.
+                // netToRestaurant = 3000 - 45 (fee) - 300 (pickup) = 2655.
+                detail.order.pickupDiscount shouldBe BigDecimal("300.00")
+                detail.order.totalAmount shouldBe BigDecimal("2700.00")
+                val restaurantLeg = legsSlot.captured.first { it.accountId == "wallet_restaurant" }
+                restaurantLeg.direction shouldBe LedgerDirection.CREDIT
+                restaurantLeg.amount shouldBe BigDecimal("2655.00")
+                val feeLeg = legsSlot.captured.first { it.accountId == "fee_revenue" }
+                feeLeg.amount shouldBe BigDecimal("45.00")
+                val buyerLeg = legsSlot.captured.first { it.accountId == "wallet_buyer" }
+                buyerLeg.amount shouldBe BigDecimal("2700.00")
+            }
+        }
+
+        When("a real buyer places a DELIVERY order (not PICKUP) at a restaurant with a real 포장할인 set") {
+            val restaurantWithPickupDiscount = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, pickupDiscountPercent = 10,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithPickupDiscount)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_delivery_no_pickup_discount", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "KG 9 Ave")
+
+            Then("the real pickup discount is never applied -- it's a PICKUP-only real Baemin mechanic") {
+                detail.order.pickupDiscount shouldBe BigDecimal.ZERO
+            }
+        }
+
         When("a real buyer's order falls below the restaurant's real minimum order amount") {
             val restaurantWithMin = Merchant(
                 id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",

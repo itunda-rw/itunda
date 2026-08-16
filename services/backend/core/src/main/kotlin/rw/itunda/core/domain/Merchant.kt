@@ -255,6 +255,21 @@ class Merchant(
     // behavior is completely unchanged).
     @Column(name = "closed_weekdays", length = 20)
     var closedWeekdays: String? = null,
+
+    // Real Baemin 포장할인 (pickup discount) (2026-08-17) -- sourced from Baemin's own
+    // real seller guide (ceo.baemin.com/guide/2991, "픽업의 이해"): a restaurant can set
+    // its own separate discount specifically for pickup orders, distinct from the
+    // delivery-fee waiver every PICKUP order already gets unconditionally (see
+    // EatsOrderService.placeOrder's own doc comment on deliveryFee always being zero
+    // for PICKUP) -- this is an EXTRA, merchant-opt-in percentage off the items
+    // subtotal, reflecting real savings on packaging/staffing a pickup order doesn't
+    // carry the same delivery overhead the restaurant otherwise absorbs. Nullable:
+    // unset means no pickup discount, the pre-existing behavior for every merchant
+    // that hasn't opted in yet, same convention minOrderAmount/avgPrepTimeMinutes
+    // above already establish. Whole-percent 1-100, not a fraction -- same as
+    // ProductDiscount.discountPercent's own real convention elsewhere in this codebase.
+    @Column(name = "pickup_discount_percent", nullable = true)
+    var pickupDiscountPercent: Int? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 

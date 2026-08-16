@@ -437,7 +437,22 @@ class EatsOrderService(
         }
 
         val platformFee = itemsSubtotal.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
-        val netToRestaurant = itemsSubtotal.subtract(platformFee)
+
+        // Real Baemin 포장할인 (pickup discount) -- sourced from Baemin's own real
+        // seller guide (ceo.baemin.com/guide/2991, "픽업의 이해"): a restaurant can opt
+        // into an extra discount specifically for pickup orders, distinct from the
+        // delivery-fee waiver every PICKUP order already gets unconditionally above.
+        // RESTAURANT-funded, unlike promotionDiscount below (which itunda itself
+        // absorbs) -- netToRestaurant is reduced by exactly this amount, and
+        // itunda's own platformFee revenue is completely untouched, matching real
+        // reporting that Baemin still charges its normal commission on pickup orders
+        // regardless of whatever discount the restaurant itself chooses to offer.
+        val pickupDiscount = if (fulfillmentType == EatsFulfillmentType.PICKUP && restaurant.pickupDiscountPercent != null) {
+            itemsSubtotal.multiply(BigDecimal(restaurant.pickupDiscountPercent!!)).divide(BigDecimal(100), 2, RoundingMode.HALF_UP)
+        } else {
+            BigDecimal.ZERO
+        }
+        val netToRestaurant = itemsSubtotal.subtract(platformFee).subtract(pickupDiscount)
 
         // Real Baemin-style tiered order-amount promotion -- see
         // EatsPromotionCalculator's own doc comment. Computed from itemsSubtotal alone
@@ -501,12 +516,13 @@ class EatsOrderService(
             }
         }
         val totalAmount = itemsSubtotal.add(deliveryFee)
-        // Buyer pays the promotion-discounted amount; the restaurant's own
-        // netToRestaurant and itunda's own platformFee revenue are both untouched --
-        // itunda alone absorbs promotionDiscount as a real expense (PROMOTION_EXPENSE
-        // leg below), matching Baemin's own real "platform pays, not the restaurant"
-        // mechanic.
-        val buyerCharge = totalAmount.subtract(promotionDiscount)
+        // Buyer pays the promotion-discounted amount, further reduced by any real
+        // pickupDiscount above; the restaurant's own netToRestaurant already absorbed
+        // pickupDiscount when it was computed, and itunda's own platformFee revenue
+        // stays untouched by either discount -- itunda alone absorbs promotionDiscount
+        // as a real expense (PROMOTION_EXPENSE leg below), matching Baemin's own real
+        // "platform pays" mechanic for that discount specifically.
+        val buyerCharge = totalAmount.subtract(promotionDiscount).subtract(pickupDiscount)
 
         val result = ledgerService.postLedgerTransaction(
             buyerWallet.currency,
@@ -543,6 +559,7 @@ class EatsOrderService(
                 id = "eats_order_${UUID.randomUUID()}", buyerId = buyerId, restaurantId = restaurantId,
                 deliveryAddress = resolvedAddress, itemsSubtotal = itemsSubtotal, deliveryFee = deliveryFee,
                 platformFee = platformFee, totalAmount = buyerCharge, promotionDiscount = promotionDiscount,
+                pickupDiscount = pickupDiscount,
                 transactionId = result.transactionId,
                 deliveryLatitude = resolvedDeliveryLat, deliveryLongitude = resolvedDeliveryLng, distanceKm = distanceKmRounded,
                 deliveryNotes = trimmedNotes, fulfillmentType = fulfillmentType, scheduledFor = scheduledFor,

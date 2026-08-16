@@ -172,6 +172,15 @@ class EatsOrder(
     @Column(name = "delivery_proof_photo_url", length = 500)
     var deliveryProofPhotoUrl: String? = null,
 
+    // Real Baemin 포장할인 (pickup discount) (2026-08-17, migration V267) -- see
+    // Merchant.pickupDiscountPercent's own doc comment. RESTAURANT-funded, unlike
+    // promotionDiscount above (itunda-funded): netToRestaurant IS reduced by exactly
+    // this amount when it's non-zero. Zero for every DELIVERY order and every PICKUP
+    // order at a restaurant that hasn't opted in -- the common case, not a fabricated
+    // always-present discount, same convention promotionDiscount already establishes.
+    @Column(name = "pickup_discount", nullable = false, precision = 18, scale = 2)
+    val pickupDiscount: BigDecimal = BigDecimal.ZERO,
+
     // Restaurant, rider, scheduler, and cancellation actions advance the same order
     // through different request paths.  Protect the row so a concurrent terminal
     // transition cannot post a duplicate delivery payout or refund.
