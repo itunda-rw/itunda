@@ -65,6 +65,14 @@ class GroupConversation(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real KakaoTalk 오픈채팅 (Open Chat)-style join-by-code -- see
+    // GroupMessagingService.createOpenGroup/joinByCode's own doc comment. Mirrors
+    // GroupEatsOrder.joinCode's exact real-shareable-6-character-code convention.
+    // Null (the default) means an ordinary invite-only group, every existing group's
+    // real, unchanged behavior -- only a group explicitly created as "open" gets one.
+    @Column(name = "join_code", length = 6, unique = true)
+    var joinCode: String? = null,
 ) {
     protected constructor() : this(id = "", name = "", createdBy = "")
 }

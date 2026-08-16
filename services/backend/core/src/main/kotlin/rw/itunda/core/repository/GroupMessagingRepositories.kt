@@ -37,6 +37,12 @@ interface GroupConversationRepository : JpaRepository<GroupConversation, String>
             "GROUP BY m.groupConversationId HAVING COUNT(m) = 2)",
     )
     fun findDirectGroupBetween(@Param("userIdA") userIdA: String, @Param("userIdB") userIdB: String): GroupConversation?
+
+    // Real KakaoTalk 오픈채팅-style join-by-code lookup -- see
+    // GroupMessagingService.joinByCode's own doc comment.
+    fun findByJoinCode(joinCode: String): GroupConversation?
+
+    fun existsByJoinCode(joinCode: String): Boolean
 }
 
 interface GroupConversationMemberRepository : JpaRepository<GroupConversationMember, String> {

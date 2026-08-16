@@ -104,7 +104,7 @@ import {
   type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
 } from './lib/stocks';
 import {
-  addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroupThread, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage, fetchThread,
+  addGroupMember, connectMessagingSocket, createGroup, createOpenGroup, joinGroupByCode, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroupThread, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage, fetchThread,
   blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationArchived, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
@@ -6804,6 +6804,112 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
   );
 }
 
+// Real KakaoTalk 오픈채팅 (Open Chat)-style group -- see backend
+// GroupMessagingService.createOpenGroup's own doc comment for the full sourced
+// account. Distinct from NewGroupCard above: no phone numbers needed to create one,
+// and anyone with the real generated code can join, not just people the creator
+// explicitly invited.
+function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) => void; onJoined: (groupId: string) => void }) {
+  const [mode, setMode] = useState<'closed' | 'create' | 'join'>('closed');
+  const [name, setName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [created, setCreated] = useState<{ id: string; joinCode: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const group = await createOpenGroup(name.trim());
+      setName('');
+      setCreated({ id: group.id, joinCode: group.joinCode });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this open chat.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const group = await joinGroupByCode(joinCode.trim());
+      setJoinCode('');
+      setMode('closed');
+      onJoined(group.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No open chat found for this code.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (mode === 'closed') {
+    return (
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+        <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('create')}>
+          🌐 Start an open chat
+        </button>
+        <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('join')}>
+          🔑 Join by code
+        </button>
+      </div>
+    );
+  }
+
+  if (created) {
+    return (
+      <div className="itunda-card" style={{ marginBottom: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Share this code so anyone can join — no invite needed</p>
+        <p style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '4px' }}>{created.joinCode}</p>
+        <button className="itunda-btn itunda-btn-primary" onClick={() => { const id = created.id; setCreated(null); setMode('closed'); onCreated(id); }}>
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="itunda-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {mode === 'create' ? (
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Start an open chat</h3>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Anyone with the code can join — no phone numbers needed.</p>
+          <input
+            type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Open chat name" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+          />
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('closed')}>Cancel</button>
+            <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+              {submitting ? 'Creating…' : 'Create'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Join by code</h3>
+          <input
+            type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="6-character code" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', textAlign: 'center', letterSpacing: '2px' }}
+          />
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('closed')}>Cancel</button>
+            <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+              {submitting ? 'Joining…' : 'Join'}
+            </button>
+          </div>
+        </form>
+      )}
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 // Real quick-react palette -- a small fixed set (matching most real chat apps' own
 // "long-press to react" quick palette) rather than a full emoji picker, kept simple
 // since this web client has no native emoji-keyboard integration to lean on.
@@ -9608,6 +9714,10 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
 
   return (
     <div>
+      <OpenChatCard
+        onCreated={(id) => { load(); setOpenGroupId(id); }}
+        onJoined={(id) => { load(); setOpenGroupId(id); }}
+      />
       <NewGroupCard onCreated={(id) => { load(); setOpenGroupId(id); }} />
       {groups.length === 0 ? (
         <div className="itunda-card">

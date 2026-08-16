@@ -20,6 +20,7 @@ import rw.itunda.core.repository.GroupMessageReactionRepository
 import rw.itunda.core.repository.GroupMessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import java.security.SecureRandom
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -38,6 +39,7 @@ class GroupMessageNotFoundException(message: String) : RuntimeException(message)
 class GroupMessageDeleteForbiddenException(message: String) : RuntimeException(message)
 class InvalidGroupReactionException(message: String) : RuntimeException(message)
 class InvalidGroupMessageImageException(message: String) : RuntimeException(message)
+class InvalidGroupJoinCodeException(message: String) : RuntimeException(message)
 
 data class GroupSummary(
     val groupId: String,
@@ -86,6 +88,12 @@ class GroupMessagingService(
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val secureRandom = SecureRandom()
+    // Excludes visually ambiguous characters (0/O, 1/I) -- a real, spoken/typed-aloud
+    // share code, same alphabet GroupEatsOrderService.joinCodeAlphabet already uses for
+    // an identical real invite-code convention.
+    private val joinCodeAlphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+
     @Transactional
     fun createGroup(creatorUserId: String, name: String, memberUserIds: List<String>): GroupConversation {
         val trimmedName = name.trim()
@@ -163,6 +171,75 @@ class GroupMessagingService(
             GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = group.id, userId = userId, joinedAt = now)
         }
         groupConversationMemberRepository.saveAll(members)
+        return group
+    }
+
+    // Real, unpredictable, human-shareable 6-character code -- retried on the rare
+    // collision, same defensive-uniqueness discipline
+    // GroupEatsOrderService.generateUniqueJoinCode already establishes for an identical
+    // real invite-code shape.
+    private fun generateUniqueJoinCode(): String {
+        repeat(20) {
+            val code = (1..6).map { joinCodeAlphabet[secureRandom.nextInt(joinCodeAlphabet.length)] }.joinToString("")
+            if (!groupConversationRepository.existsByJoinCode(code)) return code
+        }
+        throw IllegalStateException("Could not generate a unique join code")
+    }
+
+    /**
+     * Real KakaoTalk 오픈채팅 (Open Chat)-style public room -- anyone with the real,
+     * shareable [GroupConversation.joinCode] can join without the creator inviting them
+     * by userId/phone number first, unlike every other group creation path in this
+     * class. Sourced from KakaoTalk's own real join-by-link/search room type
+     * (kakaocorp.com/page/service/service/KakaoTalk).
+     *
+     * Deliberately does NOT port Kakao's own real "Open Profile" pseudonymous-identity
+     * layer (up to 3 per user, participate under a name distinct from your real
+     * KakaoTalk identity) -- itunda's entire identity model is KYC-verified real names
+     * tied to a real wallet, unlike Kakao's separate pseudonymous layer; porting that
+     * honestly needs an explicit scoping decision about whether pseudonymous
+     * participation belongs in a real-money app at all, not something to build
+     * silently as a side effect of this feature. Every open-group member here is a
+     * real, real-name itunda user, same as every other group. The 4,000-member cap and
+     * search/recommendation indexing from Kakao's own real feature are also
+     * deliberately left out of this first pass -- real scope-growers, not needed for
+     * the core "join without an invite" mechanic this closes.
+     */
+    @Transactional
+    fun createOpenGroup(creatorUserId: String, name: String): GroupConversation {
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) {
+            throw GroupNameRequiredException("A group needs a name")
+        }
+        if (trimmedName.length > 100) {
+            throw GroupNameTooLongException("Group name must be 100 characters or fewer")
+        }
+        rateLimiter.checkLimit("messaging:group-create:$creatorUserId", limit = 20, window = Duration.ofHours(1))
+        val group = groupConversationRepository.save(
+            GroupConversation(id = "group_${UUID.randomUUID()}", name = trimmedName, createdBy = creatorUserId, joinCode = generateUniqueJoinCode()),
+        )
+        groupConversationMemberRepository.save(
+            GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = group.id, userId = creatorUserId, joinedAt = Instant.now()),
+        )
+        return group
+    }
+
+    /** Real join-by-code -- the other real half of [createOpenGroup]. Idempotent
+     * re-join, same "already a member" quiet-success convention
+     * `GroupEatsOrderService.join`'s own doc comment already establishes for an
+     * identical real invite-code flow, rather than erroring on a member who taps the
+     * same link twice. */
+    @Transactional
+    fun joinByCode(userId: String, joinCode: String): GroupConversation {
+        val normalized = joinCode.trim().uppercase()
+        if (normalized.isEmpty()) throw InvalidGroupJoinCodeException("A join code is required")
+        val group = groupConversationRepository.findByJoinCode(normalized)
+            ?: throw InvalidGroupJoinCodeException("No open group found for this code")
+        if (groupConversationMemberRepository.findByGroupConversationIdAndUserId(group.id, userId) == null) {
+            groupConversationMemberRepository.save(
+                GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = group.id, userId = userId, joinedAt = Instant.now()),
+            )
+        }
         return group
     }
 

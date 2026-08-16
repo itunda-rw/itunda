@@ -183,6 +183,82 @@ class GroupMessagingServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real KakaoTalk 오픈채팅-style open group, and a stranger with its real join code") {
+        val groupConversationRepository = mockk<GroupConversationRepository>()
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val groupMessageRepository = mockk<GroupMessageRepository>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = GroupMessagingService(
+            groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
+            userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
+            pushNotificationService,
+        )
+
+        When("creating an open group") {
+            every { groupConversationRepository.existsByJoinCode(any()) } returns false
+            val savedSlot = slot<GroupConversation>()
+            every { groupConversationRepository.save(capture(savedSlot)) } answers { firstArg() }
+            // Real, explicit stub, not relaxed=true's default -- same known "relaxed
+            // mockk can't correctly infer JpaRepository's generic save() signature"
+            // gotcha this codebase's own tests already document repeatedly.
+            every { groupConversationMemberRepository.save(any()) } answers { firstArg() }
+
+            val group = service.createOpenGroup("user_a", "  Kigali Devs  ")
+
+            Then("it trims the name and generates a real 6-character join code, unlike an ordinary invite-only group") {
+                group.name shouldBe "Kigali Devs"
+                group.joinCode shouldNotBe null
+                group.joinCode!!.length shouldBe 6
+                verify { groupConversationMemberRepository.save(match<GroupConversationMember> { it.userId == "user_a" }) }
+            }
+        }
+
+        When("a stranger (never invited) joins using the real code") {
+            val group = GroupConversation(id = "group_open_1", name = "Kigali Devs", createdBy = "user_a", joinCode = "ABC234")
+            every { groupConversationRepository.findByJoinCode("ABC234") } returns group
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_open_1", "user_z") } returns null
+            every { groupConversationMemberRepository.save(any()) } answers { firstArg() }
+
+            val joined = service.joinByCode("user_z", "abc234")
+
+            Then("it succeeds -- lowercase input normalized, no prior invite/membership needed") {
+                joined.id shouldBe "group_open_1"
+                verify { groupConversationMemberRepository.save(match<GroupConversationMember> { it.userId == "user_z" && it.groupConversationId == "group_open_1" }) }
+            }
+        }
+
+        When("a real existing member re-joins using the same code") {
+            val group = GroupConversation(id = "group_open_1", name = "Kigali Devs", createdBy = "user_a", joinCode = "ABC234")
+            every { groupConversationRepository.findByJoinCode("ABC234") } returns group
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_open_1", "user_a") } returns
+                GroupConversationMember(id = "group_member_existing", groupConversationId = "group_open_1", userId = "user_a")
+
+            service.joinByCode("user_a", "ABC234")
+
+            Then("it's a quiet no-op, not a duplicate member row or an error") {
+                verify(exactly = 0) { groupConversationMemberRepository.save(match<GroupConversationMember> { it.userId == "user_a" }) }
+            }
+        }
+
+        When("joining with a code that matches no real open group") {
+            every { groupConversationRepository.findByJoinCode("ZZZZZZ") } returns null
+
+            Then("it throws InvalidGroupJoinCodeException") {
+                try {
+                    service.joinByCode("user_z", "ZZZZZZ")
+                    error("expected InvalidGroupJoinCodeException")
+                } catch (e: InvalidGroupJoinCodeException) {
+                    // expected
+                }
+            }
+        }
+    }
+
     Given("a real group with three real members") {
         val groupConversationRepository = mockk<GroupConversationRepository>()
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>()

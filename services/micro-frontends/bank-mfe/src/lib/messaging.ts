@@ -222,6 +222,21 @@ export const createGroup = (name: string, memberPhoneNumbers: string[]) =>
     body: JSON.stringify({ name, memberPhoneNumbers }),
   }).then((r) => r.group);
 
+// Real KakaoTalk 오픈채팅-style open group -- see backend GroupMessagingService
+// .createOpenGroup's own doc comment. Anyone with the returned joinCode can join
+// without being invited by phone number first.
+export const createOpenGroup = (name: string) =>
+  apiFetch<{ success: boolean; group: { id: string; name: string; joinCode: string } }>('/api/v1/messages/groups/open', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  }).then((r) => r.group);
+
+export const joinGroupByCode = (joinCode: string) =>
+  apiFetch<{ success: boolean; group: { id: string; name: string } }>('/api/v1/messages/groups/join', {
+    method: 'POST',
+    body: JSON.stringify({ joinCode }),
+  }).then((r) => r.group);
+
 export const fetchGroups = () =>
   apiFetch<{ success: boolean; groups: GroupSummary[] }>('/api/v1/messages/groups').then((r) => r.groups);
 

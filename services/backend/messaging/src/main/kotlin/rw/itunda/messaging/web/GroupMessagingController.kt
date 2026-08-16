@@ -35,6 +35,7 @@ import rw.itunda.messaging.GroupPhotoUrlTooLongException
 import rw.itunda.messaging.GroupDescriptionTooLongException
 import rw.itunda.messaging.InvalidForwardDestinationException
 import rw.itunda.messaging.InvalidGroupReactionException
+import rw.itunda.messaging.InvalidGroupJoinCodeException
 import rw.itunda.messaging.InvalidGroupMessageImageException
 import rw.itunda.messaging.MessageDestinationType
 import rw.itunda.messaging.MessageForwardService
@@ -46,6 +47,8 @@ import rw.itunda.messaging.UserBlockedException
 // StartConversationRequest.phoneNumber); memberUserIds stays available for a call site
 // that already resolved real user ids.
 data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
+data class CreateOpenGroupRequest(val name: String)
+data class JoinGroupByCodeRequest(val joinCode: String)
 data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null, val imageUrl: String? = null)
 data class AddGroupMemberRequest(val userId: String)
 data class ToggleGroupReactionRequest(val emoji: String)
@@ -76,6 +79,26 @@ class GroupMessagingController(
             groupMessagingService.createGroup(currentUser.userId, request.name, request.memberUserIds)
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "group" to group))
+    }
+
+    // Real KakaoTalk 오픈채팅-style open group -- see GroupMessagingService
+    // .createOpenGroup's own doc comment.
+    @PostMapping("/open")
+    fun createOpenGroup(
+        @RequestBody request: CreateOpenGroupRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = groupMessagingService.createOpenGroup(currentUser.userId, request.name)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "group" to group))
+    }
+
+    @PostMapping("/join")
+    fun joinByCode(
+        @RequestBody request: JoinGroupByCodeRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = groupMessagingService.joinByCode(currentUser.userId, request.joinCode)
+        return ResponseEntity.ok(mapOf("success" to true, "group" to group))
     }
 
     @GetMapping
@@ -303,6 +326,10 @@ class GroupMessagingController(
     @ExceptionHandler(AlreadyGroupMemberException::class)
     fun handleAlreadyGroupMember(ex: AlreadyGroupMemberException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ALREADY_MEMBER", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidGroupJoinCodeException::class)
+    fun handleInvalidGroupJoinCode(ex: InvalidGroupJoinCodeException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("INVALID_GROUP_JOIN_CODE", ex.message ?: "Not found"))
 
     @ExceptionHandler(EmptyGroupMessageException::class)
     fun handleEmptyMessage(ex: EmptyGroupMessageException) =
