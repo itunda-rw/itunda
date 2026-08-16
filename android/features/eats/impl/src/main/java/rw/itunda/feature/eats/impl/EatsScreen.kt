@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Coffee
 import androidx.compose.material.icons.outlined.Fastfood
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -720,6 +721,10 @@ private fun OrderFoodContent(
         val hasPermission = ContextCompat.checkSelfPermission(locationContext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (hasPermission) requestBrowseLocation()
     }
+    // Real Baemin/Coupang Eats-style "fastest delivery" sort tab -- only meaningful
+    // once a real browseLocation exists (deliveryTimeMinutes is null server-side
+    // without one), so the toggle itself only renders when browseLocation is real.
+    var sortByFastestDelivery by remember { mutableStateOf(false) }
 
     fun loadDishes() {
         coroutineScope.launch {
@@ -763,6 +768,7 @@ private fun OrderFoodContent(
                 val res = NetworkClient.apiService.getShoppingMerchants(
                     category = selectedCategory, businessType = "RESTAURANT", q = searchInput.trim().ifBlank { null },
                     buyerLat = browseLocation?.first, buyerLng = browseLocation?.second,
+                    sortBy = if (sortByFastestDelivery) "delivery_time" else null,
                 )
                 if (res.success) restaurants = res.merchants
                 error = null
@@ -792,7 +798,7 @@ private fun OrderFoodContent(
     // Real category/search filter (2026-07-19), debounced so typing doesn't re-fetch on
     // every keystroke -- LaunchedEffect's own cancel-and-restart-on-key-change is the
     // debounce mechanism here.
-    LaunchedEffect(selectedCategory, searchInput) {
+    LaunchedEffect(selectedCategory, searchInput, sortByFastestDelivery) {
         delay(300)
         loadRestaurants()
     }
@@ -1015,6 +1021,30 @@ private fun OrderFoodContent(
                     selectedCategory = selectedCategory,
                     onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
                 )
+            }
+            // Real Baemin/Coupang Eats-style "fastest delivery" sort tab -- only shown
+            // once a real browseLocation exists, since the sort is a no-op without one
+            // (see ShoppingController.getEligibleMerchants's own doc comment).
+            if (browseLocation != null) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { sortByFastestDelivery = !sortByFastestDelivery },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Bolt, contentDescription = null,
+                            tint = if (sortByFastestDelivery) Ids.colors.brand else Ids.colors.textSecondary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Fastest delivery",
+                            color = if (sortByFastestDelivery) Ids.colors.brand else Ids.colors.textSecondary,
+                            fontWeight = if (sortByFastestDelivery) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 13.sp,
+                        )
+                    }
+                }
             }
             if (searchInput.isBlank() && dishes.isNotEmpty()) {
                 item { EatsDishGrid(dishes, onOpen = ::openDish) }

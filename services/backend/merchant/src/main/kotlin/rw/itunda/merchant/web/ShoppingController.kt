@@ -80,6 +80,18 @@ class ShoppingController(
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) buyerLat: Double?,
         @RequestParam(required = false) buyerLng: Double?,
+        // Real Baemin/Coupang Eats-style "fastest delivery" sort tab (2026-08-16) --
+        // every major Korean delivery app has a real 빠른배달순 (fastest-delivery-first)
+        // option alongside its default/rating sort. deliveryTimeMinutes was already
+        // computed per-merchant below for display, just never sortable. Only takes
+        // effect when the caller also supplies real buyerLat/buyerLng -- without a
+        // real distance, deliveryTimeMinutes is null for every merchant and there's
+        // nothing honest to sort by. A real, in-page sort (not a DB-level ORDER BY --
+        // deliveryTimeMinutes is computed from Haversine distance at request time, not
+        // a stored column), same discipline `getDishes`'s own `recommended` re-sort
+        // already established: never re-fetches, so this page's real pagination/count
+        // stays exact.
+        @RequestParam(required = false) sortBy: String?,
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = merchantRepository.search(MerchantStatus.ACTIVE, category?.trim()?.ifBlank { null }, businessType, q?.trim()?.ifBlank { null }, pageable)
@@ -92,41 +104,54 @@ class ShoppingController(
         } else {
             emptyMap()
         }
-        val merchants = page.content.map { merchant ->
+        data class MerchantRow(val map: Map<String, Any?>, val deliveryTimeMinutes: Int?)
+        var rows = page.content.map { merchant ->
             val distanceKm = if (hasBuyerLocation && merchant.latitude != null && merchant.longitude != null) {
                 GeoUtils.haversineKm(buyerLat!!, buyerLng!!, merchant.latitude!!, merchant.longitude!!)
             } else {
                 null
             }
             val rating = ratingByMerchant[merchant.id]
-            mapOf(
-                "merchantId" to merchant.id,
-                "businessName" to merchant.businessName,
-                "category" to merchant.category,
-                "cashbackRate" to "1%",
-                // Real optional location (2026-07-19) -- lets a real map view plot real
-                // merchants, same field already set via POST /api/v1/merchant/location for
-                // Eats' distance-based delivery fee. Null for a merchant that hasn't set one.
-                "latitude" to merchant.latitude,
-                "longitude" to merchant.longitude,
-                "photoUrl" to merchant.photoUrl,
-                "minOrderAmount" to merchant.minOrderAmount,
-                "rating" to rating?.average,
-                "reviewCount" to (rating?.count ?: 0L),
-                "distanceKm" to distanceKm?.let { BigDecimal(it).setScale(2, RoundingMode.HALF_UP) },
-                "deliveryTimeMinutes" to distanceKm?.let { DeliveryEtaEstimator.estimateDeliveryMinutes(it, merchant.avgPrepTimeMinutes) },
-                // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- see
-                // EatsOrderService.claimDelivery's own doc comment. Universally true,
-                // not a per-merchant toggle: enforced at claim time for every real
-                // itunda delivery, the same real Coupang Eats/배민1 distinction
-                // docs/DESIGN_REFERENCES.md named.
-                "singleOrderDelivery" to true,
-                // Real merchant-set phone/hours (2026-08-09) -- see Merchant.kt's own
-                // doc comment. Null unless the merchant has actually set one.
-                "phoneNumber" to merchant.phoneNumber,
-                "openingHours" to merchant.openingHours,
+            val deliveryTimeMinutes = distanceKm?.let { DeliveryEtaEstimator.estimateDeliveryMinutes(it, merchant.avgPrepTimeMinutes) }
+            MerchantRow(
+                mapOf(
+                    "merchantId" to merchant.id,
+                    "businessName" to merchant.businessName,
+                    "category" to merchant.category,
+                    "cashbackRate" to "1%",
+                    // Real optional location (2026-07-19) -- lets a real map view plot real
+                    // merchants, same field already set via POST /api/v1/merchant/location for
+                    // Eats' distance-based delivery fee. Null for a merchant that hasn't set one.
+                    "latitude" to merchant.latitude,
+                    "longitude" to merchant.longitude,
+                    "photoUrl" to merchant.photoUrl,
+                    "minOrderAmount" to merchant.minOrderAmount,
+                    "rating" to rating?.average,
+                    "reviewCount" to (rating?.count ?: 0L),
+                    "distanceKm" to distanceKm?.let { BigDecimal(it).setScale(2, RoundingMode.HALF_UP) },
+                    "deliveryTimeMinutes" to deliveryTimeMinutes,
+                    // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- see
+                    // EatsOrderService.claimDelivery's own doc comment. Universally true,
+                    // not a per-merchant toggle: enforced at claim time for every real
+                    // itunda delivery, the same real Coupang Eats/배민1 distinction
+                    // docs/DESIGN_REFERENCES.md named.
+                    "singleOrderDelivery" to true,
+                    // Real merchant-set phone/hours (2026-08-09) -- see Merchant.kt's own
+                    // doc comment. Null unless the merchant has actually set one.
+                    "phoneNumber" to merchant.phoneNumber,
+                    "openingHours" to merchant.openingHours,
+                ),
+                deliveryTimeMinutes,
             )
         }
+        // sortedBy is stable, so ties (or every row when no buyer location was supplied,
+        // deliveryTimeMinutes null for all) keep the query's own existing order.
+        // nullsLast: a merchant with no real distance/prep-time data sorts after every
+        // merchant this sort CAN honestly rank, never fabricated to the front or back.
+        if (sortBy == "delivery_time") {
+            rows = rows.sortedWith(compareBy(nullsLast()) { it.deliveryTimeMinutes })
+        }
+        val merchants = rows.map { it.map }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))
     }
 

@@ -19,7 +19,10 @@ import type { ShoppingMerchant } from './shopping';
 // ShoppingController.getEligibleMerchants's own doc comment. businessType=RESTAURANT
 // scopes this to real food merchants only, the same fix applied server-side and on
 // Android.
-export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number) => {
+// Real Baemin/Coupang Eats-style "fastest delivery" sort tab (2026-08-16) -- only
+// takes effect when buyerLat/buyerLng are also supplied (see backend
+// ShoppingController.getEligibleMerchants's own doc comment for why).
+export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number, sortBy?: 'delivery_time') => {
   const params = new URLSearchParams();
   params.set('businessType', 'RESTAURANT');
   if (category) params.set('category', category);
@@ -28,6 +31,7 @@ export const fetchRestaurants = (category?: string, q?: string, buyerLat?: numbe
     params.set('buyerLat', String(buyerLat));
     params.set('buyerLng', String(buyerLng));
   }
+  if (sortBy) params.set('sortBy', sortBy);
   // Real bug found live (2026-07-20): this call never set a page size, so it silently
   // took the backend's own default of 20 -- fine while the catalog was small, but a
   // real restaurant past the 20th spot would then be missing from this list entirely,

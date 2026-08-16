@@ -3073,6 +3073,9 @@ interface ApiService {
         // comment. Omitted (null) means no real distanceKm/deliveryTimeMinutes back.
         @Query("buyerLat") buyerLat: Double? = null,
         @Query("buyerLng") buyerLng: Double? = null,
+        // Real Baemin/Coupang Eats-style "fastest delivery" sort tab (2026-08-16) --
+        // only takes effect server-side when buyerLat/buyerLng are also supplied.
+        @Query("sortBy") sortBy: String? = null,
     ): ShoppingMerchantsResponse
 
     // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
