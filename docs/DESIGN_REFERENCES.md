@@ -7600,3 +7600,34 @@ runs rather than the freshly-registered one, since real distance-based matching 
 whichever driver was actually closer. Resolved by moving the fresh driver to a distinct location
 (Kicukiro) and requesting the trip from there -- a real driver-matching behavior working as
 designed, not a bug in this feature.
+
+## 109. Uber "Share Trip Status" for active rides
+
+**Added 2026-08-16.** Uber's own real feature (help.uber.com/en/riders/article/sharing-your-trip-
+status-faq) sends an unauthenticated public link showing a live map and driver name/plate to up to
+5 contacts. itunda has no public, unauthenticated share-link surface anywhere -- every screen is
+auth-gated -- so this reuses the established "send a real message into a real Talk conversation"
+convention Section 100's favorites-sharing already proved out. Also honestly scoped to what
+`RideDriver` actually has: no name or vehicle-plate field exists on that entity at all (the same
+real limitation `DriverRatingSection`'s own doc comment already names), so the shared message
+includes trip status, pickup/dropoff addresses, and the driver's real current coordinates when
+assigned -- never a fabricated name or plate.
+
+**Built**: `RideTripService.shareTripStatus(passengerUserId, tripId, conversationId)` -- real
+passenger-only IDOR check (a non-passenger gets a real 404, not a leak), real
+`MessagingService.getConversationForParticipant` check (a conversation the caller isn't part of
+real-404s too), a real driver-location snapshot pulled fresh from `RideDriver` at share time (not
+cached). `POST /rides/trips/{id}/share`. bank-mfe's active-ride card gained a "Share trip status"
+button reusing the existing conversation-picker modal, generalized with a `title` prop rather than
+forking a second modal component. 3 new Kotest blocks: real share with location snapshot,
+non-passenger IDOR, non-participant conversation rejection.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: ran a full real
+ride-trip lifecycle (register driver + passenger at a distinct location, request, accept, real PIN
+fetch/start) to a real `IN_PROGRESS` trip. Registered a real third "friend" account and started a
+real conversation with them. `POST /rides/trips/{id}/share` returned a real `201` with body `"🚗 My
+ride status: IN_PROGRESS\nFrom: Kicukiro\nTo: Kanombe\nDriver's last known location: -1.9995,
+30.1512"` -- the real trip status, real addresses, and the real driver's actual coordinates, not
+placeholder text. A different, non-passenger real account calling the same endpoint against the
+same trip got a real `404 RIDE_TRIP_NOT_FOUND`. The real passenger attempting to share into a real
+conversation they were never a participant of got a real `404 CONVERSATION_NOT_FOUND`.
