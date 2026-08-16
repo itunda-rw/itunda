@@ -7669,3 +7669,38 @@ driver's first two `POST /destination` calls succeeded with `destinationUsesToda
 `POST /destination/clear` real-nulled the active filter but left `destinationUsesToday` at 2, and
 an immediately-following `POST /destination` still real-429'd -- proving clearing is genuinely free
 to undo but does not refund a daily use, exactly as designed.
+
+## 111. Uber post-trip tipping for ride-hailing drivers
+
+**Added 2026-08-16.** Uber's own real, published policy (uber.com/us/en/ride/how-it-works/tips):
+"Tips go directly to drivers; Uber doesn't charge service fees on tips," addable up to 30 days
+after a trip. itunda's rideshare module had zero tipping concept anywhere.
+
+**Built**: `RideTrip.tipAmount`/`tipTransactionId` (migration `V259`). `RideTripService.tipDriver`
+-- a direct real passenger-wallet-to-driver-wallet ledger transfer that deliberately bypasses the
+`ride_holding` escrow the fare itself uses, since a tip is never itunda's revenue to hold or take a
+cut of. Real once-only enforcement (`RideTripAlreadyTippedException`), real 30-day window
+(`RideTripTipWindowExpiredException`, measured from `updatedAt` since `RideTrip` has no separate
+`completedAt` column), real passenger-only IDOR check, real positive-amount validation. `POST
+/rides/trips/{id}/tip`, real `Idempotency-Key` required (money-moving, same convention every other
+real transfer endpoint in this codebase already establishes). 7 new Kotest blocks. Backend-only
+this pass -- itunda's driver-facing client lives in Android's `RiderApp`, not bank-mfe.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**, with direct DB balance
+checks on both sides of the transfer (not just trusting the API response): ran a full real
+ride-trip lifecycle to a real `COMPLETED` trip. Passenger wallet balance before: `18214.00`; driver
+wallet balance before: `1759.21`. `POST /trips/{id}/tip {"amount": 500}` returned a real `200` with
+`tipAmount: 500`. Re-querying both wallets directly showed the passenger at exactly `17714.00`
+(−500.00) and the driver at exactly `2259.21` (+500.00) -- a precise, fee-free transfer on both
+sides, proving Uber's own "no service fee on tips" claim holds for real, not just in the code
+comment. A second tip attempt on the same trip real-409'd `RIDE_TRIP_ALREADY_TIPPED`. A different,
+unrelated real account attempting to tip the same trip real-404'd (passenger-only IDOR). A
+`{"amount": 0}` tip real-400'd `INVALID_TIP_AMOUNT`. A second real completed trip, with its real
+`updated_at` backdated 31 days via direct SQL (the same legitimate timestamp-manipulation
+technique Sections 104/106 already used), real-400'd `RIDE_TRIP_TIP_WINDOW_EXPIRED` on tip attempt.
+
+This deploy's registry push hit `connection refused` during the third occurrence this session of a
+genuine, severe cluster-overload spike (idle 0%, load average 62.30) -- now documented as a known,
+self-resolving condition in a new `feedback_private_cloud_severe_overload_registry_refused` memory,
+resolved the same way as the prior two occurrences: waited for the primary node's `vmstat` to
+genuinely recover before retrying.
