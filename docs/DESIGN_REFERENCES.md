@@ -7279,3 +7279,27 @@ account (bypassing the client's `isMine` gate, which normal UI usage never does)
 `viewCount: 4`, confirming the increment is real and unconditional at the backend layer exactly as
 built -- the owner-exclusion lives only in `ListingCard`'s fetch condition, honestly documented
 above rather than left as an untested assumption.
+
+## 99. Baemin-style restaurant favorite count + 찜순 sort
+
+**Added 2026-08-16.** Baemin's real restaurant listings show a 찜 (favorites) count, a publicly-
+cited popularity signal, and let buyers sort by it (찜순). itunda already tracked `EatsFavorite` per
+user (bookmarking) but never surfaced or sorted by the aggregate count anywhere.
+
+**Built**: `EatsFavoriteRepository.getFavoriteCounts`, a batched `GROUP BY` query returning one row
+per restaurant with any favorites (same "batch, don't N+1" discipline
+`EatsReviewRepository.getRestaurantRatingSummaries` already established) -- a restaurant with zero
+favorites is simply absent from the result, the caller treats a missing id as count 0, never a
+fabricated row. `GET /shopping/merchants` gained a real `favoriteCount` field per merchant and a
+`sortBy=favorites` option, sibling to the existing `sortBy=delivery_time` -- unlike delivery-time
+sort, this one needs no buyer geolocation at all, so it ships with a real, immediately usable
+"❤️ Most favorited" toggle chip on bank-mfe's restaurant browse from day one.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered two fresh
+real restaurants ("Popular Kigali Grill", "Quiet Kigali Diner") and 3 fresh real fan accounts; had
+all 3 favorite the Grill and 1 favorite the Diner. `GET /shopping/merchants?sortBy=favorites`
+returned the Grill first (`favoriteCount: 3`) and the Diner second (`favoriteCount: 1`), both ahead
+of every 0-favorite merchant in the list -- a real, correct descending sort. The identical query
+WITHOUT `sortBy` still returned `favoriteCount` on every merchant but in a genuinely different,
+unsorted order (a 0-favorite merchant ranked ahead of the 3-favorite Grill) -- proving the sort
+param does real work rather than being silently ignored.
