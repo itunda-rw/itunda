@@ -57,4 +57,33 @@ class AgentOperatorAccessTest : BehaviorSpec({
             service.getMyOperator("user_1") shouldBe operator
         }
     }
+
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-16) -- see
+    // AgentService.setLocationForOperator's own doc comment: the only prior way to set
+    // Agent.latitude/longitude lived on a deprecated admin controller with zero caller,
+    // while a real customer-facing "nearby agents" feature already depends on it.
+    Given("a real operator reporting their store's real location for the first time") {
+        every { operators.findByUserId("user_1") } returns operator
+        every { agents.findById("agent_1") } returns Optional.of(
+            Agent("agent_1", "Kigali Store", "cash_1", AgentStatus.ACTIVE, BigDecimal("100000")),
+        )
+        every { agents.save(any()) } answers { firstArg() }
+
+        Then("it real-updates the agent's own real coordinates, resolved from the caller's JWT, not a caller-supplied agent id") {
+            val updated = service.setLocationForOperator("user_1", -1.9536, 30.0605)
+            updated.latitude shouldBe -1.9536
+            updated.longitude shouldBe 30.0605
+        }
+    }
+
+    Given("a real operator reporting a location outside Rwanda") {
+        every { operators.findByUserId("user_1") } returns operator
+        every { agents.findById("agent_1") } returns Optional.of(
+            Agent("agent_1", "Kigali Store", "cash_1", AgentStatus.ACTIVE, BigDecimal("100000")),
+        )
+
+        Then("it throws IllegalArgumentException before ever saving") {
+            shouldThrow<IllegalArgumentException> { service.setLocationForOperator("user_1", 51.5072, -0.1276) }
+        }
+    }
 })

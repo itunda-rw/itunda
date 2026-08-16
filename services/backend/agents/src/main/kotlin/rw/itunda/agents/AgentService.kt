@@ -125,6 +125,21 @@ class AgentService(
         return agentRepository.save(agent)
     }
 
+    /** Real gap found live (2026-08-16, uncalled-endpoint sweep): the only endpoint that
+     * could ever call [setLocation] lived on the deprecated admin controller
+     * (`AgentAdminController`, superseded everywhere else by this real operator-facing
+     * flow -- see this class's own `cashInForOperator`/`cashOut` precedent), with zero
+     * caller anywhere. `AgentDiscoveryController.getNearbyAgents` is a real, already-live
+     * customer-facing feature that depends entirely on `Agent.latitude`/`longitude`
+     * being current -- but no real agent in the field had any way to actually report
+     * where they are. Same "resolve the caller's own agent from auth" pattern
+     * [activeOperator] already establishes for every other operator-facing action. */
+    @Transactional
+    fun setLocationForOperator(userId: String, latitude: Double, longitude: Double): Agent {
+        val operator = activeOperator(userId)
+        return setLocation(operator.agentId, latitude, longitude)
+    }
+
     @Transactional
     fun fundTill(agentId: String, amount: BigDecimal, reference: String): Map<String, Any?> {
         require(amount > BigDecimal.ZERO) { "Till funding amount must be greater than zero" }

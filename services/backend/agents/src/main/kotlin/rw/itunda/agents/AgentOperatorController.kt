@@ -27,9 +27,19 @@ class AgentOperatorController(
     private val idempotencyService: IdempotencyService,
 ) {
     data class SubmitTillCountRequest(val countedCash: BigDecimal)
+    data class SetAgentLocationRequest(val latitude: Double, val longitude: Double)
+
     @GetMapping("/me")
     fun me(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "operator" to agentService.getMyOperator(currentUser.userId)))
+
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-16) -- see
+    // AgentService.setLocationForOperator's own doc comment. The customer-facing
+    // "nearby agents" feature (AgentDiscoveryController.getNearbyAgents) already
+    // depends on this data; no real agent had any way to actually report it.
+    @PostMapping("/location")
+    fun setLocation(@RequestBody request: SetAgentLocationRequest, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "agent" to agentService.setLocationForOperator(currentUser.userId, request.latitude, request.longitude)))
 
     @GetMapping("/till")
     fun till(@AuthenticationPrincipal currentUser: CurrentUser) =

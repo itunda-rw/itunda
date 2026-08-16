@@ -30,11 +30,13 @@ import rw.itunda.core.network.AgentCashInRequest
 import rw.itunda.core.network.AgentCashOutRequest
 import rw.itunda.core.network.AgentTillSnapshotDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SetAgentLocationRequest
 import rw.itunda.core.network.SubmitTillCountRequest
 import rw.itunda.core.network.apiErrorCode
 import rw.itunda.core.network.superAppErrorMessage
 import java.util.UUID
 import rw.itunda.core.designsystem.components.EmptyState
+import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 
 // Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own doc
 // comment: "Store-facing API: the operator's JWT determines the agent; callers never
@@ -51,6 +53,28 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-16) -- see backend
+    // AgentService.setLocationForOperator's own doc comment. The real customer-facing
+    // "nearby agents" feature depends entirely on this; this is the first client
+    // anywhere that can actually report it.
+    var reportingLocation by remember { mutableStateOf(false) }
+    val requestLocationAndReport = rememberRealLocationRequester(
+        onLocating = { reportingLocation = it },
+        onSuccess = { lat, lng ->
+            scope.launch {
+                try {
+                    NetworkClient.apiService.setAgentLocation(SetAgentLocationRequest(lat, lng))
+                    message = "Your location has been updated."
+                } catch (e: retrofit2.HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: Exception) {
+                    error = "Could not update your location."
+                }
+            }
+        },
+        onError = { error = it },
+    )
 
     fun load() {
         error = null
@@ -95,6 +119,22 @@ fun AgentOperatorScreen(onBack: () -> Unit) {
                 item { Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
                 item { TillSummaryCard(till = current) }
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            Text("Store location", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "Real customers use \"nearby agents\" to find your store -- keep your location current.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            IdsButton(
+                                text = if (reportingLocation) "Getting your location…" else "Report my location",
+                                onClick = { message = null; error = null; requestLocationAndReport() },
+                                enabled = !reportingLocation,
+                            )
+                        }
+                    }
+                }
                 item {
                     CashInCard(onSubmitted = { result -> message = "Cash in accepted — new customer balance ${"%,.0f".format(result)} RWF"; load() }, onError = { error = it })
                 }

@@ -2023,6 +2023,12 @@ data class AgentCashInRequest(val accountNumber: String, val amount: java.math.B
 data class AgentCashOutRequest(val accountNumber: String, val amount: java.math.BigDecimal, val receiptNumber: String, val authorizationCode: String)
 data class AgentCashResultResponse(val success: Boolean, val newBalance: java.math.BigDecimal, val operatorCommission: java.math.BigDecimal)
 data class SubmitTillCountRequest(val countedCash: java.math.BigDecimal)
+data class SetAgentLocationRequest(val latitude: Double, val longitude: Double)
+// Real, minimal fields only -- deliberately not NearbyAgentDto (a different real shape:
+// that one is search-result specific, with a computed distanceKm this raw Agent entity
+// doesn't have). See backend Agent.kt's own field list.
+data class AgentLocationDto(val id: String, val displayName: String, val latitude: Double?, val longitude: Double?)
+data class AgentResponse(val success: Boolean, val agent: AgentLocationDto)
 data class AgentTillReconciliationResponse(val success: Boolean, val reconciliation: AgentTillReconciliationDto)
 
 // Real peer-to-peer agent float rebalancing marketplace -- see the backend's
@@ -3729,6 +3735,13 @@ interface ApiService {
 
     @POST("api/v1/agent/till-reconciliations")
     suspend fun submitAgentTillCount(@Body request: SubmitTillCountRequest): AgentTillReconciliationResponse
+
+    // Real gap found live (uncalled-endpoint sweep, 2026-08-16) -- see backend
+    // AgentService.setLocationForOperator's own doc comment. The real customer-facing
+    // "nearby agents" feature depends entirely on this; no real agent had any way to
+    // report it before.
+    @POST("api/v1/agent/location")
+    suspend fun setAgentLocation(@Body request: SetAgentLocationRequest): AgentResponse
 
     // Real peer-to-peer agent float rebalancing marketplace -- see FloatMarketplaceController.kt.
     @POST("api/v1/float-marketplace/listings")
