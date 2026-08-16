@@ -6782,3 +6782,32 @@ wallet-funding endpoint (confirmed again, same finding as
 (`SELECT id, name, balance FROM ledger_accounts WHERE id = 'promotion_expense'`) and confirmed the
 seed row now exists post-deploy -- a real, honest confirmation of the actual fix mechanism, not a
 substitute for a full money-moving test, clearly distinguished as such.
+
+## 84. KakaoBank 결제홈 (Payment Home) -- unifying card spend with the real benefits it earns
+
+**Added 2026-08-16.** KakaoBank's real 결제홈 service, launching August 2026 per their own H1
+earnings coverage ("카드 결제 내역과 혜택을 통합 관리할 수 있는 '결제홈'"), consolidates card spend
+history with the benefits that spend actually earned. Checked `CardView` (bank-mfe): shows the card,
+spend limits, and a raw transaction list, with zero connection to `CreditScoreService`'s own real
+"Card usage" factor (Section 76, built this same session) despite it being computed from the exact
+same real `DebitCardTransaction` data this screen already displays.
+
+**Built, purely client-side, zero new backend work**: both `GET /api/v1/credit-score` and
+`/credit-score/suggestions` already existed and were already live elsewhere (`lib/creditScore.ts`).
+`CardView` now fetches both alongside its existing load, and shows a "Card benefits" section: the
+real "Card usage" factor's earned points if any exist, and/or the real "Use your itunda Card
+more"/"Get an itunda Card" suggestion otherwise -- the same real data already proven correct in
+Section 76's own live-verification, no fabricated points system.
+
+**Verification note, honestly limited this pass**: type-checked clean, and directly traced the real
+API responses for the demo account against the component's render logic (`cardUsageFactor: null`
+since 0 real card transactions; `cardSuggestion` correctly the real "Use your itunda Card more, 10
+more real card purchase(s)..." suggestion) -- confirms the logic is correct for real data, but the
+Claude-in-Chrome browser extension was disconnected this pass, so this is not a full visual
+screenshot check the way most of this session's other UI features were verified.
+
+**Not recommended this pass, per the same research fork**: Toss Bank's real-time overseas-remittance
+tracking (blocked on the same MTN/Airtel provider-credential gap already documented as itunda's one
+open Toss-parity item) and Coupang Eats' expanded-delivery-radius feature (itunda's merchant search
+has no distance restriction to begin with, so there's no radius-bypass gap to close without first
+inventing a restriction system -- a bigger two-part feature, not a quick win).
