@@ -6901,3 +6901,43 @@ every other merchant's dishes `recommended: false` -- the familiarity re-sort wo
 history, not just compiles. `GET /api/v1/eats/dishes?maxBudget=1300` correctly returned exactly the
 2 dishes at or under budget (`Banana bread slice` 1300, `Espresso` 1200), excluding `Croissant`
 (1500) and every pricier dish -- the budget filter is real, not just present in the query string.
+
+## 88. Standalone "send as a gift" flow (KakaoTalk 선물하기-style, general entry point)
+
+**Added 2026-08-16.** A fresh uncalled-endpoint sweep (cross-referencing all 740 real backend REST
+endpoints against every real client call site across bank-mfe/merchant-mfe/kyc-mfe/ops-mfe,
+Android's every module, and all 4 iOS `NetworkClient.swift` files) turned up `GiftController`'s
+standalone `POST /api/v1/gifts` -- send a real KakaoTalk-style money gift to any phone number, not
+just someone already in a chat -- fully built server-side (idempotent, rate-limited, full exception
+handling for every real failure mode) with **zero client caller anywhere**. Only the chat-embedded
+sibling (`POST /gifts/conversations/{id}`) had a UI, so a user could only gift someone they were
+already messaging. `GET /gifts/{id}` was the same story -- built, unreachable.
+
+**Built (bank-mfe only this pass)**: rather than a whole new screen, added a "Send as a gift
+instead" toggle to the existing Transfer form (`TransferFlow`) -- it already collects the exact
+recipient-phone-number and amount fields a gift needs. Checking it reveals the same theme/note
+fields the chat gift composer already offers (`GIFT_THEME_LABELS`, reused as-is). On confirm,
+branches to the new `sendGift()` instead of `sendDirect()`, and renders an escrow-aware result panel
+("held until they claim it, auto-refunded after 7 days") instead of the instant-transfer one, since
+a gift genuinely behaves differently from a normal transfer -- money moves into escrow immediately,
+not into the recipient's wallet.
+
+**Not built this pass**: Android and iOS both already have the chat-embedded gift flow but not this
+standalone entry point either -- same shape of gap as several other cross-platform items in this
+file, worth a future pass.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: a real `POST
+/api/v1/gifts` from the demo user (477 RWF MAIN balance) to a second real seeded user
+(`0788555123`) for 100 RWF returned a real `Gift` with `status: PENDING`, a real `holdTransactionId`
+-- sender's balance immediately dropped to 377 RWF (real escrow debit, not a no-op). `GET
+/api/v1/gifts/{id}` returned the identical gift. Logged in as the real recipient (balance 0 RWF),
+called `POST /api/v1/gifts/{id}/claim` -- returned `status: CLAIMED` with a real
+`claimTransactionId`, and the recipient's real balance moved 0 -> 100 RWF. Full send-hold-claim loop
+confirmed real, not just compiled.
+
+**Real pitfall hit during verification, worth remembering**: this session's seeded second test user
+phone number is stored as `0788555123` (no `+250` prefix), while the demo user's own number is
+`+250788123456` (with it) -- inconsistent seed data across sessions. A first gift-send attempt with
+`+250788555123` real-404'd (`GIFT_RECIPIENT_NOT_FOUND`) purely because of this format mismatch, not
+a backend bug -- confirmed via a direct `SELECT phone_number FROM itunda.users` query before
+retrying with the exact stored format.
