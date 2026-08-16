@@ -104,6 +104,10 @@ export interface EatsOrder {
   deliveryFee: number;
   platformFee: number;
   totalAmount: number;
+  // Real Baemin-style tiered order-amount promotion (2026-08-16) -- itunda-funded, not
+  // restaurant-funded. See EatsPromotionCalculator's own doc comment on the backend.
+  // Zero for every order below the lowest real tier.
+  promotionDiscount: number;
   transactionId: string;
   deliveryPayoutTransactionId: string | null;
   status: EatsOrderStatus;

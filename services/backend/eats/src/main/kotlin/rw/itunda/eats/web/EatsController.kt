@@ -154,6 +154,7 @@ class EatsController(
             "riderId" to order.riderId, "deliveryAddress" to order.deliveryAddress,
             "itemsSubtotal" to order.itemsSubtotal, "deliveryFee" to order.deliveryFee,
             "platformFee" to order.platformFee, "totalAmount" to order.totalAmount,
+            "promotionDiscount" to order.promotionDiscount,
             "transactionId" to order.transactionId,
             "deliveryPayoutTransactionId" to order.deliveryPayoutTransactionId,
             "status" to order.status, "createdAt" to order.createdAt, "updatedAt" to order.updatedAt,

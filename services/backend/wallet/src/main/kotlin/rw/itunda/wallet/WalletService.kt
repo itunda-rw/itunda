@@ -200,6 +200,14 @@ class WalletService(
                 LedgerAccountType.INSURANCE_PREMIUM_FUND_PAYABLE -> "Insurance"
                 LedgerAccountType.FEE_REVENUE -> "Fees"
                 LedgerAccountType.EATS_DELIVERY_HOLDING -> "Food delivery"
+                // Real Baemin-style tiered order-amount promotion (2026-08-16) -- only
+                // ever posted alongside an Eats order (see EatsOrderService.placeOrder),
+                // same "Food delivery" category as EATS_DELIVERY_HOLDING above. A PICKUP
+                // order (zero delivery fee, that leg filtered out entirely) with a real
+                // promotion discount applied would otherwise have PROMOTION_EXPENSE as
+                // its only non-wallet-non-fee counterpart -- still real food spending,
+                // not a separate category.
+                LedgerAccountType.PROMOTION_EXPENSE -> "Food delivery"
                 LedgerAccountType.GIFT_HOLDING -> "Gifts"
                 LedgerAccountType.AGENT_CASH -> "Cash-in"
                 LedgerAccountType.CASH_VAULT -> "Other"

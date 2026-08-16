@@ -152,6 +152,16 @@ class EatsOrder(
     @Column(name = "scheduled_for")
     val scheduledFor: Instant? = null,
 
+    // Real Baemin-style tiered order-amount promotion (2026-08-16, "가게배달" fee/
+    // promotion restructuring, April 2026) -- see EatsPromotionCalculator's own doc
+    // comment. itunda-funded, not restaurant-funded: netToRestaurant is computed from
+    // itemsSubtotal/platformFee exactly as before and never reduced by this discount,
+    // matching Baemin's own real "platform pays, not the restaurant" mechanic. Zero for
+    // every order below the lowest real tier -- the common case, not a fabricated
+    // always-present discount.
+    @Column(name = "promotion_discount", nullable = false, precision = 18, scale = 2)
+    val promotionDiscount: BigDecimal = BigDecimal.ZERO,
+
     // Restaurant, rider, scheduler, and cancellation actions advance the same order
     // through different request paths.  Protect the row so a concurrent terminal
     // transition cannot post a duplicate delivery payout or refund.

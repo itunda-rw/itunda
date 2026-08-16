@@ -117,6 +117,12 @@ enum class LedgerAccountType {
     // establish for "itunda's own money moving between its own accounts."
     DEPOSIT_PROTECTION_RESERVE,
     DEPOSIT_PROTECTION_EXPENSE,
+    // Real Baemin-style tiered order-amount promotion (2026-08-16) -- see
+    // EatsPromotionCalculator's own doc comment. Same "itunda's own money, not the
+    // restaurant's" expense shape REWARDS_EXPENSE already establishes for task-claim
+    // payouts: the buyer pays less, itunda absorbs the difference as a real expense,
+    // the restaurant's own payout is never reduced.
+    PROMOTION_EXPENSE,
 }
 
 /**

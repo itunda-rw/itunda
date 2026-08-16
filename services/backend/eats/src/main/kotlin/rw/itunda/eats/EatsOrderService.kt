@@ -23,6 +23,7 @@ import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
+import rw.itunda.core.geo.EatsPromotionCalculator
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.GeocodeSuggestion
 import rw.itunda.core.geo.NominatimGeocodingClient
@@ -394,6 +395,12 @@ class EatsOrderService(
         val platformFee = itemsSubtotal.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
         val netToRestaurant = itemsSubtotal.subtract(platformFee)
 
+        // Real Baemin-style tiered order-amount promotion -- see
+        // EatsPromotionCalculator's own doc comment. Computed from itemsSubtotal alone
+        // (before delivery fee/membership waivers below), matching Baemin's own real
+        // mechanic of discounting the order value itself, not the delivery charge.
+        val promotionDiscount = EatsPromotionCalculator.calculateDiscount(itemsSubtotal)
+
         val restaurantLat = restaurant.latitude
         val restaurantLng = restaurant.longitude
 
@@ -450,11 +457,18 @@ class EatsOrderService(
             }
         }
         val totalAmount = itemsSubtotal.add(deliveryFee)
+        // Buyer pays the promotion-discounted amount; the restaurant's own
+        // netToRestaurant and itunda's own platformFee revenue are both untouched --
+        // itunda alone absorbs promotionDiscount as a real expense (PROMOTION_EXPENSE
+        // leg below), matching Baemin's own real "platform pays, not the restaurant"
+        // mechanic.
+        val buyerCharge = totalAmount.subtract(promotionDiscount)
 
         val result = ledgerService.postLedgerTransaction(
             buyerWallet.currency,
             listOf(
-                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, totalAmount, "Eats order - ${restaurant.businessName}"),
+                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, buyerCharge, "Eats order - ${restaurant.businessName}"),
+                LedgerLeg("promotion_expense", LedgerAccountType.PROMOTION_EXPENSE, LedgerDirection.DEBIT, promotionDiscount, "Eats order promotion - ${restaurant.businessName}"),
                 LedgerLeg(restaurantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToRestaurant, "Eats order collection - ${restaurant.businessName}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, platformFee, "Eats platform fee - ${restaurant.businessName}"),
                 LedgerLeg("eats_delivery_holding", LedgerAccountType.EATS_DELIVERY_HOLDING, LedgerDirection.CREDIT, deliveryFee, "Eats delivery fee held - ${restaurant.businessName}"),
@@ -468,7 +482,7 @@ class EatsOrderService(
             recipientId = restaurant.ownerUserId,
             fromWalletId = buyerWallet.id,
             toWalletId = restaurantWallet.id,
-            amount = totalAmount,
+            amount = buyerCharge,
             fee = platformFee.add(deliveryFee),
             currency = buyerWallet.currency,
             type = TransactionType.PAYMENT,
@@ -477,14 +491,15 @@ class EatsOrderService(
             channel = "EATS_ORDER",
             completedAt = Instant.now(),
         )
-        fraudRuleEngine.evaluate(buyerId, restaurant.ownerUserId, totalAmount, transaction.id)
+        fraudRuleEngine.evaluate(buyerId, restaurant.ownerUserId, buyerCharge, transaction.id)
         transactionRepository.save(transaction)
 
         val order = eatsOrderRepository.save(
             EatsOrder(
                 id = "eats_order_${UUID.randomUUID()}", buyerId = buyerId, restaurantId = restaurantId,
                 deliveryAddress = resolvedAddress, itemsSubtotal = itemsSubtotal, deliveryFee = deliveryFee,
-                platformFee = platformFee, totalAmount = totalAmount, transactionId = result.transactionId,
+                platformFee = platformFee, totalAmount = buyerCharge, promotionDiscount = promotionDiscount,
+                transactionId = result.transactionId,
                 deliveryLatitude = resolvedDeliveryLat, deliveryLongitude = resolvedDeliveryLng, distanceKm = distanceKmRounded,
                 deliveryNotes = trimmedNotes, fulfillmentType = fulfillmentType, scheduledFor = scheduledFor,
             ),

@@ -132,18 +132,23 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             val detail = service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "  KG 9 Ave  ")
 
-            Then("it prices from the real live menu (3000 x 2 = 6000), splits a 1.5% platform fee, adds a real flat 1500 delivery fee, and trims the address") {
+            Then("it prices from the real live menu (3000 x 2 = 6000), splits a 1.5% platform fee, adds a real flat 1500 delivery fee, applies the real >=5000 promotion tier (1000 off), and trims the address") {
                 detail.order.itemsSubtotal shouldBe BigDecimal("6000")
                 detail.order.platformFee shouldBe BigDecimal("90.00")
                 detail.order.deliveryFee shouldBe BigDecimal("1500")
-                detail.order.totalAmount shouldBe BigDecimal("7500")
+                detail.order.promotionDiscount shouldBe BigDecimal("1000")
+                // 6000 + 1500 delivery - 1000 promotion = 6500, the real amount the buyer is charged
+                detail.order.totalAmount shouldBe BigDecimal("6500")
                 detail.order.deliveryAddress shouldBe "KG 9 Ave"
                 detail.items.first().productName shouldBe "Grilled chicken"
 
                 val legs = legsSlot.captured
-                legs.first { it.accountId == "wallet_buyer" }.amount shouldBe BigDecimal("7500")
+                legs.first { it.accountId == "wallet_buyer" }.amount shouldBe BigDecimal("6500")
+                // Restaurant payout and platform fee are both untouched by the promotion --
+                // itunda alone absorbs the discount, matching Baemin's own real mechanic.
                 legs.first { it.accountId == "wallet_restaurant" }.amount shouldBe BigDecimal("5910.00")
                 legs.first { it.accountId == "fee_revenue" }.amount shouldBe BigDecimal("90.00")
+                legs.first { it.accountId == "promotion_expense" }.amount shouldBe BigDecimal("1000")
                 val holdingLeg = legs.first { it.accountId == "eats_delivery_holding" }
                 holdingLeg.amount shouldBe BigDecimal("1500")
                 holdingLeg.accountType shouldBe LedgerAccountType.EATS_DELIVERY_HOLDING
@@ -155,6 +160,29 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             Then("the restaurant owner also gets a real push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "New order received", any(), any()) }
+            }
+        }
+
+        When("a real order's itemsSubtotal is below the lowest real promotion tier") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_no_promo", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            // 1 unit at 3000 = itemsSubtotal 3000, under the real 5000 floor -- no
+            // unearned discount for a small order.
+            val detail = service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "KG 9 Ave")
+
+            Then("no real promotion discount applies, and the zero-amount promotion_expense leg is left for the real LedgerService to filter") {
+                detail.order.promotionDiscount shouldBe BigDecimal.ZERO
+                detail.order.totalAmount shouldBe BigDecimal("4500")
+                // A zero-amount leg is still constructed here -- postLedgerTransaction's own
+                // real implementation filters zero-amount legs before posting, this mock
+                // doesn't run that filter, so the leg is present but correctly zero.
+                legsSlot.captured.first { it.accountId == "promotion_expense" }.amount shouldBe BigDecimal.ZERO
             }
         }
 
@@ -172,7 +200,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             Then("delivery is real-free even though this specific restaurant never opted into Eats Club -- the unconditional, broader guarantee") {
                 restaurant.participatesInEatsMembership shouldBe false
                 detail.order.deliveryFee shouldBe BigDecimal.ZERO
-                detail.order.totalAmount shouldBe detail.order.itemsSubtotal
+                // itemsSubtotal (6000) crosses the real >=5000 promotion tier (1000 off),
+                // same as the base case above -- totalAmount is the real post-discount charge.
+                detail.order.totalAmount shouldBe detail.order.itemsSubtotal.subtract(BigDecimal("1000"))
             }
         }
 
@@ -226,7 +256,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             Then("it real-charges zero delivery fee unconditionally and stores a real, honest display address") {
                 detail.order.fulfillmentType shouldBe EatsFulfillmentType.PICKUP
                 detail.order.deliveryFee shouldBe BigDecimal.ZERO
-                detail.order.totalAmount shouldBe BigDecimal("6000")
+                // itemsSubtotal (6000) crosses the real >=5000 promotion tier (1000 off):
+                // 6000 - 1000 = 5000, the real amount the buyer is charged.
+                detail.order.totalAmount shouldBe BigDecimal("5000")
                 detail.order.deliveryAddress shouldBe "Pickup at Kigali Grill"
                 val holdingLeg = legsSlot.captured.first { it.accountId == "eats_delivery_holding" }
                 holdingLeg.amount shouldBe BigDecimal.ZERO
@@ -538,7 +570,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             Then("it computes a real distance-based fee (base 500 + 250/km) instead of the flat amount") {
                 detail.order.distanceKm shouldBe BigDecimal("5.560")
                 detail.order.deliveryFee shouldBe BigDecimal("1890.00")
-                detail.order.totalAmount shouldBe BigDecimal("7890.00")
+                // itemsSubtotal (6000) crosses the real >=5000 promotion tier (1000 off):
+                // 6000 + 1890 delivery - 1000 promotion = 6890.00.
+                detail.order.totalAmount shouldBe BigDecimal("6890.00")
 
                 val holdingLeg = legsSlot.captured.first { it.accountId == "eats_delivery_holding" }
                 holdingLeg.amount shouldBe BigDecimal("1890.00")

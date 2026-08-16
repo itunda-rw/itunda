@@ -14087,6 +14087,11 @@ function OrderFoodView() {
         <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
         <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
         <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
+        {confirmed.promotionDiscount > 0 && (
+          <p style={{ fontSize: '12px', color: 'var(--itunda-green)', marginBottom: '4px' }}>
+            {confirmed.promotionDiscount.toLocaleString()} RWF off, on us
+          </p>
+        )}
         <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>Delivering to {confirmed.deliveryAddress}</p>
         <button
           className="itunda-btn itunda-btn-secondary"
