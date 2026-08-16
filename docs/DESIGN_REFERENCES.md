@@ -7137,3 +7137,34 @@ in the response. A subsequent `GET /agents/nearby` search from a nearby point re
 agent with the real coordinates just set and a real computed `distanceKm` (0.087 km) -- proving the
 whole real pipeline (report → store → customer-facing discovery) works end to end, not just that
 the write succeeded in isolation.
+
+## 94. Karrot-style Marketplace category browsing
+
+**Added 2026-08-16.** Karrot's real 중고거래 category system was named twice as an untouched
+research angle before finally being investigated: a real, fixed ~24-category taxonomy (Karrot's
+own official Korea App Store listing), distinct from a generic flat/emergent list. Checked itunda's
+own Marketplace: `Listing.category` was already a real, stored, filterable field --
+`MarketplaceService.browse(pageable, category)` already accepted a `category` filter param -- but
+no real curated taxonomy or client UI ever drove it. A buyer could not browse Marketplace by
+category at all, only free-text search. The exact same "backend has the filter, no real taxonomy or
+UI" shape Eats/Shop already closed via `MerchantService.CATEGORIES`.
+
+**Built**: `MarketplaceService.CATEGORIES`, a real fixed 12-category list adapted from Karrot's own
+sourced taxonomy to general secondhand goods relevant to Rwanda (itunda's own `vehicle`/
+`realestate` modules already own those categories elsewhere, deliberately not duplicated here) --
+mirroring `KnowledgeService.CATEGORIES`'s exact existing pattern. `GET /marketplace/categories`
+returns it. Purely additive: real, pre-existing free-text listing categories keep working unchanged
+-- this is a real curated list to browse BY, not a validation change to what a seller can type at
+creation. bank-mfe's Marketplace `BROWSE` view gained a real category chip row, same visual shape
+as Eats/Shop's existing chips.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: `GET
+/marketplace/categories` returned the real fixed 12-category list. `GET
+/marketplace/listings?category=Electronics` returned 5 real listings, `GET
+/marketplace/listings?category=Sports` returned a different, smaller real set of 3 -- confirming
+the filter genuinely differentiates results, not returning everything regardless of the param.
+Real, useful side effect discovered during verification: the underlying JPA query is a plain
+equality (`ListingRepository.kt`'s `l.category = :category`) with no explicit case-folding, but
+MySQL's own default collation is case-insensitive -- pre-existing free-text listings stored as
+lowercase ("electronics") still matched the new curated, capitalized category name ("Electronics")
+correctly, with zero extra code needed.
