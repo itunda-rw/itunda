@@ -7925,3 +7925,51 @@ background polls rather than synchronous HTTP endpoints a caller waits on, so th
 silently delays one row to the next poll tick rather than 500ing a live request -- lower severity
 than the bills case, but a real bug in already-deployed code. Flagged as a follow-up task, not
 fixed in this pass.
+
+## 118. Bug fix: scheduler transaction-poisoning in ProductSubscription/MerchantBilling (follow-up to Section 115)
+
+**Added 2026-08-17.** Not a new feature -- closes the real, unfixed latent bug flagged at the end
+of Section 117. A research fork found that `ProductSubscriptionService.executeOne` and
+`MerchantBillingService.chargeOne` both carried the identical root cause behind Section 115's bills
+auto-pay `UnexpectedRollbackException` bug (commit `a5a821e4`), just in `@Scheduled` background
+polls rather than a synchronous HTTP endpoint.
+
+**Root cause, `executeOne`**: it was itself `@Transactional` and called `orderService.placeOrder`,
+a separately-proxied bean. When `placeOrder` throws (e.g. `InsufficientFundsException`), Spring
+marks `executeOne`'s own ambient transaction rollback-only at the moment of the throw -- catching
+the exception in `executeOne`'s own try/catch does not undo that mark, so the subsequent
+`subscription.save()` would fail with a real `UnexpectedRollbackException`, uncaught by
+`ProductSubscriptionScheduler`'s loop (no per-row try/catch), aborting the rest of that poll's due
+subscriptions.
+
+**Root cause, `chargeOne`**: true self-invocation -- a private `executeCharge` method called
+`ledgerService.postLedgerTransaction` (separately-proxied) from inside `chargeOne`'s own still-open
+`@Transactional` method, the exact self-invocation pitfall Section 115 already documented.
+
+**Fixed**: `executeOne` lost its own `@Transactional` -- `placeOrder` remains fully atomic on its
+own via its own annotation, and the final `productSubscriptionRepository.save` is independently
+atomic via Spring Data's implicit per-call transaction. `chargeOne`'s charge-posting logic was
+extracted into a new `MerchantBillingChargeExecutor` bean (`@Transactional execute()`), called as a
+genuine cross-bean proxied call from `chargeOne` -- same structural fix `BillAutoPayProcessor`
+already established for Section 115, giving each charge attempt its own independent physical
+transaction. `chargeOne` itself lost its own `@Transactional`. 3 new Kotest cases (reflection-based
+regression guards asserting `executeOne`/`chargeOne` carry no `@Transactional` and
+`MerchantBillingChargeExecutor.execute` does -- MockK unit tests can't otherwise observe this bug
+class at all, since they never create a real Spring AOP proxy).
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: two real
+`ProductSubscription`s created via the real synchronous first-charge path (`POST
+/product-subscriptions`) against `merchant_seed_1`'s Beef brochettes (3,500 RWF) -- one buyer
+funded with exactly 4,000 RWF (drained to 675 RWF after the first real charge, genuinely
+insufficient for a second), one buyer funded with 15,000 RWF (comfortably sufficient for repeat
+charges). Both subscriptions' `next_delivery_at` backdated into the past via direct DB `UPDATE`,
+then a real ~30s `ProductSubscriptionScheduler` poll was allowed to run. A direct DB check afterward
+confirmed: the drained buyer's row showed `last_failure_reason: 'Insufficient balance'` and
+`delivery_count` unchanged at `1` (gracefully skipped, not crashed); the funded buyer's row showed
+`delivery_count` incremented to `2` and a real, fresh `last_delivered_at` timestamp from inside the
+poll window -- **both rows' `next_delivery_at` advanced identically to 7 days out**, proving the
+scheduler processed both in the same poll without one blocking the other. Pod logs across the full
+poll window showed zero occurrences of `UnexpectedRollbackException` -- confirmed via
+`kubectl logs | grep -i unexpectedrollback` returning nothing. `MerchantBillingService.chargeOne`
+was not separately live-verified this pass -- it shares the identical root cause and received the
+identical structural fix, already proven correct for `executeOne` above.
