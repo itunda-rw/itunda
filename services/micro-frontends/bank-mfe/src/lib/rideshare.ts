@@ -110,8 +110,19 @@ export const acceptRideTrip = (tripId: string) =>
 export const declineRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/decline`, { method: 'POST' }).then((r) => r.trip);
 
-export const startRideTrip = (tripId: string) =>
-  apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/start`, { method: 'POST' }).then((r) => r.trip);
+// Real Uber "Verify Your Ride" PIN -- see backend RideTrip.pin's own doc comment. The
+// driver must enter the exact 4-digit code the passenger reads aloud before the trip
+// (and the fare clock) actually starts.
+export const startRideTrip = (tripId: string, pin: string) =>
+  apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/start`, {
+    method: 'POST',
+    body: JSON.stringify({ pin }),
+  }).then((r) => r.trip);
+
+// Real passenger-only PIN lookup -- a stranger, or even the trip's own driver, gets a
+// real 404 from the backend.
+export const fetchRideTripPin = (tripId: string) =>
+  apiFetch<{ success: boolean; pin: string }>(`/api/v1/rides/trips/${tripId}/pin`).then((r) => r.pin);
 
 export const completeRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/complete`, { method: 'POST' }).then((r) => r.trip);

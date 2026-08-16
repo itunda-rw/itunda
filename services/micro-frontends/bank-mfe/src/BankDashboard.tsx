@@ -201,7 +201,7 @@ import {
 } from './lib/autoTransfers';
 import {
   acceptRideTrip, arriveAtRideStop, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
-  fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchTripStops, registerAsDriver, requestRideTrip, setDriverAvailability,
+  fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchRideTripPin, fetchTripStops, registerAsDriver, requestRideTrip, setDriverAvailability,
   startRideTrip, submitRideReview, updateDriverLocation,
   type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop,
 } from './lib/rideshare';
@@ -14839,6 +14839,9 @@ function RidesView() {
   const [requesting, setRequesting] = useState(false);
   const [rideError, setRideError] = useState<string | null>(null);
   const [busyTripId, setBusyTripId] = useState<string | null>(null);
+  // Real Uber "Verify Your Ride" PIN -- see lib/rideshare.ts's own doc comment. Fetched
+  // once a driver is assigned so the passenger can read it aloud before pickup.
+  const [activeTripPin, setActiveTripPin] = useState<string | null>(null);
   // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- 'now' is unchanged
   // ASAP dispatch; 'later' holds a datetime-local value the passenger picks.
   const [rideTiming, setRideTiming] = useState<'now' | 'later'>('now');
@@ -14866,6 +14869,14 @@ function RidesView() {
     if (!activeTrip) { setActiveTripStops(null); return; }
     fetchTripStops(activeTrip.id).then((s) => setActiveTripStops(s.length > 0 ? s : null)).catch(() => {});
   }, [activeTrip?.id]);
+
+  // Real Uber "Verify Your Ride" PIN -- fetched once a driver is assigned (before that,
+  // there's no driver yet to tell it to). A pre-existing REQUESTED trip that never
+  // reaches DRIVER_ASSIGNED simply never shows a PIN, matching real Uber behavior.
+  useEffect(() => {
+    if (!activeTrip || activeTrip.status === 'REQUESTED') { setActiveTripPin(null); return; }
+    fetchRideTripPin(activeTrip.id).then(setActiveTripPin).catch(() => setActiveTripPin(null));
+  }, [activeTrip?.id, activeTrip?.status]);
 
   const handleRequestRide = async () => {
     if (!pickup || !dropoff) return;
@@ -14911,6 +14922,9 @@ function RidesView() {
   const [myDriverTrips, setMyDriverTrips] = useState<RideTrip[] | null>(null);
   const [driverError, setDriverError] = useState<string | null>(null);
   const [busyDriverTripId, setBusyDriverTripId] = useState<string | null>(null);
+  // Real Uber "Verify Your Ride" PIN -- what the driver has typed in for each real
+  // active trip, keyed by trip id so multiple trip cards don't share one input.
+  const [startPinInputs, setStartPinInputs] = useState<Record<string, string>>({});
   // Real Kakao T-style post-trip driver rating (item 213) -- the real driver's own
   // aggregate rating, computed at read time from every real submitted review.
   const [driverRating, setDriverRating] = useState<RideDriverRating | null>(null);
@@ -14988,6 +15002,22 @@ function RidesView() {
     }
   };
 
+  // Real Uber "Verify Your Ride" PIN -- the driver must enter the exact code the
+  // passenger just told them before the trip (and the fare clock) actually starts.
+  const handleStartTrip = async (tripId: string) => {
+    setBusyDriverTripId(tripId);
+    setDriverError(null);
+    try {
+      await startRideTrip(tripId, startPinInputs[tripId] ?? '');
+      setStartPinInputs((prev) => { const next = { ...prev }; delete next[tripId]; return next; });
+      loadDriverTrips();
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not update this trip.');
+    } finally {
+      setBusyDriverTripId(null);
+    }
+  };
+
   const activeDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'DRIVER_ASSIGNED' || t.status === 'IN_PROGRESS');
   const pastDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
 
@@ -15038,6 +15068,17 @@ function RidesView() {
                 trip={activeTrip} stops={activeTripStops}
                 action={(
                   <>
+                    {activeTripPin && activeTrip.status === 'DRIVER_ASSIGNED' && (
+                      <div
+                        style={{
+                          textAlign: 'center', padding: '12px', borderRadius: '10px',
+                          backgroundColor: 'var(--itunda-blue-light)', marginBottom: '4px',
+                        }}
+                      >
+                        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Tell your driver this PIN before you get in</p>
+                        <p style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '4px', color: 'var(--itunda-blue)' }}>{activeTripPin}</p>
+                      </div>
+                    )}
                     {activeTrip.driverId && <DriverRatingSection driverId={activeTrip.driverId} />}
                     {activeTrip.status !== 'IN_PROGRESS' && (
                       <button className="itunda-btn itunda-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
@@ -15173,12 +15214,30 @@ function RidesView() {
                                   {busyDriverTripId === t.id ? 'Updating…' : `Arrived at ${nextStop.address}`}
                                 </button>
                               )}
-                              <button
-                                className="itunda-btn itunda-btn-primary" disabled={busyDriverTripId === t.id}
-                                onClick={() => handleDriverTripAction(t.id, t.status === 'DRIVER_ASSIGNED' ? startRideTrip : completeRideTrip)}
-                              >
-                                {busyDriverTripId === t.id ? 'Updating…' : t.status === 'DRIVER_ASSIGNED' ? 'Start trip' : 'Complete trip'}
-                              </button>
+                              {t.status === 'DRIVER_ASSIGNED' ? (
+                                <>
+                                  <input
+                                    type="text" inputMode="numeric" maxLength={4} placeholder="Ask passenger for their 4-digit PIN"
+                                    value={startPinInputs[t.id] ?? ''}
+                                    onChange={(e) => setStartPinInputs((prev) => ({ ...prev, [t.id]: e.target.value.replace(/\D/g, '') }))}
+                                    style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', textAlign: 'center', letterSpacing: '2px' }}
+                                  />
+                                  <button
+                                    className="itunda-btn itunda-btn-primary"
+                                    disabled={busyDriverTripId === t.id || (startPinInputs[t.id] ?? '').length !== 4}
+                                    onClick={() => handleStartTrip(t.id)}
+                                  >
+                                    {busyDriverTripId === t.id ? 'Updating…' : 'Start trip'}
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  className="itunda-btn itunda-btn-primary" disabled={busyDriverTripId === t.id}
+                                  onClick={() => handleDriverTripAction(t.id, completeRideTrip)}
+                                >
+                                  {busyDriverTripId === t.id ? 'Updating…' : 'Complete trip'}
+                                </button>
+                              )}
                             </div>
                           }
                         />

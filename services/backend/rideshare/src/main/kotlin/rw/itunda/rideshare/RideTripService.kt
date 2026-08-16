@@ -47,6 +47,7 @@ class RideNoActiveOfferException(message: String) : RuntimeException(message)
 class InvalidScheduledRideTimeException(message: String) : RuntimeException(message)
 class RideTooManyStopsException(message: String) : RuntimeException(message)
 class RideNoRemainingStopsException(message: String) : RuntimeException(message)
+class RidePinMismatchException(message: String) : RuntimeException(message)
 
 // Real Kakao T-style multi-stop waypoint input (item 214) -- see RideTripStop.kt's own
 // doc comment.
@@ -232,6 +233,7 @@ class RideTripService(
                 pickupLatitude = pickupLatitude, pickupLongitude = pickupLongitude, dropoffAddress = trimmedDropoff,
                 dropoffLatitude = dropoffLatitude, dropoffLongitude = dropoffLongitude, distanceKm = distanceKm,
                 fare = fare, platformFee = platformFee, transactionId = holdTransaction.id, scheduledFor = scheduledFor,
+                pin = generatePin(),
             ),
         )
         stops.forEachIndexed { index, stop ->
@@ -413,12 +415,37 @@ class RideTripService(
         return rideTripStopRepository.save(nextStop)
     }
 
+    // Real Uber "Verify Your Ride" PIN (uber.com/pl/en/blog/pin-number) -- not a secret
+    // requiring cryptographic randomness, just a real-time verbal-confirmation code the
+    // passenger reads aloud to the driver, same threat model/generation convention
+    // MerchantService.generateUssdCode already established for a similar short numeric
+    // code. No collision check needed -- unlike the USSD merchant code, this is scoped
+    // to one trip, never looked up globally.
+    private fun generatePin(): String = (1000..9999).random().toString()
+
+    /** Real passenger-only PIN lookup -- a stranger, or even the trip's own driver, gets
+     * a real 404 (same IDOR discipline as every other resource-ownership check in this
+     * codebase). The driver is never shown this via any API response (see
+     * RideTrip.pin's own @JsonIgnore); they can only learn it verbally from the
+     * passenger, which is the entire real point of the check in startTrip below. */
+    fun getTripPin(passengerUserId: String, tripId: String): String {
+        val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
+        if (trip.passengerId != passengerUserId) throw RideTripNotFoundException("Trip not found")
+        return trip.pin ?: ""
+    }
+
     @Transactional
-    fun startTrip(driverUserId: String, tripId: String): RideTrip {
+    fun startTrip(driverUserId: String, tripId: String, pin: String): RideTrip {
         val driver = getMyDriver(driverUserId)
         val trip = getOwnedTrip(tripId, driver.id)
         if (trip.status != RideTripStatus.DRIVER_ASSIGNED) {
             throw InvalidRideTripStatusTransitionException("Only a DRIVER_ASSIGNED trip can be started")
+        }
+        // A trip requested before this feature shipped has no real PIN to check against
+        // (trip.pin is null) -- skip rather than permanently lock out an in-flight trip
+        // that predates it.
+        if (trip.pin != null && trip.pin != pin.trim()) {
+            throw RidePinMismatchException("Incorrect PIN -- ask your passenger for the 4-digit code shown in their app")
         }
         trip.status = RideTripStatus.IN_PROGRESS
         trip.updatedAt = Instant.now()

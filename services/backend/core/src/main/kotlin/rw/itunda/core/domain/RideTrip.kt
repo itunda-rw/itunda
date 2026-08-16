@@ -1,5 +1,6 @@
 package rw.itunda.core.domain
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
@@ -119,6 +120,20 @@ class RideTrip(
     // showing it to any driver hours or days early.
     @Column(name = "scheduled_dispatch_started_at")
     var scheduledDispatchStartedAt: Instant? = null,
+
+    // Real Uber "Verify Your Ride" PIN (uber.com/pl/en/blog/pin-number) -- generated once
+    // at request time, told to the driver by the passenger in person right before
+    // pickup, confirmed via RideTripService.startTrip before the trip (and the fare
+    // clock) actually begins. @JsonIgnore by default so this NEVER leaks through any of
+    // the driver-facing endpoints that serialize a raw RideTrip (getMyDriverTrips,
+    // acceptTrip's own response, etc.) -- only the dedicated passenger-only
+    // GET /trips/{id}/pin endpoint explicitly re-includes it. Nullable: trips created
+    // before this migration have no PIN, and startTrip skips the check entirely for
+    // those (see its own doc comment) rather than permanently locking out an in-flight
+    // trip that predates this feature.
+    @JsonIgnore
+    @Column(name = "pin", length = 4)
+    var pin: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

@@ -35,6 +35,7 @@ import rw.itunda.rideshare.RideDriverNotRegisteredException
 import rw.itunda.rideshare.RideDriverService
 import rw.itunda.rideshare.RideNoActiveOfferException
 import rw.itunda.rideshare.RideNoRemainingStopsException
+import rw.itunda.rideshare.RidePinMismatchException
 import rw.itunda.rideshare.RideSelfTripException
 import rw.itunda.rideshare.RideStopInput
 import rw.itunda.rideshare.RideTooManyStopsException
@@ -67,6 +68,9 @@ data class RequestTripRequest(
     // unchanged. See RideTripStop.kt's own doc comment.
     val stops: List<RideStopRequest> = emptyList(),
 )
+// Real Uber "Verify Your Ride" PIN (see RideTrip.pin's own doc comment) -- entered by
+// the driver, told to them verbally by the passenger right before pickup.
+data class StartTripRequest(val pin: String)
 
 // Real Kakao T-style ride-hailing -- see RideTripService's own doc comment for the full
 // sourced account. Normal itunda-user JWT gate.
@@ -150,8 +154,18 @@ class RideController(
         ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.declineTrip(currentUser.userId, tripId)))
 
     @PostMapping("/trips/{tripId}/start")
-    fun startTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.startTrip(currentUser.userId, tripId)))
+    fun startTrip(
+        @PathVariable tripId: String,
+        @RequestBody request: StartTripRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.startTrip(currentUser.userId, tripId, request.pin)))
+
+    // Real passenger-only PIN lookup -- see RideTripService.getTripPin's own doc comment
+    // for why the driver never sees this through any other endpoint.
+    @GetMapping("/trips/{tripId}/pin")
+    fun getTripPin(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "pin" to rideTripService.getTripPin(currentUser.userId, tripId)))
 
     @PostMapping("/trips/{tripId}/complete")
     fun completeTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
@@ -265,6 +279,10 @@ class RideController(
     @ExceptionHandler(InvalidRideTripStatusTransitionException::class)
     fun handleInvalidTransition(ex: InvalidRideTripStatusTransitionException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INVALID_RIDE_STATUS_TRANSITION", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RidePinMismatchException::class)
+    fun handlePinMismatch(ex: RidePinMismatchException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INCORRECT_RIDE_PIN", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RideNoActiveOfferException::class)
     fun handleNoActiveOffer(ex: RideNoActiveOfferException) =

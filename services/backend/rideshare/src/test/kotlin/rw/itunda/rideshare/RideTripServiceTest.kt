@@ -418,6 +418,55 @@ class RideTripServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real DRIVER_ASSIGNED trip with a real PIN, a driver starting it") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val driver = RideDriver(id = "driver_4", userId = "driver_user_4", walletId = "wallet_driver_4", available = true)
+        fun freshTrip() = RideTrip(
+            id = "ride_trip_3", passengerId = "passenger_5", driverId = "driver_4", pickupAddress = "A", pickupLatitude = -1.95,
+            pickupLongitude = 30.06, dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09,
+            distanceKm = BigDecimal("4.0"), fare = BigDecimal("2000"), platformFee = BigDecimal("30"),
+            transactionId = "ledgertxn_z", status = RideTripStatus.DRIVER_ASSIGNED, pin = "4321",
+        )
+        every { rideDriverRepository.findByUserId("driver_user_4") } returns driver
+        every { rideTripRepository.save(any()) } answers { firstArg() }
+
+        When("the driver enters the exact PIN the passenger told them") {
+            every { rideTripRepository.findById("ride_trip_3") } returns Optional.of(freshTrip())
+            val result = service.startTrip("driver_user_4", "ride_trip_3", "4321")
+
+            Then("it real-starts the trip") {
+                result.status shouldBe RideTripStatus.IN_PROGRESS
+            }
+        }
+
+        When("the driver enters the wrong PIN") {
+            every { rideTripRepository.findById("ride_trip_3") } returns Optional.of(freshTrip())
+
+            Then("it throws RidePinMismatchException and never starts the trip") {
+                try {
+                    service.startTrip("driver_user_4", "ride_trip_3", "0000")
+                    error("expected RidePinMismatchException")
+                } catch (e: RidePinMismatchException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the trip predates this feature and has no real PIN at all") {
+            val trip = freshTrip()
+            trip.pin = null
+            every { rideTripRepository.findById("ride_trip_3") } returns Optional.of(trip)
+
+            Then("it starts anyway rather than permanently locking out an old in-flight trip") {
+                val result = service.startTrip("driver_user_4", "ride_trip_3", "anything")
+                result.status shouldBe RideTripStatus.IN_PROGRESS
+            }
+        }
+    }
+
     Given("a real REQUESTED trip (no driver assigned yet) the passenger wants to cancel") {
         val rideTripRepository = mockk<RideTripRepository>()
         val walletRepository = mockk<WalletRepository>()

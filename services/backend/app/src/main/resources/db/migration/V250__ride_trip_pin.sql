@@ -1,0 +1,1 @@
+ALTER TABLE ride_trips ADD COLUMN pin VARCHAR(4) NULL;
