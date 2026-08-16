@@ -523,6 +523,17 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "reviews" to page.content) + pageMeta(page))
     }
 
+    // Real Baemin/Coupang-style "도움돼요" (helpful) idempotent toggle -- see
+    // EatsReviewService.toggleHelpful's own doc comment.
+    @PostMapping("/reviews/{reviewId}/helpful")
+    fun toggleReviewHelpful(
+        @PathVariable reviewId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val helpful = eatsReviewService.toggleHelpful(currentUser.userId, reviewId)
+        return ResponseEntity.ok(mapOf("success" to true, "helpful" to helpful))
+    }
+
     @GetMapping("/restaurants/{restaurantId}/rating")
     fun getRestaurantRating(@PathVariable restaurantId: String): ResponseEntity<Map<String, Any?>> {
         val rating = eatsReviewService.getRestaurantRating(restaurantId)

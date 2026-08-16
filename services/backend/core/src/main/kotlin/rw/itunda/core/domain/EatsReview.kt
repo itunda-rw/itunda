@@ -48,6 +48,10 @@ import java.time.Instant
  * everywhere else in this codebase -- a real URL the buyer supplies, never an
  * upload/storage pipeline. Nullable: a review with no photo is still a complete, honest
  * review, same as before this field existed.
+ *
+ * `helpfulCount` (migration V264, 2026-08-17) -- a real Baemin/Coupang-style "도움돼요"
+ * vote other buyers can cast on a review, distinct from the restaurant-owner `ownerReply`
+ * above. See `EatsReviewService.toggleHelpful`'s own doc comment for the full account.
  */
 @Entity
 @Table(name = "eats_reviews")
@@ -88,6 +92,9 @@ class EatsReview(
 
     @Column(name = "photo_url", length = 500)
     val photoUrl: String? = null,
+
+    @Column(name = "helpful_count", nullable = false)
+    var helpfulCount: Long = 0,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

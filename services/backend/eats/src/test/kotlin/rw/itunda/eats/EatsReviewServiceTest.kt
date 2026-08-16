@@ -7,13 +7,16 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsFulfillmentType
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsReview
+import rw.itunda.core.domain.EatsReviewHelpfulVote
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.EatsOrderRepository
+import rw.itunda.core.repository.EatsReviewHelpfulVoteRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.push.PushNotificationService
@@ -30,7 +33,9 @@ class EatsReviewServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
+        val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter)
 
         val deliveredOrder = EatsOrder(
             id = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1", riderId = "rider_1", deliveryAddress = "addr",
@@ -191,7 +196,9 @@ class EatsReviewServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
+        val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter)
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
         val review = EatsReview(
@@ -265,7 +272,9 @@ class EatsReviewServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
+        val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter)
 
         val deliveredPickupOrder = EatsOrder(
             id = "eats_order_pickup_1", buyerId = "buyer_1", restaurantId = "restaurant_1", riderId = null, deliveryAddress = "Pickup at Diner",
@@ -299,6 +308,67 @@ class EatsReviewServiceTest : BehaviorSpec({
             Then("it real-discards the rider rating/comment -- there is no real rider to attribute it to") {
                 review.riderRating shouldBe null
                 review.riderComment shouldBe null
+            }
+        }
+    }
+
+    Given("a real review with a real helpfulCount of 3") {
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsReviewRepository = mockk<EatsReviewRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter)
+
+        val review = EatsReview(
+            id = "eats_review_1", orderId = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1",
+            riderId = "rider_1", restaurantRating = 5, restaurantComment = "Great!", riderRating = 5, riderComment = null,
+            helpfulCount = 3,
+        )
+
+        When("a real viewer marks it helpful for the first time") {
+            every { eatsReviewRepository.findById("eats_review_1") } returns Optional.of(review)
+            every { eatsReviewHelpfulVoteRepository.findByReviewIdAndUserId("eats_review_1", "viewer_1") } returns null
+            every { eatsReviewHelpfulVoteRepository.save(any()) } answers { firstArg() }
+            every { eatsReviewRepository.save(any()) } answers { firstArg() }
+
+            val helpful = service.toggleHelpful("viewer_1", "eats_review_1")
+
+            Then("it returns true, saves a real vote row, and increments the real counter to 4") {
+                helpful shouldBe true
+                verify(exactly = 1) { eatsReviewHelpfulVoteRepository.save(match { it.reviewId == "eats_review_1" && it.userId == "viewer_1" }) }
+                review.helpfulCount shouldBe 4
+            }
+        }
+
+        When("that same real viewer taps it again") {
+            val existingVote = EatsReviewHelpfulVote(id = "eats_review_helpful_1", reviewId = "eats_review_1", userId = "viewer_1")
+            every { eatsReviewRepository.findById("eats_review_1") } returns Optional.of(review)
+            every { eatsReviewHelpfulVoteRepository.findByReviewIdAndUserId("eats_review_1", "viewer_1") } returns existingVote
+            every { eatsReviewHelpfulVoteRepository.delete(existingVote) } returns Unit
+            every { eatsReviewRepository.save(any()) } answers { firstArg() }
+
+            val helpful = service.toggleHelpful("viewer_1", "eats_review_1")
+
+            Then("it returns false, deletes the real vote row, and decrements the real counter back to 2") {
+                helpful shouldBe false
+                verify(exactly = 1) { eatsReviewHelpfulVoteRepository.delete(existingVote) }
+                review.helpfulCount shouldBe 2
+            }
+        }
+
+        When("toggling helpful on an unknown review id") {
+            every { eatsReviewRepository.findById("does_not_exist") } returns Optional.empty()
+
+            Then("it throws EatsReviewNotFoundException before ever touching a vote") {
+                try {
+                    service.toggleHelpful("viewer_1", "does_not_exist")
+                    error("expected EatsReviewNotFoundException")
+                } catch (e: EatsReviewNotFoundException) {
+                    verify(exactly = 0) { eatsReviewHelpfulVoteRepository.save(any()) }
+                }
             }
         }
     }

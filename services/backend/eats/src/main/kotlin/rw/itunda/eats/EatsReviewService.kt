@@ -4,14 +4,18 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsReview
+import rw.itunda.core.domain.EatsReviewHelpfulVote
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsOrderRepository
+import rw.itunda.core.repository.EatsReviewHelpfulVoteRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -52,6 +56,8 @@ class EatsReviewService(
     private val merchantRepository: MerchantRepository,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val eatsReviewHelpfulVoteRepository: EatsReviewHelpfulVoteRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     @Transactional
     fun submitReview(
@@ -157,5 +163,38 @@ class EatsReviewService(
         // MerchantBookingReviewService's owner-reply notify.
         pushNotificationService.sendToUser(review.buyerId, title, trimmedReply)
         return saved
+    }
+
+    // Real batch "which of these reviews has this viewer already marked helpful"
+    // (2026-08-17) -- see EatsReviewHelpfulVoteRepository.findVotedReviewIds' own doc
+    // comment. Attached client-side to a page of reviews the same way
+    // MarketplaceService.likedListingIds already is for listings.
+    fun helpfulVotedReviewIds(reviews: Collection<EatsReview>, userId: String?): Set<String> {
+        if (userId == null || reviews.isEmpty()) return emptySet()
+        return eatsReviewHelpfulVoteRepository.findVotedReviewIds(reviews.map { it.id }, userId).toSet()
+    }
+
+    // Real Baemin/Coupang-style "도움돼요" (helpful) idempotent toggle -- same shape
+    // MarketplaceService.toggleLike already establishes (real cached counter, DB-unique
+    // constraint as the real concurrency guard, real rate limit from day one). No
+    // self-vote check, matching that same precedent -- toggleLike doesn't block a
+    // seller liking their own listing either.
+    @Transactional
+    fun toggleHelpful(userId: String, reviewId: String): Boolean {
+        val review = eatsReviewRepository.findById(reviewId).orElseThrow { EatsReviewNotFoundException("Review not found") }
+        rateLimiter.checkLimit("eats:review:helpful:$userId", limit = 60, window = Duration.ofMinutes(1))
+
+        val existing = eatsReviewHelpfulVoteRepository.findByReviewIdAndUserId(reviewId, userId)
+        return if (existing != null) {
+            eatsReviewHelpfulVoteRepository.delete(existing)
+            review.helpfulCount = (review.helpfulCount - 1).coerceAtLeast(0)
+            eatsReviewRepository.save(review)
+            false
+        } else {
+            eatsReviewHelpfulVoteRepository.save(EatsReviewHelpfulVote(id = "eats_review_helpful_${UUID.randomUUID()}", reviewId = reviewId, userId = userId))
+            review.helpfulCount += 1
+            eatsReviewRepository.save(review)
+            true
+        }
     }
 }
