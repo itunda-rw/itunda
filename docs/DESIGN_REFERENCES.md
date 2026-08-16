@@ -7973,3 +7973,28 @@ poll window showed zero occurrences of `UnexpectedRollbackException` -- confirme
 `kubectl logs | grep -i unexpectedrollback` returning nothing. `MerchantBillingService.chargeOne`
 was not separately live-verified this pass -- it shares the identical root cause and received the
 identical structural fix, already proven correct for `executeOne` above.
+
+## 119. Baemin/Coupang-style "helpful" vote on delivered-order reviews (도움돼요)
+
+**Added 2026-08-17.** Every real Korean delivery/e-commerce review UI has a "helpful" button under
+each review letting other buyers mark it as useful -- distinct from Section 98/107's product/listing
+VIEW counts (a passive read signal) and distinct from `CommunityLike`/`ListingLike` (different
+domain entities entirely). `EatsReview` had zero such mechanism despite the entity's own doc comment
+already citing Baemin's photo-review ranking push as precedent for trust signals on reviews.
+
+**Built**: `EatsReviewHelpfulVote` (migration `V264`) mirrors `ListingLike` column-for-column -- a
+real `(review, user)` DB-unique vote row plus a denormalized `helpfulCount` on `EatsReview`.
+`EatsReviewService.toggleHelpful` is the exact same idempotent toggle shape
+`MarketplaceService.toggleLike` already establishes: real cached counter, DB-unique constraint as
+the concurrency guard, real rate limit from day one, no self-vote check (matching that same
+precedent -- `toggleLike` doesn't block a seller liking their own listing either). Single
+`@Transactional` method, no batch loop -- not subject to the transaction-poisoning pitfall Sections
+115/118 closed. `POST /eats/reviews/{reviewId}/helpful`. 5 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: reused a real, already-
+delivered review from Section 116's testing (`eats_review_6e21e384-...`). A second, freshly
+registered user toggled helpful on -- real `200` with `helpful: true`; a direct DB check confirmed a
+real `eats_review_helpful_votes` row and `eats_reviews.helpful_count` at exactly `1`. Toggling again
+as the same user real-returned `helpful: false`, with the DB confirming the vote row deleted and
+`helpful_count` back to exactly `0` -- a genuinely idempotent toggle, not just a client-side flip. A
+bogus review id real-`404`'d `REVIEW_NOT_FOUND`.
