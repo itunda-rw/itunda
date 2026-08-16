@@ -7219,3 +7219,32 @@ exact same conversation id (proving `startOrGetConversation`'s reuse, not a dupl
 click). A freshly-registered, unrelated account calling the same endpoint against the same order
 got a real `404 ORDER_NOT_FOUND` -- confirmed the IDOR check holds for a real non-buyer, not just
 an unauthenticated request.
+
+## 97. Coupang WING-style best-selling-products report
+
+**Added 2026-08-16.** Coupang's real seller portal (WING) gives merchants a top-products-by-sales
+ranking in their analytics tab (베스트 상품), distinct from a raw revenue total -- lets a seller see
+WHAT is driving revenue, not just how much. itunda's `MerchantService.getReport` already gave
+merchants a real day-by-day revenue report, but zero product-level breakdown existed anywhere
+(confirmed via grep: no "topProduct"/"bestSelling" in merchant-mfe's `ReportsScreen.tsx`).
+
+**Built**: `MerchantService.getTopSellingProducts(ownerUserId, from, to, limit)`, same bounded-31-
+day-window + in-memory-grouping shape `getReport`'s own doc comment already justifies (`OrderItem`
+has no createdAt of its own; joining through `Order` and grouping in Kotlin avoids a database-
+specific date-truncation function at this scale). Fetches the merchant's real `Order`s in range via
+a new `OrderRepository.findByMerchantIdAndCreatedAtBetween`, their real `OrderItem`s via a new
+`OrderItemRepository.findByOrderIdIn`, groups by `productId`, sums real `quantity`/`unitPrice *
+quantity`, sorts by revenue descending. Deliberately does not filter by `OrderStatus` -- matches
+`getReport`'s own definition of "revenue" (gross collected at placement, not fulfillment-gated).
+`GET /api/v1/merchant/reports/top-products` sibling to the existing `/reports` endpoint. Wired into
+merchant-mfe's `ReportsScreen.tsx` as a new card above the daily-report table, with real en/rw/fr
+translations. 3 new Kotest blocks: cross-order aggregation-and-ranking, empty-range, inverted-range
+rejection.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered a fresh
+real merchant ("Kigali Best Sellers Shop") with 2 real products (Coffee 5000 RWF, Tea 2000 RWF),
+placed 2 separate real orders as a real buyer (order 1: coffee×3 + tea×2; order 2: coffee×1) --
+`GET /merchant/reports/top-products` returned coffee ranked first with `unitsSold: 4`,
+`revenue: 20000` (correctly summed across BOTH separate orders, not just the larger one) and tea
+second with `unitsSold: 2`, `revenue: 4000` -- exact match to the real placed data. A query for a
+date range with no orders returned a real empty list, not an error.
