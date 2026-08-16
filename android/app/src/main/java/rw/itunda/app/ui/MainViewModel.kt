@@ -14,6 +14,7 @@ import rw.itunda.core.network.SetRoundUpSettingsRequest
 import rw.itunda.core.network.DiscoverItem
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SendDirectP2pRequest
+import rw.itunda.core.network.SendGiftRequest
 import rw.itunda.core.network.DepositRequest
 import rw.itunda.core.network.CreateSavingsGoalRequest
 import rw.itunda.core.network.BatchActionRequest
@@ -368,6 +369,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             fetchData()
             MoneyActionResult.Success(res.message)
+        } catch (e: retrofit2.HttpException) {
+            if (isDeviceNotVerified(e)) MoneyActionResult.DeviceNotVerified else MoneyActionResult.Failure(backendErrorMessage(e))
+        } catch (e: IOException) {
+            MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
+        }
+    }
+
+    /**
+     * Real standalone "send as a gift" (found via an uncalled-endpoint sweep 2026-08-16,
+     * backend/bank-mfe/iOS docs Section 88) -- GiftService's own POST /api/v1/gifts,
+     * money moves into escrow immediately and only reaches the recipient once they
+     * claim it, unlike sendTransfer's instant push. Only resolves recipients by phone
+     * number (unlike sendDirect's phone-or-account-number lookup), so the identifier
+     * is normalized the same way sendTransfer's own recipient field is.
+     */
+    suspend fun sendGift(recipientPhoneNumber: String, amountRwf: Long, note: String?, theme: String?): MoneyActionResult {
+        return try {
+            NetworkClient.apiService.sendGift(
+                idempotencyKey = UUID.randomUUID().toString(),
+                request = SendGiftRequest(
+                    recipientPhoneNumber = normalizeRecipientIdentifier(recipientPhoneNumber),
+                    amount = BigDecimal(amountRwf).toDouble(),
+                    note = note,
+                    theme = theme,
+                ),
+            )
+            fetchData()
+            MoneyActionResult.Success("Gift sent! Held until they claim it -- auto-refunded after 7 days if unclaimed.")
         } catch (e: retrofit2.HttpException) {
             if (isDeviceNotVerified(e)) MoneyActionResult.DeviceNotVerified else MoneyActionResult.Failure(backendErrorMessage(e))
         } catch (e: IOException) {

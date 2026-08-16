@@ -591,7 +591,7 @@ fun ItundaAppScreen(
                         scamReported = scamReported,
                         onReportScam = { showScamReportDialog = true },
                         onBack = { transferStep = TransferStep.Recipient },
-                        onConfirm = { amountRwf ->
+                        onConfirm = { amountRwf, isGift, giftNote, giftTheme ->
                             // Toss-style biometric confirmation gate before a transfer
                             // completes -- see docs/ARCHITECTURE.md's NIDABiometricAuth
                             // note. Real quote+confirm call now follows a successful
@@ -600,12 +600,17 @@ fun ItundaAppScreen(
                             // moving any real money (see TransferFlow.kt's old header).
                             biometricError = null
                             biometricAuth.authenticateForTransaction(
-                                reason = "Confirm sending $amountRwf RWF"
+                                reason = if (isGift) "Confirm sending a $amountRwf RWF gift" else "Confirm sending $amountRwf RWF"
                             ) { success, error ->
                                 if (success) {
                                     isSendingTransfer = true
                                     coroutineScope.launch {
-                                        when (val result = viewModel.sendTransfer(step.accountNumber, amountRwf)) {
+                                        suspend fun doSend() = if (isGift) {
+                                            viewModel.sendGift(step.accountNumber, amountRwf, giftNote, giftTheme)
+                                        } else {
+                                            viewModel.sendTransfer(step.accountNumber, amountRwf)
+                                        }
+                                        when (val result = doSend()) {
                                             is rw.itunda.app.ui.MoneyActionResult.Success -> {
                                                 isSendingTransfer = false
                                                 transferStep = TransferStep.Success(result.message, amountRwf)
@@ -628,7 +633,7 @@ fun ItundaAppScreen(
                                                 deviceStepUpError = null
                                                 pendingDeviceRetry = {
                                                     isSendingTransfer = true
-                                                    val retryResult = viewModel.sendTransfer(step.accountNumber, amountRwf)
+                                                    val retryResult = doSend()
                                                     isSendingTransfer = false
                                                     if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) transferStep = TransferStep.Success(retryResult.message, amountRwf)
                                                     else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) biometricError = retryResult.message

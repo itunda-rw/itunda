@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -340,7 +341,12 @@ private fun RecipientTabLabel(label: String, selected: Boolean, onClick: () -> U
 fun TransferAmountScreen(
     recipientAccountNumber: String,
     onBack: () -> Unit,
-    onConfirm: (amountRwf: Long) -> Unit,
+    // Real standalone "send as a gift" toggle (found via an uncalled-endpoint sweep
+    // 2026-08-16, backend/bank-mfe/iOS docs Section 88) -- GiftService's own
+    // POST /api/v1/gifts only resolves recipients by phone number, unlike sendDirect's
+    // phone-or-account-number lookup, so gift mode comes with an explicit "phone
+    // number only" note rather than a separate screen.
+    onConfirm: (amountRwf: Long, isGift: Boolean, note: String?, theme: String?) -> Unit,
     // Real wallet balance + real in-flight state (2026-07-12) -- previously this
     // screen hardcoded "RWF 112,242" regardless of the actual signed-in user's
     // balance, and had no way to show that a real network call was in progress.
@@ -354,6 +360,9 @@ fun TransferAmountScreen(
     // TransferStep -- confirmed live on-device that without this, a process kill
     // mid-transfer restored the right screen but reset the typed amount to 0.
     var digits by rememberSaveable { mutableStateOf("") }
+    var isGift by rememberSaveable { mutableStateOf(false) }
+    var giftNote by rememberSaveable { mutableStateOf("") }
+    var giftTheme by rememberSaveable { mutableStateOf<String?>(null) }
     val amount = digits.toLongOrNull() ?: 0L
     val availableBalanceLong = availableBalance.toLong()
     // Real gap found live (2026-08-10), applying Toss Tech's own "the best error is
@@ -415,6 +424,38 @@ fun TransferAmountScreen(
                 fontSize = 12.sp,
                 modifier = Modifier.clickable(enabled = !scamReported, onClick = onReportScam),
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { isGift = !isGift }) {
+                androidx.compose.material3.Switch(checked = isGift, onCheckedChange = { isGift = it })
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("🎁 Send as a gift instead", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
+            }
+            if (isGift) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Held until they claim it -- auto-refunded after 7 days if unclaimed. Only works if the recipient above is a phone number, not an account number.",
+                    fontSize = 12.sp,
+                    color = Ids.colors.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                androidx.compose.material3.OutlinedTextField(
+                    value = giftNote,
+                    onValueChange = { giftNote = it },
+                    placeholder = { Text("Add a note (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rw.itunda.core.network.GIFT_THEME_LABELS.forEach { (key, label) ->
+                        androidx.compose.material3.FilterChip(
+                            selected = giftTheme == key,
+                            onClick = { giftTheme = if (giftTheme == key) null else key },
+                            label = { Text(label, fontSize = 12.sp) },
+                        )
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(40.dp))
@@ -461,7 +502,10 @@ fun TransferAmountScreen(
                 androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
             }
         } else {
-            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0 && !insufficientBalance, label = stringResource(R.string.transfer_send)) { onConfirm(amount) }
+            FlowNextBar(
+                enabled = digits.isNotEmpty() && amount > 0 && !insufficientBalance,
+                label = if (isGift) "Send gift" else stringResource(R.string.transfer_send),
+            ) { onConfirm(amount, isGift, giftNote.trim().ifEmpty { null }, giftTheme) }
             NumericKeypad(
                 onDigit = { d -> if (digits.length < 9) digits += d },
                 onDelete = { if (digits.isNotEmpty()) digits = digits.dropLast(1) }

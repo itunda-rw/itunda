@@ -888,6 +888,7 @@ data class GiftDto(
     val createdAt: String,
 )
 data class SendGiftInConversationRequest(val amount: Double, val note: String? = null, val theme: String? = null)
+data class SendGiftRequest(val recipientPhoneNumber: String, val amount: Double, val note: String? = null, val theme: String? = null)
 
 // Real KakaoPay 송금봉투 (money envelope) themed presets (backend since 2026-07-26,
 // GiftTheme's own doc comment) -- exactly these 4 real, sourced presets, optional and
@@ -2776,6 +2777,19 @@ interface ApiService {
         @Header("Idempotency-Key") idempotencyKey: String,
         @Body request: SendGiftInConversationRequest,
     ): GiftResponse
+
+    // Real standalone send-by-phone-number (found via an uncalled-endpoint sweep
+    // 2026-08-16, backend/bank-mfe/iOS docs Section 88) -- distinct from the chat-
+    // embedded call above, this is the general "gift anyone with an itunda account"
+    // entry point.
+    @POST("api/v1/gifts")
+    suspend fun sendGift(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body request: SendGiftRequest,
+    ): GiftResponse
+
+    @GET("api/v1/gifts/{id}")
+    suspend fun getGift(@Path("id") giftId: String): GiftResponse
 
     @POST("api/v1/gifts/{id}/claim")
     suspend fun claimGift(@Path("id") giftId: String, @Header("Idempotency-Key") idempotencyKey: String): GiftResponse
