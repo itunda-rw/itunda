@@ -6858,3 +6858,30 @@ existing `*XXX#` gateway webhook is the entire real interface.
 block covers both the real success path and a not-found code). `scripts/verify-ledger-account-seeds.py`
 confirmed clean -- this feature reuses `collect()`'s existing ledger accounts, no new
 `LedgerAccountType` introduced.
+
+## 87. Coupang Eats AI 개인화 메뉴 추천 -- budget filter + real "recommended for you" ranking
+
+**Added 2026-08-16.** Coupang's real 2026 roadmap ("when users set a budget, the app will factor in
+real-time delivery fees to surface restaurants and dishes that fit their total price range")
+sourced budget-aware, order-history-personalized menu recommendations. Checked `EatsController.
+getDishes` -- a flat, unpersonalized dish list, zero price filter, zero use of the buyer's own real
+order history to rank results (confirmed via `grep -rln "recommend\|personalized"` across
+`services/backend/eats`, no hits).
+
+**Built as two honest, rules-based pieces, not a fabricated ML model**: a plain `maxBudget` price
+cap (deliberately not Coupang's own delivery-fee-aware TOTAL budget, which needs a per-merchant
+distance computation at browse time -- a bigger v2), and a real "recommended for you" re-sort using
+the buyer's own actual `EatsOrder` history (`findDistinctRestaurantIdsByBuyerId`) -- dishes from
+restaurants the buyer has genuinely ordered from before rank ahead of unfamiliar ones. Response
+gains a real `recommended: Boolean` per dish.
+
+**Android**: `EatsDishDto` + `getEatsDishes` updated, `EatsDishGrid` shows a small "For you" corner
+tag -- kept minimal to preserve the grid's own deliberately bare-tile design (sourced Coupang Eats
+UX research already documented for this grid). The `maxBudget` param is queryable now but has no
+filter UI wired to it yet on Android, an honest "backend real, client catching up" gap matching
+several other entries already in this file.
+
+**Not built this pass, a separate pre-existing gap found along the way**: bank-mfe and iOS have
+*zero* dish-grid client at all -- Android is the only platform with this whole feature, not just
+missing the new budget/recommendation fields. Bigger scope than this session's own pass, worth its
+own future session.
