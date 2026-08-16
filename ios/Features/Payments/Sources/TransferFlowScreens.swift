@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 /// Real, from-scratch transfer flow matching Android's TransferFlow.kt exactly
 /// (2026-07-12) -- both against the same real Toss reference screenshots
@@ -306,6 +307,14 @@ public struct ScamWarningUi { public let reportCount: Int; public init(reportCou
 
 public struct TransferAmountScreen: View {
     @State private var digits = ""
+    // Real standalone "send as a gift" toggle (found via an uncalled-endpoint sweep
+    // 2026-08-16, backend/bank-mfe docs Section 88) -- GiftService's own
+    // POST /api/v1/gifts only resolves recipients by phone number, unlike sendDirect's
+    // phone-or-account-number lookup, so gift mode is only offered here (not a
+    // separate screen) and comes with an explicit "phone number only" note.
+    @State private var isGift = false
+    @State private var giftNote = ""
+    @State private var giftTheme: String?
     let recipientAccountNumber: String
     let availableBalance: Double
     let isSubmitting: Bool
@@ -313,7 +322,7 @@ public struct TransferAmountScreen: View {
     let scamReported: Bool
     let onReportScam: () -> Void
     let onBack: () -> Void
-    let onConfirm: (Int) -> Void
+    let onConfirm: (Int, Bool, String?, String?) -> Void
 
     public init(
         recipientAccountNumber: String,
@@ -323,7 +332,7 @@ public struct TransferAmountScreen: View {
         scamReported: Bool = false,
         onReportScam: @escaping () -> Void = {},
         onBack: @escaping () -> Void,
-        onConfirm: @escaping (Int) -> Void
+        onConfirm: @escaping (Int, Bool, String?, String?) -> Void
     ) {
         self.recipientAccountNumber = recipientAccountNumber
         self.availableBalance = availableBalance
@@ -369,6 +378,29 @@ public struct TransferAmountScreen: View {
                 }
                 .disabled(scamReported)
                 .padding(.top, 8)
+
+                Toggle(isOn: $isGift) {
+                    Text("🎁 Send as a gift instead")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .padding(.top, 8)
+                if isGift {
+                    Text("Held until they claim it -- auto-refunded after 7 days if unclaimed. Only works if the recipient above is a phone number, not an account number.")
+                        .font(.system(size: 12))
+                        .foregroundColor(IDS.Colors.textTertiary)
+                    TextField("Add a note (optional)", text: $giftNote)
+                        .font(.system(size: 14))
+                        .padding(10)
+                        .background(IDS.Colors.backgroundSecondary)
+                        .cornerRadius(8)
+                    Picker("Theme", selection: $giftTheme) {
+                        Text("No theme (plain gift)").tag(String?.none)
+                        ForEach(Array(giftThemeLabels.keys.sorted()), id: \.self) { key in
+                            Text(giftThemeLabels[key] ?? key).tag(String?.some(key))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
             }
             .padding(.horizontal, 24)
 
@@ -409,7 +441,9 @@ public struct TransferAmountScreen: View {
                     .tint(IDS.Colors.brand)
                     .padding(.vertical, 24)
             } else {
-                FlowNextBar(enabled: !digits.isEmpty && amount > 0 && !insufficientBalance, label: pt("send")) { onConfirm(amount) }
+                FlowNextBar(enabled: !digits.isEmpty && amount > 0 && !insufficientBalance, label: isGift ? "Send gift" : pt("send")) {
+                    onConfirm(amount, isGift, giftNote.trimmingCharacters(in: .whitespaces).isEmpty ? nil : giftNote, giftTheme)
+                }
                 NumericKeypad(
                     onDigit: { d in if digits.count < 9 { digits += d } },
                     onDelete: { if !digits.isEmpty { digits.removeLast() } }

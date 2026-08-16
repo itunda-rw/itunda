@@ -2870,6 +2870,7 @@ public struct GiftDto: Decodable, Identifiable {
     public let createdAt: String
 }
 public struct SendGiftInConversationRequest: Encodable { public let amount: Double; public let note: String?; public let theme: String? }
+public struct SendGiftRequest: Encodable { public let recipientPhoneNumber: String; public let amount: Double; public let note: String?; public let theme: String? }
 public struct GiftResponse: Decodable { public let success: Bool; public let gift: GiftDto }
 public struct GiftsResponse: Decodable { public let success: Bool; public let gifts: [GiftDto] }
 
@@ -4298,6 +4299,21 @@ extension NetworkClient {
             body: SendGiftInConversationRequest(amount: amount, note: note, theme: theme),
             idempotencyKey: UUID().uuidString
         )
+    }
+
+    // Real standalone send-by-phone-number (found via an uncalled-endpoint sweep
+    // 2026-08-16, backend/bank-mfe docs Section 88) -- distinct from the chat-embedded
+    // call above, this is the general "gift anyone with an itunda account" entry point.
+    public func sendGift(recipientPhoneNumber: String, amount: Double, note: String?, theme: String? = nil) async throws -> GiftResponse {
+        try await authenticatedPost(
+            "api/v1/gifts",
+            body: SendGiftRequest(recipientPhoneNumber: recipientPhoneNumber, amount: amount, note: note, theme: theme),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    public func getGift(giftId: String) async throws -> GiftResponse {
+        try await get("api/v1/gifts/\(giftId)")
     }
 
     public func claimGift(giftId: String) async throws -> GiftResponse {

@@ -45,6 +45,31 @@ final class TransferViewModel: ObservableObject {
         }
     }
 
+    /// Real standalone "send as a gift" (found via an uncalled-endpoint sweep
+    /// 2026-08-16, backend/bank-mfe docs Section 88) -- GiftController's own
+    /// POST /api/v1/gifts, money moves into escrow immediately and only reaches the
+    /// recipient once they claim it, unlike sendTransfer's instant push. Only resolves
+    /// recipients by phone number (unlike sendDirect's phone-or-account-number lookup),
+    /// so the identifier is normalized the same way sendTransfer's own account-number
+    /// field would be if it happens to already be a phone number, then passed through.
+    func sendGift(recipientPhoneNumber: String, amountRwf: Int, note: String?, theme: String?) async -> MoneyActionResult {
+        do {
+            _ = try await NetworkClient.shared.sendGift(
+                recipientPhoneNumber: Self.normalizeRecipientIdentifier(recipientPhoneNumber),
+                amount: Double(amountRwf),
+                note: note,
+                theme: theme
+            )
+            return .success("Gift sent! Held until they claim it -- auto-refunded after 7 days if unclaimed.")
+        } catch NetworkError.deviceNotVerified {
+            return .deviceNotVerified
+        } catch let NetworkError.httpErrorWithMessage(statusCode, message) {
+            return .failure(message ?? Self.errorMessage(statusCode))
+        } catch {
+            return .failure("Couldn't reach itunda. Check your connection and try again.")
+        }
+    }
+
     /// Real phone-vs-account-number disambiguation for the numeric-keypad recipient
     /// screen (2026-07-20) -- mirrors Android's MainViewModel.
     /// normalizeRecipientIdentifier exactly. RecipientEntryScreen's real

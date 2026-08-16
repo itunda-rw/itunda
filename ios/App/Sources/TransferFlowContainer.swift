@@ -67,6 +67,12 @@ struct TransferFlowContainer: View {
     // round trip -- `step` only carries the recipient's account number, not the
     // amount being sent.
     @State private var pendingAmountRwf = 0
+    // Remembered across the same device-not-verified -> verify -> retry round trip as
+    // pendingAmountRwf above -- see TransferAmountScreen's own doc comment for why
+    // gift mode lives here rather than a separate screen.
+    @State private var pendingIsGift = false
+    @State private var pendingGiftNote: String?
+    @State private var pendingGiftTheme: String?
     // Real saved-contacts list (found 2026-07-22 fully built on the backend with zero
     // client UI anywhere) -- fetched here rather than eagerly on app launch, since
     // it's only ever needed on this screen.
@@ -129,7 +135,7 @@ struct TransferFlowContainer: View {
                     scamReported: scamReported,
                     onReportScam: { showScamReportSheet = true },
                     onBack: { step = .recipient },
-                    onConfirm: { amountRwf in confirm(accountNumber: accountNumber, amountRwf: amountRwf) }
+                    onConfirm: { amountRwf, isGift, note, theme in confirm(accountNumber: accountNumber, amountRwf: amountRwf, isGift: isGift, note: note, theme: theme) }
                 )
                 .task(id: accountNumber) { await checkScamStatus(accountNumber) }
                 if let errorMessage {
@@ -216,7 +222,9 @@ struct TransferFlowContainer: View {
                 showDeviceStepUp = false
                 if case .amount(let accountNumber) = step {
                     isSubmitting = true
-                    let retryResult = await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf)
+                    let retryResult = pendingIsGift
+                        ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: pendingAmountRwf, note: pendingGiftNote, theme: pendingGiftTheme)
+                        : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf)
                     isSubmitting = false
                     if case .success = retryResult { onDone() }
                     else if case .failure(let message) = retryResult { errorMessage = message }
@@ -236,17 +244,22 @@ struct TransferFlowContainer: View {
     // Toss-style biometric confirmation gate before a transfer completes, then the
     // real quote+confirm call -- mirrors Android's onConfirm handler in
     // ItundaAppScreen.kt exactly.
-    private func confirm(accountNumber: String, amountRwf: Int) {
+    private func confirm(accountNumber: String, amountRwf: Int, isGift: Bool = false, note: String? = nil, theme: String? = nil) {
         errorMessage = nil
         pendingAmountRwf = amountRwf
-        NIDABiometricAuth.shared.authenticateForTransaction(reason: "Confirm sending \(amountRwf) RWF") { success, error in
+        pendingIsGift = isGift
+        pendingGiftNote = note
+        pendingGiftTheme = theme
+        NIDABiometricAuth.shared.authenticateForTransaction(reason: isGift ? "Confirm sending a \(amountRwf) RWF gift" : "Confirm sending \(amountRwf) RWF") { success, error in
             guard success else {
                 errorMessage = error?.localizedDescription ?? tc("biometricFailed")
                 return
             }
             Task { @MainActor in
                 isSubmitting = true
-                let result = await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: amountRwf)
+                let result = isGift
+                    ? await viewModel.sendGift(recipientPhoneNumber: accountNumber, amountRwf: amountRwf, note: note, theme: theme)
+                    : await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: amountRwf)
                 isSubmitting = false
                 switch result {
                 case .success:
