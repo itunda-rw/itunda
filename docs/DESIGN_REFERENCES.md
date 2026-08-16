@@ -7998,3 +7998,33 @@ real `eats_review_helpful_votes` row and `eats_reviews.helpful_count` at exactly
 as the same user real-returned `helpful: false`, with the DB confirming the vote row deleted and
 `helpful_count` back to exactly `0` -- a genuinely idempotent toggle, not just a client-side flip. A
 bogus review id real-`404`'d `REVIEW_NOT_FOUND`.
+
+## 120. Baemin/Coupang Eats/Uber Eats-style delivery proof photo (안심배달)
+
+**Added 2026-08-17.** Every major Korean/US delivery platform (Baemin, Coupang Eats, Uber Eats)
+lets a rider optionally attach a drop-off photo as delivery proof, especially for "leave at
+door"/no-contact deliveries where the buyer's free-text delivery instructions ask for it. itunda's
+`EatsOrder.deliveryNotes` has existed since 2026-07-19 with no corresponding proof mechanism -- a
+full backend grep for any photo-proof/no-contact concept found nothing.
+
+**Built**: `EatsOrder.deliveryProofPhotoUrl` (migration `V265`). Threaded through the existing
+rider-status transition path rather than a new endpoint -- `EatsOrderService.updateRiderStatus`
+gained an optional `deliveryPhotoUrl` parameter, applied only on the `DELIVERED` transition and
+silently ignored on `PICKED_UP`/any other transition, matching the real product's own "photo prompt
+only appears at drop-off" UX. `UpdateEatsOrderStatusRequest` (shared with the restaurant-status
+endpoint) gained the same optional field, defaulting to `null` so every existing caller is
+unaffected. Single `@Transactional` method, no loop -- not subject to the self-invocation/
+transaction-poisoning pitfall Sections 115/118 closed this session. 2 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: a real DELIVERY-type
+order against `merchant_seed_1`, a freshly registered+positioned rider, and the full merchant status
+chain (`ACCEPTED` → `PREPARING` → `READY_FOR_PICKUP`) to trigger real dispatch. The order was
+initially offered to a different, pre-existing rider (the same real nearest-first dispatch behavior
+documented in Section 108) -- waited for that offer to genuinely expire, confirmed the real dispatch
+scheduler re-offered to the test rider, then `POST /eats/orders/{id}/claim` to accept. Calling
+`rider-status` with `{"status":"PICKED_UP","deliveryPhotoUrl":"...ignored.jpg"}` real-confirmed
+`deliveryProofPhotoUrl` stayed `null` (correctly ignored on the non-`DELIVERED` transition). Calling
+it again with `{"status":"DELIVERED","deliveryPhotoUrl":"...real-proof.jpg"}` real-returned and
+DB-confirmed `delivery_proof_photo_url` set to exactly that URL. A second, independent order+rider
+cycle called `DELIVERED` with no `deliveryPhotoUrl` at all -- confirmed it stayed `null`, proving
+full backward compatibility on the exact same code path.
