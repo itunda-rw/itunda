@@ -7880,3 +7880,48 @@ through the real merchant-owner status chain (`ACCEPTED` → `PREPARING` → `RE
 check confirmed a real `reward_claims` row (`amount: 300.00`, real `claimed_at` timestamp). Claiming
 a second time real-`409`'d `REWARD_TASK_ALREADY_CLAIMED`. A separate fresh user who never submitted
 a photo review real-`403`'d `REWARD_TASK_NOT_ELIGIBLE` on the same claim call.
+
+## 117. DoorDash/Uber Eats-style "Item Unavailable" flow
+
+**Added 2026-08-17.** A real DoorDash/Uber Eats merchant-facing feature: a restaurant that
+discovers mid-prep that one item can't be fulfilled marks just that item unavailable instead of
+cancelling the whole order. Built by a research fork, distinct from three existing itunda
+mechanisms it deliberately does not touch: the pre-order §103 "86" sold-out toggle (permanently
+stops future orders of a product), `cancelOrder` (cancels a still-`PLACED` order before the
+restaurant has started fulfillment), and Commerce's post-delivery `OrderReturnRequest` (after the
+buyer has already received the goods).
+
+**Built**: `EatsOrderItem.unavailable`/`refundTransactionId` (migration `V263`).
+`EatsOrderService.markItemUnavailable` -- restaurant-only, valid only from `ACCEPTED`/`PREPARING`
+(fulfillment underway, before `READY_FOR_PICKUP`/rider dispatch). Posts a **standalone 2-leg
+refund** (buyer wallet credit, restaurant wallet debit, both for exactly the item's
+`unitPrice × quantity`) rather than prorating the original order's multi-leg transaction --
+matches the real product's own behavior: the platform fee/delivery fee/any already-settled
+promotion discount stay untouched, since the platform still does the real dispatch/delivery work
+for the rest of the order. Rejects double-marking the same item and rejects marking the last
+remaining item unavailable (`cancelOrder` is the correct path for a fully-unfulfillable order).
+`POST /eats/orders/{orderId}/items/{itemId}/unavailable`. 5 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered a fresh
+buyer, funded via a real agent cash-in (15,000 RWF). Placed a real 2-item PICKUP order against
+`merchant_seed_1` (Beef brochettes 3,500 RWF + Grilled tilapia 5,000 RWF), progressed it to
+`ACCEPTED` as the real restaurant owner. Marked the tilapia item unavailable -- the buyer's real
+MAIN wallet balance moved from `7,500` to exactly `12,500` RWF (+5,000). A direct DB check on
+`ledger_entries` confirmed the exact real 2-leg posting: `wallet_restaurant_1` DEBIT `5,000.00`
+(`balance_after: 6,869.25`) and the buyer's wallet CREDIT `5,000.00` (`balance_after: 12,500.00`),
+both tagged "Item unavailable clawback/refund - Grilled tilapia with ugali". Marking the same item
+again real-`409`'d `ORDER_ITEM_ALREADY_UNAVAILABLE`. Marking the one remaining item (brochettes)
+real-`422`'d `CANNOT_EMPTY_ORDER`. A freshly-registered, unrelated merchant calling the same
+endpoint on this order real-`404`'d `ORDER_NOT_FOUND` -- the same IDOR discipline every other
+controller in this codebase already enforces.
+
+**Real latent bug found (not by live-verification, by the fork's own code review) but not yet
+fixed**: `ProductSubscriptionService.executeOne` (commerce module) and
+`MerchantBillingService.chargeOne` (merchant module) both catch a separately-proxied
+`LedgerService.postLedgerTransaction` exception *inside* their own still-open `@Transactional`
+method before returning normally -- the identical root cause behind Section 115's bills auto-pay
+`UnexpectedRollbackException` before its second fix (commit `a5a821e4`). Both are `@Scheduled`
+background polls rather than synchronous HTTP endpoints a caller waits on, so this most likely just
+silently delays one row to the next poll tick rather than 500ing a live request -- lower severity
+than the bills case, but a real bug in already-deployed code. Flagged as a follow-up task, not
+fixed in this pass.
