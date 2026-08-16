@@ -7496,3 +7496,39 @@ flipped `closedToday` to `false`, and the identical order retry succeeded with a
 Separately, `POST /merchant/closed-weekdays {"weekdays":[8]}` (out of the real 1-7 range) got a
 real `400 INVALID_CLOSED_WEEKDAYS` -- confirming server-side validation holds, not just a client-
 side range check.
+
+## 106. Uber Driver app-style earnings report for ride drivers
+
+**Added 2026-08-16.** Uber's own real driver-facing "Earnings" tab shows a day-by-day trip count
+and net-of-platform-fee total, not just a raw trip list. itunda's `RideTripService.completeTrip`
+already computed the exact real `fare`/`platformFee` split at settlement, and `GET
+/rides/trips/my-driver-trips` already exposed raw completed trips, but no aggregate summary existed
+anywhere for a driver to see their own earnings at a glance.
+
+**Built**: `RideTripService.getMyEarnings(driverUserId, from, to)`, same bounded-31-day-window +
+in-memory-grouping shape `MerchantService.getReport` already establishes (grouped by request date,
+since `RideTrip` has no separate `completedAt` column either). `GET /rides/trips/my-earnings`, with
+real 31-day-window and inverted-range validation (`InvalidEarningsRangeException`). 4 new Kotest
+blocks: cross-day aggregation with correct net-of-fee totals, non-driver rejection, inverted-range
+rejection, 31-day-window rejection. Backend-only this pass -- itunda's Android `RiderApp` earnings
+display is currently just a plain string on `RiderHomeScreen.kt` with no dedicated screen to extend
+cleanly within a single-afternoon scope, flagged as a natural follow-up rather than rushed.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**, running the FULL real
+ride-trip lifecycle twice (register driver + passenger, request, accept, real PIN fetch/start,
+complete -- the same proven recipe Section 89's ride-PIN-verification build established): trip 1
+completed with real `fare: 1915.0`, `platformFee: 28.73`; `GET /rides/trips/my-earnings`
+immediately showed `tripCount: 1`, `grossFare: 1915.0`, `platformFees: 28.73`, `netEarnings:
+1886.27` -- an exact match. A second full real trip completed with `fare: 2242.25`, `platformFee:
+33.63`; its real `created_at` was backdated by one day via direct SQL (the same legitimate
+"manipulate only the grouping timestamp, not the money logic" technique Section 104 already used)
+to prove cross-day aggregation -- the endpoint then returned two separate, correctly-totaled day
+entries, each matching its own trip's real numbers exactly. An inverted date range and a >31-day
+range both real-`400`'d `INVALID_EARNINGS_RANGE`; a non-driver account calling the endpoint got a
+real `404 RIDE_DRIVER_NOT_REGISTERED`.
+
+This deploy's registry push failed once with `connection refused` during a second real, severe
+cluster-overload spike this session (idle 0%, load average 51.41 -- the same pattern Section 100's
+deploy hit once already), resolved the same way: waited for the primary node's `vmstat` to
+genuinely show idle capacity again before retrying, rather than pushing through a connection-
+refused state.
