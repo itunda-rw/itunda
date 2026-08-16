@@ -63,7 +63,7 @@ import {
   fetchMyPostpaidCredit, openOverdraft, refinanceLoan, repayLoan, repayOverdraft, repayPostpaidCredit, spendPostpaidCredit,
   type Lender, type LoanAccount, type LoanOffer, type OverdraftAccount, type PostpaidCreditLine,
 } from './lib/loans';
-import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
+import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreFactor, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
 import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, fetchPet, type RewardTasksResult, type ReferralInfo, type StepRewardTierInfo, type Pet } from './lib/rewards';
 import { fetchBillProviders, fetchPendingBills, payBill, buyAirtime, type BillProvider, type PendingBill } from './lib/bills';
@@ -18876,6 +18876,15 @@ function CardView() {
   const [chargeAmount, setChargeAmount] = useState('');
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [chargeSuccess, setChargeSuccess] = useState<string | null>(null);
+  // Real KakaoBank 결제홈 (Payment Home)-style unified spend+benefits view (2026-08-16,
+  // launching August 2026 per KakaoBank's own H1 earnings coverage: "카드 결제 내역과
+  // 혜택을 통합 관리할 수 있는 '결제홈'") -- CreditScoreService already computes a real
+  // "Card usage" factor from real card-transaction counts (Section 76), but nothing on
+  // this screen ever surfaced it. Both endpoints already existed and are already used
+  // elsewhere (lib/creditScore.ts) -- this is purely wiring the same real data into the
+  // one screen where a cardholder would naturally look for "what is my card earning me."
+  const [cardUsageFactor, setCardUsageFactor] = useState<CreditScoreFactor | null>(null);
+  const [cardSuggestion, setCardSuggestion] = useState<CreditScoreSuggestion | null>(null);
 
   const load = () => {
     setError(null);
@@ -18893,6 +18902,12 @@ function CardView() {
         setError(err instanceof ApiError ? err.message : 'Could not load your card.');
       });
     fetchCardTransactions().then((r) => setTransactions(r.transactions)).catch(() => {});
+    fetchCreditScore()
+      .then((r) => setCardUsageFactor(r.factors.find((f) => f.name === 'Card usage') ?? null))
+      .catch(() => {});
+    fetchCreditScoreSuggestions()
+      .then((suggestions) => setCardSuggestion(suggestions.find((s) => s.action === 'Use your itunda Card more' || s.action === 'Get an itunda Card') ?? null))
+      .catch(() => {});
   };
   useEffect(load, []);
 
@@ -19018,6 +19033,24 @@ function CardView() {
           Save limits
         </button>
       </div>
+
+      {(cardUsageFactor || cardSuggestion) && (
+        <div className="itunda-card">
+          <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Card benefits</p>
+          {cardUsageFactor && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{cardUsageFactor.description}</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-green)' }}>+{cardUsageFactor.points} credit score</span>
+            </div>
+          )}
+          {cardSuggestion && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{cardSuggestion.description}</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-blue)' }}>+{cardSuggestion.pointsGain} more</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="itunda-card">
         <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>Pay with your card</p>
