@@ -7012,3 +7012,31 @@ endpoint called by the driver real-404'd (`RIDE_TRIP_NOT_FOUND`, the IDOR check 
 `POST /trips/{id}/start` with the wrong PIN (`0000`) real-400'd with `INCORRECT_RIDE_PIN`; with the
 correct PIN it real-200'd and the trip genuinely moved to `IN_PROGRESS`. Completed the trip
 afterward to confirm the full lifecycle still works end to end (real payout transaction posted).
+
+## 90. Reward Community Q&A answer adoption (Naver Pay-style non-transactional engagement)
+
+**Added 2026-08-16.** A fresh Naver ecosystem research pass re-confirmed a lead an earlier pass had
+flagged but never checked: Naver Pay's real points/rewards system pays out for non-transactional
+engagement -- Knowledge iN Q&A participation, blog/café event participation, charitable-donation
+matching -- not just spending. Checked `RewardsService.taskCatalog`: all 5 existing tasks were
+either a one-time onboarding step or a money-moving transaction, zero community-engagement signal.
+Separately, itunda already has a real, shipped Naver 지식iN-style Q&A feature
+(`services/backend/knowledge`) whose own doc comment had already named this exact gap as a
+deliberately deferred follow-up -- two independent research passes converged on the same real gap
+from opposite directions, and the feature that should trigger the reward already existed and was
+already live.
+
+**Built, backend-only**: `task_knowledge_answer_adopted` (500 RWF) added to the catalog, eligible
+once `KnowledgeAnswerRepository.countByAnswererIdAndIsAdoptedTrue` (already existed, no new query
+needed) is nonzero, claimed through the exact same flow every other task already uses. Zero client
+changes needed on any platform -- the Saronite `reward-tasks` mini-app (the single shared UI bank-
+mfe/Android/iOS all embed) renders the task list generically off title/subtitle/rewardAmount/
+claimed, the same pattern 3 of the other 5 tasks already use with no dedicated per-task panel.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: posted a real question
+(`POST /knowledge/questions`), a real answer from a second real user (`POST
+/knowledge/questions/{id}/answers`), adopted it as the asker (`POST .../adopt`, confirmed
+`isAdopted: true`). As the answerer, `GET /rewards/tasks` correctly showed `eligible: true` for
+`task_knowledge_answer_adopted` (previously false). `POST /rewards/claim` succeeded with a real 500
+RWF reward -- the answerer's real wallet balance moved 1964.6 -> 2464.6 RWF, exactly +500, confirmed
+via a direct wallet fetch before and after, not just trusting the claim response.
