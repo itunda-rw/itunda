@@ -7078,3 +7078,34 @@ own session that the group now shows `memberCount: 2`, not just trusting the joi
 response. Confirmed lowercase input (`7ate8g`) normalizes correctly. Confirmed idempotent re-join
 (`memberCount` stayed 2, no duplicate member row). Confirmed an unknown code real-404's with
 `INVALID_GROUP_JOIN_CODE`.
+
+## 92. Baemin/Coupang Eats-style "fastest delivery" sort
+
+**Added 2026-08-16.** Surfaced as an adjacent, smaller find while researching (and correctly
+scoping out) Baemin's B-Mart quick-commerce line, a genuine business-model mismatch not a code gap
+-- see the corresponding memory entry. `ShoppingController.getEligibleMerchants` already computed a
+real `deliveryTimeMinutes` per merchant (from real Haversine distance + real
+`Merchant.avgPrepTimeMinutes`) whenever the caller supplied `buyerLat`/`buyerLng`, but nothing let a
+client sort by it -- every major Korean delivery app (Baemin, Coupang Eats, Yogiyo) has a real
+"fastest delivery" sort tab; itunda had the exact data already computed and no way to use it.
+
+**Built**: an optional `sortBy=delivery_time` query param on `GET /shopping/merchants`. A real
+in-page sort, not a DB-level `ORDER BY` -- `deliveryTimeMinutes` is computed at request time from
+Haversine distance, not a stored column -- same discipline `getDishes`'s own `recommended` re-sort
+already established: never re-fetches, so the page's own real pagination/count stays exact. A
+genuine no-op without real buyer coordinates, same as the underlying field itself.
+
+**Android** (`EatsScreen.kt`) already sends real `buyerLat`/`buyerLng` on its restaurant list --
+confirmed before building this -- so it gets a real "Fastest delivery" toggle chip, shown only once
+a real browse location exists. **bank-mfe's own restaurant list currently never sends buyer
+coordinates at all**, a separate pre-existing gap this pass didn't fix -- the client function gained
+the optional param for whenever that gap is closed, but no UI was built on top of it yet, since it
+would be hollow without real coordinates behind it.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: `GET
+/shopping/merchants?businessType=RESTAURANT&buyerLat=...&buyerLng=...&sortBy=delivery_time`
+returned all 3 real seeded restaurants genuinely ascending by `deliveryTimeMinutes` (25, 30, 35).
+The identical query WITHOUT `sortBy` returned the same 3 restaurants in the opposite order (35, 30,
+25) -- proving the sort is real, not a coincidence of already-sorted data. `sortBy=delivery_time`
+WITHOUT buyer coordinates returned a real 200 with every `deliveryTimeMinutes` correctly `null` and
+original order preserved -- a genuine no-op, not a crash.
