@@ -118,6 +118,9 @@ jobs:
       - name: Verify Flyway migration versions
         run: bash scripts/verify-flyway-migrations.sh
 
+      - name: Verify every LedgerLeg accountId has a matching LedgerAccount seed row
+        run: python3 scripts/verify-ledger-account-seeds.py
+
   # services/backend: the canonical Kotlin/Spring Boot backend (auth, wallet, ledger,
   # savings, stocks, loans, insurance, bills, notifications, discover, contacts, system)
   backend-build:
