@@ -5,12 +5,15 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.StockWatchlist
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.HoldingRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.StockTradeRepository
 import rw.itunda.core.repository.StockWatchlistRepository
 import rw.itunda.core.repository.WalletRepository
@@ -26,6 +29,7 @@ class NoWalletException(message: String) : RuntimeException(message)
 class NotEnoughSharesException(message: String) : RuntimeException(message)
 class InvalidPriceHistoryRangeException(message: String) : RuntimeException(message)
 class InvalidFundingAmountException(message: String) : RuntimeException(message)
+class InvalidPriceAlertException(message: String) : RuntimeException(message)
 
 data class PortfolioValuePoint(val date: LocalDate, val value: BigDecimal)
 
@@ -37,6 +41,8 @@ class StocksService(
     private val ledgerService: LedgerService,
     private val stockWatchlistRepository: StockWatchlistRepository,
     private val stockTradeRepository: StockTradeRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     fun getStocks() = StockCatalog.stocks
 
@@ -192,6 +198,88 @@ class StocksService(
     @Transactional
     fun unwatchStock(userId: String, stockId: String) {
         stockWatchlistRepository.deleteByUserIdAndStockId(userId, stockId)
+    }
+
+    // Real Toss Securities 목표가 알림 (target price alert) (2026-08-16) -- set a real
+    // target price on a stock and get notified once its real (deterministically
+    // simulated) price crosses it. Auto-watches the stock first if the caller hadn't
+    // already, same "setting an alert implies watching" real Toss UX -- there's no
+    // separate concept of "alert but not watching" in the real app either. Setting a
+    // new target on an already-alerted watchlist row re-arms it (clears
+    // alertTriggeredAt), same "your new choice replaces the old one" shape this
+    // codebase's other real toggles already establish.
+    @Transactional
+    fun setPriceAlert(userId: String, stockId: String, targetPrice: BigDecimal, direction: String): StockWatchlist {
+        if (direction != "ABOVE" && direction != "BELOW") {
+            throw InvalidPriceAlertException("direction must be ABOVE or BELOW")
+        }
+        if (targetPrice <= BigDecimal.ZERO) {
+            throw InvalidPriceAlertException("Target price must be greater than zero")
+        }
+        val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
+        val watchlist = stockWatchlistRepository.findByUserIdAndStockId(userId, stock.id)
+            ?: stockWatchlistRepository.save(StockWatchlist(id = "watch_${UUID.randomUUID()}", userId = userId, stockId = stock.id))
+        watchlist.targetPrice = targetPrice
+        watchlist.targetDirection = direction
+        watchlist.alertTriggeredAt = null
+        return stockWatchlistRepository.save(watchlist)
+    }
+
+    @Transactional
+    fun clearPriceAlert(userId: String, stockId: String): StockWatchlist {
+        val watchlist = stockWatchlistRepository.findByUserIdAndStockId(userId, stockId)
+            ?: throw StockNotFoundException("You are not watching this stock")
+        watchlist.targetPrice = null
+        watchlist.targetDirection = null
+        watchlist.alertTriggeredAt = null
+        return stockWatchlistRepository.save(watchlist)
+    }
+
+    // Real due-alert query backing StockPriceAlertScheduler -- a real, not-yet-fired
+    // alert whose real current simulated price has actually crossed its real target,
+    // in the real direction the user asked for.
+    fun getDuePriceAlerts(): List<StockWatchlist> {
+        val candidates = stockWatchlistRepository.findByTargetPriceIsNotNullAndAlertTriggeredAtIsNull()
+        if (candidates.isEmpty()) return emptyList()
+        return candidates.filter { watchlist ->
+            val currentPrice = StockCatalog.find(watchlist.stockId)?.price ?: return@filter false
+            val target = watchlist.targetPrice ?: return@filter false
+            when (watchlist.targetDirection) {
+                "ABOVE" -> currentPrice >= target
+                "BELOW" -> currentPrice <= target
+                else -> false
+            }
+        }
+    }
+
+    /** One real alert notification, called per-row by the scheduler -- same resilience
+     * `ProductFavoriteService.notifyPriceDrop`'s own doc comment already establishes: a
+     * re-check right before firing (never trust the batch snapshot from getDuePriceAlerts
+     * as still true by the time this runs) so a genuine race can't double-fire. */
+    @Transactional
+    fun triggerPriceAlert(watchlistId: String) {
+        val watchlist = stockWatchlistRepository.findById(watchlistId).orElse(null) ?: return
+        if (watchlist.alertTriggeredAt != null) return
+        val stock = StockCatalog.find(watchlist.stockId) ?: return
+        val target = watchlist.targetPrice ?: return
+        val crossed = when (watchlist.targetDirection) {
+            "ABOVE" -> stock.price >= target
+            "BELOW" -> stock.price <= target
+            else -> false
+        }
+        if (!crossed) return
+
+        val title = "${stock.symbol} hit your target price"
+        val body = "${stock.name} is now ${stock.price} (target: $target)"
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = watchlist.userId, type = "STOCK_PRICE_ALERT",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"stockId\":\"${stock.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(watchlist.userId, title, body, mapOf("stockId" to stock.id))
+        watchlist.alertTriggeredAt = Instant.now()
+        stockWatchlistRepository.save(watchlist)
     }
 
     // StockCatalog is a small, static, in-memory list (no DB round trip involved at

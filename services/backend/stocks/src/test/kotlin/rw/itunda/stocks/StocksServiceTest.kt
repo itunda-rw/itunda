@@ -3,6 +3,7 @@ package rw.itunda.stocks
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -34,7 +35,9 @@ class StocksServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.INVESTMENT) } returns investmentWallet()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -159,7 +162,9 @@ class StocksServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>()
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         When("watching a real stock for the first time") {
             every { stockWatchlistRepository.findByUserIdAndStockId("user_1", "s1") } returns null
@@ -226,7 +231,9 @@ class StocksServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         When("requesting a real 30-day window") {
             val history = service.getPriceHistory("s1", 30)
@@ -276,7 +283,9 @@ class StocksServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>()
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         When("a single real buy happened 3 real days ago") {
             val buy = StockTrade(
@@ -354,7 +363,9 @@ class StocksServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         val mainWallet = Wallet(
             id = "wallet_main", userId = "user_1", accountNumber = "ACC-MAIN", accountName = "Main",
@@ -411,7 +422,9 @@ class StocksServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
         val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
 
         val mainWallet = Wallet(
             id = "wallet_main", userId = "user_2", accountNumber = "ACC-MAIN2", accountName = "Main",
@@ -428,6 +441,130 @@ class StocksServiceTest : BehaviorSpec({
                 } catch (e: NoWalletException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
+            }
+        }
+    }
+
+    Given("a user setting a real Toss Securities-style target price alert") {
+        val walletRepository = mockk<WalletRepository>()
+        val holdingRepository = mockk<HoldingRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>()
+        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        every { stockWatchlistRepository.save(any()) } answers { firstArg() }
+
+        When("no watchlist row exists yet for that stock") {
+            every { stockWatchlistRepository.findByUserIdAndStockId("user_3", "s1") } returns null
+
+            Then("it auto-creates the watchlist row and sets the real target") {
+                val watch = service.setPriceAlert("user_3", "s1", BigDecimal("999999"), "BELOW")
+                watch.targetPrice shouldBe BigDecimal("999999")
+                watch.targetDirection shouldBe "BELOW"
+                watch.alertTriggeredAt shouldBe null
+            }
+        }
+
+        When("an invalid direction is supplied") {
+            Then("it rejects the request before touching the repository") {
+                try {
+                    service.setPriceAlert("user_3", "s1", BigDecimal("100"), "SIDEWAYS")
+                    error("expected InvalidPriceAlertException")
+                } catch (e: InvalidPriceAlertException) {
+                    verify(exactly = 0) { stockWatchlistRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a zero or negative target price is supplied") {
+            Then("it rejects the request") {
+                try {
+                    service.setPriceAlert("user_3", "s1", BigDecimal.ZERO, "ABOVE")
+                    error("expected InvalidPriceAlertException")
+                } catch (e: InvalidPriceAlertException) {
+                    verify(exactly = 0) { stockWatchlistRepository.save(any()) }
+                }
+            }
+        }
+
+        When("re-arming an already-triggered alert with a new target") {
+            val existing = StockWatchlist(
+                id = "watch_3", userId = "user_3", stockId = "s1",
+                targetPrice = BigDecimal("500"), targetDirection = "ABOVE", alertTriggeredAt = java.time.Instant.now(),
+            )
+            every { stockWatchlistRepository.findByUserIdAndStockId("user_3", "s1") } returns existing
+
+            Then("it clears alertTriggeredAt so the scheduler can fire again") {
+                val watch = service.setPriceAlert("user_3", "s1", BigDecimal("700"), "ABOVE")
+                watch.targetPrice shouldBe BigDecimal("700")
+                watch.alertTriggeredAt shouldBe null
+            }
+        }
+    }
+
+    Given("real due-price-alert detection and one-shot triggering") {
+        val walletRepository = mockk<WalletRepository>()
+        val holdingRepository = mockk<HoldingRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>()
+        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+        every { stockWatchlistRepository.save(any()) } answers { firstArg() }
+        // Explicit stub even though notificationRepository is relaxed -- mockk's relaxed
+        // default can't correctly infer JpaRepository's generic `<S extends T> S save(S)`
+        // signature, throwing a real ClassCastException back in the caller (same known
+        // gotcha this file's own earlier comment, and GroupMessagingServiceTest/
+        // MerchantServiceTest/OrderServiceTest, already document).
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        // A real, genuinely-always-true BELOW-target (any real simulated price for a
+        // real Rwandan-franc-denominated stock will always be under 999999999) --
+        // deterministic without needing to know the exact simulated price for today.
+        val alwaysDueAlert = StockWatchlist(
+            id = "watch_due", userId = "user_4", stockId = "s1",
+            targetPrice = BigDecimal("999999999"), targetDirection = "BELOW", alertTriggeredAt = null,
+        )
+        // A real, genuinely-never-true ABOVE-target on the same stock.
+        val neverDueAlert = StockWatchlist(
+            id = "watch_never", userId = "user_4", stockId = "s1",
+            targetPrice = BigDecimal("999999999"), targetDirection = "ABOVE", alertTriggeredAt = null,
+        )
+
+        When("checking which real alerts are due") {
+            every { stockWatchlistRepository.findByTargetPriceIsNotNullAndAlertTriggeredAtIsNull() } returns listOf(alwaysDueAlert, neverDueAlert)
+
+            Then("only the alert whose real direction is genuinely crossed is due") {
+                val due = service.getDuePriceAlerts()
+                due.map { it.id } shouldBe listOf("watch_due")
+            }
+        }
+
+        When("triggering a real due alert") {
+            every { stockWatchlistRepository.findById("watch_due") } returns java.util.Optional.of(alwaysDueAlert)
+
+            Then("it sends a real notification and marks it fired, exactly once") {
+                service.triggerPriceAlert("watch_due")
+                verify(exactly = 1) { notificationRepository.save(any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_4", any(), any(), any()) }
+                alwaysDueAlert.alertTriggeredAt shouldNotBe null
+            }
+        }
+
+        When("triggering an alert that already fired") {
+            val alreadyFired = StockWatchlist(
+                id = "watch_fired", userId = "user_4", stockId = "s1",
+                targetPrice = BigDecimal("999999999"), targetDirection = "BELOW", alertTriggeredAt = java.time.Instant.now(),
+            )
+            every { stockWatchlistRepository.findById("watch_fired") } returns java.util.Optional.of(alreadyFired)
+
+            Then("it does not re-notify") {
+                service.triggerPriceAlert("watch_fired")
+                verify(exactly = 0) { notificationRepository.save(any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
             }
         }
     }

@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.math.BigDecimal
 import java.time.Instant
 
 /**
@@ -30,6 +31,23 @@ class StockWatchlist(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real Toss Securities 목표가 알림 (target price alert) (2026-08-16) -- Toss's own
+    // real feature: set a target price on a watched stock and get notified once it's
+    // crossed. Null means no active alert, every existing watchlist row's behavior
+    // completely unchanged. "ABOVE"/"BELOW" is the direction the user is watching for
+    // (explicit, never inferred from the price at set-time, so the intent stays
+    // correct even if the price has already moved by the time this is read back).
+    // One-shot: alertTriggeredAt marks it fired so the scheduler never re-notifies for
+    // the same crossing -- the user re-arms it by setting a new target.
+    @Column(name = "target_price", precision = 18, scale = 2)
+    var targetPrice: BigDecimal? = null,
+
+    @Column(name = "target_direction", length = 8)
+    var targetDirection: String? = null,
+
+    @Column(name = "alert_triggered_at")
+    var alertTriggeredAt: Instant? = null,
 ) {
     protected constructor() : this(id = "", userId = "", stockId = "")
 }

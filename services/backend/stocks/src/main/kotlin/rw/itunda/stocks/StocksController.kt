@@ -25,6 +25,9 @@ import java.math.BigDecimal
 
 data class TradeStockRequest(val stockId: String, val shares: BigDecimal)
 data class FundInvestmentRequest(val amount: BigDecimal)
+// Real Toss Securities 목표가 알림 (target price alert) -- see
+// StocksService.setPriceAlert's own doc comment.
+data class SetPriceAlertRequest(val targetPrice: BigDecimal, val direction: String)
 
 @RestController
 @RequestMapping("/api/v1/stocks")
@@ -123,6 +126,27 @@ class StocksController(private val stocksService: StocksService, private val ide
     fun getWatchlist(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "watchlist" to stocksService.getWatchlist(currentUser.userId)))
 
+    // Real Toss Securities 목표가 알림 (target price alert) -- see
+    // StocksService.setPriceAlert's own doc comment.
+    @PostMapping("/{stockId}/price-alert")
+    fun setPriceAlert(
+        @PathVariable stockId: String,
+        @RequestBody request: SetPriceAlertRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val watch = stocksService.setPriceAlert(currentUser.userId, stockId, request.targetPrice, request.direction)
+        return ResponseEntity.ok(mapOf("success" to true, "watch" to watch))
+    }
+
+    @DeleteMapping("/{stockId}/price-alert")
+    fun clearPriceAlert(
+        @PathVariable stockId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val watch = stocksService.clearPriceAlert(currentUser.userId, stockId)
+        return ResponseEntity.ok(mapOf("success" to true, "watch" to watch))
+    }
+
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
 
@@ -152,4 +176,7 @@ class StocksController(private val stocksService: StocksService, private val ide
 
     @ExceptionHandler(WalletFrozenException::class)
     fun handleWalletFrozen(ex: WalletFrozenException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+
+    @ExceptionHandler(InvalidPriceAlertException::class)
+    fun handleInvalidPriceAlert(ex: InvalidPriceAlertException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_ALERT", ex.message ?: "Bad request"))
 }
