@@ -7341,3 +7341,31 @@ cluster load spike (idle 0%, load average 60.77, worse than this project's routi
 instability pattern) -- both resolved by waiting for the underlying condition to clear rather than
 retrying blind, then completing normally once the primary node's `vmstat` genuinely showed idle
 capacity again.
+
+## 101. Baemin CEO app 영업일시중지 (temporarily pause orders)
+
+**Added 2026-08-16.** Baemin's real 사장님(CEO) seller app lets a restaurant temporarily pause
+accepting new orders (영업일시중지) when overwhelmed -- a real, self-service, buyer-visible state
+distinct from the heavier, ADMIN-only `MerchantStatus.SUSPENDED` moderation path already in this
+codebase. itunda had no concept of a merchant-initiated "busy, please wait" state anywhere.
+
+**Built**: `Merchant.isAcceptingOrders` (new column, default `true`, migration
+`V253__merchant_accepting_orders.sql`), `MerchantService.setAcceptingOrders` (same "explicit owner
+opt-out, never forced, no auto-expiry timer" shape `setAcceptsScheduledOrders` already
+establishes), `POST /api/v1/merchant/accepting-orders`. Real **server-side enforcement** in
+`EatsOrderService.placeOrder` -- throws `RestaurantNotAcceptingOrdersException` (real `400
+RESTAURANT_NOT_ACCEPTING_ORDERS`) for a paused restaurant, checked in the service layer so a stale
+client or a direct API call can't place an order a paused restaurant never agreed to fulfill, not
+just a UI-level hint. `GET /shopping/merchants` exposes `isAcceptingOrders`; bank-mfe's restaurant
+browse shows a "⏸ Temporarily paused" badge; merchant-mfe's `SettingsScreen` gets an On/Paused
+toggle mirroring the existing scheduled-orders toggle exactly.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered a fresh real
+restaurant with a real menu product. `POST /merchant/accepting-orders {"accepting": false}` real
+flipped the flag. A fresh real buyer's order attempt against that restaurant got a real `400
+RESTAURANT_NOT_ACCEPTING_ORDERS`. `POST /merchant/accepting-orders {"accepting": true}` resumed it
+-- the identical retry then failed only on the real, unrelated, expected `INSUFFICIENT_FUNDS`
+(proving the pause check itself had genuinely cleared, not just that the request format changed).
+After funding the buyer's wallet, the identical retry succeeded with a real `201` and a real order
+id. `GET /shopping/merchants` confirmed `isAcceptingOrders: true` on the resumed restaurant's real
+browse row.
