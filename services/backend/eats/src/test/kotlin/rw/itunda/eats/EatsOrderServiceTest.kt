@@ -16,6 +16,7 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsFulfillmentType
 import rw.itunda.core.domain.EatsOrder
+import rw.itunda.core.domain.EatsOrderItem
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -1225,6 +1226,157 @@ class EatsOrderServiceTest : BehaviorSpec({
                     service.completePickup("owner_1", "eats_order_pickup3")
                     error("expected InvalidEatsOrderStatusTransitionException")
                 } catch (e: InvalidEatsOrderStatusTransitionException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real restaurant marking a real item unavailable on a real accepted order") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val riderRepository = mockk<RiderRepository>()
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
+        val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        every { nominatimGeocodingClient.geocode(any()) } returns null
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = EatsOrderService(
+            merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
+        )
+
+        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
+        val buyerWallet = Wallet(id = "wallet_buyer", userId = "buyer_1", accountNumber = "ACC-B", accountName = "Buyer", type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
+        val restaurantWallet = Wallet(id = "wallet_restaurant", userId = "owner_1", accountNumber = "ACC-R", accountName = "Restaurant", type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"))
+        every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+        every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+
+        fun acceptedOrder(status: EatsOrderStatus = EatsOrderStatus.ACCEPTED) = EatsOrder(
+            id = "eats_order_iu1", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+            itemsSubtotal = BigDecimal("9000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("135"),
+            totalAmount = BigDecimal("10500"), transactionId = "ledgertxn_iu1", status = status,
+        )
+        fun items() = listOf(
+            EatsOrderItem(id = "item_1", orderId = "eats_order_iu1", productId = "product_1", productName = "Grilled Chicken", unitPrice = BigDecimal("4000"), quantity = 1),
+            EatsOrderItem(id = "item_2", orderId = "eats_order_iu1", productId = "product_2", productName = "Fries", unitPrice = BigDecimal("2500"), quantity = 2),
+        )
+
+        When("the restaurant marks one of two items unavailable") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder())
+            every { eatsOrderItemRepository.findByOrderId("eats_order_iu1") } returns items()
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund_1", emptyList())
+            val savedItem = slot<EatsOrderItem>()
+            every { eatsOrderItemRepository.save(capture(savedItem)) } answers { firstArg() }
+
+            service.markItemUnavailable("owner_1", "eats_order_iu1", "item_1")
+
+            Then("it posts a real 2-leg refund crediting the buyer and clawing back the restaurant for exactly that item's amount") {
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(
+                        "RWF",
+                        match { legs ->
+                            legs.size == 2 &&
+                                legs.any { it.accountId == "wallet_buyer" && it.direction == LedgerDirection.CREDIT && it.amount == BigDecimal("4000") } &&
+                                legs.any { it.accountId == "wallet_restaurant" && it.direction == LedgerDirection.DEBIT && it.amount == BigDecimal("4000") }
+                        },
+                    )
+                }
+            }
+
+            Then("it marks the item unavailable with the real refund transaction id, never touches the other item") {
+                savedItem.captured.id shouldBe "item_1"
+                savedItem.captured.unavailable shouldBe true
+                savedItem.captured.refundTransactionId shouldBe "ledgertxn_refund_1"
+            }
+
+            Then("it real-notifies the buyer") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "EATS_ORDER_UPDATE" }) }
+            }
+        }
+
+        When("the order is still PLACED, before real fulfillment has started") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder(EatsOrderStatus.PLACED))
+
+            Then("it throws InvalidEatsOrderStatusTransitionException rather than letting a not-yet-accepted order be partially refunded") {
+                try {
+                    service.markItemUnavailable("owner_1", "eats_order_iu1", "item_1")
+                    error("expected InvalidEatsOrderStatusTransitionException")
+                } catch (e: InvalidEatsOrderStatusTransitionException) {
+                    // expected
+                }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("the same item is already marked unavailable") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder())
+            val alreadyUnavailable = listOf(
+                EatsOrderItem(id = "item_1", orderId = "eats_order_iu1", productId = "product_1", productName = "Grilled Chicken", unitPrice = BigDecimal("4000"), quantity = 1, unavailable = true, refundTransactionId = "ledgertxn_prior"),
+                items()[1],
+            )
+            every { eatsOrderItemRepository.findByOrderId("eats_order_iu1") } returns alreadyUnavailable
+
+            Then("it throws EatsOrderItemAlreadyUnavailableException, never double-refunds") {
+                try {
+                    service.markItemUnavailable("owner_1", "eats_order_iu1", "item_1")
+                    error("expected EatsOrderItemAlreadyUnavailableException")
+                } catch (e: EatsOrderItemAlreadyUnavailableException) {
+                    // expected
+                }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("marking the item would leave zero available items in the order") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder())
+            every { eatsOrderItemRepository.findByOrderId("eats_order_iu1") } returns listOf(items()[0])
+
+            Then("it throws EatsOrderAllItemsUnavailableException rather than silently emptying the order") {
+                try {
+                    service.markItemUnavailable("owner_1", "eats_order_iu1", "item_1")
+                    error("expected EatsOrderAllItemsUnavailableException")
+                } catch (e: EatsOrderAllItemsUnavailableException) {
+                    // expected
+                }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("a different restaurant owner (not this order's own) tries to mark an item unavailable") {
+            val otherRestaurant = Merchant(id = "restaurant_2", ownerUserId = "owner_2", walletId = "wallet_other", businessName = "Other Diner", status = MerchantStatus.ACTIVE)
+            every { merchantRepository.findByOwnerUserId("owner_2") } returns otherRestaurant
+            every { eatsOrderRepository.findById("eats_order_iu1") } returns Optional.of(acceptedOrder())
+
+            Then("it throws EatsOrderNotFoundException -- same IDOR-safe 404 as every other order lookup, not a leak of existence") {
+                try {
+                    service.markItemUnavailable("owner_2", "eats_order_iu1", "item_1")
+                    error("expected EatsOrderNotFoundException")
+                } catch (e: EatsOrderNotFoundException) {
                     // expected
                 }
             }

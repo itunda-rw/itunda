@@ -40,6 +40,9 @@ import rw.itunda.eats.PlatformMembershipService
 import rw.itunda.eats.RestaurantNotAcceptingOrdersException
 import rw.itunda.eats.EatsOrderAlreadyReviewedException
 import rw.itunda.eats.EatsOrderItemRequest
+import rw.itunda.eats.EatsOrderAllItemsUnavailableException
+import rw.itunda.eats.EatsOrderItemAlreadyUnavailableException
+import rw.itunda.eats.EatsOrderItemNotFoundException
 import rw.itunda.eats.EatsOrderNotFoundException
 import rw.itunda.eats.EatsOrderNotYetDeliveredException
 import rw.itunda.eats.EatsOrderService
@@ -421,6 +424,18 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
+    // Real DoorDash/Uber Eats-style "Item Unavailable" flow -- see
+    // EatsOrderService.markItemUnavailable's own doc comment.
+    @PostMapping("/orders/{orderId}/items/{itemId}/unavailable")
+    fun markItemUnavailable(
+        @PathVariable orderId: String,
+        @PathVariable itemId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = eatsOrderService.markItemUnavailable(currentUser.userId, orderId, itemId)
+        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
     // Real Baemin-style 포장주문 (Pickup) terminal edge -- see
     // EatsOrderService.completePickup's own doc comment.
     @PostMapping("/orders/{orderId}/complete-pickup")
@@ -683,6 +698,18 @@ class EatsController(
     @ExceptionHandler(InvalidEatsOrderStatusTransitionException::class)
     fun handleInvalidTransition(ex: InvalidEatsOrderStatusTransitionException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INVALID_ORDER_STATUS_TRANSITION", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(EatsOrderItemNotFoundException::class)
+    fun handleOrderItemNotFound(ex: EatsOrderItemNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ORDER_ITEM_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(EatsOrderItemAlreadyUnavailableException::class)
+    fun handleOrderItemAlreadyUnavailable(ex: EatsOrderItemAlreadyUnavailableException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ORDER_ITEM_ALREADY_UNAVAILABLE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(EatsOrderAllItemsUnavailableException::class)
+    fun handleAllItemsUnavailable(ex: EatsOrderAllItemsUnavailableException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("CANNOT_EMPTY_ORDER", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(RiderAlreadyRegisteredException::class)
     fun handleRiderAlreadyRegistered(ex: RiderAlreadyRegisteredException) =

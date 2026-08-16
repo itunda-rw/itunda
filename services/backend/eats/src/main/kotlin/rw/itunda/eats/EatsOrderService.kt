@@ -72,6 +72,9 @@ class InvalidMenuOptionSelectionException(message: String) : RuntimeException(me
 class ScheduledOrdersNotSupportedException(message: String) : RuntimeException(message)
 class InvalidScheduledOrderTimeException(message: String) : RuntimeException(message)
 class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
+class EatsOrderItemNotFoundException(message: String) : RuntimeException(message)
+class EatsOrderItemAlreadyUnavailableException(message: String) : RuntimeException(message)
+class EatsOrderAllItemsUnavailableException(message: String) : RuntimeException(message)
 
 // Real menu-options selection (2026-07-21, v1: required single-select only) --
 // `selectedChoiceIds` is empty for the overwhelming majority of pre-existing menu items
@@ -1083,6 +1086,74 @@ class EatsOrderService(
         order.refundTransactionId = refund.transactionId
         order.updatedAt = Instant.now()
         return eatsOrderRepository.save(order)
+    }
+
+    /**
+     * Real DoorDash/Uber Eats-style "Item Unavailable" flow -- sourced from DoorDash's
+     * own documented merchant-facing "mark item unavailable" feature: a restaurant
+     * discovers mid-prep that one item can't be fulfilled and marks just that item,
+     * rather than cancelling the whole order. Restaurant-only, valid only from
+     * `ACCEPTED`/`PREPARING` (real fulfillment has started, but before
+     * `READY_FOR_PICKUP`/rider dispatch -- once that's begun this is too late; a
+     * `PLACED` order should use [cancelOrder] instead).
+     *
+     * Deliberately a NEW, standalone 2-leg refund rather than reusing
+     * [refundAndCancel]'s "reverse every original leg" mechanic -- the original order
+     * transaction is multi-leg (buyer charge, promotion expense, restaurant settlement,
+     * platform fee, delivery-fee holding), and prorating a fraction of *all* of those
+     * legs for one missing item is both unnecessary and not how the real product
+     * behaves: the buyer gets just that item's price back, the restaurant's settlement
+     * is clawed back by the same amount, and the platform fee/delivery fee/any
+     * promotion discount already settled stay untouched -- the platform still does the
+     * real dispatch/delivery work for the rest of the order regardless of one missing
+     * item.
+     */
+    @Transactional
+    fun markItemUnavailable(ownerUserId: String, orderId: String, orderItemId: String): EatsOrder {
+        val restaurant = merchantRepository.findByOwnerUserId(ownerUserId)
+            ?: throw RestaurantNotFoundException("This account is not registered as a merchant")
+        val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        if (order.restaurantId != restaurant.id) {
+            throw EatsOrderNotFoundException("Order not found")
+        }
+        if (order.status != EatsOrderStatus.ACCEPTED && order.status != EatsOrderStatus.PREPARING) {
+            throw InvalidEatsOrderStatusTransitionException(
+                "Cannot mark an item unavailable from ${order.status} -- the order must be ACCEPTED or PREPARING",
+            )
+        }
+        val items = eatsOrderItemRepository.findByOrderId(orderId)
+        val item = items.find { it.id == orderItemId } ?: throw EatsOrderItemNotFoundException("Order item not found")
+        if (item.unavailable) {
+            throw EatsOrderItemAlreadyUnavailableException("This item has already been marked unavailable")
+        }
+        if (items.count { !it.unavailable } <= 1) {
+            throw EatsOrderAllItemsUnavailableException("Cannot mark the last remaining item unavailable -- cancel the whole order instead")
+        }
+
+        val restaurantWallet = walletRepository.findById(restaurant.walletId)
+            .orElseThrow { RestaurantNoWalletException("Restaurant settlement wallet not found") }
+        val buyerWallet = walletRepository.findByUserIdAndType(order.buyerId, WalletType.MAIN)
+            ?: throw EatsBuyerNoWalletException("No wallet found for this account")
+
+        val itemAmount = item.unitPrice.multiply(BigDecimal(item.quantity))
+        val refund = ledgerService.postLedgerTransaction(
+            buyerWallet.currency,
+            listOf(
+                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, itemAmount, "Item unavailable refund - ${item.productName}"),
+                LedgerLeg(restaurantWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, itemAmount, "Item unavailable clawback - ${item.productName}"),
+            ),
+        )
+
+        item.unavailable = true
+        item.refundTransactionId = refund.transactionId
+        eatsOrderItemRepository.save(item)
+
+        notifyBuyer(
+            order,
+            "Item unavailable",
+            "${item.productName} wasn't available at ${restaurant.businessName} -- you've been refunded ${itemAmount.toPlainString()} for it. The rest of your order is still on its way.",
+        )
+        return order
     }
 
     // Real Uber Eats-style order-acceptance timeout query -- see
