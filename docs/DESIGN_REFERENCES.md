@@ -7248,3 +7248,34 @@ placed 2 separate real orders as a real buyer (order 1: coffee×3 + tea×2; orde
 `revenue: 20000` (correctly summed across BOTH separate orders, not just the larger one) and tea
 second with `unitsSold: 2`, `revenue: 4000` -- exact match to the real placed data. A query for a
 date range with no orders returned a real empty list, not an error.
+
+## 98. Karrot-style Marketplace listing view count (조회수)
+
+**Added 2026-08-16.** 당근마켓's real listing pages show a view count next to like/save counts --
+a lightweight social-proof signal a buyer uses to gauge listing popularity/staleness. itunda's
+`Listing` had no view counter at all, and `GET /marketplace/listings/{id}` -- which already computed
+a real `sellerTrustScore` -- had zero caller on any platform: bank-mfe's `ListingCard` rendered
+straight off the already-fetched browse-list item, never fetching the single-listing detail
+endpoint at all.
+
+**Built**: `Listing.viewCount` (new column, migration `V252__listing_view_count.sql`),
+`ListingRepository.incrementViewCount` as an atomic JPQL `UPDATE ... SET view_count = view_count +
+1` (avoids the lost-update race a read-modify-write risks under concurrent viewers -- same
+discipline [[project_itunda_concurrency_audit]] already established elsewhere). `getListing` now
+increments on every real fetch, then bumps the returned in-memory entity by 1 to reflect that view
+without a second round-trip read. bank-mfe's `ListingCard` fetches the fresh count once per mount
+via `fetchListingDetail`, but only `if (!isMine)` -- the "don't count your own views" exclusion is
+a client-side UX decision, not a backend rule (the endpoint itself increments unconditionally for
+whoever calls it, same as it would for any other authenticated caller). Named honestly rather than
+implied otherwise: bank-mfe has no separate listing detail page to gate this on, so "a view" is
+defined as "a non-owner's `ListingCard` mounting," the closest honest analogue available in the
+current UI shape.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: created a real listing
+(`viewCount: 0` at creation). 3 real sequential `GET /marketplace/listings/{id}` calls from a real,
+separately-registered non-owner viewer returned `viewCount` 1, then 2, then 3 -- a genuine atomic
+increment per call, not a cached or duplicated value. A direct API call from the real seller's own
+account (bypassing the client's `isMine` gate, which normal UI usage never does) returned
+`viewCount: 4`, confirming the increment is real and unconditional at the backend layer exactly as
+built -- the owner-exclusion lives only in `ListingCard`'s fetch condition, honestly documented
+above rather than left as an untested assumption.
