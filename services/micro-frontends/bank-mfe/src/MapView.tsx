@@ -160,6 +160,27 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
 
 const EMPTY_ROUTE_GEOJSON: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
+// Real Naver Maps-style colored merchant pins (2026-08-16, closing Section 27's own
+// "named, not built" recommendation) -- itunda's own per-merchant `category` was
+// already real, stored data (see `ShoppingMerchant`'s own doc comment), only ever used
+// to drive the single-blue-dot-for-every-merchant pin. Client-side-only, same
+// convention `RECENT_SEARCHES_KEY`'s doc comment above already establishes for this
+// map's other real-but-cosmetic lookups -- category is free text on the backend (a
+// seller-set string, not a fixed enum), so this is a real, extensible
+// substring/contains match with an honest neutral fallback for any category not
+// explicitly mapped, same "no invented category ever silently mismatched" discipline
+// Android's own `eatsCategoryIcon` fallback already establishes for an identical shape
+// of problem.
+function merchantPinColor(category: string | null | undefined): string {
+  const c = (category ?? '').toLowerCase();
+  if (c.includes('rwandan') || c.includes('fast food') || c.includes('restaurant') || c.includes('food')) return '#F59E0B';
+  if (c.includes('coffee') || c.includes('bakery')) return '#92400E';
+  if (c.includes('electronics')) return '#3182F6';
+  if (c.includes('fashion') || c.includes('clothing') || c.includes('beauty')) return '#EC4899';
+  if (c.includes('furniture') || c.includes('home')) return '#059669';
+  return '#6B7280';
+}
+
 // Real per-category glyphs for the chip row (2026-07-21) -- mirrors Android's own
 // MAP_CATEGORY_ICONS lookup exactly (MapScreen.kt), same client-side-only convention:
 // no icon field on the backend's NearbyPlace/category model, plain emoji over an icon
@@ -503,7 +524,7 @@ export default function MapView() {
           // further action; a real business pin now behaves exactly like tapping a
           // search result, plus a real enrichment header (see the detail-sheet render
           // below) since a merchant lookup by coordinate finds this real catalog entry.
-          new maplibregl.Marker({ color: '#3182F6' })
+          new maplibregl.Marker({ color: merchantPinColor(m.category) })
             .setLngLat([m.longitude as number, m.latitude as number])
             .addTo(map)
             .getElement()
