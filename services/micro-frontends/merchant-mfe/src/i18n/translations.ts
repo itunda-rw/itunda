@@ -536,8 +536,11 @@ export type TranslationKey =
   | 'settings.avgPrepTimeMinutesLabel'
   | 'settings.acceptScheduledOrdersTitle'
   | 'settings.acceptScheduledOrdersBody'
+  | 'settings.acceptingOrdersTitle'
+  | 'settings.acceptingOrdersBody'
   | 'settings.on'
   | 'settings.off'
+  | 'settings.paused'
   | 'settings.eatsClubTitle'
   | 'settings.eatsClubBody'
   | 'settings.eatsClubParticipating'
@@ -1046,8 +1049,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.avgPrepTimeMinutesLabel': 'Average kitchen prep time in minutes (blank = itunda default)',
     'settings.acceptScheduledOrdersTitle': 'Accept scheduled orders',
     'settings.acceptScheduledOrdersBody': 'Let buyers pick a future delivery/pickup time.',
+    'settings.acceptingOrdersTitle': 'Accepting orders',
+    'settings.acceptingOrdersBody': 'Pause temporarily if you\'re too busy to take new orders right now.',
     'settings.on': 'On',
     'settings.off': 'Off',
+    'settings.paused': 'Paused',
     'settings.eatsClubTitle': 'Eats Club',
     'settings.eatsClubBody': 'Offer free delivery to buyers with an active Eats Club membership.',
     'settings.eatsClubParticipating': 'Participating',
@@ -1551,8 +1557,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.avgPrepTimeMinutesLabel': 'Iminota isanzwe yo gutegura ibiryo (ubusa = igipimo gisanzwe cya itunda)',
     'settings.acceptScheduledOrdersTitle': 'Kwemera itumiza rigenwe igihe',
     'settings.acceptScheduledOrdersBody': 'Reka abaguzi bahitemo igihe kizaza cyo kohererezwa/gutorwa.',
+    'settings.acceptingOrdersTitle': 'Kwakira itumiza',
+    'settings.acceptingOrdersBody': 'Hagarika by\'agateganyo niba wuzuye ku buryo udashobora kwakira itumiza rishya.',
     'settings.on': 'Birakora',
     'settings.off': 'Ntibikora',
+    'settings.paused': 'Byahagaritswe',
     'settings.eatsClubTitle': 'Eats Club',
     'settings.eatsClubBody': 'Tanga ubwoherezwa kubuntu ku baguzi bafite Eats Club ikora.',
     'settings.eatsClubParticipating': 'Urimo',
@@ -2056,8 +2065,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'settings.avgPrepTimeMinutesLabel': 'Temps de préparation moyen en minutes (vide = valeur par défaut d\'itunda)',
     'settings.acceptScheduledOrdersTitle': 'Accepter les commandes programmées',
     'settings.acceptScheduledOrdersBody': 'Permettre aux clients de choisir une heure de livraison/retrait future.',
+    'settings.acceptingOrdersTitle': 'Acceptation des commandes',
+    'settings.acceptingOrdersBody': 'Suspendez temporairement si vous êtes trop occupé pour accepter de nouvelles commandes.',
     'settings.on': 'Activé',
     'settings.off': 'Désactivé',
+    'settings.paused': 'Suspendu',
     'settings.eatsClubTitle': 'Eats Club',
     'settings.eatsClubBody': 'Offrez la livraison gratuite aux clients ayant un abonnement Eats Club actif.',
     'settings.eatsClubParticipating': 'Participant',

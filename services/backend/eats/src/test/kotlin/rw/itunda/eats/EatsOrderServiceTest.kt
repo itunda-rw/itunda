@@ -433,6 +433,23 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("ordering from a restaurant that has temporarily paused orders") {
+            val pausedRestaurant = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, isAcceptingOrders = false,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(pausedRestaurant)
+
+            Then("it throws RestaurantNotAcceptingOrdersException before ever resolving the restaurant's wallet") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr")
+                    error("expected RestaurantNotAcceptingOrdersException")
+                } catch (e: RestaurantNotAcceptingOrdersException) {
+                    verify(exactly = 0) { walletRepository.findById("wallet_restaurant") }
+                }
+            }
+        }
+
         When("ordering a menu item that belongs to a DIFFERENT restaurant") {
             val otherItem = MerchantProduct(id = "item_2", merchantId = "restaurant_OTHER", name = "Not this restaurant's item", price = BigDecimal("500"))
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)

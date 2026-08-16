@@ -150,6 +150,17 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real merchant temporarily pauses accepting orders (Baemin CEO app 영업일시중지)") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { merchantRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setAcceptingOrders("owner_1", false)
+
+            Then("it real-flips the flag") {
+                result.isAcceptingOrders shouldBe false
+            }
+        }
+
         When("setting a real valid location") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
             every { merchantRepository.save(any()) } answers { firstArg() }

@@ -251,6 +251,16 @@ class MerchantService(
         return merchantRepository.save(merchant)
     }
 
+    // Real Baemin CEO app 영업일시중지 (temporarily pause business) -- see
+    // Merchant.isAcceptingOrders's own doc comment. Same "explicit owner opt-out, never
+    // forced" shape setAcceptsScheduledOrders already establishes -- resuming is just as
+    // real and self-service as pausing (set true again), no auto-expiry timer exists.
+    fun setAcceptingOrders(ownerUserId: String, accepting: Boolean): Merchant {
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.isAcceptingOrders = accepting
+        return merchantRepository.save(merchant)
+    }
+
     // Real category/cuisine (2026-07-19) -- powers restaurant categories + search/filter
     // for Eats (and Shopping, since both browse the same Merchant directory). Same
     // separate-settable-field pattern as setWebhookUrl/setLocation.

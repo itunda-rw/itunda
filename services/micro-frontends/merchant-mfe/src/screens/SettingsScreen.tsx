@@ -4,7 +4,7 @@ import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantAvgPrepTimeMinutes, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
+import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, generateApiKey, getMyIdentitySubmissions, getWebhookDeliveries, replayWebhookDelivery, setAcceptingOrders, setAcceptsScheduledOrders, setCashbackRate, setCategory, setMerchantAvgPrepTimeMinutes, setMerchantOpeningHours, setMerchantPhoneNumber, setMerchantPhotoUrl, setMinOrderAmount, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant, type WebhookDelivery } from '../lib/merchant';
 import { useI18n } from '../i18n/I18nContext';
 import type { TranslationKey } from '../i18n/translations';
 
@@ -436,6 +436,8 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
   const [submitting, setSubmitting] = useState(false);
   const [scheduledBusy, setScheduledBusy] = useState(false);
   const [scheduledError, setScheduledError] = useState<string | null>(null);
+  const [acceptingBusy, setAcceptingBusy] = useState(false);
+  const [acceptingError, setAcceptingError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -468,6 +470,21 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
       setScheduledError(err instanceof ApiError ? err.message : t('settings.saveError'));
     } finally {
       setScheduledBusy(false);
+    }
+  };
+
+  // Real Baemin CEO app 영업일시중지 (temporarily pause business) (2026-08-16) -- see
+  // MerchantService.setAcceptingOrders's own doc comment. Same real toggle shape as
+  // handleToggleScheduledOrders above.
+  const handleToggleAcceptingOrders = async () => {
+    setAcceptingBusy(true);
+    setAcceptingError(null);
+    try {
+      onUpdated(await setAcceptingOrders(!merchant.isAcceptingOrders));
+    } catch (err) {
+      setAcceptingError(err instanceof ApiError ? err.message : t('settings.saveError'));
+    } finally {
+      setAcceptingBusy(false);
     }
   };
 
@@ -562,6 +579,18 @@ function StoreSettingsCard({ merchant, onUpdated }: { merchant: Merchant; onUpda
       </div>
       {scheduledError && (
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">{scheduledError}</p>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--itunda-grey-200)' }}>
+        <div>
+          <p style={{ fontSize: '14px', fontWeight: 600 }}>{t('settings.acceptingOrdersTitle')}</p>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{t('settings.acceptingOrdersBody')}</p>
+        </div>
+        <button className="itunda-btn itunda-btn-secondary" disabled={acceptingBusy} onClick={handleToggleAcceptingOrders}>
+          {acceptingBusy ? '…' : merchant.isAcceptingOrders ? t('settings.on') : t('settings.paused')}
+        </button>
+      </div>
+      {acceptingError && (
+        <p style={{ fontSize: '13px', color: 'var(--itunda-red)', margin: '8px 0 0' }} role="alert">{acceptingError}</p>
       )}
     </div>
   );

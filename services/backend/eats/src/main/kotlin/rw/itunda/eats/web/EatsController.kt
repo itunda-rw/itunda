@@ -37,6 +37,7 @@ import rw.itunda.eats.InvalidMembershipDurationException
 import rw.itunda.eats.InvalidPlatformMembershipDurationException
 import rw.itunda.eats.PlatformMembershipNoWalletException
 import rw.itunda.eats.PlatformMembershipService
+import rw.itunda.eats.RestaurantNotAcceptingOrdersException
 import rw.itunda.eats.EatsOrderAlreadyReviewedException
 import rw.itunda.eats.EatsOrderItemRequest
 import rw.itunda.eats.EatsOrderNotFoundException
@@ -629,6 +630,10 @@ class EatsController(
     @ExceptionHandler(SelfEatsOrderException::class)
     fun handleSelfOrder(ex: SelfEatsOrderException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_ORDER_NOT_ALLOWED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(RestaurantNotAcceptingOrdersException::class)
+    fun handleRestaurantNotAcceptingOrders(ex: RestaurantNotAcceptingOrdersException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("RESTAURANT_NOT_ACCEPTING_ORDERS", ex.message ?: "Bad request"))
 
     @ExceptionHandler(EatsOrderNotFoundException::class)
     fun handleOrderNotFound(ex: EatsOrderNotFoundException) =

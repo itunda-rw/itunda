@@ -1,0 +1,1 @@
+ALTER TABLE merchants ADD COLUMN is_accepting_orders BOOLEAN NOT NULL DEFAULT TRUE;

@@ -33,6 +33,7 @@ data class SetCategoryRequest(val category: String)
 data class SetCashbackRateRequest(val rate: BigDecimal?)
 data class SetParticipatesInEatsMembershipRequest(val participates: Boolean)
 data class SetAcceptsScheduledOrdersRequest(val accepts: Boolean)
+data class SetAcceptingOrdersRequest(val accepting: Boolean)
 data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class SetPhoneNumberRequest(val phoneNumber: String?)
@@ -199,6 +200,17 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setAcceptsScheduledOrders(currentUser.userId, request.accepts)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real Baemin CEO app 영업일시중지 (temporarily pause business) -- see
+    // MerchantService.setAcceptingOrders's own doc comment.
+    @PostMapping("/accepting-orders")
+    fun setAcceptingOrders(
+        @RequestBody request: SetAcceptingOrdersRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setAcceptingOrders(currentUser.userId, request.accepting)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 

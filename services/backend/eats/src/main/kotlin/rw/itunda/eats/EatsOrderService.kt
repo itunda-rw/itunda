@@ -56,6 +56,7 @@ class InvalidEatsDeliveryAddressException(message: String) : RuntimeException(me
 class InvalidEatsQuantityException(message: String) : RuntimeException(message)
 class MenuItemNotFoundException(message: String) : RuntimeException(message)
 class SelfEatsOrderException(message: String) : RuntimeException(message)
+class RestaurantNotAcceptingOrdersException(message: String) : RuntimeException(message)
 class EatsOrderNotFoundException(message: String) : RuntimeException(message)
 class InvalidEatsOrderStatusTransitionException(message: String) : RuntimeException(message)
 class RiderNotAvailableException(message: String) : RuntimeException(message)
@@ -279,6 +280,13 @@ class EatsOrderService(
             .orElseThrow { RestaurantNotFoundException("Restaurant not found") }
         if (restaurant.ownerUserId == buyerId) {
             throw SelfEatsOrderException("Cannot order from your own restaurant")
+        }
+        // Real Baemin CEO app 영업일시중지 (temporarily pause business) enforcement --
+        // see Merchant.isAcceptingOrders's own doc comment. Checked here, not just
+        // surfaced as a UI badge, so a stale client (or a direct API call) can't place
+        // a real order a swamped/closed restaurant never agreed to fulfill.
+        if (!restaurant.isAcceptingOrders) {
+            throw RestaurantNotAcceptingOrdersException("This restaurant isn't accepting orders right now")
         }
         // Real, honest display value for PICKUP -- `deliveryAddress` stays NOT NULL,
         // and a real "collect from the restaurant" order genuinely has no delivery

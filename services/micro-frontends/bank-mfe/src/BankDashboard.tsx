@@ -14453,7 +14453,19 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                 </div>
               )}
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)' }}>{r.businessName}</p>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-900)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {r.businessName}
+                  {/* Real Baemin CEO app 영업일시중지 (temporarily pause business)
+                      (2026-08-16) -- see Merchant.isAcceptingOrders's own doc comment.
+                      Real backend enforcement (RestaurantNotAcceptingOrdersException)
+                      already blocks a real order; this surfaces the reason up front
+                      instead of a buyer discovering it only after trying to check out. */}
+                  {r.isAcceptingOrders === false && (
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--itunda-grey-500)', backgroundColor: 'var(--itunda-grey-100)', padding: '2px 8px', borderRadius: '99px' }}>
+                      ⏸ Temporarily paused
+                    </span>
+                  )}
+                </p>
                 {/* Real browse-card enrichment (2026-07-21) -- rating/reviewCount/distance/
                     delivery-time estimate/min order, closing docs/DESIGN_REFERENCES.md's
                     Eats recommendations #1/#2. Every clause is conditionally rendered on

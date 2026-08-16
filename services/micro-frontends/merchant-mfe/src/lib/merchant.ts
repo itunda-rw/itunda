@@ -39,6 +39,9 @@ export interface Merchant {
   // Real 배달의민족 예약주문 (scheduled ordering) opt-in (2026-07-26) -- a restaurant
   // explicitly opts into accepting buyer-scheduled future delivery/pickup times.
   acceptsScheduledOrders: boolean;
+  // Real Baemin CEO app 영업일시중지 (temporarily pause business) (2026-08-16) -- see
+  // Merchant.isAcceptingOrders's own doc comment. Defaults true.
+  isAcceptingOrders: boolean;
   // Real phone number + opening hours (2026-08-09) -- see Merchant.kt's own doc
   // comment on the backend. Both plain merchant-set free text; null means unset.
   phoneNumber: string | null;
@@ -295,6 +298,14 @@ export const setAcceptsScheduledOrders = (accepts: boolean) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/scheduled-orders-participation', {
     method: 'POST',
     body: JSON.stringify({ accepts }),
+  }).then((r) => r.merchant);
+
+// Real Baemin CEO app 영업일시중지 (temporarily pause business) (2026-08-16) -- see
+// MerchantService.setAcceptingOrders's own doc comment on the backend.
+export const setAcceptingOrders = (accepting: boolean) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/accepting-orders', {
+    method: 'POST',
+    body: JSON.stringify({ accepting }),
   }).then((r) => r.merchant);
 
 // Real Baemin Club-style participating-restaurant opt-in (2026-07-26) -- first client

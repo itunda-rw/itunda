@@ -209,6 +209,18 @@ class Merchant(
     // comment for the real scheduling window this enables.
     @Column(name = "accepts_scheduled_orders", nullable = false)
     var acceptsScheduledOrders: Boolean = false,
+
+    // Real Baemin CEO app 영업일시중지 (temporarily pause business) (2026-08-16) --
+    // sourced from Baemin's own real seller-app ecosystem (ceo.baemin.com's seller
+    // guide; cancellation-reason categories on the same app include 주문폭주/order
+    // overload). A real restaurant swamped with orders can pause taking new ones
+    // without going through the heavier ADMIN-only MerchantStatus.SUSPENDED path
+    // (that's moderation, not a self-service busy signal) -- see
+    // MerchantService.setAcceptingOrders/EatsOrderService.placeOrder's own doc
+    // comments for the enforcement side. Defaults true so every existing restaurant's
+    // behavior is completely unchanged.
+    @Column(name = "is_accepting_orders", nullable = false)
+    var isAcceptingOrders: Boolean = true,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

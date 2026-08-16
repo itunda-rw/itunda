@@ -35,6 +35,11 @@ export interface ShoppingMerchant {
   // because a few call sites construct a partial synthetic ShoppingMerchant from a
   // narrower source object (an ad/deal/favorite row) that never carried this field.
   favoriteCount?: number;
+  // Real Baemin CEO app 영업일시중지 (temporarily pause business) (2026-08-16) -- see
+  // Merchant.isAcceptingOrders's own doc comment. Optional for the same partial-object
+  // reason favoriteCount is; treat a missing value as accepting (true), matching the
+  // real backend column's own default.
+  isAcceptingOrders?: boolean;
 }
 
 // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see the backend's

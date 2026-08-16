@@ -137,6 +137,11 @@ class ShoppingController(
                     // Real Baemin 찜 (favorites) count (2026-08-16) -- see
                     // EatsFavoriteRepository.getFavoriteCounts's own doc comment.
                     "favoriteCount" to favoriteCount,
+                    // Real Baemin CEO app 영업일시중지 (temporarily pause business) --
+                    // see Merchant.isAcceptingOrders's own doc comment. A buyer needs
+                    // this surfaced on the browse card itself, not just discovered as a
+                    // real 400 after trying to check out.
+                    "isAcceptingOrders" to merchant.isAcceptingOrders,
                     // Real optional location (2026-07-19) -- lets a real map view plot real
                     // merchants, same field already set via POST /api/v1/merchant/location for
                     // Eats' distance-based delivery fee. Null for a merchant that hasn't set one.
