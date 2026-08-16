@@ -7762,3 +7762,35 @@ target re-armed the alert (`alertTriggeredAt` back to `null` in the real respons
 `DELETE /price-alert` real-cleared `targetPrice`/`targetDirection`/`alertTriggeredAt` all to `null`.
 An invalid direction (`"SIDEWAYS"`) and a negative target price both real-`400`'d
 `INVALID_PRICE_ALERT`.
+
+## 114. KB Kookmin Bank-style savings goal maturity reminder
+
+**Added 2026-08-17.** KB국민은행's real, officially named 상품만기알림서비스 (Product Maturity Alert
+Service, obank.kbstar.com) notifies a customer when a savings product reaches its target date.
+itunda's `SavingsGoal.targetDate` has been a real, stored, user-set free-text field since goals
+existed, but nothing ever read it to notify anyone -- pure dead data until this build.
+
+**Built**: `SavingsGoal.maturityNotifiedAt` (migration `V261`).
+`SavingsService.getGoalsDueForMaturityReminder` -- an active goal whose real `targetDate` has
+arrived (today or already past) and hasn't been notified yet; defensively skips a genuinely
+unparseable free-text `targetDate` (this field has zero format enforcement at goal creation)
+rather than crashing the whole sweep over one bad row. `sendMaturityReminder`, with a real
+re-check of `maturityNotifiedAt` right before firing so a genuine race can't double-fire. A new
+`SavingsMaturityReminderScheduler`. `POST /savings/goals/process-maturity-reminders` exposes the
+same real logic as a manually-callable endpoint -- same "expose the scheduler's own logic as a
+real endpoint" convention `WeeklySavingsController.processDue` already establishes -- so a goal's
+real maturity can be verified without waiting actual wall-clock days. 5 new Kotest blocks.
+Backend-only this pass.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17** (real UTC date confirmed
+as 2026-08-16 via `date -u` before designing the test): created three real goals -- "Matured Goal"
+(`targetDate: 2026-08-15`, a real past date), "Future Goal" (`targetDate: 2026-09-15`), and
+"Unparseable Goal" (`targetDate: "next month sometime"`, genuinely unparseable free text).
+`POST /process-maturity-reminders` returned `processed: 1` -- not crashing on the unparseable row.
+`GET /notifications` showed exactly one real `SAVINGS_GOAL_MATURED` notification, with the exact
+expected content ("Matured Goal has matured" / "...reached its target date. Current balance: 0.00
+RWF."), mentioning only the matured goal. `GET /savings/goals` confirmed `maturityNotifiedAt` was
+real-set on "Matured Goal" alone -- both "Future Goal" and "Unparseable Goal" stayed `null`. Calling
+`process-maturity-reminders` a second time returned `processed: 0`, and the real
+`SAVINGS_GOAL_MATURED` notification count stayed at exactly 1 -- confirming the no-double-fire
+guarantee holds for real, not just in the unit test.
