@@ -162,6 +162,16 @@ class EatsOrder(
     @Column(name = "promotion_discount", nullable = false, precision = 18, scale = 2)
     val promotionDiscount: BigDecimal = BigDecimal.ZERO,
 
+    // Real Baemin/Coupang Eats/Uber Eats-style 안심배달 (safe/contactless delivery)
+    // proof photo (2026-08-17, migration V265) -- the assigned rider optionally attaches
+    // a photo of the delivered order at the customer's door when they mark the order
+    // DELIVERED (see EatsOrderService.updateRiderStatus's own doc comment). Nullable:
+    // most deliveries are still real hand-to-hand and never submit one, matching the
+    // real product's own optional, not-mandatory convention -- this is evidentiary
+    // trust, never a gate on completing the delivery.
+    @Column(name = "delivery_proof_photo_url", length = 500)
+    var deliveryProofPhotoUrl: String? = null,
+
     // Restaurant, rider, scheduler, and cancellation actions advance the same order
     // through different request paths.  Protect the row so a concurrent terminal
     // transition cannot post a duplicate delivery payout or refund.

@@ -1899,6 +1899,37 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("the assigned rider marks it DELIVERED with a real 안심배달 proof photo") {
+            val pickedUpOrder = EatsOrder(
+                id = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_1", riderId = "rider_1", status = EatsOrderStatus.PICKED_UP,
+            )
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(pickedUpOrder)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            every { walletRepository.findById("wallet_rider") } returns Optional.of(riderWallet)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("payout_txn_1", emptyList())
+
+            val result = service.updateRiderStatus("rider_user_1", "eats_order_1", EatsOrderStatus.DELIVERED, "https://example.com/proof.jpg")
+
+            Then("it real-persists the proof photo on the order") {
+                result.deliveryProofPhotoUrl shouldBe "https://example.com/proof.jpg"
+            }
+        }
+
+        When("a photo is submitted on a PICKED_UP transition, not DELIVERED") {
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(assignedOrder)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.updateRiderStatus("rider_user_1", "eats_order_1", EatsOrderStatus.PICKED_UP, "https://example.com/proof.jpg")
+
+            Then("it is silently ignored -- the real product only captures a proof photo at drop-off") {
+                result.deliveryProofPhotoUrl shouldBe null
+            }
+        }
+
         When("someone who isn't the assigned rider tries to advance the delivery") {
             every { riderRepository.findByUserId("someone_else") } returns Rider(id = "rider_2", userId = "someone_else", walletId = "wallet_2")
             every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(assignedOrder)

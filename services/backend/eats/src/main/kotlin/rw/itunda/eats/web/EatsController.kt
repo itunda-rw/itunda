@@ -95,7 +95,13 @@ data class PlaceEatsOrderRequest(
 )
 data class SubscribeMembershipRequest(val days: Int)
 data class SubscribePlatformMembershipRequest(val days: Int)
-data class UpdateEatsOrderStatusRequest(val status: EatsOrderStatus)
+data class UpdateEatsOrderStatusRequest(
+    val status: EatsOrderStatus,
+    // Real 안심배달 (safe/contactless delivery) proof photo -- only meaningful when
+    // status is DELIVERED, see EatsOrderService.updateRiderStatus's own doc comment.
+    // Ignored by the restaurant-status endpoint, which reuses this same DTO.
+    val deliveryPhotoUrl: String? = null,
+)
 data class SetRiderAvailabilityRequest(val available: Boolean)
 data class UpdateRiderLocationRequest(val latitude: Double, val longitude: Double)
 data class SubmitEatsReviewRequest(
@@ -484,7 +490,7 @@ class EatsController(
         @RequestBody request: UpdateEatsOrderStatusRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val order = eatsOrderService.updateRiderStatus(currentUser.userId, orderId, request.status)
+        val order = eatsOrderService.updateRiderStatus(currentUser.userId, orderId, request.status, request.deliveryPhotoUrl)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 

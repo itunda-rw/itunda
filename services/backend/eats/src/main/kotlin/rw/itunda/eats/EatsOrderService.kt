@@ -1257,9 +1257,16 @@ class EatsOrderService(
     /** The assigned rider only, forward-only through RIDER_ASSIGNED -> PICKED_UP ->
      * DELIVERED. Reaching DELIVERED triggers the real delivery-fee payout, straight out
      * of `eats_delivery_holding` and into the rider's own wallet -- real money, paid the
-     * moment the real work (the delivery) is actually done. */
+     * moment the real work (the delivery) is actually done.
+     *
+     * `deliveryPhotoUrl` is the real Baemin/Coupang Eats/Uber Eats-style 안심배달
+     * (safe/contactless delivery) proof photo -- see EatsOrder.deliveryProofPhotoUrl's
+     * own doc comment. Only ever applied on the DELIVERED transition (the real product
+     * only prompts for a drop-off photo at that step, never at PICKED_UP); silently
+     * ignored for every other transition rather than rejected, since a client simply
+     * wouldn't show the capture step there. */
     @Transactional
-    fun updateRiderStatus(riderUserId: String, orderId: String, newStatus: EatsOrderStatus): EatsOrder {
+    fun updateRiderStatus(riderUserId: String, orderId: String, newStatus: EatsOrderStatus, deliveryPhotoUrl: String? = null): EatsOrder {
         val rider = riderRepository.findByUserId(riderUserId)
             ?: throw RiderNotRegisteredException("This account is not registered as a rider")
         val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
@@ -1277,6 +1284,9 @@ class EatsOrderService(
         order.updatedAt = Instant.now()
 
         if (newStatus == EatsOrderStatus.DELIVERED) {
+            if (deliveryPhotoUrl != null) {
+                order.deliveryProofPhotoUrl = deliveryPhotoUrl
+            }
             val riderWallet = walletRepository.findById(rider.walletId)
                 .orElseThrow { RiderNoWalletException("Rider wallet not found") }
             val payout = ledgerService.postLedgerTransaction(
