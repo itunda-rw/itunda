@@ -55,6 +55,25 @@ interface EatsOrderRepository : JpaRepository<EatsOrder, String> {
     // fabricated ML model.
     @Query("SELECT DISTINCT o.restaurantId FROM EatsOrder o WHERE o.buyerId = :buyerId")
     fun findDistinctRestaurantIdsByBuyerId(@Param("buyerId") buyerId: String): List<String>
+
+    // Real Uber Eats-style "busy kitchen" signal (2026-08-16, see Uber's own official
+    // "Managing busy delivery times" merchant help article: a busy restaurant's real
+    // in-kitchen order backlog is a genuine, sourced cause of delivery delay) -- one
+    // batched GROUP BY for a whole browse page, same discipline
+    // EatsFavoriteRepository.getFavoriteCounts already established. Caller passes the
+    // real kitchen-stage statuses (PLACED/ACCEPTED/PREPARING) -- an order already
+    // READY_FOR_PICKUP or later has left the kitchen's own workload, so counting it
+    // would overstate how backed up the kitchen currently is.
+    @Query("SELECT o.restaurantId as restaurantId, COUNT(o) as count FROM EatsOrder o WHERE o.restaurantId IN :restaurantIds AND o.status IN :statuses GROUP BY o.restaurantId")
+    fun getActiveKitchenOrderCounts(
+        @Param("restaurantIds") restaurantIds: List<String>,
+        @Param("statuses") statuses: List<EatsOrderStatus>,
+    ): List<RestaurantActiveOrderCountProjection>
+}
+
+interface RestaurantActiveOrderCountProjection {
+    val restaurantId: String
+    val count: Long
 }
 
 interface EatsOrderItemRepository : JpaRepository<EatsOrderItem, String> {

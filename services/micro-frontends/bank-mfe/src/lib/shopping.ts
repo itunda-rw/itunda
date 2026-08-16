@@ -40,6 +40,10 @@ export interface ShoppingMerchant {
   // reason favoriteCount is; treat a missing value as accepting (true), matching the
   // real backend column's own default.
   isAcceptingOrders?: boolean;
+  // Real Uber Eats-style "busy kitchen" signal (2026-08-16) -- see
+  // ShoppingController.getEligibleMerchants's own doc comment. deliveryTimeMinutes
+  // above already includes the real delay bump when this is true.
+  isBusy?: boolean;
 }
 
 // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see the backend's

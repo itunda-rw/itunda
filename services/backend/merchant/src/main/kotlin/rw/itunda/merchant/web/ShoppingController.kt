@@ -10,11 +10,13 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.MerchantBusinessType
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.geo.DeliveryEtaEstimator
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.repository.EatsFavoriteRepository
+import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MenuOptionChoiceRepository
 import rw.itunda.core.repository.MenuOptionGroupRepository
@@ -46,6 +48,7 @@ class ShoppingController(
     private val merchantProductRepository: MerchantProductRepository,
     private val eatsReviewRepository: EatsReviewRepository,
     private val eatsFavoriteRepository: EatsFavoriteRepository,
+    private val eatsOrderRepository: EatsOrderRepository,
     private val menuOptionGroupRepository: MenuOptionGroupRepository,
     private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
     private val priceTierRepository: ProductPriceTierRepository,
@@ -118,6 +121,16 @@ class ShoppingController(
         } else {
             emptyMap()
         }
+        // Real Uber Eats-style "busy kitchen" signal -- see
+        // EatsOrderRepository.getActiveKitchenOrderCounts's own doc comment.
+        val kitchenOrderCountByMerchant = if (page.content.isNotEmpty()) {
+            eatsOrderRepository.getActiveKitchenOrderCounts(
+                page.content.map { it.id },
+                listOf(EatsOrderStatus.PLACED, EatsOrderStatus.ACCEPTED, EatsOrderStatus.PREPARING),
+            ).associate { it.restaurantId to it.count }
+        } else {
+            emptyMap()
+        }
         data class MerchantRow(val map: Map<String, Any?>, val deliveryTimeMinutes: Int?, val favoriteCount: Long)
         var rows = page.content.map { merchant ->
             val distanceKm = if (hasBuyerLocation && merchant.latitude != null && merchant.longitude != null) {
@@ -126,7 +139,8 @@ class ShoppingController(
                 null
             }
             val rating = ratingByMerchant[merchant.id]
-            val deliveryTimeMinutes = distanceKm?.let { DeliveryEtaEstimator.estimateDeliveryMinutes(it, merchant.avgPrepTimeMinutes) }
+            val isBusy = (kitchenOrderCountByMerchant[merchant.id] ?: 0L) >= DeliveryEtaEstimator.BUSY_ORDER_THRESHOLD
+            val deliveryTimeMinutes = distanceKm?.let { DeliveryEtaEstimator.estimateDeliveryMinutes(it, merchant.avgPrepTimeMinutes, isBusy) }
             val favoriteCount = favoriteCountByMerchant[merchant.id] ?: 0L
             MerchantRow(
                 mapOf(
@@ -142,6 +156,12 @@ class ShoppingController(
                     // this surfaced on the browse card itself, not just discovered as a
                     // real 400 after trying to check out.
                     "isAcceptingOrders" to merchant.isAcceptingOrders,
+                    // Real Uber Eats-style "busy kitchen" signal (2026-08-16) -- see
+                    // EatsOrderRepository.getActiveKitchenOrderCounts's own doc comment.
+                    // deliveryTimeMinutes above already includes this restaurant's real
+                    // delay bump when true; this flag is what drives a real UI badge
+                    // explaining WHY the estimate is longer than usual.
+                    "isBusy" to isBusy,
                     // Real optional location (2026-07-19) -- lets a real map view plot real
                     // merchants, same field already set via POST /api/v1/merchant/location for
                     // Eats' distance-based delivery fee. Null for a merchant that hasn't set one.

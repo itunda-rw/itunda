@@ -14482,6 +14482,12 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                   {!!r.favoriteCount && r.favoriteCount > 0 && <span>· ❤️ {r.favoriteCount.toLocaleString()}</span>}
                   {r.distanceKm != null && <span>· {r.distanceKm.toFixed(1)} km</span>}
                   {r.deliveryTimeMinutes != null && <span>· ~{r.deliveryTimeMinutes} min</span>}
+                  {/* Real Uber Eats-style "busy kitchen" delay explanation (2026-08-16) --
+                      see ShoppingController.getEligibleMerchants's own doc comment.
+                      deliveryTimeMinutes above already includes the real delay bump when
+                      this is true; this badge is why it's longer than usual, not a
+                      separate/contradictory number. */}
+                  {r.isBusy && <span>· 🔥 Busy, delivery may take longer</span>}
                   {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}
                   {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
                 </p>

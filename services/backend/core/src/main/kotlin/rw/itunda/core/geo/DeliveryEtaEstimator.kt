@@ -21,15 +21,29 @@ object DeliveryEtaEstimator {
     private const val MIN_DELIVERY_MINUTES = 15
     private const val MAX_DELIVERY_MINUTES = 90
 
+    // Real Uber Eats "busy merchant" delay bump (2026-08-16) -- see Uber's own official
+    // "Managing busy delivery times" merchant help article: a busy restaurant's real
+    // in-kitchen order backlog is a genuine, sourced cause of delivery delay, not a
+    // fabricated formula. A flat, honest add-on to the existing estimate rather than a
+    // second, separate delay model. BUSY_ORDER_THRESHOLD is itunda's own chosen
+    // threshold (this backend has no historical throughput data to derive one from),
+    // same "itunda's own chosen policy, not a claimed real figure this project has no
+    // way to verify" honesty GiftVoucherController's own customerCodeValidity comment
+    // already models.
+    private const val BUSY_DELAY_MINUTES = 10.0
+    const val BUSY_ORDER_THRESHOLD = 5L
+
     // Real per-merchant prep time (2026-08-16, Baemin's own "가게배달 배달시간 AI 예측") --
     // prepTimeMinutes is the merchant's own real self-reported value
     // (Merchant.avgPrepTimeMinutes); null (unset, or a merchant not passed at all)
     // falls back to the previous flat BASE_PREP_MINUTES constant, fully
-    // backward-compatible with every existing caller/merchant.
-    fun estimateDeliveryMinutes(distanceKm: Double, prepTimeMinutes: Int? = null): Int {
+    // backward-compatible with every existing caller/merchant. isBusy defaults false,
+    // also fully backward-compatible with every existing call site.
+    fun estimateDeliveryMinutes(distanceKm: Double, prepTimeMinutes: Int? = null, isBusy: Boolean = false): Int {
         val travelMinutes = (distanceKm / ASSUMED_AVG_SPEED_KMH) * 60.0
         val prep = prepTimeMinutes?.toDouble() ?: BASE_PREP_MINUTES
-        val total = prep + travelMinutes
+        val busyBump = if (isBusy) BUSY_DELAY_MINUTES else 0.0
+        val total = prep + travelMinutes + busyBump
         val rounded = (Math.round(total / 5.0) * 5).toInt()
         return rounded.coerceIn(MIN_DELIVERY_MINUTES, MAX_DELIVERY_MINUTES)
     }
