@@ -5,7 +5,9 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.core.domain.BillAutoPaySetting
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.events.EventPublisher
@@ -14,6 +16,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailProfile
+import rw.itunda.core.repository.BillAutoPaySettingRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -38,7 +41,8 @@ class BillsServiceTest : BehaviorSpec({
         val providerConnector = mockk<ProviderConnector>()
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>()
-        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository)
+        val billAutoPaySettingRepository = mockk<BillAutoPaySettingRepository>()
+        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
         // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
@@ -99,6 +103,87 @@ class BillsServiceTest : BehaviorSpec({
                 } catch (e: NoWalletException) {
                     verify(exactly = 0) { providerConnector.attempt(any(), any()) }
                 }
+            }
+        }
+    }
+
+    Given("a user with an active auto-pay setting for REG - Electricity (bill_1, 35000)") {
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val providerConnector = mockk<ProviderConnector>()
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val transactionRepository = mockk<TransactionRepository>()
+        val billAutoPaySettingRepository = mockk<BillAutoPaySettingRepository>()
+        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository)
+
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
+        every { transactionRepository.save(any()) } answers { firstArg() }
+        every { providerConnector.attempt(any(), any()) } returns Unit
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        every { billAutoPaySettingRepository.save(any()) } answers { firstArg() }
+
+        fun setting(maxAmount: BigDecimal, lastPaidBillId: String? = null) = BillAutoPaySetting(
+            id = "setting_1", userId = "user_1", providerId = "b1",
+            accountNumber = "REG-12345", maxAmount = maxAmount, active = true, lastPaidBillId = lastPaidBillId,
+        )
+
+        When("setAutoPay is called for an unknown provider") {
+            Then("it throws BillProviderNotFoundException") {
+                try {
+                    service.setAutoPay("user_1", "does_not_exist", "REG-12345", BigDecimal("50000"))
+                    error("expected BillProviderNotFoundException")
+                } catch (e: BillProviderNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the due bill is within the cap and not yet paid") {
+            every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(setting(BigDecimal("50000")))
+
+            val results = service.processAutoPayments()
+
+            Then("it pays the bill via the real payBill path and records lastPaidBillId") {
+                results.size shouldBe 1
+                results[0]["billId"] shouldBe "bill_1"
+                verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
+                val saved = slot<BillAutoPaySetting>()
+                verify(exactly = 1) { billAutoPaySettingRepository.save(capture(saved)) }
+                saved.captured.lastPaidBillId shouldBe "bill_1"
+            }
+        }
+
+        When("the due bill exceeds the user's maxAmount cap") {
+            every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(setting(BigDecimal("10000")))
+
+            val results = service.processAutoPayments()
+
+            Then("it skips the bill and never touches the ledger") {
+                results.size shouldBe 0
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("the bill was already paid in a prior poll") {
+            every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(setting(BigDecimal("50000"), lastPaidBillId = "bill_1"))
+
+            val results = service.processAutoPayments()
+
+            Then("it skips the bill and never re-pays it") {
+                results.size shouldBe 0
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("clearAutoPay is called") {
+            every { billAutoPaySettingRepository.findByUserIdAndProviderId("user_1", "b1") } returns setting(BigDecimal("50000"))
+
+            service.clearAutoPay("user_1", "b1")
+
+            Then("it deactivates the setting rather than deleting it") {
+                val saved = slot<BillAutoPaySetting>()
+                verify(exactly = 1) { billAutoPaySettingRepository.save(capture(saved)) }
+                saved.captured.active shouldBe false
             }
         }
     }

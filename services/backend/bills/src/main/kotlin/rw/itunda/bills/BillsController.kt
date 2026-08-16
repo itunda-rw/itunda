@@ -2,14 +2,17 @@ package rw.itunda.bills
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
@@ -23,6 +26,7 @@ import java.math.BigDecimal
 
 data class PayBillRequest(val billId: String, val amount: BigDecimal, val accountNumber: String? = null, val provider: String? = null)
 data class BuyAirtimeRequest(val phoneNumber: String, val amount: BigDecimal, val provider: String? = null)
+data class SetAutoPayRequest(val providerId: String, val accountNumber: String, val maxAmount: BigDecimal)
 
 @RestController
 @RequestMapping("/api/v1/bills")
@@ -59,6 +63,34 @@ class BillsController(private val billsService: BillsService, private val idempo
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    /** Real Kakao Pay 자동납부 -- register recurring auto-pay for one provider. */
+    @PostMapping("/auto-pay")
+    fun setAutoPay(@RequestBody request: SetAutoPayRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val setting = billsService.setAutoPay(currentUser.userId, request.providerId, request.accountNumber, request.maxAmount)
+        return ResponseEntity.ok(mapOf("success" to true, "autoPay" to setting))
+    }
+
+    @GetMapping("/auto-pay")
+    fun getAutoPay(@AuthenticationPrincipal currentUser: CurrentUser) = ResponseEntity.ok(mapOf("success" to true, "autoPay" to billsService.getAutoPaySettings(currentUser.userId)))
+
+    @DeleteMapping("/auto-pay")
+    fun clearAutoPay(@RequestParam providerId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        billsService.clearAutoPay(currentUser.userId, providerId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    // ADMIN-gated same as WeeklySavingsController.processDue -- this runs auto-pay for every
+    // user with a due, in-cap bill, never scoped to the caller's own account.
+    @PostMapping("/process-auto-payments")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun processAutoPayments(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = billsService.processAutoPayments()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
+    }
+
+    @ExceptionHandler(BillProviderNotFoundException::class)
+    fun handleProviderNotFound(ex: BillProviderNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("BILL_PROVIDER_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

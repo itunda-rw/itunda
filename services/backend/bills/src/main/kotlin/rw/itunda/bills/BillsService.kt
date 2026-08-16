@@ -2,6 +2,7 @@ package rw.itunda.bills
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.core.domain.BillAutoPaySetting
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
@@ -18,6 +19,7 @@ import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
 import rw.itunda.core.provider.RailProfile
+import rw.itunda.core.repository.BillAutoPaySettingRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.domain.WalletType
@@ -26,6 +28,7 @@ import java.time.Instant
 import java.util.UUID
 
 class NoWalletException(message: String) : RuntimeException(message)
+class BillProviderNotFoundException(message: String) : RuntimeException(message)
 
 /**
  * Port of backend/src/controllers/bills.controller.ts's payBill/buyAirtime.
@@ -56,9 +59,65 @@ class BillsService(
     private val providerConnector: ProviderConnector,
     private val eventPublisher: EventPublisher,
     private val transactionRepository: TransactionRepository,
+    private val billAutoPaySettingRepository: BillAutoPaySettingRepository,
 ) {
     fun getProviders() = BillsCatalog.providers
     fun getPendingBills() = BillsCatalog.pendingBills
+
+    /** Real Kakao Pay 자동납부 -- register (or replace, via `uq_bill_auto_pay_user_provider`)
+     * a recurring auto-pay for one provider. `maxAmount` is the real sourced safety cap:
+     * a due bill over this is skipped by [processAutoPayments], never silently auto-charged. */
+    fun setAutoPay(userId: String, providerId: String, accountNumber: String, maxAmount: BigDecimal): BillAutoPaySetting {
+        BillsCatalog.providers.find { it.id == providerId } ?: throw BillProviderNotFoundException("Unknown bill provider $providerId")
+        val existing = billAutoPaySettingRepository.findByUserIdAndProviderId(userId, providerId)
+        val setting = existing?.also {
+            it.accountNumber = accountNumber
+            it.maxAmount = maxAmount
+            it.active = true
+        } ?: BillAutoPaySetting(
+            id = UUID.randomUUID().toString(),
+            userId = userId,
+            providerId = providerId,
+            accountNumber = accountNumber,
+            maxAmount = maxAmount,
+        )
+        return billAutoPaySettingRepository.save(setting)
+    }
+
+    fun clearAutoPay(userId: String, providerId: String) {
+        val setting = billAutoPaySettingRepository.findByUserIdAndProviderId(userId, providerId) ?: return
+        setting.active = false
+        billAutoPaySettingRepository.save(setting)
+    }
+
+    fun getAutoPaySettings(userId: String) = billAutoPaySettingRepository.findByUserId(userId)
+
+    /** Real Kakao Pay 자동납부 poll -- exposed as a manually-callable endpoint (same
+     * "expose scheduler logic as a real POST" convention as `WeeklySavingsController.processDue`)
+     * so this can be live-verified without waiting real wall-clock time. For every active
+     * setting: resolve its real [rw.itunda.bills.BillProvider] name, find the matching
+     * static [BillsCatalog.pendingBills] entry by provider name + account number, skip if
+     * it's over the user's `maxAmount` cap or already paid (`lastPaidBillId` guard --
+     * `BillsCatalog.pendingBills` never changes state on its own), otherwise reuse the
+     * real [payBill] money-movement path and record the guard. */
+    @Transactional
+    fun processAutoPayments(): List<Map<String, Any?>> {
+        val results = mutableListOf<Map<String, Any?>>()
+        for (setting in billAutoPaySettingRepository.findByActiveTrue()) {
+            val provider = BillsCatalog.providers.find { it.id == setting.providerId } ?: continue
+            val pendingBill = BillsCatalog.pendingBills.find {
+                it.provider == provider.name && it.accountNumber == setting.accountNumber
+            } ?: continue
+            if (pendingBill.id == setting.lastPaidBillId) continue
+            if (BigDecimal(pendingBill.amount) > setting.maxAmount) continue
+
+            val payment = payBill(setting.userId, pendingBill.id, BigDecimal(pendingBill.amount), setting.accountNumber, null)
+            setting.lastPaidBillId = pendingBill.id
+            billAutoPaySettingRepository.save(setting)
+            results.add(payment + mapOf("providerId" to provider.id, "billId" to pendingBill.id))
+        }
+        return results
+    }
 
     /** Wraps [ProviderConnector.attempt] so a decline publishes `payment.provider_failed`
      * before rethrowing. Published via [EventPublisher.publishImmediately] rather than
