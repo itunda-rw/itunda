@@ -69,6 +69,12 @@ interface MerchantRepository : JpaRepository<Merchant, String> {
 
 interface PaymentIntentRepository : JpaRepository<PaymentIntent, String> {
     fun findByMerchantIdOrderByCreatedAtDesc(merchantId: String): List<PaymentIntent>
+
+    // Real Toss Payments ARS결제-style USSD payment completion -- see
+    // PaymentIntent.ussdCode's own doc comment. Existence check used at generation
+    // time to avoid a real code collision across concurrently-live intents.
+    fun existsByUssdCode(ussdCode: String): Boolean
+    fun findByUssdCode(ussdCode: String): PaymentIntent?
 }
 
 interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {

@@ -15,10 +15,12 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.domain.UssdPin
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.UssdPinRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.merchant.MerchantService
 import rw.itunda.p2p.P2pService
 import java.math.BigDecimal
 import java.time.Instant
@@ -51,7 +53,9 @@ class UssdServiceTest : BehaviorSpec({
         transactionRepository: TransactionRepository = mockk(),
         p2pService: P2pService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = UssdService(ussdPinRepository, userRepository, walletRepository, transactionRepository, p2pService, rateLimiter)
+        paymentIntentRepository: PaymentIntentRepository = mockk(),
+        merchantService: MerchantService = mockk(),
+    ) = UssdService(ussdPinRepository, userRepository, walletRepository, transactionRepository, p2pService, rateLimiter, paymentIntentRepository, merchantService)
 
     Given("a session-start request from a real registered phone number") {
         val userRepository = mockk<UserRepository>()
@@ -153,6 +157,50 @@ class UssdServiceTest : BehaviorSpec({
 
             Then("the real transfer completes via the exact same real P2pService.sendDirect the app itself uses") {
                 result shouldBe "END Sent 5000 RWF to +250788222222. New balance: 70000 RWF."
+            }
+        }
+    }
+
+    Given("a real user paying a real merchant's USSD payment code via a real 3-step USSD sequence, reusing the exact same real MerchantService.collect every other channel uses") {
+        val userRepository = mockk<UserRepository>()
+        val ussdPinRepository = mockk<UssdPinRepository>()
+        val paymentIntentRepository = mockk<PaymentIntentRepository>()
+        val merchantService = mockk<MerchantService>()
+        val walletRepository = mockk<WalletRepository>()
+        val service = newService(
+            userRepository = userRepository, ussdPinRepository = ussdPinRepository,
+            paymentIntentRepository = paymentIntentRepository, merchantService = merchantService,
+            walletRepository = walletRepository,
+        )
+
+        every { userRepository.findByPhoneNumber("+250788111111") } returns user("u1", "+250788111111")
+        every { ussdPinRepository.findByUserId("u1") } returns UssdPin(id = "pin_1", userId = "u1", pinHash = encoder.encode("1234"))
+        val intent = rw.itunda.core.domain.PaymentIntent(
+            id = "pi_1", merchantId = "merchant_1", amount = BigDecimal("2000"), description = "2 espresso",
+            expiresAt = Instant.now().plusSeconds(900), ussdCode = "482913",
+        )
+        every { paymentIntentRepository.findByUssdCode("482913") } returns intent
+        every { merchantService.collect("u1", "pi_1", channel = "USSD") } returns mapOf(
+            "amount" to BigDecimal("2000"), "merchantName" to "Kigali Grill",
+        )
+        every { walletRepository.findByUserIdAndType("u1", WalletType.MAIN) } returns wallet("wallet_u1", "u1", BigDecimal("48000"))
+
+        When("selecting option 5, entering the real code, then the real correct PIN") {
+            service.handleUssdRequest("sess1", "+250788111111", "5") shouldBe "CON Enter the payment code given to you"
+            service.handleUssdRequest("sess1", "+250788111111", "5*482913") shouldBe "CON Enter your PIN"
+            val result = service.handleUssdRequest("sess1", "+250788111111", "5*482913*1234")
+
+            Then("the real payment completes via the exact same real MerchantService.collect every other channel uses") {
+                result shouldBe "END Paid 2000 RWF to Kigali Grill. New balance: 48000 RWF."
+            }
+        }
+
+        When("entering a code that doesn't match any real live payment intent") {
+            every { paymentIntentRepository.findByUssdCode("999999") } returns null
+            val result = service.handleUssdRequest("sess1", "+250788111111", "5*999999*1234")
+
+            Then("it real-fails with a plain, honest message -- never a fabricated success") {
+                result shouldBe "END Payment code not found."
             }
         }
     }

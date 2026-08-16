@@ -80,6 +80,18 @@ class PaymentIntent(
     @Version
     @Column(nullable = false)
     var version: Long = 0,
+
+    // Real Toss Payments ARS결제-style USSD payment completion (2026-08-16, sourced
+    // from Toss's own 2026 release notes: a payment method built for call-center/
+    // telesales contexts where the customer has no app/browser open, confirming a
+    // pending payment over the phone instead). itunda's real UUID-based paymentKey
+    // (`id`, "pi_<uuid>") is unusable on a feature-phone numeric keypad -- this is a
+    // short, real, USSD-typeable numeric alias generated alongside every intent
+    // specifically for UssdService.handleCompletePayment to resolve by. Nullable only
+    // for the protected no-arg JPA constructor below; every real intent always gets one
+    // (see MerchantService.createIntent).
+    @Column(name = "ussd_code", length = 6, unique = true)
+    var ussdCode: String? = null,
 ) {
     protected constructor() : this(id = "", merchantId = "", amount = BigDecimal.ZERO, description = "", expiresAt = Instant.now())
 }

@@ -7,10 +7,17 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.UssdPin
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.UssdPinRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.merchant.MerchantNoWalletException
+import rw.itunda.merchant.MerchantNotFoundException
+import rw.itunda.merchant.MerchantService
+import rw.itunda.merchant.PaymentIntentNotFoundException
+import rw.itunda.merchant.PaymentIntentNotPayableException
+import rw.itunda.merchant.SelfPaymentException
 import rw.itunda.p2p.P2pInvalidAmountException
 import rw.itunda.p2p.P2pNoWalletException
 import rw.itunda.p2p.P2pRecipientNotFoundException
@@ -58,6 +65,8 @@ class UssdService(
     private val transactionRepository: TransactionRepository,
     private val p2pService: P2pService,
     private val rateLimiter: RateLimiter,
+    private val paymentIntentRepository: PaymentIntentRepository,
+    private val merchantService: MerchantService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
     private val dateFormatter = DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.of("Africa/Kigali"))
@@ -105,7 +114,7 @@ class UssdService(
             ?: return "END No itunda account found for this phone number."
 
         if (parts.isEmpty()) {
-            return "CON Welcome to itunda\n1. Check balance\n2. Send money\n3. Mini statement\n4. Set PIN"
+            return "CON Welcome to itunda\n1. Check balance\n2. Send money\n3. Mini statement\n4. Set PIN\n5. Pay a merchant"
         }
         return try {
             when (parts[0]) {
@@ -113,12 +122,50 @@ class UssdService(
                 "2" -> handleSendMoney(user.id, parts)
                 "3" -> handleMiniStatement(user.id, parts)
                 "4" -> handleSetPinFlow(user.id, parts)
+                "5" -> handlePayMerchant(user.id, parts)
                 else -> "END Invalid selection. Please dial again."
             }
         } catch (e: UssdPinNotSetException) {
             "END ${e.message}"
         } catch (e: UssdInvalidPinException) {
             "END ${e.message}"
+        }
+    }
+
+    // Real Toss Payments ARS결제-style USSD payment completion -- see
+    // PaymentIntent.ussdCode's own doc comment. Reuses MerchantService.collect
+    // directly, the exact same real payment-collection logic every other channel (QR
+    // scan, Face Pay, static QR) already uses -- this is purely a new real entry point
+    // into it, not a second money-movement implementation.
+    private fun handlePayMerchant(userId: String, parts: List<String>): String {
+        return when (parts.size) {
+            1 -> "CON Enter the payment code given to you"
+            2 -> "CON Enter your PIN"
+            else -> {
+                val ussdCode = parts[1].trim()
+                val pin = parts[2]
+                verifyPin(userId, pin)
+                val intent = paymentIntentRepository.findByUssdCode(ussdCode)
+                    ?: return "END Payment code not found."
+                try {
+                    val result = merchantService.collect(userId, intent.id, channel = "USSD")
+                    val newBalance = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)?.balance
+                    "END Paid ${formatAmount(result["amount"] as BigDecimal)} RWF to ${result["merchantName"]}." +
+                        (newBalance?.let { " New balance: ${formatAmount(it)} RWF." } ?: "")
+                } catch (e: PaymentIntentNotFoundException) {
+                    "END Payment code not found."
+                } catch (e: PaymentIntentNotPayableException) {
+                    "END ${e.message}"
+                } catch (e: MerchantNotFoundException) {
+                    "END Merchant not found."
+                } catch (e: SelfPaymentException) {
+                    "END ${e.message}"
+                } catch (e: MerchantNoWalletException) {
+                    "END ${e.message}"
+                } catch (e: InsufficientFundsException) {
+                    "END Insufficient balance for this payment."
+                }
+            }
         }
     }
 

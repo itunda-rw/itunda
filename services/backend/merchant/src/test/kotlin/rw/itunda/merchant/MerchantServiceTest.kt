@@ -213,6 +213,7 @@ class MerchantServiceTest : BehaviorSpec({
         When("generating a QR payment intent") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
             every { paymentIntentRepository.save(any()) } answers { firstArg() }
+            every { paymentIntentRepository.existsByUssdCode(any()) } returns false
 
             val intent = service.generateQr("owner_1", BigDecimal("5000"), "2 espresso")
 
@@ -625,6 +626,7 @@ class MerchantServiceTest : BehaviorSpec({
 
         When("creating a real external payment with successUrl/failUrl/orderId") {
             every { paymentIntentRepository.save(any()) } answers { firstArg() }
+            every { paymentIntentRepository.existsByUssdCode(any()) } returns false
 
             val intent = service.createExternalPayment(
                 merchant, BigDecimal("5000"), "Order #A1", "order_A1",

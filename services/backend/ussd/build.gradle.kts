@@ -18,6 +18,11 @@ dependencies {
     // already-proven wallet-to-wallet transfer logic every other client uses, rather
     // than reimplementing it. See UssdService's own doc comment.
     implementation(project(":p2p"))
+    // For MerchantService.collect -- real Toss Payments ARS결제-style USSD payment
+    // completion reuses the exact same, already-proven payment-collection logic every
+    // other channel (QR, Face Pay, static QR) already uses. See PaymentIntent.ussdCode's
+    // own doc comment.
+    implementation(project(":merchant"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

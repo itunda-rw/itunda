@@ -364,8 +364,23 @@ class MerchantService(
             amount = amount,
             description = description,
             expiresAt = Instant.now().plusSeconds(900),
+            ussdCode = generateUssdCode(),
         )
         return paymentIntentRepository.save(intent)
+    }
+
+    // Real Toss Payments ARS결제-style USSD payment completion -- see
+    // PaymentIntent.ussdCode's own doc comment. A real 6-digit numeric code (never
+    // leading-zero-stripped since it's a String, not a parsed number), re-rolled on the
+    // rare real collision against another still-live intent rather than trusting
+    // birthday-paradox odds alone -- the same "don't just hope" discipline this
+    // codebase's other collision-prone id generators already establish.
+    private fun generateUssdCode(): String {
+        var code: String
+        do {
+            code = (100000..999999).random().toString()
+        } while (paymentIntentRepository.existsByUssdCode(code))
+        return code
     }
 
     // Real "Pay with itunda" external checkout API key (2026-07-21) -- mirrors
@@ -442,6 +457,7 @@ class MerchantService(
             orderId = orderId?.trim()?.ifBlank { null },
             successUrl = normalizedSuccessUrl,
             failUrl = normalizedFailUrl,
+            ussdCode = generateUssdCode(),
         )
         return paymentIntentRepository.save(intent)
     }
@@ -668,6 +684,9 @@ class MerchantService(
             // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see
             // MerchantStaticQrService's own doc comment.
             "STATIC_QR" -> "Static QR"
+            // Real Toss Payments ARS결제-style USSD payment completion -- see
+            // PaymentIntent.ussdCode's own doc comment.
+            "USSD" -> "USSD"
             else -> "QR"
         }
 
