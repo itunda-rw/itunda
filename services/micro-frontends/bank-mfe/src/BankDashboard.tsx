@@ -157,7 +157,7 @@ import {
 } from './lib/eats';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
-  fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail, fetchOrderRiderLocation, fetchPriceTiers,
+  fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail, fetchOrderRiderLocation, fetchPriceTiers, fetchProduct,
   fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview,
   type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type PriceTier, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
@@ -18000,6 +18000,16 @@ function ProductDetailView({
       });
   }, [product.id]);
 
+  // Real Coupang WING 상품분석 (product analytics) view count (2026-08-16) -- fetches
+  // the real, freshly server-incremented count once per detail-view mount, same
+  // "non-critical, falls back to nothing on failure" discipline the favorite-status
+  // fetch above already establishes. This is also the real trigger the pre-existing
+  // GET /shopping/products/{id} endpoint needed to ever be called at all.
+  const [freshViewCount, setFreshViewCount] = useState<number | null>(null);
+  useEffect(() => {
+    fetchProduct(product.id).then((p) => setFreshViewCount(p.viewCount ?? null)).catch(() => {});
+  }, [product.id]);
+
   const toggleFavorite = async () => {
     setBusy(true);
     try {
@@ -18036,6 +18046,9 @@ function ProductDetailView({
           <div>
             <p style={{ fontSize: '18px', fontWeight: 700 }}>{product.name}</p>
             <ProductPriceBlock price={product.price} originalPrice={product.originalPrice} discountPercent={product.discountPercent} />
+            {freshViewCount != null && (
+              <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>Views {freshViewCount.toLocaleString()}</p>
+            )}
           </div>
           <WishlistButton favorited={favorited} busy={busy} onToggle={toggleFavorite} />
         </div>

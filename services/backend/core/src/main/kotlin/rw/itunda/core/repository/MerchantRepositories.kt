@@ -181,4 +181,12 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
         @Param("maxBudget") maxBudget: BigDecimal?,
         pageable: Pageable,
     ): Page<MerchantProduct>
+
+    // Real Coupang WING 상품분석 view-count increment -- see
+    // MerchantProduct.viewCount's own doc comment. Atomic UPDATE, same real "avoid the
+    // lost-update race a read-modify-write risks under concurrent viewers" discipline
+    // ListingRepository.incrementViewCount already established.
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE MerchantProduct p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
+    fun incrementViewCount(@Param("id") id: String): Int
 }

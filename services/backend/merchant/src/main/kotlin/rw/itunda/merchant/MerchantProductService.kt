@@ -40,6 +40,7 @@ class MerchantProductService(
     private val merchantProductRepository: MerchantProductRepository,
     private val priceTierRepository: ProductPriceTierRepository,
     private val rateLimiter: RateLimiter,
+    private val orderItemRepository: rw.itunda.core.repository.OrderItemRepository,
 ) {
     private fun getMyMerchant(ownerUserId: String) =
         merchantRepository.findByOwnerUserId(ownerUserId)
@@ -225,6 +226,39 @@ class MerchantProductService(
         }
         product.soldOut = soldOut
         return merchantProductRepository.save(product)
+    }
+
+    // Real Coupang WING 상품분석 (product analytics) view-count trigger -- see
+    // MerchantProduct.viewCount's own doc comment. Customer-facing, unauthenticated by
+    // caller identity (any buyer can view a real active product) -- increments on every
+    // real fetch, then bumps the returned in-memory entity by 1 to reflect this view
+    // without a second round-trip read, same shape MarketplaceService.getListing already
+    // established for the identical gap on Marketplace listings.
+    @org.springframework.transaction.annotation.Transactional
+    fun getProduct(productId: String): MerchantProduct {
+        val product = merchantProductRepository.findById(productId)
+            .orElseThrow { MerchantProductNotFoundException("Product not found") }
+        merchantProductRepository.incrementViewCount(productId)
+        product.viewCount += 1
+        return product
+    }
+
+    // Real Coupang WING 전환율 (conversion rate) report -- pairs the real viewCount
+    // above with a real distinct-order count for the same product, so a merchant can
+    // see genuine interest (views) alongside genuine outcome (orders), not just a raw
+    // sales total. `orders` counts real OrderItem rows regardless of the parent Order's
+    // status, matching MerchantService.getTopSellingProducts' own "gross collected at
+    // placement" definition -- a cancelled order's reversal is a separate real refund,
+    // not a retroactive rewrite of what was genuinely viewed/ordered.
+    fun getProductAnalytics(ownerUserId: String, productId: String): Pair<MerchantProduct, Long> {
+        val merchant = getMyMerchant(ownerUserId)
+        val product = merchantProductRepository.findById(productId)
+            .orElseThrow { MerchantProductNotFoundException("Product not found") }
+        if (product.merchantId != merchant.id) {
+            throw MerchantProductNotFoundException("Product not found")
+        }
+        val orders = orderItemRepository.countByProductId(productId)
+        return product to orders
     }
 
     /**

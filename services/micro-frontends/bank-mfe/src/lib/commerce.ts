@@ -29,12 +29,25 @@ export interface CommerceProduct {
   // means booking it holds a real deposit from the customer's wallet automatically.
   durationMinutes?: number | null;
   requiresPrepay?: boolean;
+  // Real Coupang WING 상품분석 (product analytics) view count (2026-08-16) -- see
+  // backend MerchantProduct.viewCount's own doc comment. Only populated by
+  // fetchProduct's own real single-product fetch, same "list item is stale, detail
+  // fetch is fresh" shape ListingCard's own freshViewCount already established for
+  // Marketplace.
+  viewCount?: number;
 }
 
 export const fetchMerchantProducts = (merchantId: string) =>
   apiFetch<{ success: boolean; merchant: { id: string; businessName: string }; products: CommerceProduct[] }>(
     `/api/v1/shopping/merchants/${merchantId}/products`,
   );
+
+// Real Coupang WING 상품분석 (product analytics) view trigger (2026-08-16) -- see
+// backend ShoppingController.getProduct's own doc comment. ProductDetailView
+// previously rendered straight off the already-fetched catalog list with zero real
+// per-product fetch anywhere; this gives it one to call on mount.
+export const fetchProduct = (productId: string) =>
+  apiFetch<{ success: boolean; product: CommerceProduct }>(`/api/v1/shopping/products/${productId}`).then((r) => r.product);
 
 export type CommerceOrderStatus = 'PLACED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 

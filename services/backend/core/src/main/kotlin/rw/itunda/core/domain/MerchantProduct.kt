@@ -121,6 +121,17 @@ class MerchantProduct(
     @Column(name = "sold_out", nullable = false)
     var soldOut: Boolean = false,
 
+    // Real Coupang WING 상품분석 (product analytics) view-count signal (2026-08-16) --
+    // Coupang's own real seller portal shows 노출수/조회수 (impressions/views) per
+    // product alongside order volume, letting a seller see genuine interest even for a
+    // product that hasn't converted to a sale yet. bank-mfe's `ProductDetailView`
+    // already renders the full detail screen straight off the merchant's already-
+    // fetched catalog list (never a real per-product fetch), the same "rendered inline,
+    // zero real trigger" shape `Listing.viewCount`'s own doc comment already fixed for
+    // Marketplace -- this closes the identical gap for Commerce products.
+    @Column(name = "view_count", nullable = false)
+    var viewCount: Int = 0,
+
     @Version
     var version: Long = 0,
 

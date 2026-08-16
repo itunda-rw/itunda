@@ -128,6 +128,23 @@ class MerchantProductController(
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 
+    // Real Coupang WING 상품분석 (product analytics) report -- see
+    // MerchantProductService.getProductAnalytics's own doc comment.
+    @GetMapping("/{productId}/analytics")
+    fun getProductAnalytics(
+        @PathVariable productId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (product, orders) = merchantProductService.getProductAnalytics(currentUser.userId, productId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "viewCount" to product.viewCount,
+                "orderCount" to orders,
+            ),
+        )
+    }
+
     @DeleteMapping("/{productId}")
     fun removeProduct(
         @PathVariable productId: String,

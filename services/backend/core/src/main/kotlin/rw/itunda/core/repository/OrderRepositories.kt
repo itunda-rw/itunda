@@ -31,6 +31,11 @@ interface OrderRepository : JpaRepository<Order, String> {
 interface OrderItemRepository : JpaRepository<OrderItem, String> {
     fun findByOrderId(orderId: String): List<OrderItem>
     fun findByOrderIdIn(orderIds: List<String>): List<OrderItem>
+
+    // Real Coupang WING 전환율 (conversion rate) support -- see
+    // MerchantProductService.getProduct's own doc comment. Real distinct-order count
+    // for one product, backing view-to-order conversion alongside MerchantProduct.viewCount.
+    fun countByProductId(productId: String): Long
 }
 
 interface OrderReturnRequestRepository : JpaRepository<OrderReturnRequest, String> {

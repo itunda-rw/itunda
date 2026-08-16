@@ -52,7 +52,16 @@ class ShoppingController(
     private val menuOptionGroupRepository: MenuOptionGroupRepository,
     private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
     private val priceTierRepository: ProductPriceTierRepository,
+    private val merchantProductService: rw.itunda.merchant.MerchantProductService,
 ) {
+    // Real Coupang WING 상품분석 (product analytics) view trigger -- see
+    // MerchantProductService.getProduct's own doc comment. bank-mfe's `ProductDetailView`
+    // renders straight off the merchant's already-fetched catalog list with zero real
+    // per-product fetch anywhere -- this endpoint gives it one to call on mount.
+    @GetMapping("/products/{productId}")
+    fun getProduct(@PathVariable productId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "product" to merchantProductService.getProduct(productId)))
+
     // Promoted to DeliveryEtaEstimator (2026-08-15) -- EatsOrderService now needs this
     // exact same real formula for an in-flight order's own estimated arrival, not just
     // this controller's pre-order browse-time estimate. See that object's own doc
@@ -411,4 +420,8 @@ class ShoppingController(
     @ExceptionHandler(ShoppingMerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: ShoppingMerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(rw.itunda.merchant.MerchantProductNotFoundException::class)
+    fun handleProductNotFound(ex: rw.itunda.merchant.MerchantProductNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_PRODUCT_NOT_FOUND", ex.message ?: "Not found"))
 }
