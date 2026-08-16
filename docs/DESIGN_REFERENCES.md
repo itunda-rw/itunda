@@ -7426,3 +7426,41 @@ to `{"soldOut": false}` and retrying (after funding the buyer's wallet) succeede
 and a real order id. A second, unrelated real restaurant owner attempting to toggle the FIRST
 owner's product got a real `404 MERCHANT_PRODUCT_NOT_FOUND` -- confirming the cross-merchant IDOR
 check holds for a real second account, not just an unauthenticated request.
+
+## 104. Uber Eats-style order-acceptance timeout + auto-pause
+
+**Added 2026-08-16.** Uber's own official "Automatic pausing for merchants" blog post confirms
+stores get auto-paused when multiple real orders in a row go unaccepted -- a restaurant that never
+responds leaves a buyer's real payment held hostage on an unresponsive kitchen. itunda's Eats module
+had no order-acceptance deadline anywhere: a `PLACED` order could sit forever with no real
+resolution.
+
+**Built**: `EatsOrderService.ORDER_ACCEPTANCE_TIMEOUT` (itunda's own honestly-chosen 10 minutes --
+this backend has no historical restaurant-response-time data to derive a real figure from, same
+honesty this session's other constants already model), backed by a new
+`OrderAcceptanceExpiryScheduler` (same real "30-second poll interval, real business-duration
+window" convention `DispatchOfferScheduler` already establishes) that finds real `PLACED` orders
+past the window and auto-cancels+refunds them via `refundAndCancel` -- a shared helper extracted
+from the existing `cancelOrder`'s own real ledger-reversal logic, so no duplicated money-movement
+code exists. Each miss increments a new `Merchant.consecutiveMissedOrders`; a real `ACCEPTED`
+transition resets it to 0; reaching `CONSECUTIVE_MISSES_TO_AUTO_PAUSE = 3` flips the exact same
+`isAcceptingOrders` flag Section 101's manual pause-orders toggle already built and enforces --
+zero new client code needed, the existing bank-mfe badge and merchant-mfe toggle both work
+automatically. Deliberately does not replicate Uber's own real 6am auto-unpause timer -- itunda's
+existing pause design is explicitly manual-resume-only, kept consistent rather than inventing a
+second, divergent auto-resume policy.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16** (using a legitimate
+DB-timestamp-backdating technique to exercise the real 10-minute window without a literal 10-minute
+wait -- only the `created_at` the scheduler's own query checks was manipulated; every downstream
+step ran for real once the scheduler's actual 30-second poll picked it up): placed a real order,
+backdated it past the window, and within one real scheduler poll it flipped to real `CANCELLED`
+with a real `refundTransactionId` -- the buyer's real wallet balance was measurably restored
+(47000 → 50000 RWF). Repeated twice more against the same restaurant: `consecutiveMissedOrders`
+genuinely incremented 1 → 2 → 3 across real, separate scheduler runs, and at the 3rd miss the
+restaurant was real auto-paused -- `isAcceptingOrders: false` confirmed both via direct DB query
+AND a real `GET /merchant/me` call as that owner, with `consecutiveMissedOrders` reset to 0 by the
+pause itself. Separately, at a different real restaurant: gave it one real miss
+(`consecutiveMissedOrders` confirmed at 1), then placed and real-`ACCEPTED` a second order --
+confirmed `consecutiveMissedOrders` genuinely reset to 0, proving the reset-on-accept path fires on
+a real nonzero streak, not just showing the default value on a restaurant that never missed.
