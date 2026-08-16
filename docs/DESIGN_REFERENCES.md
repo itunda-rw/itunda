@@ -6922,9 +6922,20 @@ branches to the new `sendGift()` instead of `sendDirect()`, and renders an escro
 a gift genuinely behaves differently from a normal transfer -- money moves into escrow immediately,
 not into the recipient's wallet.
 
-**Not built this pass**: Android and iOS both already have the chat-embedded gift flow but not this
-standalone entry point either -- same shape of gap as several other cross-platform items in this
-file, worth a future pass.
+**Not built this pass**: Android already has the chat-embedded gift flow but not this standalone
+entry point either -- same shape of gap as several other cross-platform items in this file, worth a
+future pass.
+
+**Ported to iOS same session**: a "Send as a gift instead" `Toggle` added to `TransferAmountScreen`
+(`FeaturePayments`), threading gift state through `TransferFlowContainer`'s biometric-confirm and
+device-step-up-retry paths into a new `TransferViewModel.sendGift`, plus `sendGift`/`getGift` added
+to `NetworkClient.swift`. Verification is an honest partial: the full `xcodebuild -scheme ItundaApp`
+App-target build is currently blocked by an unrelated, pre-existing environment regression (Saronite/
+React Native codegen module-map failures, reproduced on a file this change never touched -- see
+`project_itunda_ios_build_env` memory). `FeaturePayments` and `CoreNetwork` -- the two targets this
+change's own new code actually lives in -- both still build, link, and code-sign successfully as
+standalone framework targets, real full compilation just not through the whole app. The two
+App-target files this change also touches only got a `swiftc -parse` pass, weaker evidence.
 
 **Live-verified end to end against the real deployed backend, 2026-08-16**: a real `POST
 /api/v1/gifts` from the demo user (477 RWF MAIN balance) to a second real seeded user
