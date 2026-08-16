@@ -536,6 +536,89 @@ class RideTripServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real driver with completed trips spread across two days") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val driver = RideDriver(id = "driver_earnings", userId = "driver_user_earnings", walletId = "wallet_earnings")
+        every { rideDriverRepository.findByUserId("driver_user_earnings") } returns driver
+
+        fun trip(id: String, day: java.time.LocalDate, fare: String, fee: String) = RideTrip(
+            id = id, passengerId = "passenger_x", driverId = "driver_earnings",
+            pickupAddress = "A", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
+            dropoffAddress = "B", dropoffLatitude = -1.9506, dropoffLongitude = 30.0925,
+            distanceKm = BigDecimal("5.000"),
+            fare = BigDecimal(fare), platformFee = BigDecimal(fee), transactionId = "ledgertxn_$id",
+            status = RideTripStatus.COMPLETED, createdAt = day.atTime(9, 0).toInstant(java.time.ZoneOffset.UTC),
+        )
+
+        val day1 = java.time.LocalDate.of(2026, 7, 10)
+        val day2 = java.time.LocalDate.of(2026, 7, 11)
+        every {
+            rideTripRepository.findByDriverIdAndStatusAndCreatedAtBetween("driver_earnings", RideTripStatus.COMPLETED, any(), any())
+        } returns listOf(
+            trip("t1", day1, "3000", "45.00"),
+            trip("t2", day1, "2000", "30.00"),
+            trip("t3", day2, "5000", "75.00"),
+        )
+
+        When("requesting the earnings report for that range") {
+            val report = service.getMyEarnings("driver_user_earnings", day1, day2)
+
+            Then("it groups by day with correct real net-of-platform-fee totals") {
+                report.size shouldBe 2
+
+                val reportDay1 = report.first { it.date == day1 }
+                reportDay1.tripCount shouldBe 2
+                reportDay1.grossFare shouldBe BigDecimal("5000")
+                reportDay1.platformFees shouldBe BigDecimal("75.00")
+                reportDay1.netEarnings shouldBe BigDecimal("4925.00")
+
+                val reportDay2 = report.first { it.date == day2 }
+                reportDay2.tripCount shouldBe 1
+                reportDay2.grossFare shouldBe BigDecimal("5000")
+                reportDay2.platformFees shouldBe BigDecimal("75.00")
+                reportDay2.netEarnings shouldBe BigDecimal("4925.00")
+            }
+        }
+
+        When("requesting an earnings report for an account that isn't a driver") {
+            every { rideDriverRepository.findByUserId("not_a_driver") } returns null
+
+            Then("it throws RideDriverNotRegisteredException before ever querying trips") {
+                try {
+                    service.getMyEarnings("not_a_driver", day1, day2)
+                    error("expected RideDriverNotRegisteredException")
+                } catch (e: RideDriverNotRegisteredException) {
+                    verify(exactly = 0) { rideTripRepository.findByDriverIdAndStatusAndCreatedAtBetween(any(), any(), any(), any()) }
+                }
+            }
+        }
+
+        When("requesting an earnings report with an inverted date range") {
+            Then("it rejects the request before querying trips") {
+                try {
+                    service.getMyEarnings("driver_user_earnings", day2, day1)
+                    error("expected InvalidEarningsRangeException")
+                } catch (e: InvalidEarningsRangeException) {
+                    verify(exactly = 0) { rideTripRepository.findByDriverIdAndStatusAndCreatedAtBetween(any(), any(), any(), any()) }
+                }
+            }
+        }
+
+        When("requesting more than the supported 31-day earnings window") {
+            Then("it rejects the request before querying trips") {
+                try {
+                    service.getMyEarnings("driver_user_earnings", day1, day1.plusDays(31))
+                    error("expected InvalidEarningsRangeException")
+                } catch (e: InvalidEarningsRangeException) {
+                    verify(exactly = 0) { rideTripRepository.findByDriverIdAndStatusAndCreatedAtBetween(any(), any(), any(), any()) }
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

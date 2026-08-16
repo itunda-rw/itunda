@@ -48,10 +48,21 @@ class InvalidScheduledRideTimeException(message: String) : RuntimeException(mess
 class RideTooManyStopsException(message: String) : RuntimeException(message)
 class RideNoRemainingStopsException(message: String) : RuntimeException(message)
 class RidePinMismatchException(message: String) : RuntimeException(message)
+class InvalidEarningsRangeException(message: String) : RuntimeException(message)
 
 // Real Kakao T-style multi-stop waypoint input (item 214) -- see RideTripStop.kt's own
 // doc comment.
 data class RideStopInput(val address: String, val latitude: Double, val longitude: Double)
+
+// Real Uber Driver app-style earnings report (2026-08-16) -- see
+// RideTripService.getMyEarnings's own doc comment.
+data class DriverEarningsDay(
+    val date: java.time.LocalDate,
+    val tripCount: Int,
+    val grossFare: BigDecimal,
+    val platformFees: BigDecimal,
+    val netEarnings: BigDecimal,
+)
 
 /**
  * Real Kakao T-style ride-hailing (2026-07-26) -- closes `docs/DESIGN_REFERENCES.md`'s
@@ -532,6 +543,39 @@ class RideTripService(
     fun getMyDriverTrips(driverUserId: String, pageable: Pageable): Page<RideTrip> {
         val driver = getMyDriver(driverUserId)
         return rideTripRepository.findByDriverIdOrderByCreatedAtDesc(driver.id, pageable)
+    }
+
+    // Real Uber Driver app-style earnings report (2026-08-16) -- Uber's own real
+    // driver-facing "Earnings" tab shows a day-by-day trip count and net-of-platform-fee
+    // total, not just a raw trip list. `completeTrip` already computes the exact real
+    // `netToDriver = fare - platformFee` split at settlement time; this just aggregates
+    // it per real COMPLETED day. Same bounded-31-day-window + in-memory-grouping shape
+    // MerchantService.getReport's own doc comment already justifies (RideTrip.createdAt
+    // is a timestamp, not a pre-truncated date column). Grouped by request date
+    // (createdAt), same convention getReport itself uses -- no separate completedAt
+    // column exists on this entity either.
+    fun getMyEarnings(driverUserId: String, from: java.time.LocalDate, to: java.time.LocalDate): List<DriverEarningsDay> {
+        if (from.isAfter(to)) {
+            throw InvalidEarningsRangeException("Report start date must be on or before the end date")
+        }
+        if (from.plusDays(30).isBefore(to)) {
+            throw InvalidEarningsRangeException("Earnings reports are limited to 31 days at a time")
+        }
+        val driver = getMyDriver(driverUserId)
+        val fromInstant = from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+        val toInstant = to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant()
+        val trips = rideTripRepository.findByDriverIdAndStatusAndCreatedAtBetween(driver.id, RideTripStatus.COMPLETED, fromInstant, toInstant)
+        return trips
+            .groupBy { java.time.LocalDate.ofInstant(it.createdAt, java.time.ZoneOffset.UTC) }
+            .map { (date, dayTrips) ->
+                val gross = dayTrips.fold(BigDecimal.ZERO) { acc, t -> acc + t.fare }
+                val fees = dayTrips.fold(BigDecimal.ZERO) { acc, t -> acc + t.platformFee }
+                DriverEarningsDay(
+                    date = date, tripCount = dayTrips.size, grossFare = gross, platformFees = fees,
+                    netEarnings = gross.subtract(fees),
+                )
+            }
+            .sortedBy { it.date }
     }
 
     /** Dispatch and passenger updates must reflect committed trip and settlement state. */

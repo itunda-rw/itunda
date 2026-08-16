@@ -32,6 +32,11 @@ interface RideTripRepository : JpaRepository<RideTrip, String> {
     // existsByRiderIdAndStatusIn just closed for delivery riders.
     fun existsByDriverIdAndStatusIn(driverId: String, statuses: List<RideTripStatus>): Boolean
 
+    // Real Uber Driver-style earnings report (2026-08-16) -- see
+    // RideTripService.getMyEarnings's own doc comment. Unpaginated, same bounded-window
+    // shape MerchantService.getReport's own transaction fetch already establishes.
+    fun findByDriverIdAndStatusAndCreatedAtBetween(driverId: String, status: RideTripStatus, from: Instant, to: Instant): List<RideTrip>
+
     @Query("SELECT DISTINCT t.driverId FROM RideTrip t WHERE t.status IN :statuses AND t.driverId IS NOT NULL")
     fun findDistinctDriverIdsByStatusIn(@Param("statuses") statuses: List<RideTripStatus>): List<String>
 

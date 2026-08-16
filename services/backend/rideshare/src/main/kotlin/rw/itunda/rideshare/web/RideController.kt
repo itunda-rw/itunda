@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.idempotency.IdempotencyConflictException
@@ -22,6 +23,7 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.rideshare.InvalidEarningsRangeException
 import rw.itunda.rideshare.InvalidRideDriverLocationException
 import rw.itunda.rideshare.InvalidRideLocationException
 import rw.itunda.rideshare.InvalidRideRatingException
@@ -143,6 +145,28 @@ class RideController(
     ): ResponseEntity<Map<String, Any?>> {
         val page = rideTripService.getMyDriverTrips(currentUser.userId, pageable)
         return ResponseEntity.ok(mapOf("success" to true, "trips" to page.content) + pageMeta(page))
+    }
+
+    // Real Uber Driver app-style earnings report -- see
+    // RideTripService.getMyEarnings's own doc comment.
+    @GetMapping("/trips/my-earnings")
+    fun getMyEarnings(
+        @RequestParam(required = false) from: String?,
+        @RequestParam(required = false) to: String?,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val toDate = to?.let { java.time.LocalDate.parse(it) } ?: java.time.LocalDate.now()
+        val fromDate = from?.let { java.time.LocalDate.parse(it) } ?: toDate.minusDays(6)
+        val days = rideTripService.getMyEarnings(currentUser.userId, fromDate, toDate).map { day ->
+            mapOf(
+                "date" to day.date.toString(),
+                "tripCount" to day.tripCount,
+                "grossFare" to day.grossFare,
+                "platformFees" to day.platformFees,
+                "netEarnings" to day.netEarnings,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "from" to fromDate.toString(), "to" to toDate.toString(), "days" to days))
     }
 
     @PostMapping("/trips/{tripId}/accept")
@@ -287,6 +311,14 @@ class RideController(
     @ExceptionHandler(RideNoActiveOfferException::class)
     fun handleNoActiveOffer(ex: RideNoActiveOfferException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("NO_ACTIVE_OFFER", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidEarningsRangeException::class)
+    fun handleInvalidEarningsRange(ex: InvalidEarningsRangeException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_EARNINGS_RANGE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(java.time.format.DateTimeParseException::class)
+    fun handleBadDate(ex: java.time.format.DateTimeParseException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DATE_FORMAT", "from/to must be in YYYY-MM-DD format"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
