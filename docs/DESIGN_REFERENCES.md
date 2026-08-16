@@ -6952,3 +6952,21 @@ phone number is stored as `0788555123` (no `+250` prefix), while the demo user's
 `+250788555123` real-404'd (`GIFT_RECIPIENT_NOT_FOUND`) purely because of this format mismatch, not
 a backend bug -- confirmed via a direct `SELECT phone_number FROM itunda.users` query before
 retrying with the exact stored format.
+
+**Ported to Android same session, closing this feature on all 3 platforms.** A "Send as a gift
+instead" `Switch` + note field + theme `FilterChip` row added to `TransferAmountScreen`
+(`features/payments/impl`), threading gift state through `ItundaAppScreen.kt`'s biometric-confirm
+and device-step-up-retry paths into a new `MainViewModel.sendGift`, plus `SendGiftRequest`/
+`sendGift`/`getGift` added to `ApiService.kt`. `:features:payments:impl:compileDebugKotlin`,
+`:app:compileDebugKotlin`, and `:core:network:compileDebugKotlin` all `BUILD SUCCESSFUL` (a real
+missing-import compile error was caught and fixed on the first attempt: `SendGiftRequest` needed an
+explicit import in `MainViewModel.kt`, this codebase's `core.network` package doesn't wildcard-import
+anywhere). Not live-verified on a physical device this pass (no device connected this session) --
+compile-verified only, same bar as several other lower-priority parity items this session.
+
+**Standalone gift feature status across all 3 platforms**: bank-mfe fully live-verified (real
+send-hold-claim money loop against the deployed backend); iOS ported, partially compile-verified
+(`FeaturePayments`/`CoreNetwork` framework targets build+link+codesign clean, but the full
+`ItundaApp` App-target build is blocked by an unrelated, pre-existing environment regression -- see
+`project_itunda_ios_build_env` memory); Android ported, compile-verified only. The backend itself was
+never touched this pass -- it was already fully built and live-proven before any client existed.
