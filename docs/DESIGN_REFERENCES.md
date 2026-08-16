@@ -7369,3 +7369,31 @@ RESTAURANT_NOT_ACCEPTING_ORDERS`. `POST /merchant/accepting-orders {"accepting":
 After funding the buyer's wallet, the identical retry succeeded with a real `201` and a real order
 id. `GET /shopping/merchants` confirmed `isAcceptingOrders: true` on the resumed restaurant's real
 browse row.
+
+## 102. Uber Eats-style "busy kitchen" delivery delay signal
+
+**Added 2026-08-16.** Uber's own official "Managing busy delivery times" merchant help article
+confirms a real backlog of in-kitchen orders is a genuine, documented cause of delivery delay --
+every major delivery app (Uber Eats, DoorDash, Baemin) surfaces this to customers. itunda's
+`DeliveryEtaEstimator` already computed an honest ESTIMATE-labeled delivery time from distance +
+prep time, but had no signal for a restaurant's current order-volume backlog.
+
+**Built**: `EatsOrderRepository.getActiveKitchenOrderCounts`, a batched `GROUP BY` over real
+kitchen-stage orders only (`PLACED`/`ACCEPTED`/`PREPARING` -- an order already
+`READY_FOR_PICKUP` or later has left the kitchen's own workload, so counting it would overstate
+current backlog), same discipline `getFavoriteCounts`/`getRestaurantRatingSummaries` already
+established. `DeliveryEtaEstimator.estimateDeliveryMinutes` gained an `isBusy` param -- a flat,
+honest 10-minute delay bump, still capped by the existing 90-minute max, default `false` and fully
+backward-compatible with both existing call sites. `GET /shopping/merchants` computes `isBusy` per
+merchant (real threshold: `BUSY_ORDER_THRESHOLD = 5` concurrent kitchen-stage orders) and exposes
+it alongside the already-bumped `deliveryTimeMinutes`. bank-mfe's restaurant browse shows a "🔥
+Busy, delivery may take longer" badge. 4 new Kotest blocks for `DeliveryEtaEstimator` (previously
+completely untested): non-busy baseline, busy strictly longer, busy respects the max bound,
+default-param backward compatibility.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: registered a fresh
+real restaurant with a real location and menu product, and a fresh real buyer. After 4 real placed
+orders, `GET /shopping/merchants` showed `isBusy: false`, `deliveryTimeMinutes: 15`. Placing a real
+5th order and re-querying the identical endpoint flipped it to `isBusy: true`,
+`deliveryTimeMinutes: 25` -- exactly a real +10-minute bump at exactly the real
+`BUSY_ORDER_THRESHOLD = 5` boundary, not just eventual busy-ness sometime after enough orders.
