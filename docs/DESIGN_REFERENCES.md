@@ -6859,6 +6859,14 @@ block covers both the real success path and a not-found code). `scripts/verify-l
 confirmed clean -- this feature reuses `collect()`'s existing ledger accounts, no new
 `LedgerAccountType` introduced.
 
+**Live-verified end to end against the real deployed backend, 2026-08-16**: generated a real
+`PaymentIntent` via `POST /merchant/qr/generate` (real `ussdCode: "243118"`), set a real USSD PIN
+via `POST /ussd/pin`, then walked the full real stateless `POST /ussd/session` flow -- menu
+correctly showed "5. Pay a merchant" -> code prompt -> PIN prompt -> `END Paid 500 RWF to Booking
+Deposit Test Salon. New balance: 477 RWF.` Confirmed directly in the database that the resulting
+transaction's real `channel` column is `USSD`, not the generic `QR` fallback, proving the
+channel-label fix works too.
+
 ## 87. Coupang Eats AI 개인화 메뉴 추천 -- budget filter + real "recommended for you" ranking
 
 **Added 2026-08-16.** Coupang's real 2026 roadmap ("when users set a budget, the app will factor in
@@ -6885,3 +6893,11 @@ several other entries already in this file.
 *zero* dish-grid client at all -- Android is the only platform with this whole feature, not just
 missing the new budget/recommendation fields. Bigger scope than this session's own pass, worth its
 own future session.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: `GET
+/api/v1/eats/dishes` for the demo user (who has real prior orders from "Heaven Kigali") returned
+both Heaven Kigali dishes (`Grilled tilapia`, `Beef brochettes`) first with `recommended: true`,
+every other merchant's dishes `recommended: false` -- the familiarity re-sort works on real order
+history, not just compiles. `GET /api/v1/eats/dishes?maxBudget=1300` correctly returned exactly the
+2 dishes at or under budget (`Banana bread slice` 1300, `Espresso` 1200), excluding `Croissant`
+(1500) and every pricier dish -- the budget filter is real, not just present in the query string.
