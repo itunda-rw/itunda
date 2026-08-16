@@ -709,6 +709,8 @@ public struct RideTripDto: Decodable {
 }
 public struct RideTripResponse: Decodable { public let success: Bool; public let trip: RideTripDto }
 public struct RideTripsResponse: Decodable { public let success: Bool; public let trips: [RideTripDto] }
+public struct StartRideTripRequest: Encodable { public let pin: String }
+public struct RideTripPinResponse: Decodable { public let success: Bool; public let pin: String }
 // Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt
 // doc comment.
 public struct RideStopRequestDto: Encodable {
@@ -1260,8 +1262,17 @@ extension NetworkClient {
     public func declineRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/decline", body: EmptyBody())
     }
-    public func startRideTrip(id: String) async throws -> RideTripResponse {
-        try await authenticatedPost("api/v1/rides/trips/\(id)/start", body: EmptyBody())
+    // Real Uber "Verify Your Ride" PIN (uber.com/pl/en/blog/pin-number) -- the driver
+    // must enter the exact 4-digit code the passenger reads aloud before the trip (and
+    // the fare clock) actually starts.
+    public func startRideTrip(id: String, pin: String) async throws -> RideTripResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(id)/start", body: StartRideTripRequest(pin: pin))
+    }
+
+    // Real passenger-only PIN lookup -- a stranger, or even the trip's own driver, gets
+    // a real 404 from the backend.
+    public func getRideTripPin(id: String) async throws -> RideTripPinResponse {
+        try await get("api/v1/rides/trips/\(id)/pin")
     }
     public func completeRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/complete", body: EmptyBody())

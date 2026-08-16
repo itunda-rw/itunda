@@ -3928,8 +3928,16 @@ interface ApiService {
     @POST("api/v1/rides/trips/{tripId}/decline")
     suspend fun declineRideTrip(@Path("tripId") tripId: String): RideTripResponse
 
+    // Real Uber "Verify Your Ride" PIN (uber.com/pl/en/blog/pin-number) -- the driver
+    // must enter the exact 4-digit code the passenger reads aloud before the trip (and
+    // the fare clock) actually starts.
     @POST("api/v1/rides/trips/{tripId}/start")
-    suspend fun startRideTrip(@Path("tripId") tripId: String): RideTripResponse
+    suspend fun startRideTrip(@Path("tripId") tripId: String, @Body request: StartRideTripRequest): RideTripResponse
+
+    // Real passenger-only PIN lookup -- a stranger, or even the trip's own driver, gets
+    // a real 404 from the backend.
+    @GET("api/v1/rides/trips/{tripId}/pin")
+    suspend fun getRideTripPin(@Path("tripId") tripId: String): RideTripPinResponse
 
     @POST("api/v1/rides/trips/{tripId}/complete")
     suspend fun completeRideTrip(@Path("tripId") tripId: String): RideTripResponse
@@ -4424,6 +4432,8 @@ data class RideTripDto(
 )
 data class RideTripResponse(val success: Boolean, val trip: RideTripDto)
 data class RideTripsResponse(val success: Boolean, val trips: List<RideTripDto>)
+data class StartRideTripRequest(val pin: String)
+data class RideTripPinResponse(val success: Boolean, val pin: String)
 // Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt
 // doc comment.
 data class RideStopRequestDto(val address: String, val latitude: Double, val longitude: Double)

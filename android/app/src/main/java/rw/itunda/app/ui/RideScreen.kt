@@ -57,6 +57,7 @@ import rw.itunda.core.network.RideTripDto
 import rw.itunda.core.network.RideTripReviewDto
 import rw.itunda.core.network.RideTripStopDto
 import rw.itunda.core.network.SetRideDriverAvailabilityRequest
+import rw.itunda.core.network.StartRideTripRequest
 import rw.itunda.core.network.SubmitRideReviewRequest
 import rw.itunda.core.network.UpdateRideDriverLocationRequest
 import rw.itunda.core.network.superAppErrorMessage
@@ -158,11 +159,22 @@ private fun RidePassengerContent() {
 
     val activeTrip = myTrips?.firstOrNull { it.status == "REQUESTED" || it.status == "DRIVER_ASSIGNED" || it.status == "IN_PROGRESS" }
     val pastTrips = myTrips?.filter { it.status == "COMPLETED" || it.status == "CANCELLED" } ?: emptyList()
+    // Real Uber "Verify Your Ride" PIN -- fetched once a driver is assigned so the
+    // passenger can read it aloud before pickup.
+    var activeTripPin by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(activeTrip?.id) {
         val id = activeTrip?.id
         activeTripStops = if (id == null) null else try {
             NetworkClient.apiService.getRideTripStops(id).stops.takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    LaunchedEffect(activeTrip?.id, activeTrip?.status) {
+        activeTripPin = if (activeTrip == null || activeTrip.status == "REQUESTED") null else try {
+            NetworkClient.apiService.getRideTripPin(activeTrip.id).pin
         } catch (_: Exception) {
             null
         }
@@ -251,6 +263,18 @@ private fun RidePassengerContent() {
             item { Text("Your ride", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             item {
                 RideTripCard(activeTrip, stops = activeTripStops) {
+                    if (activeTripPin != null && activeTrip.status == "DRIVER_ASSIGNED") {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand.copy(alpha = 0.1f))
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Tell your driver this PIN before you get in", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                Text(activeTripPin ?: "", color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 28.sp, letterSpacing = 4.sp)
+                            }
+                        }
+                    }
                     activeTrip.driverId?.let { DriverRatingSection(it) }
                     if (activeTrip.status != "IN_PROGRESS") {
                         Box(
@@ -363,6 +387,9 @@ private fun RideDriverContent() {
     var activeTripStops by remember { mutableStateOf<Map<String, List<RideTripStopDto>>>(emptyMap()) }
     var busyTripId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real Uber "Verify Your Ride" PIN -- what the driver has typed in for each real
+    // active trip, keyed by trip id.
+    var startPinInputs by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val coroutineScope = rememberCoroutineScope()
 
     val requestLocation = rememberRealLocationRequester(
@@ -561,22 +588,30 @@ private fun RideDriverContent() {
                                         contentAlignment = Alignment.Center,
                                     ) { Text(if (busyTripId == trip.id) "…" else "Arrived at ${nextStop.address}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                                 }
-                                val nextAction: (suspend (String) -> RideTripDto)? = when (trip.status) {
-                                    "DRIVER_ASSIGNED" -> { id -> NetworkClient.apiService.startRideTrip(id).trip }
-                                    "IN_PROGRESS" -> { id -> NetworkClient.apiService.completeRideTrip(id).trip }
-                                    else -> null
-                                }
-                                nextAction?.let { action ->
+                                if (trip.status == "DRIVER_ASSIGNED") {
+                                    val pin = startPinInputs[trip.id] ?: ""
+                                    androidx.compose.material3.OutlinedTextField(
+                                        value = pin,
+                                        onValueChange = { v -> startPinInputs = startPinInputs + (trip.id to v.filter { it.isDigit() }.take(4)) },
+                                        placeholder = { Text("Ask passenger for their 4-digit PIN") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                    )
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                            .background(if (pin.length == 4) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                            .clickable(enabled = busyTripId != trip.id && pin.length == 4) {
+                                                act(trip.id) { id -> NetworkClient.apiService.startRideTrip(id, StartRideTripRequest(pin)).trip }
+                                            }.padding(vertical = 12.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) { Text(if (busyTripId == trip.id) "…" else "Start trip", color = Color.White, fontWeight = FontWeight.Bold) }
+                                } else if (trip.status == "IN_PROGRESS") {
                                     Box(
                                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
-                                            .clickable(enabled = busyTripId != trip.id) { act(trip.id, action) }.padding(vertical = 12.dp),
+                                            .clickable(enabled = busyTripId != trip.id) { act(trip.id) { id -> NetworkClient.apiService.completeRideTrip(id).trip } }
+                                            .padding(vertical = 12.dp),
                                         contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            if (busyTripId == trip.id) "…" else if (trip.status == "DRIVER_ASSIGNED") "Start trip" else "Complete trip",
-                                            color = Color.White, fontWeight = FontWeight.Bold,
-                                        )
-                                    }
+                                    ) { Text(if (busyTripId == trip.id) "…" else "Complete trip", color = Color.White, fontWeight = FontWeight.Bold) }
                                 }
                             }
                         }

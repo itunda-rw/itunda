@@ -110,6 +110,9 @@ private struct RidePassengerContent: View {
     @State private var reviewedTripIds: Set<String> = []
     @State private var error: String?
     @State private var pollTask: Task<Void, Never>?
+    // Real Uber "Verify Your Ride" PIN -- fetched once a driver is assigned so the
+    // passenger can read it aloud before pickup.
+    @State private var activeTripPin: String?
 
     private var activeTrip: RideTripDto? {
         myTrips.first { $0.status == "REQUESTED" || $0.status == "DRIVER_ASSIGNED" || $0.status == "IN_PROGRESS" }
@@ -126,6 +129,14 @@ private struct RidePassengerContent: View {
                     Text("Your ride").bold().foregroundColor(IDS.Colors.textPrimary)
                     RideTripCard(trip: active, stops: activeTripStops) {
                         VStack(alignment: .leading, spacing: 8) {
+                            if let pin = activeTripPin, active.status == "DRIVER_ASSIGNED" {
+                                VStack(spacing: 2) {
+                                    Text("Tell your driver this PIN before you get in").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    Text(pin).font(.system(size: 28, weight: .bold)).foregroundColor(IDS.Colors.brand).tracking(4)
+                                }
+                                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(IDS.Colors.brand.opacity(0.1)).cornerRadius(10)
+                            }
                             if let driverId = active.driverId {
                                 DriverRatingSection(driverId: driverId)
                             }
@@ -218,7 +229,10 @@ private struct RidePassengerContent: View {
         }
         .onDisappear { pollTask?.cancel() }
         .onChange(of: activeTrip?.id) { _ in
-            Task { await loadActiveTripStops() }
+            Task { await loadActiveTripStops(); await loadActiveTripPin() }
+        }
+        .onChange(of: activeTrip?.status) { _ in
+            Task { await loadActiveTripPin() }
         }
     }
 
@@ -229,6 +243,11 @@ private struct RidePassengerContent: View {
     private func loadActiveTripStops() async {
         guard let id = activeTrip?.id else { activeTripStops = []; return }
         activeTripStops = (try? await NetworkClient.shared.getRideTripStops(tripId: id).stops) ?? []
+    }
+
+    private func loadActiveTripPin() async {
+        guard let id = activeTrip?.id, activeTrip?.status != "REQUESTED" else { activeTripPin = nil; return }
+        activeTripPin = (try? await NetworkClient.shared.getRideTripPin(id: id).pin) ?? nil
     }
 
     private func requestRide() async {
@@ -329,6 +348,9 @@ private struct RideDriverContent: View {
     @State private var busyTripId: String?
     @State private var error: String?
     @State private var pollTask: Task<Void, Never>?
+    // Real Uber "Verify Your Ride" PIN -- what the driver has typed in for each real
+    // active trip, keyed by trip id.
+    @State private var startPinInputs: [String: String] = [:]
 
     private var activeDriverTrips: [RideTripDto] { myDriverTrips.filter { $0.status == "DRIVER_ASSIGNED" || $0.status == "IN_PROGRESS" } }
     private var pastDriverTrips: [RideTripDto] { myDriverTrips.filter { $0.status == "COMPLETED" || $0.status == "CANCELLED" } }
@@ -390,11 +412,20 @@ private struct RideDriverContent: View {
                                         .disabled(busyTripId == trip.id)
                                     }
                                     if trip.status == "DRIVER_ASSIGNED" {
-                                        Button(action: { Task { await act(trip.id) { try await NetworkClient.shared.startRideTrip(id: $0).trip } } }) {
+                                        let pin = startPinInputs[trip.id] ?? ""
+                                        TextField("Ask passenger for their 4-digit PIN", text: Binding(
+                                            get: { startPinInputs[trip.id] ?? "" },
+                                            set: { startPinInputs[trip.id] = String($0.filter(\.isNumber).prefix(4)) }
+                                        ))
+                                        .keyboardType(.numberPad)
+                                        .multilineTextAlignment(.center)
+                                        .padding(10)
+                                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                                        Button(action: { Task { await act(trip.id) { try await NetworkClient.shared.startRideTrip(id: $0, pin: pin).trip } } }) {
                                             Text(busyTripId == trip.id ? "…" : "Start trip").bold().foregroundColor(.white)
-                                                .frame(maxWidth: .infinity).padding(.vertical, 12).background(IDS.Colors.brand).cornerRadius(10)
+                                                .frame(maxWidth: .infinity).padding(.vertical, 12).background(pin.count == 4 ? IDS.Colors.brand : Color.gray).cornerRadius(10)
                                         }
-                                        .disabled(busyTripId == trip.id)
+                                        .disabled(busyTripId == trip.id || pin.count != 4)
                                     } else if trip.status == "IN_PROGRESS" {
                                         Button(action: { Task { await act(trip.id) { try await NetworkClient.shared.completeRideTrip(id: $0).trip } } }) {
                                             Text(busyTripId == trip.id ? "…" : "Complete trip").bold().foregroundColor(.white)
