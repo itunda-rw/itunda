@@ -8091,3 +8091,33 @@ pickup discount absorbed) -- both sides of the ledger balance exactly. A second,
 the same restaurant with `fulfillmentType: DELIVERY` showed real `pickupDiscount: 0` -- the discount
 never applies outside `PICKUP`. Setting `pickupDiscountPercent` to `0`, `-5`, and `150` all
 real-`400`'d `INVALID_PICKUP_DISCOUNT`.
+
+## 123. KakaoTalk-style pin chat room to top (채팅방 상단 고정)
+
+**Added 2026-08-17.** A real, well-known KakaoTalk chat-room long-press action, distinct from the
+two already-built room actions (`quiet`/mute, `archive`) and distinct from the existing per-MESSAGE
+pin (`setPinnedMessage`) -- pinning the ROOM to the top of the chat list is a different, real
+feature. `ConversationPreference` had `quiet` and `archived` but nothing for this third real
+KakaoTalk action.
+
+**Built**: `ConversationPreference.pinned` (migration `V268`), sitting next to `quiet`/`archived` it
+already has -- same private-to-one-participant model, never visible to or forced on the other
+participant. `MessagingService.setConversationPinnedToTop`/`isConversationPinnedToTop` mirror
+`setConversationQuiet`/`setConversationArchived`'s exact shape. Critically, the sort order lives at
+the **DB level** in `ConversationRepository.findByParticipantNotArchived`'s JPQL (a
+`CASE WHEN ... pinned = true THEN 0 ELSE 1 END` clause ahead of the existing `lastMessageAt DESC`)
+rather than an in-app re-sort -- the same "pagination stays correct" discipline the existing
+`archived` filter already establishes: a post-hoc re-sort of an already-paged result would misplace
+a pinned room from a later page. `POST`/`GET /messages/conversations/{id}/pin-to-top`, deliberately
+not `/pin` (already the per-message pin endpoint). 4 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: created two real 1:1
+conversations for the same user -- an older one (`lastMessageAt` earlier) and a newer one
+(`lastMessageAt` later). `GET /messages/conversations` confirmed normal chronological order (newer
+first). `POST /pin-to-top {"pinned": true}` on the older conversation, then a real re-fetch of
+`GET /messages/conversations` confirmed the older, now-pinned conversation sorted ABOVE the newer,
+unpinned one -- proving the real DB-level ordering, not a client-side illusion -- with its summary
+correctly showing `pinnedToTop: true`. Unpinning (`{"pinned": false}`) real-reverted the list to
+normal chronological order. A freshly registered, non-participant user calling `pin-to-top` on this
+conversation real-`404`'d `CONVERSATION_NOT_FOUND` -- the same IDOR discipline every other
+controller in this codebase already enforces.
