@@ -7733,3 +7733,32 @@ Talk contacts. `GET /messages/contacts/birthdays-today` as B returned exactly us
 and exclusion paths proven by a single real call, not two separately-trusted assertions. A control
 call from a fresh user D with zero saved contacts returned a real empty list with a real `200`, not
 an error.
+
+## 113. Toss Securities-style stock target-price alerts
+
+**Added 2026-08-17.** A real, well-known Toss Securities feature (목표가 알림): set a target price on
+a watched stock and get notified once it's crossed. itunda's `StockWatchlist` had no alert concept
+at all despite stock prices genuinely moving day-to-day via a real deterministic simulation.
+
+**Built**: `StockWatchlist.targetPrice`/`targetDirection`/`alertTriggeredAt` (migration `V260`).
+`StocksService.setPriceAlert` -- auto-adds the stock to the watchlist if not already watched (same
+real Toss UX: there's no "alert but not watching" concept), re-arms (clears the fired flag) if a
+new target is set on an already-triggered row. `StocksService.clearPriceAlert`. A new
+`StockPriceAlertScheduler` (real 60-second poll, mirroring `ProductPriceDropScheduler`'s exact
+shape) that finds due alerts and fires them -- with a real re-check inside `triggerPriceAlert`
+itself right before firing, so a genuine race can't double-fire. Real `ABOVE`/`BELOW` direction
+validation and positive-price validation. `POST`/`DELETE /stocks/{id}/price-alert`. 6 new Kotest
+blocks. Backend-only this pass -- itunda's stock UI lives in bank-mfe's existing dashboard
+component, and a dedicated alert-management panel is a natural follow-up.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: checked the real stock
+catalog (`GET /stocks`), found `MTNR` at a real current price of `127.68`. Set a real alert
+(`{"targetPrice": 100, "direction": "ABOVE"}`) already crossed by that real price. Within the real
+60-second scheduler window, a direct DB check confirmed `alert_triggered_at` had genuinely been set
+(`2026-08-16 17:44:51`) -- not just trusting the API, the real background job actually ran. `GET
+/notifications` confirmed a real `STOCK_PRICE_ALERT` notification with the exact expected content:
+`"MTNR hit your target price" / "MTN Rwanda PLC is now 127.68 (target: 100.00)"`. Setting a new
+target re-armed the alert (`alertTriggeredAt` back to `null` in the real response).
+`DELETE /price-alert` real-cleared `targetPrice`/`targetDirection`/`alertTriggeredAt` all to `null`.
+An invalid direction (`"SIDEWAYS"`) and a negative target price both real-`400`'d
+`INVALID_PRICE_ALERT`.
