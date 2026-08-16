@@ -8121,3 +8121,33 @@ correctly showing `pinnedToTop: true`. Unpinning (`{"pinned": false}`) real-reve
 normal chronological order. A freshly registered, non-participant user calling `pin-to-top` on this
 conversation real-`404`'d `CONVERSATION_NOT_FOUND` -- the same IDOR discipline every other
 controller in this codebase already enforces.
+
+## 124. Karrot-style price-drop notification (가격 하락 알림)
+
+**Added 2026-08-17.** itunda's realestate module had no way for a lister to update a listing's
+price at all (only create/mark-taken/remove existed), and the real property wishlist
+(`PropertyListingFavoriteService`) had zero connection to price changes. Sourced from Karrot's own
+real transaction-notification categories, which explicitly include price drops on a favorited
+("관심") listing ("거래(나눔 이벤트/거래 후기/가격 하락 등)"), corroborated by a real Clien community
+thread asking exactly this behavior ("당근마켓 가격만 내리면 관심유저에게 알람가나요?").
+
+**Built**: `PropertyListingService.updatePrice` + `POST /realestate/listings/{id}/price`. Only a
+real price **decrease** notifies every favoriter, matching the sourced "가격 하락" scoping exactly --
+not any price edit. Deliberately **NOT** `@Transactional` itself -- the single
+`propertyListingRepository.save` is already atomic on its own via Spring Data's implicit per-call
+transaction (same reasoning `ProductSubscriptionService.executeOne`'s Section 118 fix already
+establishes), so the per-favoriter notification loop afterward (each its own separate
+`notificationRepository.save` + push call, wrapped in try/catch) can never poison or roll back the
+price change itself -- correctly sidesteps the exact self-invocation/transaction-poisoning pitfall
+closed in Sections 115/118 this session, reasoned correctly from the start. New
+`PropertyListingFavoriteRepository.findByPropertyListingId`. 6 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-16**: created a real listing
+at `5,000,000` RWF, a second user favorited it. As the lister, dropped the price to `4,500,000` --
+the real response reflected the new price. `GET /notifications` as the favoriter confirmed a real
+`PROPERTY_PRICE_DROP` notification with the exact expected content: `"Nice apartment" dropped from
+5000000.00 to 4500000 RWF`. Raising the price back to `5,000,000` (a real increase) produced **no**
+new notification -- the favoriter's `PROPERTY_PRICE_DROP` count stayed at exactly `1`, proving the
+real "가격 하락" (decrease-only) scoping, not any price edit. A non-owner attempting the price update
+real-`404`'d `PROPERTY_LISTING_NOT_FOUND` -- the same not-found discipline every other listing
+endpoint already uses. A non-positive price (`0`) real-`400`'d `INVALID_PROPERTY_LISTING`.
