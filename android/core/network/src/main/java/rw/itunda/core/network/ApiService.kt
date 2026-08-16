@@ -1659,6 +1659,10 @@ data class EatsOrderDto(
     val deliveryFee: Double,
     val platformFee: Double,
     val totalAmount: Double,
+    // Real Baemin-style tiered order-amount promotion (2026-08-16) -- itunda-funded,
+    // not restaurant-funded. See EatsPromotionCalculator's own doc comment on the
+    // backend. Zero for every order below the lowest real tier.
+    val promotionDiscount: Double = 0.0,
     val transactionId: String,
     val deliveryPayoutTransactionId: String?,
     val status: String,

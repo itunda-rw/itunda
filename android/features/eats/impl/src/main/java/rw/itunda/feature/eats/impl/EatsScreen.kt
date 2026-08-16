@@ -1753,6 +1753,11 @@ private fun EatsOrderConfirmationView(order: EatsOrderDto, onDone: () -> Unit) {
         text = {
             Column {
                 Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                // Real Baemin-style tiered order-amount promotion (2026-08-16) -- see
+                // EatsPromotionCalculator's own doc comment on the backend.
+                if (order.promotionDiscount > 0) {
+                    Text("%,.0f RWF off, on us".format(order.promotionDiscount), color = Ids.colors.success, fontSize = 12.sp)
+                }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text("Delivering to ${order.deliveryAddress}", color = Ids.colors.textSecondary, fontSize = 13.sp)
             }
