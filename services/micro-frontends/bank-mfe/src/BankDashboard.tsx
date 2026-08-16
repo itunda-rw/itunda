@@ -14242,6 +14242,9 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Real Baemin 찜순 (favorite-count) sort (2026-08-16) -- unlike the fastest-delivery
+  // sort, this needs no buyer geolocation, so it's a real, immediately usable toggle.
+  const [sortByFavorites, setSortByFavorites] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
   const [confirmed, setConfirmed] = useState<EatsOrder | null>(null);
@@ -14289,12 +14292,12 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
 
   const load = () => {
     setError(null);
-    fetchRestaurants(selectedCategory ?? undefined, debouncedSearch || undefined)
+    fetchRestaurants(selectedCategory ?? undefined, debouncedSearch || undefined, undefined, undefined, sortByFavorites ? 'favorites' : undefined)
       .then(setRestaurants)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load restaurants.'));
   };
 
-  useEffect(load, [selectedCategory, debouncedSearch]);
+  useEffect(load, [selectedCategory, debouncedSearch, sortByFavorites]);
 
   // Real "Reorder" (2026-07-19): re-populates a fresh cart from a real past order's
   // real items, filtered to whatever's still real and active on the restaurant's
@@ -14402,6 +14405,16 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
           />
+          {/* Real Baemin 찜순 (favorite-count) sort toggle (2026-08-16) -- needs no
+              buyer geolocation, unlike the fastest-delivery sort, so this is a real,
+              immediately usable chip rather than one waiting on a separate gap. */}
+          <button
+            className="itunda-btn itunda-btn-secondary"
+            style={{ marginBottom: '12px', padding: '6px 14px', fontSize: '13px', backgroundColor: sortByFavorites ? 'var(--itunda-blue-light)' : undefined, color: sortByFavorites ? 'var(--itunda-blue)' : undefined }}
+            onClick={() => setSortByFavorites((v) => !v)}
+          >
+            ❤️ Most favorited
+          </button>
           {error ? (
             <ErrorCard message={error} onRetry={load} />
           ) : restaurants === null ? (
@@ -14452,6 +14465,9 @@ function OrderFoodView({ onMessageSeller }: { onMessageSeller: (conversationId: 
                       <Star size={11} color="#F5A623" fill="#F5A623" /> {r.rating.toFixed(1)} ({r.reviewCount})
                     </span>
                   )}
+                  {/* Real Baemin 찜 (favorites) count (2026-08-16) -- see
+                      ShoppingController.getEligibleMerchants's own doc comment. */}
+                  {!!r.favoriteCount && r.favoriteCount > 0 && <span>· ❤️ {r.favoriteCount.toLocaleString()}</span>}
                   {r.distanceKm != null && <span>· {r.distanceKm.toFixed(1)} km</span>}
                   {r.deliveryTimeMinutes != null && <span>· ~{r.deliveryTimeMinutes} min</span>}
                   {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}

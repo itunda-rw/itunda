@@ -22,7 +22,8 @@ import type { ShoppingMerchant } from './shopping';
 // Real Baemin/Coupang Eats-style "fastest delivery" sort tab (2026-08-16) -- only
 // takes effect when buyerLat/buyerLng are also supplied (see backend
 // ShoppingController.getEligibleMerchants's own doc comment for why).
-export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number, sortBy?: 'delivery_time') => {
+// 'favorites' added 2026-08-16 -- real Baemin 찜순 sort, needs no buyer location.
+export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number, sortBy?: 'delivery_time' | 'favorites') => {
   const params = new URLSearchParams();
   params.set('businessType', 'RESTAURANT');
   if (category) params.set('category', category);

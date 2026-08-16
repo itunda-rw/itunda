@@ -14,6 +14,7 @@ import rw.itunda.core.domain.MerchantBusinessType
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.geo.DeliveryEtaEstimator
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.repository.EatsFavoriteRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MenuOptionChoiceRepository
 import rw.itunda.core.repository.MenuOptionGroupRepository
@@ -44,6 +45,7 @@ class ShoppingController(
     private val merchantRepository: MerchantRepository,
     private val merchantProductRepository: MerchantProductRepository,
     private val eatsReviewRepository: EatsReviewRepository,
+    private val eatsFavoriteRepository: EatsFavoriteRepository,
     private val menuOptionGroupRepository: MenuOptionGroupRepository,
     private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
     private val priceTierRepository: ProductPriceTierRepository,
@@ -91,6 +93,13 @@ class ShoppingController(
         // a stored column), same discipline `getDishes`'s own `recommended` re-sort
         // already established: never re-fetches, so this page's real pagination/count
         // stays exact.
+        //
+        // "favorites" added 2026-08-16 -- real Baemin 찜순 (favorite-count) sort, a
+        // real, publicly-cited popularity signal on Baemin's own restaurant listings
+        // (buyers can sort restaurants by how many people have favorited them).
+        // itunda already tracked EatsFavorite per user, just never surfaced or sorted
+        // by the aggregate count. Also purely in-page, same reasoning as delivery_time,
+        // but unlike delivery_time this one needs no buyer location at all.
         @RequestParam(required = false) sortBy: String?,
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
@@ -104,7 +113,12 @@ class ShoppingController(
         } else {
             emptyMap()
         }
-        data class MerchantRow(val map: Map<String, Any?>, val deliveryTimeMinutes: Int?)
+        val favoriteCountByMerchant = if (page.content.isNotEmpty()) {
+            eatsFavoriteRepository.getFavoriteCounts(page.content.map { it.id }).associate { it.restaurantId to it.count }
+        } else {
+            emptyMap()
+        }
+        data class MerchantRow(val map: Map<String, Any?>, val deliveryTimeMinutes: Int?, val favoriteCount: Long)
         var rows = page.content.map { merchant ->
             val distanceKm = if (hasBuyerLocation && merchant.latitude != null && merchant.longitude != null) {
                 GeoUtils.haversineKm(buyerLat!!, buyerLng!!, merchant.latitude!!, merchant.longitude!!)
@@ -113,12 +127,16 @@ class ShoppingController(
             }
             val rating = ratingByMerchant[merchant.id]
             val deliveryTimeMinutes = distanceKm?.let { DeliveryEtaEstimator.estimateDeliveryMinutes(it, merchant.avgPrepTimeMinutes) }
+            val favoriteCount = favoriteCountByMerchant[merchant.id] ?: 0L
             MerchantRow(
                 mapOf(
                     "merchantId" to merchant.id,
                     "businessName" to merchant.businessName,
                     "category" to merchant.category,
                     "cashbackRate" to "1%",
+                    // Real Baemin 찜 (favorites) count (2026-08-16) -- see
+                    // EatsFavoriteRepository.getFavoriteCounts's own doc comment.
+                    "favoriteCount" to favoriteCount,
                     // Real optional location (2026-07-19) -- lets a real map view plot real
                     // merchants, same field already set via POST /api/v1/merchant/location for
                     // Eats' distance-based delivery fee. Null for a merchant that hasn't set one.
@@ -142,6 +160,7 @@ class ShoppingController(
                     "openingHours" to merchant.openingHours,
                 ),
                 deliveryTimeMinutes,
+                favoriteCount,
             )
         }
         // sortedBy is stable, so ties (or every row when no buyer location was supplied,
@@ -150,6 +169,8 @@ class ShoppingController(
         // merchant this sort CAN honestly rank, never fabricated to the front or back.
         if (sortBy == "delivery_time") {
             rows = rows.sortedWith(compareBy(nullsLast()) { it.deliveryTimeMinutes })
+        } else if (sortBy == "favorites") {
+            rows = rows.sortedByDescending { it.favoriteCount }
         }
         val merchants = rows.map { it.map }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))

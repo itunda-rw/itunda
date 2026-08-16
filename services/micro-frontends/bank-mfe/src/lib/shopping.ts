@@ -29,6 +29,12 @@ export interface ShoppingMerchant {
   // the backend. Null/undefined unless the merchant has actually set one.
   phoneNumber?: string | null;
   openingHours?: string | null;
+  // Real Baemin 찜 (favorites) count (2026-08-16) -- see
+  // ShoppingController.getEligibleMerchants's own doc comment. The real backend
+  // response always includes it (0 for an unfavorited merchant); optional here only
+  // because a few call sites construct a partial synthetic ShoppingMerchant from a
+  // narrower source object (an ad/deal/favorite row) that never carried this field.
+  favoriteCount?: number;
 }
 
 // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see the backend's
