@@ -98,6 +98,24 @@ class MerchantProductServiceTest : BehaviorSpec({
                 updated.price shouldBe BigDecimal("3000")
             }
         }
+
+        When("marking it temporarily sold out") {
+            val updated = service.setSoldOut("owner_1", "p1", true)
+
+            Then("the real row is flagged sold out, distinct from the active/soft-delete flag") {
+                updated.soldOut shouldBe true
+                updated.active shouldBe true
+            }
+        }
+
+        When("un-marking a previously sold-out product") {
+            product.soldOut = true
+            val updated = service.setSoldOut("owner_1", "p1", false)
+
+            Then("the real row is real-available again") {
+                updated.soldOut shouldBe false
+            }
+        }
     }
 
     Given("a merchant trying to modify a product belonging to a different merchant") {
@@ -126,6 +144,17 @@ class MerchantProductServiceTest : BehaviorSpec({
             Then("it also real-404s") {
                 try {
                     service.removeProduct("owner_1", "p9")
+                    error("expected MerchantProductNotFoundException")
+                } catch (e: MerchantProductNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("attempting to mark it sold out") {
+            Then("it also real-404s rather than letting one merchant toggle another's stock") {
+                try {
+                    service.setSoldOut("owner_1", "p9", true)
                     error("expected MerchantProductNotFoundException")
                 } catch (e: MerchantProductNotFoundException) {
                     // expected

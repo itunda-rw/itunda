@@ -22,6 +22,7 @@ import {
   removeOptionGroup,
   removeProduct,
   setPriceTiers,
+  setSoldOut,
   type CardChargeResult,
   type MenuOptionGroup,
   type MerchantProduct,
@@ -549,6 +550,18 @@ function CatalogView() {
     }
   };
 
+  // Real Baemin CEO app/DoorDash-style "86" (temporarily sold out) toggle -- see
+  // lib/merchant.ts's own doc comment. A plain flip, no prompt needed -- unlike the
+  // surplus-deal toggle above, there's no expiry/quantity to collect.
+  const handleSetSoldOut = async (product: MerchantProduct) => {
+    try {
+      await setSoldOut(product.id, !product.soldOut);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('pos.soldOutError'));
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div className="itunda-card">
@@ -708,6 +721,12 @@ function CatalogView() {
                             style={{ color: product.isSurplusDeal ? 'var(--itunda-red)' : 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
                           >
                             {product.isSurplusDeal ? t('pos.surplusDealClearButton') : t('pos.surplusDealSetButton')}
+                          </button>
+                          <button
+                            onClick={() => handleSetSoldOut(product)}
+                            style={{ color: product.soldOut ? 'var(--itunda-red)' : 'var(--itunda-blue)', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            {product.soldOut ? t('pos.soldOutClearButton') : t('pos.soldOutSetButton')}
                           </button>
                           <button
                             onClick={() => removeProduct(product.id).then(load)}

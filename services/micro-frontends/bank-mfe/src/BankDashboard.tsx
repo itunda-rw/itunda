@@ -13999,11 +13999,16 @@ function MenuView({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ fontSize: '15px', fontWeight: 700 }}>{item.name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+                    <p style={{ fontSize: '13px', color: item.soldOut ? 'var(--itunda-red)' : 'var(--itunda-grey-500)' }}>
                       {item.price.toLocaleString()} RWF{hasOptions ? ' · options required' : ''}
+                      {item.soldOut ? ' · 🚫 Sold out' : ''}
                     </p>
                   </div>
-                  {hasOptions ? (
+                  {/* Real Baemin CEO app/DoorDash-style "86" enforcement (2026-08-16) --
+                      see MenuItem.soldOut's own doc comment. Shown, not hidden -- the
+                      item stays fully visible on the menu, just can't be added right
+                      now, same discipline Section 101's pause-orders badge established. */}
+                  {item.soldOut ? null : hasOptions ? (
                     <button onClick={() => toggleExpand(item.id)} className="itunda-btn itunda-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }}>
                       {isExpanded ? 'Close' : 'Choose options'}
                     </button>
@@ -14015,7 +14020,7 @@ function MenuView({
                     </div>
                   )}
                 </div>
-                {hasOptions && isExpanded && (
+                {!item.soldOut && hasOptions && isExpanded && (
                   <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--itunda-grey-200)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {groups.map((group) => (
                       <div key={group.id}>

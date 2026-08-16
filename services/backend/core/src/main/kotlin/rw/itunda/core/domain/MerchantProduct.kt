@@ -109,6 +109,18 @@ class MerchantProduct(
     @Column(name = "surplus_expires_at")
     var surplusExpiresAt: Instant? = null,
 
+    // Real Baemin CEO app/DoorDash-style "86" (temporarily mark sold out) toggle
+    // (2026-08-16) -- distinct from `active`: `active = false` is this backend's own
+    // existing soft-delete (removeProduct), which drops the item from the merchant's
+    // OWN catalog view entirely (findByMerchantIdAndActiveTrue), so there was never a
+    // way to un-delete it. A restaurant running out of one dish mid-shift needs the
+    // opposite: the item stays fully visible and re-toggleable in the merchant's own
+    // catalog and on the customer-facing menu (shown, not hidden -- same "explain why,
+    // don't just disappear it" discipline Section 101's pause-orders badge already
+    // established), just blocked from new orders until the merchant flips it back.
+    @Column(name = "sold_out", nullable = false)
+    var soldOut: Boolean = false,
+
     @Version
     var version: Long = 0,
 

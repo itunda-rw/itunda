@@ -91,6 +91,10 @@ export interface MerchantProduct {
   stockQuantity: number | null;
   isSurplusDeal?: boolean;
   surplusExpiresAt?: string | null;
+  // Real Baemin CEO app/DoorDash-style "86" (temporarily sold out) toggle (2026-08-16)
+  // -- see backend MerchantProduct.soldOut's own doc comment. Distinct from `active`
+  // (that's this backend's own soft-delete).
+  soldOut: boolean;
 }
 
 export interface PaymentIntent {
@@ -374,6 +378,14 @@ export const setSurplusDeal = (productId: string, expiresAt: string | null, stoc
   apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}/surplus-deal`, {
     method: 'PATCH',
     body: JSON.stringify({ expiresAt, stockQuantity }),
+  }).then((r) => r.product);
+
+// Real Baemin CEO app/DoorDash-style "86" (temporarily sold out) toggle (2026-08-16) --
+// see backend MerchantProductService.setSoldOut's own doc comment.
+export const setSoldOut = (productId: string, soldOut: boolean) =>
+  apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}/sold-out`, {
+    method: 'PATCH',
+    body: JSON.stringify({ soldOut }),
   }).then((r) => r.product);
 
 export const removeProduct = (productId: string) =>

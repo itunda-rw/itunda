@@ -267,6 +267,12 @@ class ShoppingController(
                 // decrements it atomically. Exposing it here prevents shoppers from
                 // building a cart around an item the merchant has already sold out.
                 "stockQuantity" to product.stockQuantity,
+                // Real Baemin CEO app/DoorDash-style "86" (temporarily sold out) flag
+                // (2026-08-16) -- see MerchantProduct.soldOut's own doc comment. Shown,
+                // not filtered out (unlike `active`), so a customer sees WHY the item
+                // can't be added right now instead of it silently vanishing from a menu
+                // they were just looking at.
+                "soldOut" to product.soldOut,
                 // durationMinutes -- real fix, 2026-07-25: this hand-built response map
                 // never included it since the 2026-07-25 booking feature was added, which
                 // meant the real "Book" action on this exact browse endpoint's data could

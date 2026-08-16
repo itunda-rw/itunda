@@ -398,6 +398,9 @@ export type TranslationKey =
   | 'pos.surplusDealHoursError'
   | 'pos.surplusDealStockPrompt'
   | 'pos.surplusDealError'
+  | 'pos.soldOutSetButton'
+  | 'pos.soldOutClearButton'
+  | 'pos.soldOutError'
   | 'pos.addProductTitle'
   | 'pos.nameLabel'
   | 'pos.priceLabel'
@@ -915,6 +918,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.surplusDealHoursError': 'Enter a real number of hours greater than zero.',
     'pos.surplusDealStockPrompt': 'How many units are you selling in this closing deal?',
     'pos.surplusDealError': 'Could not set this closing deal.',
+    'pos.soldOutSetButton': 'Mark sold out',
+    'pos.soldOutClearButton': 'Mark available',
+    'pos.soldOutError': 'Could not update this item.',
     'pos.addProductTitle': 'Add a product',
     'pos.nameLabel': 'Name',
     'pos.priceLabel': 'Price (RWF)',
@@ -1423,6 +1429,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.surplusDealHoursError': 'Andika umubare w\'amasaha uruta zeru.',
     'pos.surplusDealStockPrompt': 'Ni ibicuruzwa bingana iki ugurisha muri iri gurisha ryo gufunga?',
     'pos.surplusDealError': 'Ntibishoboka gushyiraho iri gurisha ryo gufunga.',
+    'pos.soldOutSetButton': 'Erekana ko ibuze',
+    'pos.soldOutClearButton': 'Erekana ko kihari',
+    'pos.soldOutError': 'Ntibishoboka kuvugurura iki gicuruzwa.',
     'pos.addProductTitle': 'Ongeraho igicuruzwa',
     'pos.nameLabel': 'Izina',
     'pos.priceLabel': 'Igiciro (RWF)',
@@ -1931,6 +1940,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'pos.surplusDealHoursError': 'Entrez un nombre d\'heures réel supérieur à zéro.',
     'pos.surplusDealStockPrompt': 'Combien d\'unités vendez-vous dans cette vente de clôture ?',
     'pos.surplusDealError': 'Impossible de définir cette vente de clôture.',
+    'pos.soldOutSetButton': 'Marquer épuisé',
+    'pos.soldOutClearButton': 'Marquer disponible',
+    'pos.soldOutError': 'Impossible de mettre à jour cet article.',
     'pos.addProductTitle': 'Ajouter un produit',
     'pos.nameLabel': 'Nom',
     'pos.priceLabel': 'Prix (RWF)',

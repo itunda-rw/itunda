@@ -55,6 +55,7 @@ class EmptyEatsOrderException(message: String) : RuntimeException(message)
 class InvalidEatsDeliveryAddressException(message: String) : RuntimeException(message)
 class InvalidEatsQuantityException(message: String) : RuntimeException(message)
 class MenuItemNotFoundException(message: String) : RuntimeException(message)
+class MenuItemSoldOutException(message: String) : RuntimeException(message)
 class SelfEatsOrderException(message: String) : RuntimeException(message)
 class RestaurantNotAcceptingOrdersException(message: String) : RuntimeException(message)
 class EatsOrderNotFoundException(message: String) : RuntimeException(message)
@@ -345,6 +346,14 @@ class EatsOrderService(
                 .orElseThrow { MenuItemNotFoundException("Menu item not found") }
             if (menuItem.merchantId != restaurantId || !menuItem.active) {
                 throw MenuItemNotFoundException("Menu item not found")
+            }
+            // Real Baemin CEO app/DoorDash-style "86" enforcement (2026-08-16) -- see
+            // MerchantProduct.soldOut's own doc comment. A distinct, real exception
+            // (not MenuItemNotFoundException above) since the item genuinely exists and
+            // is still shown to the buyer -- a 404 here would be a misleading lie about
+            // why the order failed.
+            if (menuItem.soldOut) {
+                throw MenuItemSoldOutException("${menuItem.name} is temporarily sold out")
             }
 
             val groups = groupsByProduct[menuItem.id] ?: emptyList()

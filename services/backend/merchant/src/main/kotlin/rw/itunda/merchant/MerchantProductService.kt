@@ -211,6 +211,22 @@ class MerchantProductService(
         return merchantProductRepository.save(product)
     }
 
+    // Real Baemin CEO app/DoorDash-style "86" (temporarily mark sold out) toggle -- see
+    // MerchantProduct.soldOut's own doc comment for why this is distinct from the
+    // existing active-flag soft-delete. Same focused-operation shape
+    // updateStockQuantity/setSurplusDeal already establish -- never touches
+    // pricing/description/booking settings.
+    fun setSoldOut(ownerUserId: String, productId: String, soldOut: Boolean): MerchantProduct {
+        val merchant = getMyMerchant(ownerUserId)
+        val product = merchantProductRepository.findById(productId)
+            .orElseThrow { MerchantProductNotFoundException("Product not found") }
+        if (product.merchantId != merchant.id) {
+            throw MerchantProductNotFoundException("Product not found")
+        }
+        product.soldOut = soldOut
+        return merchantProductRepository.save(product)
+    }
+
     /**
      * Real 마감할인 (closing/surplus discount) toggle -- see MerchantProduct.kt's own
      * doc comment for the full sourced account. `expiresAt = null` clears the deal

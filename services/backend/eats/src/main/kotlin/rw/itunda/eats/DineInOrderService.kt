@@ -40,6 +40,7 @@ class InvalidDineInTableException(message: String) : RuntimeException(message)
 class EmptyDineInOrderException(message: String) : RuntimeException(message)
 class InvalidDineInQuantityException(message: String) : RuntimeException(message)
 class DineInMenuItemNotFoundException(message: String) : RuntimeException(message)
+class DineInMenuItemSoldOutException(message: String) : RuntimeException(message)
 class DineInRestaurantNotFoundException(message: String) : RuntimeException(message)
 class DineInRestaurantNoWalletException(message: String) : RuntimeException(message)
 class DineInBuyerNoWalletException(message: String) : RuntimeException(message)
@@ -137,6 +138,12 @@ class DineInOrderService(
                 .orElseThrow { DineInMenuItemNotFoundException("Menu item not found") }
             if (menuItem.merchantId != restaurantId || !menuItem.active) {
                 throw DineInMenuItemNotFoundException("Menu item not found")
+            }
+            // Real Baemin CEO app/DoorDash-style "86" enforcement -- see
+            // MerchantProduct.soldOut's own doc comment and EatsOrderService.placeOrder's
+            // identical check for the full reasoning.
+            if (menuItem.soldOut) {
+                throw DineInMenuItemSoldOutException("${menuItem.name} is temporarily sold out")
             }
 
             val groups = groupsByProduct[menuItem.id] ?: emptyList()

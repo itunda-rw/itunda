@@ -37,6 +37,7 @@ data class AddProductRequest(
 )
 data class UpdateProductStockRequest(val stockQuantity: Int? = null)
 data class SetSurplusDealRequest(val expiresAt: Instant? = null, val stockQuantity: Int? = null)
+data class SetSoldOutRequest(val soldOut: Boolean)
 data class AddMenuOptionGroupRequest(
     val name: String,
     val choices: List<MenuOptionChoiceRequest>,
@@ -112,6 +113,18 @@ class MerchantProductController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val product = merchantProductService.setSurplusDeal(currentUser.userId, productId, request.expiresAt, request.stockQuantity)
+        return ResponseEntity.ok(mapOf("success" to true, "product" to product))
+    }
+
+    // Real Baemin CEO app/DoorDash-style "86" (temporarily mark sold out) toggle -- see
+    // MerchantProductService.setSoldOut's own doc comment.
+    @PatchMapping("/{productId}/sold-out")
+    fun setSoldOut(
+        @PathVariable productId: String,
+        @RequestBody request: SetSoldOutRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val product = merchantProductService.setSoldOut(currentUser.userId, productId, request.soldOut)
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 

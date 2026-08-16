@@ -56,6 +56,7 @@ import rw.itunda.eats.InvalidEatsRatingException
 import rw.itunda.eats.InvalidRiderLocationException
 import rw.itunda.eats.InvalidMenuOptionSelectionException
 import rw.itunda.eats.MenuItemNotFoundException
+import rw.itunda.eats.MenuItemSoldOutException
 import rw.itunda.eats.MissingRequiredMenuOptionException
 import rw.itunda.eats.NoActiveOfferException
 import rw.itunda.eats.NotAssignedRiderException
@@ -618,6 +619,10 @@ class EatsController(
     @ExceptionHandler(MenuItemNotFoundException::class)
     fun handleMenuItemNotFound(ex: MenuItemNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MENU_ITEM_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(MenuItemSoldOutException::class)
+    fun handleMenuItemSoldOut(ex: MenuItemSoldOutException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MENU_ITEM_SOLD_OUT", ex.message ?: "Conflict"))
 
     @ExceptionHandler(MissingRequiredMenuOptionException::class)
     fun handleMissingRequiredMenuOption(ex: MissingRequiredMenuOptionException) =

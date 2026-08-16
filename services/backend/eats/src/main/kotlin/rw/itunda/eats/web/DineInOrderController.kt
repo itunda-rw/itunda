@@ -25,6 +25,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.eats.DineInBuyerNoWalletException
 import rw.itunda.eats.DineInMenuItemNotFoundException
+import rw.itunda.eats.DineInMenuItemSoldOutException
 import rw.itunda.eats.DineInOrderItemRequest
 import rw.itunda.eats.DineInOrderNotFoundException
 import rw.itunda.eats.DineInOrderService
@@ -145,6 +146,10 @@ class DineInOrderController(
     @ExceptionHandler(DineInMenuItemNotFoundException::class)
     fun handleMenuItemNotFound(ex: DineInMenuItemNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MENU_ITEM_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(DineInMenuItemSoldOutException::class)
+    fun handleMenuItemSoldOut(ex: DineInMenuItemSoldOutException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MENU_ITEM_SOLD_OUT", ex.message ?: "Conflict"))
 
     @ExceptionHandler(MissingRequiredDineInMenuOptionException::class)
     fun handleMissingRequiredMenuOption(ex: MissingRequiredDineInMenuOptionException) =

@@ -467,6 +467,23 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("ordering a menu item the merchant has marked temporarily sold out") {
+            val soldOutItem = MerchantProduct(id = "item_3", merchantId = "restaurant_1", name = "Out of stock special", price = BigDecimal("1500"), soldOut = true)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_3") } returns Optional.of(soldOutItem)
+
+            Then("it throws MenuItemSoldOutException, distinct from MenuItemNotFoundException -- the item is real and still shown") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_3", 1)), "addr")
+                    error("expected MenuItemSoldOutException")
+                } catch (e: MenuItemSoldOutException) {
+                    // expected
+                }
+            }
+        }
+
         When("ordering with zero quantity") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)

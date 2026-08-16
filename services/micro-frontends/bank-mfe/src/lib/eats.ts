@@ -77,6 +77,10 @@ export interface MenuItem {
   active: boolean;
   createdAt: string;
   optionGroups?: MenuOptionGroup[];
+  // Real Baemin CEO app/DoorDash-style "86" (temporarily sold out) flag (2026-08-16) --
+  // see backend MerchantProduct.soldOut's own doc comment. Shown, not filtered out
+  // (unlike `active`), so a buyer sees WHY the item can't be added right now.
+  soldOut?: boolean;
 }
 
 export const fetchMenu = (restaurantId: string) =>
