@@ -124,7 +124,18 @@ class ProductSubscriptionService(
     // AutoTransferService.executeOne/MerchantBillingService.chargeOne already
     // established. A failed delivery is skipped, not retried same-cycle: the schedule
     // still advances to the next real occurrence.
-    @Transactional
+    //
+    // Deliberately NOT @Transactional itself (2026-08-17 fix) -- orderService.placeOrder
+    // below is a separately-proxied bean, already fully @Transactional on its own. If
+    // this method were also @Transactional, a real exception thrown from placeOrder
+    // would mark THIS method's own ambient transaction rollback-only at the moment it
+    // throws -- catching it in the try/catch below would not undo that mark, and the
+    // subscription.save() at the end would fail with a real UnexpectedRollbackException
+    // even though the failure was already handled gracefully. Same root cause as
+    // MerchantBillingService.chargeOne's fix -- see MerchantBillingChargeExecutor's own
+    // doc comment for the full account. placeOrder remains fully atomic on its own via
+    // its own @Transactional annotation; productSubscriptionRepository.save below is
+    // independently atomic via Spring Data's implicit per-call transaction.
     fun executeOne(subscription: ProductSubscription): Boolean {
         val succeeded = try {
             val orderDetail = orderService.placeOrder(

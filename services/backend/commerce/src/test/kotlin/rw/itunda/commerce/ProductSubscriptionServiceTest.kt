@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
@@ -183,6 +184,20 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
                 subscription.lastFailureReason shouldBe "Insufficient balance"
                 subscription.deliveryCount shouldBe staleDeliveryCount
             }
+        }
+    }
+
+    // Real regression guard for the 2026-08-17 transaction-poisoning fix -- see
+    // MerchantBillingChargeExecutor's own doc comment (rw.itunda.merchant) for the full
+    // account of the same root cause found here. MockK unit tests never create a real
+    // Spring AOP proxy, so they can never actually observe the
+    // UnexpectedRollbackException this bug produced live -- only a structural check
+    // like this one can catch a future regression (re-adding @Transactional to
+    // executeOne) before it reaches a real deployed backend again.
+    Given("the transaction-boundary fix for the scheduler's per-row delivery loop") {
+        Then("executeOne itself must not carry @Transactional -- orderService.placeOrder is already fully atomic on its own") {
+            val method = ProductSubscriptionService::class.java.declaredMethods.first { it.name == "executeOne" }
+            method.isAnnotationPresent(Transactional::class.java) shouldBe false
         }
     }
 }) {

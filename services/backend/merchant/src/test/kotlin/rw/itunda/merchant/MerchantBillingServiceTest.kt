@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Merchant
@@ -62,9 +63,10 @@ class MerchantBillingServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
-            walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter, pushNotificationService,
+            walletRepository, chargeExecutor, rateLimiter,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -178,9 +180,10 @@ class MerchantBillingServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
-            walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter, pushNotificationService,
+            walletRepository, chargeExecutor, rateLimiter,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -252,6 +255,25 @@ class MerchantBillingServiceTest : BehaviorSpec({
                 subscription.lastFailureReason shouldBe "Insufficient balance"
                 subscription.chargeCount shouldBe staleChargeCount
             }
+        }
+    }
+
+    // Real regression guard for the 2026-08-17 transaction-poisoning fix (see
+    // MerchantBillingChargeExecutor's own doc comment for the full account). MockK
+    // unit tests never create a real Spring AOP proxy, so they can never actually
+    // observe the UnexpectedRollbackException this bug produced live -- only a
+    // structural check like this one can catch a future regression (re-adding
+    // @Transactional to chargeOne, or moving the charge logic back onto this class as
+    // a self-invoked call) before it reaches a real deployed backend again.
+    Given("the transaction-boundary fix for the scheduler's per-row charge loop") {
+        Then("chargeOne itself must not carry @Transactional -- it delegates the real charge to a separate bean") {
+            val method = MerchantBillingService::class.java.declaredMethods.first { it.name == "chargeOne" }
+            method.isAnnotationPresent(Transactional::class.java) shouldBe false
+        }
+
+        Then("the real charge-posting step lives on MerchantBillingChargeExecutor, a genuinely separate @Transactional bean") {
+            val method = MerchantBillingChargeExecutor::class.java.declaredMethods.first { it.name == "execute" }
+            method.isAnnotationPresent(Transactional::class.java) shouldBe true
         }
     }
 }) {

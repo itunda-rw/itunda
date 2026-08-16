@@ -3,33 +3,17 @@ package rw.itunda.merchant
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.transaction.support.TransactionSynchronization
-import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
-import rw.itunda.core.domain.LedgerAccountType
-import rw.itunda.core.domain.LedgerDirection
-import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantBillingPlan
 import rw.itunda.core.domain.MerchantBillingSubscription
 import rw.itunda.core.domain.MerchantBillingSubscriptionStatus
-import rw.itunda.core.domain.Notification
-import rw.itunda.core.domain.Transaction
-import rw.itunda.core.domain.TransactionStatus
-import rw.itunda.core.domain.TransactionType
-import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
-import rw.itunda.core.ledger.LedgerLeg
-import rw.itunda.core.ledger.LedgerService
-import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantBillingPlanRepository
 import rw.itunda.core.repository.MerchantBillingSubscriptionRepository
 import rw.itunda.core.repository.MerchantRepository
-import rw.itunda.core.repository.NotificationRepository
-import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -47,7 +31,9 @@ class BillingNoWalletException(message: String) : RuntimeException(message)
  * the full account. Reuses the exact real wallet-to-wallet ledger movement
  * `MerchantService.collect()` already established for QR payments -- a recurring
  * charge is not a new kind of money movement, just a different trigger for the same
- * real transaction shape.
+ * real transaction shape. The actual charge-posting step lives in
+ * [MerchantBillingChargeExecutor] as its own bean -- see that class's own doc comment
+ * for why.
  */
 @Service
 class MerchantBillingService(
@@ -55,18 +41,10 @@ class MerchantBillingService(
     private val merchantBillingSubscriptionRepository: MerchantBillingSubscriptionRepository,
     private val merchantRepository: MerchantRepository,
     private val walletRepository: WalletRepository,
-    private val ledgerService: LedgerService,
-    private val transactionRepository: TransactionRepository,
-    private val notificationRepository: NotificationRepository,
+    private val chargeExecutor: MerchantBillingChargeExecutor,
     private val rateLimiter: RateLimiter,
-    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(MerchantBillingService::class.java)
-
-    // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
-    // comment gives -- one flat rate in the middle of the published range, the same
-    // real wallet-to-wallet collection underneath, just recurring.
-    private val feeRate = BigDecimal("0.015")
 
     @Transactional
     fun createPlan(ownerUserId: String, name: String, description: String?, amount: BigDecimal, intervalDays: Int): MerchantBillingPlan {
@@ -115,8 +93,9 @@ class MerchantBillingService(
      * Unlike the scheduler's own recurring `chargeOne`, a failed FIRST charge must
      * fail the whole subscribe attempt -- real Kakao Pay/Toss billing-key acquisition
      * never leaves you holding a "successfully created" authorization whose first
-     * payment silently failed. `executeCharge` is left to throw here so `@Transactional`
-     * rolls back with no subscription row ever persisted.
+     * payment silently failed. `MerchantBillingChargeExecutor.execute` is left to
+     * throw here so `@Transactional` rolls back with no subscription row ever
+     * persisted.
      */
     @Transactional
     fun subscribe(customerId: String, planId: String): MerchantBillingSubscription {
@@ -136,7 +115,7 @@ class MerchantBillingService(
             id = "billing_sub_${UUID.randomUUID()}", planId = plan.id, merchantId = plan.merchantId, customerId = customerId,
             nextChargeAt = Instant.now(),
         )
-        executeCharge(subscription, plan, merchant, customerWallet, merchantWallet)
+        chargeExecutor.execute(subscription, plan, merchant, customerWallet, merchantWallet)
         subscription.nextChargeAt = subscription.nextChargeAt.plus(plan.intervalDays.toLong(), ChronoUnit.DAYS)
         return merchantBillingSubscriptionRepository.save(subscription)
     }
@@ -163,8 +142,14 @@ class MerchantBillingService(
      * .executeOne` already establishes for a different real recurring flow. A failed
      * charge is skipped, not retried same-cycle: the schedule still advances to the
      * next real occurrence.
+     *
+     * Deliberately NOT `@Transactional` itself (2026-08-17 fix) -- see
+     * [MerchantBillingChargeExecutor]'s own doc comment for why: the real charge
+     * attempt below is a genuine cross-bean call to that separate bean, so a failure
+     * there gets its own independent transaction and can never poison this method's
+     * own bookkeeping. `merchantBillingSubscriptionRepository.save` below still
+     * persists atomically on its own via Spring Data's implicit per-call transaction.
      */
-    @Transactional
     fun chargeOne(subscription: MerchantBillingSubscription, plan: MerchantBillingPlan? = null): Boolean {
         val resolvedPlan = plan ?: merchantBillingPlanRepository.findById(subscription.planId).orElse(null)
         if (resolvedPlan == null) {
@@ -182,7 +167,7 @@ class MerchantBillingService(
             false
         } else {
             try {
-                executeCharge(subscription, resolvedPlan, merchant, customerWallet, merchantWallet)
+                chargeExecutor.execute(subscription, resolvedPlan, merchant, customerWallet, merchantWallet)
                 true
             } catch (e: InsufficientFundsException) {
                 subscription.lastFailureReason = "Insufficient balance"
@@ -196,72 +181,5 @@ class MerchantBillingService(
         subscription.nextChargeAt = subscription.nextChargeAt.plus(resolvedPlan.intervalDays.toLong(), ChronoUnit.DAYS)
         merchantBillingSubscriptionRepository.save(subscription)
         return succeeded
-    }
-
-    /**
-     * The one real charge attempt shared by both callers -- throws honestly
-     * (`InsufficientFundsException` or otherwise) rather than swallowing anything;
-     * `subscribe()` lets it propagate so a failed first charge rolls back the whole
-     * attempt, while `chargeOne` wraps this in its own try/catch for the scheduler's
-     * resilient per-cycle behavior.
-     */
-    private fun executeCharge(subscription: MerchantBillingSubscription, plan: MerchantBillingPlan, merchant: Merchant, customerWallet: Wallet, merchantWallet: Wallet) {
-        val fee = plan.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
-        val netToMerchant = plan.amount.subtract(fee)
-        val result = ledgerService.postLedgerTransaction(
-            customerWallet.currency,
-            listOf(
-                LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, plan.amount, "Subscription charge - ${plan.name}"),
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Subscription collection - ${plan.name}"),
-                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Subscription fee - ${plan.name}"),
-            ),
-        )
-        transactionRepository.save(
-            Transaction(
-                id = result.transactionId,
-                referenceNumber = "BILLING${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
-                senderId = subscription.customerId, recipientId = merchant.ownerUserId,
-                fromWalletId = customerWallet.id, toWalletId = merchantWallet.id,
-                amount = plan.amount, fee = fee, currency = customerWallet.currency,
-                type = TransactionType.PAYMENT, status = TransactionStatus.COMPLETED,
-                description = "Subscription charge - ${plan.name}", channel = "MERCHANT_BILLING",
-                completedAt = Instant.now(),
-            ),
-        )
-        subscription.lastFailureReason = null
-        subscription.chargeCount += 1
-        subscription.lastChargedAt = Instant.now()
-        try {
-            val title = "Subscription charged"
-            val body = "${plan.amount} RWF charged for ${plan.name} at ${merchant.businessName}"
-            notificationRepository.save(
-                Notification(
-                    id = "notif_${UUID.randomUUID()}", userId = subscription.customerId, type = "MERCHANT_BILLING_CHARGED",
-                    title = title, body = body,
-                    isRead = false, createdAt = Instant.now(), dataJson = "{\"subscriptionId\":\"${subscription.id}\"}",
-                ),
-            )
-            sendChargedPushAfterCommit(subscription.customerId, title, body, subscription.id)
-        } catch (e: Exception) {
-            // Non-critical -- the real charge already completed and succeeded.
-        }
-    }
-
-    /** A charge alert must never announce a payment whose enclosing transaction rolled back. */
-    private fun sendChargedPushAfterCommit(customerId: String, title: String, body: String, subscriptionId: String) {
-        val send = {
-            try {
-                pushNotificationService.sendToUser(customerId, title, body, mapOf("subscriptionId" to subscriptionId))
-            } catch (e: Exception) {
-                log.warn("Could not send subscription-charge push for subscription {}", subscriptionId, e)
-            }
-        }
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            send()
-            return
-        }
-        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-            override fun afterCommit() = send()
-        })
     }
 }
