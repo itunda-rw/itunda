@@ -4,6 +4,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
@@ -87,6 +88,19 @@ class BikeRentalController(private val bikeRentalService: BikeRentalService) {
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "rental" to bikeRentalService.endRental(currentUser.userId, sessionId, request.endLatitude, request.endLongitude)))
+
+    // Real manual trigger for `BikeRentalAbandonedSessionScheduler`'s own real 60-second
+    // cron -- same "let a coordinator/admin fire the real due sweep on demand rather
+    // than waiting on wall-clock time" precedent `MerchantBookingController.processNoShows`
+    // already establishes. Admin-gated since this force-settles real other users' money,
+    // not a self-service action.
+    @PostMapping("/rentals/process-abandoned")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun processAbandonedRentals(): ResponseEntity<Map<String, Any?>> {
+        val due = bikeRentalService.getAbandonedRentals()
+        val processed = due.mapNotNull { bikeRentalService.forceEndAbandonedRental(it.id) }
+        return ResponseEntity.ok(mapOf("success" to true, "processedCount" to processed.size, "rentals" to processed))
+    }
 
     @GetMapping("/rentals/my-history")
     fun getMyRentalHistory(

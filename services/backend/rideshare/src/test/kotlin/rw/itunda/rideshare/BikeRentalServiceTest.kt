@@ -232,4 +232,92 @@ class BikeRentalServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real bug fixed live (2026-08-18): an ACTIVE session had no timeout at all -- see
+    // BikeRentalSession.MAX_RENTAL_DURATION's own doc comment for the sourced Citi Bike
+    // 24-hour account. Positive-control case: a session still well within the real
+    // window must NOT be force-ended -- the scheduler polling `getAbandonedRentals`
+    // would never even hand this row to `forceEndAbandonedRental` in production, but
+    // the re-check inside the method itself is what actually prevents a stray/late call
+    // from prematurely billing a rider who is still genuinely riding.
+    Given("a real ACTIVE rental only 2 hours old, well within the max rental window") {
+        val bikeRepository = mockk<BikeRepository>()
+        val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+        val session = BikeRentalSession(
+            id = "bike_rental_recent", bikeId = "bike_1", riderUserId = "rider_1",
+            startedAt = Instant.now().minus(Duration.ofHours(2)), startLatitude = -1.9, startLongitude = 30.0,
+        )
+        every { bikeRentalSessionRepository.findById("bike_rental_recent") } returns Optional.of(session)
+
+        When("the scheduler's force-end is (incorrectly) invoked on it anyway") {
+            val result = service.forceEndAbandonedRental("bike_rental_recent")
+
+            Then("it is a real no-op -- still ACTIVE, no ledger transaction posted, no bike/wallet ever looked up") {
+                result?.status shouldBe BikeRentalStatus.ACTIVE
+                verify(exactly = 0) { bikeRepository.findById(any()) }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    // Rejection case's positive counterpart: a session genuinely abandoned past the real
+    // Citi Bike-sourced 24-hour window IS force-settled, using the exact same billing
+    // math `endRental` uses (proving `settleRental` was actually reused, not
+    // reimplemented), ending at the bike's own last-known location since there's no
+    // fresh GPS ping from an abandoned rider to use instead.
+    Given("a real ACTIVE rental abandoned 25 hours ago, past the max rental window") {
+        val bikeRepository = mockk<BikeRepository>()
+        val bikeRentalSessionRepository = mockk<BikeRentalSessionRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            bikeRepository = bikeRepository, bikeRentalSessionRepository = bikeRentalSessionRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val bike = Bike(id = "bike_1", ownerUserId = "owner_1", walletId = "wallet_owner", type = BikeType.ELECTRIC, currentLatitude = -1.90, currentLongitude = 30.00)
+        val riderWallet = Wallet(
+            id = "wallet_rider", userId = "rider_1", accountNumber = "1000000002", accountName = "Rider",
+            type = WalletType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
+        )
+        val ownerWallet = Wallet(
+            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        )
+        val session = BikeRentalSession(
+            id = "bike_rental_abandoned", bikeId = "bike_1", riderUserId = "rider_1",
+            startedAt = Instant.now().minus(Duration.ofHours(25)), startLatitude = -1.9, startLongitude = 30.0,
+        )
+        every { bikeRentalSessionRepository.findById("bike_rental_abandoned") } returns Optional.of(session)
+        every { bikeRepository.findById("bike_1") } returns Optional.of(bike)
+        every { walletRepository.findByUserIdAndType("rider_1", WalletType.MAIN) } returns riderWallet
+        every { walletRepository.findById("wallet_owner") } returns Optional.of(ownerWallet)
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_forceend", emptyList())
+        val bikeSavedSlot = slot<Bike>()
+        every { bikeRentalSessionRepository.save(any()) } answers { firstArg() }
+        every { bikeRepository.save(capture(bikeSavedSlot)) } answers { firstArg() }
+
+        When("the scheduler force-ends the abandoned rental") {
+            val result = service.forceEndAbandonedRental("bike_rental_abandoned")
+
+            Then("the rider is real-billed for the full 25 hours, the owner is paid, and the bike re-enters the pool") {
+                result?.status shouldBe BikeRentalStatus.COMPLETED
+                result?.durationMinutes shouldBe 25 * 60
+                // ELECTRIC rate is 150/minute -- 1500 minutes * 150 = 225,000.
+                result?.totalFare shouldBe BigDecimal("225000.00")
+                result?.platformFee shouldBe BigDecimal("33750.00")
+                result?.payoutTransactionId shouldBe "ledgertxn_forceend"
+                // Ends at the bike's own last-known location, not a rider-supplied one.
+                result?.endLatitude shouldBe -1.90
+                result?.endLongitude shouldBe 30.00
+                bikeSavedSlot.captured.available shouldBe true
+            }
+        }
+    }
 })

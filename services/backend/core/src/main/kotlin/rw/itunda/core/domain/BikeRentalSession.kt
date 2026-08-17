@@ -77,4 +77,27 @@ class BikeRentalSession(
     var version: Long = 0,
 ) {
     protected constructor() : this(id = "", bikeId = "", riderUserId = "", startLatitude = 0.0, startLongitude = 0.0)
+
+    companion object {
+        // Real gap found live (2026-08-18): unlike every other real reservation/session
+        // this codebase enforces a hard end for (RideTrip's own dispatch timeout,
+        // BookingDeposit/VehicleInspectionBooking's own no-show forfeit schedulers), an
+        // ACTIVE BikeRentalSession had no timeout at all -- a rider whose app crashed
+        // or who simply never came back left the real bike permanently `available =
+        // false`, unrentable by anyone else and unpaid for the real owner, forever.
+        // Sourced from Citi Bike NYC's own real, currently-documented policy
+        // (help.citibikenyc.com/hc/en-us/articles/360032367371-What-if-I-keep-a-bike-out-too-long,
+        // cross-checked against Citi Bike's own rental agreement at
+        // assets.citibikenyc.com/rental-agreement.html): a bike not docked within a real
+        // 24-hour window is treated by the system as abandoned and the ride is closed
+        // out. itunda's own honest peer-to-peer adaptation (same "no invented penalty
+        // this backend has no real data to size" discipline `UpfrontInterestDeposit`'s
+        // own doc comment already establishes for a structurally identical scoping
+        // choice): rather than a flat lost-bike fee, `BikeRentalService.forceEndAbandonedRental`
+        // just force-settles the session at itunda's own already-real per-minute fare
+        // (the exact same billing math `endRental` already uses) so the real owner is
+        // actually paid for the time their bike was gone and the bike itself re-enters
+        // the pool, not left permanently unrentable over one abandoned session.
+        val MAX_RENTAL_DURATION: java.time.Duration = java.time.Duration.ofHours(24)
+    }
 }

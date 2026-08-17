@@ -183,8 +183,51 @@ class BikeRentalService(
             throw BikeRentalAlreadyEndedException("This rental has already ended")
         }
         val bike = bikeRepository.findById(session.bikeId).orElseThrow { BikeNotFoundException("Bike not found") }
+        return settleRental(session, bike, endLatitude, endLongitude)
+    }
 
-        val riderWallet = walletRepository.findByUserIdAndType(riderUserId, WalletType.MAIN)
+    // Real bug found live (2026-08-18): an ACTIVE session had no timeout at all -- see
+    // `BikeRentalSession.MAX_RENTAL_DURATION`'s own doc comment for the sourced Citi
+    // Bike account. Read-only poll, resolved per-item by
+    // `BikeRentalAbandonedSessionScheduler`, same "poll for due rows, act per-row inside
+    // its own @Transactional method" shape `VehicleInspectionNoShowScheduler`/
+    // `MarketplaceEscrowAutoReleaseScheduler` already establish.
+    fun getAbandonedRentals(): List<BikeRentalSession> =
+        bikeRentalSessionRepository.findByStatusAndStartedAtBefore(
+            BikeRentalStatus.ACTIVE,
+            Instant.now().minus(BikeRentalSession.MAX_RENTAL_DURATION),
+        )
+
+    /**
+     * Real scheduler-driven counterpart to [endRental] for a rental abandoned past
+     * [BikeRentalSession.MAX_RENTAL_DURATION] -- see that constant's own doc comment for
+     * the sourced Citi Bike account this adapts. Reuses the exact same [settleRental]
+     * billing math `endRental` uses -- not a new money-movement path, just a different
+     * real trigger for the identical settlement. Ends at the bike's own last-known
+     * `currentLatitude`/`currentLongitude` (there is no fresh GPS ping from an abandoned
+     * session to use instead). Re-checks status and elapsed duration right before
+     * acting, same one-shot re-check discipline every other scheduler-driven per-item
+     * method in this codebase already uses -- a rider who taps "end rental" a moment
+     * before the scheduler runs can never be double-charged, and a still-genuinely-due
+     * row missing its bike/wallet is skipped rather than thrown, so one bad row never
+     * corrupts a real, valid settlement.
+     */
+    @Transactional
+    fun forceEndAbandonedRental(sessionId: String): BikeRentalSession? {
+        val session = bikeRentalSessionRepository.findById(sessionId).orElse(null) ?: return null
+        if (session.status != BikeRentalStatus.ACTIVE) return session
+        if (Duration.between(session.startedAt, Instant.now()) < BikeRentalSession.MAX_RENTAL_DURATION) return session
+        val bike = bikeRepository.findById(session.bikeId).orElse(null) ?: return null
+        return settleRental(session, bike, bike.currentLatitude, bike.currentLongitude)
+    }
+
+    // Shared real settlement math -- one source of truth for the rider DEBIT / owner
+    // CREDIT-net-of-fee / fee_revenue CREDIT 3-leg ledger transaction, called from both
+    // the rider-triggered `endRental` and the scheduler-triggered
+    // `forceEndAbandonedRental` so the two real triggers can never drift into two
+    // different billing outcomes for the same kind of session.
+    private fun settleRental(session: BikeRentalSession, bike: Bike, endLatitude: Double, endLongitude: Double): BikeRentalSession {
+        val riderWallet = walletRepository.findByUserIdAndType(session.riderUserId, WalletType.MAIN)
             ?: throw BikeNoWalletException("No wallet found for this account")
         val ownerWallet = walletRepository.findById(bike.walletId)
             .orElseThrow { BikeNoWalletException("Bike owner's settlement wallet not found") }

@@ -10492,3 +10492,98 @@ update, cancelled -> real `200` success; confirmed the customer's real wallet la
 47,000.00 RWF (kept the 3,000 RWF fee out of the 4,000 fare) and the driver's real wallet was
 credited exactly 3,000.00 RWF -- the precise cancellation-fee split, proving both that the
 previously-impossible cancel now works and that the fee math is exactly right in both directions.
+
+## 175. `BikeRentalSession` had no timeout for an abandoned rental -- a bike could get permanently stuck, unrentable and unpaid
+
+**Added 2026-08-18.** A sixth pass of the Section 170-174 technique, this time on a
+reservation/session entity rather than an escrow entity: unlike `RideTrip`'s own
+dispatch timeout (`RideDispatchScheduler`) and `BookingDeposit`/
+`VehicleInspectionBooking`'s own no-show forfeiture schedulers, `BikeRentalSession`
+(real Kakao T 바이크, itunda's own honest peer-to-peer adaptation,
+`rw.itunda.rideshare.BikeRentalService`) had **no timeout at all** on its `ACTIVE`
+state. `startRental` flips the bike's own `available` flag to `false` and the fare is
+only computed/billed at `endRental`, called by the rider. If a rider unlocked a bike and
+then simply never called `endRental` -- app crashed, lost the phone, or just abandoned
+it -- the bike stayed `available = false` **forever**: unrentable by any other real
+user, and the real owner never got paid for the time it was gone. No scheduler polled
+for this at all (confirmed via `find services/backend -name "*Scheduler*.kt"` across
+every module -- 40 real schedulers exist, none for bike rentals), unlike every other
+open-ended reservation this codebase enforces a hard end for. This is the same class of
+bug as Sections 173/174 (a real forfeit/timeout counterpart missing for one half of an
+otherwise-complete feature), just with a stuck *resource* instead of stuck *money* --
+the real-world harm lands on the bike owner (an unpaid, permanently delisted bike)
+rather than on an escrow account.
+
+**Sourced from a real, currently-documented product policy**: Citi Bike NYC's own real
+"lost or stolen bike" rule (help.citibikenyc.com/hc/en-us/articles/360032367371-What-if-I-keep-a-bike-out-too-long,
+cross-checked against Citi Bike's own rental agreement at
+assets.citibikenyc.com/rental-agreement.html) -- a bike not docked within a real 24-hour
+window is treated by the system as abandoned and the ride is closed out, rather than
+left open indefinitely. itunda's own honest adaptation deliberately does **not** invent
+a flat lost-bike fee (this backend has no real replacement-cost data to size one
+honestly, same "no invented penalty" discipline `UpfrontInterestDeposit`'s own doc
+comment already establishes for a structurally identical scoping choice) -- instead it
+force-settles the abandoned session using itunda's own already-real per-minute fare
+(the exact same billing math `endRental` already uses), so the real bike owner is
+actually paid for the time their bike was gone and the bike itself re-enters the pool.
+
+**Fixed**: added `BikeRentalSession.MAX_RENTAL_DURATION` (24 hours, the sourced Citi
+Bike window). Refactored `BikeRentalService.endRental`'s billing math into a shared
+private `settleRental(session, bike, endLatitude, endLongitude)` helper -- one source of
+truth for the rider-DEBIT / owner-CREDIT-net-of-fee / `fee_revenue`-CREDIT 3-leg ledger
+transaction, so the two real triggers (rider-initiated end, scheduler-initiated
+force-end) can never drift into two different billing outcomes for the same kind of
+session. Added `BikeRentalService.getAbandonedRentals()` (read-only poll: `ACTIVE`
+sessions started more than `MAX_RENTAL_DURATION` ago) and
+`forceEndAbandonedRental(sessionId)` (re-checks status and elapsed duration right before
+acting -- a rider who taps "end rental" a moment before the scheduler runs can never be
+double-charged -- then calls `settleRental` using the bike's own last-known
+`currentLatitude`/`currentLongitude` as the end location, since there's no fresh GPS
+ping from an abandoned session to use instead). New `BikeRentalAbandonedSessionScheduler`
+(`@Component`, `@Scheduled(fixedDelay = 60000)`, per-item `@Transactional` resolution,
+one bad row never blocks the sweep for every other real due row -- same proven-safe
+shape `VehicleInspectionNoShowScheduler`/`MarketplaceEscrowAutoReleaseScheduler` already
+establish). New admin-gated manual trigger `POST /api/v1/bikeshare/rentals/process-abandoned`
+(`@PreAuthorize("hasRole('ADMIN')")`) so a coordinator can verify without waiting on the
+real 24-hour window, matching this session's own "Section 173 didn't have one, add it
+this time" guidance.
+
+Files changed:
+- `services/backend/core/src/main/kotlin/rw/itunda/core/domain/BikeRentalSession.kt`
+  (new `MAX_RENTAL_DURATION` companion constant with the sourced Citi Bike account)
+- `services/backend/core/src/main/kotlin/rw/itunda/core/repository/BikeRepositories.kt`
+  (new `BikeRentalSessionRepository.findByStatusAndStartedAtBefore` query method)
+- `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/BikeRentalService.kt`
+  (`endRental`'s billing math extracted into a new private `settleRental` helper; new
+  `getAbandonedRentals()` and `forceEndAbandonedRental()`)
+- `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/BikeRentalAbandonedSessionScheduler.kt`
+  (new file -- the scheduler itself)
+- `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/web/BikeRentalController.kt`
+  (new admin-gated `POST /rentals/process-abandoned` manual trigger)
+- `services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/BikeRentalServiceTest.kt`
+  (two new `Given` blocks: a session only 2 hours old is a real no-op when
+  `forceEndAbandonedRental` is called on it directly -- positive control proving the
+  fix's own internal re-check doesn't prematurely bill a rider still genuinely riding,
+  and verifying zero ledger calls/zero bike lookups happen; a session abandoned 25 hours
+  ago is correctly force-settled -- 1500 minutes billed at the real ELECTRIC rate
+  (150/min) = 225,000 RWF fare, 33,750 RWF platform fee, ending at the bike's own
+  last-known location, bike flipped back to `available = true`)
+
+**Verified locally, this pass**: `./gradlew :rideshare:test :rideshare:compileKotlin
+:app:compileKotlin` -> `BUILD SUCCESSFUL` (the `:app:compileKotlin` run confirms the
+full Spring context, including the new scheduler bean and the new controller endpoint,
+compiles cleanly). `./gradlew :rideshare:test --tests
+"rw.itunda.rideshare.BikeRentalServiceTest"` -> `BUILD SUCCESSFUL`; real XML report
+`rideshare/build/test-results/test/TEST-rw.itunda.rideshare.BikeRentalServiceTest.xml`
+confirms `tests="9" skipped="0" failures="0" errors="0"` (7 pre-existing + 2 new).
+Summed every real XML report across the full `:rideshare:test` run (all nine test
+classes in the module) -> `110` total tests, `failures="0" errors="0"` everywhere --
+nothing else in the module regressed.
+
+No deploy and no live-server verification attempted here -- reserved for the
+coordinating session per this task's own scoping rules. `ParkingSession` (Bike's own
+structurally-identical sibling: same "no fare known/held until checkout, `available`
+flag flipped at start, never flipped back if abandoned" shape) has the exact same real
+gap and was deliberately **not** touched in this pass, to keep this fix's own scope to
+the single Section 170-174-sized bike-rental fix named above -- a natural next
+occurrence of this exact technique for a future pass.
