@@ -7,11 +7,14 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MerchantBillingPlan
 import rw.itunda.core.domain.MerchantBillingSubscription
 import rw.itunda.core.domain.MerchantBillingSubscriptionStatus
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantBillingPlanRepository
 import rw.itunda.core.repository.MerchantBillingSubscriptionRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -43,6 +46,8 @@ class MerchantBillingService(
     private val walletRepository: WalletRepository,
     private val chargeExecutor: MerchantBillingChargeExecutor,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(MerchantBillingService::class.java)
 
@@ -155,6 +160,7 @@ class MerchantBillingService(
         if (resolvedPlan == null) {
             subscription.lastFailureReason = "Billing plan no longer available"
             subscription.nextChargeAt = subscription.nextChargeAt.plus(1, ChronoUnit.DAYS)
+            notifyChargeFailed(subscription, planName = null)
             merchantBillingSubscriptionRepository.save(subscription)
             return false
         }
@@ -179,7 +185,43 @@ class MerchantBillingService(
             }
         }
         subscription.nextChargeAt = subscription.nextChargeAt.plus(resolvedPlan.intervalDays.toLong(), ChronoUnit.DAYS)
+        if (!succeeded) {
+            notifyChargeFailed(subscription, planName = resolvedPlan.name)
+        }
         merchantBillingSubscriptionRepository.save(subscription)
         return succeeded
+    }
+
+    // Real Toss Payments billing-failure alert -- same real, sourced convention
+    // ProductSubscriptionService.notifyDeliveryFailed / BillAutoPayProcessor
+    // .notifyAutoPayFailed / AutoTransferService.notifyTransferFailed /
+    // ScheduledTransferService.notifyTransferFailed already establish (see any of their
+    // own doc comments): itunda's recurring/scheduled-charge failure paths previously
+    // only ever recorded the failure silently, never told the customer. Purely a
+    // best-effort side effect wrapped in its own try/catch -- never allowed to affect
+    // the real save. Safe by construction: chargeOne is deliberately NOT @Transactional
+    // (its own 2026-08-17 §118 fix -- the real charge attempt is a genuine cross-bean
+    // call to MerchantBillingChargeExecutor, which is fully @Transactional on its own),
+    // so a failing notification save can never poison the real subscription bookkeeping.
+    // "We'll try again next cycle" wording matches AutoTransferService's message, not
+    // ScheduledTransferService's terminal one -- a MerchantBillingSubscription stays
+    // ACTIVE and keeps recurring after a failed charge, it never moves to a FAILED
+    // status the way a one-time ScheduledTransfer does.
+    private fun notifyChargeFailed(subscription: MerchantBillingSubscription, planName: String?) {
+        try {
+            val title = "Subscription payment failed"
+            val subject = planName?.let { "your \"$it\" subscription" } ?: "your subscription"
+            val body = "We couldn't charge $subject: ${subscription.lastFailureReason}. We'll try again next cycle."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = subscription.customerId, type = "MERCHANT_BILLING_FAILED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(),
+                    dataJson = "{\"subscriptionId\":\"${subscription.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(subscription.customerId, title, body, mapOf("subscriptionId" to subscription.id))
+        } catch (e: Exception) {
+            log.warn("Could not send merchant-billing-failure notification for {}", subscription.id, e)
+        }
     }
 }

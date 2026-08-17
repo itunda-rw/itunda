@@ -66,7 +66,7 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
-            walletRepository, chargeExecutor, rateLimiter,
+            walletRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -183,7 +183,7 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val chargeExecutor = MerchantBillingChargeExecutor(ledgerService, transactionRepository, notificationRepository, pushNotificationService)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
-            walletRepository, chargeExecutor, rateLimiter,
+            walletRepository, chargeExecutor, rateLimiter, notificationRepository, pushNotificationService,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -254,6 +254,30 @@ class MerchantBillingServiceTest : BehaviorSpec({
                 succeeded shouldBe false
                 subscription.lastFailureReason shouldBe "Insufficient balance"
                 subscription.chargeCount shouldBe staleChargeCount
+            }
+
+            Then("the customer receives a real MERCHANT_BILLING_FAILED notification and push naming the plan") {
+                val notif = slot<rw.itunda.core.domain.Notification>()
+                verify(exactly = 1) { notificationRepository.save(capture(notif)) }
+                notif.captured.userId shouldBe "customer_1"
+                notif.captured.type shouldBe "MERCHANT_BILLING_FAILED"
+                notif.captured.body shouldBe "We couldn't charge your \"Monthly coffee box\" subscription: Insufficient balance. We'll try again next cycle."
+                verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", "Subscription payment failed", any(), any()) }
+            }
+        }
+
+        When("the recurring charge fails because the merchant's wallet is no longer available") {
+            every { merchantRepository.findById("merchant_1") } returns Optional.empty()
+            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+
+            val succeeded = service.chargeOne(subscription, plan)
+
+            Then("it is skipped honestly and the customer is still notified") {
+                succeeded shouldBe false
+                subscription.lastFailureReason shouldBe "Merchant or wallet no longer available"
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "customer_1" && it.type == "MERCHANT_BILLING_FAILED" })
+                }
             }
         }
     }
