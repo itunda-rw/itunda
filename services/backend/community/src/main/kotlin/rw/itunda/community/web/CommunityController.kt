@@ -61,6 +61,7 @@ data class ScheduleMeetupSessionsRequest(val dates: List<Instant>)
 // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
 // CommunityService.finalizeGroupBuy's own doc comment.
 data class FinalizeGroupBuyRequest(val totalAmount: java.math.BigDecimal, val description: String)
+data class SetCommentNotificationsEnabledRequest(val enabled: Boolean)
 
 // Real 동네생활-style community board -- see CommunityService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -189,6 +190,21 @@ class CommunityController(private val communityService: CommunityService, privat
         val comment = communityService.addComment(currentUser.userId, postId, request.body)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "comment" to comment))
     }
+
+    // Real Karrot 동네생활 "새 댓글 알림 끄기" (2026-08-17) -- see
+    // CommunityNotificationPreference's own doc comment.
+    @PostMapping("/notification-preference")
+    fun setCommentNotificationsEnabled(
+        @RequestBody request: SetCommentNotificationsEnabledRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val preference = communityService.setCommentNotificationsEnabled(currentUser.userId, request.enabled)
+        return ResponseEntity.ok(mapOf("success" to true, "commentNotificationsEnabled" to preference.commentNotificationsEnabled))
+    }
+
+    @GetMapping("/notification-preference")
+    fun getCommentNotificationsEnabled(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "commentNotificationsEnabled" to communityService.areCommentNotificationsEnabled(currentUser.userId)))
 
     @PostMapping("/posts/{postId}/like")
     fun toggleLike(

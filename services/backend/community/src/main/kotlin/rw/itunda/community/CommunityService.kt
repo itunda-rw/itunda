@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.CommunityComment
 import rw.itunda.core.domain.CommunityLike
+import rw.itunda.core.domain.CommunityNotificationPreference
 import rw.itunda.core.domain.CommunityPost
 import rw.itunda.core.domain.CommunityPostStatus
 import rw.itunda.core.domain.GroupConversation
@@ -20,6 +21,7 @@ import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CommunityCommentRepository
 import rw.itunda.core.repository.CommunityLikeRepository
+import rw.itunda.core.repository.CommunityNotificationPreferenceRepository
 import rw.itunda.core.repository.CommunityPostRepository
 import rw.itunda.core.repository.GroupConversationMemberRepository
 import rw.itunda.core.repository.GroupConversationRepository
@@ -84,6 +86,7 @@ class CommunityService(
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val pushNotificationService: PushNotificationService,
     private val splitBillService: SplitBillService,
+    private val communityNotificationPreferenceRepository: CommunityNotificationPreferenceRepository,
 ) {
     companion object {
         val CATEGORIES = listOf(
@@ -384,7 +387,12 @@ class CommunityService(
         // Real push wired in (2026-07-28) -- a real reply to a real post is exactly the
         // kind of social-app moment (Karrot/Kakao/every real neighborhood app) a poster
         // expects to hear about immediately, not on their next in-app poll.
-        if (post.authorId != authorId) {
+        //
+        // Real Karrot 동네생활 "새 댓글 알림 끄기" (2026-08-17) -- see
+        // CommunityNotificationPreference's own doc comment. A post author who's
+        // turned this off never gets a comment notification, on any of their posts;
+        // the comment itself is still saved and counted either way.
+        if (post.authorId != authorId && areCommentNotificationsEnabled(post.authorId)) {
             val commenterName = resolveNames(listOf(authorId))[authorId] ?: "Someone"
             val body = trimmed.take(120)
             notificationRepository.save(
@@ -512,4 +520,19 @@ class CommunityService(
             .filter { it != organizerId }
         return splitBillService.createSplitBill(organizerId, groupId, totalAmount, description, participantIds)
     }
+
+    // Real Karrot 동네생활 "새 댓글 알림 끄기" toggle -- see
+    // CommunityNotificationPreference's own doc comment for the sourced feature and
+    // why this is a global per-user category toggle, not a per-post mute.
+    @Transactional
+    fun setCommentNotificationsEnabled(userId: String, enabled: Boolean): CommunityNotificationPreference {
+        val preference = communityNotificationPreferenceRepository.findByUserId(userId)
+            ?: CommunityNotificationPreference(id = "community_notification_pref_${UUID.randomUUID()}", userId = userId)
+        preference.commentNotificationsEnabled = enabled
+        preference.updatedAt = Instant.now()
+        return communityNotificationPreferenceRepository.save(preference)
+    }
+
+    fun areCommentNotificationsEnabled(userId: String): Boolean =
+        communityNotificationPreferenceRepository.findByUserId(userId)?.commentNotificationsEnabled ?: true
 }
