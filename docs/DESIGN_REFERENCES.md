@@ -9991,3 +9991,62 @@ exactly ONE real `RealFcmPushSender` attempt (`"FCM push failed for token fake-t
 registration token is not a valid FCM registration token"`), timestamped right after the
 `soldOut:false` call -- proving the restock push genuinely fires only on the real `true->false`
 transition and not on the mark-sold-out call, matching the code's own gating exactly.
+
+## 170. Sold-out ("86") toggle was never actually enforced at checkout -- real transaction-safety bug fix
+
+**Added 2026-08-18.** Investigated Section 169's suggested client-wiring follow-up first: all 3
+platforms (bank-mfe's `CommerceProduct`/`ProductWishlistView`, Android's `ShopScreen.kt`, iOS's
+`ShopScreen.swift`) already have a complete, real Coupang/Naver Shopping-style product wishlist
+(heart-toggle on every product card, a dedicated Wishlist tab, `favoriteProductIds` lifted so the
+heart stays correct wherever it's toggled) -- so the favorite/wishlist half of that follow-up
+needed zero client work, the backend notification alone is a complete, self-contained feature as
+the task brief anticipated. But re-reading the checkout path while confirming that turned up a
+real, separate, more serious gap: `MerchantProduct.soldOut`'s own doc comment (added 2026-08-16
+alongside the merchant-facing toggle) explicitly says a sold-out item must stay visible but "be
+blocked from new orders until the merchant flips it back" -- the real Baemin CEO app/DoorDash-
+style "86" a restaurant/shop uses when it's run out of an item mid-shift. `MerchantProductService.
+setSoldOut` and the customer-facing catalog endpoints (`ShoppingController.getMerchantProducts`)
+were both wired to show `soldOut` correctly, and Section 169 just added a real restock-notification
+push for the flag's `true -> false` transition. But `OrderService.placeOrder` -- the actual
+checkout path -- never once read `product.soldOut`. It checked `product.active` (soft-delete) and
+`product.stockQuantity` (finite inventory decrement) but nothing stopped a buyer from successfully
+placing a real order, moving real money, and generating a real `OrderItem` for a product the
+merchant had explicitly marked unavailable. `soldOut` is an independent manual toggle, not derived
+from `stockQuantity` (e.g. an ingredient shortage on an item with untracked/unlimited inventory,
+or `stockQuantity > 0` but the merchant knows it's actually unavailable) -- so this couldn't be
+caught by the existing `InsufficientProductStockException` path at all; it silently didn't exist.
+Same class of bug this session has now found and fixed twice before in this exact method
+(`minOrderAmount` "real, already-shipped field never actually enforced at order time", found the
+same day it shipped) -- a real, already-shipped, already-client-visible flag with zero server-side
+enforcement at the one place that actually matters.
+
+**Fixed**: `OrderService.placeOrder` now throws a new `ProductSoldOutException` the moment a
+resolved line item's `product.soldOut == true`, checked right after the existing `active`/
+merchant-ownership guard and before the Time Deal/stock-quantity/pricing logic runs -- so a
+rejected order touches zero wallet balances, zero stock counts, and zero ledger legs, same
+"reject before mutating anything" discipline the adjacent `InsufficientProductStockException`
+path already established. New `OrderController.handleProductSoldOut` maps it to a real 409
+CONFLICT with code `PRODUCT_SOLD_OUT`, mirroring `handleInsufficientStock`'s existing shape
+exactly.
+
+Files changed: `services/backend/commerce/src/main/kotlin/rw/itunda/commerce/OrderService.kt`
+(new `ProductSoldOutException`; new check in `placeOrder`), `services/backend/commerce/src/main/kotlin/rw/itunda/commerce/web/OrderController.kt`
+(new `handleProductSoldOut` exception handler + import), `services/backend/commerce/src/test/kotlin/rw/itunda/commerce/OrderServiceTest.kt`
+(new `When`/`Then` block: a buyer ordering a `soldOut = true` product with `stockQuantity = null`
+-- deliberately untracked, so the rejection can only be attributed to the `soldOut` flag itself,
+not an incidental stock-count rejection -- gets a real `ProductSoldOutException` and zero calls to
+`ledgerService.postLedgerTransaction`).
+
+**Verified locally, this pass**: `touch`-forced `./gradlew :commerce:compileKotlin
+:commerce:compileTestKotlin` -> `BUILD SUCCESSFUL`. `./gradlew :commerce:test --tests
+"rw.itunda.commerce.OrderServiceTest" --rerun-tasks` -> `BUILD SUCCESSFUL`; real XML results
+(`commerce/build/test-results/test/TEST-rw.itunda.commerce.OrderServiceTest.xml`) confirm
+`tests="36" skipped="0" failures="0" errors="0"`, including the new case by name (`Then: it
+rejects with ProductSoldOutException before debiting a wallet`). Also ran the wider
+`./gradlew :commerce:test :app:compileKotlin` (the full commerce test suite plus the full backend
+aggregate build) -> `BUILD SUCCESSFUL`, and confirmed via grep that no other module constructs
+`rw.itunda.commerce.OrderService(...)` directly (the two other files matching `OrderService(` are
+an unrelated same-named class in the `eats` module).
+
+No client wiring, deploy, or live-server verification attempted here -- backend-only, correctness
+fix, reserved for the coordinating session's deploy per this task's own scoping rules.

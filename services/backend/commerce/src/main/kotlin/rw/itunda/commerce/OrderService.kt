@@ -57,6 +57,7 @@ class RiderAlreadyOnDeliveryException(message: String) : RuntimeException(messag
 class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
 class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
 class InsufficientProductStockException(message: String) : RuntimeException(message)
+class ProductSoldOutException(message: String) : RuntimeException(message)
 
 data class OrderItemRequest(val productId: String, val quantity: Int)
 data class OrderDetail(val order: Order, val items: List<OrderItem>)
@@ -170,6 +171,20 @@ class OrderService(
                 // a product from a different merchant or a deactivated one is equally
                 // "not orderable here" from this order's point of view.
                 throw OrderProductNotFoundException("Product not found")
+            }
+            // Real Baemin CEO app/DoorDash-style "86" enforcement -- MerchantProduct.
+            // soldOut's own doc comment explicitly says a sold-out item stays visible on
+            // the customer-facing menu but must be "blocked from new orders until the
+            // merchant flips it back". That toggle (MerchantProductService.setSoldOut,
+            // 2026-08-16) and its restock-notification fan-out (2026-08-18) were both
+            // real and wired, but nothing in this checkout path ever actually checked the
+            // flag -- a buyer could freely order an item the merchant had explicitly
+            // marked unavailable. Checked here, not folded into the stockQuantity check
+            // below: soldOut is an independent manual toggle, not derived from inventory
+            // count (a product can be soldOut with stockQuantity > 0, e.g. an ingredient
+            // shortage, or have no stockQuantity tracking at all).
+            if (product.soldOut) {
+                throw ProductSoldOutException("${product.name} is temporarily sold out")
             }
             // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDeal.kt's own doc
             // comment. A real active deal with enough remaining quantity for this whole

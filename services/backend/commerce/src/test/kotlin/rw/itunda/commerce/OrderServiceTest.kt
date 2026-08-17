@@ -110,6 +110,31 @@ class OrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a buyer tries to order a product the merchant has marked sold out") {
+            // Real Baemin CEO app/DoorDash-style "86" enforcement -- see
+            // MerchantProduct.soldOut's own doc comment and OrderService.placeOrder's own
+            // new comment above the check this test covers. stockQuantity is deliberately
+            // left null (unlimited/untracked) so this failure can only be attributed to
+            // the soldOut flag itself, not an incidental stock-count rejection.
+            val soldOutProduct = MerchantProduct(
+                id = "product_soldout", merchantId = "merchant_1", name = "86'd item",
+                price = BigDecimal("2000"), soldOut = true,
+            )
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_soldout") } returns Optional.of(soldOutProduct)
+
+            Then("it rejects with ProductSoldOutException before debiting a wallet") {
+                try {
+                    service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_soldout", 1)), "KG 123 St")
+                    error("expected ProductSoldOutException")
+                } catch (e: ProductSoldOutException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
         When("a real buyer places a real order for 3 units") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)

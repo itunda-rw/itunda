@@ -54,6 +54,7 @@ import rw.itunda.commerce.ProductInquiryNotFoundException
 import rw.itunda.commerce.ProductInquiryService
 import rw.itunda.commerce.ProductNotYetDeliveredException
 import rw.itunda.commerce.ProductReviewService
+import rw.itunda.commerce.ProductSoldOutException
 import rw.itunda.commerce.ReturnAlreadyRequestedException
 import rw.itunda.commerce.ReturnOrderNotDeliveredException
 import rw.itunda.commerce.ReturnOrderNotFoundException
@@ -430,6 +431,10 @@ class OrderController(
     @ExceptionHandler(InsufficientProductStockException::class)
     fun handleInsufficientStock(ex: InsufficientProductStockException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INSUFFICIENT_PRODUCT_STOCK", ex.message ?: "Product is out of stock"))
+
+    @ExceptionHandler(ProductSoldOutException::class)
+    fun handleProductSoldOut(ex: ProductSoldOutException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PRODUCT_SOLD_OUT", ex.message ?: "Product is sold out"))
 
     @ExceptionHandler(OrderProductNotFoundException::class)
     fun handleProductNotFound(ex: OrderProductNotFoundException) =
