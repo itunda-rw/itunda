@@ -66,7 +66,7 @@ import {
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreFactor, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
 import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, fetchPet, type RewardTasksResult, type ReferralInfo, type StepRewardTierInfo, type Pet } from './lib/rewards';
-import { fetchBillProviders, fetchPendingBills, payBill, buyAirtime, type BillProvider, type PendingBill } from './lib/bills';
+import { fetchBillProviders, fetchPendingBills, payBill, buyAirtime, fetchAutoPaySettings, setAutoPay, clearAutoPay, type BillProvider, type PendingBill, type BillAutoPaySetting } from './lib/bills';
 import {
   fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount,
   isNotAgentOperatorError, type AgentTillSnapshot, type AgentActivityItem,
@@ -3671,11 +3671,58 @@ function BillsView() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Real Kakao Pay 자동납부 -- see lib/bills.ts's own doc comment.
+  const [autoPaySettings, setAutoPaySettings] = useState<BillAutoPaySetting[]>([]);
+  const [autoPayProviderId, setAutoPayProviderId] = useState('');
+  const [autoPayAccount, setAutoPayAccount] = useState('');
+  const [autoPayMax, setAutoPayMax] = useState('');
+  const [savingAutoPay, setSavingAutoPay] = useState(false);
+  const [clearingAutoPayId, setClearingAutoPayId] = useState<string | null>(null);
+
   const load = () => {
     fetchBillProviders().then(setProviders).catch(() => setProviders([]));
     fetchPendingBills().then(setPending).catch(() => setPending([]));
+    fetchAutoPaySettings().then(setAutoPaySettings).catch(() => setAutoPaySettings([]));
   };
   useEffect(load, []);
+
+  const handleSetAutoPay = async () => {
+    const maxAmount = Number(autoPayMax);
+    if (!autoPayProviderId || !autoPayAccount.trim() || !Number.isFinite(maxAmount) || maxAmount <= 0) {
+      setError('Choose a biller, enter your account number, and a maximum amount greater than zero.');
+      return;
+    }
+    setSavingAutoPay(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await setAutoPay(autoPayProviderId, autoPayAccount.trim(), maxAmount);
+      setMessage('Auto-pay set up — this bill will be paid automatically each cycle, up to your cap.');
+      setAutoPayProviderId('');
+      setAutoPayAccount('');
+      setAutoPayMax('');
+      fetchAutoPaySettings().then(setAutoPaySettings).catch(() => {});
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set up auto-pay.');
+    } finally {
+      setSavingAutoPay(false);
+    }
+  };
+
+  const handleClearAutoPay = async (providerId: string) => {
+    setClearingAutoPayId(providerId);
+    setError(null);
+    setMessage(null);
+    try {
+      await clearAutoPay(providerId);
+      setAutoPaySettings((prev) => prev.filter((s) => s.providerId !== providerId));
+      setMessage('Auto-pay turned off.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not turn off auto-pay.');
+    } finally {
+      setClearingAutoPayId(null);
+    }
+  };
 
   const handlePay = async (bill: PendingBill) => {
     setPayingId(bill.id);
@@ -3738,6 +3785,59 @@ function BillsView() {
           ))}
         </div>
       )}
+
+      <div className="itunda-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Auto-pay</h3>
+        <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>
+          Register a bill once and it's paid automatically every cycle, up to the cap you set.
+        </p>
+        {autoPaySettings.filter((s) => s.active).map((s) => {
+          const provider = providers.find((p) => p.id === s.providerId);
+          return (
+            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 600 }}>{provider ? `${provider.logo} ${provider.name}` : s.providerId}</p>
+                <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)' }}>{s.accountNumber} · up to {s.maxAmount.toLocaleString()} RWF</p>
+              </div>
+              <button
+                className="itunda-btn itunda-btn-secondary"
+                disabled={clearingAutoPayId === s.providerId}
+                onClick={() => handleClearAutoPay(s.providerId)}
+              >
+                {clearingAutoPayId === s.providerId ? '...' : 'Turn off'}
+              </button>
+            </div>
+          );
+        })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+          <select
+            value={autoPayProviderId}
+            onChange={(e) => setAutoPayProviderId(e.target.value)}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
+          >
+            <option value="">Choose a biller</option>
+            {providers.filter((p) => p.category !== 'airtime').map((p) => (
+              <option key={p.id} value={p.id}>{p.logo} {p.name}</option>
+            ))}
+          </select>
+          <input
+            placeholder="Account number"
+            value={autoPayAccount}
+            onChange={(e) => setAutoPayAccount(e.target.value)}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
+          />
+          <input
+            type="number"
+            placeholder="Maximum amount per bill (RWF)"
+            value={autoPayMax}
+            onChange={(e) => setAutoPayMax(e.target.value)}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--itunda-grey-300)' }}
+          />
+          <button className="itunda-btn itunda-btn-secondary" disabled={savingAutoPay} onClick={handleSetAutoPay}>
+            {savingAutoPay ? '...' : 'Turn on auto-pay'}
+          </button>
+        </div>
+      </div>
 
       <div className="itunda-card" style={{ padding: '16px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Buy airtime</h3>

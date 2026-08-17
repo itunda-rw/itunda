@@ -9418,3 +9418,47 @@ ios/App/Sources/RideScreenView.swift -suppress-warnings` re-ran clean, exit 0. T
 Trusted Contacts on all three client platforms (bank-mfe §159, Android §160, iOS §161); the
 underlying backend contract was live-verified against the real deployed backend twice already
 (§136 raw API, §159 bank-mfe UI via headless Chrome), so this thread is now CLOSED.
+
+## 162. Kakao Pay 자동납부 (auto bill-pay) client wiring -- fresh uncalled-endpoint sweep
+
+**Added 2026-08-18.** A fresh full uncalled-endpoint sweep (grepping every `@GetMapping`/
+`@PostMapping`/`@PutMapping`/`@DeleteMapping`/`@PatchMapping` path across all 106
+`*Controller.kt` files into a 742-row corpus, then cross-referencing against every literal
+`api/v1/...` path string used anywhere in `services/micro-frontends/*/src` -- all 6 web MFEs,
+not just bank-mfe, which the first pass at this technique had missed -- plus `android/` and
+`ios/`) turned up `BillsController`'s `POST/GET/DELETE /api/v1/bills/auto-pay`: a fully real,
+already-tested Kakao Pay 자동납부-style feature (`BillsService.setAutoPay`/`getAutoPaySettings`/
+`clearAutoPay`, the `BillAutoPaySetting` entity with its own `uq_bill_auto_pay_user_provider`
+constraint and `maxAmount` safety-cap semantics, and `BillAutoPayProcessor` -- whose
+self-invocation transaction-poisoning bug was already found and fixed in Section 115/118 of
+this same session) with genuinely zero caller on any of the 3 client platforms. `grep -rl
+"autoPay|AutoPay|auto-pay"` across `services/micro-frontends`, `android`, and `ios` turned up
+only one unrelated comment (`weatherIndexInsurance.ts`'s prose use of "auto-pays"), confirming
+the real backend feature had never been wired into any UI at all, despite `lib/bills.ts`
+already existing for the sibling pay-bill/buy-airtime flow (bank-mfe's own doc comment there
+records that as its own earlier uncalled-endpoint fix).
+
+**Built**: `services/micro-frontends/bank-mfe/src/lib/bills.ts` gained the
+`BillAutoPaySetting` interface (mirroring `BillAutoPaySetting.kt`'s fields 1:1) and
+`fetchAutoPaySettings`/`setAutoPay`/`clearAutoPay` functions, the last using a query-string
+`DELETE` (matching `BillsController.clearAutoPay`'s `@RequestParam providerId`, same shape as
+`autoTransfers.ts`'s path-param `DELETE` convention elsewhere in this file's sibling libs).
+`BankDashboard.tsx`'s existing `BillsView` (itself Section-documented as bank-mfe's first-ever
+real bill-pay screen) gained a new "Auto-pay" card between the pending-bills list and the
+buy-airtime form: lists any active auto-pay settings with a "Turn off" button per provider
+(`clearAutoPay`), and a form to register a new one -- biller picker (non-airtime categories
+only, since `BillsCatalog.pendingBills` never has a "due" airtime bill), account number, and
+the required `maxAmount` safety cap -- calling `setAutoPay` and refreshing the list on success.
+Same load/error/message state-machine shape as the rest of `BillsView` and this file's other
+list-with-inline-actions views (e.g. `AgentOperatorView`).
+
+**Verification**: `touch`ed both changed files to defeat any cache, then ran
+`yarn workspace bank-mfe run build` (`tsc -b && vite build`) for real -- completed clean,
+`✓ built in 1.14s`, no type errors, `BankDashboard-*.js` chunk rebuilt. No backend code was
+touched (the endpoints, service methods, entity, and scheduler-safety fix all already existed
+and were already covered by this session's prior backend test runs), so no new backend tests
+were required for this pass. Android/iOS remain unwired for this feature and are a natural
+follow-up, same "one platform per section" cadence Sections 159-161 used for Trusted Contacts.
+
+Files: `services/micro-frontends/bank-mfe/src/lib/bills.ts`,
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.
