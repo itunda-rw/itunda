@@ -8448,3 +8448,45 @@ used a different structural shape (a separate `MerchantBillingChargeExecutor` be
 removing `@Transactional` directly from the per-row method) -- any future notification addition
 there needs to verify where the failure/catch logic actually lives before assuming it's safe by
 construction the same way.
+
+## 135. Toss Payments-style merchant billing charge failure alert (Sections 131/132/133/134 pattern, extended)
+
+**Added 2026-08-17.** Extends the same real, sourced Toss Payments billing-failure notification
+pattern (docs-pay.toss.im/reference/billing/bill) to the fourth and final flagged follow-up:
+`MerchantBillingService.chargeOne` (Kakao Pay 정기결제/Toss billing-key-style recurring merchant
+subscription billing). This closes the last of the five originally-flagged recurring-charge/
+transfer failure paths (product subscriptions, bill auto-pay, P2P auto-transfer, P2P scheduled-
+transfer, merchant billing).
+
+**Built**: `notifyChargeFailed` sends a real `Notification` (`MERCHANT_BILLING_FAILED`) + push
+whenever a real recurring charge attempt fails, from all three of `chargeOne`'s failure branches
+(plan no longer available, merchant/wallet no longer available, and the insufficient-funds/
+unexpected-exception catch block), wrapped in its own try/catch. Verified safe by construction the
+same way as Sections 131-134, but required actually reading the code rather than assuming: unlike
+`AutoTransferService`/`ScheduledTransferService` (which just had `@Transactional` removed directly
+from `executeOne`), `MerchantBillingService`'s Section 118 fix has a different shape -- the real
+charge execution was extracted into a separate, independently-`@Transactional`
+`MerchantBillingChargeExecutor` bean, while `chargeOne` itself is NOT `@Transactional`. Confirmed
+by reading both files: since `chargeOne` has no ambient transaction of its own, a failing
+notification save can never poison the real subscription bookkeeping -- same safety guarantee,
+different mechanism. Uses `AutoTransferService`'s "we'll try again next cycle" wording (not
+`ScheduledTransferService`'s terminal wording), since a `MerchantBillingSubscription` stays
+`ACTIVE` and keeps recurring after a failed charge, unlike a one-time `ScheduledTransfer`.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a fresh
+customer, seeded their MAIN wallet to 10,000 RWF via direct DB update (itunda has no dev/sandbox
+wallet-funding endpoint), subscribed to a real existing merchant billing plan ("Monthly Coffee
+Box", 3,000 RWF / 30 days) via `POST /api/v1/merchant/billing-plans/{planId}/subscribe` -- the
+real first charge succeeded (`chargeCount: 1`, real `MERCHANT_BILLING_CHARGED` notification with
+exact "3000.00 RWF charged for Monthly Coffee Box at Item94 Coffee Club" content). Drained the
+wallet back to `0` and backdated `next_charge_at` via direct DB update, then let a real
+`MerchantBillingScheduler` poll run. DB confirmed the subscription stayed `status='ACTIVE'` with
+`last_failure_reason: 'Insufficient balance'` and `next_charge_at` correctly advanced 30 real
+days. `GET /api/v1/notifications` confirmed a real `MERCHANT_BILLING_FAILED` notification with
+the exact expected content: `"Subscription payment failed"` / `"We couldn't charge your \"Monthly
+Coffee Box\" subscription: Insufficient balance. We'll try again next cycle."`
+
+**Notification-gap follow-up thread now fully closed**: all five of the originally-flagged
+recurring-charge/transfer failure paths (Sections 131-135) now send real, sourced,
+Toss-Payments-pattern failure notifications instead of silently recording the failure on the DB
+row.
