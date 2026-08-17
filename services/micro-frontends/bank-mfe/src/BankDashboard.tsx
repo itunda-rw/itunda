@@ -200,10 +200,10 @@ import {
   type AutoTransfer, type AutoTransferFrequency,
 } from './lib/autoTransfers';
 import {
-  acceptRideTrip, arriveAtRideStop, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
-  fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchRideTripPin, fetchTripStops, registerAsDriver, requestRideTrip, setDriverAvailability,
+  acceptRideTrip, addTrustedContact, arriveAtRideStop, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
+  fetchDriverReviews, fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchRideTripPin, fetchTripStops, fetchTrustedContacts, registerAsDriver, removeTrustedContact, requestRideTrip, sendStatusToTrustedContacts, setDriverAvailability,
   shareRideTripStatus, startRideTrip, submitRideReview, updateDriverLocation,
-  type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop,
+  type RideDriver, type RideDriverRating, type RideTrip, type RideTripReview, type RideTripStop, type RideTrustedContact,
 } from './lib/rideshare';
 import {
   acceptDesignatedDriverTrip, cancelDesignatedDriverTrip, completeDesignatedDriverTrip, fetchAvailableDesignatedDriverTrips,
@@ -15267,6 +15267,106 @@ function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted
   );
 }
 
+// Real Uber Safety "Trusted Contacts" (help.uber.com) -- a persistent contact list set
+// up once, distinct from the per-trip "Share trip status" pick above. Found while
+// triaging the uncalled-endpoint sweep: RideController already shipped a complete,
+// tested list/add/remove implementation (RideTrustedContactService) with zero client
+// callers on any platform. This is bank-mfe's first UI for it.
+function TrustedContactsSection() {
+  const [contacts, setContacts] = useState<RideTrustedContact[] | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => { fetchTrustedContacts().then(setContacts).catch(() => setContacts([])); };
+  useEffect(load, []);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await addTrustedContact(phone.trim(), name.trim());
+      setName('');
+      setPhone('');
+      setShowAdd(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not add this trusted contact.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await removeTrustedContact(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this contact.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="itunda-card" style={{ marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <ShieldCheck size={16} color="var(--itunda-green)" /> Trusted contacts
+        </h3>
+        {(contacts?.length ?? 0) < 5 && (
+          <button style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-blue)' }} onClick={() => setShowAdd((v) => !v)}>
+            {showAdd ? 'Cancel' : '+ Add'}
+          </button>
+        )}
+      </div>
+      <p style={{ fontSize: '11px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>
+        Up to 5 people who can get your live ride status in one tap, every trip.
+      </p>
+      {showAdd && (
+        <form onSubmit={handleAdd} style={{ marginBottom: '10px' }}>
+          <input
+            type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Name"
+            style={{ width: '100%', padding: '8px', marginBottom: '6px', border: '1px solid var(--itunda-grey-200)', borderRadius: '8px', fontSize: '13px' }}
+          />
+          <input
+            type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number"
+            style={{ width: '100%', padding: '8px', marginBottom: '6px', border: '1px solid var(--itunda-grey-200)', borderRadius: '8px', fontSize: '13px' }}
+          />
+          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy} style={{ width: '100%', padding: '8px', fontSize: '13px' }}>
+            {busy ? 'Adding…' : 'Add trusted contact'}
+          </button>
+        </form>
+      )}
+      {contacts === null ? (
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Loading…</p>
+      ) : contacts.length === 0 ? (
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>No trusted contacts yet.</p>
+      ) : (
+        contacts.map((c) => (
+          <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--itunda-grey-100)' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600 }}>{c.contactName}</span>
+            <button
+              onClick={() => handleRemove(c.id)} disabled={busyId === c.id}
+              style={{ fontSize: '11px', fontWeight: 700, color: 'var(--itunda-red)' }}
+            >
+              {busyId === c.id ? '…' : 'Remove'}
+            </button>
+          </div>
+        ))
+      )}
+      {error && <p style={{ fontSize: '11px', color: 'var(--itunda-red)', marginTop: '6px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) => void }) {
   const [subTab, setSubTab] = useState<'RIDE' | 'DRIVE'>('RIDE');
 
@@ -15287,6 +15387,9 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
   // Real Uber "Share Trip Status" -- see lib/rideshare.ts's own doc comment.
   const [showShareTripModal, setShowShareTripModal] = useState(false);
   const [shareTripError, setShareTripError] = useState<string | null>(null);
+  // Real Uber Safety "Send Status" -- see TrustedContactsSection's own doc comment.
+  const [sendStatusBusy, setSendStatusBusy] = useState(false);
+  const [sendStatusResult, setSendStatusResult] = useState<string | null>(null);
   // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- 'now' is unchanged
   // ASAP dispatch; 'later' holds a datetime-local value the passenger picks.
   const [rideTiming, setRideTiming] = useState<'now' | 'later'>('now');
@@ -15367,6 +15470,22 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
       setShowShareTripModal(false);
     } catch (err) {
       setShareTripError(err instanceof ApiError ? err.message : 'Could not share your trip status.');
+    }
+  };
+
+  // Real Uber Safety "Send Status" -- one tap fans this trip's live status out to every
+  // real trusted contact at once, distinct from handleShareTripStatus's own per-share
+  // conversation pick above.
+  const handleSendStatus = async (tripId: string) => {
+    setSendStatusBusy(true);
+    setSendStatusResult(null);
+    try {
+      const sentCount = await sendStatusToTrustedContacts(tripId);
+      setSendStatusResult(sentCount > 0 ? `Sent to ${sentCount} trusted contact${sentCount === 1 ? '' : 's'}.` : 'Add a trusted contact first to send your status.');
+    } catch (err) {
+      setSendStatusResult(err instanceof ApiError ? err.message : 'Could not send your status.');
+    } finally {
+      setSendStatusBusy(false);
     }
   };
 
@@ -15539,6 +15658,10 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
                       Share trip status
                     </button>
                     {shareTripError && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }} role="alert">{shareTripError}</p>}
+                    <button className="itunda-btn itunda-btn-secondary" disabled={sendStatusBusy} onClick={() => handleSendStatus(activeTrip.id)}>
+                      {sendStatusBusy ? 'Sending…' : 'Send status to trusted contacts'}
+                    </button>
+                    {sendStatusResult && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{sendStatusResult}</p>}
                     {activeTrip.status !== 'IN_PROGRESS' && (
                       <button className="itunda-btn itunda-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
                         {busyTripId === activeTrip.id ? 'Cancelling…' : 'Cancel ride'}
@@ -15609,6 +15732,8 @@ function RidesView({ onReportIssue }: { onReportIssue: (transactionId: string) =
           )}
 
           {rideError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '12px' }} role="alert">{rideError}</p>}
+
+          <TrustedContactsSection />
 
           {pastTrips.length > 0 && (
             <div>

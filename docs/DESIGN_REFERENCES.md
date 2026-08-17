@@ -9247,3 +9247,48 @@ before then to keep free delivery on every order." -- and real DB `reminder_sent
 rows; re-triggered -> `{"success":true,"processed":0}`, no duplicate notifications. Deploy hit a
 real transient severe cluster-load spike (65.48) mid-build, resolved by waiting ~5 minutes for
 load to drop back to baseline before pushing, consistent with the established pattern.
+
+## 159. Ride Trusted Contacts + Send Status wired into bank-mfe
+
+**Added 2026-08-18.** After 7 straight hits on the "date field with no reminder" lens
+(Sections 152-158), a quick 15-minute check of every remaining nullable `Instant?`/`LocalDate?`
+deadline field in `core/domain/` found no 8th untouched instance -- every promising candidate
+(`VupLoan.dueDate`, `WeeklySavingsPlan.maturedAt`, `Grow31SavingsPlan.maturedAt`,
+`SavingsGoal.maturityNotifiedAt`) already has a dedicated scheduler. Pivoted to the
+uncalled-endpoint sweep fallback lens instead: extracted all 742 `@GetMapping`/`@PostMapping`/etc.
+paths across every backend `*Controller.kt`, cross-referenced each endpoint's distinctive path
+segment against a single in-memory corpus of every `.kt`/`.swift`/`.ts`/`.tsx` file under
+`android/`, `ios/`, and `services/micro-frontends/` (742 -> 30 real candidates after excluding
+`process-*-reminders`/`process-due` admin scheduler endpoints, already covered by Sections
+115-158).
+
+Real Uber Safety "Trusted Contacts" (help.uber.com -- riders pre-select up to 5 trusted contacts
+once in settings; one tap then fans their live trip status out to everyone on the list) turned
+out to be a **complete, already-tested backend feature with zero client callers on any
+platform**: `RideTrustedContact` domain entity, `RideTrustedContactService` (list/add/remove +
+`sendStatusToTrustedContacts`), `RideTrustedContactServiceTest` (13 passing Kotest cases), and
+four live `RideController` endpoints (`GET/POST /api/v1/rides/trusted-contacts`,
+`DELETE /api/v1/rides/trusted-contacts/{contactId}`, `POST
+/api/v1/rides/trips/{tripId}/send-status`) with their own exception handlers -- all already
+present in the codebase (itself sourced and cited from help.uber.com in the domain entity's own
+doc comment), but genuinely never called from `android/`, `ios/`, or any `services/
+micro-frontends/` source file. Distinct from the already-wired `shareRideTripStatus`
+(one-off per-share pick into a single conversation) -- this is the persistent contact list Uber's
+own "Manage Trusted Contacts" screen models.
+
+**Built (bank-mfe only; no backend changes -- the API surface was already complete and tested)**:
+`lib/rideshare.ts` gained `RideTrustedContact`, `fetchTrustedContacts`, `addTrustedContact`,
+`removeTrustedContact`, `sendStatusToTrustedContacts`. `BankDashboard.tsx` gained a new
+`TrustedContactsSection` component (add-by-phone form, list with per-contact remove, capped at 5
+matching the backend's own `MAX_TRUSTED_CONTACTS`) rendered persistently in the Rides view's RIDE
+subtab, plus a "Send status to trusted contacts" button next to the existing "Share trip status"
+button on an active trip, wired to `handleSendStatus` which shows the real
+"Sent to N trusted contacts" (or "Add a trusted contact first") confirmation matching Uber's own
+toast. Android and iOS remain unwired -- out of scope for this pass, left as the next
+uncalled-endpoint candidate for that lens.
+
+**Verification**: `yarn workspace bank-mfe run build` -- clean production build, no TypeScript
+errors. `./gradlew :rideshare:test --tests "rw.itunda.rideshare.RideTrustedContactServiceTest"`
+-- all 13 existing cases still green, confirming the surface being wired is correct and
+untouched. No new backend Kotlin code was needed or written, since the feature was already fully
+implemented and tested server-side; the gap was purely a missing client.

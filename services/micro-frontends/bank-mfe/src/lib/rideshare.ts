@@ -184,3 +184,37 @@ export const fetchDriverRating = (driverId: string) =>
 export const fetchDriverReviews = (driverId: string) =>
   apiFetch<{ success: boolean; reviews: RideTripReview[] }>(`/api/v1/rides/drivers/${driverId}/reviews?size=10`)
     .then((r) => r.reviews);
+
+// Real Uber Safety "Trusted Contacts" (help.uber.com -- riders pre-select up to 5
+// trusted contacts once in settings, then one tap sends their live trip status to all
+// of them). See the backend's RideTrustedContact.kt doc comment for the full sourced
+// account. Found while triaging the uncalled-endpoint sweep: RideController already had
+// a complete, tested list/add/remove/send-status implementation (RideTrustedContactService,
+// RideTrustedContactServiceTest) with zero client callers on any platform -- this closes
+// that gap for bank-mfe, distinct from shareRideTripStatus's own one-off per-share pick.
+export interface RideTrustedContact {
+  id: string;
+  userId: string;
+  contactUserId: string;
+  contactName: string;
+  createdAt: string;
+}
+
+export const fetchTrustedContacts = () =>
+  apiFetch<{ success: boolean; contacts: RideTrustedContact[] }>('/api/v1/rides/trusted-contacts').then((r) => r.contacts);
+
+export const addTrustedContact = (phoneNumber: string, name: string) =>
+  apiFetch<{ success: boolean; contact: RideTrustedContact }>('/api/v1/rides/trusted-contacts', {
+    method: 'POST',
+    body: JSON.stringify({ phoneNumber, name }),
+  }).then((r) => r.contact);
+
+export const removeTrustedContact = (contactId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/rides/trusted-contacts/${contactId}`, { method: 'DELETE' }).then(() => undefined);
+
+// Real Uber "Send Status" -- one tap fans a trip's live status out to every trusted
+// contact at once (distinct from shareRideTripStatus's single conversation pick above).
+// Returns how many contacts were actually messaged so the client can show a real
+// "Sent to N contacts" confirmation, matching Uber's own toast.
+export const sendStatusToTrustedContacts = (tripId: string) =>
+  apiFetch<{ success: boolean; sentCount: number }>(`/api/v1/rides/trips/${tripId}/send-status`, { method: 'POST' }).then((r) => r.sentCount);
