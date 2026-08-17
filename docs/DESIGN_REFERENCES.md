@@ -10467,3 +10467,28 @@ module regressed.
 
 No deploy and no live-server verification attempted here -- reserved for the
 coordinating session per this task's own scoping rules.
+
+**Coordinator re-verification, deploy, and real-money live-verify**: independently re-ran
+`./gradlew :rideshare:test :core:test --rerun-tasks`; summed every real XML report and confirmed
+`rideshare` `tests="108"` / `core` `tests="100"`, both `failures="0" errors="0"`, matching the
+claim exactly. Also manually traced the ledger-leg logic through all three real branches (within
+grace period/REQUESTED: 2 legs, full refund; past grace period with a real driver wallet: 3 legs,
+fee carved to driver; past grace period with a missing driver wallet: falls back to a full 2-leg
+refund) and confirmed the credit legs always sum to exactly `trip.fare`, so the transaction can
+never fail to balance. Given this is a fifth real money-safety fix, deployed with priority: built
+and pushed `192.168.252.4:32000/itunda/backend:2026-08-18-designated-driver-cancel` (includes a
+real Flyway migration, `V283`, applied automatically on pod startup), rollout completed cleanly
+after one polling command was killed mid-flight and cleanly re-launched.
+
+**Live-verified with real money movement**, testing both branches of the fix (not just one, since
+this fix has two real payout paths unlike Sections 170-173's single reject/accept shape):
+registered a customer + driver, requested and accepted a real 4,000 RWF designated-driver trip.
+**Grace-period case**: cancelled immediately (well within the 2-minute window) -> real `200`
+success (this exact call would have `409`'d with `INVALID_..._STATUS_TRANSITION` before this fix,
+since only `REQUESTED` was ever accepted) with a full refund; confirmed the customer's real wallet
+balance returned to exactly 50,000.00 RWF. **Fee-carve-out case**: requested and accepted a second
+trip, backdated `driver_accepted_at` 5 minutes into the past (past the grace period) via direct DB
+update, cancelled -> real `200` success; confirmed the customer's real wallet landed at exactly
+47,000.00 RWF (kept the 3,000 RWF fee out of the 4,000 fare) and the driver's real wallet was
+credited exactly 3,000.00 RWF -- the precise cancellation-fee split, proving both that the
+previously-impossible cancel now works and that the fee math is exactly right in both directions.
