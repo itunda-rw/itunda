@@ -8298,3 +8298,45 @@ scheduler-driven rows calling a `@Transactional` method that itself calls a sepa
 shape. A dedicated, deliberate backend-wide grep audit for this exact pattern (any `@Scheduled`
 poll's per-row target method that is both `@Transactional` and calls another injected `*Service`
 bean) is a real, standing candidate for a future task, not yet done exhaustively.
+
+## 130. Bug fix: scheduler transaction-poisoning in ScheduledTransferService (fourth, final instance)
+
+**Added 2026-08-17.** Not a new feature -- closes a fourth, previously-unflagged instance of the
+exact transaction-poisoning bug class Sections 115, 118, and 129 already closed three times this
+session, found via a deliberate, exhaustive grep audit of every `@Scheduled` class in
+`services/backend`.
+
+`ScheduledTransferService.executeOne` was itself `@Transactional` and called
+`p2pService.sendDirect` (a separately-proxied bean). Its own doc comment literally said it copied
+"the same discipline `AutoTransferService.executeOne` already established" -- meaning it was
+copy-pasted from that method's pre-fix, buggy state, and inherited the identical real
+`UnexpectedRollbackException` risk.
+
+**Fixed**: removed `@Transactional` from `executeOne` -- identical fix shape to `AutoTransferService
+.executeOne`'s Section 129 fix. `sendDirect` remains fully atomic on its own; the final repository
+save is independently atomic via Spring Data's implicit per-call transaction.
+
+**The exhaustive audit**: every `@Scheduled` class across all backend modules was grepped and
+individually checked for the pattern (per-row target method both `@Transactional` and internally
+catching an exception from a separately-proxied bean). Confirmed clean: `InsurancePremiumScheduler`,
+`OverdraftInterestAccrualScheduler`, `VupLoanReminderScheduler`, `VupLoanOverdueScheduler`,
+`VendorCashAdvanceCollectionScheduler`, `StudentLoanGracePeriodScheduler`,
+`MarketplaceEscrowAutoReleaseScheduler`, `PostpaidCreditAccrualScheduler`, `WebhookRetryScheduler`,
+`BookingNoShowScheduler`, `GroupAccountDuesReminderScheduler`, `SavingsMaturityReminderScheduler`,
+`RideDispatchScheduler`, `MotoOwnershipScheduler`, `DepositProtectionScheduler`,
+`WeeklySavingsScheduler`, `InterestAccrualScheduler`, `Grow31SavingsScheduler`,
+`UpfrontInterestDepositScheduler`, `AutoSaveScheduler`, `SplitBillReminderScheduler`,
+`StockPriceAlertScheduler`, `AutoTopUpScheduler`, `ProductPriceDropScheduler`,
+`OrderAcceptanceExpiryScheduler`, `GiftVoucherExpiryScheduler`, `DispatchOfferScheduler`,
+`GiftExpiryScheduler`, `ExchangeRateAlertScheduler`, `VerificationTokenCleanupScheduler`. This bug
+class is now considered closed and exhausted for code that existed as of this audit.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: two real
+`ScheduledTransfer`s created (one-time transfers, distinct from `AutoTransfer`'s recurring model) --
+one from a sender with a genuine `0` MAIN wallet balance, one from a sender funded with 5,000 RWF.
+Both `scheduled_date` backdated to the real current date, then a real ~30s
+`ScheduledTransferScheduler` poll was allowed to run. A direct DB check afterward confirmed: the
+drained sender's row showed `status: 'FAILED'`, `failure_reason: 'Insufficient balance'`; the funded
+sender's row showed `status: 'EXECUTED'` with a real `executed_at` timestamp and a real
+`transaction_id` -- both rows processed in the same poll, one failure not blocking the other. Pod
+logs across the full poll window showed zero occurrences of `UnexpectedRollbackException`.
