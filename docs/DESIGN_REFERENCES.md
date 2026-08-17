@@ -8490,3 +8490,37 @@ Coffee Box\" subscription: Insufficient balance. We'll try again next cycle."`
 recurring-charge/transfer failure paths (Sections 131-135) now send real, sourced,
 Toss-Payments-pattern failure notifications instead of silently recording the failure on the DB
 row.
+
+## 136. Uber Safety "Trusted Contacts" + "Send Status"
+
+**Added 2026-08-17.** Real Uber Safety feature, sourced from help.uber.com: riders pre-select up
+to 5 trusted contacts once in settings; a one-tap "Send Status" fans a trip's live status out to
+all of them at once. Distinct from the existing `RideTripService.shareTripStatus` (Section 109),
+which is a one-off share into a single conversation the passenger picks per-share -- this is a
+persistent, reusable contact list plus a one-tap fan-out, matching Uber's real "Manage Trusted
+Contacts" + "Send Status" UX.
+
+**Built**: `RideTrustedContact` entity/table (migration V271, unique per user+contact pair) +
+`RideTrustedContactService` (`add`/`list`/`remove`, real Uber 5-contact cap enforced in code) +
+`sendStatusToTrustedContacts`, which fans out via the existing `MessagingService` (itunda has no
+SMS gateway, so a trusted contact must resolve to a real itunda user by phone number, same
+pattern `P2pService`'s recipient resolution already establishes). 4 new endpoints on
+`RideController` under `/api/v1/rides`: `GET/POST /trusted-contacts`,
+`DELETE /trusted-contacts/{contactId}`, `POST /trips/{tripId}/send-status`.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered passenger
+A and contact B. Edge cases first -- self-add correctly 400
+`CANNOT_ADD_SELF_AS_TRUSTED_CONTACT`; adding an unregistered phone number correctly 404
+`TRUSTED_CONTACT_RECIPIENT_NOT_FOUND`; real add of B succeeded 201; adding B again correctly 409
+`TRUSTED_CONTACT_ALREADY_ADDED`. Added 4 more real registered accounts to reach the real 5-contact
+cap, then a 6th correctly rejected 409 `TOO_MANY_TRUSTED_CONTACTS` -- `GET
+/trusted-contacts` confirmed exactly 5 rows. Funded passenger A's wallet, created a real ride
+trip (`REQUESTED`, no driver yet), called `POST /trips/{tripId}/send-status` -- real response
+`{"success":true,"sentCount":5}`. Confirmed via `GET /api/v1/messages/conversations` as B that a
+real message landed with the exact expected body: `"🚗 My ride status: REQUESTED\nFrom: Kigali
+Convention Centre\nTo: Kigali International Airport"` (no driver-location line, correctly omitted
+since no driver was assigned yet). IDOR check: B calling `send-status` on A's trip, and calling it
+on a nonexistent trip, both correctly returned 404 `RIDE_TRIP_NOT_FOUND` (not 403, matching the
+project's existing no-existence-leak convention). `DELETE /trusted-contacts/{id}` removed B
+(200), list dropped to 4, and a second delete of the same id correctly 404
+`TRUSTED_CONTACT_NOT_FOUND`.
