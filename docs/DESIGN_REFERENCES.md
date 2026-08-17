@@ -9292,3 +9292,22 @@ errors. `./gradlew :rideshare:test --tests "rw.itunda.rideshare.RideTrustedConta
 -- all 13 existing cases still green, confirming the surface being wired is correct and
 untouched. No new backend Kotlin code was needed or written, since the feature was already fully
 implemented and tested server-side; the gap was purely a missing client.
+
+**Live-verified** via headless Chrome + raw CDP over WebSocket (extension unavailable) against a
+real local dev server pointed at the real deployed backend: registered two fresh real users
+(one rider, one to add as the trusted contact -- `RideTrustedContactService` requires a real
+itunda user, no SMS gateway). Logged in via real session injection, navigated Explore -> Rides,
+confirmed the `TrustedContactsSection` renders with the correct empty state, added a real
+trusted contact through the actual add form (real `POST .../trusted-contacts` -> `201`, contact
+appears in the list immediately), and removed it (real `DELETE .../trusted-contacts/{id}` ->
+`200`, list returns to empty) -- all confirmed via real CDP `Network.responseReceived` events,
+not just DOM text. Did not exercise "Send status" against a live active trip (would require
+spinning up a full real ride-dispatch lifecycle purely to test a button that reuses the exact
+same `apiFetch` pattern already proven working here, against a backend action already
+live-verified end-to-end in Section 136 -- not warranted). Hit and diagnosed a real environment
+gotcha along the way: pointing `VITE_API_BASE_URL` at the direct VM IP
+(`http://192.168.252.4:30081`, reachable fine from plain `curl`) makes every `fetch()` from
+*inside headless Chrome* fail with `net::ERR_ADDRESS_UNREACHABLE`, confirmed not to be Bash-tool
+sandboxing (`dangerouslyDisableSandbox` didn't fix it; Chrome couldn't reach `example.com`
+either); the fix is the same `localhost:30081` socat relay every curl-based verification this
+session already uses -- see [[feedback_headless_chrome_verification]].
