@@ -10350,3 +10350,31 @@ both `failures="0" errors="0"` -- nothing else in either module regressed.
 No client wiring needed (backend-only scheduler, no new endpoint), no deploy, and no
 live-server verification attempted here -- reserved for the coordinating session's
 deploy per this task's own scoping rules.
+
+**Coordinator re-verification, deploy, and real-money live-verify**: independently re-ran
+`./gradlew :marketplace:test :core:test --rerun-tasks` for a genuine re-execution; summed every
+real XML report and confirmed `marketplace` `tests="95"` / `core` `tests="100"`, both
+`failures="0" errors="0"`, matching the claim exactly. Also manually diffed `processNoShow`'s
+ledger legs against `completeInspection`'s existing ones and confirmed the account IDs, account
+types, and amounts are byte-identical (only the leg descriptions differ), and confirmed
+`cancelInspection` genuinely has no time-based guard, only a status check -- so once the
+scheduler flips an overdue booking's status, the existing guard alone closes the exploit with no
+new code needed there. Given this is a fourth real money-safety fix (a different shape than
+Sections 170-172 -- a missing enforcement *scheduler* rather than a missing checkout-path check,
+but the same underlying "ported the money plumbing, not the enforcement" gap class), deployed
+with priority: built and pushed
+`192.168.252.4:32000/itunda/backend:2026-08-18-vehicle-inspection-noshow`, rollout completed
+cleanly. **Live-verified with real money movement, using the real production cron itself (no
+manual trigger endpoint exists for this scheduler, unlike some earlier sections)**: registered a
+mechanic + seller + buyer, created a real marketplace listing, funded the buyer's real wallet
+(50,000 RWF), requested a real inspection with `scheduledFor` already 10 minutes in the past
+(15,000 RWF fee, real ledger hold confirmed), had the mechanic accept it (status -> `ACCEPTED`),
+then simply waited ~80 real seconds for `VehicleInspectionNoShowScheduler`'s actual
+`@Scheduled(fixedDelay=60000)` poll to fire on its own. Confirmed via direct DB query the booking
+was real-transitioned to `NO_SHOW` with a real `resolution_transaction_id`, the mechanic's real
+wallet was credited exactly 14,775.00 RWF (15,000 fee minus 225 platform fee, matching the exact
+math), and the buyer's real wallet correctly stayed at 35,000.00 RWF (50,000 minus the 15,000
+fee, no refund). Attempted `POST .../cancel` afterward -> real `409
+INVALID_INSPECTION_STATUS_TRANSITION` ("this one is already NO_SHOW") -- proving the exact
+exploit this fix targets (late-cancel clawback after a real completed inspection) is now
+genuinely closed in production, caught by the real cron with zero manual intervention.
