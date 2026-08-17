@@ -8810,3 +8810,29 @@ further price change -- correctly rejected 409 `LISTING_NOT_ACTIVE`.
 **All `*Favorite` entities in the domain now have real notification coverage**: `ProductFavorite`
 (§124), `PropertyListingFavorite`, `EatsFavorite` (§143), `JobPostFavorite` (§144), and
 `ListingFavorite` (§145).
+
+## 146. Insurance claim-decision notification (approve/reject)
+
+**Added 2026-08-17.** `InsuranceService.decideClaim` already posted a real ledger payout on
+approval but never told the claimant a decision was made either way -- the only way to learn a
+claim was decided was to poll `GET /claims` yourself. Every real insurer notifies on both
+outcomes. Mirrors `OrderReturnService.decide`'s identical approve/reject-then-notify shape
+exactly: a structurally identical terminal decision on a filed claim.
+
+**Built**: `decideClaim` now saves a real `INSURANCE_CLAIM_DECIDED` notification immediately
+(within the same `@Transactional` boundary as the real status/ledger change) and defers the
+mobile push until real transaction commit via `TransactionSynchronizationManager`, the same
+`sendPushAfterCommit` shape `OrderReturnService` already establishes. Approval body includes the
+real payout amount; rejection body includes the real reviewer-provided reason. No new endpoint,
+no migration -- existing `POST /api/v1/system/insurance-claims/{claimId}/decide` (admin-gated)
+unchanged externally.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: enrolled a claimant
+in the Health Shield plan (funded wallet, real premium debited), filed a real claim for 25,000
+RWF, approved it as admin -- real DB-confirmed notification with the exact expected body:
+`"Your claim for \"Hospital visit for fever\" was approved. 25000.00 RWF has been credited to
+your wallet."`, and the claimant's real wallet balance confirmed the exact expected math
+(`100000 - 15000 premium + 25000 payout = 110000`). Filed a second claim for 8,000 RWF, rejected
+it with a real reason -- notification body exactly `"Your claim for \"Dental checkup\" was
+rejected. Reason: Not covered under Health Shield plan"`, and the wallet balance stayed
+unchanged at `110000.00`, confirming zero ledger touch on rejection.
