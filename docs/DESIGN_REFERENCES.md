@@ -9014,3 +9014,34 @@ on 2026-09-10. It will auto-renew unless you cancel."`, and `renewal_reminder_se
 set. Called the trigger a second time -- `{"success":true,"processed":0}`, confirming the
 already-reminded policy is correctly excluded and no duplicate notification was sent (still
 exactly 1 real `INSURANCE_POLICY_RENEWAL_DUE` notification total).
+
+## 153. Certificate-expiry renewal-reminder notification
+
+**Added 2026-08-17.** `Certificate.expiresAt` has been a real, stored field since the
+certificate concept existed, but nothing ever notified a user as it approached -- the same "real
+data sitting unused" shape `InsuranceService.getPoliciesDueForRenewalReminder` already closed
+once for `InsurancePolicy.endDate` (§152). Sourced from real Korean accredited-CA renewal
+practice (gpki.go.kr/crosscert.com's own published renewal-window convention: renewal possible
+starting 60 days before expiry), the same regulatory category Toss Certificate itself operates
+under per `Certificate.kt`'s own existing doc comment. Reissuing (`POST /api/v1/certificate/issue`)
+is the real, already-working renewal action -- this reminder just points the user at it before
+real expiry.
+
+**Built**: `CertificateRenewalReminderScheduler` mirrors `InsurancePolicyRenewalReminderScheduler`'s
+exact proven-safe shape -- a separate `@Component` scheduler calling a per-certificate
+`@Transactional` method, never a batch-transactional loop. New `Certificate.renewalReminderSentAt`
+column (migration V277) tracks one-shot state. New notification type `CERTIFICATE_EXPIRING_SOON`.
+New manual-trigger endpoint `POST /api/v1/certificate/process-renewal-reminders`, mirroring
+`SavingsController`/`InsuranceController`'s exact convention.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: issued a real
+certificate for a KYC-verified user (`POST /api/v1/certificate/issue` -- required real KYC, same
+precondition Toss's own real certificate issuance has), backdated the real certificate's
+`expires_at` to 45 days out (within the 60-day window) via direct DB update. Called the manual
+trigger -- `{"success":true,"processed":0}`, because the real production `@Scheduled` poll
+(`fixedDelay = 60000`) had **already fired automatically** in the few minutes since deploy,
+proving the actual live scheduler works end to end, not just the manually-triggerable path. Real
+DB-confirmed `renewal_reminder_sent_at` was already set, and `GET /notifications` confirmed a
+real `CERTIFICATE_EXPIRING_SOON` notification with the exact expected body: `"Your certificate
+(serial 94C3F27474641DD9109DE7EEDB4090EE) expires on 2026-10-01T00:00:00Z. Reissue it anytime
+before then to keep signing without interruption."`
