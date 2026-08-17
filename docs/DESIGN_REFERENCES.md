@@ -8370,3 +8370,26 @@ again next cycle."`
 `AutoTransferService`, `ScheduledTransferService`, and `MerchantBillingService` -- deliberately not
 touched here to keep this change to one clean, well-tested instance rather than spreading thin
 across five different modules in one pass.
+
+## 132. Toss Payments-style bill auto-pay failure alert (Section 131 pattern, extended)
+
+**Added 2026-08-17.** Extends Section 131's real, sourced Toss Payments billing-failure
+notification pattern to the first of its four flagged follow-ups: `BillAutoPayProcessor` (Kakao
+Pay 자동납부).
+
+**Built**: `notifyAutoPayFailed` sends a real `Notification` + push (`BILL_AUTOPAY_FAILED`) when a
+per-row `payBill()` attempt fails in the sweep, wrapped in its own try/catch. Safe by construction --
+the call lives entirely in the loop bean's catch block, outside `BillsService.payBill`'s own
+`@Transactional` scope, so it is not a new instance of the closed Section 115/118/129/130
+transaction-poisoning bug class. 1 new Kotest case.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a fresh
+customer with a genuine `0` MAIN wallet balance, set a real auto-pay for provider `b1` (REG -
+Electricity). The real admin-triggered sweep (`POST /bills/process-auto-payments`) correctly
+excluded this user from `processed` (a real `200` with an empty list). `GET /notifications`
+confirmed a real `BILL_AUTOPAY_FAILED` notification with the exact expected content: `"Auto
+bill-pay failed"` / `"We couldn't auto-pay your REG - Electricity bill: Insufficient available
+balance in wallet_f707a497-... We'll try again next time."`
+
+**Still open**: the identical gap remains in `AutoTransferService`, `ScheduledTransferService`, and
+`MerchantBillingService`.
