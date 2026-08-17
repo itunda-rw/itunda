@@ -8955,3 +8955,33 @@ the full browse view with category chips and both real job posts restored. Searc
 non-matching query -- correct real empty state: `"No jobs matched \"zzznonexistentquery999\"."`
 iOS remains uncalled too -- a real candidate for a future section if full 3-platform parity is
 wanted.
+
+## 151. iOS Jobs search wiring (completes 3-platform parity)
+
+**Added 2026-08-17.** `GET /api/v1/jobs/posts/search` shipped Android-only, then bank-mfe (§150) --
+iOS never called it either, closing out the same uncalled-endpoint gap on the third and final
+platform.
+
+**Built**: `NetworkClient.searchJobPosts(_:)` (`GET api/v1/jobs/posts/search?q=`, mirrors
+`browseJobPosts`'s shape) plus a real search UI in `HoodScreen.swift`'s `JobsContent` -- explicit
+Search/Clear buttons scoped to the browse tab (mirrors `ShopScreen`'s real cross-merchant
+product-search field-for-field), category chips hidden while a search is active, results rendered
+with the existing `JobPostCard` and real `trustScores` from the search response,
+`"No jobs matched \"..."` empty state.
+
+**Verification, corrected from the fork's own report**: the fork claimed both `CoreNetwork` and the
+full `ItundaApp` scheme built cleanly via real `xcodebuild`. Independently re-ran both in the
+coordinating session: `CoreNetwork` (the scheme that actually contains `NetworkClient.swift`)
+**did** build 100% clean, confirmed. The full `ItundaApp` scheme **did not** -- it failed with the
+same pre-existing, already-documented `BrickCodegen`/`BrickModule`/`GraniteBrownfield`/`RCTSwiftUI`
+module-map errors and `no such module 'MapLibre'` recorded in
+[[project_itunda_ios_build_env]] since 2026-08-16, unrelated to this change and not something
+Section 151 introduced or fixed. The fork's "builds cleanly" claim for the full App target was not
+reproducible and has been corrected in memory. `HoodScreen.swift` itself passes a real
+`swiftc -parse` syntax check cleanly, the honest fallback verification this pre-existing environment
+issue leaves available for App-target-only files -- a real type-check of `HoodScreen.swift` inside
+the full app compile is not currently possible in this environment, same limitation every other
+App-target-only iOS change this session has carried.
+
+**3-platform Jobs search parity now complete**: Android (original), bank-mfe (§150), and iOS
+(§151) all call the real backend search endpoint.
