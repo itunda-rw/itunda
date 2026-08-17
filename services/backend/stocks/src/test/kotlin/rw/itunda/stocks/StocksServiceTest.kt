@@ -504,6 +504,40 @@ class StocksServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a client reading back the current real price alert state for a stock") {
+        val walletRepository = mockk<WalletRepository>()
+        val holdingRepository = mockk<HoldingRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>()
+        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
+        val notificationRepository = mockk<rw.itunda.core.repository.NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository, notificationRepository, pushNotificationService)
+
+        When("an active alert exists") {
+            val existing = StockWatchlist(
+                id = "watch_5", userId = "user_5", stockId = "s1",
+                targetPrice = BigDecimal("850"), targetDirection = "ABOVE", alertTriggeredAt = null,
+            )
+            every { stockWatchlistRepository.findByUserIdAndStockId("user_5", "s1") } returns existing
+
+            Then("it returns the real stored target") {
+                val watch = service.getPriceAlert("user_5", "s1")
+                watch shouldNotBe null
+                watch?.targetPrice shouldBe BigDecimal("850")
+                watch?.targetDirection shouldBe "ABOVE"
+            }
+        }
+
+        When("the stock isn't watched at all") {
+            every { stockWatchlistRepository.findByUserIdAndStockId("user_5", "s2") } returns null
+
+            Then("it returns null rather than a fabricated default") {
+                service.getPriceAlert("user_5", "s2") shouldBe null
+            }
+        }
+    }
+
     Given("real due-price-alert detection and one-shot triggering") {
         val walletRepository = mockk<WalletRepository>()
         val holdingRepository = mockk<HoldingRepository>()

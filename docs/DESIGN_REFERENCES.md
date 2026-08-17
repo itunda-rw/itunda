@@ -9760,3 +9760,60 @@ correctness as a strict-weak-ordering predicate: returns `false` whenever both s
 pinned status (never claims `a < b` for two pinned or two unpinned rows, preserving their
 existing relative order under Swift 5's guaranteed-stable sort) and `true` only when `a` is
 pinned and `b` isn't -- correct, if less conventional-looking than a plain boolean comparison.
+
+## 167. Toss Securities 목표가 알림 (stock target-price alert) client wiring, all 3 platforms
+
+**Added 2026-08-18.** Found via a fresh "defined but uncalled" endpoint sweep across all 6 web
+MFEs plus Android/iOS: Section 113 (2026-08-17) shipped `StocksService.setPriceAlert`/
+`clearPriceAlert` and `StockPriceAlertScheduler` fully live-verified against the real deployed
+backend, but explicitly scoped itself "backend-only this pass" -- `POST`/`DELETE
+/api/v1/stocks/{id}/price-alert` had zero client calling them anywhere, on any platform, one full
+day after shipping and being proven to work end to end. Same shape as Sections 162 and 165 that
+also started this way.
+
+**Backend addition**: there was also no *read* path a client could use to show "this stock already
+has an alert" when re-opening its detail screen -- `StocksService.getWatchlist` returns bare
+`Stock` objects with no alert fields. Added `StocksService.getPriceAlert(userId, stockId):
+StockWatchlist?` and `GET /api/v1/stocks/{id}/price-alert` (`StocksController.getPriceAlert`),
+returning a flat `{targetPrice, targetDirection, alertTriggeredAt}` (`null`s if the stock isn't
+watched, or watched with no active alert -- the client doesn't need to tell those two apart). Left
+the existing `POST`/`DELETE` response shape (`{success, watch: <StockWatchlist>}`) alone since it
+already shipped and was live-verified in Section 113 -- the new GET intentionally has a different,
+flatter shape from the older nested one, documented as such in every client rather than "fixed" to
+match, since nothing consumed the old shape yet and changing it would be a needless risk for zero
+benefit. 2 new Kotest blocks on `StocksServiceTest` (`getPriceAlert` returns the stored row when
+one exists; returns `null`, not a fabricated default, when nothing is watched).
+
+**Client wiring**: added a "Set a price alert" section directly under the existing Buy/Sell UI in
+each platform's stock detail screen -- `StockDetailSheet` (bank-mfe), `StockDetailContent`
+(Android `InvestScreen.kt`, iOS `InvestScreenView.swift`). Loads the current alert on open,
+lets the user pick `ABOVE`/`BELOW` and a target price, shows "Alert set: notify when ≥/≤ X RWF"
+with a re-arm note if it already fired, and a "Remove" action to clear it. Setting an alert on an
+unwatched stock also flips the local watch star (matching the real Toss UX `setPriceAlert`
+already auto-applies server-side: "there's no alert but not watching concept"). Non-critical clear
+failures are swallowed silently, same convention the existing watch/unwatch toggle on each
+platform already uses.
+
+Files: `services/backend/stocks/src/main/kotlin/rw/itunda/stocks/StocksService.kt`,
+`services/backend/stocks/src/main/kotlin/rw/itunda/stocks/StocksController.kt`,
+`services/backend/stocks/src/test/kotlin/rw/itunda/stocks/StocksServiceTest.kt`,
+`services/micro-frontends/bank-mfe/src/lib/stocks.ts`,
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt`,
+`android/app/src/main/java/rw/itunda/app/ui/InvestScreen.kt`,
+`ios/Core/Network/Sources/NetworkClient.swift`, `ios/App/Sources/InvestScreenView.swift`.
+
+**Verified locally, this pass**: `./gradlew :stocks:compileKotlin :stocks:compileTestKotlin` ->
+`BUILD SUCCESSFUL`; `./gradlew :stocks:test` -> `BUILD SUCCESSFUL`, real XML results confirm 33
+tests / 0 failures / 0 errors including both new `getPriceAlert` blocks by name. `yarn workspace
+bank-mfe run build` -> real Vite production build succeeded (`BankDashboard` chunk rebuilt).
+Android: `touch`-forced `./gradlew :app:compileDebugKotlin` -> `BUILD SUCCESSFUL`, `:app:
+compileDebugKotlin` genuinely executed (not `UP-TO-DATE`). iOS: `xcodebuild -scheme CoreNetwork
+-destination "generic/platform=iOS Simulator" build` -> `** BUILD SUCCEEDED **` with a real
+`NetworkClient.swift` recompile observed in the log (the App-target scheme remains the
+pre-existing, unrelated, known-broken Saronite/RN-codegen build, out of scope here); `xcrun swiftc
+-parse App/Sources/InvestScreenView.swift -suppress-warnings` -> clean, exit 0, as the honest
+syntax-only ceiling for that App-target-only file.
+
+Per this task's own scope, no live-server click-through verification or deploy was attempted here
+-- that's reserved for the coordinating session.

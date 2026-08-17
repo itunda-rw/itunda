@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Camera, Car, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -98,10 +98,10 @@ import { cancelBillingSubscription, collectPayment, fetchMembershipDayStatus, fe
 import { fetchActiveTimeDeals, fetchShopBanners, type TimeDealView } from './lib/timeDeal';
 import { completeShoppingMission, fetchShoppingMissionStatus, type ShoppingMission, type SpinOutcome } from './lib/shoppingMissions';
 import {
-  buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
+  buyStock, clearPriceAlert, fetchPortfolio, fetchPortfolioHistory, fetchPriceAlert, fetchStockHistory, fetchStocks, fetchWatchlist,
   fundInvestmentWallet,
-  sellStock, unwatchStock, watchStock,
-  type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
+  sellStock, setPriceAlert, unwatchStock, watchStock,
+  type Portfolio, type PortfolioValuePoint, type PriceAlert, type PricePoint, type Stock,
 } from './lib/stocks';
 import {
   addGroupMember, connectMessagingSocket, createGroup, createOpenGroup, joinGroupByCode, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroupThread, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage, fetchThread,
@@ -6433,10 +6433,54 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   // showed only a generic error, same fix already applied to Transfer/Savings/Group
   // Account above.
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real Toss Securities 목표가 알림 (target price alert, section 113/167) -- see
+  // lib/stocks.ts's own doc comment for why this is the first client wiring for a
+  // backend feature that shipped fully live-verified with zero callers.
+  const [alert, setAlert] = useState<PriceAlert | null>(null);
+  const [alertExpanded, setAlertExpanded] = useState(false);
+  const [alertTarget, setAlertTarget] = useState('');
+  const [alertDirection, setAlertDirection] = useState<'ABOVE' | 'BELOW'>('ABOVE');
+  const [alertBusy, setAlertBusy] = useState(false);
+  const [alertError, setAlertError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStockHistory(stock.id, 14).then(setHistory).catch(() => setHistory([]));
+    fetchPriceAlert(stock.id).then(setAlert).catch(() => setAlert(null));
   }, [stock.id]);
+
+  const handleSetAlert = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setAlertError(null);
+    const target = Number(alertTarget);
+    if (!target || target <= 0) {
+      setAlertError('Enter a real target price.');
+      return;
+    }
+    setAlertBusy(true);
+    try {
+      await setPriceAlert(stock.id, target, alertDirection);
+      setAlert({ targetPrice: target, targetDirection: alertDirection, alertTriggeredAt: null });
+      setAlertTarget('');
+      setAlertExpanded(false);
+      if (!watching) { setWatching(true); onWatchToggled(); }
+    } catch (err) {
+      setAlertError(err instanceof ApiError ? err.message : 'Could not set that alert.');
+    } finally {
+      setAlertBusy(false);
+    }
+  };
+
+  const handleClearAlert = async () => {
+    setAlertBusy(true);
+    try {
+      await clearPriceAlert(stock.id);
+      setAlert({ targetPrice: null, targetDirection: null, alertTriggeredAt: null });
+    } catch {
+      // Non-critical -- same "no error surfaced" convention the watch toggle above uses.
+    } finally {
+      setAlertBusy(false);
+    }
+  };
 
   const handleTrade = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -6547,6 +6591,53 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
       ) : (
         error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
       )}
+
+      {/* Real Toss Securities 목표가 알림 (target price alert, section 113/167). */}
+      <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--itunda-grey-100)' }}>
+        {alert && alert.targetPrice != null ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 700 }}>
+                <Bell size={13} style={{ verticalAlign: '-2px', marginRight: '4px' }} />
+                Alert set: notify when {alert.targetDirection === 'ABOVE' ? '≥' : '≤'} {alert.targetPrice.toLocaleString()} RWF
+              </p>
+              {alert.alertTriggeredAt && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>Already triggered -- set a new target to re-arm it.</p>}
+            </div>
+            <button onClick={handleClearAlert} disabled={alertBusy} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-red)' }}>Remove</button>
+          </div>
+        ) : alertExpanded ? (
+          <form onSubmit={handleSetAlert}>
+            <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Notify me when the price goes</p>
+            <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '10px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+              {(['ABOVE', 'BELOW'] as const).map((d) => (
+                <button
+                  key={d} type="button" onClick={() => setAlertDirection(d)}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+                    color: alertDirection === d ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                    backgroundColor: alertDirection === d ? 'var(--itunda-blue)' : 'transparent',
+                  }}
+                >
+                  {d === 'ABOVE' ? 'Above' : 'Below'}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input
+                type="number" min="0.01" step="any" value={alertTarget} onChange={(e) => setAlertTarget(e.target.value)}
+                placeholder="Target price (RWF)" required
+                style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+              />
+              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={alertBusy}>{alertBusy ? 'Working…' : 'Set'}</button>
+            </div>
+            {alertError && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{alertError}</p>}
+          </form>
+        ) : (
+          <button onClick={() => setAlertExpanded(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+            <Bell size={14} /> Set a price alert
+          </button>
+        )}
+      </div>
     </div>
   );
 }

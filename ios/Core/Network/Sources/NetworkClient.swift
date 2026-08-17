@@ -4017,6 +4017,17 @@ public struct TradeStockResponse: Decodable { public let success: Bool; public l
 // same fix already shipped on Android/bank-mfe.
 public struct FundInvestmentRequest: Encodable { public let amount: Double }
 public struct FundInvestmentTransactionDto: Decodable { public let id: String; public let amount: Double; public let completedAt: String }
+// Real Toss Securities 목표가 알림 (target price alert, section 113/167) -- found via a
+// fresh "defined but uncalled" endpoint sweep: the backend (set/clear/getPriceAlert +
+// StockPriceAlertScheduler) shipped fully live-verified 2026-08-17 but had zero client
+// anywhere, on any platform. This is iOS's first wiring for it. GET returns a real flat
+// shape (StocksController.getPriceAlert); POST/DELETE return the real StockWatchlist
+// entity nested under "watch" (StocksController.setPriceAlert/clearPriceAlert,
+// unchanged from section 113) -- two genuinely different real response shapes.
+public struct SetPriceAlertRequest: Encodable { public let targetPrice: Double; public let direction: String }
+public struct PriceAlertResponse: Decodable { public let success: Bool; public let targetPrice: Double?; public let targetDirection: String?; public let alertTriggeredAt: String? }
+public struct StockWatchAlertDto: Decodable { public let targetPrice: Double?; public let targetDirection: String?; public let alertTriggeredAt: String? }
+public struct SetPriceAlertResponse: Decodable { public let success: Bool; public let watch: StockWatchAlertDto }
 public struct FundInvestmentResponse: Decodable { public let success: Bool; public let transaction: FundInvestmentTransactionDto }
 
 extension NetworkClient {
@@ -5250,6 +5261,20 @@ extension NetworkClient {
 
     public func unwatchStock(stockId: String) async throws -> SuccessResponse {
         try await authenticatedDelete("api/v1/stocks/\(stockId)/watch")
+    }
+
+    // Real Toss Securities 목표가 알림 (target price alert, section 113/167) -- see
+    // SetPriceAlertRequest's own doc comment.
+    public func getPriceAlert(stockId: String) async throws -> PriceAlertResponse {
+        try await get("api/v1/stocks/\(stockId)/price-alert")
+    }
+
+    public func setPriceAlert(stockId: String, targetPrice: Double, direction: String) async throws -> SetPriceAlertResponse {
+        try await authenticatedPost("api/v1/stocks/\(stockId)/price-alert", body: SetPriceAlertRequest(targetPrice: targetPrice, direction: direction))
+    }
+
+    public func clearPriceAlert(stockId: String) async throws -> SetPriceAlertResponse {
+        try await authenticatedDelete("api/v1/stocks/\(stockId)/price-alert")
     }
 
     /// Real DELETE support -- every other authenticated call so far was GET/POST only,

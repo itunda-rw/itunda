@@ -93,3 +93,29 @@ export const fetchWatchlist = () => apiFetch<{ success: boolean; watchlist: Stoc
 export const watchStock = (stockId: string) => apiFetch<{ success: boolean }>(`/api/v1/stocks/${stockId}/watch`, { method: 'POST' });
 
 export const unwatchStock = (stockId: string) => apiFetch<{ success: boolean }>(`/api/v1/stocks/${stockId}/watch`, { method: 'DELETE' });
+
+// Real Toss Securities 목표가 알림 (target price alert, section 113) -- found via a
+// fresh "defined but uncalled" endpoint sweep: the backend (StocksService.setPriceAlert/
+// clearPriceAlert/getPriceAlert, plus StockPriceAlertScheduler) shipped fully
+// live-verified 2026-08-17, but no client anywhere ever called it. This is the first
+// client wiring for it, in the same StockDetailSheet the existing Buy/Sell/Watch UI
+// already lives in.
+export interface PriceAlert {
+  targetPrice: number | null;
+  targetDirection: 'ABOVE' | 'BELOW' | null;
+  alertTriggeredAt: string | null;
+}
+
+export const fetchPriceAlert = (stockId: string) =>
+  apiFetch<{ success: boolean } & PriceAlert>(`/api/v1/stocks/${stockId}/price-alert`).then((r) => ({
+    targetPrice: r.targetPrice, targetDirection: r.targetDirection, alertTriggeredAt: r.alertTriggeredAt,
+  }));
+
+export const setPriceAlert = (stockId: string, targetPrice: number, direction: 'ABOVE' | 'BELOW') =>
+  apiFetch<{ success: boolean; watch: unknown }>(`/api/v1/stocks/${stockId}/price-alert`, {
+    method: 'POST',
+    body: JSON.stringify({ targetPrice, direction }),
+  });
+
+export const clearPriceAlert = (stockId: string) =>
+  apiFetch<{ success: boolean; watch: unknown }>(`/api/v1/stocks/${stockId}/price-alert`, { method: 'DELETE' });

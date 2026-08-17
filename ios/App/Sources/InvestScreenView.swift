@@ -355,6 +355,18 @@ private struct StockDetailContent: View {
     // bare `catch { }` swallowed it into a generic error, same fix already applied to
     // Transfer/Savings.
     @State private var needsDeviceVerification = false
+    // Real Toss Securities 목표가 알림 (target price alert, section 113/167) -- found via
+    // a fresh "defined but uncalled" endpoint sweep: the backend shipped fully
+    // live-verified 2026-08-17 but had zero client anywhere, on any platform. This is
+    // iOS's first wiring for it.
+    @State private var alertTargetPrice: Double?
+    @State private var alertDirection: String?
+    @State private var alertTriggeredAt: String?
+    @State private var alertExpanded = false
+    @State private var alertInput = ""
+    @State private var alertAbove = true
+    @State private var alertBusy = false
+    @State private var alertError: String?
 
     init(stock: StockDto, isWatched: Bool, onTraded: @escaping () -> Void, onWatchToggled: @escaping () -> Void) {
         self.stock = stock
@@ -428,10 +440,69 @@ private struct StockDetailContent: View {
                 if let error {
                     Text(error).font(.caption).foregroundColor(.red)
                 }
+
+                // Real Toss Securities 목표가 알림 (target price alert, section 113/167).
+                Divider().padding(.top, 6)
+                if let targetPrice = alertTargetPrice {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "bell.fill").font(.caption)
+                                Text("Alert set: notify when \(alertDirection == "ABOVE" ? "≥" : "≤") \(formatMoney(targetPrice)) RWF")
+                                    .font(.caption).bold()
+                            }
+                            .foregroundColor(IDS.Colors.textPrimary)
+                            if alertTriggeredAt != nil {
+                                Text("Already triggered -- set a new target to re-arm it.")
+                                    .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                            }
+                        }
+                        Spacer()
+                        Button("Remove", action: clearAlert)
+                            .font(.caption).bold().foregroundColor(.red)
+                            .disabled(alertBusy)
+                    }
+                } else if alertExpanded {
+                    Text("Notify me when the price goes").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Picker("", selection: $alertAbove) {
+                        Text("Above").tag(true)
+                        Text("Below").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    HStack {
+                        TextField("Target price (RWF)", text: $alertInput)
+                            .keyboardType(.decimalPad)
+                            .padding(10)
+                            .background(IDS.Colors.chipBackground)
+                            .cornerRadius(10)
+                        Button(action: setAlert) {
+                            Text(alertBusy ? "Working…" : "Set")
+                                .foregroundColor(.white).bold()
+                                .padding(.horizontal, 20).padding(.vertical, 12)
+                                .background(IDS.Colors.brand)
+                                .cornerRadius(10)
+                        }
+                        .disabled(alertBusy)
+                    }
+                    if let alertError {
+                        Text(alertError).font(.caption).foregroundColor(.red)
+                    }
+                } else {
+                    Button(action: { alertExpanded = true }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "bell")
+                            Text("Set a price alert").font(.caption).bold()
+                        }
+                        .foregroundColor(IDS.Colors.brand)
+                    }
+                }
             }
             .padding()
         }
-        .task { await loadHistory() }
+        .task {
+            await loadHistory()
+            await loadAlert()
+        }
     }
 
     private func loadHistory() async {
@@ -439,6 +510,56 @@ private struct StockDetailContent: View {
             history = res.history
         } else {
             history = []
+        }
+    }
+
+    private func loadAlert() async {
+        if let res = try? await NetworkClient.shared.getPriceAlert(stockId: stock.id) {
+            alertTargetPrice = res.targetPrice
+            alertDirection = res.targetDirection
+            alertTriggeredAt = res.alertTriggeredAt
+        }
+    }
+
+    private func setAlert() {
+        guard let target = Double(alertInput), target > 0 else {
+            alertError = "Enter a real target price."
+            return
+        }
+        alertBusy = true
+        alertError = nil
+        Task {
+            do {
+                let direction = alertAbove ? "ABOVE" : "BELOW"
+                _ = try await NetworkClient.shared.setPriceAlert(stockId: stock.id, targetPrice: target, direction: direction)
+                alertTargetPrice = target
+                alertDirection = direction
+                alertTriggeredAt = nil
+                alertInput = ""
+                alertExpanded = false
+                if !watching {
+                    watching = true
+                    onWatchToggled()
+                }
+            } catch {
+                alertError = "Could not set that alert."
+            }
+            alertBusy = false
+        }
+    }
+
+    private func clearAlert() {
+        alertBusy = true
+        Task {
+            do {
+                _ = try await NetworkClient.shared.clearPriceAlert(stockId: stock.id)
+                alertTargetPrice = nil
+                alertDirection = nil
+                alertTriggeredAt = nil
+            } catch {
+                // Non-critical -- same "no error surfaced" convention the watch toggle above uses.
+            }
+            alertBusy = false
         }
     }
 

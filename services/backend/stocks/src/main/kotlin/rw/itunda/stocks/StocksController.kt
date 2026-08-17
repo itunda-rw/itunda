@@ -126,6 +126,25 @@ class StocksController(private val stocksService: StocksService, private val ide
     fun getWatchlist(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "watchlist" to stocksService.getWatchlist(currentUser.userId)))
 
+    // Real gap fix (2026-08-18) -- see StocksService.getPriceAlert's own doc comment.
+    // Lets a client show current alert state (or its absence) when a stock detail
+    // screen re-opens, instead of only ever being able to write-and-forget.
+    @GetMapping("/{stockId}/price-alert")
+    fun getPriceAlert(
+        @PathVariable stockId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val watch = stocksService.getPriceAlert(currentUser.userId, stockId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "targetPrice" to watch?.targetPrice,
+                "targetDirection" to watch?.targetDirection,
+                "alertTriggeredAt" to watch?.alertTriggeredAt,
+            ),
+        )
+    }
+
     // Real Toss Securities 목표가 알림 (target price alert) -- see
     // StocksService.setPriceAlert's own doc comment.
     @PostMapping("/{stockId}/price-alert")

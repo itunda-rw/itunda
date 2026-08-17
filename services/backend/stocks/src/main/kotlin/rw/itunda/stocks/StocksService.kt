@@ -235,6 +235,16 @@ class StocksService(
         return stockWatchlistRepository.save(watchlist)
     }
 
+    // Real gap fix (2026-08-18) -- found via a fresh "defined but uncalled" endpoint
+    // sweep: setPriceAlert/clearPriceAlert had shipped (section 113) with zero client
+    // anywhere ever calling them, and there wasn't even a read path a client could use
+    // to show "this stock already has an alert" when re-opening its detail screen.
+    // Null means either the stock isn't watched at all yet, or it's watched with no
+    // active alert -- the client can't tell those apart from this alone, but it
+    // doesn't need to: both render as "no alert set."
+    fun getPriceAlert(userId: String, stockId: String): StockWatchlist? =
+        stockWatchlistRepository.findByUserIdAndStockId(userId, stockId)
+
     // Real due-alert query backing StockPriceAlertScheduler -- a real, not-yet-fired
     // alert whose real current simulated price has actually crossed its real target,
     // in the real direction the user asked for.

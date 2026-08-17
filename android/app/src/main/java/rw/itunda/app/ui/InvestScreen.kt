@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.TrendingDown
 import androidx.compose.material.icons.outlined.TrendingUp
@@ -52,6 +53,7 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.FundInvestmentRequest
 import rw.itunda.core.network.isDeviceNotVerifiedError
 import rw.itunda.core.network.PortfolioValuePointDto
+import rw.itunda.core.network.SetPriceAlertRequest
 import rw.itunda.core.network.StockDto
 import rw.itunda.core.network.StockHoldingDto
 import rw.itunda.core.network.StockPortfolioDto
@@ -408,6 +410,18 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
     // showed only a generic error, same fix already applied to Transfer/Savings.
     var needsDeviceVerification by remember { mutableStateOf(false) }
+    // Real Toss Securities 목표가 알림 (target price alert, section 113/167) -- found via
+    // a fresh "defined but uncalled" endpoint sweep: the backend shipped fully
+    // live-verified 2026-08-17 but had zero client anywhere, on any platform. This is
+    // Android's first wiring for it.
+    var alertTargetPrice by remember { mutableStateOf<Double?>(null) }
+    var alertDirection by remember { mutableStateOf<String?>(null) }
+    var alertTriggeredAt by remember { mutableStateOf<String?>(null) }
+    var alertExpanded by remember { mutableStateOf(false) }
+    var alertInput by remember { mutableStateOf("") }
+    var alertAbove by remember { mutableStateOf(true) }
+    var alertBusy by remember { mutableStateOf(false) }
+    var alertError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(stock.id) {
@@ -416,6 +430,56 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             if (res.success) history = res.history
         } catch (_: Exception) {
             history = emptyList()
+        }
+        try {
+            val res = NetworkClient.apiService.getPriceAlert(stock.id)
+            alertTargetPrice = res.targetPrice
+            alertDirection = res.targetDirection
+            alertTriggeredAt = res.alertTriggeredAt
+        } catch (_: Exception) {
+            // Non-critical -- the alert section just shows "no alert set".
+        }
+    }
+
+    fun setAlert() {
+        val target = alertInput.toDoubleOrNull()
+        if (target == null || target <= 0) {
+            alertError = "Enter a real target price."
+            return
+        }
+        alertBusy = true
+        alertError = null
+        coroutineScope.launch {
+            try {
+                val direction = if (alertAbove) "ABOVE" else "BELOW"
+                NetworkClient.apiService.setPriceAlert(stock.id, SetPriceAlertRequest(target, direction))
+                alertTargetPrice = target
+                alertDirection = direction
+                alertTriggeredAt = null
+                alertInput = ""
+                alertExpanded = false
+                if (!watching) { watching = true; onWatchToggled() }
+            } catch (e: Exception) {
+                alertError = "Could not set that alert."
+            } finally {
+                alertBusy = false
+            }
+        }
+    }
+
+    fun clearAlert() {
+        alertBusy = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.clearPriceAlert(stock.id)
+                alertTargetPrice = null
+                alertDirection = null
+                alertTriggeredAt = null
+            } catch (_: Exception) {
+                // Non-critical -- same "no error surfaced" convention the watch toggle above uses.
+            } finally {
+                alertBusy = false
+            }
         }
     }
 
@@ -546,6 +610,67 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                 }
             },
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        // Real Toss Securities 목표가 알림 (target price alert, section 113/167).
+        if (alertTargetPrice != null) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Ids.colors.textPrimary, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "Alert set: notify when ${if (alertDirection == "ABOVE") "≥" else "≤"} ${formatMoney(alertTargetPrice!!)} RWF",
+                            color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    if (alertTriggeredAt != null) {
+                        Text("Already triggered -- set a new target to re-arm it.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                }
+                Text(
+                    "Remove", color = Ids.colors.danger, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable(enabled = !alertBusy) { clearAlert() },
+                )
+            }
+        } else if (alertExpanded) {
+            Text("Notify me when the price goes", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(4.dp)) {
+                listOf(true to "Above", false to "Below").forEach { (isAbove, label) ->
+                    val selected = alertAbove == isAbove
+                    Box(
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                            .background(if (selected) Ids.colors.brand else Color.Transparent)
+                            .clickable { alertAbove = isAbove }.padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(label, color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IdsTextField(value = alertInput, onValueChange = { alertInput = it }, label = "Target price (RWF)", modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.brand)
+                        .clickable(enabled = !alertBusy) { setAlert() }.padding(horizontal = 20.dp, vertical = 14.dp),
+                ) {
+                    Text(if (alertBusy) "Working…" else "Set", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+            alertError?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { alertExpanded = true },
+            ) {
+                Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Ids.colors.brand, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Set a price alert", color = Ids.colors.brand, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 

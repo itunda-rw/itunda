@@ -1807,6 +1807,20 @@ data class FundInvestmentResponse(val success: Boolean, val transaction: FundInv
 data class WatchStockResponse(val success: Boolean)
 data class UnwatchStockResponse(val success: Boolean)
 
+// Real Toss Securities 목표가 알림 (target price alert, section 113/167) -- found via a
+// fresh "defined but uncalled" endpoint sweep: the backend (set/clear/getPriceAlert +
+// StockPriceAlertScheduler) shipped fully live-verified 2026-08-17 but had zero client
+// anywhere, on any platform. This is Android's first wiring for it. GET returns a real
+// flat shape (StocksController.getPriceAlert); POST/DELETE return the real
+// StockWatchlist entity nested under "watch" (StocksController.setPriceAlert/
+// clearPriceAlert, unchanged from section 113) -- two genuinely different real
+// response shapes, not an inconsistency to normalize away since POST/DELETE already
+// shipped and were live-verified against the deployed backend before this pass.
+data class SetPriceAlertRequest(val targetPrice: Double, val direction: String)
+data class PriceAlertResponse(val success: Boolean, val targetPrice: Double?, val targetDirection: String?, val alertTriggeredAt: String?)
+data class StockWatchAlertDto(val targetPrice: Double?, val targetDirection: String?, val alertTriggeredAt: String?)
+data class SetPriceAlertResponse(val success: Boolean, val watch: StockWatchAlertDto)
+
 // Real Toss-style unified account overview (rw.itunda.overview.OverviewService) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere (Android,
 // iOS, or bank-mfe web). Aggregates wallets/savings/loans/investments/insurance/linked
@@ -3650,6 +3664,17 @@ interface ApiService {
 
     @DELETE("api/v1/stocks/{id}/watch")
     suspend fun unwatchStock(@Path("id") stockId: String): UnwatchStockResponse
+
+    // Real Toss Securities 목표가 알림 (target price alert, section 113/167) -- see
+    // SetPriceAlertRequest's own doc comment.
+    @GET("api/v1/stocks/{id}/price-alert")
+    suspend fun getPriceAlert(@Path("id") stockId: String): PriceAlertResponse
+
+    @POST("api/v1/stocks/{id}/price-alert")
+    suspend fun setPriceAlert(@Path("id") stockId: String, @Body request: SetPriceAlertRequest): SetPriceAlertResponse
+
+    @DELETE("api/v1/stocks/{id}/price-alert")
+    suspend fun clearPriceAlert(@Path("id") stockId: String): SetPriceAlertResponse
 
     @GET("api/v1/overview")
     suspend fun getOverview(): OverviewResponse
