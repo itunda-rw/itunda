@@ -168,6 +168,14 @@ class ScheduledTransferServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("the real self-invocation/separately-proxied-bean transaction-poisoning pitfall") {
+        Then("executeOne carries no @Transactional -- sendDirect is a separately-proxied bean, already atomic on its own (2026-08-17 fix, same root cause as AutoTransferService.executeOne)") {
+            val method = ScheduledTransferService::class.java.getDeclaredMethod("executeOne", rw.itunda.core.domain.ScheduledTransfer::class.java)
+            val hasTransactional = method.annotations.any { it.annotationClass.qualifiedName == "org.springframework.transaction.annotation.Transactional" }
+            hasTransactional shouldBe false
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

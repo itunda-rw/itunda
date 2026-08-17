@@ -104,7 +104,20 @@ class ScheduledTransferService(
     // recurring auto-transfer, a failed one-time transfer has no "next cycle" to retry
     // on -- it's marked FAILED once and stays there, an honest terminal state rather
     // than silently vanishing or looping forever.
-    @Transactional
+    //
+    // Deliberately NOT @Transactional itself (2026-08-17 fix) -- sendDirect below is a
+    // separately-proxied bean, already fully @Transactional on its own. This method used
+    // to carry @Transactional too (copied from AutoTransferService.executeOne before
+    // that method's own 2026-08-17 fix), which meant a real InsufficientFundsException/
+    // P2pRecipientNotFoundException thrown from sendDirect would mark THIS method's own
+    // ambient transaction rollback-only at the moment it throws -- catching it in the
+    // try/catch below would not undo that mark, and the final scheduledTransferRepository
+    // .save would fail with a real UnexpectedRollbackException even though the failure
+    // was already handled gracefully. Identical root cause to AutoTransferService
+    // .executeOne's own fix -- see that method's doc comment for the full account.
+    // sendDirect remains fully atomic on its own via its own @Transactional annotation;
+    // scheduledTransferRepository.save below is independently atomic via Spring Data's
+    // implicit per-call transaction.
     fun executeOne(scheduledTransfer: ScheduledTransfer): Boolean {
         val succeeded = try {
             val (transaction, _) = p2pService.sendDirect(scheduledTransfer.userId, scheduledTransfer.recipientIdentifier, scheduledTransfer.amount, scheduledTransfer.description)
