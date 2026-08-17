@@ -16,6 +16,8 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ScheduledTransferRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
@@ -45,7 +47,9 @@ class ScheduledTransferServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val p2pService = mockk<P2pService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = ScheduledTransferService(scheduledTransferRepository, walletRepository, userRepository, p2pService, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ScheduledTransferService(scheduledTransferRepository, walletRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
 
         val senderWallet = wallet("wallet_sender", "sender_1")
         val recipientWallet = wallet("wallet_recipient", "recipient_1")
@@ -122,7 +126,13 @@ class ScheduledTransferServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val p2pService = mockk<P2pService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = ScheduledTransferService(scheduledTransferRepository, walletRepository, userRepository, p2pService, rateLimiter)
+        // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+        // returns a raw Object, ClassCastException-ing at the call site -- same fix as
+        // AutoTransferServiceTest's own notificationRepository stub.
+        val notificationRepository = mockk<NotificationRepository>()
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ScheduledTransferService(scheduledTransferRepository, walletRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
 
         val pending = ScheduledTransferFixture.pending()
 
@@ -165,6 +175,30 @@ class ScheduledTransferServiceTest : BehaviorSpec({
 
             Then("it's honestly marked FAILED, never thrown, never retried -- a one-time transfer has no next cycle") {
                 succeeded shouldBe false
+            }
+
+            Then("it sends a real SCHEDULED_TRANSFER_FAILED notification with the real failure reason, plus a real push") {
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "sender_1" && it.type == "SCHEDULED_TRANSFER_FAILED" && it.body.contains("Insufficient balance") })
+                }
+                verify(exactly = 1) { pushNotificationService.sendToUser("sender_1", any(), any(), any()) }
+            }
+        }
+
+        When("its scheduled date arrives and the real transfer succeeds a second time") {
+            every { p2pService.sendDirect(any(), any(), any(), any()) } returns
+                (
+                    Transaction(
+                        id = "ledgertxn_2", referenceNumber = "REF2", senderId = "sender_1", recipientId = "recipient_1",
+                        fromWalletId = "wallet_sender", toWalletId = "wallet_recipient", amount = BigDecimal("10000"), fee = BigDecimal.ZERO,
+                        currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "Transfer - Rent",
+                    ) to BigDecimal("90000")
+                    )
+
+            service.executeOne(ScheduledTransferFixture.pending())
+
+            Then("a genuine success never sends a failure notification") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
     }

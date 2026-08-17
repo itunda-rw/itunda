@@ -4,10 +4,13 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.ScheduledTransfer
 import rw.itunda.core.domain.ScheduledTransferStatus
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ScheduledTransferRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
@@ -35,6 +38,8 @@ class ScheduledTransferService(
     private val userRepository: UserRepository,
     private val p2pService: P2pService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(ScheduledTransferService::class.java)
 
@@ -139,7 +144,37 @@ class ScheduledTransferService(
             scheduledTransfer.failureReason = "Couldn't complete this transfer"
             false
         }
+        if (!succeeded) {
+            notifyTransferFailed(scheduledTransfer)
+        }
         scheduledTransferRepository.save(scheduledTransfer)
         return succeeded
+    }
+
+    // Real Toss Payments billing-failure alert -- same real, sourced convention
+    // ProductSubscriptionService.notifyDeliveryFailed / BillAutoPayProcessor
+    // .notifyAutoPayFailed / AutoTransferService.notifyTransferFailed already establish
+    // (see any of their own doc comments): itunda's recurring/scheduled-transfer
+    // failure paths previously only ever recorded the failure silently, never told the
+    // customer. Purely a best-effort side effect wrapped in its own try/catch -- never
+    // allowed to affect the real save. Safe by construction: executeOne is deliberately
+    // NOT @Transactional (its own 2026-08-17 fix, see that annotation removal's own doc
+    // comment above), so a failing notification save can never poison the real
+    // transfer attempt.
+    private fun notifyTransferFailed(scheduledTransfer: ScheduledTransfer) {
+        try {
+            val title = "Scheduled transfer failed"
+            val body = "We couldn't send your scheduled transfer to ${scheduledTransfer.recipientName}: ${scheduledTransfer.failureReason}."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = scheduledTransfer.userId, type = "SCHEDULED_TRANSFER_FAILED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(),
+                    dataJson = "{\"scheduledTransferId\":\"${scheduledTransfer.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(scheduledTransfer.userId, title, body, mapOf("scheduledTransferId" to scheduledTransfer.id))
+        } catch (e: Exception) {
+            log.warn("Could not send scheduled-transfer-failure notification for {}", scheduledTransfer.id, e)
+        }
     }
 }
