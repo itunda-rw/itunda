@@ -8985,3 +8985,32 @@ App-target-only iOS change this session has carried.
 
 **3-platform Jobs search parity now complete**: Android (original), bank-mfe (§150), and iOS
 (§151) all call the real backend search endpoint.
+
+## 152. Insurance policy renewal-reminder notification
+
+**Added 2026-08-17.** `InsurancePolicy.endDate` has been a real, stored field since the policy
+concept existed, but nothing ever notified a user as it approached -- the same "real data sitting
+unused" shape `SavingsService.getGoalsDueForMaturityReminder` already closed once for
+`SavingsGoal.targetDate`. Sourced from real Korean insurer practice: renewal notices (including
+via KakaoTalk) are sent 30-45 days before policy expiry; itunda's own honest scoping picks 30
+days, the lower bound of that sourced range.
+
+**Built**: `InsurancePolicyRenewalReminderScheduler` mirrors `SavingsMaturityReminderScheduler`'s
+exact proven-safe shape -- a separate `@Component` scheduler calling a per-policy
+`@Transactional` method (`sendRenewalReminder`), never a batch-transactional loop, avoiding by
+construction the same self-invocation/transaction-poisoning pitfall this codebase has already
+found and fixed multiple times elsewhere. New `InsurancePolicy.renewalReminderSentAt` column
+(migration V276) tracks one-shot state, re-checked right before sending so a genuine race can't
+double-fire. New notification type `INSURANCE_POLICY_RENEWAL_DUE`. New manual-trigger endpoint
+`POST /api/v1/insurance/policies/process-renewal-reminders`, mirroring
+`SavingsController.processMaturityReminders`'s exact convention (same authenticated-but-
+ungated shape, not a new security concern).
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: enrolled a user in
+the Health Shield plan, backdated the real policy's `end_date` to 24 days out (within the 30-day
+window) via direct DB update. Called the manual trigger -- `{"success":true,"processed":1}`, real
+DB-confirmed notification with the exact expected body: `"Your \"Health Shield\" policy expires
+on 2026-09-10. It will auto-renew unless you cancel."`, and `renewal_reminder_sent_at` correctly
+set. Called the trigger a second time -- `{"success":true,"processed":0}`, confirming the
+already-reminded policy is correctly excluded and no duplicate notification was sent (still
+exactly 1 real `INSURANCE_POLICY_RENEWAL_DUE` notification total).
