@@ -8747,3 +8747,32 @@ attempted, not just a config no-op), one per favoriter, none for a third non-fav
 Registered a second merchant with zero favoriters and added a product there too -- succeeded 201
 with zero additional push-attempt log lines, confirming the empty-list fast path is genuinely
 silent and the feature carries no cost for non-Eats merchants.
+
+## 144. Karrot 당근알바 job-post-closure notification to favoriters
+
+**Added 2026-08-17.** `JobPostFavorite` (favoriting a job post) had zero notification hook of
+any kind since it launched. Sourced from Karrot's own real, documented 당근알바 behavior
+(cs.kr.karrotmarket.com's own FAQ content): "When a job posting closes on Carrot Market, you
+receive a notification that applications have closed."
+
+**Built**: `JobPostFavoriteService.notifyFavoritersOfClosure` fans out a real push to every
+favoriter the moment a job post stops being available, whether filled (`markFilled`) or
+withdrawn (`removePost`) -- `"A job you saved has closed"` / `"\"{title}\" is no longer accepting
+applications."` Deliberately called from `JobPostController`'s two endpoints, right after each
+real status change commits, rather than from inside `JobPostService`'s `@Transactional` methods
+-- the same "per-favoriter notification loop must live outside the real status-change
+transaction" discipline `KeywordAlertService.notifyMatchingAlerts` already establishes, applying
+the exact bug class Sections 115/118/129/130 fixed reactively for scheduler-driven code
+proactively here instead. Push-only, same lighter shape Section 143's
+`notifyFavoritersOfNewProduct` already established.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**, reusing Section
+143's device-token-seeding technique (see [[feedback_push_only_verification_technique]]):
+registered a poster and 2 favoriters, created a job post, both favorited it (real DB rows
+confirmed), seeded fake device tokens for both. Called `POST /jobs/posts/{id}/mark-filled` --
+succeeded, `status` moved to `FILLED`; pod logs confirmed exactly 2 real FCM push attempts fired
+at that exact moment. Created a second job post, favorited by the same 2 users, then called
+`DELETE /jobs/posts/{id}` (`removePost`) -- succeeded, `status` moved to `REMOVED`; pod logs
+confirmed a second, independent wave of exactly 2 more FCM push attempts (distinct `requestId`,
+21 seconds after the first wave) -- proving both real closure paths trigger the notification
+independently, not just one of them.
