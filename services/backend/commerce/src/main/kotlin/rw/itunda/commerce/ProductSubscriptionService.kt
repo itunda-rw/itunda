@@ -4,12 +4,15 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.ProductSubscription
 import rw.itunda.core.domain.ProductSubscriptionStatus
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ProductSubscriptionRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.merchant.ShoppingCashbackService
@@ -39,6 +42,8 @@ class ProductSubscriptionService(
     private val orderService: OrderService,
     private val shoppingCashbackService: ShoppingCashbackService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(ProductSubscriptionService::class.java)
 
@@ -209,8 +214,38 @@ class ProductSubscriptionService(
             subscription.lastFailureReason = "Couldn't complete this delivery"
             false
         }
+        if (!succeeded) {
+            notifyDeliveryFailed(subscription)
+        }
         subscription.nextDeliveryAt = subscription.nextDeliveryAt.plus(subscription.intervalDays.toLong(), ChronoUnit.DAYS)
         productSubscriptionRepository.save(subscription)
         return succeeded
+    }
+
+    // Real Toss Payments billing-failure alert -- sourced from Toss Payments' own
+    // developer docs (docs-pay.toss.im/reference/billing/bill): a failed real billing-key
+    // charge sends the customer a real failure notification (rate-limited server-side to
+    // once per hour per billing key there). itunda's own recurring-charge failure paths
+    // only ever recorded `lastFailureReason` silently on the row -- a customer would
+    // never actually find out their subscription just skipped a real round unless they
+    // happened to open that specific subscription's detail screen. Never blocks or
+    // affects the real schedule/save below -- purely a best-effort side notification,
+    // same try/catch discipline every other post-money-movement notification in this
+    // codebase already uses.
+    private fun notifyDeliveryFailed(subscription: ProductSubscription) {
+        try {
+            val title = "Subscription delivery skipped"
+            val body = "We couldn't process your subscription delivery: ${subscription.lastFailureReason}. It'll try again next cycle."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = subscription.customerId, type = "PRODUCT_SUBSCRIPTION_FAILED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(),
+                    dataJson = "{\"subscriptionId\":\"${subscription.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(subscription.customerId, title, body, mapOf("subscriptionId" to subscription.id))
+        } catch (e: Exception) {
+            log.warn("Could not send subscription-failure notification for {}", subscription.id, e)
+        }
     }
 }

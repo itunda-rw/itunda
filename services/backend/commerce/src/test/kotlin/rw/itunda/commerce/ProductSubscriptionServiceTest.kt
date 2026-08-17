@@ -16,8 +16,10 @@ import rw.itunda.core.domain.ProductSubscriptionStatus
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ProductSubscriptionRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.merchant.ShoppingCashbackService
@@ -50,8 +52,12 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         val orderService = mockk<OrderService>()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductSubscriptionService(
             productSubscriptionRepository, merchantRepository, merchantProductRepository, walletRepository, orderService, shoppingCashbackService, rateLimiter,
+            notificationRepository, pushNotificationService,
         )
 
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Tissue paper", price = BigDecimal("5000"))
@@ -145,8 +151,12 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         val orderService = mockk<OrderService>()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductSubscriptionService(
             productSubscriptionRepository, merchantRepository, merchantProductRepository, walletRepository, orderService, shoppingCashbackService, rateLimiter,
+            notificationRepository, pushNotificationService,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Mart", status = MerchantStatus.ACTIVE)
@@ -184,6 +194,25 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
                 subscription.lastFailureReason shouldBe "Insufficient balance"
                 subscription.deliveryCount shouldBe staleDeliveryCount
             }
+
+            Then("real Toss Payments-style billing-failure alert: a real notification is saved and pushed to the customer") {
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "customer_1" && it.type == "PRODUCT_SUBSCRIPTION_FAILED" && it.body.contains("Insufficient balance") })
+                }
+                verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", any(), any(), any()) }
+            }
+        }
+
+        When("the recurring delivery succeeds a second time") {
+            every { orderService.placeOrder("customer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St") } returns OrderDetail(order, emptyList())
+            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+
+            service.executeOne(subscription)
+
+            Then("no failure notification is ever sent for a genuinely successful delivery") {
+                verify(exactly = 0) { notificationRepository.save(match { it.type == "PRODUCT_SUBSCRIPTION_FAILED" }) }
+            }
         }
     }
 
@@ -203,8 +232,12 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
         val orderService = mockk<OrderService>()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = ProductSubscriptionService(
             productSubscriptionRepository, merchantRepository, merchantProductRepository, walletRepository, orderService, shoppingCashbackService, rateLimiter,
+            notificationRepository, pushNotificationService,
         )
 
         val originalNextDeliveryAt = Instant.parse("2026-09-01T00:00:00Z")
