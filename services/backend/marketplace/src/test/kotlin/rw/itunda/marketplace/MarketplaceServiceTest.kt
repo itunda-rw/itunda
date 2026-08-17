@@ -21,9 +21,12 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.domain.MarketplaceListingReport
+import rw.itunda.core.domain.MarketplaceReportReason
 import rw.itunda.core.repository.ListingLikeRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.MarketplaceEscrowRepository
+import rw.itunda.core.repository.MarketplaceListingReportRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
@@ -50,9 +53,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
         val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         When("creating a listing with valid fields") {
@@ -117,9 +122,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
         val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
         // getListing (called directly below, and internally by contactSeller) now also
         // real-increments the view count -- stub it here once for every When in this block.
@@ -356,6 +363,71 @@ class MarketplaceServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("a real buyer reports a listing for the first time") {
+            every { listingRepository.findById("listing_1") } returns Optional.of(listing)
+            every { marketplaceListingReportRepository.findByListingIdAndReporterId("listing_1", "buyer_1") } returns null
+            every { marketplaceListingReportRepository.save(any()) } answers { firstArg() }
+            every { marketplaceListingReportRepository.countByListingId("listing_1") } returns 1
+
+            val report = service.reportListing("buyer_1", "listing_1", MarketplaceReportReason.SCAM, "  looks fake  ")
+
+            Then("it saves a real report with trimmed details and leaves the listing ACTIVE") {
+                report.listingId shouldBe "listing_1"
+                report.reporterId shouldBe "buyer_1"
+                report.reason shouldBe MarketplaceReportReason.SCAM
+                report.details shouldBe "looks fake"
+                listing.status shouldBe ListingStatus.ACTIVE
+                io.mockk.verify(exactly = 0) { listingRepository.save(any()) }
+            }
+        }
+
+        When("the seller tries to report their own listing") {
+            every { listingRepository.findById("listing_1") } returns Optional.of(listing)
+
+            Then("it throws OwnListingReportException before ever touching the report repository") {
+                try {
+                    service.reportListing("seller_1", "listing_1", MarketplaceReportReason.OTHER, null)
+                    error("expected OwnListingReportException")
+                } catch (e: OwnListingReportException) {
+                    io.mockk.verify(exactly = 0) { marketplaceListingReportRepository.save(any()) }
+                }
+            }
+        }
+
+        When("the same buyer tries to report the same listing twice") {
+            every { listingRepository.findById("listing_1") } returns Optional.of(listing)
+            every { marketplaceListingReportRepository.findByListingIdAndReporterId("listing_1", "buyer_1") } returns
+                MarketplaceListingReport(id = "listing_report_existing", listingId = "listing_1", reporterId = "buyer_1", reason = MarketplaceReportReason.SPAM_OR_DUPLICATE)
+
+            Then("it throws ListingAlreadyReportedException, never a second real row") {
+                try {
+                    service.reportListing("buyer_1", "listing_1", MarketplaceReportReason.SCAM, null)
+                    error("expected ListingAlreadyReportedException")
+                } catch (e: ListingAlreadyReportedException) {
+                    io.mockk.verify(exactly = 0) { marketplaceListingReportRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a listing's real distinct-reporter count reaches the real threshold") {
+            val threatenedListing = Listing(
+                id = "listing_9", sellerId = "seller_1", title = "Bicycle", description = "desc",
+                price = BigDecimal("15000"), category = "sports",
+            )
+            every { listingRepository.findById("listing_9") } returns Optional.of(threatenedListing)
+            every { marketplaceListingReportRepository.findByListingIdAndReporterId("listing_9", "buyer_3") } returns null
+            every { marketplaceListingReportRepository.save(any()) } answers { firstArg() }
+            every { marketplaceListingReportRepository.countByListingId("listing_9") } returns 3
+            every { listingRepository.save(any()) } answers { firstArg() }
+
+            service.reportListing("buyer_3", "listing_9", MarketplaceReportReason.PROHIBITED_ITEM, null)
+
+            Then("the listing is silently auto-hidden -- real status REMOVED, no notification sent") {
+                threatenedListing.status shouldBe ListingStatus.REMOVED
+                io.mockk.verify(exactly = 1) { listingRepository.save(threatenedListing) }
+            }
+        }
     }
 
     Given("browsing the real marketplace") {
@@ -372,9 +444,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
         val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         When("no category filter is given") {
@@ -403,9 +477,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
         val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         When("only one of latitude/longitude is given") {
@@ -457,9 +533,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
         val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         // Searcher at (-1.9441, 30.0619). Same longitude as both listings, only latitude
@@ -530,9 +608,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
         val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         // Both within Rwanda's bounding envelope, both within a real 5km straight-line
@@ -616,9 +696,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
         val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         When("the real coordinates reverse-geocode to a real neighborhood") {
@@ -660,9 +742,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>(relaxed = true)
         val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         When("the caller has a real neighborhood set, no category filter") {
@@ -725,9 +809,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
         val listingLikeRepository = mockk<ListingLikeRepository>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         val overdue = MarketplaceEscrow(
@@ -765,9 +851,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
         val listingLikeRepository = mockk<ListingLikeRepository>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         val escrow = MarketplaceEscrow(
@@ -806,9 +894,11 @@ class MarketplaceServiceTest : BehaviorSpec({
         val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
         val listingLikeRepository = mockk<ListingLikeRepository>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
         val service = MarketplaceService(
             listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
             walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository,
         )
 
         val alreadyReleased = MarketplaceEscrow(
