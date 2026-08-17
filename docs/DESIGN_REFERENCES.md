@@ -9462,3 +9462,14 @@ follow-up, same "one platform per section" cadence Sections 159-161 used for Tru
 
 Files: `services/micro-frontends/bank-mfe/src/lib/bills.ts`,
 `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.
+
+**Live-verified** via headless Chrome + raw CDP against a real local dev server pointed at the
+real deployed backend (`VITE_API_BASE_URL=http://localhost:30081`, the established socat relay
+-- see [[feedback_headless_chrome_verification]]'s fourth gotcha for why the direct VM IP fails
+from inside headless Chrome specifically): registered a fresh user, navigated directly to
+`?tab=BILLS`, selected "WASAC - Water", entered a real account number and a 20,000 RWF cap,
+clicked "Turn on auto-pay" -> real `POST /api/v1/bills/auto-pay` confirmed via
+`Network.responseReceived` (200), UI shows "Auto-pay set up..." and the new entry with the exact
+account number and cap ("ACC-162-TEST · up to 20,000 RWF"). Clicked "Turn off" -> real
+`DELETE /api/v1/bills/auto-pay?providerId=b2` (200), "Auto-pay turned off" shown, entry removed
+from the list. Confirmed via actual network events and screenshots, not just DOM text.
