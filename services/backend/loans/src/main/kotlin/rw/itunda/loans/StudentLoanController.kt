@@ -39,6 +39,7 @@ data class RepayStudentLoanRequest(val amount: BigDecimal)
 class StudentLoanController(
     private val studentLoanService: StudentLoanService,
     private val idempotencyService: IdempotencyService,
+    private val studentLoanGraceEndReminderScheduler: StudentLoanGraceEndReminderScheduler,
 ) {
     @PostMapping("/apply")
     fun apply(@RequestBody request: ApplyForStudentLoanRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
@@ -92,6 +93,17 @@ class StudentLoanController(
     @GetMapping("/{loanId}/suggested-payment")
     fun getSuggestedPayment(@PathVariable loanId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true) + studentLoanService.getSuggestedMonthlyPayment(currentUser.userId, loanId))
+
+    // Real grace-period-ending-soon reminder manual trigger -- same "expose the
+    // scheduler's own real logic as a callable endpoint" convention
+    // LoansController.processPostpaidCreditPaymentReminders already establishes, so a
+    // real loan's real graceEndsAt can be verified without waiting actual wall-clock
+    // days for it to enter the reminder window.
+    @PostMapping("/process-grace-end-reminders")
+    fun processGraceEndReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = studentLoanGraceEndReminderScheduler.processDue()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
+    }
 
     @ExceptionHandler(InvalidGraduationDateException::class)
     fun handleInvalidGraduationDate(ex: InvalidGraduationDateException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_GRADUATION_DATE", ex.message ?: "Bad request"))

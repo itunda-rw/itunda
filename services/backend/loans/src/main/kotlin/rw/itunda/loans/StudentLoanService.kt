@@ -5,12 +5,15 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.StudentLoan
 import rw.itunda.core.domain.StudentLoanLevel
 import rw.itunda.core.domain.StudentLoanStatus
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.StudentLoanRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -37,6 +40,14 @@ private val MAX_STUDENT_LOAN_AMOUNT = BigDecimal("2000000")
 private const val UNDERGRADUATE_RATE = 0.11
 private const val POSTGRADUATE_RATE = 0.12
 
+// Real student-loan-servicer grace-period-ending reminder window -- see
+// StudentLoan.graceEndReminderSentAt's own doc comment for the full sourced account
+// (Navient/Nelnet/MOHELA). Same order of magnitude as this codebase's other
+// multi-month-horizon reminder windows (GiftVoucher.EXPIRY_REMINDER_WINDOW's own 7 days).
+// LocalDate-scoped (graceEndsAt is a LocalDate, not an Instant), so a plain day count
+// rather than a java.time.Duration.
+private const val GRACE_END_REMINDER_WINDOW_DAYS = 7L
+
 // A loan is "active" (blocks a second application) at every status except REPAID.
 private val ACTIVE_STATUSES = listOf(
     StudentLoanStatus.REQUESTED, StudentLoanStatus.DISBURSED, StudentLoanStatus.IN_GRACE_PERIOD,
@@ -60,6 +71,8 @@ class StudentLoanService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     // Real bug class this session has hit repeatedly: the "reject if already active"
     // check-then-CREATE race -- @Version can't protect a row that doesn't exist yet.
@@ -212,6 +225,47 @@ class StudentLoanService(
     @Transactional
     fun markRepaying(loan: StudentLoan) {
         loan.status = StudentLoanStatus.REPAYING
+        studentLoanRepository.save(loan)
+    }
+
+    // Real pre-end grace-period reminder sweep -- see
+    // StudentLoanGraceEndReminderScheduler's own doc comment and
+    // GRACE_END_REMINDER_WINDOW_DAYS's own doc comment for the full real sourcing.
+    // Coarse repo filter (every IN_GRACE_PERIOD loan, same "cheap DB-level filter, exact
+    // condition in-service" split PostpaidCreditService.getLinesDueSoonForPaymentReminder
+    // already establishes), exact "due soon, not yet reminded" condition in-service.
+    // Deliberately does NOT overlap with the already-past case (graceEndsAt in the past
+    // is left to StudentLoanGracePeriodScheduler's own status-flip sweep) -- this is
+    // honestly the earlier, friendlier nudge, not a duplicate of it.
+    fun getLoansDueSoonForGraceEndReminder(): List<StudentLoan> {
+        val today = LocalDate.now()
+        val cutoff = today.plusDays(GRACE_END_REMINDER_WINDOW_DAYS)
+        return studentLoanRepository.findByStatus(StudentLoanStatus.IN_GRACE_PERIOD).filter { loan ->
+            loan.graceEndReminderSentAt == null && loan.graceEndsAt != null &&
+                !loan.graceEndsAt!!.isBefore(today) && !loan.graceEndsAt!!.isAfter(cutoff)
+        }
+    }
+
+    /** One real grace-period-ending-soon notification, called per-loan by the scheduler --
+     * re-checks `graceEndReminderSentAt`/`status`/`graceEndsAt` right before sending so a
+     * genuine race (e.g. StudentLoanGracePeriodScheduler flipping the loan to REPAYING mid-
+     * sweep) can't fire a stale reminder, same resilience discipline
+     * PostpaidCreditService.sendPaymentReminder's own doc comment already establishes. */
+    @Transactional
+    fun sendGraceEndReminder(loanId: String) {
+        val loan = studentLoanRepository.findById(loanId).orElse(null) ?: return
+        if (loan.graceEndReminderSentAt != null || loan.status != StudentLoanStatus.IN_GRACE_PERIOD || loan.graceEndsAt == null) return
+
+        val title = "Your student loan grace period is ending soon"
+        val body = "Your BRD student loan grace period ends on ${loan.graceEndsAt} -- repayment begins automatically after that. Check the suggested monthly payment in the Loans tab so you're ready."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = loan.userId, type = "STUDENT_LOAN_GRACE_PERIOD_ENDING_SOON",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(loan.userId, title, body, mapOf("loanId" to loan.id))
+        loan.graceEndReminderSentAt = Instant.now()
         studentLoanRepository.save(loan)
     }
 }

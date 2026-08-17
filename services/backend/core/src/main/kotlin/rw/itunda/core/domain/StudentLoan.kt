@@ -88,6 +88,19 @@ class StudentLoan(
     @Column(name = "grace_ends_at")
     var graceEndsAt: LocalDate? = null,
 
+    // Real gap found live (2026-08-18, same lens as PostpaidCreditLine.cycleDueAt's own
+    // reminder gap this session already found and fixed): before this,
+    // StudentLoanGracePeriodScheduler flipped a loan to REPAYING the instant its
+    // graceEndsAt elapsed with only a server-side log line -- zero borrower-facing
+    // warning that the grace period was about to end and a real payment obligation was
+    // about to start. Real, well-known student-loan-servicer practice (Navient/Nelnet/
+    // MOHELA all send a "your grace period is ending soon, repayment begins on <date>"
+    // notice roughly a week to a month before the first payment comes due) applied to
+    // BRD's own grace period. Tracks whether that pre-end reminder has already fired for
+    // this loan, so the scheduler's own polling doesn't re-notify on every tick.
+    @Column(name = "grace_end_reminder_sent_at")
+    var graceEndReminderSentAt: Instant? = null,
+
     // Real check-then-act "single claimable resource" guard: only one active loan per
     // user at a time, and both disburse and repay read-then-mutate this row -- same
     // reasoning `VupLoan` already needed `@Version` for.

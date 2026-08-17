@@ -3,6 +3,7 @@ package rw.itunda.loans
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -10,6 +11,7 @@ import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.StudentLoan
 import rw.itunda.core.domain.StudentLoanLevel
 import rw.itunda.core.domain.StudentLoanStatus
@@ -17,9 +19,12 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.StudentLoanRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.util.Optional
 
@@ -51,7 +56,9 @@ class StudentLoanServiceTest : BehaviorSpec({
         walletRepository: WalletRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = StudentLoanService(studentLoanRepository, walletRepository, ledgerService, rateLimiter)
+        notificationRepository: NotificationRepository = mockk(relaxed = true),
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = StudentLoanService(studentLoanRepository, walletRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
 
     val futureGraduation = LocalDate.now().plusYears(1)
 
@@ -278,6 +285,98 @@ class StudentLoanServiceTest : BehaviorSpec({
         When("someone else tries to repay it (IDOR)") {
             Then("it real-404s, not 403s") {
                 shouldThrow<StudentLoanNotFoundException> { service.repay("attacker", "studentloan_5", BigDecimal("10000")) }
+            }
+        }
+    }
+
+    Given("a real IN_GRACE_PERIOD student loan whose grace period ends within the reminder window") {
+        val studentLoanRepository = mockk<StudentLoanRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(studentLoanRepository = studentLoanRepository, notificationRepository = notificationRepository, pushNotificationService = pushNotificationService)
+
+        val loan = StudentLoan(
+            id = "studentloan_6", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
+            declaredAnnualHouseholdIncome = BigDecimal("1500000"), principalAmount = BigDecimal("500000"),
+            outstandingBalance = BigDecimal("500000"), interestRate = 0.11, status = StudentLoanStatus.IN_GRACE_PERIOD,
+            expectedGraduationDate = futureGraduation, graceEndsAt = LocalDate.now().plusDays(3),
+        )
+        every { studentLoanRepository.findByStatus(StudentLoanStatus.IN_GRACE_PERIOD) } returns listOf(loan)
+        every { studentLoanRepository.findById("studentloan_6") } returns Optional.of(loan)
+        every { studentLoanRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("the reminder sweep runs") {
+            val due = service.getLoansDueSoonForGraceEndReminder()
+
+            Then("this feature's own core distinguishing behavior fires: the loan is found due for a reminder") {
+                due shouldBe listOf(loan)
+            }
+        }
+
+        When("sendGraceEndReminder is called for it") {
+            service.sendGraceEndReminder("studentloan_6")
+
+            Then("a real notification and push fire, and graceEndReminderSentAt is stamped so the next sweep skips it") {
+                loan.graceEndReminderSentAt shouldNotBe null
+                verify { notificationRepository.save(match<Notification> { it.userId == "user_1" && it.type == "STUDENT_LOAN_GRACE_PERIOD_ENDING_SOON" }) }
+                verify { pushNotificationService.sendToUser("user_1", any(), any(), mapOf("loanId" to "studentloan_6")) }
+                verify { studentLoanRepository.save(loan) }
+            }
+        }
+    }
+
+    Given("a real IN_GRACE_PERIOD student loan whose grace period ends far in the future") {
+        val studentLoanRepository = mockk<StudentLoanRepository>()
+        val service = newService(studentLoanRepository = studentLoanRepository)
+
+        val loan = StudentLoan(
+            id = "studentloan_7", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
+            declaredAnnualHouseholdIncome = BigDecimal("1500000"), principalAmount = BigDecimal("500000"),
+            outstandingBalance = BigDecimal("500000"), interestRate = 0.11, status = StudentLoanStatus.IN_GRACE_PERIOD,
+            expectedGraduationDate = futureGraduation, graceEndsAt = LocalDate.now().plusMonths(5),
+        )
+        every { studentLoanRepository.findByStatus(StudentLoanStatus.IN_GRACE_PERIOD) } returns listOf(loan)
+
+        When("the reminder sweep runs") {
+            val due = service.getLoansDueSoonForGraceEndReminder()
+
+            Then("it is honestly not due yet -- outside the real reminder window") {
+                due shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("a real IN_GRACE_PERIOD student loan that already had its grace-end reminder sent") {
+        val studentLoanRepository = mockk<StudentLoanRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(studentLoanRepository = studentLoanRepository, notificationRepository = notificationRepository, pushNotificationService = pushNotificationService)
+
+        val loan = StudentLoan(
+            id = "studentloan_8", userId = "user_1", level = StudentLoanLevel.UNDERGRADUATE,
+            declaredAnnualHouseholdIncome = BigDecimal("1500000"), principalAmount = BigDecimal("500000"),
+            outstandingBalance = BigDecimal("500000"), interestRate = 0.11, status = StudentLoanStatus.IN_GRACE_PERIOD,
+            expectedGraduationDate = futureGraduation, graceEndsAt = LocalDate.now().plusDays(2),
+            graceEndReminderSentAt = Instant.now(),
+        )
+        every { studentLoanRepository.findByStatus(StudentLoanStatus.IN_GRACE_PERIOD) } returns listOf(loan)
+        every { studentLoanRepository.findById("studentloan_8") } returns Optional.of(loan)
+
+        When("the reminder sweep runs") {
+            val due = service.getLoansDueSoonForGraceEndReminder()
+
+            Then("it is honestly excluded -- already reminded once") {
+                due shouldBe emptyList()
+            }
+        }
+
+        When("sendGraceEndReminder is called anyway (e.g. a stale scheduler tick)") {
+            service.sendGraceEndReminder("studentloan_8")
+
+            Then("the real re-check right before sending stops a duplicate notification") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
             }
         }
     }
