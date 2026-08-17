@@ -16,14 +16,17 @@ import rw.itunda.core.domain.InsurancePremiumFund
 import rw.itunda.core.domain.InsurancePremiumFundStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.InsuranceClaimRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.InsurancePremiumFundRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -57,7 +60,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         every { walletRepository.findByUserId("user_1") } returns listOf(
             wallet("wallet_main", "user_1", WalletType.MAIN),
@@ -110,7 +115,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         every { walletRepository.findByUserId("user_2") } returns emptyList()
 
@@ -139,7 +146,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         every { insurancePolicyRepository.findById("pol_1") } returns Optional.of(policy("pol_1", "user_1"))
         every { insuranceClaimRepository.save(any()) } answers { firstArg() }
@@ -162,7 +171,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         every { insurancePolicyRepository.findById("pol_2") } returns Optional.of(policy("pol_2", "owner_1"))
 
@@ -185,7 +196,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         every { insurancePolicyRepository.findById("pol_3") } returns Optional.of(policy("pol_3", "user_1", status = "lapsed"))
 
@@ -208,7 +221,10 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         val claim = InsuranceClaim(id = "claim_1", policyId = "pol_1", userId = "user_1", description = "Hospital stay", amount = BigDecimal("50000"))
         every { insuranceClaimRepository.findById("claim_1") } returns Optional.of(claim)
@@ -233,6 +249,16 @@ class InsuranceServiceTest : BehaviorSpec({
                 decided.status shouldBe InsuranceClaimStatus.APPROVED
                 decided.reviewedBy shouldBe "admin_1"
             }
+            Then("it real-notifies the claimant that their claim was approved and paid") {
+                verify(exactly = 1) {
+                    notificationRepository.save(
+                        match { it.userId == "user_1" && it.type == "INSURANCE_CLAIM_DECIDED" && it.body.contains("50000") },
+                    )
+                }
+            }
+            Then("the claimant also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Claim approved", any(), mapOf("claimId" to "claim_1")) }
+            }
         }
     }
 
@@ -243,7 +269,10 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         val claim = InsuranceClaim(id = "claim_2", policyId = "pol_1", userId = "user_1", description = "test", amount = BigDecimal("10000"))
         every { insuranceClaimRepository.findById("claim_2") } returns Optional.of(claim)
@@ -258,6 +287,54 @@ class InsuranceServiceTest : BehaviorSpec({
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
             }
+            Then("it still real-notifies the claimant, with the real rejection reason included") {
+                verify(exactly = 1) {
+                    notificationRepository.save(
+                        match { it.userId == "user_1" && it.type == "INSURANCE_CLAIM_DECIDED" && it.body.contains("Not covered by policy") },
+                    )
+                }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Claim rejected", any(), mapOf("claimId" to "claim_2")) }
+            }
+        }
+    }
+
+    Given("a claim decision made while still inside its own real transaction") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
+        // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+        // returns a raw Object, ClassCastException-ing at the call site -- same fix as
+        // RewardsServiceTest's rewardClaimRepository.save stub.
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        val claim = InsuranceClaim(id = "claim_3", policyId = "pol_1", userId = "user_1", description = "Car repair", amount = BigDecimal("20000"))
+        every { insuranceClaimRepository.findById("claim_3") } returns Optional.of(claim)
+        every { insuranceClaimRepository.save(any()) } answers { firstArg() }
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1", WalletType.MAIN)
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_claim3", emptyList())
+
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization()
+        try {
+            service.decideClaim("claim_3", "admin_1", approve = true, reason = null)
+
+            Then("the real decision and durable in-app notification are recorded, but the mobile push is withheld") {
+                verify(exactly = 1) { insuranceClaimRepository.save(any()) }
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "INSURANCE_CLAIM_DECIDED" }) }
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+            }
+
+            Then("the claimant receives the push only after the real transaction commits") {
+                org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Claim approved", any(), mapOf("claimId" to "claim_3")) }
+            }
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization()
         }
     }
 
@@ -268,7 +345,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>()
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
         every { rateLimiter.checkLimit("insurance:claim:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to file another real claim") {
@@ -294,7 +373,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         val duePolicy = policy("pol_due_1", "user_1")
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN)
@@ -330,7 +411,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         val duePolicy = policy("pol_due_2", "user_1")
         val fund = premiumFund("ipf_1", "user_1", "pol_due_2", targetAmount = BigDecimal("15000"), currentAmount = BigDecimal("15000"))
@@ -367,7 +450,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         val duePolicy = policy("pol_due_3", "user_1")
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_main", "user_1", WalletType.MAIN, balance = BigDecimal("1000"))
@@ -393,7 +478,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         val fund = premiumFund("ipf_2", "user_1", "pol_1", targetAmount = BigDecimal("15000"), currentAmount = BigDecimal("14000"))
         every { insurancePremiumFundRepository.findById("ipf_2") } returns Optional.of(fund)
@@ -426,7 +513,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         val fund = premiumFund("ipf_3", "user_1", "pol_1", targetAmount = BigDecimal("15000"), currentAmount = BigDecimal("10000"))
         every { insurancePremiumFundRepository.findById("ipf_3") } returns Optional.of(fund)
@@ -459,7 +548,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         every { insurancePolicyRepository.findById("pol_owned") } returns Optional.of(policy("pol_owned", "owner_1"))
 
@@ -482,7 +573,9 @@ class InsuranceServiceTest : BehaviorSpec({
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
 
         every { insurancePremiumFundRepository.findById("ipf_owned") } returns Optional.of(
             premiumFund("ipf_owned", "owner_1", "pol_1", targetAmount = BigDecimal("15000"), currentAmount = BigDecimal("1000")),

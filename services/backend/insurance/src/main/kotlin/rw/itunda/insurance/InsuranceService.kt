@@ -1,7 +1,10 @@
 package rw.itunda.insurance
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InsuranceClaim
 import rw.itunda.core.domain.InsuranceClaimStatus
@@ -10,12 +13,15 @@ import rw.itunda.core.domain.InsurancePremiumFund
 import rw.itunda.core.domain.InsurancePremiumFundStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.InsuranceClaimRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.InsurancePremiumFundRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -46,7 +52,10 @@ class InsuranceService(
     private val insuranceClaimRepository: InsuranceClaimRepository,
     private val rateLimiter: RateLimiter,
     private val insurancePremiumFundRepository: InsurancePremiumFundRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(InsuranceService::class.java)
 
     val insurancePlans = listOf(
         mapOf("id" to "ins_1", "name" to "Health Shield", "category" to "health", "provider" to "RSSB", "monthlyPremium" to 15000, "coverageAmount" to 5000000, "description" to "Comprehensive health cover for you and family", "features" to listOf("Outpatient", "Inpatient", "Dental", "Vision", "Maternity"), "rating" to 4.8, "enrolledCount" to 120000, "color" to "#0066FF"),
@@ -201,7 +210,52 @@ class InsuranceService(
         claim.reviewedBy = reviewerId
         claim.reviewedAt = Instant.now()
         claim.decisionReason = reason
-        return insuranceClaimRepository.save(claim)
+        val saved = insuranceClaimRepository.save(claim)
+
+        // Real claim-decision notification -- previously a claimant had no way to ever
+        // learn their claim was decided except by polling GET /claims themselves. Every
+        // real insurer notifies on both outcomes (approval confirms the real payout that
+        // already landed above; rejection explains why, using the same real reason text
+        // an admin/reviewer already provides), same "decide = terminal action, tell the
+        // real person it happened to" discipline OrderReturnService.decide already
+        // establishes for a structurally identical approve/reject decision.
+        val decidedTitle = if (approve) "Claim approved" else "Claim rejected"
+        val decidedBody = if (approve) {
+            "Your claim for \"${claim.description}\" was approved. ${claim.amount.toPlainString()} RWF has been credited to your wallet."
+        } else {
+            "Your claim for \"${claim.description}\" was rejected.${reason?.let { " Reason: $it" } ?: ""}"
+        }
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = claim.userId, type = "INSURANCE_CLAIM_DECIDED",
+                title = decidedTitle, body = decidedBody, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"claimId\":\"${claim.id}\"}",
+            ),
+        )
+        sendPushAfterCommit(claim.userId, decidedTitle, decidedBody, claim.id)
+        return saved
+    }
+
+    // Same real "defer the mobile push until the real ledger/status change is
+    // durable, but the in-app Notification row is saved immediately" discipline
+    // OrderReturnService.sendPushAfterCommit already establishes for a structurally
+    // identical approve/reject decision.
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, claimId: String) {
+        val data = mapOf("claimId" to claimId)
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, data)
+            } catch (e: Exception) {
+                log.warn("Could not send insurance-claim-decision push for claim {}", claimId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     // Real Ejo Heza ya Moto-style premium savings fund (2026-08-02) -- see

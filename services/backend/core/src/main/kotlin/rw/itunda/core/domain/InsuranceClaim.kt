@@ -18,6 +18,12 @@ enum class InsuranceClaimStatus { SUBMITTED, APPROVED, REJECTED }
  * pays out immediately from insurance_claims_expense, same "decide = terminal action" shape
  * as identity/ComplianceController and system/FraudReviewService, not a separate
  * approve-then-pay step -- there's no real insurer/reinsurer settlement delay to model here.
+ *
+ * 2026-08-17: `InsuranceService.decideClaim` now also sends a real claim-decision
+ * notification -- previously a claimant had zero way to ever learn a claim was decided
+ * except by polling their own claims list. Every real insurer notifies on both outcomes;
+ * see `decideClaim`'s own doc comment for the exact real sourcing (mirrors
+ * `OrderReturnService.decide`'s identical approve/reject-then-notify shape).
  */
 @Entity
 @Table(name = "insurance_claims")
