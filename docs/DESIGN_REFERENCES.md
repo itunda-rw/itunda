@@ -9473,3 +9473,75 @@ clicked "Turn on auto-pay" -> real `POST /api/v1/bills/auto-pay` confirmed via
 account number and cap ("ACC-162-TEST · up to 20,000 RWF"). Clicked "Turn off" -> real
 `DELETE /api/v1/bills/auto-pay?providerId=b2` (200), "Auto-pay turned off" shown, entry removed
 from the list. Confirmed via actual network events and screenshots, not just DOM text.
+
+## 163. Kakao Pay 자동납부 (auto bill-pay) client wiring, Android/Saronite
+
+**Added 2026-08-18.** Direct follow-up to Section 162's own stated next step ("Android/iOS
+remain unwired for this feature"). Confirmed the gap was still real before touching anything:
+`grep -rn "autoPay|AutoPay|auto-pay" android --include="*.kt"` (excluding `build/`) matched
+nothing, and `android/app/src/main/java/rw/itunda/app/miniapps/SaroniteBridge.kt` -- the real
+native bridge the "pay-bills" Saronite mini-app uses for `getPendingBills`/`payBill` (both real
+since 2026-07-13) -- had no `auto-pay` method at all. Android has no separate native Bills
+screen; bills live entirely behind this bridge, so "wiring Android" here means wiring the
+bridge + the `pay-bills` mini-app that calls it, the same real architecture prior sections
+already documented for `getPendingBills`/`payBill`.
+
+**Built** (mirrors bank-mfe's `lib/bills.ts` shape, adapted to Saronite's spec-plus-native-bridge
+convention used by every other bridge method in this file):
+- `packages/saronite/packages/brownfield-module/src/spec/SaroniteBrownfieldModule.ts` -- added
+  `BillProvider`/`BillProvidersResult` (mirrors `BillsController.getProviders`, needed because
+  `setAutoPay`/`clearAutoPay` take a real `providerId` like `"b1"`, distinct from
+  `PendingBill.provider`'s display-name-only string -- there was no other honest way for the
+  mini-app to resolve which provider a user means) and `BillAutoPaySetting`/
+  `AutoPaySettingsResult`/`SetAutoPayResult`, plus `getBillProviders`/`getAutoPaySettings`/
+  `setAutoPay`/`clearAutoPay` on `SaroniteBrownfieldModuleSpec`.
+- `packages/saronite/packages/brownfield-module/src/index.ts` and
+  `packages/saronite/packages/react-native/src/{index.ts,async-bridges.ts}` -- exported the new
+  types and four native-modules/natives/*.ts wrapper functions (new files:
+  `getBillProviders.ts`, `getAutoPaySettings.ts`, `setAutoPay.ts`, `clearAutoPay.ts`), same
+  one-function-per-file convention as `payBill.ts`/`getPendingBills.ts` next to them.
+- `android/app/src/main/java/rw/itunda/app/miniapps/SaroniteBridge.kt` -- implemented all four
+  `@ReactMethod`s hitting the real backend (`GET api/v1/bills/providers`,
+  `GET/POST/DELETE api/v1/bills/auto-pay`), each gated by the existing `requireScope(null, ...)`
+  pattern every other bills/money-adjacent method here already uses (no
+  `PartnerMiniAppPermissions.ALLOWED` scope covers bills at all, so a partner mini-app is always
+  denied, matching `payBill`/`getPendingBills`'s existing behavior). Added the file's first real
+  `DELETE` request builder (`delete()`, alongside the existing `get()`/`post()`/`put()`) -- no
+  Idempotency-Key, matching `BillsController.clearAutoPay`'s own contract, and honestly
+  idempotent server-side (`BillsService.clearAutoPay`'s `?: return` no-ops on an already-cleared
+  provider). Added `parseBillProvider`/`parseBillAutoPaySetting`/`parseAutoPaySettings`/
+  `parseSetAutoPayResult`, same per-field-read-not-guessed convention as every other `parse*`
+  helper in this file.
+- `packages/saronite/mini-apps/pay-bills/pages/index.tsx` -- added an "Auto-pay" card below the
+  pending-bills list (same placement bank-mfe's `BillsView` used): lists active auto-pay
+  settings with a "Turn off" button per provider, a chip-style provider picker (RN has no
+  `<select>`, so this mini-app's own convention is `TouchableOpacity` chips rather than
+  bank-mfe's `<select>`), account-number and max-amount `TextInput`s, and a "Turn on auto-pay"
+  button. Loads providers/settings alongside the existing `getPendingBills()` call in the same
+  `load()` callback.
+
+**Verification**: ran real `tsc --noEmit` in each of the three touched TS workspaces
+(`npm run typecheck --workspace=@itunda/saronite-brownfield-module`,
+`--workspace=packages/react-native`, `--workspace=mini-apps/pay-bills`) -- all three completed
+with zero output, i.e. zero type errors, confirming the spec/native-wrapper/mini-app chain is
+internally consistent. For the Kotlin side, `touch`ed `SaroniteBridge.kt` to defeat Gradle's
+UP-TO-DATE cache, then ran `./gradlew :app:compileDebugKotlin` for real -- `BUILD SUCCESSFUL`,
+`> Task :app:compileDebugKotlin` actually executed (not `UP-TO-DATE`), only one pre-existing,
+unrelated deprecation warning (line 954, `SaronitePackage`'s `createNativeModules` override,
+present before this change). No backend code was touched -- the endpoints, service methods, and
+`BillAutoPaySetting` entity all already existed and were already covered by this session's prior
+backend test runs (Section 162). iOS remains unwired for this exact feature, a natural follow-up
+using the same "one platform per section" cadence Sections 159-161 used for Trusted Contacts.
+Per this task's own scope, no live-device/emulator verification or deploy was attempted here --
+that's reserved for the coordinating session.
+
+Files: `packages/saronite/packages/brownfield-module/src/spec/SaroniteBrownfieldModule.ts`,
+`packages/saronite/packages/brownfield-module/src/index.ts`,
+`packages/saronite/packages/react-native/src/index.ts`,
+`packages/saronite/packages/react-native/src/async-bridges.ts`,
+`packages/saronite/packages/react-native/src/native-modules/natives/getBillProviders.ts`,
+`packages/saronite/packages/react-native/src/native-modules/natives/getAutoPaySettings.ts`,
+`packages/saronite/packages/react-native/src/native-modules/natives/setAutoPay.ts`,
+`packages/saronite/packages/react-native/src/native-modules/natives/clearAutoPay.ts`,
+`android/app/src/main/java/rw/itunda/app/miniapps/SaroniteBridge.kt`,
+`packages/saronite/mini-apps/pay-bills/pages/index.tsx`.

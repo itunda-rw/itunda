@@ -59,6 +59,50 @@ export interface PayBillResult {
   status: string;
 }
 
+/** Mirrors a single billing partner from `GET /api/v1/bills/providers`
+ * (services/backend/bills's BillsController.getProviders / BillsCatalog.providers).
+ * `id` (e.g. "b1") is distinct from `PendingBill.provider`, which is only the
+ * display name -- `id` is what `setAutoPay`/`clearAutoPay` below actually take. */
+export interface BillProvider {
+  id: string;
+  name: string;
+  category: string;
+  logo: string;
+  isActive: boolean;
+}
+
+export interface BillProvidersResult {
+  providers: BillProvider[];
+}
+
+/** Real Kakao Pay 자동납부 (automatic bill payment) -- mirrors
+ * `BillAutoPaySetting` (services/backend/core's BillAutoPaySetting.kt / the
+ * bills module's own BillAutoPayProcessor doc comment). `maxAmount` is a real
+ * user-set safety ceiling: a due bill over this cap is skipped by the
+ * scheduler, never silently auto-charged. Wired to bank-mfe already
+ * (2026-08-17, `lib/bills.ts`); this is the same three endpoints
+ * (`POST/GET/DELETE /api/v1/bills/auto-pay`) reaching the Saronite bridge for
+ * the first time. */
+export interface BillAutoPaySetting {
+  id: string;
+  userId: string;
+  providerId: string;
+  accountNumber: string;
+  maxAmount: number;
+  active: boolean;
+  lastPaidBillId: string | null;
+  createdAt: string;
+}
+
+export interface AutoPaySettingsResult {
+  autoPay: BillAutoPaySetting[];
+}
+
+/** Mirrors the response of `POST /api/v1/bills/auto-pay`. */
+export interface SetAutoPayResult {
+  autoPay: BillAutoPaySetting;
+}
+
 /** Mirrors a single task from `GET /rewards/tasks`
  * (backend/src/controllers/rewards.controller.ts:getRewardTasks). */
 export interface RewardTask {
@@ -336,6 +380,14 @@ export interface SaroniteBrownfieldModuleSpec {
     accountNumber: string,
     provider: string,
   ): Promise<PayBillResult>;
+  getBillProviders(): Promise<BillProvidersResult>;
+  getAutoPaySettings(): Promise<AutoPaySettingsResult>;
+  setAutoPay(
+    providerId: string,
+    accountNumber: string,
+    maxAmount: number,
+  ): Promise<SetAutoPayResult>;
+  clearAutoPay(providerId: string): Promise<void>;
   getRewardTasks(): Promise<RewardTasksResult>;
   claimRewardTask(taskId: string): Promise<ClaimRewardResult>;
   getInsurancePlans(): Promise<InsurancePlansResult>;

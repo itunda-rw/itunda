@@ -6,12 +6,21 @@ import {
   SafeAreaView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { createRoute } from '@granite-js/react-native';
-import { closeView, getPendingBills, payBill } from '@itunda/saronite-react-native';
-import type { PendingBill } from '@itunda/saronite-react-native';
+import {
+  closeView,
+  getPendingBills,
+  payBill,
+  getBillProviders,
+  getAutoPaySettings,
+  setAutoPay,
+  clearAutoPay,
+} from '@itunda/saronite-react-native';
+import type { PendingBill, BillProvider, BillAutoPaySetting } from '@itunda/saronite-react-native';
 
 /**
  * A real "life services" mini-app — this category (bill/utility payment)
@@ -43,17 +52,39 @@ import type { PendingBill } from '@itunda/saronite-react-native';
  * `router.gen.ts` were already real and correct (built 2026-07-12); this
  * change is `pages/index.tsx`'s own real route registration plus
  * re-including those three files in the active build (see tsconfig.json).
+ *
+ * Real Kakao Pay 자동납부 (automatic bill payment) section added (2026-08-18) --
+ * `getBillProviders`/`getAutoPaySettings`/`setAutoPay`/`clearAutoPay` were wired to
+ * bank-mfe already (docs Section 162) but never reached this mini-app or its native
+ * `SaroniteBridge.kt` bridge, even though the base pay-bill flow above has been real
+ * since 2026-07-13. `getBillProviders` is needed here for the same reason bank-mfe's
+ * own picker needs it: `setAutoPay`/`clearAutoPay` take a real providerId (e.g. "b1"),
+ * not `PendingBill.provider`'s display name -- there is no other honest way for this
+ * screen to resolve which provider a user means.
  */
 export default function PayBillsPage() {
   const [bills, setBills] = useState<PendingBill[] | null>(null);
+  const [providers, setProviders] = useState<BillProvider[]>([]);
+  const [autoPaySettings, setAutoPaySettings] = useState<BillAutoPaySetting[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [autoPayProviderIndex, setAutoPayProviderIndex] = useState(0);
+  const [autoPayAccount, setAutoPayAccount] = useState('');
+  const [autoPayMax, setAutoPayMax] = useState('');
+  const [savingAutoPay, setSavingAutoPay] = useState(false);
+  const [clearingProviderId, setClearingProviderId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setError(null);
     getPendingBills()
       .then((result) => setBills(result.bills))
       .catch((err: Error) => setError(err.message));
+    getBillProviders()
+      .then((result) => setProviders(result.providers.filter((p) => p.category !== 'airtime')))
+      .catch(() => setProviders([]));
+    getAutoPaySettings()
+      .then((result) => setAutoPaySettings(result.autoPay))
+      .catch(() => setAutoPaySettings([]));
   }, []);
 
   useEffect(() => {
@@ -70,6 +101,39 @@ export default function PayBillsPage() {
       Alert.alert('Payment failed', err instanceof Error ? err.message : 'Please try again');
     } finally {
       setPayingId(null);
+    }
+  };
+
+  const handleSetAutoPay = async () => {
+    const provider = providers[autoPayProviderIndex];
+    const maxAmount = Number(autoPayMax);
+    if (!provider || !autoPayAccount.trim() || !Number.isFinite(maxAmount) || maxAmount <= 0) {
+      Alert.alert('Auto-pay', 'Choose a biller, account number, and a valid maximum amount.');
+      return;
+    }
+    setSavingAutoPay(true);
+    try {
+      const result = await setAutoPay(provider.id, autoPayAccount.trim(), maxAmount);
+      setAutoPaySettings((prev) => [...prev.filter((s) => s.providerId !== provider.id), result.autoPay]);
+      setAutoPayAccount('');
+      setAutoPayMax('');
+      Alert.alert('Auto-pay on', `${provider.name} will be paid automatically, up to ${maxAmount.toLocaleString()} RWF.`);
+    } catch (err) {
+      Alert.alert('Could not set up auto-pay', err instanceof Error ? err.message : 'Please try again');
+    } finally {
+      setSavingAutoPay(false);
+    }
+  };
+
+  const handleClearAutoPay = async (providerId: string) => {
+    setClearingProviderId(providerId);
+    try {
+      await clearAutoPay(providerId);
+      setAutoPaySettings((prev) => prev.filter((s) => s.providerId !== providerId));
+    } catch (err) {
+      Alert.alert('Could not turn off auto-pay', err instanceof Error ? err.message : 'Please try again');
+    } finally {
+      setClearingProviderId(null);
     }
   };
 
@@ -108,6 +172,68 @@ export default function PayBillsPage() {
             </View>
           )}
         />
+      )}
+
+      {providers.length > 0 && (
+        <View style={styles.autoPayCard}>
+          <Text style={styles.autoPayTitle}>Auto-pay</Text>
+          <Text style={styles.autoPaySubtitle}>
+            Register a bill once and it's paid automatically every cycle, up to the cap you set.
+          </Text>
+
+          {autoPaySettings.filter((s) => s.active).map((s) => {
+            const provider = providers.find((p) => p.id === s.providerId);
+            return (
+              <View key={s.id} style={styles.autoPayRow}>
+                <View style={styles.rowLeft}>
+                  <Text style={styles.provider}>{provider ? `${provider.logo} ${provider.name}` : s.providerId}</Text>
+                  <Text style={styles.due}>{s.accountNumber} · up to {s.maxAmount.toLocaleString()} RWF</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.offButton}
+                  disabled={clearingProviderId === s.providerId}
+                  onPress={() => handleClearAutoPay(s.providerId)}
+                >
+                  <Text style={styles.offButtonText}>
+                    {clearingProviderId === s.providerId ? '…' : 'Turn off'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+
+          <View style={styles.providerPicker}>
+            {providers.map((p, i) => (
+              <TouchableOpacity
+                key={p.id}
+                style={[styles.providerChip, i === autoPayProviderIndex && styles.providerChipSelected]}
+                onPress={() => setAutoPayProviderIndex(i)}
+              >
+                <Text style={i === autoPayProviderIndex ? styles.providerChipTextSelected : styles.providerChipText}>
+                  {p.logo} {p.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TextInput
+            placeholder="Account number"
+            placeholderTextColor="#8B95A1"
+            value={autoPayAccount}
+            onChangeText={setAutoPayAccount}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Maximum amount per bill (RWF)"
+            placeholderTextColor="#8B95A1"
+            keyboardType="numeric"
+            value={autoPayMax}
+            onChangeText={setAutoPayMax}
+            style={styles.input}
+          />
+          <TouchableOpacity style={styles.payButton} disabled={savingAutoPay} onPress={handleSetAutoPay}>
+            <Text style={styles.payButtonText}>{savingAutoPay ? 'Saving…' : 'Turn on auto-pay'}</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       <View style={styles.spacer} />
@@ -155,4 +281,42 @@ const styles = StyleSheet.create({
   payButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
   closeButton: { alignItems: 'center', paddingVertical: 14 },
   closeButtonText: { color: '#636E7C', fontWeight: '600' },
+  autoPayCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 4,
+  },
+  autoPayTitle: { fontSize: 15, fontWeight: '700', color: '#191F28', marginBottom: 4 },
+  autoPaySubtitle: { fontSize: 12, color: '#636E7C', marginBottom: 10 },
+  autoPayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F2F4F6',
+  },
+  offButton: { backgroundColor: '#F2F4F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  offButtonText: { color: '#191F28', fontWeight: '700', fontSize: 13 },
+  providerPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  providerChip: {
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  providerChipSelected: { backgroundColor: '#3182F6', borderColor: '#3182F6' },
+  providerChipText: { color: '#191F28', fontSize: 12, fontWeight: '600' },
+  providerChipTextSelected: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E5E8EB',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    fontSize: 14,
+    color: '#191F28',
+  },
 });

@@ -162,6 +162,51 @@ class SaroniteBrownfieldModule(
         authorizedCall(post("api/v1/bills/pay", body), promise, ::parsePayBillResult)
     }
 
+    // Real Kakao Pay 자동납부 (automatic bill payment) -- see the backend's
+    // BillAutoPaySetting.kt doc comment for the full sourced account. Wired to
+    // bank-mfe already (2026-08-17, docs Section 162); these four calls (providers +
+    // the 3 auto-pay endpoints) had never reached this bridge or the pay-bills
+    // mini-app, even though getPendingBills/payBill next to them have been real
+    // since 2026-07-13. `getBillProviders` is added alongside auto-pay (not asked
+    // for on its own) because `setAutoPay`/`clearAutoPay` take a real providerId
+    // (e.g. "b1"), which is distinct from PendingBill.provider (only a display
+    // name like "REG - Electricity") -- without it the mini-app has no honest way
+    // to resolve which provider a user is registering.
+    @ReactMethod
+    fun getBillProviders(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/bills/providers"), promise, ::parseBillProviders)
+    }
+
+    @ReactMethod
+    fun getAutoPaySettings(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/bills/auto-pay"), promise, ::parseAutoPaySettings)
+    }
+
+    @ReactMethod
+    fun setAutoPay(providerId: String, accountNumber: String, maxAmount: Double, promise: Promise) {
+        // Registers a *future* recurring auto-charge (BillAutoPayProcessor runs it later),
+        // not an immediate money movement -- same non-money-moving classification as
+        // enrollInsurance/createPremiumFund above, so no scope currently grants it (partner
+        // mini-apps get none of PartnerMiniAppPermissions.ALLOWED's scopes for bills either,
+        // matching payBill/getPendingBills's existing requireScope(null, ...) right above).
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply {
+            addProperty("providerId", providerId)
+            addProperty("accountNumber", accountNumber)
+            addProperty("maxAmount", maxAmount)
+        }
+        authorizedCall(post("api/v1/bills/auto-pay", body), promise, ::parseSetAutoPayResult)
+    }
+
+    @ReactMethod
+    fun clearAutoPay(providerId: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val encodedProviderId = java.net.URLEncoder.encode(providerId, "UTF-8")
+        authorizedCall(delete("api/v1/bills/auto-pay?providerId=$encodedProviderId"), promise) { Arguments.createMap() }
+    }
+
     @ReactMethod
     fun getRewardTasks(promise: Promise) {
         if (!requireScope(null, promise)) return
@@ -396,6 +441,19 @@ class SaroniteBrownfieldModule(
             .put(requestBody)
     }
 
+    // First real DELETE this bridge issues -- every prior endpoint was GET/POST/PUT.
+    // No Idempotency-Key, matching BillsController.clearAutoPay's own backend contract
+    // (@DeleteMapping("/auto-pay") never reads that header): deactivating an already-off
+    // auto-pay setting is a naturally idempotent no-op server-side (BillsService.clearAutoPay
+    // returns early via `?: return` when no setting exists for that provider).
+    private fun delete(path: String): Request.Builder? {
+        val token = hostBridge.getAuthToken() ?: return null
+        return Request.Builder()
+            .url("${hostBridge.getApiBaseUrl()}$path")
+            .header("Authorization", "Bearer $token")
+            .delete()
+    }
+
     private fun authorizedCall(
         requestBuilder: Request.Builder?,
         promise: Promise,
@@ -544,6 +602,63 @@ class SaroniteBrownfieldModule(
         result.putString("message", root.get("message")?.asString ?: "Reward claimed")
         result.putDouble("rewardAmount", root.get("rewardAmount")?.asDouble ?: 0.0)
         result.putDouble("newBalance", root.get("newBalance")?.asDouble ?: 0.0)
+        return result
+    }
+
+    // Real backend shape: services/backend/bills's BillsController.getProviders /
+    // BillsCatalog.providers -- read directly, not guessed. `id` (e.g. "b1") is the
+    // real key setAutoPay/clearAutoPay below take, distinct from PendingBill.provider
+    // above (only ever a display name).
+    private fun parseBillProvider(p: JsonObject): WritableMap {
+        val providerMap = Arguments.createMap()
+        providerMap.putString("id", p.get("id").asString)
+        providerMap.putString("name", p.get("name")?.asString ?: "")
+        providerMap.putString("category", p.get("category")?.asString ?: "")
+        providerMap.putString("logo", p.get("logo")?.asString ?: "")
+        providerMap.putBoolean("isActive", p.get("isActive")?.asBoolean ?: true)
+        return providerMap
+    }
+
+    private fun parseBillProviders(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val providers = Arguments.createArray()
+        root.getAsJsonArray("providers")?.forEach { element -> providers.pushMap(parseBillProvider(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putArray("providers", providers)
+        return result
+    }
+
+    // Real backend shape: core/domain/BillAutoPaySetting.kt, returned as-is by
+    // BillsController's setAutoPay/getAutoPay (no remapping, same convention as
+    // parseClaim/parsePremiumFund above). lastPaidBillId is null until
+    // BillAutoPayProcessor has actually run this setting once.
+    private fun parseBillAutoPaySetting(s: JsonObject): WritableMap {
+        val settingMap = Arguments.createMap()
+        settingMap.putString("id", s.get("id").asString)
+        settingMap.putString("userId", s.get("userId")?.asString ?: "")
+        settingMap.putString("providerId", s.get("providerId")?.asString ?: "")
+        settingMap.putString("accountNumber", s.get("accountNumber")?.asString ?: "")
+        settingMap.putDouble("maxAmount", s.get("maxAmount")?.asDouble ?: 0.0)
+        settingMap.putBoolean("active", s.get("active")?.asBoolean ?: true)
+        s.get("lastPaidBillId")?.takeIf { !it.isJsonNull }?.let { settingMap.putString("lastPaidBillId", it.asString) }
+            ?: settingMap.putNull("lastPaidBillId")
+        settingMap.putString("createdAt", s.get("createdAt")?.asString ?: "")
+        return settingMap
+    }
+
+    private fun parseAutoPaySettings(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val settings = Arguments.createArray()
+        root.getAsJsonArray("autoPay")?.forEach { element -> settings.pushMap(parseBillAutoPaySetting(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putArray("autoPay", settings)
+        return result
+    }
+
+    private fun parseSetAutoPayResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        root.getAsJsonObject("autoPay")?.let { result.putMap("autoPay", parseBillAutoPaySetting(it)) }
         return result
     }
 
