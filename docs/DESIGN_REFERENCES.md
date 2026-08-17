@@ -9075,3 +9075,31 @@ redeem it before 2026-08-20T12:00:00Z or it'll be refunded"`, sent by the purcha
 DB-confirmed `expiry_reminder_sent_at` was set. Called the trigger a second time --
 `{"success":true,"processed":0}`, confirmed the conversation still has exactly the same 2
 messages (no duplicate reminder sent).
+
+## 155. Merchant coupon expiry-reminder notification
+
+**Added 2026-08-17.** `MerchantCoupon.expiresAt` had no notification hook -- the merchant who
+created a coupon had no way to know it was about to stop working. Sourced from real Baemin CEO
+console coupon-management practice (ceo.baemin.com's own coupon-management content confirms
+advance push notifications for coupons with an expiring validity period). The fourth real gap
+found via the "date field with no reminder" lens (Sections 152/153/154/155).
+
+**Built**: `MerchantCouponExpiryReminderScheduler` mirrors the established proven-safe shape --
+a separate `@Component` scheduler calling a per-coupon `@Transactional` method, never a
+batch-transactional loop. Unlike `GiftVoucher`, a `MerchantCoupon` has no individual customer
+owner until redemption (it's a general code any eligible customer can apply), so the real party
+who'd want to know it's about to stop working is the merchant, not a customer -- reminder goes to
+`merchant.ownerUserId` via the `notificationRepository`+push mechanism. Real 3-day reminder
+window (itunda's own honest scoping choice -- no exact real number was published, but a coupon's
+real lifespan is typically much shorter than an insurance policy or certificate, so a shorter
+window than those). New `MerchantCoupon.expiryReminderSentAt` column (migration V279) tracks
+one-shot state. New manual-trigger endpoint `POST /api/v1/merchant/coupons/process-expiry-reminders`.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a merchant,
+created a real coupon (`POST /api/v1/merchant/coupons`) with `expiresAt` set 2 days out (within
+the 3-day window, set directly via the real request field rather than a DB backdate). Called the
+manual trigger -- `{"success":true,"processed":1}`, real DB-confirmed notification with the exact
+expected body: `"Your coupon \"Section 155 Test Coupon\" for Coupon Test Shop 155 expires on
+2026-08-19T14:42:17Z. Extend or reissue it before then to keep offering it to customers."`, and
+`expiry_reminder_sent_at` correctly set. Called the trigger a second time --
+`{"success":true,"processed":0}`, confirmed still exactly 1 real notification (no duplicate).
