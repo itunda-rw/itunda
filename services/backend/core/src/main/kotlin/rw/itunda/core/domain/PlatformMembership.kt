@@ -56,6 +56,13 @@ class PlatformMembership(
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 
+    // Real "date field with no reminder" gap -- see EatsMembership.reminderSentAt's own
+    // doc comment for the full real sourcing (Baemin Club's own real pre-expiry push
+    // behavior) and the same "reset on re-subscribe" discipline `subscribe` applies
+    // here too.
+    @Column(name = "reminder_sent_at")
+    var reminderSentAt: Instant? = null,
+
     // Real optimistic lock (found live 2026-08-02) -- same race
     // EatsMembership.kt's own doc comment names: PlatformMembershipService.subscribe
     // is a real check-then-act shape once a membership row already exists (read the

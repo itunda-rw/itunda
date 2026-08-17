@@ -4,10 +4,13 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PlatformMembership
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PlatformMembershipRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -28,6 +31,8 @@ class PlatformMembershipService(
     private val platformMembershipRepository: PlatformMembershipRepository,
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // Real flat-fee tiers, same model EatsMembershipService.MEMBERSHIP_TIERS
@@ -37,6 +42,9 @@ class PlatformMembershipService(
             30 to BigDecimal("2500"),
             90 to BigDecimal("6500"),
         )
+
+        // Same real window EatsMembershipService.REMINDER_WINDOW already established.
+        val REMINDER_WINDOW: Duration = Duration.ofDays(3)
     }
 
     @Transactional
@@ -61,6 +69,9 @@ class PlatformMembershipService(
         val membership = existing ?: PlatformMembership(id = "platform_membership_${UUID.randomUUID()}", userId = userId, activeUntil = currentActiveUntil)
         membership.activeUntil = currentActiveUntil.plus(Duration.ofDays(days.toLong()))
         membership.updatedAt = now
+        // Same "fresh activeUntil earns a fresh reminder" reset EatsMembershipService's
+        // own subscribe already applies.
+        membership.reminderSentAt = null
         return platformMembershipRepository.save(membership)
     }
 
@@ -69,5 +80,35 @@ class PlatformMembershipService(
     fun hasActiveMembership(userId: String): Boolean {
         val membership = platformMembershipRepository.findByUserId(userId) ?: return false
         return membership.activeUntil.isAfter(Instant.now())
+    }
+
+    // Real "date field with no reminder" gap -- see PlatformMembership.reminderSentAt's
+    // own doc comment. Same shape as EatsMembershipService.getMembershipsDueForExpiryReminder.
+    fun getMembershipsDueForExpiryReminder(): List<PlatformMembership> {
+        val now = Instant.now()
+        val cutoff = now.plus(REMINDER_WINDOW)
+        return platformMembershipRepository.findByReminderSentAtIsNull()
+            .filter { it.activeUntil.isAfter(now) && !it.activeUntil.isAfter(cutoff) }
+    }
+
+    /** Same real per-item re-check-before-send discipline
+     * EatsMembershipService.sendExpiryReminder's own doc comment establishes. */
+    @Transactional
+    fun sendExpiryReminder(membershipId: String) {
+        val membership = platformMembershipRepository.findById(membershipId).orElse(null) ?: return
+        val now = Instant.now()
+        if (membership.reminderSentAt != null || !membership.activeUntil.isAfter(now)) return
+
+        val title = "Your itunda membership is expiring soon"
+        val body = "Your unconditional free-delivery membership ends on ${membership.activeUntil}. Renew before then to keep free delivery on every order."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = membership.userId, type = "PLATFORM_MEMBERSHIP_EXPIRING_SOON",
+                title = title, body = body, isRead = false, createdAt = now, dataJson = "{\"membershipId\":\"${membership.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(membership.userId, title, body, mapOf("membershipId" to membership.id))
+        membership.reminderSentAt = now
+        platformMembershipRepository.save(membership)
     }
 }

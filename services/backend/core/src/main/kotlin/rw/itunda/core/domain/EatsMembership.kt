@@ -47,6 +47,21 @@ class EatsMembership(
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 
+    // Real "date field with no reminder" gap, same shape already closed for
+    // MerchantCoupon.expiryReminderSentAt/InsurancePolicy.endDate/GiftVoucher.expiresAt:
+    // `activeUntil` sat here with zero notification hook before this. Real Baemin app
+    // behavior sends a push before a paid membership benefit lapses so a member can
+    // renew before losing free delivery -- this entity's own doc comment already
+    // deliberately chose a flat-fee "pay once, extend" model over auto-billing, which
+    // makes a pre-expiry reminder the honest equivalent of what an auto-renewing
+    // membership's own "your card will be charged soon"/"your plan is ending" notice
+    // does elsewhere. Null until a real reminder has been sent for the CURRENT
+    // `activeUntil`; re-subscribing (which pushes `activeUntil` further out) should
+    // eventually get its own new reminder, so `subscribe` resets this back to null
+    // whenever it extends the membership.
+    @Column(name = "reminder_sent_at")
+    var reminderSentAt: Instant? = null,
+
     // Real optimistic lock (found live 2026-08-02): EatsMembershipService.subscribe
     // is a real check-then-act shape once a membership row already exists (read the
     // current `activeUntil`, extend it, save) -- the unique constraint on `userId`

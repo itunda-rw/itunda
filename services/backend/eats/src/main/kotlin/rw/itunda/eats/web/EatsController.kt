@@ -155,6 +155,7 @@ class EatsController(
     private val eatsFavoriteService: EatsFavoriteService,
     private val eatsMembershipService: EatsMembershipService,
     private val platformMembershipService: PlatformMembershipService,
+    private val membershipExpiryReminderScheduler: rw.itunda.eats.MembershipExpiryReminderScheduler,
     private val idempotencyService: IdempotencyService,
     private val merchantProductRepository: rw.itunda.core.repository.MerchantProductRepository,
     private val merchantRepository: rw.itunda.core.repository.MerchantRepository,
@@ -284,6 +285,19 @@ class EatsController(
     @GetMapping("/membership/me")
     fun getMyMembership(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "membership" to eatsMembershipService.getMyMembership(currentUser.userId)))
+
+    // Real membership expiry-reminder manual trigger -- same "expose the scheduler's
+    // own real logic as a callable endpoint" convention
+    // MerchantCouponController/InsuranceController/CertificateController already
+    // establish, so a real membership's real activeUntil can be verified without
+    // waiting actual wall-clock days for it to enter the reminder window. See
+    // MembershipExpiryReminderScheduler's own doc comment.
+    @PostMapping("/membership/process-expiry-reminders")
+    fun processMembershipExpiryReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = membershipExpiryReminderScheduler.processDue()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
+    }
+
     @PostMapping("/riders/register")
     fun registerRider(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val rider = riderService.register(currentUser.userId)

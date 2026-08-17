@@ -5,10 +5,13 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.EatsMembership
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsMembershipRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -28,6 +31,8 @@ class EatsMembershipService(
     private val eatsMembershipRepository: EatsMembershipRepository,
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // Real flat-fee tiers, same "pay once, extend, stack" model
@@ -38,6 +43,10 @@ class EatsMembershipService(
             30 to BigDecimal("1500"),
             90 to BigDecimal("4000"),
         )
+
+        // Same 3-day window MerchantCouponService.EXPIRY_REMINDER_WINDOW already
+        // established for a paid perk about to lapse.
+        val REMINDER_WINDOW: Duration = Duration.ofDays(3)
     }
 
     @Transactional
@@ -62,6 +71,9 @@ class EatsMembershipService(
         val membership = existing ?: EatsMembership(id = "eats_membership_${UUID.randomUUID()}", userId = userId, activeUntil = currentActiveUntil)
         membership.activeUntil = currentActiveUntil.plus(Duration.ofDays(days.toLong()))
         membership.updatedAt = now
+        // A fresh `activeUntil` deserves its own fresh reminder, not silence because an
+        // earlier extension already fired one for a now-superseded expiry date.
+        membership.reminderSentAt = null
         return eatsMembershipRepository.save(membership)
     }
 
@@ -70,5 +82,41 @@ class EatsMembershipService(
     fun hasActiveMembership(userId: String): Boolean {
         val membership = eatsMembershipRepository.findByUserId(userId) ?: return false
         return membership.activeUntil.isAfter(Instant.now())
+    }
+
+    // Real "date field with no reminder" gap -- see EatsMembership.reminderSentAt's own
+    // doc comment for the real sourcing. Same shape as
+    // MerchantCouponService.getCouponsDueForExpiryReminder: only a membership that's
+    // still genuinely active but expiring inside the real window, and hasn't already
+    // been reminded for its current `activeUntil`.
+    fun getMembershipsDueForExpiryReminder(): List<EatsMembership> {
+        val now = Instant.now()
+        val cutoff = now.plus(REMINDER_WINDOW)
+        return eatsMembershipRepository.findByReminderSentAtIsNull()
+            .filter { it.activeUntil.isAfter(now) && !it.activeUntil.isAfter(cutoff) }
+    }
+
+    /** One real expiry-reminder notification per membership, called by the scheduler --
+     * re-checks `reminderSentAt`/`activeUntil` right before sending so a genuine race
+     * (e.g. the user re-subscribing between the scheduler's scan and this call) can't
+     * double-fire or fire on an already-lapsed row, same resilience discipline
+     * MerchantCouponService.sendExpiryReminder's own doc comment already establishes. */
+    @Transactional
+    fun sendExpiryReminder(membershipId: String) {
+        val membership = eatsMembershipRepository.findById(membershipId).orElse(null) ?: return
+        val now = Instant.now()
+        if (membership.reminderSentAt != null || !membership.activeUntil.isAfter(now)) return
+
+        val title = "Your Eats Club membership is expiring soon"
+        val body = "Your free-delivery membership ends on ${membership.activeUntil}. Renew before then to keep free delivery at participating restaurants."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = membership.userId, type = "EATS_MEMBERSHIP_EXPIRING_SOON",
+                title = title, body = body, isRead = false, createdAt = now, dataJson = "{\"membershipId\":\"${membership.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(membership.userId, title, body, mapOf("membershipId" to membership.id))
+        membership.reminderSentAt = now
+        eatsMembershipRepository.save(membership)
     }
 }
