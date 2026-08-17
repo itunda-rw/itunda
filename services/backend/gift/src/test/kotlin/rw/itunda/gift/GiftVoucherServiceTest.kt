@@ -3,6 +3,7 @@ package rw.itunda.gift
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -379,6 +380,60 @@ class GiftVoucherServiceTest : BehaviorSpec({
             Then("it real-no-ops, never double-refunding an already-settled voucher") {
                 svc.expireVoucher(alreadyRedeemed)
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real ACTIVE voucher entering its real 7-day expiry-reminder window") {
+        val giftVoucherRepository = mockk<GiftVoucherRepository>()
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val svc = service(giftVoucherRepository = giftVoucherRepository, messagingService = messagingService)
+
+        val dueVoucher = GiftVoucher(
+            id = "giftvoucher_due", purchaserId = "user_purchaser", recipientId = "user_recipient",
+            conversationId = "conversation_1", messageId = "message_1", merchantId = "merchant_1",
+            amount = BigDecimal("1000"), holdTransactionId = "ledgertxn_1", expiresAt = Instant.now().plus(3, ChronoUnit.DAYS),
+        )
+        val notDueVoucher = GiftVoucher(
+            id = "giftvoucher_not_due", purchaserId = "user_purchaser2", recipientId = "user_recipient2",
+            conversationId = "conversation_2", messageId = "message_2", merchantId = "merchant_1",
+            amount = BigDecimal("1000"), holdTransactionId = "ledgertxn_2", expiresAt = Instant.now().plus(30, ChronoUnit.DAYS),
+        )
+
+        When("getVouchersDueForExpiryReminder is called") {
+            every { giftVoucherRepository.findByStatusAndExpiryReminderSentAtIsNull(GiftVoucherStatus.ACTIVE) } returns listOf(dueVoucher, notDueVoucher)
+
+            Then("it real-returns only the voucher whose real expiresAt has entered the real 7-day window") {
+                val due = svc.getVouchersDueForExpiryReminder()
+                due.size shouldBe 1
+                due.first().id shouldBe "giftvoucher_due"
+            }
+        }
+
+        When("sendExpiryReminder is called for the due voucher") {
+            every { giftVoucherRepository.findById("giftvoucher_due") } returns java.util.Optional.of(dueVoucher)
+            every { giftVoucherRepository.save(any()) } answers { firstArg() }
+
+            svc.sendExpiryReminder("giftvoucher_due")
+
+            Then("it real-sends exactly one Talk message into the real existing conversation and marks the reminder sent") {
+                verify(exactly = 1) { messagingService.sendMessage("user_purchaser", "conversation_1", any()) }
+                dueVoucher.expiryReminderSentAt shouldNotBe null
+            }
+        }
+
+        When("sendExpiryReminder is called again for an already-reminded voucher") {
+            val alreadyReminded = GiftVoucher(
+                id = "giftvoucher_reminded", purchaserId = "user_purchaser", recipientId = "user_recipient",
+                conversationId = "conversation_1", messageId = "message_1", merchantId = "merchant_1",
+                amount = BigDecimal("1000"), holdTransactionId = "ledgertxn_1", expiresAt = Instant.now().plus(3, ChronoUnit.DAYS),
+                expiryReminderSentAt = Instant.now().minus(1, ChronoUnit.HOURS),
+            )
+            every { giftVoucherRepository.findById("giftvoucher_reminded") } returns java.util.Optional.of(alreadyReminded)
+
+            Then("it real-no-ops, never double-notifying an already-reminded voucher") {
+                svc.sendExpiryReminder("giftvoucher_reminded")
+                verify(exactly = 0) { messagingService.sendMessage("user_purchaser", "conversation_1", any()) }
             }
         }
     }

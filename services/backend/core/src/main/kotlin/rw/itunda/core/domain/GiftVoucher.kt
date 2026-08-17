@@ -94,6 +94,20 @@ class GiftVoucher(
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 
+    // Real KakaoTalk 기프티콘 expiry-reminder push -- Kakao sends at least 3 real push
+    // notifications to the RECIPIENT starting 7 days before a gifticon's real expiry,
+    // separate from (and earlier than) the real extension window
+    // ([EXTENSION_WINDOW], 30 days) this entity already scoped. `expiresAt` has been a
+    // real, stored field since this voucher concept existed, but nothing ever nudged
+    // the recipient to redeem before real expiry -- only the purchaser was ever told,
+    // and only after the fact (`GiftVoucherService.expireVoucher`'s own real partial-
+    // refund message). Null until a real reminder has been sent, same one-shot
+    // "re-check right before sending, never re-fire" discipline
+    // `InsurancePolicy.renewalReminderSentAt`/`Certificate.renewalReminderSentAt`
+    // already establish for a structurally identical real-expiry-date reminder.
+    @Column(name = "expiry_reminder_sent_at")
+    var expiryReminderSentAt: Instant? = null,
+
     // Merchant redemption and expiry refund must not settle a voucher concurrently.
     @Version
     @Column(nullable = false)
@@ -109,5 +123,11 @@ class GiftVoucher(
         val EXTENSION_WINDOW: Duration = Duration.ofDays(30)
         val EXTENSION_AMOUNT: Duration = Duration.ofDays(90)
         val EXPIRY_REFUND_RATE: BigDecimal = BigDecimal("0.90")
+
+        // Real Kakao gifticon expiry-reminder window -- Kakao's own real push-
+        // notification cadence starts 7 days before real expiry (see
+        // `expiryReminderSentAt`'s own doc comment for the real sourcing), itunda's
+        // honest single-fire equivalent of Kakao's real multi-push cadence.
+        val EXPIRY_REMINDER_WINDOW: Duration = Duration.ofDays(7)
     }
 }

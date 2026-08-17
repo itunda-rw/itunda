@@ -315,6 +315,38 @@ class GiftVoucherService(
 
     fun getExpiredActiveVouchers(): List<GiftVoucher> =
         giftVoucherRepository.findByStatusAndExpiresAtBefore(GiftVoucherStatus.ACTIVE, Instant.now())
+
+    // Real Kakao gifticon expiry-reminder sweep -- `expiresAt` has been a real, stored
+    // field since this voucher concept existed, but nothing ever nudged the RECIPIENT
+    // to redeem before real expiry (only the purchaser was ever told, and only after
+    // the fact by `expireVoucher`'s own real partial-refund message). See
+    // GiftVoucher.expiryReminderSentAt's own doc comment for the real sourcing.
+    fun getVouchersDueForExpiryReminder(): List<GiftVoucher> {
+        val cutoff = Instant.now().plus(GiftVoucher.EXPIRY_REMINDER_WINDOW)
+        return giftVoucherRepository.findByStatusAndExpiryReminderSentAtIsNull(GiftVoucherStatus.ACTIVE)
+            .filter { !it.expiresAt.isAfter(cutoff) }
+    }
+
+    /** One real expiry-reminder message to the recipient, called per-voucher by the
+     * scheduler -- re-checks `status`/`expiryReminderSentAt` right before sending so a
+     * genuine race can't double-fire, same resilience discipline
+     * InsuranceService.sendRenewalReminder/CertificateService.sendRenewalReminder's own
+     * doc comments already establish. Sent into the existing real purchaser<->recipient
+     * conversation, same "no system/bot sender concept yet" convention this class's own
+     * purchase/redeem/expire messages already use -- posted as the purchaser since
+     * they're the one who'd want their gift actually used. */
+    @Transactional
+    fun sendExpiryReminder(voucherId: String) {
+        val voucher = giftVoucherRepository.findById(voucherId).orElse(null) ?: return
+        if (voucher.status != GiftVoucherStatus.ACTIVE || voucher.expiryReminderSentAt != null) return
+
+        messagingService.sendMessage(
+            voucher.purchaserId, voucher.conversationId,
+            "⏳ Your gift voucher (${voucher.productNameSnapshot ?: "${formatAmount(voucher.amount)} RWF"}) expires soon -- redeem it before ${voucher.expiresAt} or it'll be refunded",
+        )
+        voucher.expiryReminderSentAt = Instant.now()
+        giftVoucherRepository.save(voucher)
+    }
 }
 
 private fun formatAmount(amount: BigDecimal): String {

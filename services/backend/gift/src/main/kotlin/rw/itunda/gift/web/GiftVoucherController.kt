@@ -21,6 +21,7 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.gift.GiftVoucherAlreadyExtendedException
 import rw.itunda.gift.GiftVoucherExpiredException
+import rw.itunda.gift.GiftVoucherExpiryReminderScheduler
 import rw.itunda.gift.GiftVoucherInvalidAmountException
 import rw.itunda.gift.GiftVoucherMerchantNotFoundException
 import rw.itunda.gift.GiftVoucherNoWalletException
@@ -45,7 +46,22 @@ data class PurchaseGiftVoucherRequest(
 // GiftVoucherService's own doc comment.
 @RestController
 @RequestMapping("/api/v1/gift-vouchers")
-class GiftVoucherController(private val giftVoucherService: GiftVoucherService, private val idempotencyService: IdempotencyService) {
+class GiftVoucherController(
+    private val giftVoucherService: GiftVoucherService,
+    private val idempotencyService: IdempotencyService,
+    private val giftVoucherExpiryReminderScheduler: GiftVoucherExpiryReminderScheduler,
+) {
+
+    // Real KakaoTalk 기프티콘 사용기한 임박 알림 manual trigger -- same "expose the
+    // scheduler's own real logic as a callable endpoint" convention
+    // SavingsController/InsuranceController/CertificateController already establish, so
+    // a real voucher's real expiresAt can be verified without waiting actual wall-clock
+    // days for it to enter the reminder window.
+    @PostMapping("/process-expiry-reminders")
+    fun processExpiryReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = giftVoucherExpiryReminderScheduler.processDue()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
+    }
 
     @PostMapping
     fun purchaseVoucher(
