@@ -70,6 +70,22 @@ class MerchantCoupon(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real merchant-console expiry-reminder convention -- real seller/merchant
+    // dashboards (Baemin CEO's own coupon management explicitly supports advance push
+    // notifications for coupons with an expiring validity period, confirmed via a real
+    // search against ceo.baemin.com's own coupon-management content) nudge the business
+    // owner before a promotion lapses so they can extend or reissue it, the same real
+    // "real data sitting unused" shape closed for InsurancePolicy.endDate/
+    // Certificate.expiresAt/GiftVoucher.expiresAt. A `MerchantCoupon` has no individual
+    // customer owner until redemption (it's a general code any eligible customer can
+    // apply, see this class's own doc comment) -- the real party who'd want to know
+    // it's about to stop working is the merchant who created it, not a customer.
+    // Null until a real reminder has been sent, same one-shot "re-check right before
+    // sending, never re-fire" discipline every other renewal-reminder in this codebase
+    // already establishes.
+    @Column(name = "expiry_reminder_sent_at")
+    var expiryReminderSentAt: Instant? = null,
 ) {
     protected constructor() : this(
         id = "", merchantId = "", title = "", discountType = CouponDiscountType.PERCENT, discountValue = BigDecimal.ZERO,

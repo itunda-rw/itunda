@@ -5,14 +5,18 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.CouponDiscountType
 import rw.itunda.core.domain.MerchantCoupon
 import rw.itunda.core.domain.MerchantCouponRedemption
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantCouponRedemptionRepository
 import rw.itunda.core.repository.MerchantCouponRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -34,10 +38,19 @@ class MerchantCouponService(
     private val merchantCouponRepository: MerchantCouponRepository,
     private val merchantCouponRedemptionRepository: MerchantCouponRedemptionRepository,
     private val transactionRepository: TransactionRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // itunda's own honest scoping choice -- see MerchantCoupon.kt's own doc comment.
         const val REGULAR_CUSTOMER_THRESHOLD = 3L
+
+        // Real merchant-console expiry-reminder window -- see
+        // MerchantCoupon.expiryReminderSentAt's own doc comment for the real sourcing.
+        // A coupon's real lifespan is typically much shorter than an insurance policy or
+        // certificate, so a shorter honest window (itunda's own scoping choice, no exact
+        // real number was published) than InsurancePolicy's 30 days/Certificate's 60.
+        val EXPIRY_REMINDER_WINDOW: Duration = Duration.ofDays(3)
     }
 
     private fun getMyMerchant(ownerUserId: String) =
@@ -151,5 +164,37 @@ class MerchantCouponService(
                 customerId = customerId, transactionId = transactionId, discountAmount = discountAmount,
             ),
         )
+    }
+
+    // Real "date field with no reminder" gap -- see MerchantCoupon.expiryReminderSentAt's
+    // own doc comment for the real sourcing. Same shape as
+    // CertificateService.getCertificatesDueForRenewalReminder/InsurancePolicy.endDate.
+    fun getCouponsDueForExpiryReminder(): List<MerchantCoupon> {
+        val cutoff = Instant.now().plus(EXPIRY_REMINDER_WINDOW)
+        return merchantCouponRepository.findByActiveTrueAndExpiryReminderSentAtIsNull()
+            .filter { val expiresAt = it.expiresAt; expiresAt != null && !expiresAt.isAfter(cutoff) }
+    }
+
+    /** One real expiry-reminder notification to the merchant owner, called per-coupon by
+     * the scheduler -- re-checks `active`/`expiryReminderSentAt` right before sending so a
+     * genuine race can't double-fire, same resilience discipline
+     * CertificateService.sendRenewalReminder's own doc comment already establishes. */
+    @Transactional
+    fun sendExpiryReminder(couponId: String) {
+        val coupon = merchantCouponRepository.findById(couponId).orElse(null) ?: return
+        if (!coupon.active || coupon.expiryReminderSentAt != null) return
+        val merchant = merchantRepository.findById(coupon.merchantId).orElse(null) ?: return
+
+        val title = "Your coupon is expiring soon"
+        val body = "Your coupon \"${coupon.title}\" for ${merchant.businessName} expires on ${coupon.expiresAt}. Extend or reissue it before then to keep offering it to customers."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = merchant.ownerUserId, type = "MERCHANT_COUPON_EXPIRING_SOON",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"couponId\":\"${coupon.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(merchant.ownerUserId, title, body, mapOf("couponId" to coupon.id))
+        coupon.expiryReminderSentAt = Instant.now()
+        merchantCouponRepository.save(coupon)
     }
 }

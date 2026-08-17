@@ -7,6 +7,7 @@ import rw.itunda.core.domain.MerchantCouponRedemption
 interface MerchantCouponRepository : JpaRepository<MerchantCoupon, String> {
     fun findByMerchantIdOrderByCreatedAtDesc(merchantId: String): List<MerchantCoupon>
     fun findByMerchantIdAndActiveTrueOrderByCreatedAtDesc(merchantId: String): List<MerchantCoupon>
+    fun findByActiveTrueAndExpiryReminderSentAtIsNull(): List<MerchantCoupon>
 }
 
 interface MerchantCouponRedemptionRepository : JpaRepository<MerchantCouponRedemption, String> {

@@ -34,7 +34,19 @@ data class CreateCouponRequest(
 @RequestMapping("/api/v1/merchant")
 class MerchantCouponController(
     private val merchantCouponService: MerchantCouponService,
+    private val merchantCouponExpiryReminderScheduler: MerchantCouponExpiryReminderScheduler,
 ) {
+    // Real merchant coupon expiry-reminder manual trigger -- same "expose the
+    // scheduler's own real logic as a callable endpoint" convention
+    // SavingsController/InsuranceController/CertificateController/GiftVoucherController
+    // already establish, so a real coupon's real expiresAt can be verified without
+    // waiting actual wall-clock days for it to enter the reminder window.
+    @PostMapping("/coupons/process-expiry-reminders")
+    fun processExpiryReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = merchantCouponExpiryReminderScheduler.processDue()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
+    }
+
     @PostMapping("/coupons")
     fun createCoupon(
         @RequestBody request: CreateCouponRequest,
