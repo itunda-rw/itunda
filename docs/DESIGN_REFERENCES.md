@@ -8259,3 +8259,42 @@ real-`400`'d with their own specific messages. A non-owner real-`404`'d
 `PRODUCT_SUBSCRIPTION_NOT_FOUND`. After pausing the subscription, calling `update` again still
 real-succeeded (`quantity: 5`, `status` staying `PAUSED`) -- confirming update is deliberately
 allowed regardless of status, distinct from `skipNext`'s stricter active-only requirement.
+
+## 129. Bug fix: scheduler transaction-poisoning in AutoTransferService (third instance)
+
+**Added 2026-08-17.** Not a new feature -- closes a third, previously-unflagged instance of the
+exact transaction-poisoning bug class Sections 115 and 118 already closed twice this session.
+`AutoTransferService.executeOne` was itself `@Transactional` and called `p2pService.sendDirect`
+(a separately-proxied bean). When `sendDirect` throws `InsufficientFundsException`/
+`P2pRecipientNotFoundException`, Spring marks `executeOne`'s own ambient transaction rollback-only
+at the moment of the throw -- catching it in `executeOne`'s own try/catch does not undo that mark,
+so the final `autoTransferRepository.save` would fail with a real `UnexpectedRollbackException`
+even though the failure was already handled gracefully, aborting the rest of that poll's due
+auto-transfers via `AutoTransferScheduler`'s own per-item loop (no try/catch around `executeOne`
+there).
+
+**Fixed**: removed `@Transactional` from `executeOne` -- identical fix shape to Section 118's
+`ProductSubscriptionService.executeOne` fix. `sendDirect` remains fully atomic on its own via its
+own annotation; the final repository save is independently atomic via Spring Data's implicit
+per-call transaction. Added `AutoTransferServiceTest` (the first-ever test file for this service):
+2 functional cases plus a reflection-based regression guard asserting `executeOne` carries no
+`@Transactional`.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: two real `AutoTransfer`s
+created via `POST /p2p/auto-transfers` -- one from a sender with a genuine `0` MAIN wallet balance
+(insufficient for the 500 RWF transfer), one from a sender funded with 5,000 RWF. Both
+`next_execution_at` backdated into the past, then a real ~30s `AutoTransferScheduler` poll was
+allowed to run. A direct DB check afterward confirmed: the drained sender's row showed
+`last_failure_reason: 'Insufficient balance'` and `execution_count` unchanged at `0`; the funded
+sender's row showed `execution_count` incremented to `1` and a real, fresh `last_executed_at`
+timestamp from inside the poll window -- **both rows' `next_execution_at` advanced identically**,
+proving the scheduler processed both in the same poll without one blocking the other. Pod logs
+across the full poll window showed zero occurrences of `UnexpectedRollbackException`.
+
+**Note for future sessions**: this is now the third confirmed instance of this exact bug class found
+in already-deployed itunda code within a single session (bills auto-pay, product subscriptions/
+merchant billing, and now P2P auto-transfers) -- all three share the same real "loop over
+scheduler-driven rows calling a `@Transactional` method that itself calls a separately-proxied bean"
+shape. A dedicated, deliberate backend-wide grep audit for this exact pattern (any `@Scheduled`
+poll's per-row target method that is both `@Transactional` and calls another injected `*Service`
+bean) is a real, standing candidate for a future task, not yet done exhaustively.
