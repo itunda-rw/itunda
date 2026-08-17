@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.core.domain.BillAutoPaySetting
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.events.EventPublisher
@@ -16,7 +17,9 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailProfile
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BillAutoPaySettingRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -114,14 +117,20 @@ class BillsServiceTest : BehaviorSpec({
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>()
         val billAutoPaySettingRepository = mockk<BillAutoPaySettingRepository>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository)
-        val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service)
+        val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service, notificationRepository, pushNotificationService)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
         every { transactionRepository.save(any()) } answers { firstArg() }
         every { providerConnector.attempt(any(), any()) } returns Unit
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { billAutoPaySettingRepository.save(any()) } answers { firstArg() }
+        // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+        // returns a raw Object, ClassCastException-ing at the call site -- same fix as
+        // RewardsServiceTest's rewardClaimRepository.save stub.
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         fun setting(maxAmount: BigDecimal, lastPaidBillId: String? = null) = BillAutoPaySetting(
             id = "setting_1", userId = "user_1", providerId = "b1",
@@ -222,6 +231,14 @@ class BillsServiceTest : BehaviorSpec({
                 verify(exactly = 0) {
                     billAutoPaySettingRepository.save(match { it.id == "setting_1" })
                 }
+            }
+
+            Then("the failing user receives a real BILL_AUTOPAY_FAILED notification and push") {
+                val notif = slot<Notification>()
+                verify(exactly = 1) { notificationRepository.save(capture(notif)) }
+                notif.captured.userId shouldBe "user_1"
+                notif.captured.type shouldBe "BILL_AUTOPAY_FAILED"
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
             }
         }
     }

@@ -2,8 +2,13 @@ package rw.itunda.bills
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BillAutoPaySettingRepository
+import rw.itunda.core.repository.NotificationRepository
 import java.math.BigDecimal
+import java.time.Instant
+import java.util.UUID
 
 /**
  * Real Kakao Pay 자동납부 poll -- exposed as a manually-callable endpoint (same "expose
@@ -29,6 +34,8 @@ import java.math.BigDecimal
 class BillAutoPayProcessor(
     private val billAutoPaySettingRepository: BillAutoPaySettingRepository,
     private val billsService: BillsService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(BillAutoPayProcessor::class.java)
 
@@ -49,8 +56,34 @@ class BillAutoPayProcessor(
                 results.add(payment + mapOf("providerId" to provider.id, "billId" to pendingBill.id))
             } catch (e: Exception) {
                 log.error("Auto-pay failed for user {} provider {}: {}", setting.userId, provider.id, e.message)
+                notifyAutoPayFailed(setting.userId, provider.name, e.message)
             }
         }
         return results
+    }
+
+    // Real Toss Payments billing-failure alert -- same real, sourced convention
+    // ProductSubscriptionService.notifyDeliveryFailed already establishes (see that
+    // method's own doc comment): itunda's recurring-charge failure paths previously
+    // only ever recorded the failure silently, never told the customer. Purely a
+    // best-effort side effect wrapped in its own try/catch -- never allowed to affect
+    // the real sweep. Safe by construction: this call lives in the loop bean, not
+    // inside billsService.payBill's own @Transactional method, so a failing
+    // notification save can never poison the real per-row transaction.
+    private fun notifyAutoPayFailed(userId: String, providerName: String, reason: String?) {
+        try {
+            val title = "Auto bill-pay failed"
+            val body = "We couldn't auto-pay your $providerName bill: ${reason ?: "please check your balance"}. We'll try again next time."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = userId, type = "BILL_AUTOPAY_FAILED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(),
+                    dataJson = "{\"providerName\":\"$providerName\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(userId, title, body, mapOf("providerName" to providerName))
+        } catch (e: Exception) {
+            log.warn("Could not send bill-autopay-failure notification for user {}", userId, e)
+        }
     }
 }
