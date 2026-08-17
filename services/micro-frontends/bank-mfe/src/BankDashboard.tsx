@@ -137,7 +137,7 @@ import {
 import {
   addJobPostFavorite, applyToJob, contactPoster, createJobPost, fetchApplicationsForJobPost, fetchJobCategories, fetchJobPost, fetchJobPostReviews,
   fetchJobPosts, fetchJobPostsMyNeighborhood, fetchMyFavoriteJobPosts, fetchMyJobApplications, fetchMyJobPosts, fetchMyWorkedJobPosts,
-  markJobPostFilled, removeJobPost, removeJobPostFavorite, respondToJobApplication, submitJobPostReview,
+  markJobPostFilled, removeJobPost, removeJobPostFavorite, respondToJobApplication, searchJobPosts, submitJobPostReview,
   type FavoriteJobPost, type JobApplication, type JobCategory, type JobPayType, type JobPost,
 } from './lib/jobs';
 import {
@@ -12425,6 +12425,24 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
   const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
 
+  // Real relevance-ranked search (2026-08-14) -- see lib/jobs.ts's own doc comment: this
+  // endpoint shipped Android-only and was never ported to web until now. Mirrors
+  // ShoppingView's own real cross-merchant product-search state shape field-for-field.
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ posts: JobPost[]; trustScores: TrustScores } | null>(null);
+  const [searching, setSearching] = useState(false);
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearching(true);
+    try {
+      setSearchResults(await searchJobPosts(searchQuery.trim()));
+    } catch {
+      setSearchResults({ posts: [], trustScores: {} });
+    } finally {
+      setSearching(false);
+    }
+  };
+
   useEffect(() => {
     fetchJobCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
   }, []);
@@ -12520,7 +12538,27 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
         <MyJobApplicationsView />
       ) : (
         <>
-          {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (
+          {view === 'BROWSE' && (
+            <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search jobs"
+                style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+              />
+              <button type="submit" className="itunda-btn itunda-btn-primary" disabled={searching || !searchQuery.trim()}>
+                {searching ? '…' : 'Search'}
+              </button>
+              {searchResults !== null && (
+                <button type="button" className="itunda-btn itunda-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>
+                  Clear
+                </button>
+              )}
+            </form>
+          )}
+
+          {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && searchResults === null && categories.length > 0 && (
             <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
               {categories.map((c) => (
                 <button
@@ -12566,38 +12604,69 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
             </p>
           )}
 
-          {error && (
-            <ErrorCard message={error} onRetry={load} />
+          {view === 'BROWSE' && searchResults !== null && (
+            <>
+              {searchResults.posts.length === 0 ? (
+                <div className="itunda-card">
+                  <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>No jobs matched "{searchQuery}".</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {searchResults.posts.map((post) => (
+                    <JobPostCard
+                      key={post.id}
+                      post={post}
+                      categoryLabel={categoryLabel(post.category)}
+                      isMine={post.posterId === currentUser?.id}
+                      onChanged={() => searchJobPosts(searchQuery.trim()).then(setSearchResults).catch(() => {})}
+                      onContact={() => handleContact(post.id)}
+                      favorited={favoriteIds.has(post.id)}
+                      favoriteBusy={favoritingId === post.id}
+                      onToggleFavorite={() => toggleFavorite(post.id)}
+                      posterTrustScore={searchResults.trustScores[post.posterId]}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
-          {!error && posts === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
-          {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
-            <div className="itunda-card">
-              {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
-                  ported from the same-day Android/iOS fix): say what's missing AND
-                  what fixes it, per this screen's own real "+ Post a job" button
-                  above in the MINE view. */}
-              <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
-                {view === 'BROWSE' ? 'No jobs posted yet — check back soon, or post one yourself.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet — try Browse to see jobs from everywhere.' : view === 'WORKED' ? 'No completed jobs recorded yet — jobs you complete will show up here.' : 'You haven\'t posted any jobs yet — tap "+ Post a job" above to post your first one.'}
-              </p>
-            </div>
-          )}
-          {!error && posts !== null && posts.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {posts.map((post) => (
-                <JobPostCard
-                  key={post.id}
-                  post={post}
-                  categoryLabel={categoryLabel(post.category)}
-                  isMine={view === 'MINE' || post.posterId === currentUser?.id}
-                  onChanged={load}
-                  onContact={() => handleContact(post.id)}
-                  favorited={favoriteIds.has(post.id)}
-                  favoriteBusy={favoritingId === post.id}
-                  onToggleFavorite={() => toggleFavorite(post.id)}
-                  posterTrustScore={trustScores[post.posterId]}
-                />
-              ))}
-            </div>
+
+          {(view !== 'BROWSE' || searchResults === null) && (
+            <>
+              {error && (
+                <ErrorCard message={error} onRetry={load} />
+              )}
+              {!error && posts === null && <div className="itunda-card skeleton" style={{ height: '220px' }} />}
+              {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
+                <div className="itunda-card">
+                  {/* Real copy-voice fix (item 244, round 5 of the empty-state pass,
+                      ported from the same-day Android/iOS fix): say what's missing AND
+                      what fixes it, per this screen's own real "+ Post a job" button
+                      above in the MINE view. */}
+                  <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+                    {view === 'BROWSE' ? 'No jobs posted yet — check back soon, or post one yourself.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet — try Browse to see jobs from everywhere.' : view === 'WORKED' ? 'No completed jobs recorded yet — jobs you complete will show up here.' : 'You haven\'t posted any jobs yet — tap "+ Post a job" above to post your first one.'}
+                  </p>
+                </div>
+              )}
+              {!error && posts !== null && posts.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {posts.map((post) => (
+                    <JobPostCard
+                      key={post.id}
+                      post={post}
+                      categoryLabel={categoryLabel(post.category)}
+                      isMine={view === 'MINE' || post.posterId === currentUser?.id}
+                      onChanged={load}
+                      onContact={() => handleContact(post.id)}
+                      favorited={favoriteIds.has(post.id)}
+                      favoriteBusy={favoritingId === post.id}
+                      onToggleFavorite={() => toggleFavorite(post.id)}
+                      posterTrustScore={trustScores[post.posterId]}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </>
       )}

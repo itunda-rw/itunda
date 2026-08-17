@@ -74,6 +74,16 @@ export const fetchJobPostsMyNeighborhood = (category?: string) =>
     `/api/v1/jobs/posts/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
   ).then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
 
+// Real relevance-ranked search (2026-08-14, backend JobPostController's own doc
+// comment) -- shipped Android-only (rw.itunda.app's own searchJobPosts call site) and
+// never ported to web, the same real gap Toss Shopping's own banner carousel already
+// closed once for lib/shopping.ts (see that file's own doc comment). Mirrors
+// searchProducts's own real cross-merchant search shape field-for-field.
+export const searchJobPosts = (q: string) =>
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>(
+    `/api/v1/jobs/posts/search?q=${encodeURIComponent(q)}`,
+  ).then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
+
 export const createJobPost = (
   category: string,
   title: string,
