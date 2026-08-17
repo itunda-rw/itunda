@@ -8716,3 +8716,34 @@ report- or removal-related notifications throughout.
 **Content-moderation coverage now complete across all three itunda content surfaces**:
 Marketplace listings (§140), Eats reviews (§141), and community posts (§142) all use the
 identical real, sourced Karrot report-threshold-then-silent-hide pattern.
+
+## 143. Baemin "찜한 가게" new-menu-item notification to restaurant favoriters
+
+**Added 2026-08-17.** `EatsFavorite` (favoriting a restaurant) has existed since 2026-07-19 but
+had zero notification hook of any kind -- no signal ever reached a favoriter when their
+favorited restaurant did anything. Sourced from a real Baemin seller-strategy article
+(cashplan.link): "배달의민족은 찜한 손님에게 자동으로 가게 소식을 노출해주기 때문에, 신메뉴 출시...
+를 꾸준히 등록하면 자연스럽게 재방문을 유도할 수 있습니다" -- Baemin automatically surfaces store
+news to customers who favorited the store, so regularly registering new menu launches drives
+repeat visits.
+
+**Built**: `MerchantProductService.addProduct` now fans out a real push notification to every
+`EatsFavorite` row for that merchant when a new product is added -- `"New menu item at
+{businessName}"` / `"{name} - {price} RWF"`. Push-only (no persisted `Notification` row), same
+lighter shape `ProductFavoriteService.notifyPriceDrop` already uses for this kind of batch
+favoriter notification. A merchant with zero `EatsFavorite` rows (e.g. a Commerce-only shop)
+triggers zero real pushes, making this genuinely free for every non-Eats caller. Wrapped in its
+own try/catch so a notification failure can never make a real product-creation call look like it
+failed.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a
+merchant and 2 favoriters, had both favorite the restaurant (`POST /eats/restaurants/{id}/favorite`,
+real DB rows confirmed in `eats_favorites`), seeded real (fake-value) device tokens for both so
+the push attempt would be observable. Added a real product via `POST /api/v1/merchant/products`
+-- succeeded 201. Pod logs confirmed exactly 2 real FCM push attempts fired at that exact moment
+(`"FCM push failed for token fake-token-f...: The registration token is not a valid FCM
+registration token"` -- the real FCM rejection for a non-genuine token, proving a real send was
+attempted, not just a config no-op), one per favoriter, none for a third non-favoriter user.
+Registered a second merchant with zero favoriters and added a product there too -- succeeded 201
+with zero additional push-attempt log lines, confirming the empty-list fast path is genuinely
+silent and the feature carries no cost for non-Eats merchants.
