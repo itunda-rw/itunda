@@ -9364,3 +9364,48 @@ live-verified twice: once against the raw API (Section 136) and once through a r
 (Section 159, bank-mfe) -- this pass reuses that exact same backend contract through Retrofit
 DTOs that match it field-for-field, so the residual verification risk is limited to Compose UI
 wiring, not backend correctness.
+
+## 161. Ride Trusted Contacts + Send Status wired into iOS
+
+**Added 2026-08-18.** Direct continuation of Section 159/160: bank-mfe and Android both wired
+real Uber Safety "Trusted Contacts" (help.uber.com); iOS was explicitly left as the last unwired
+client. `App/Sources/RideScreenView.swift`'s `RidePassengerContent` already has the natural home
+-- an active-trip section with `myTrips` polling, the same shape bank-mfe's `RidesView`/Android's
+`RidePassengerContent` used. No backend changes -- the same four `RideController` endpoints from
+Section 159/136/160 (`GET/POST /api/v1/rides/trusted-contacts`, `DELETE /api/v1/rides/
+trusted-contacts/{contactId}`, `POST /api/v1/rides/trips/{tripId}/send-status`) were already
+complete and tested (`RideTrustedContactService`, `RideTrustedContactServiceTest`, 13 passing
+cases); this closes the iOS half of the gap, making Trusted Contacts feature-complete on all
+three client platforms.
+
+**Built**: `Core/Network/Sources/NetworkClient.swift` gained `getRideTrustedContacts`/
+`addRideTrustedContact`/`removeRideTrustedContact`/`sendStatusToRideTrustedContacts` (mirroring
+Android's `ApiService.kt` functions exactly, reusing the existing `SuccessResponse`/
+`authenticatedDelete` for the plain-success DELETE like every other list-delete endpoint in this
+file already does) plus `RideTrustedContactDto` (conforming to `Identifiable` like this file's
+other list-row DTOs, e.g. `HarvestAdvanceDto`)/`RideTrustedContactResponse`/
+`RideTrustedContactsResponse`/`AddRideTrustedContactRequest`/`SendStatusToTrustedContactsResponse`
+matching the backend's `RideTrustedContact.kt` field names 1:1. `App/Sources/RideScreenView.swift`
+gained a new `TrustedContactsSection` SwiftUI view (add-by-phone/name form via the existing
+`IdsTextField`, list with per-contact "Remove", capped at 5 matching
+`RideTrustedContactService.MAX_TRUSTED_CONTACTS`) rendered persistently inside
+`RidePassengerContent`'s `ScrollView` regardless of active-trip state, plus a "Send status to
+trusted contacts" button shown on an active trip alongside the existing PIN/cancel UI when the
+rider has at least one trusted contact, wired to show the real "Sent to N contacts" result --
+same shape as bank-mfe's `handleSendStatus`/Android's `sendStatusToTrustedContacts`. Follows this
+file's own existing `Button`/`.background(IDS.Colors...)` SwiftUI conventions throughout, not a
+port of the React JSX or Compose `Box`/`clickable` patterns those other two platforms use.
+
+**Verification**: `RideScreenView.swift` lives in the App target only (not a Core/Feature
+framework), and this session's documented, current limitation is that the full `ItundaApp`
+App-target scheme does not build clean (pre-existing Saronite/React-Native-codegen module-map
+errors, unrelated to this change) -- so the only verification available for that file is
+`xcrun swiftc -parse ios/App/Sources/RideScreenView.swift -suppress-warnings`, which ran clean
+(no output, exit 0; also spot-checked brace balance: 253 open/253 close). The new network layer,
+however, lives in `Core/Network` -- a real framework target -- so it was build-verified for real:
+`xcodebuild -scheme CoreNetwork -destination "generic/platform=iOS Simulator" build` ->
+`** BUILD SUCCEEDED **`. No backend code touched, so no new backend tests were needed; Section
+159's `./gradlew :rideshare:test --tests RideTrustedContactServiceTest` already confirmed the
+surface being wired is correct. This is the third and final client platform for this feature.
+
+Files: `ios/Core/Network/Sources/NetworkClient.swift`, `ios/App/Sources/RideScreenView.swift`.

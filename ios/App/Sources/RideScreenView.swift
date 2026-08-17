@@ -113,6 +113,18 @@ private struct RidePassengerContent: View {
     // Real Uber "Verify Your Ride" PIN -- fetched once a driver is assigned so the
     // passenger can read it aloud before pickup.
     @State private var activeTripPin: String?
+    // Real Uber Safety "Trusted Contacts" (help.uber.com) -- last remaining client
+    // platform for this feature (item 161; bank-mfe/Android already have it). Mirrors
+    // bank-mfe's TrustedContactsSection/Android's TrustedContactsSection exactly,
+    // adapted to this file's own SwiftUI conventions.
+    @State private var trustedContacts: [RideTrustedContactDto]?
+    @State private var addContactPhone = ""
+    @State private var addContactName = ""
+    @State private var addingContact = false
+    @State private var removingContactId: String?
+    @State private var contactError: String?
+    @State private var sendingStatus = false
+    @State private var sendStatusResult: String?
 
     private var activeTrip: RideTripDto? {
         myTrips.first { $0.status == "REQUESTED" || $0.status == "DRIVER_ASSIGNED" || $0.status == "IN_PROGRESS" }
@@ -139,6 +151,18 @@ private struct RidePassengerContent: View {
                             }
                             if let driverId = active.driverId {
                                 DriverRatingSection(driverId: driverId)
+                            }
+                            if let trustedContacts, !trustedContacts.isEmpty {
+                                Button(action: { Task { await sendStatusToTrustedContacts(active.id) } }) {
+                                    Text(sendingStatus ? "Sending…" : "Send status to trusted contacts")
+                                        .bold().foregroundColor(IDS.Colors.textPrimary)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                        .background(IDS.Colors.card).cornerRadius(10)
+                                }
+                                .disabled(sendingStatus)
+                                if let sendStatusResult {
+                                    Text(sendStatusResult).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                }
                             }
                             if active.status != "IN_PROGRESS" {
                                 Button(action: { Task { await cancelTrip(active.id) } }) {
@@ -204,6 +228,14 @@ private struct RidePassengerContent: View {
                     }
                 }
 
+                TrustedContactsSection(
+                    contacts: trustedContacts,
+                    phone: $addContactPhone, name: $addContactName,
+                    adding: addingContact, onAdd: { Task { await addTrustedContact() } },
+                    removingContactId: removingContactId, onRemove: { id in Task { await removeTrustedContact(id) } },
+                    error: contactError
+                )
+
                 if !pastTrips.isEmpty {
                     Text("Past rides").bold().foregroundColor(IDS.Colors.textPrimary)
                     ForEach(pastTrips, id: \.id) { trip in
@@ -227,6 +259,7 @@ private struct RidePassengerContent: View {
                 }
             }
         }
+        .task { await loadTrustedContacts() }
         .onDisappear { pollTask?.cancel() }
         .onChange(of: activeTrip?.id) { _ in
             Task { await loadActiveTripStops(); await loadActiveTripPin() }
@@ -302,6 +335,105 @@ private struct RidePassengerContent: View {
             self.error = "Could not submit your rating."
         }
         busyTripId = nil
+    }
+
+    private func loadTrustedContacts() async {
+        trustedContacts = (try? await NetworkClient.shared.getRideTrustedContacts().contacts) ?? trustedContacts
+    }
+
+    private func addTrustedContact() async {
+        addingContact = true
+        contactError = nil
+        do {
+            _ = try await NetworkClient.shared.addRideTrustedContact(phoneNumber: addContactPhone.trimmingCharacters(in: .whitespaces), name: addContactName.trimmingCharacters(in: .whitespaces))
+            addContactPhone = ""
+            addContactName = ""
+            await loadTrustedContacts()
+        } catch {
+            contactError = "Could not add this trusted contact. Make sure they have an itunda account."
+        }
+        addingContact = false
+    }
+
+    private func removeTrustedContact(_ contactId: String) async {
+        removingContactId = contactId
+        do {
+            _ = try await NetworkClient.shared.removeRideTrustedContact(contactId: contactId)
+            await loadTrustedContacts()
+        } catch {
+            contactError = "Could not remove this trusted contact."
+        }
+        removingContactId = nil
+    }
+
+    private func sendStatusToTrustedContacts(_ tripId: String) async {
+        sendingStatus = true
+        sendStatusResult = nil
+        do {
+            let sentCount = try await NetworkClient.shared.sendStatusToRideTrustedContacts(tripId: tripId).sentCount
+            sendStatusResult = "Sent to \(sentCount) contact\(sentCount == 1 ? "" : "s")."
+        } catch {
+            sendStatusResult = "Could not send your status right now."
+        }
+        sendingStatus = false
+    }
+}
+
+// Real Uber Safety "Trusted Contacts" (item 161, help.uber.com) -- a persistent, up to
+// 5 contact list set up once, distinct from the per-share conversation pick the
+// existing "Share trip" flow already offers. Last iOS client for RideController's
+// trusted-contacts endpoints; mirrors bank-mfe's TrustedContactsSection/Android's own
+// TrustedContactsSection exactly, adapted to this file's SwiftUI/Button conventions.
+private struct TrustedContactsSection: View {
+    let contacts: [RideTrustedContactDto]?
+    @Binding var phone: String
+    @Binding var name: String
+    let adding: Bool
+    let onAdd: () -> Void
+    let removingContactId: String?
+    let onRemove: (String) -> Void
+    let error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Trusted contacts").font(.headline).foregroundColor(IDS.Colors.textPrimary)
+            Text("Add up to 5 people who can get your live trip status with one tap.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+            if let contacts {
+                ForEach(contacts, id: \.id) { contact in
+                    HStack {
+                        Text(contact.contactName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Button(removingContactId == contact.id ? "…" : "Remove") { onRemove(contact.id) }
+                            .font(.caption).foregroundColor(.red)
+                            .disabled(removingContactId == contact.id)
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                    .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+                if contacts.count < 5 {
+                    HStack(spacing: 8) {
+                        IdsTextField("Phone number", text: $phone)
+                        IdsTextField("Name", text: $name)
+                    }
+                    Button(action: onAdd) {
+                        Text(adding ? "Adding…" : "Add trusted contact").bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(phone.trimmingCharacters(in: .whitespaces).isEmpty ? Color(.tertiarySystemBackground) : IDS.Colors.brand)
+                            .cornerRadius(10)
+                    }
+                    .disabled(adding || phone.trimmingCharacters(in: .whitespaces).isEmpty)
+                } else {
+                    Text("You've reached the limit of 5 trusted contacts.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+            } else {
+                Text("Loading…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+        }
+        .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
     }
 }
 

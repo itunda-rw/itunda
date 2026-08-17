@@ -765,6 +765,20 @@ public struct RideTripReviewResponse: Decodable { public let success: Bool; publ
 public struct RideDriverRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
 public struct RideDriverReviewsResponse: Decodable { public let success: Bool; public let reviews: [RideTripReviewDto] }
 
+// Real Uber Safety "Trusted Contacts" -- mirrors the backend's RideTrustedContact.kt
+// entity/Android's RideTrustedContactDto exactly.
+public struct RideTrustedContactDto: Decodable, Identifiable {
+    public let id: String
+    public let userId: String
+    public let contactUserId: String
+    public let contactName: String
+    public let createdAt: String
+}
+public struct RideTrustedContactResponse: Decodable { public let success: Bool; public let contact: RideTrustedContactDto }
+public struct RideTrustedContactsResponse: Decodable { public let success: Bool; public let contacts: [RideTrustedContactDto] }
+public struct AddRideTrustedContactRequest: Encodable { public let phoneNumber: String; public let name: String }
+public struct SendStatusToTrustedContactsResponse: Decodable { public let success: Bool; public let sentCount: Int }
+
 // Real Kakao T 대리운전 (designated driver, item 221) -- a professional driver comes to
 // the customer's location and drives the CUSTOMER'S OWN CAR home for them, distinct
 // from ride-hailing above (driver uses their own vehicle). Mirrors
@@ -1302,6 +1316,27 @@ extension NetworkClient {
     /// shipped this first (2026-08-05); this is the iOS port.
     public func getRideDriverReviews(driverId: String) async throws -> RideDriverReviewsResponse {
         try await get("api/v1/rides/drivers/\(driverId)/reviews", query: [URLQueryItem(name: "size", value: "10")])
+    }
+
+    // Real Uber Safety "Trusted Contacts" (help.uber.com) -- a persistent, up-to-5
+    // contact list set up once, distinct from shareTripStatus's per-share conversation
+    // pick above. Last remaining client platform for this feature (item 161; bank-mfe
+    // wired it first, Android ported it the same day). Mirrors Android's ApiService.kt
+    // getRideTrustedContacts/addRideTrustedContact/removeRideTrustedContact/
+    // sendStatusToRideTrustedContacts exactly. See the backend's RideTrustedContact.kt
+    // doc comment for the full sourcing.
+    public func getRideTrustedContacts() async throws -> RideTrustedContactsResponse { try await get("api/v1/rides/trusted-contacts") }
+
+    public func addRideTrustedContact(phoneNumber: String, name: String) async throws -> RideTrustedContactResponse {
+        try await authenticatedPost("api/v1/rides/trusted-contacts", body: AddRideTrustedContactRequest(phoneNumber: phoneNumber, name: name))
+    }
+
+    public func removeRideTrustedContact(contactId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/rides/trusted-contacts/\(contactId)")
+    }
+
+    public func sendStatusToRideTrustedContacts(tripId: String) async throws -> SendStatusToTrustedContactsResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(tripId)/send-status", body: EmptyBody())
     }
 
     // Real Kakao T 대리운전 (designated driver, item 221) -- first iOS client for this
