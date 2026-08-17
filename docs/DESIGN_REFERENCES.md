@@ -9679,3 +9679,17 @@ Files: `services/micro-frontends/bank-mfe/src/lib/messaging.ts`,
 
 Per this task's own scope, no live-server click-through verification or deploy was attempted
 here -- that's reserved for the coordinating session.
+
+**Live-verified** via headless Chrome + raw CDP against a real local dev server pointed at the
+real deployed backend: registered 3 fresh users (A the main user, B and C as chat partners),
+started two real conversations from A in sequence (A→B, then ~2s later A→C, giving B a real
+older `lastMessageAt` and C a real newer one), confirmed the default active list correctly sorts
+C above B (chronological). Clicked "Pin to top" -- initially mis-targeted C's button due to an
+overly broad DOM-ancestor query in the verification script (not an app bug); corrected the
+script to require an ancestor with exactly one pin button, then confirmed via real
+`Network.responseReceived` events that toggling B's pin hit `conversation_4b0d9636...` (B's real
+ID) and toggling C's hit `conversation_c4784230...` (C's), both 200. After unpinning C and
+pinning B, the active list re-sorted with B (the older conversation) now above C -- real,
+verified reordering driven by the client-side `pinnedToTop` sort, confirmed via both DOM text
+extraction and a screenshot showing B's row with the filled blue "unpin" icon on top and C's row
+with the outline "pin" icon below.
