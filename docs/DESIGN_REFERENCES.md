@@ -10050,3 +10050,20 @@ an unrelated same-named class in the `eats` module).
 
 No client wiring, deploy, or live-server verification attempted here -- backend-only, correctness
 fix, reserved for the coordinating session's deploy per this task's own scoping rules.
+
+**Coordinator re-verification, deploy, and real-money live-verify**: independently re-ran the
+forced test rerun (real XML confirms `tests="36" failures="0" errors="0"`). Given this is a real
+money-safety fix (not just a client-wiring convenience), deployed it with priority: built and
+pushed `192.168.252.4:32000/itunda/backend:2026-08-18-soldout-enforcement`, rollout completed
+cleanly. **Live-verified with real money movement** against the real deployed backend: registered
+a merchant + buyer, created a real product (deliberately `stockQuantity: null` to isolate the
+`soldOut` check from any incidental stock-count rejection, matching the fork's own test design),
+marked it sold out, funded the buyer's real wallet (50,000 RWF), and attempted a real
+`POST /api/v1/orders` -> real `409 PRODUCT_SOLD_OUT` rejection with the exact expected message;
+confirmed the buyer's real wallet balance stayed at exactly 50,000.00 RWF (zero debit attempted).
+Then un-marked the product sold-out and retried the identical order -> real `201` success with a
+real `ledgertxn_...` ID and correct `totalAmount`/`fee`; confirmed the buyer's real wallet
+correctly debited to exactly 47,000.00 RWF (3,000 RWF product price). This proves the fix blocks
+exactly and only while genuinely sold out, with no false positives once the merchant flips the
+toggle back -- both the bug and its fix are now proven with real ledger-backed money, not just
+unit-test mocks.
