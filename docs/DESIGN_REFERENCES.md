@@ -9891,3 +9891,23 @@ suite (already covering `setRateAlert`/`clearRateAlert`) was not re-run.
 
 Per this task's own scope, no live-server click-through verification or deploy was attempted here
 -- that's reserved for the coordinating session.
+
+**Coordinator re-verification and live-verify**: independently re-ran all four verification
+claims -- bank-mfe build clean after touching both changed files, a forced (`touch` +
+`--rerun-tasks`) Android rebuild -> `BUILD SUCCESSFUL` 435/435 tasks executed, `xcodebuild` on
+`CoreNetwork` genuinely re-ran -> `** BUILD SUCCEEDED **`, `swiftc -parse` on
+`ForeignCurrencyScreen.swift` re-ran clean. Also manually cross-checked all three clients' DTOs
+directly against `ForeignCurrencyController.kt`'s real request/response shapes (including the
+query-param `DELETE`) -- all matched exactly. No backend deploy was needed since the feature
+already shipped live in Section 121. **Live-verified** against the real deployed backend: real
+`GET .../rate-alerts` empty before, real `POST .../rate-alert` (RWF/USD, target 0.00075, BELOW)
+returning the real stored alert, real `GET` reflecting it, real `DELETE` (query-param form)
+reverting to empty. Also live-verified the full bank-mfe UI via headless Chrome + raw CDP:
+opened a real USD wallet, opened the Foreign Currency tab, clicked "Set a rate alert," entered a
+real target rate (0.0008, above), submitted -- confirmed via real `Network.responseReceived`
+events (`POST`/`GET .../rate-alert(s)` -> 200) and the UI showing "RWF/USD: notify when ≥
+0.0008" with a "Remove" button; clicked "Remove" -- confirmed via a real `DELETE
+.../rate-alert?fromCurrency=RWF&toCurrency=USD` -> 200 and the UI correctly reverting to "Set a
+rate alert." Hit one real, unrelated infra event mid-verification: the cluster briefly went into
+severe overload (load 58.95) causing the backend pod to crashloop for a few minutes -- resolved
+by waiting, consistent with this session's established overload pattern, not a code issue.
