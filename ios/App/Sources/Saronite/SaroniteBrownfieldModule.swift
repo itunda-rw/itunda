@@ -140,6 +140,62 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real Kakao Pay 자동납부 (automatic bill payment) -- see backend
+    // core/domain/BillAutoPaySetting.kt's own doc comment for the full sourced account.
+    // Wired to bank-mfe (2026-08-17, docs Section 162) and Android's SaroniteBridge.kt
+    // (2026-08-17, docs Section 163); this iOS bridge had getPendingBills/payBill since
+    // 2026-07-13 but never these four, even though the shared pay-bills mini-app UI
+    // (packages/saronite/mini-apps/pay-bills/pages/index.tsx) already calls all four --
+    // meaning the auto-pay section of that screen has been silently broken on iOS
+    // (every call rejecting with SARONITE_HTTP_ERROR/method-not-found) since Section 163
+    // shipped it, on this platform alone. `getBillProviders` is included alongside
+    // auto-pay for the same reason Android's own bridge added it in the same pass:
+    // `setAutoPay`/`clearAutoPay` take a real providerId (e.g. "b1"), distinct from
+    // `PendingBill.provider` (only ever a display name) -- without it the mini-app has
+    // no honest way to resolve which provider a user is registering. No scope check
+    // here (unlike Android's `requireScope`): this iOS bridge has no equivalent
+    // partner-scoping system on any method yet, matching getPendingBills/payBill above.
+    @objc func getBillProviders(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/bills/providers", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let providers = ((root["providers"] as? [[String: Any]]) ?? []).map(Self.mapBillProvider)
+            return ["providers": providers]
+        }
+    }
+
+    @objc func getAutoPaySettings(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/bills/auto-pay", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            let settings = ((root["autoPay"] as? [[String: Any]]) ?? []).map(Self.mapBillAutoPaySetting)
+            return ["autoPay": settings]
+        }
+    }
+
+    @objc func setAutoPay(
+        _ providerId: String,
+        accountNumber: String,
+        maxAmount: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        let body: [String: Any] = ["providerId": providerId, "accountNumber": accountNumber, "maxAmount": maxAmount]
+        authorizedCall(path: "api/v1/bills/auto-pay", method: "POST", body: body, resolve: resolve, reject: reject) { root in
+            var result: [String: Any] = [:]
+            if let setting = root["autoPay"] as? [String: Any] { result["autoPay"] = Self.mapBillAutoPaySetting(setting) }
+            return result
+        }
+    }
+
+    // DELETE with a query param, not a body -- matches Android's clearAutoPay exactly
+    // (BillsController.clearAutoPay takes `providerId` as a @RequestParam, not a path
+    // segment or JSON body). authorizedCall's body-gated headers (Content-Type/
+    // Idempotency-Key) are correctly skipped by passing body: nil, same as
+    // getPendingBills/getAutoPaySettings above -- this call moves no money and needs
+    // neither.
+    @objc func clearAutoPay(_ providerId: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        let allowed = CharacterSet.urlQueryAllowed
+        let encodedProviderId = providerId.addingPercentEncoding(withAllowedCharacters: allowed) ?? providerId
+        authorizedCall(path: "api/v1/bills/auto-pay?providerId=\(encodedProviderId)", method: "DELETE", body: nil, resolve: resolve, reject: reject) { _ in [:] }
+    }
+
     @objc func getRewardTasks(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/rewards/tasks", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             let tasks = ((root["tasks"] as? [[String: Any]]) ?? []).map { t -> [String: Any] in
@@ -502,6 +558,38 @@ final class SaroniteBrownfieldModule: NSObject {
         var result: [String: Any] = ["success": root["success"] as? Bool ?? true]
         if let fund = root["fund"] as? [String: Any] { result["fund"] = mapPremiumFund(fund) }
         return result
+    }
+
+    // Real backend shape: services/backend/bills's BillsController.getProviders /
+    // BillsCatalog.providers -- read directly, not guessed. `id` (e.g. "b1") is the
+    // real key setAutoPay/clearAutoPay above take, distinct from PendingBill.provider
+    // above (only ever a display name). Matches Android's parseBillProvider exactly.
+    private static func mapBillProvider(_ p: [String: Any]) -> [String: Any] {
+        [
+            "id": p["id"] as? String ?? "",
+            "name": p["name"] as? String ?? "",
+            "category": p["category"] as? String ?? "",
+            "logo": p["logo"] as? String ?? "",
+            "isActive": p["isActive"] as? Bool ?? true,
+        ]
+    }
+
+    // Real backend shape: core/domain/BillAutoPaySetting.kt, returned as-is by
+    // BillsController's setAutoPay/getAutoPay (no remapping, same convention as
+    // mapPolicy/mapPremiumFund above). lastPaidBillId is null until
+    // BillAutoPayProcessor has actually run this setting once. Matches Android's
+    // parseBillAutoPaySetting exactly.
+    private static func mapBillAutoPaySetting(_ s: [String: Any]) -> [String: Any] {
+        [
+            "id": s["id"] as? String ?? "",
+            "userId": s["userId"] as? String ?? "",
+            "providerId": s["providerId"] as? String ?? "",
+            "accountNumber": s["accountNumber"] as? String ?? "",
+            "maxAmount": (s["maxAmount"] as? NSNumber)?.doubleValue ?? 0,
+            "active": s["active"] as? Bool ?? true,
+            "lastPaidBillId": (s["lastPaidBillId"] as? String) ?? NSNull(),
+            "createdAt": s["createdAt"] as? String ?? "",
+        ]
     }
 
     private func authorizedCall(

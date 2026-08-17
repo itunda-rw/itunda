@@ -9555,3 +9555,62 @@ matching `parseBillProviders`' expected shape exactly, confirming no silent fiel
 No physical Android device was connected this pass (same limitation as Section 160), so this
 remains build/typecheck-verified only, not UI-clicked -- honest, not a gap in effort, since the
 underlying backend contract was already live-verified in Section 162.
+
+## 164. Kakao Pay 자동납부 (auto bill-pay) client wiring, iOS/Saronite
+
+**Added 2026-08-18.** Direct follow-up to Section 163's own stated next step ("iOS remains
+unwired for this exact feature"). Confirmed the gap was still real before touching anything:
+iOS has no separate native Bills screen either -- same real architecture as Android -- bills
+live entirely behind `ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift`, the legacy
+`RCTBridgeModule` the "pay-bills" Saronite mini-app actually calls for `getPendingBills`/
+`payBill` (both real since the mini-app's original port, per that file's own header comment).
+`grep -n "AutoPay\|BillProvider" ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift`
+matched nothing before this change, confirming the bridge had no `getBillProviders`/
+`getAutoPaySettings`/`setAutoPay`/`clearAutoPay` methods at all -- while the shared
+`packages/saronite/mini-apps/pay-bills/pages/index.tsx` UI (built once, cross-platform, in
+Section 163) already imports and calls all four unconditionally. That means the mini-app's
+auto-pay card has been silently broken on iOS specifically since Section 163 shipped: every tap
+of "Turn on auto-pay"/"Turn off" would reject with `SARONITE_HTTP_ERROR`/unrecognized-selector,
+since the JS-to-native call has no matching Swift/ObjC method to resolve to. No spec or
+native-wrapper changes were needed -- `SaroniteBrownfieldModule.ts`'s types and the four
+`native-modules/natives/*.ts` wrapper functions (`getBillProviders.ts`, `getAutoPaySettings.ts`,
+`setAutoPay.ts`, `clearAutoPay.ts`) already exist cross-platform from Section 163; only the iOS
+native implementation was the real gap.
+
+**Built** (mirrors Android's `SaroniteBridge.kt` field-for-field, adapted to this file's own
+`authorizedCall`/`map*` convention used by every other bridge method here):
+- `ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift` -- added `getBillProviders`
+  (`GET api/v1/bills/providers`), `getAutoPaySettings` (`GET api/v1/bills/auto-pay`), `setAutoPay`
+  (`POST api/v1/bills/auto-pay` with `providerId`/`accountNumber`/`maxAmount`), and `clearAutoPay`
+  (`DELETE api/v1/bills/auto-pay?providerId=...`, URL-query-encoded, no body -- matches
+  `BillsController.clearAutoPay`'s `@RequestParam` contract exactly, same as Android's own
+  `clearAutoPay`). Added `mapBillProvider`/`mapBillAutoPaySetting` static helpers reading the
+  real backend shapes directly from `BillsController.getProviders`/`core/domain/
+  BillAutoPaySetting.kt` (not guessed) -- same field set as Android's `parseBillProvider`/
+  `parseBillAutoPaySetting`: `id`/`name`/`category`/`logo`/`isActive` for providers,
+  `id`/`userId`/`providerId`/`accountNumber`/`maxAmount`/`active`/`lastPaidBillId` (nullable,
+  explicit `NSNull()` until `BillAutoPayProcessor` has run once)/`createdAt` for settings. No
+  scope-gating added (unlike Android's `requireScope(null, ...)`): this iOS bridge has no
+  partner-scoping system on any method yet at all, matching the existing, unguarded
+  `getPendingBills`/`payBill` right next to these new methods -- adding a scope check found
+  nowhere else in this file would be new, out-of-scope surface area, not a mirror of Android.
+- `ios/App/Sources/Saronite/SaroniteBrownfieldModule.m` -- added the matching four
+  `RCT_EXTERN_METHOD` declarations so RN's legacy bridge registry can actually resolve the new
+  Swift selectors by name (the standard pattern every other method in this file already uses;
+  omitting this would leave the Swift methods compiled but unreachable from JS).
+
+**Verification**: `xcrun swiftc -parse ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift
+-suppress-warnings` -- completed with zero output, confirming the new Swift is syntactically
+valid (the honest ceiling for this file per this session's own constraints: it imports `React`/
+`CoreNetwork`, so it isn't part of a standalone-buildable Core/Feature scheme, and the full
+App-target build is pre-existing-broken for unrelated Saronite/RN-codegen reasons). No backend
+code was touched -- `BillsController`, `BillsService`, and `BillAutoPaySetting` all already
+existed and were already covered by Section 162's backend test runs; no TypeScript was touched
+either, since Section 163 already built the full spec/wrapper/mini-app chain cross-platform.
+This closes out bill auto-pay client wiring on all three platforms (bank-mfe: Section 162,
+Android: Section 163, iOS: this section). Per this task's own scope, no simulator/device
+UI-click verification or deploy was attempted here -- that's reserved for the coordinating
+session.
+
+Files: `ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift`,
+`ios/App/Sources/Saronite/SaroniteBrownfieldModule.m`.

@@ -15,6 +15,14 @@ RCT_EXTERN_METHOD(payBill:(NSString *)billId
                   provider:(NSString *)provider
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getBillProviders:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getAutoPaySettings:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(setAutoPay:(NSString *)providerId
+                  accountNumber:(NSString *)accountNumber
+                  maxAmount:(nonnull NSNumber *)maxAmount
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(clearAutoPay:(NSString *)providerId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getRewardTasks:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(claimRewardTask:(NSString *)taskId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getInsurancePlans:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
