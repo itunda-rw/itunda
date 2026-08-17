@@ -8683,3 +8683,36 @@ reflecting only the restaurant's other pre-existing review, not 2). A 4th distin
 the already-hidden review still succeeded 201 (report saved, no further state change). Confirmed
 the sourced real silence: the review author's `GET /notifications` showed zero report- or
 hide-related notifications throughout.
+
+## 142. Karrot-style community post report + auto-hide moderation
+
+**Added 2026-08-17.** Closes the third and final content-moderation gap Sections 140
+(`MarketplaceListingReport`) and 141 (`EatsReviewReport`) left open: 동네생활 community posts had
+no reporting mechanism at all. Sourced from the same real Karrot moderation behavior Section
+140's own doc comment already establishes (real seller-forum threads describing silent auto-hide,
+no notification) -- 동네생활 is Karrot's own second core surface, moderated under the identical
+real community-report system, not a separate product.
+
+**Built**: `CommunityPostReport` entity (migration V275, DB-unique on post+reporter) feeds
+`CommunityService.reportPost`: self-report blocked, duplicate blocked, rate-limited, and once
+`REPORT_THRESHOLD` = 3 distinct reporters accumulate on a still-`ACTIVE` post, its status flips
+to the pre-existing `CommunityPostStatus.REMOVED` -- the same real effect the author's own
+`removePost` already has. Unlike Sections 140/141, **zero read-path changes were needed**: every
+existing browse/search/myNeighborhood/nearby/upcomingMeetups query already filtered on
+`status = ACTIVE`. New endpoint `POST /api/v1/community/posts/{postId}/report`, same body shape
+as Sections 140/141 with community-specific reasons (`SPAM`, `HARASSMENT`, `PROHIBITED_CONTENT`,
+`PERSONAL_INFO_EXPOSURE`, `OTHER`).
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered an author
+and 4 reporters, created a post (`ACTIVE`). Self-report by the author correctly 400
+`OWN_COMMUNITY_POST_REPORT`. Report #1 succeeded 201, duplicate by the same reporter correctly
+409 `COMMUNITY_POST_ALREADY_REPORTED`, post still appeared in `GET /community/posts`. Report #2
+-- post still visible. Report #3 -- post correctly disappeared from browse; real DB confirmed
+`community_posts.status = 'REMOVED'` with exactly 3 rows in `community_post_reports`. A 4th
+distinct reporter on the already-removed post still succeeded 201 (report saved, no further
+state change). Confirmed the sourced real silence: the author's `GET /notifications` showed zero
+report- or removal-related notifications throughout.
+
+**Content-moderation coverage now complete across all three itunda content surfaces**:
+Marketplace listings (§140), Eats reviews (§141), and community posts (§142) all use the
+identical real, sourced Karrot report-threshold-then-silent-hide pattern.
