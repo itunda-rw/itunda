@@ -135,6 +135,60 @@ class OrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a buyer tries to order a product whose closing/surplus deal has already expired") {
+            // Real 마감할인 (closing/surplus discount) expiry enforcement -- see
+            // MerchantProduct.isSurplusDeal/surplusExpiresAt's own doc comment and
+            // OrderService.placeOrder's own new comment above the check this test
+            // covers. MerchantProductRepository.findSurplusDeals already correctly
+            // hides an expired deal from the browse rail, but checkout itself never
+            // re-checked the expiry -- this proves it now does, before any money moves.
+            val expiredDealProduct = MerchantProduct(
+                id = "product_expired_surplus", merchantId = "merchant_1", name = "Closing-time bread",
+                price = BigDecimal("500"), isSurplusDeal = true,
+                surplusExpiresAt = java.time.Instant.now().minusSeconds(3600),
+                stockQuantity = 5,
+            )
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_expired_surplus") } returns Optional.of(expiredDealProduct)
+
+            Then("it rejects with SurplusDealExpiredException before debiting a wallet or decrementing stock") {
+                try {
+                    service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_expired_surplus", 1)), "KG 123 St")
+                    error("expected SurplusDealExpiredException")
+                } catch (e: SurplusDealExpiredException) {
+                    expiredDealProduct.stockQuantity shouldBe 5
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("a buyer orders a product whose closing/surplus deal has NOT yet expired") {
+            // Negative case: a still-valid surplus deal must keep working exactly like
+            // any other product -- this feature is an expiry check, not a blanket ban
+            // on isSurplusDeal products.
+            val activeDealProduct = MerchantProduct(
+                id = "product_active_surplus", merchantId = "merchant_1", name = "Still-fresh bread",
+                price = BigDecimal("500"), isSurplusDeal = true,
+                surplusExpiresAt = java.time.Instant.now().plusSeconds(3600),
+                stockQuantity = 5,
+            )
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_active_surplus") } returns Optional.of(activeDealProduct)
+            every { merchantProductRepository.saveAll(any<List<MerchantProduct>>()) } answers { firstArg() }
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_test2", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+
+            Then("it succeeds like a normal order") {
+                val detail = service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_active_surplus", 1)), "KG 123 St")
+                detail.order.totalAmount shouldBe BigDecimal("500")
+                activeDealProduct.stockQuantity shouldBe 4
+            }
+        }
+
         When("a real buyer places a real order for 3 units") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)

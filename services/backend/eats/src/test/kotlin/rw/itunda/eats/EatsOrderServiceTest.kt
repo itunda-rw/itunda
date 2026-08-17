@@ -541,6 +541,31 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("ordering a menu item whose closing/surplus deal has already expired") {
+            // Real 마감할인 (closing/surplus discount) expiry enforcement -- see
+            // MerchantProduct.isSurplusDeal/surplusExpiresAt's own doc comment and
+            // EatsOrderService.placeOrder's own new comment above the check this test
+            // covers. Same shared MerchantProduct catalog used as a menu item here.
+            val expiredDealItem = MerchantProduct(
+                id = "item_expired_surplus", merchantId = "restaurant_1", name = "Closing-time samosas",
+                price = BigDecimal("500"), isSurplusDeal = true,
+                surplusExpiresAt = java.time.Instant.now().minusSeconds(3600),
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_expired_surplus") } returns Optional.of(expiredDealItem)
+
+            Then("it throws MenuItemSurplusDealExpiredException, distinct from MenuItemNotFoundException") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_expired_surplus", 1)), "addr")
+                    error("expected MenuItemSurplusDealExpiredException")
+                } catch (e: MenuItemSurplusDealExpiredException) {
+                    // expected
+                }
+            }
+        }
+
         When("ordering with zero quantity") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)

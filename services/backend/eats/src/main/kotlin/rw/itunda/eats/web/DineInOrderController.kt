@@ -26,6 +26,7 @@ import rw.itunda.core.web.pageMeta
 import rw.itunda.eats.DineInBuyerNoWalletException
 import rw.itunda.eats.DineInMenuItemNotFoundException
 import rw.itunda.eats.DineInMenuItemSoldOutException
+import rw.itunda.eats.DineInMenuItemSurplusDealExpiredException
 import rw.itunda.eats.DineInOrderItemRequest
 import rw.itunda.eats.DineInOrderNotFoundException
 import rw.itunda.eats.DineInOrderService
@@ -150,6 +151,10 @@ class DineInOrderController(
     @ExceptionHandler(DineInMenuItemSoldOutException::class)
     fun handleMenuItemSoldOut(ex: DineInMenuItemSoldOutException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MENU_ITEM_SOLD_OUT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(DineInMenuItemSurplusDealExpiredException::class)
+    fun handleMenuItemSurplusDealExpired(ex: DineInMenuItemSurplusDealExpiredException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("SURPLUS_DEAL_EXPIRED", ex.message ?: "This closing deal has expired"))
 
     @ExceptionHandler(MissingRequiredDineInMenuOptionException::class)
     fun handleMissingRequiredMenuOption(ex: MissingRequiredDineInMenuOptionException) =

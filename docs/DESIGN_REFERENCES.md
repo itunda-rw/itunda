@@ -10067,3 +10067,76 @@ correctly debited to exactly 47,000.00 RWF (3,000 RWF product price). This prove
 exactly and only while genuinely sold out, with no false positives once the merchant flips the
 toggle back -- both the bug and its fix are now proven with real ledger-backed money, not just
 unit-test mocks.
+
+## 171. Expired 마감할인 (closing/surplus discount) deals were never actually rejected at checkout -- real transaction-safety bug fix
+
+**Added 2026-08-18.** Same technique that found Section 170 (re-reading a money-adjacent domain
+class's own boolean/state fields against every real write path that should enforce them, not just
+its read/display paths): `MerchantProduct.isSurplusDeal`/`surplusExpiresAt` (added Section 129,
+2026-08-15) power a real Baemin/Yogiyo/Coupang Eats-style closing-time discount rail --
+`MerchantProductRepository.findSurplusDeals` correctly filters its browse query to
+`p.surplusExpiresAt > :now`, so an expired deal genuinely disappears from
+`GET /products/surplus-deals`. But that's a read-path filter only. None of the three real checkout
+paths that resolve a `MerchantProduct` for purchase -- `commerce.OrderService.placeOrder`,
+`eats.EatsOrderService.placeOrder`, `eats.DineInOrderService.placeOrder` (all three share the
+exact same `MerchantProduct` catalog, per its own doc comment: Eats/DineIn treat it as menu items)
+-- ever read `surplusExpiresAt` at all. A buyer with a cached product page, a deep link opened
+before the deal's stated closing time, or a direct API call could keep buying an already-expired
+closing-time sale at its discounted price indefinitely; the merchant's own declared closing time
+(validated as "must be in the future" at write time by `MerchantProductService.setSurplusDeal`)
+was never honored again after that. `setSurplusDeal`'s own doc comment even states "purchase
+itself is completely unchanged" as a deliberate design choice, which was correct for pricing (the
+discount is just the ordinary `price` field, no separate deal-price computation like `TimeDeal`
+has) but incorrectly assumed the browse-rail filter was sufficient gatekeeping for a genuinely
+time-boxed offer -- it isn't, since checkout doesn't route through that filtered list at all.
+
+**Fixed**: all three `placeOrder` methods now throw a new, per-module `*SurplusDealExpiredException`
+(`SurplusDealExpiredException` in commerce, `MenuItemSurplusDealExpiredException` in
+`EatsOrderService`, `DineInMenuItemSurplusDealExpiredException` in `DineInOrderService`) the moment
+a resolved line item has `isSurplusDeal == true` and `surplusExpiresAt` is not after "now" --
+checked immediately after the existing `soldOut` check (Section 170) and before any Time
+Deal/stock-quantity/pricing/wallet-debit logic runs, so a rejected order touches zero wallet
+balances and zero stock counts, matching the exact "reject before mutating anything" discipline
+`ProductSoldOutException`/`MenuItemSoldOutException` already established. Each module's controller
+gained a matching `@ExceptionHandler` mapping to a real 409 CONFLICT with code
+`SURPLUS_DEAL_EXPIRED`, mirroring the existing `*SoldOut` handlers' exact shape. A still-valid
+(not-yet-expired) surplus deal is unaffected -- this is an expiry check, not a ban on
+`isSurplusDeal` products, proven by a dedicated positive-path test.
+
+Files changed:
+- `services/backend/commerce/src/main/kotlin/rw/itunda/commerce/OrderService.kt` (new
+  `SurplusDealExpiredException`; new check in `placeOrder`)
+- `services/backend/commerce/src/main/kotlin/rw/itunda/commerce/web/OrderController.kt` (new
+  `handleSurplusDealExpired` handler + import)
+- `services/backend/commerce/src/test/kotlin/rw/itunda/commerce/OrderServiceTest.kt` (new
+  `When`/`Then` blocks: an expired-deal product is rejected with zero ledger calls and an
+  unchanged stock count; a not-yet-expired deal product still succeeds normally)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/EatsOrderService.kt` (new
+  `MenuItemSurplusDealExpiredException`; new check in `placeOrder`)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/web/EatsController.kt` (new
+  `handleMenuItemSurplusDealExpired` handler + import)
+- `services/backend/eats/src/test/kotlin/rw/itunda/eats/EatsOrderServiceTest.kt` (new `When`/`Then`
+  block)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/DineInOrderService.kt` (new
+  `DineInMenuItemSurplusDealExpiredException`; new check in `placeOrder`)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/web/DineInOrderController.kt` (new
+  `handleMenuItemSurplusDealExpired` handler + import)
+- `services/backend/eats/src/test/kotlin/rw/itunda/eats/DineInOrderServiceTest.kt` (new
+  `When`/`Then` block)
+
+`GroupEatsOrderService` needed no changes: it already delegates every real order to
+`EatsOrderService.placeOrder` for the one real money-moving call, so it inherits this fix for free
+(same reasoning Section 170's own doc comment already established for the identical delegation
+shape).
+
+**Verified locally, this pass**: `touch`-forced `./gradlew :commerce:compileKotlin
+:commerce:test --tests "rw.itunda.commerce.OrderServiceTest"` -> `BUILD SUCCESSFUL`, 40 tests, 0
+failures. `touch`-forced `./gradlew :eats:compileKotlin :eats:compileTestKotlin` -> `BUILD
+SUCCESSFUL`. `touch`-forced `./gradlew :eats:test --tests "rw.itunda.eats.EatsOrderServiceTest"
+--tests "rw.itunda.eats.DineInOrderServiceTest"` -> `BUILD SUCCESSFUL`, all tests including the
+two new expiry cases passed. Also re-ran `./gradlew :commerce:compileKotlin :eats:compileKotlin`
+after touching the three new controller files to confirm the new exception-handler imports/wiring
+compile cleanly.
+
+No client wiring, deploy, or live-server verification attempted here -- backend-only, correctness
+fix, reserved for the coordinating session's deploy per this task's own scoping rules.

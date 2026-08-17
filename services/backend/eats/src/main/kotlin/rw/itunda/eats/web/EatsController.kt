@@ -68,6 +68,7 @@ import rw.itunda.eats.InvalidRiderLocationException
 import rw.itunda.eats.InvalidMenuOptionSelectionException
 import rw.itunda.eats.MenuItemNotFoundException
 import rw.itunda.eats.MenuItemSoldOutException
+import rw.itunda.eats.MenuItemSurplusDealExpiredException
 import rw.itunda.eats.MissingRequiredMenuOptionException
 import rw.itunda.eats.NoActiveOfferException
 import rw.itunda.eats.NotAssignedRiderException
@@ -706,6 +707,10 @@ class EatsController(
     @ExceptionHandler(MenuItemSoldOutException::class)
     fun handleMenuItemSoldOut(ex: MenuItemSoldOutException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MENU_ITEM_SOLD_OUT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MenuItemSurplusDealExpiredException::class)
+    fun handleMenuItemSurplusDealExpired(ex: MenuItemSurplusDealExpiredException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("SURPLUS_DEAL_EXPIRED", ex.message ?: "This closing deal has expired"))
 
     @ExceptionHandler(MissingRequiredMenuOptionException::class)
     fun handleMissingRequiredMenuOption(ex: MissingRequiredMenuOptionException) =

@@ -55,6 +55,7 @@ import rw.itunda.commerce.ProductInquiryService
 import rw.itunda.commerce.ProductNotYetDeliveredException
 import rw.itunda.commerce.ProductReviewService
 import rw.itunda.commerce.ProductSoldOutException
+import rw.itunda.commerce.SurplusDealExpiredException
 import rw.itunda.commerce.ReturnAlreadyRequestedException
 import rw.itunda.commerce.ReturnOrderNotDeliveredException
 import rw.itunda.commerce.ReturnOrderNotFoundException
@@ -435,6 +436,10 @@ class OrderController(
     @ExceptionHandler(ProductSoldOutException::class)
     fun handleProductSoldOut(ex: ProductSoldOutException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PRODUCT_SOLD_OUT", ex.message ?: "Product is sold out"))
+
+    @ExceptionHandler(SurplusDealExpiredException::class)
+    fun handleSurplusDealExpired(ex: SurplusDealExpiredException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("SURPLUS_DEAL_EXPIRED", ex.message ?: "This closing deal has expired"))
 
     @ExceptionHandler(OrderProductNotFoundException::class)
     fun handleProductNotFound(ex: OrderProductNotFoundException) =

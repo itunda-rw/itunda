@@ -41,6 +41,7 @@ class EmptyDineInOrderException(message: String) : RuntimeException(message)
 class InvalidDineInQuantityException(message: String) : RuntimeException(message)
 class DineInMenuItemNotFoundException(message: String) : RuntimeException(message)
 class DineInMenuItemSoldOutException(message: String) : RuntimeException(message)
+class DineInMenuItemSurplusDealExpiredException(message: String) : RuntimeException(message)
 class DineInRestaurantNotFoundException(message: String) : RuntimeException(message)
 class DineInRestaurantNoWalletException(message: String) : RuntimeException(message)
 class DineInBuyerNoWalletException(message: String) : RuntimeException(message)
@@ -144,6 +145,13 @@ class DineInOrderService(
             // identical check for the full reasoning.
             if (menuItem.soldOut) {
                 throw DineInMenuItemSoldOutException("${menuItem.name} is temporarily sold out")
+            }
+            // Real 마감할인 (closing/surplus discount) expiry enforcement -- see
+            // MerchantProduct.isSurplusDeal/surplusExpiresAt's own doc comment and
+            // commerce's OrderService.placeOrder / EatsOrderService.placeOrder's
+            // identical fix/reasoning for the same shared MerchantProduct catalog.
+            if (menuItem.isSurplusDeal && menuItem.surplusExpiresAt?.isAfter(Instant.now()) == false) {
+                throw DineInMenuItemSurplusDealExpiredException("${menuItem.name}'s closing deal has expired")
             }
 
             val groups = groupsByProduct[menuItem.id] ?: emptyList()

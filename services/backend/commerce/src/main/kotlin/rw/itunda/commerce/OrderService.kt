@@ -58,6 +58,7 @@ class DeliveryAlreadyClaimedException(message: String) : RuntimeException(messag
 class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
 class InsufficientProductStockException(message: String) : RuntimeException(message)
 class ProductSoldOutException(message: String) : RuntimeException(message)
+class SurplusDealExpiredException(message: String) : RuntimeException(message)
 
 data class OrderItemRequest(val productId: String, val quantity: Int)
 data class OrderDetail(val order: Order, val items: List<OrderItem>)
@@ -185,6 +186,23 @@ class OrderService(
             // shortage, or have no stockQuantity tracking at all).
             if (product.soldOut) {
                 throw ProductSoldOutException("${product.name} is temporarily sold out")
+            }
+            // Real 마감할인 (closing/surplus discount) expiry enforcement -- see
+            // MerchantProduct.isSurplusDeal/surplusExpiresAt's own doc comment and
+            // MerchantProductRepository.findSurplusDeals' browse query, which already
+            // correctly hides an expired closing deal from the surplus-deals rail. That
+            // browse-time filter is a read-path check only, though -- nothing in this
+            // checkout path, the one place that actually moves money, ever re-checked
+            // `surplusExpiresAt` before now. A buyer with a cached product page, a deep
+            // link opened before closing time, or a direct API call could keep buying an
+            // expired closing-time sale at its discounted price indefinitely, exactly the
+            // same "real flag that displays correctly but isn't enforced where it counts"
+            // gap `soldOut` had until this same session's own earlier fix. Same
+            // "distinct real exception, not a misleading 404" discipline as that fix: the
+            // product still exists and is still shown, it's just past its own declared
+            // closing time.
+            if (product.isSurplusDeal && product.surplusExpiresAt?.isAfter(now) == false) {
+                throw SurplusDealExpiredException("${product.name}'s closing deal has expired")
             }
             // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDeal.kt's own doc
             // comment. A real active deal with enough remaining quantity for this whole

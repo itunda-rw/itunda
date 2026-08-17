@@ -57,6 +57,7 @@ class InvalidEatsDeliveryAddressException(message: String) : RuntimeException(me
 class InvalidEatsQuantityException(message: String) : RuntimeException(message)
 class MenuItemNotFoundException(message: String) : RuntimeException(message)
 class MenuItemSoldOutException(message: String) : RuntimeException(message)
+class MenuItemSurplusDealExpiredException(message: String) : RuntimeException(message)
 class SelfEatsOrderException(message: String) : RuntimeException(message)
 class RestaurantNotAcceptingOrdersException(message: String) : RuntimeException(message)
 class EatsOrderNotFoundException(message: String) : RuntimeException(message)
@@ -392,6 +393,15 @@ class EatsOrderService(
             // why the order failed.
             if (menuItem.soldOut) {
                 throw MenuItemSoldOutException("${menuItem.name} is temporarily sold out")
+            }
+            // Real 마감할인 (closing/surplus discount) expiry enforcement -- see
+            // MerchantProduct.isSurplusDeal/surplusExpiresAt's own doc comment and
+            // commerce's OrderService.placeOrder's identical fix/reasoning: the
+            // Commerce browse rail already hides an expired closing deal, but nothing
+            // in this Eats checkout path (the same shared MerchantProduct catalog,
+            // used here as menu items) ever re-checked `surplusExpiresAt` before now.
+            if (menuItem.isSurplusDeal && menuItem.surplusExpiresAt?.isAfter(Instant.now()) == false) {
+                throw MenuItemSurplusDealExpiredException("${menuItem.name}'s closing deal has expired")
             }
 
             val groups = groupsByProduct[menuItem.id] ?: emptyList()
