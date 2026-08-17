@@ -35,6 +35,7 @@ import rw.itunda.core.web.ApiError
 data class CreateProductSubscriptionRequest(
     val merchantId: String, val productId: String, val quantity: Int, val intervalDays: Int, val deliveryAddress: String,
 )
+data class UpdateProductSubscriptionRequest(val quantity: Int? = null, val intervalDays: Int? = null)
 
 // Real Coupang 정기배송 (subscribe & save)-style recurring product delivery -- see
 // ProductSubscriptionService's own doc comment for the full sourced account.
@@ -81,6 +82,16 @@ class ProductSubscriptionController(
     @PostMapping("/{id}/skip-next")
     fun skipNext(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "subscription" to productSubscriptionService.skipNext(currentUser.userId, id)))
+
+    // Real Coupang 정기배송 수량/주기 변경 -- see
+    // ProductSubscriptionService.updateSubscription's own doc comment.
+    @PostMapping("/{id}/update")
+    fun update(
+        @PathVariable id: String,
+        @RequestBody request: UpdateProductSubscriptionRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "subscription" to productSubscriptionService.updateSubscription(currentUser.userId, id, request.quantity, request.intervalDays)))
 
     @ExceptionHandler(ProductSubscriptionNotFoundException::class)
     fun handleNotFound(ex: ProductSubscriptionNotFoundException) =

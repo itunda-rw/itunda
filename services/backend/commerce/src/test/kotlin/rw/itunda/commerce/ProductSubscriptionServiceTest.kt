@@ -252,6 +252,61 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("the customer updates quantity and interval on a real subscription") {
+            every { productSubscriptionRepository.findByIdAndCustomerId("productsub_2", "customer_1") } returns subscription
+
+            val result = service.updateSubscription("customer_1", "productsub_2", quantity = 3, intervalDays = 14)
+
+            Then("the real Coupang 정기배송 수량/주기 변경 behavior: quantity/interval change, but nextDeliveryAt is untouched -- the already-queued round still ships as originally scheduled") {
+                result.quantity shouldBe 3
+                result.intervalDays shouldBe 14
+                result.nextDeliveryAt shouldBe originalNextDeliveryAt
+                verify(exactly = 1) { productSubscriptionRepository.save(subscription) }
+            }
+        }
+
+        When("updating with neither quantity nor intervalDays provided") {
+            Then("it's rejected before any lookup") {
+                try {
+                    service.updateSubscription("customer_1", "productsub_2", quantity = null, intervalDays = null)
+                    error("expected InvalidProductSubscriptionException")
+                } catch (e: InvalidProductSubscriptionException) {
+                    verify(exactly = 0) { productSubscriptionRepository.findByIdAndCustomerId(any(), any()) }
+                }
+            }
+        }
+
+        When("updating with a non-positive quantity or an interval beyond Coupang's own real 6-month ceiling") {
+            Then("both are rejected before any lookup") {
+                try {
+                    service.updateSubscription("customer_1", "productsub_2", quantity = 0, intervalDays = null)
+                    error("expected InvalidProductSubscriptionException")
+                } catch (e: InvalidProductSubscriptionException) {
+                    // expected
+                }
+                try {
+                    service.updateSubscription("customer_1", "productsub_2", quantity = null, intervalDays = 181)
+                    error("expected InvalidProductSubscriptionException")
+                } catch (e: InvalidProductSubscriptionException) {
+                    // expected
+                }
+                verify(exactly = 0) { productSubscriptionRepository.findByIdAndCustomerId(any(), any()) }
+            }
+        }
+
+        When("updating a subscription that belongs to a different customer or doesn't exist") {
+            every { productSubscriptionRepository.findByIdAndCustomerId("productsub_2", "customer_1") } returns null
+
+            Then("it throws ProductSubscriptionNotFoundException -- the same real-vs-fake IDOR discipline every other lookup here uses") {
+                try {
+                    service.updateSubscription("customer_1", "productsub_2", quantity = 2, intervalDays = null)
+                    error("expected ProductSubscriptionNotFoundException")
+                } catch (e: ProductSubscriptionNotFoundException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("the transaction-boundary fix for the scheduler's per-row delivery loop") {

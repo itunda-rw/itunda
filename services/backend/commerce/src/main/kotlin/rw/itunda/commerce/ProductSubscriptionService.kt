@@ -133,6 +133,35 @@ class ProductSubscriptionService(
         return productSubscriptionRepository.save(subscription)
     }
 
+    // Real Coupang 정기배송 수량/주기 변경 -- sourced from Coupang's own real 마이쿠팡 >
+    // 정기배송관리 > 상세변경 flow: separate from `skipNext` above, a customer can update
+    // how much and how often a subscription delivers going forward (e.g. bumped from a
+    // single roll of paper towels to a 2-pack, or stretched a too-frequent weekly
+    // delivery out to biweekly) without cancelling and re-subscribing. Deliberately does
+    // NOT touch `nextDeliveryAt` -- the already-scheduled upcoming round still fires on
+    // its existing date at the OLD quantity/interval (matching the real product: editing
+    // 정기배송관리 changes what ships from the *next* cycle onward, not the one already
+    // queued); a new `intervalDays` only takes effect starting from whichever real
+    // schedule-advancing call (`executeOne`/`skipNext`) runs next. Allowed regardless of
+    // `status` -- unlike `skipNext` (which only makes sense against an active, currently
+    // due delivery), updating stored preferences on a paused subscription is a real,
+    // reasonable thing to do before resuming it.
+    fun updateSubscription(customerId: String, id: String, quantity: Int?, intervalDays: Int?): ProductSubscription {
+        if (quantity == null && intervalDays == null) {
+            throw InvalidProductSubscriptionException("Provide a new quantity, intervalDays, or both")
+        }
+        if (quantity != null && quantity <= 0) {
+            throw InvalidProductSubscriptionException("Quantity must be greater than zero")
+        }
+        if (intervalDays != null && (intervalDays < 1 || intervalDays > MAX_INTERVAL_DAYS)) {
+            throw InvalidProductSubscriptionException("Interval must be between 1 and $MAX_INTERVAL_DAYS days")
+        }
+        val subscription = productSubscriptionRepository.findByIdAndCustomerId(id, customerId) ?: throw ProductSubscriptionNotFoundException("Subscription not found")
+        if (quantity != null) subscription.quantity = quantity
+        if (intervalDays != null) subscription.intervalDays = intervalDays
+        return productSubscriptionRepository.save(subscription)
+    }
+
     fun getDueForExecution(): List<ProductSubscription> =
         productSubscriptionRepository.findByStatusAndNextDeliveryAtLessThanEqual(ProductSubscriptionStatus.ACTIVE, Instant.now())
 
