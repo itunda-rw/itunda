@@ -20,6 +20,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
@@ -114,6 +115,7 @@ class RideTripService(
     private val rateLimiter: RateLimiter,
     private val pushNotificationService: PushNotificationService,
     private val messagingService: MessagingService,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     companion object {
         private val platformFeeRate = BigDecimal("0.015")
@@ -264,6 +266,12 @@ class RideTripService(
             description = "Ride requested",
             completedAt = Instant.now(),
         )
+        // Real, sourced follow-up named in FraudRuleEngine's own doc comment: a ride
+        // fare hold is a real money-leaving-account flow. recipientUserId is null --
+        // no driver has been matched yet at request time (dispatch happens after), same
+        // shape as BillsService's external-recipient payments, so only HIGH_VALUE/
+        // VELOCITY apply here, not NEW_RECIPIENT.
+        fraudRuleEngine.evaluate(passengerId, null, fare, holdResult.transactionId)
         transactionRepository.save(holdTransaction)
 
         val trip = rideTripRepository.save(

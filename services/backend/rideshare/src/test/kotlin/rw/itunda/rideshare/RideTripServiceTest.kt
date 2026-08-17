@@ -54,9 +54,10 @@ class RideTripServiceTest : BehaviorSpec({
         rateLimiter: RateLimiter = mockk(relaxed = true),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         messagingService: rw.itunda.messaging.MessagingService = mockk(relaxed = true),
+        fraudRuleEngine: rw.itunda.core.fraud.FraudRuleEngine = mockk(relaxed = true),
     ) = RideTripService(
         rideDriverRepository, rideTripRepository, rideTripStopRepository, walletRepository, ledgerService,
-        transactionRepository, notificationRepository, rateLimiter, pushNotificationService, messagingService,
+        transactionRepository, notificationRepository, rateLimiter, pushNotificationService, messagingService, fraudRuleEngine,
     )
 
     Given("a real passenger with sufficient balance and one real nearby driver") {
@@ -67,10 +68,11 @@ class RideTripServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val fraudRuleEngine = mockk<rw.itunda.core.fraud.FraudRuleEngine>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
             walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
-            pushNotificationService = pushNotificationService,
+            pushNotificationService = pushNotificationService, fraudRuleEngine = fraudRuleEngine,
         )
 
         val passengerWallet = Wallet(
@@ -105,6 +107,13 @@ class RideTripServiceTest : BehaviorSpec({
 
             Then("the offered driver also gets a real push notification, not just the in-app one -- critical given the 15-second window") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("driver_user_1", "New ride request", any(), any()) }
+            }
+
+            // Real gap closed 2026-08-17 -- see FraudRuleEngine's own doc comment:
+            // ride/driver payouts were a named, honestly-noted-but-unwired gap.
+            // recipientUserId is null -- no driver is matched yet at request time.
+            Then("the real fraud engine is evaluated against the passenger and the real fare before the transaction is saved") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("passenger_1", null, result.fare, "ledgertxn_1") }
             }
         }
 

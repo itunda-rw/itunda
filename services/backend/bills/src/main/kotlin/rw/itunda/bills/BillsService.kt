@@ -13,6 +13,7 @@ import rw.itunda.core.events.PaymentProviderFailedEvent
 import rw.itunda.core.events.PaymentProviderSucceededEvent
 import rw.itunda.core.events.TOPIC_PAYMENT_PROVIDER_FAILED
 import rw.itunda.core.events.TOPIC_PAYMENT_PROVIDER_SUCCEEDED
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
@@ -60,6 +61,7 @@ class BillsService(
     private val eventPublisher: EventPublisher,
     private val transactionRepository: TransactionRepository,
     private val billAutoPaySettingRepository: BillAutoPaySettingRepository,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     fun getProviders() = BillsCatalog.providers
     fun getPendingBills() = BillsCatalog.pendingBills
@@ -135,6 +137,12 @@ class BillsService(
         val referenceNumber = "BILL${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}"
         val completedAt = Instant.now()
         val description = "Bill payment - $billId${accountNumber?.let { " ($it)" } ?: ""}"
+        // Real, sourced follow-up named in FraudRuleEngine's own doc comment: a
+        // bill-provider payment is a real money-leaving-account flow, same
+        // evaluate-before-save ordering every other real caller already establishes.
+        // recipientUserId is null -- a bill provider is an external biller, not an
+        // itunda user, so NEW_RECIPIENT never fires here, only HIGH_VALUE/VELOCITY.
+        fraudRuleEngine.evaluate(userId, null, amount, result.transactionId)
         transactionRepository.save(
             Transaction(
                 id = result.transactionId,
@@ -193,6 +201,9 @@ class BillsService(
         val referenceNumber = "AIR${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}"
         val completedAt = Instant.now()
         val description = "${provider ?: "MTN"} Airtime - $phoneNumber"
+        // Same real fraud-coverage follow-up as payBill above, same shape (external
+        // recipient, no itunda user to check NEW_RECIPIENT against).
+        fraudRuleEngine.evaluate(userId, null, amount, result.transactionId)
         transactionRepository.save(
             Transaction(
                 id = result.transactionId,

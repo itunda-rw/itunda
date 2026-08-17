@@ -12,6 +12,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.events.EventPublisher
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
@@ -45,7 +46,8 @@ class BillsServiceTest : BehaviorSpec({
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>()
         val billAutoPaySettingRepository = mockk<BillAutoPaySettingRepository>()
-        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
         // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
@@ -71,6 +73,13 @@ class BillsServiceTest : BehaviorSpec({
                 }
                 result["status"] shouldBe "COMPLETED"
                 result["id"] shouldBe "ledgertxn_1"
+            }
+
+            // Real gap closed 2026-08-17 -- see FraudRuleEngine's own doc comment:
+            // bill-provider payments were a named, honestly-noted-but-unwired gap.
+            // recipientUserId is null -- a bill provider isn't an itunda user.
+            Then("the real fraud engine is evaluated with a null recipient before the transaction is saved") {
+                verify(exactly = 1) { fraudRuleEngine.evaluate("user_1", null, BigDecimal("35000"), "ledgertxn_1") }
             }
         }
 
@@ -119,7 +128,8 @@ class BillsServiceTest : BehaviorSpec({
         val billAutoPaySettingRepository = mockk<BillAutoPaySettingRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
         val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service, notificationRepository, pushNotificationService)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()

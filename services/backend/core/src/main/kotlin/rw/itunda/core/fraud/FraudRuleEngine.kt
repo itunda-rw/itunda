@@ -48,11 +48,15 @@ data class FraudPolicySnapshot(
  * (docs/DESIGN_REFERENCES.md §14 recommendation #4) after a validation pass found they
  * were real money-to-a-named-recipient flows, the exact shape this engine's
  * new-recipient/velocity rules exist to catch, that had simply never been wired in.
- * Not yet covered, honestly noted rather than silently skipped: marketplace-seller
- * payments, bill-provider payments, and ride/driver payouts -- a different actor
- * category (paying a business/service-provider, not a peer chosen by phone number/
- * contact), lower-confidence fit for these specific heuristics, left as a real,
- * named follow-up rather than assumed out of scope.
+ * 2026-08-17: the three previously-named gaps are now wired in too --
+ * MarketplaceService.payEscrow (marketplace-seller payment), BillsService.payBill/
+ * buyAirtime (bill-provider payment, airtime purchase), and RideTripService
+ * .requestTrip (ride fare hold, evaluated at the real money-leaving-account moment
+ * since no driver is matched yet at request time). All three pass `recipientUserId
+ * = null` where the counterparty isn't an itunda user (bill providers, ride escrow)
+ * or the seller's real userId where it is (marketplace) -- NEW_RECIPIENT only ever
+ * fires for a real chosen itunda-user recipient, HIGH_VALUE/VELOCITY apply
+ * regardless.
  */
 @Service
 class FraudRuleEngine(

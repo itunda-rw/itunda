@@ -17,6 +17,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
@@ -79,6 +80,7 @@ class MarketplaceService(
     private val transactionRepository: TransactionRepository,
     private val marketplaceEscrowRepository: MarketplaceEscrowRepository,
     private val listingLikeRepository: ListingLikeRepository,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     companion object {
         // Bounds a single OSRM /table request's URL length and the private cloud's
@@ -448,6 +450,11 @@ class MarketplaceService(
                 LedgerLeg("marketplace_escrow_holding", LedgerAccountType.MARKETPLACE_ESCROW_HOLDING, LedgerDirection.CREDIT, listing.price, "Escrow held - ${listing.title}"),
             ),
         )
+        // Real, sourced follow-up named in FraudRuleEngine's own doc comment: a
+        // marketplace-seller payment is a real money-to-a-named-recipient flow, same
+        // evaluate-before-save ordering OrderService/P2pService/MerchantService already
+        // establish.
+        fraudRuleEngine.evaluate(buyerId, seller.id, listing.price, result.transactionId)
         transactionRepository.save(
             Transaction(
                 id = result.transactionId,
