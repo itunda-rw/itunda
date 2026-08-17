@@ -8393,3 +8393,26 @@ balance in wallet_f707a497-... We'll try again next time."`
 
 **Still open**: the identical gap remains in `AutoTransferService`, `ScheduledTransferService`, and
 `MerchantBillingService`.
+
+## 133. Toss Payments-style auto-transfer failure alert (Sections 131/132 pattern, extended)
+
+**Added 2026-08-17.** Extends the same real, sourced Toss Payments billing-failure notification
+pattern to the second of the four flagged follow-ups: `AutoTransferService.executeOne` (P2P
+recurring transfers).
+
+**Built**: `notifyTransferFailed` sends a real `Notification` + push (`AUTO_TRANSFER_FAILED`) when
+a real auto-transfer attempt fails, wrapped in its own try/catch. Safe by construction --
+`executeOne` is already NOT `@Transactional` (its own Section 129 fix), so no ambient transaction
+exists to be poisoned by a failing notification save. 2 new/updated Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a fresh
+sender with a genuine `0` MAIN wallet balance, created a real `AutoTransfer` (500 RWF, weekly, to
+the seeded demo user). Backdating `next_execution_at` and letting a real ~30s
+`AutoTransferScheduler` poll run produced a real DB row with `last_failure_reason: 'Insufficient
+balance'`, `execution_count` unchanged at `0`, and `next_execution_at` correctly advanced 7 real
+days. `GET /notifications` confirmed a real `AUTO_TRANSFER_FAILED` notification with the exact
+expected content: `"Auto-transfer failed"` / `"We couldn't send your auto-transfer to Jean
+Baptiste: Insufficient balance. We'll try again next cycle."`
+
+**Still open**: the identical gap remains in `ScheduledTransferService` and
+`MerchantBillingService`.
