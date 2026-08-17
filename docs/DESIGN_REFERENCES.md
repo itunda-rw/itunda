@@ -9817,3 +9817,26 @@ syntax-only ceiling for that App-target-only file.
 
 Per this task's own scope, no live-server click-through verification or deploy was attempted here
 -- that's reserved for the coordinating session.
+
+**Coordinator re-verification and deploy**: independently re-ran all five verification claims
+before deploying -- `:stocks:test --rerun-tasks` genuinely re-executed (real XML confirms
+33 tests/0 failures/0 errors), `yarn workspace bank-mfe run build` clean after touching both
+changed files, a forced (`touch` + `--rerun-tasks`) Android rebuild -> `BUILD SUCCESSFUL`
+435/435 tasks executed, `xcodebuild` on `CoreNetwork` genuinely re-ran -> `** BUILD SUCCEEDED **`,
+and `swiftc -parse` on `InvestScreenView.swift` re-ran clean. Also manually cross-checked the new
+`GET /price-alert` response field names and the existing `POST`/`DELETE` request/response shapes
+directly against `StocksController.kt`/`StockWatchlist.kt` -- all three clients' DTOs matched
+exactly.
+
+Built and deployed `192.168.252.4:32000/itunda/backend:2026-08-18-stock-price-alert` to the real
+cluster; rollout completed cleanly. **Live-verified** against the real deployed backend: the new
+`GET /api/v1/stocks/{id}/price-alert` correctly returns all-null before any alert exists, and the
+real values after a real `POST` (confirmed via direct curl), reverting to null after a real
+`DELETE` -- proving the new read path is wired correctly end to end. Also live-verified the
+bank-mfe UI via headless Chrome + raw CDP: opened the real Bank of Kigali (BOK, stock `s1`) detail
+sheet, clicked "Set a price alert," entered a real target price (650 RWF, above), submitted --
+confirmed via real `Network.responseReceived` events (`POST .../price-alert` -> 200) and a
+screenshot showing "Alert set: notify when ≥ 650 RWF" with a "Remove" button (setting an alert
+also auto-added the stock to the watchlist, shown by the now-filled gold star, matching the
+client code's `if (!watching) setWatching(true)` behavior). Clicked "Remove" -- confirmed via a
+real `DELETE .../price-alert` -> 200 and the UI correctly reverting to "Set a price alert."
