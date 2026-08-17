@@ -73,6 +73,14 @@ class PostpaidCreditLine(
     @Column(name = "last_late_fee_accrual_at")
     var lastLateFeeAccrualAt: Instant? = null,
 
+    // Real Naver Pay/Kakao Pay 후불결제 "결제 예정일이 다가와요" payment-due-soon push --
+    // see PostpaidCreditService.getLinesDueSoonForPaymentReminder's own doc comment.
+    // Set once a reminder fires for the CURRENT open cycle, cleared alongside
+    // cycleDueAt/lastLateFeeAccrualAt once fully repaid, so the next cycle gets its own
+    // fresh reminder rather than staying permanently silenced.
+    @Column(name = "payment_reminder_sent_at")
+    var paymentReminderSentAt: Instant? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 

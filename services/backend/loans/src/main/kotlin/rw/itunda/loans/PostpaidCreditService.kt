@@ -5,11 +5,14 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PostpaidCreditLine
 import rw.itunda.core.domain.PostpaidCreditLineStatus
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PostpaidCreditLineRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -36,6 +39,8 @@ class PostpaidCreditService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val creditScoreService: CreditScoreService,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // Real BNPL's own defining market position: every registered account
@@ -66,6 +71,15 @@ class PostpaidCreditService(
         // any nonzero drawn balance.
         const val LATE_FEE_ANNUAL_RATE = 12.0
         val BILLING_CYCLE: Duration = Duration.ofDays(30)
+
+        // Real Naver Pay/Kakao Pay 후불결제 own "결제 예정일이 다가와요" (payment due date
+        // approaching) push -- both real products notify a few days ahead of the real
+        // settlement date, distinct from (and strictly earlier than)
+        // PostpaidCreditAccrualScheduler's own late-fee accrual, which only ever fires
+        // AFTER cycleDueAt has already passed. Same real 3-day window this codebase's
+        // other pre-deadline reminders (VupLoanService.getLoansDueSoonForReminder,
+        // MerchantCouponService.EXPIRY_REMINDER_WINDOW) already use.
+        val PAYMENT_REMINDER_WINDOW: Duration = Duration.ofDays(3)
     }
 
     private fun tierLimit(score: Int): BigDecimal =
@@ -157,6 +171,7 @@ class PostpaidCreditService(
         if (line.currentBalance <= BigDecimal.ZERO) {
             line.cycleDueAt = null
             line.lastLateFeeAccrualAt = null
+            line.paymentReminderSentAt = null
             line.status = PostpaidCreditLineStatus.ACTIVE
         }
         line.updatedAt = Instant.now()
@@ -205,6 +220,45 @@ class PostpaidCreditService(
         line.status = PostpaidCreditLineStatus.SUSPENDED
         line.lastLateFeeAccrualAt = Instant.now()
         line.updatedAt = Instant.now()
+        postpaidCreditLineRepository.save(line)
+    }
+
+    // Real pre-due payment reminder sweep -- see PostpaidCreditPaymentReminderScheduler's
+    // own doc comment and PAYMENT_REMINDER_WINDOW's own doc comment for the full real
+    // sourcing. Coarse repo filter (every real nonzero balance, same repo query
+    // getLinesOverdueForLateFee already reuses), exact "due soon, not yet reminded"
+    // condition in-service. Deliberately does NOT overlap with the already-overdue case
+    // (cycleDueAt in the past is left to PostpaidCreditAccrualScheduler's own late-fee
+    // sweep) -- this is honestly the earlier, friendlier nudge, not a duplicate of it.
+    fun getLinesDueSoonForPaymentReminder(): List<PostpaidCreditLine> {
+        val now = Instant.now()
+        val cutoff = now.plus(PAYMENT_REMINDER_WINDOW)
+        return postpaidCreditLineRepository.findByCurrentBalanceGreaterThan(BigDecimal.ZERO).filter { line ->
+            line.paymentReminderSentAt == null && line.cycleDueAt != null &&
+                !line.cycleDueAt!!.isBefore(now) && !line.cycleDueAt!!.isAfter(cutoff)
+        }
+    }
+
+    /** One real payment-due-soon notification, called per-line by the scheduler --
+     * re-checks `paymentReminderSentAt`/`currentBalance`/`cycleDueAt` right before sending
+     * so a genuine race (e.g. a real repay() clearing the cycle mid-sweep) can't fire a
+     * stale reminder, same resilience discipline sendExpiryReminder's own doc comment
+     * already establishes. */
+    @Transactional
+    fun sendPaymentReminder(lineId: String) {
+        val line = postpaidCreditLineRepository.findById(lineId).orElse(null) ?: return
+        if (line.paymentReminderSentAt != null || line.currentBalance <= BigDecimal.ZERO || line.cycleDueAt == null) return
+
+        val title = "Your postpaid credit payment is due soon"
+        val body = "Your postpaid credit balance of ${line.currentBalance} RWF is due ${line.cycleDueAt}. Repay from the Loans tab before then to avoid a late fee."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = line.userId, type = "POSTPAID_CREDIT_PAYMENT_DUE_SOON",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"lineId\":\"${line.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(line.userId, title, body, mapOf("lineId" to line.id))
+        line.paymentReminderSentAt = Instant.now()
         postpaidCreditLineRepository.save(line)
     }
 }

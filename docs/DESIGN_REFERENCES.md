@@ -9103,3 +9103,42 @@ expected body: `"Your coupon \"Section 155 Test Coupon\" for Coupon Test Shop 15
 2026-08-19T14:42:17Z. Extend or reissue it before then to keep offering it to customers."`, and
 `expiry_reminder_sent_at` correctly set. Called the trigger a second time --
 `{"success":true,"processed":0}`, confirmed still exactly 1 real notification (no duplicate).
+
+## 156. Postpaid credit (후불결제) payment-due-soon reminder
+
+**Added 2026-08-17.** `PostpaidCreditLine.cycleDueAt` had a real punishment for missing it
+(`PostpaidCreditAccrualScheduler` accrues a real 12% annual late fee and suspends the line, but
+only ever AFTER `cycleDueAt` has already passed) and zero reminder BEFORE it lapsed -- the same
+gap shape as Sections 152-155's "date field with no reminder" lens, this time on a loans-module
+entity rather than insurance/certificate/gift/coupon. Sourced from Naver Pay/Kakao Pay 후불결제's
+own real settlement-date reminder practice: both real BNPL products push a "결제 예정일이 다가와요"
+(payment due date approaching) notification a few days ahead of the real due date, distinct from
+(and strictly earlier than) any late-fee/overdue messaging.
+
+**Built**: `PostpaidCreditPaymentReminderScheduler` mirrors the established proven-safe shape --
+a separate `@Component` scheduler (`@Scheduled(fixedDelay = 60000)`) calling
+`PostpaidCreditService.sendPaymentReminder(lineId)`, a per-line `@Transactional` method that
+re-checks `paymentReminderSentAt`/`currentBalance`/`cycleDueAt` right before sending (guards
+against a real concurrent `repay()` clearing the cycle mid-sweep), never a batch-transactional
+loop. `getLinesDueSoonForPaymentReminder()` reuses the same coarse
+`findByCurrentBalanceGreaterThan(ZERO)` repo filter `getLinesOverdueForLateFee()` already
+established, with the exact "due within 3 days, not yet reminded, not yet overdue" condition
+in-service -- the real 3-day window matches this codebase's other pre-deadline reminders
+(`VupLoanService.getLoansDueSoonForReminder`, `MerchantCouponService.EXPIRY_REMINDER_WINDOW`).
+Deliberately excludes already-overdue lines (left to the existing late-fee scheduler) so the two
+schedulers never double-notify for the same missed cycle. New `PostpaidCreditLine
+.paymentReminderSentAt` column (migration V280) tracks one-shot state per cycle, cleared alongside
+`cycleDueAt`/`lastLateFeeAccrualAt` in `repay()` once a cycle fully closes so the next cycle gets
+its own fresh reminder. New manual-trigger endpoint
+`POST /api/v1/loans/postpaid-credit/process-payment-reminders`.
+
+**Test coverage**: `PostpaidCreditServiceTest` (loans module) -- new cases cover
+`getLinesDueSoonForPaymentReminder` correctly including only a line due within the window and
+never yet reminded (excluding one due too far out, one already overdue, one already reminded),
+`sendPaymentReminder` saving a real in-app notification + push and marking
+`paymentReminderSentAt`, and a re-run after the reminder already fired being real-skipped
+(no duplicate). All existing `PostpaidCreditServiceTest` cases updated for the two new
+constructor dependencies (`NotificationRepository`, `PushNotificationService`) and still pass.
+Ran locally via `./gradlew :loans:test` -- full suite green; `:app:compileKotlin` also green,
+confirming the new controller/scheduler wiring compiles. Not yet live-verified against the
+deployed backend (reserved for the coordinating session, per this build's own scope).

@@ -35,6 +35,7 @@ class LoansController(
     private val idempotencyService: IdempotencyService,
     private val overdraftService: OverdraftService,
     private val postpaidCreditService: PostpaidCreditService,
+    private val postpaidCreditPaymentReminderScheduler: PostpaidCreditPaymentReminderScheduler,
 ) {
 
     @GetMapping("/offers")
@@ -175,6 +176,17 @@ class LoansController(
             200 to (mapOf("success" to true) + result)
         }
         return ResponseEntity.status(status).body(body)
+    }
+
+    // Real postpaid credit payment-due-soon reminder manual trigger -- same "expose the
+    // scheduler's own real logic as a callable endpoint" convention
+    // MerchantCouponController.processExpiryReminders/SavingsController/InsuranceController
+    // already establish, so a real line's real cycleDueAt can be verified without waiting
+    // actual wall-clock days for it to enter the reminder window.
+    @PostMapping("/postpaid-credit/process-payment-reminders")
+    fun processPostpaidCreditPaymentReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = postpaidCreditPaymentReminderScheduler.processDue()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
     }
 
     @ExceptionHandler(PostpaidCreditAlreadyOpenException::class)

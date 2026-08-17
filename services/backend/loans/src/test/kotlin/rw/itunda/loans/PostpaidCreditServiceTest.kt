@@ -3,13 +3,16 @@ package rw.itunda.loans
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import rw.itunda.core.creditscore.CreditScoreResult
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PostpaidCreditLine
 import rw.itunda.core.domain.PostpaidCreditLineStatus
 import rw.itunda.core.domain.Wallet
@@ -17,6 +20,8 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PostpaidCreditLineRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -41,7 +46,12 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
-        val service = PostpaidCreditService(postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService,
+        )
 
         every { postpaidCreditLineRepository.findByUserId("user_1") } returns null
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
@@ -76,7 +86,12 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
-        val service = PostpaidCreditService(postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService,
+        )
 
         every { postpaidCreditLineRepository.findByUserId("user_1") } returns
             PostpaidCreditLine(id = "postpaid_1", userId = "user_1", walletId = "wallet_1", creditLimit = BigDecimal("100000"))
@@ -98,7 +113,12 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
-        val service = PostpaidCreditService(postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService,
+        )
 
         val line = PostpaidCreditLine(id = "postpaid_1", userId = "user_1", walletId = "wallet_1", creditLimit = BigDecimal("100000"))
         every { postpaidCreditLineRepository.findByUserId("user_1") } returns line
@@ -167,7 +187,12 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
-        val service = PostpaidCreditService(postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService,
+        )
 
         val line = PostpaidCreditLine(
             id = "postpaid_1", userId = "user_1", walletId = "wallet_1", creditLimit = BigDecimal("100000"),
@@ -192,7 +217,12 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
-        val service = PostpaidCreditService(postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService,
+        )
 
         val line = PostpaidCreditLine(
             id = "postpaid_1", userId = "user_1", walletId = "wallet_1", creditLimit = BigDecimal("100000"),
@@ -222,7 +252,12 @@ class PostpaidCreditServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
-        val service = PostpaidCreditService(postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService,
+        )
 
         val overdue = PostpaidCreditLine(id = "postpaid_a", userId = "user_a", walletId = "wallet_a", creditLimit = BigDecimal("100000"), currentBalance = BigDecimal("10000"), cycleDueAt = Instant.now().minusSeconds(3600))
         val notYetDue = PostpaidCreditLine(id = "postpaid_b", userId = "user_b", walletId = "wallet_b", creditLimit = BigDecimal("100000"), currentBalance = BigDecimal("10000"), cycleDueAt = Instant.now().plusSeconds(3600))
@@ -234,6 +269,77 @@ class PostpaidCreditServiceTest : BehaviorSpec({
 
             Then("it real-includes only the real-overdue, never-yet-accrued line -- honestly excluding one not yet due and one too-recently accrued") {
                 due shouldBe listOf(overdue)
+            }
+        }
+    }
+
+    Given("real postpaid credit lines of every real shape, checking which are due for a real pre-due payment reminder") {
+        val postpaidCreditLineRepository = mockk<PostpaidCreditLineRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val creditScoreService = mockk<CreditScoreService>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService,
+        )
+
+        val dueSoon = PostpaidCreditLine(id = "postpaid_a", userId = "user_a", walletId = "wallet_a", creditLimit = BigDecimal("100000"), currentBalance = BigDecimal("10000"), cycleDueAt = Instant.now().plus(java.time.Duration.ofDays(2)))
+        val notYetDueSoon = PostpaidCreditLine(id = "postpaid_b", userId = "user_b", walletId = "wallet_b", creditLimit = BigDecimal("100000"), currentBalance = BigDecimal("10000"), cycleDueAt = Instant.now().plus(java.time.Duration.ofDays(10)))
+        val alreadyOverdue = PostpaidCreditLine(id = "postpaid_c", userId = "user_c", walletId = "wallet_c", creditLimit = BigDecimal("100000"), currentBalance = BigDecimal("10000"), cycleDueAt = Instant.now().minusSeconds(3600))
+        val alreadyReminded = PostpaidCreditLine(id = "postpaid_d", userId = "user_d", walletId = "wallet_d", creditLimit = BigDecimal("100000"), currentBalance = BigDecimal("10000"), cycleDueAt = Instant.now().plus(java.time.Duration.ofDays(1)), paymentReminderSentAt = Instant.now())
+        every { postpaidCreditLineRepository.findByCurrentBalanceGreaterThan(BigDecimal.ZERO) } returns listOf(dueSoon, notYetDueSoon, alreadyOverdue, alreadyReminded)
+
+        When("getLinesDueSoonForPaymentReminder runs") {
+            val due = service.getLinesDueSoonForPaymentReminder()
+
+            Then("it real-includes only the real line due within the 3-day window, never yet reminded -- honestly excluding one due too far out, one already overdue (left to the late-fee sweep instead), and one already reminded") {
+                due shouldBe listOf(dueSoon)
+            }
+        }
+    }
+
+    Given("a real postpaid credit line real due soon, sending its real payment reminder") {
+        val postpaidCreditLineRepository = mockk<PostpaidCreditLineRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val creditScoreService = mockk<CreditScoreService>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>()
+        val service = PostpaidCreditService(
+            postpaidCreditLineRepository, walletRepository, ledgerService, creditScoreService,
+            notificationRepository, pushNotificationService,
+        )
+
+        val line = PostpaidCreditLine(
+            id = "postpaid_1", userId = "user_1", walletId = "wallet_1", creditLimit = BigDecimal("100000"),
+            currentBalance = BigDecimal("30000"), cycleDueAt = Instant.now().plus(java.time.Duration.ofDays(2)),
+        )
+        every { postpaidCreditLineRepository.findById("postpaid_1") } returns Optional.of(line)
+        every { postpaidCreditLineRepository.save(any()) } answers { firstArg() }
+        val notifSlot = slot<Notification>()
+        every { notificationRepository.save(capture(notifSlot)) } answers { firstArg() }
+        every { pushNotificationService.sendToUser(any(), any(), any(), any()) } returns Unit
+
+        When("sendPaymentReminder runs") {
+            service.sendPaymentReminder("postpaid_1")
+
+            Then("it real-saves an in-app notification, real-sends a push, and real-marks paymentReminderSentAt so a re-run can't double-fire") {
+                line.paymentReminderSentAt shouldNotBe null
+                notifSlot.captured.type shouldBe "POSTPAID_CREDIT_PAYMENT_DUE_SOON"
+                notifSlot.captured.userId shouldBe "user_1"
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
+            }
+        }
+
+        When("sendPaymentReminder is called again after the reminder already fired") {
+            line.paymentReminderSentAt = Instant.now()
+
+            service.sendPaymentReminder("postpaid_1")
+
+            Then("it's real-skipped -- re-checking state right before sending guards against a genuine race double-firing") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
     }
