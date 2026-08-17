@@ -8416,3 +8416,35 @@ Baptiste: Insufficient balance. We'll try again next cycle."`
 
 **Still open**: the identical gap remains in `ScheduledTransferService` and
 `MerchantBillingService`.
+
+## 134. Toss Payments-style scheduled-transfer failure alert (Sections 131/132/133 pattern, extended)
+
+**Added 2026-08-17.** Extends the same real, sourced Toss Payments billing-failure notification
+pattern to the third of the four flagged follow-ups: `ScheduledTransferService.executeOne` (P2P
+one-time reserved/scheduled transfers, Toss 예약송금 equivalent).
+
+**Built**: `notifyTransferFailed` sends a real `Notification` + push
+(`SCHEDULED_TRANSFER_FAILED`) when a real scheduled-transfer attempt fails, wrapped in its own
+try/catch. Safe by construction -- `executeOne` is already NOT `@Transactional` (its own Section
+130 fix), so no ambient transaction exists to be poisoned by a failing notification save.
+Deliberately different wording from Section 133's `AutoTransfer` message: no "we'll try again
+next cycle", since a `ScheduledTransfer` is one-time/terminal on failure (`status` moves to
+`FAILED`, not rescheduled). 2 new/updated Kotest cases, including a dedicated zero-notifications
+assertion on the success path.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a fresh
+sender with a genuine `0` MAIN wallet balance, created a real `ScheduledTransfer` (500 RWF to the
+seeded demo user, `scheduledDate` tomorrow) via `POST /api/v1/p2p/scheduled-transfers`. Backdated
+`scheduled_date` to today via direct DB update and let a real
+`ScheduledTransferScheduler` poll run. DB confirmed the row moved to `status='FAILED'`,
+`failure_reason: 'Insufficient balance'`. `GET /api/v1/notifications` confirmed a real
+`SCHEDULED_TRANSFER_FAILED` notification with the exact expected content: `"Scheduled transfer
+failed"` / `"We couldn't send your scheduled transfer to Jean Baptiste: Insufficient balance."`
+-- correctly omitting the "next cycle" wording that `AutoTransfer`'s message uses, matching the
+one-time/terminal semantics of a scheduled transfer.
+
+**Still open**: the identical gap remains only in `MerchantBillingService`, whose Section 118 fix
+used a different structural shape (a separate `MerchantBillingChargeExecutor` bean rather than
+removing `@Transactional` directly from the per-row method) -- any future notification addition
+there needs to verify where the failure/catch logic actually lives before assuming it's safe by
+construction the same way.
