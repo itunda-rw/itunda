@@ -8893,3 +8893,34 @@ notification body exactly `"Your ownership document for \"Ownership Test 148B\" 
 Reason: Document is blurry, please resubmit a clearer scan You can upload a new document and
 resubmit."`, and the listing's `ownershipVerificationStatus` correctly fell back to `NONE` (not
 stuck on `PENDING`).
+
+## 149. KYC/KYB identity-verification decision notification
+
+**Added 2026-08-17.** `IdentityService.decide` already flipped `user.kycVerified`/
+`merchant.kybVerified` on approval but never told the real submitter a decision was made -- the
+exact precedent `PropertyOwnershipService`'s own doc comment says it mirrors "field-for-field"
+(Section 148), deliberately left open there and closed here. This closes the fifth and final
+instance of the "terminal decision, zero notification" pattern this session found across the
+codebase (`OrderReturnService.decide` the origin, then Sections 146/147/148/149).
+
+**Built**: `decide` now saves a real `IDENTITY_VERIFICATION_DECIDED` notification immediately
+(within the same `@Transactional` boundary) and defers the mobile push until commit, mirroring
+`InsuranceService`/`MarketplaceService`/`PropertyOwnershipService`'s established shape exactly.
+Wording distinguishes KYC ("identity verification") from KYB ("business verification") based on
+`documentType`. No new endpoint, no migration -- existing
+`POST /api/v1/system/compliance/{submissionId}/decide` (admin-gated) unchanged externally.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**, all three real
+cases: **KYC approve** -- submitted a real `NATIONAL_ID` document, approved as admin, real
+notification exactly `"Your identity verification (KYC) was approved."`, real DB confirmed
+`users.kyc_verified = 1`. **KYC reject** -- submitted a real `PASSPORT` document, rejected with a
+real reason, notification body exactly `"Your identity verification (KYC) was rejected. Reason:
+Document number does not match registry You can resubmit with a new document."` **KYB approve**
+-- registered a merchant, submitted a real `BUSINESS_TIN` document, approved as admin, real
+notification exactly `"Your business verification (KYB) was approved."` (correctly using the
+distinct KYB wording, not KYC), real DB confirmed `merchants.kyb_verified = 1`.
+
+**"Terminal decision missing notification" thread now fully closed**: `OrderReturnService`
+(origin), `InsuranceService` (§146), `MarketplaceService` (§147), `PropertyOwnershipService`
+(§148), and `IdentityService` (§149) all now notify the real person(s) a terminal decision
+happened to, using the identical deferred-push-after-commit shape throughout.
