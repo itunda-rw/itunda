@@ -5,12 +5,15 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AutoTransfer
 import rw.itunda.core.domain.AutoTransferFrequency
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AutoTransferRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -42,9 +45,15 @@ class AutoTransferServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val p2pService = mockk<P2pService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = AutoTransferService(autoTransferRepository, walletRepository, userRepository, p2pService, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = AutoTransferService(autoTransferRepository, walletRepository, userRepository, p2pService, rateLimiter, notificationRepository, pushNotificationService)
 
         every { autoTransferRepository.save(any()) } answers { firstArg() }
+        // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+        // returns a raw Object, ClassCastException-ing at the call site -- same fix as
+        // RewardsServiceTest's rewardClaimRepository.save stub.
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         When("executeOne runs and sendDirect throws InsufficientFundsException") {
             every { p2pService.sendDirect(any(), any(), any(), any()) } throws InsufficientFundsException("Insufficient balance")
@@ -52,10 +61,14 @@ class AutoTransferServiceTest : BehaviorSpec({
             val transfer = autoTransfer()
             val succeeded = service.executeOne(transfer)
 
-            Then("it returns false, records the real failure reason, and still advances nextExecutionAt -- no exception escapes") {
+            Then("it returns false, records the real failure reason, still advances nextExecutionAt, and sends a real failure notification") {
                 succeeded shouldBe false
                 transfer.lastFailureReason shouldBe "Insufficient balance"
                 transfer.nextExecutionAt shouldBe Instant.parse("2026-08-24T00:00:00Z")
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "user_1" && it.type == "AUTO_TRANSFER_FAILED" })
+                }
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", any(), any(), any()) }
             }
         }
 
@@ -65,10 +78,11 @@ class AutoTransferServiceTest : BehaviorSpec({
             val transfer = autoTransfer()
             val succeeded = service.executeOne(transfer)
 
-            Then("it returns true, clears any prior failure reason, and increments executionCount") {
+            Then("it returns true, clears any prior failure reason, increments executionCount, and sends no failure notification") {
                 succeeded shouldBe true
                 transfer.lastFailureReason shouldBe null
                 transfer.executionCount shouldBe 1
+                verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
     }

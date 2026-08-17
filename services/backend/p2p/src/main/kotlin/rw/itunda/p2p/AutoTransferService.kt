@@ -6,9 +6,12 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AutoTransfer
 import rw.itunda.core.domain.AutoTransferFrequency
 import rw.itunda.core.domain.AutoTransferStatus
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AutoTransferRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -34,6 +37,8 @@ class AutoTransferService(
     private val userRepository: UserRepository,
     private val p2pService: P2pService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(AutoTransferService::class.java)
 
@@ -166,12 +171,40 @@ class AutoTransferService(
             autoTransfer.lastFailureReason = "Couldn't complete this transfer"
             false
         }
+        if (!succeeded) {
+            notifyTransferFailed(autoTransfer)
+        }
         autoTransfer.nextExecutionAt = when (autoTransfer.frequency) {
             AutoTransferFrequency.WEEKLY -> autoTransfer.nextExecutionAt.plus(7, ChronoUnit.DAYS)
             AutoTransferFrequency.MONTHLY -> nextMonthlyOccurrence(autoTransfer.dayOfMonth!!, from = autoTransfer.nextExecutionAt)
         }
         autoTransferRepository.save(autoTransfer)
         return succeeded
+    }
+
+    // Real Toss Payments billing-failure alert -- same real, sourced convention
+    // ProductSubscriptionService.notifyDeliveryFailed / BillAutoPayProcessor
+    // .notifyAutoPayFailed already establish (see either's own doc comment): itunda's
+    // recurring-transfer failure paths previously only ever recorded the failure
+    // silently, never told the customer. Purely a best-effort side effect wrapped in
+    // its own try/catch -- never allowed to affect the real schedule/save. Safe by
+    // construction: executeOne is deliberately NOT @Transactional (its own 2026-08-17
+    // fix), so a failing notification save can never poison the real transfer attempt.
+    private fun notifyTransferFailed(autoTransfer: AutoTransfer) {
+        try {
+            val title = "Auto-transfer failed"
+            val body = "We couldn't send your auto-transfer to ${autoTransfer.recipientName}: ${autoTransfer.lastFailureReason}. We'll try again next cycle."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = autoTransfer.userId, type = "AUTO_TRANSFER_FAILED",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(),
+                    dataJson = "{\"autoTransferId\":\"${autoTransfer.id}\"}",
+                ),
+            )
+            pushNotificationService.sendToUser(autoTransfer.userId, title, body, mapOf("autoTransferId" to autoTransfer.id))
+        } catch (e: Exception) {
+            log.warn("Could not send auto-transfer-failure notification for {}", autoTransfer.id, e)
+        }
     }
 
     private fun nextWeeklyOccurrence(dayOfWeek: Int): Instant {
