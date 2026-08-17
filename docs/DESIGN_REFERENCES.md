@@ -9409,3 +9409,12 @@ however, lives in `Core/Network` -- a real framework target -- so it was build-v
 surface being wired is correct. This is the third and final client platform for this feature.
 
 Files: `ios/Core/Network/Sources/NetworkClient.swift`, `ios/App/Sources/RideScreenView.swift`.
+
+**Coordinator re-verification**: both claims independently re-checked rather than trusted --
+`xcodebuild -workspace Itunda.xcworkspace -scheme CoreNetwork -destination "generic/platform=iOS
+Simulator" build` genuinely re-ran (real compile/link/codesign steps observed, not a cached
+no-op) -> `** BUILD SUCCEEDED **`; `xcrun swiftc -parse
+ios/App/Sources/RideScreenView.swift -suppress-warnings` re-ran clean, exit 0. This closes
+Trusted Contacts on all three client platforms (bank-mfe §159, Android §160, iOS §161); the
+underlying backend contract was live-verified against the real deployed backend twice already
+(§136 raw API, §159 bank-mfe UI via headless Chrome), so this thread is now CLOSED.
