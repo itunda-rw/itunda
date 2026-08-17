@@ -9202,3 +9202,48 @@ notification. Deploy hit a real, transient private-cloud registry-refused connec
 push (cluster load spiked to 31 mid-push) -- resolved by waiting ~4 minutes for load to drop back
 to baseline and retrying the identical push, consistent with this session's established pattern
 (see [[feedback_private_cloud_severe_overload_registry_refused]]).
+
+## 158. Eats Club + platform (Wow-style) membership expiry reminders
+
+**Added 2026-08-18.** `EatsMembership.activeUntil` (Baemin Club 배민클럽-style free-delivery
+membership) and `PlatformMembership.activeUntil` (Coupang 와우/Wow-style unconditional
+delivery-fee waiver) were real, already-stored prepaid expiry dates with zero notification hook
+before this -- 7th real gap in the "date field with no reminder" lens this session's Sections
+152-157 sweep already found and fixed, and the first on a prepaid (not auto-billed) perk. Both
+entities deliberately use a flat-fee "pay once, extend `activeUntil`" model instead of recurring
+auto-billing (per their own existing doc comments), so a pre-expiry push is the honest equivalent
+of what an auto-renewing subscription's "your plan is ending" notice does elsewhere. Sourced from
+real Baemin Club / Coupang Wow app behavior: both push a reminder before a paid delivery-fee
+benefit lapses so the member can renew before losing it.
+
+**Built**: `MembershipExpiryReminderScheduler` covers both sibling membership types in one
+scheduler (each still gets its own independent due-list scan and its own independent per-item
+`@Transactional` send, so a failure in one type's loop can't affect the other's) -- same proven-
+safe shape as every other reminder scheduler this session (`@Component`,
+`@Scheduled(fixedDelay = 60000)`, never a batch-transactional loop).
+`getMembershipsDueForExpiryReminder()` on each service uses the same 3-day window
+`MerchantCouponService.EXPIRY_REMINDER_WINDOW` already established. New
+`EatsMembership.reminderSentAt` / `PlatformMembership.reminderSentAt` columns (migration V282),
+reset to `null` on each re-subscribe so a freshly-extended `activeUntil` earns its own fresh
+reminder rather than staying silenced by an earlier reminder for a now-superseded date. New
+manual-trigger endpoint `POST /api/v1/eats/membership/process-expiry-reminders`.
+
+**Test coverage**: `EatsMembershipServiceTest`/`PlatformMembershipServiceTest` (Kotest
+BehaviorSpec + mockk) -- due-window filtering, send + mark-sent, skip-if-already-sent,
+skip-if-lapsed. Ran locally via `./gradlew :eats:test` -- full suite green (16 new test cases);
+`:app:compileKotlin` also green.
+
+**Live-verified** against the real deployed backend: registered a fresh user, funded the test
+wallet directly (real `wallets.available_balance`, not just `balance` -- this backend tracks them
+separately), subscribed to both real memberships (Eats Club 1,500 RWF/30 days, platform
+membership 2,500 RWF/30 days), backdated `active_until` for both into their respective windows (2
+days and 1 day out), called `POST .../process-expiry-reminders` ->
+`{"success":true,"processed":2}`, confirmed both exact real notifications:
+`EATS_MEMBERSHIP_EXPIRING_SOON` / "Your Eats Club membership is expiring soon" / "Your
+free-delivery membership ends on 2026-08-19T16:15:59Z. Renew before then to keep free delivery at
+participating restaurants." and `PLATFORM_MEMBERSHIP_EXPIRING_SOON` / "Your itunda membership is
+expiring soon" / "Your unconditional free-delivery membership ends on 2026-08-18T16:16:17Z. Renew
+before then to keep free delivery on every order." -- and real DB `reminder_sent_at` set on both
+rows; re-triggered -> `{"success":true,"processed":0}`, no duplicate notifications. Deploy hit a
+real transient severe cluster-load spike (65.48) mid-build, resolved by waiting ~5 minutes for
+load to drop back to baseline before pushing, consistent with the established pattern.
