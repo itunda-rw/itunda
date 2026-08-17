@@ -14,7 +14,10 @@ import rw.itunda.core.domain.KycSubmission
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.User
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.KycSubmissionRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.UserRepository
 import java.time.Duration
@@ -28,10 +31,13 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_1") } returns emptyList()
         val savedSlot = slot<KycSubmission>()
@@ -66,7 +72,10 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_6") } returns emptyList()
         val savedSlot = slot<KycSubmission>()
@@ -87,7 +96,10 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_7") } returns emptyList()
         val savedSlot = slot<KycSubmission>()
@@ -116,7 +128,10 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("owner_1") } returns emptyList()
         val savedSlot = slot<KycSubmission>()
@@ -145,10 +160,13 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         every { kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc("user_2") } returns listOf(
             KycSubmission(id = "kyc_1", userId = "user_2", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "PENDING", submittedAt = Instant.now()),
@@ -177,7 +195,10 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         val user = User(id = "user_race", phoneNumber = "+250788000099", firstName = "Race", lastName = "User", passwordHash = "hash")
         every { userRepository.findByIdForUpdate("user_race") } returns Optional.of(user)
@@ -207,10 +228,13 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         val submission = KycSubmission(id = "kyc_2", userId = "user_3", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
         val user = User(id = "user_3", phoneNumber = "0788000000", firstName = "Test", lastName = "User", passwordHash = "hash")
@@ -234,6 +258,14 @@ class IdentityServiceTest : BehaviorSpec({
             Then("it never touches a merchant record for a personal-identity submission") {
                 verify(exactly = 0) { merchantRepository.findByOwnerUserId(any()) }
             }
+            Then("it sends a real notification and push naming KYC, not KYB") {
+                val notif = slot<Notification>()
+                verify(exactly = 1) { notificationRepository.save(capture(notif)) }
+                notif.captured.userId shouldBe "user_3"
+                notif.captured.type shouldBe "IDENTITY_VERIFICATION_DECIDED"
+                notif.captured.body shouldBe "Your identity verification (KYC) was approved."
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_3", any(), any(), any()) }
+            }
         }
     }
 
@@ -242,7 +274,10 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         val submission = KycSubmission(id = "kyc_5", userId = "owner_2", documentType = "BUSINESS_TIN", documentNumber = "123456789", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_2", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -262,6 +297,12 @@ class IdentityServiceTest : BehaviorSpec({
                 verify(exactly = 0) { userRepository.findById(any()) }
                 verify(exactly = 0) { userRepository.save(any()) }
             }
+            Then("it sends a real notification and push naming KYB, not KYC") {
+                val notif = slot<Notification>()
+                verify(exactly = 1) { notificationRepository.save(capture(notif)) }
+                notif.captured.userId shouldBe "owner_2"
+                notif.captured.body shouldBe "Your business verification (KYB) was approved."
+            }
         }
     }
 
@@ -270,7 +311,10 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         val submission = KycSubmission(id = "kyc_6", userId = "owner_3", documentType = "BUSINESS_TIN", documentNumber = "123456789", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
         every { kycSubmissionRepository.findById("kyc_6") } returns Optional.of(submission)
@@ -278,12 +322,12 @@ class IdentityServiceTest : BehaviorSpec({
         every { merchantRepository.findByOwnerUserId("owner_3") } returns null
 
         When("approving") {
-            Then("it real-fails rather than silently no-op-ing") {
+            Then("it real-fails rather than silently no-op-ing, and never sends a half-decided notification") {
                 try {
                     service.decide("kyc_6", "admin_1", approve = true, reason = null)
                     error("expected IdentityUserNotFoundException")
                 } catch (e: IdentityUserNotFoundException) {
-                    // expected
+                    verify(exactly = 0) { notificationRepository.save(any()) }
                 }
             }
         }
@@ -294,10 +338,13 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         val submission = KycSubmission(id = "kyc_3", userId = "user_4", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "PENDING", submittedAt = Instant.now())
 
@@ -313,6 +360,13 @@ class IdentityServiceTest : BehaviorSpec({
                 verify(exactly = 0) { userRepository.findById(any()) }
                 verify(exactly = 0) { userRepository.save(any()) }
             }
+            Then("it sends a real rejection notification including the real reviewer reason") {
+                val notif = slot<Notification>()
+                verify(exactly = 1) { notificationRepository.save(capture(notif)) }
+                notif.captured.userId shouldBe "user_4"
+                notif.captured.body shouldBe "Your identity verification (KYC) was rejected. Reason: Document photo illegible You can resubmit with a new document."
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_4", any(), any(), any()) }
+            }
         }
     }
 
@@ -321,10 +375,13 @@ class IdentityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         // Real, not mocked -- pure and stateless, same convention as this repo's other
         // real-not-mocked deps (JwtService, QuoteStore) when the real thing is small and
         // self-contained.
-        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter)
+        val service = IdentityService(kycSubmissionRepository, userRepository, DemoNidaVerificationService(), DemoKybVerificationService(), merchantRepository, rateLimiter, notificationRepository, pushNotificationService)
 
         val submission = KycSubmission(id = "kyc_4", userId = "user_5", documentType = "NATIONAL_ID", documentNumber = "x", documentReference = "y", status = "VERIFIED", submittedAt = Instant.now())
         every { kycSubmissionRepository.findById("kyc_4") } returns Optional.of(submission)
@@ -336,6 +393,7 @@ class IdentityServiceTest : BehaviorSpec({
                     error("expected SubmissionNotPendingException")
                 } catch (e: SubmissionNotPendingException) {
                     verify(exactly = 0) { kycSubmissionRepository.save(any()) }
+                    verify(exactly = 0) { notificationRepository.save(any()) }
                 }
             }
         }

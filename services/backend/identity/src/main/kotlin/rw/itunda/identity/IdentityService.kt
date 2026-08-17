@@ -1,13 +1,19 @@
 package rw.itunda.identity
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.KycSubmission
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.KycSubmissionRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import java.time.Duration
 import java.time.Instant
@@ -20,6 +26,14 @@ class IdentityUserNotFoundException(message: String) : RuntimeException(message)
 
 private const val BUSINESS_TIN_DOCUMENT_TYPE = "BUSINESS_TIN"
 
+/**
+ * 2026-08-17: `decide` now notifies the real submitter of the outcome, closing the same
+ * "terminal decision, zero notification to the real person it happened to" gap Sections
+ * 146 (`InsuranceService.decideClaim`)/147 (`MarketplaceService.resolveDispute`)/148
+ * (`PropertyOwnershipService.decide`) already closed elsewhere -- this is the exact
+ * precedent `PropertyOwnershipService`'s own doc comment says it mirrors "field-for-field",
+ * flagged there as still open and now closed here too.
+ */
 @Service
 class IdentityService(
     private val kycSubmissionRepository: KycSubmissionRepository,
@@ -28,7 +42,10 @@ class IdentityService(
     private val demoKybVerificationService: DemoKybVerificationService,
     private val merchantRepository: MerchantRepository,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(IdentityService::class.java)
 
     @Transactional
     fun submit(userId: String, documentType: String, documentNumber: String, documentReference: String): KycSubmission {
@@ -125,6 +142,46 @@ class IdentityService(
             }
         }
 
+        val isKyb = submission.documentType.equals(BUSINESS_TIN_DOCUMENT_TYPE, ignoreCase = true)
+        val documentLabel = if (isKyb) "business verification (KYB)" else "identity verification (KYC)"
+        val notifTitle = if (approve) "Verification approved" else "Verification rejected"
+        val body = if (approve) {
+            "Your $documentLabel was approved."
+        } else {
+            "Your $documentLabel was rejected.${reason?.let { " Reason: $it" } ?: ""} You can resubmit with a new document."
+        }
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = submission.userId, type = "IDENTITY_VERIFICATION_DECIDED",
+                title = notifTitle, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"submissionId\":\"${submission.id}\"}",
+            ),
+        )
+        sendPushAfterCommit(submission.userId, notifTitle, body, submission.id)
+
         return submission
+    }
+
+    // Same real "defer the mobile push until the real status change is durable, but the
+    // in-app Notification row is saved immediately" discipline OrderReturnService
+    // .sendPushAfterCommit/InsuranceService.sendPushAfterCommit/MarketplaceService's own
+    // dispute-resolution notification/PropertyOwnershipService.sendPushAfterCommit
+    // already establish for a structurally identical terminal decision.
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, submissionId: String) {
+        val data = mapOf("submissionId" to submissionId)
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, data)
+            } catch (e: Exception) {
+                log.warn("Could not send identity-verification-decision push for submission {}", submissionId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }
