@@ -10243,3 +10243,22 @@ regressed.
 
 No client wiring, deploy, or live-server verification attempted here -- backend-only, correctness
 fix, reserved for the coordinating session's deploy per this task's own scoping rules.
+
+**Coordinator re-verification, deploy, and real-money live-verify**: independently re-ran
+`./gradlew :commerce:test :eats:test --rerun-tasks` for a genuine (not cached) re-execution;
+summed every real XML report per module and confirmed `commerce` `tests="119"` / `eats`
+`tests="178"`, both `failures="0" errors="0"`, matching the claim exactly. Given this is a third
+real money-safety fix in the same class as Sections 170/171, deployed it with priority: built and
+pushed `192.168.252.4:32000/itunda/backend:2026-08-18-merchant-pause-enforcement`, rollout
+completed cleanly. **Live-verified with real money movement** against the real deployed backend
+(Commerce checkout path, `isAcceptingOrders`): registered a merchant + buyer, created a real
+product, paused the merchant via the real `POST /api/v1/merchant/accepting-orders
+{"accepting":false}` endpoint, funded the buyer's real wallet (50,000 RWF), and attempted a real
+`POST /api/v1/orders` -> real `400 MERCHANT_NOT_ACCEPTING_ORDERS` with the exact expected message;
+confirmed the buyer's real wallet balance stayed at exactly 50,000.00 RWF (zero debit attempted).
+Resumed the merchant (`{"accepting":true}`) and retried the identical order -> real `201` success
+with a real `ledgertxn_...` ID; confirmed the buyer's real wallet correctly debited to exactly
+48,500.00 RWF (1,500 RWF product price). Did not separately re-run the identical real-money proof
+for `isClosedToday()` or the Dine-In path -- same reasoning as Section 171's coordinator note:
+they share the exact same code shape and were already independently test-XML-confirmed, so one
+full real-money proof of the pattern was judged sufficient.
