@@ -9045,3 +9045,33 @@ DB-confirmed `renewal_reminder_sent_at` was already set, and `GET /notifications
 real `CERTIFICATE_EXPIRING_SOON` notification with the exact expected body: `"Your certificate
 (serial 94C3F27474641DD9109DE7EEDB4090EE) expires on 2026-10-01T00:00:00Z. Reissue it anytime
 before then to keep signing without interruption."`
+
+## 154. Gift voucher expiry-reminder message
+
+**Added 2026-08-17.** `GiftVoucher.expiresAt` has been a real, stored field since the voucher
+concept existed, but nothing ever nudged the *recipient* to redeem before real expiry -- only the
+purchaser was ever told, and only after the fact by `expireVoucher`'s own real partial-refund
+message. Sourced from real KakaoTalk gifticon practice: Kakao sends at least 3 real push
+notifications starting 7 days before expiry, distinct from and earlier than the real 30-day
+extension window this entity already scoped.
+
+**Built**: `GiftVoucherExpiryReminderScheduler` mirrors `InsurancePolicyRenewalReminderScheduler`/
+`CertificateRenewalReminderScheduler`'s exact proven-safe shape -- a separate `@Component`
+scheduler calling a per-voucher `@Transactional` method, never a batch-transactional loop. Unlike
+Sections 146-153, this one reuses `GiftVoucherService`'s own existing `messagingService.sendMessage`
+convention (posted into the real purchaser<->recipient Talk conversation, as the purchaser) rather
+than switching to the `notificationRepository`+push mechanism, since that's the established
+convention every other lifecycle event in this file already uses. New
+`GiftVoucher.expiryReminderSentAt` column (migration V278) tracks one-shot state. New manual-trigger
+endpoint `POST /api/v1/gift-vouchers/process-expiry-reminders`.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: purchased a real 5,000
+RWF gift voucher (`POST /api/v1/gift-vouchers`) from a purchaser to a real recipient, backdated
+the voucher's `expires_at` to 3 days out (within the 7-day window) via direct DB update. Called
+the manual trigger -- `{"success":true,"processed":1}`; the real recipient's `GET
+/messages/conversations/{id}/messages` confirmed a genuine new message in the real Talk
+conversation with the exact expected body: `"⏳ Your gift voucher (5,000 RWF) expires soon --
+redeem it before 2026-08-20T12:00:00Z or it'll be refunded"`, sent by the purchaser, and real
+DB-confirmed `expiry_reminder_sent_at` was set. Called the trigger a second time --
+`{"success":true,"processed":0}`, confirmed the conversation still has exactly the same 2
+messages (no duplicate reminder sent).
