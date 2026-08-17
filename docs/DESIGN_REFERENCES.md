@@ -8524,3 +8524,39 @@ on a nonexistent trip, both correctly returned 404 `RIDE_TRIP_NOT_FOUND` (not 40
 project's existing no-existence-leak convention). `DELETE /trusted-contacts/{id}` removed B
 (200), list dropped to 4, and a second delete of the same id correctly 404
 `TRUSTED_CONTACT_NOT_FOUND`.
+
+## 137. Uber real cancellation-fee policy for DRIVER_ASSIGNED trips
+
+**Added 2026-08-17.** Sourced from help.uber.com/riders/article/cancellation-fees-explained:
+for economy ride types, a fee may apply if the rider cancels 2+ minutes after being matched with
+a driver; no fee within that window. This closed a real prior gap, not just a missing fee:
+`cancelTrip` previously only accepted a `REQUESTED` trip (no driver committed yet) -- once a
+driver accepted, the passenger had **no way to cancel at all**. The prior scoping was itself a
+deliberate, documented decision (`RideTripStatus`'s own old doc comment: "no sourced
+cancellation-fee policy exists to build against"), now closed with real sourcing.
+
+**Built**: new `RideTrip.driverAssignedAt` column (migration V272), set once in `acceptTrip`.
+`cancelTrip` now also accepts `DRIVER_ASSIGNED`: full refund within the real 2-minute grace
+window; past it, a modeled `CANCELLATION_FEE` (= `baseFare`, matching Uber's own stated "pay
+drivers for the time and effort" rationale -- Uber publishes no fixed number, itunda's own
+honest modeled choice) is carved out of the refund and paid straight to the driver's wallet, with
+a distinct `RIDE_CANCELLATION_FEE_PAID` notification (vs. the existing plain `RIDE_TRIP_UPDATE`
+for a fee-free cancel). `IN_PROGRESS`/`COMPLETED` remain non-cancellable, deliberately out of
+scope. Balanced double-entry ledger legs either way, with a safety fallback refunding the
+passenger in full if the driver's settlement wallet is somehow missing rather than stranding
+escrow money.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a driver
+and a funded passenger. **Grace-period case**: requested a trip, accepted it as the driver
+(`driverAssignedAt` set), cancelled immediately -- passenger balance confirmed back to the exact
+pre-trip `20000.00` (full refund), driver received the existing plain `RIDE_TRIP_UPDATE`
+"Trip cancelled" notification (no fee). **Fee case**: a second trip, accepted, `driver_assigned_at`
+backdated via direct DB update to past the 2-minute window, then cancelled -- exact real math
+confirmed: passenger's balance moved by only the `1000` RWF fee (net `19000.00`, i.e. `2365.50`
+fare charged then `1365.50` refunded), driver's wallet credited exactly `1000.00`. `GET
+/api/v1/notifications` confirmed a real `RIDE_CANCELLATION_FEE_PAID` notification with the exact
+expected content: `"Rider cancelled -- you were paid a cancellation fee"` / `"The rider cancelled
+after you were already on the way. You received a 1000 RWF cancellation fee."` Confirmed the
+existing rejection path still works: cancelling an already-`CANCELLED` trip correctly 409
+`INVALID_RIDE_STATUS_TRANSITION` with the updated message ("Only a REQUESTED or DRIVER_ASSIGNED
+trip can be cancelled").
