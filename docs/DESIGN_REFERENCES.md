@@ -10378,3 +10378,92 @@ fee, no refund). Attempted `POST .../cancel` afterward -> real `409
 INVALID_INSPECTION_STATUS_TRANSITION` ("this one is already NO_SHOW") -- proving the exact
 exploit this fix targets (late-cancel clawback after a real completed inspection) is now
 genuinely closed in production, caught by the real cron with zero manual intervention.
+
+## 174. `DesignatedDriverTrip` had no cancel path at all once a driver accepted -- real money-stuck-in-escrow gap fix
+
+**Added 2026-08-18.** A fifth pass of the Section 170-173 technique, continuing past
+the now fully-audited `Merchant`/`MerchantProduct`/`VehicleInspectionBooking` surface
+at a different money-adjacent, escrow-holding entity: `DesignatedDriverTrip` (real
+Kakao T 대리운전/designated-driver, `rw.itunda.rideshare.DesignatedDriverService`).
+Its own doc comment explicitly says it "mirrors `RideTrip`'s own fare-holding pattern
+exactly" and reuses `RideTripService`'s exact escrow/payout shape -- but only copied
+the request/accept/complete/refund plumbing for a still-`REQUESTED` trip, not
+`RideTripService.cancelTrip`'s own real Uber cancellation-fee policy (Section 137) for
+a trip a driver has already committed to. Concretely: `DesignatedDriverService.
+cancelTrip` only ever accepted `trip.status == REQUESTED` -- once a driver called
+`acceptTrip` (status -> `ACCEPTED`), there was **no cancel path whatsoever**, for
+either party, and no admin controller exists for this feature (unlike
+`MarketplaceEscrow`'s `MarketplaceEscrowAdminController`). If a driver accepted a trip
+and then simply never called `startDriving` -- forgot, got a better offer elsewhere,
+app crashed, whatever a real 대리운전 driver might do -- the customer's real fare sat
+permanently frozen in `designated_driver_holding` with zero recourse: no cancel
+endpoint would accept the call (`InvalidDesignatedDriverTripStatusTransitionException`
+every time), and no scheduler existed to notice and resolve it either. This is a worse
+outcome than any of Sections 170-173: not a missing check that let money move wrongly,
+but money that could get physically stuck with no path back to the customer at all.
+
+**Fixed**: rather than add a third no-show-scheduler shape to the codebase, ported
+`RideTripService.cancelTrip`'s own already-proven, already-sourced cancellation-fee
+policy directly, since `DesignatedDriverTrip`'s `ACCEPTED` state is structurally
+identical to `RideTrip`'s `DRIVER_ASSIGNED` state (a driver has committed but the
+customer hasn't been picked up/serviced yet) -- the same real fix shape Section 173
+used ("port the sibling's existing real mechanic," not invent a new one, when a
+genuinely equivalent one already exists elsewhere in the codebase). Added
+`DesignatedDriverTrip.driverAcceptedAt: Instant?` (mirrors `RideTrip.
+driverAssignedAt`, set in `acceptTrip`) to start the real grace-period clock. Added
+`DesignatedDriverService.CANCELLATION_FEE_GRACE_PERIOD` (2 minutes) and
+`CANCELLATION_FEE` (= `baseFare`, 3000 RWF), identical constants and identical real
+sourcing (help.uber.com/riders/article/cancellation-fees-explained) to
+`RideTripService`'s own. `cancelTrip` now accepts `REQUESTED` or `ACCEPTED` (still
+correctly rejects `DRIVING`/`COMPLETED`/`CANCELLED`, matching `RideTripService` never
+allowing an `IN_PROGRESS` ride to be cancelled either): a `REQUESTED` trip always
+refunds in full, unchanged; an `ACCEPTED` trip cancelled within the grace period of
+`driverAcceptedAt` also refunds in full; past it, `CANCELLATION_FEE` is carved out of
+the refund and paid straight to the driver's settlement wallet (same "never strand
+escrow money mid-refund" fallback-to-full-refund-if-the-driver-wallet-is-somehow-gone
+logic `RideTripService.cancelTrip` already establishes, ported verbatim).
+
+Files changed:
+- `services/backend/core/src/main/kotlin/rw/itunda/core/domain/DesignatedDriverTrip.kt`
+  (new `driverAcceptedAt: Instant?` column + updated `DesignatedDriverTripStatus` doc
+  comment explaining the real gap)
+- `services/backend/app/src/main/resources/db/migration/V283__designated_driver_trip_driver_accepted_at.sql`
+  (new file -- `ALTER TABLE designated_driver_trips ADD COLUMN driver_accepted_at DATETIME(6) NULL`)
+- `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/DesignatedDriverService.kt`
+  (new `CANCELLATION_FEE_GRACE_PERIOD`/`CANCELLATION_FEE` constants; `acceptTrip` now
+  sets `driverAcceptedAt`; `cancelTrip` rewritten to allow `ACCEPTED` and apply the
+  real cancellation-fee policy)
+- `services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/DesignatedDriverServiceTest.kt`
+  (three new `Given` blocks: cancelling an `ACCEPTED` trip within the grace period
+  still refunds in full -- positive control proving the fix doesn't over-charge a
+  customer who cancels quickly; cancelling an `ACCEPTED` trip 5 minutes past
+  `driverAcceptedAt` -- the real gap this closes -- correctly carves out the 3000 RWF
+  fee to the driver's wallet and refunds the remaining 1250 RWF to the customer;
+  cancelling a `DRIVING` trip is still correctly rejected -- proving the fix doesn't
+  over-widen the cancel window past what's safe)
+
+No new scheduler was needed for this fix (unlike Section 173) -- the customer
+themselves can now always resolve a stuck `ACCEPTED` trip on demand via the existing
+`POST /api/v1/designated-driver/trips/{tripId}/cancel` endpoint, so there's no
+poll-and-wait window to also cover with a manual-trigger endpoint.
+
+No client wiring done in this pass (backend-only fix; the `/cancel` endpoint already
+exists and is presumably already called by every client's existing "cancel" affordance
+for a `REQUESTED` trip -- verifying/extending client UI to also offer cancel once
+`ACCEPTED` is a natural follow-up but out of scope for this pass's real backend gap).
+
+**Verified locally, this pass**: `./gradlew :core:compileKotlin :rideshare:compileKotlin
+:app:compileKotlin` -> `BUILD SUCCESSFUL`, no compile errors anywhere the new
+`driverAcceptedAt` field or the new constants are referenced. `./gradlew :rideshare:test
+--tests "rw.itunda.rideshare.DesignatedDriverServiceTest"` -> `BUILD SUCCESSFUL`; real
+XML report `rideshare/build/test-results/test/TEST-rw.itunda.rideshare.DesignatedDriverServiceTest.xml`
+confirms `tests="9" skipped="0" failures="0" errors="0"` (6 pre-existing + 3 new,
+including both the grace-period positive control and the real fee-carve-out case by
+name). Also ran the full `./gradlew :rideshare:test :core:test` (every test class in
+both modules, not just this one) -> `BUILD SUCCESSFUL`; summing every real XML report
+confirms `rideshare` `tests="108"` (44+7+9+7+6+8+17+5+5 across its nine test classes)
+and `core` `tests="100"`, both `failures="0" errors="0"` -- nothing else in either
+module regressed.
+
+No deploy and no live-server verification attempted here -- reserved for the
+coordinating session per this task's own scoping rules.

@@ -70,6 +70,17 @@ class DesignatedDriverService(
         private val baseFare = BigDecimal("3000")
         private val perKmRate = BigDecimal("250")
         private val minFare = BigDecimal("4000")
+
+        // Real Uber cancellation-fee policy
+        // (help.uber.com/riders/article/cancellation-fees-explained), ported from
+        // `RideTripService`'s own identical constants -- see that class's own doc
+        // comment for the full sourced account. A REQUESTED trip (no driver has
+        // committed yet) always refunds in full, unchanged. An ACCEPTED trip cancelled
+        // within this grace period of driverAcceptedAt also refunds in full; past it,
+        // CANCELLATION_FEE is carved out of the refund and paid straight to the
+        // driver's settlement wallet to compensate them for committing to the job.
+        val CANCELLATION_FEE_GRACE_PERIOD: Duration = Duration.ofMinutes(2)
+        val CANCELLATION_FEE = baseFare
     }
 
     /** Any itunda user can register, no admin approval gate -- same real light
@@ -205,6 +216,7 @@ class DesignatedDriverService(
 
         trip.driverId = driver.id
         trip.status = DesignatedDriverTripStatus.ACCEPTED
+        trip.driverAcceptedAt = Instant.now()
         trip.updatedAt = Instant.now()
         return designatedDriverTripRepository.save(trip)
     }
@@ -256,27 +268,62 @@ class DesignatedDriverService(
         return designatedDriverTripRepository.save(trip)
     }
 
-    /** Real full refund, no fee -- the trip genuinely didn't happen, same "an explicit
-     * cancel always refunds" rule `RideTripService.cancelTrip`/`VehicleInspectionService.
-     * cancelInspection` already establish. */
+    /** Real gap closed 2026-08-18: previously only a still-REQUESTED trip (no driver
+     * assigned yet) could be cancelled at all -- once a driver accepted, there was no
+     * cancel path whatsoever, so a driver who accepted and then simply never started
+     * driving left the customer's fare permanently stuck in
+     * `designated_driver_holding` with zero recourse (no admin controller exists for
+     * this feature either). Now mirrors `RideTripService.cancelTrip`'s own real Uber
+     * cancellation-fee policy exactly: a REQUESTED trip always refunds in full; an
+     * ACCEPTED trip cancelled within `CANCELLATION_FEE_GRACE_PERIOD` of
+     * `driverAcceptedAt` also refunds in full, past that window `CANCELLATION_FEE` is
+     * carved out and paid to the driver for having already committed. A DRIVING trip
+     * (driver has already arrived and is driving the customer's car) still cannot be
+     * cancelled -- same real-world reasoning `RideTripService` never allows an
+     * IN_PROGRESS ride to be cancelled either. */
     @Transactional
     fun cancelTrip(customerId: String, tripId: String): DesignatedDriverTrip {
         val trip = designatedDriverTripRepository.findById(tripId).orElseThrow { DesignatedDriverTripNotFoundException("Trip not found") }
         if (trip.customerId != customerId) {
             throw DesignatedDriverTripNotFoundException("Trip not found")
         }
-        if (trip.status != DesignatedDriverTripStatus.REQUESTED) {
-            throw InvalidDesignatedDriverTripStatusTransitionException("Only a REQUESTED trip (no driver assigned yet) can be cancelled -- this one is already ${trip.status}")
+        if (trip.status != DesignatedDriverTripStatus.REQUESTED && trip.status != DesignatedDriverTripStatus.ACCEPTED) {
+            throw InvalidDesignatedDriverTripStatusTransitionException("Only a REQUESTED or ACCEPTED trip can be cancelled -- this one is already ${trip.status}")
         }
         val customerWallet = walletRepository.findByUserIdAndType(customerId, WalletType.MAIN)
             ?: throw DesignatedDriverNoWalletException("No wallet found for this account")
-        val result = ledgerService.postLedgerTransaction(
-            customerWallet.currency,
-            listOf(
-                LedgerLeg("designated_driver_holding", LedgerAccountType.DESIGNATED_DRIVER_HOLDING, LedgerDirection.DEBIT, trip.fare, "Designated driver fare refunded"),
-                LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Designated driver cancelled -- refund"),
-            ),
+
+        val acceptedAt = trip.driverAcceptedAt
+        val withinGracePeriod = acceptedAt == null || !Instant.now().isAfter(acceptedAt.plus(CANCELLATION_FEE_GRACE_PERIOD))
+        val cancellationFee = if (trip.status == DesignatedDriverTripStatus.ACCEPTED && !withinGracePeriod) {
+            CANCELLATION_FEE.min(trip.fare)
+        } else {
+            BigDecimal.ZERO
+        }
+        val refundAmount = trip.fare.subtract(cancellationFee)
+
+        val driverWallet = if (cancellationFee > BigDecimal.ZERO) {
+            trip.driverId?.let { designatedDriverRepository.findById(it).orElse(null) }
+                ?.let { walletRepository.findById(it.walletId).orElse(null) }
+        } else {
+            null
+        }
+
+        val legs = mutableListOf(
+            LedgerLeg("designated_driver_holding", LedgerAccountType.DESIGNATED_DRIVER_HOLDING, LedgerDirection.DEBIT, trip.fare, "Designated driver fare refunded"),
+            LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Designated driver cancelled -- refund"),
         )
+        if (cancellationFee > BigDecimal.ZERO && driverWallet != null) {
+            legs.add(LedgerLeg(driverWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cancellationFee, "Designated driver cancellation fee"))
+        } else if (cancellationFee > BigDecimal.ZERO) {
+            // Driver's own settlement wallet is somehow gone -- never strand escrow
+            // money mid-refund; fall back to refunding the customer in full rather
+            // than leaving the fee portion unaccounted for, same fallback
+            // RideTripService.cancelTrip already establishes.
+            legs[1] = LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Designated driver cancelled -- refund")
+        }
+        val result = ledgerService.postLedgerTransaction(customerWallet.currency, legs)
+
         trip.status = DesignatedDriverTripStatus.CANCELLED
         trip.refundTransactionId = result.transactionId
         trip.updatedAt = Instant.now()

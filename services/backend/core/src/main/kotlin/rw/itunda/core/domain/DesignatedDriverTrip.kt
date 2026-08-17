@@ -13,9 +13,15 @@ import java.time.Instant
 // REQUESTED: customer paid, fare held in escrow, visible to every online driver in the
 // real open-list. ACCEPTED: a driver claimed it and is en route to the pickup.
 // DRIVING: the driver arrived and is now driving the customer's own car. COMPLETED:
-// real payout net of itunda's platform fee. CANCELLED: withdrawn by the customer
-// before a driver commits -- full refund, same "an explicit cancel always refunds"
-// rule `RideTrip`/`VehicleInspectionBooking` already establish.
+// real payout net of itunda's platform fee. CANCELLED: withdrawn by the customer,
+// either before a driver commits (REQUESTED, always a full refund) or after
+// (ACCEPTED, real Uber cancellation-fee policy applies -- see
+// `DesignatedDriverService.CANCELLATION_FEE_GRACE_PERIOD`'s own doc comment). Real gap
+// closed 2026-08-18: before this, an ACCEPTED trip had NO cancel path at all -- if a
+// driver accepted and then simply never started driving, the customer's fare was
+// stuck in `designated_driver_holding` with zero recourse, unlike this feature's own
+// documented template `RideTrip`, which has always let the passenger cancel a
+// DRIVER_ASSIGNED trip.
 enum class DesignatedDriverTripStatus { REQUESTED, ACCEPTED, DRIVING, COMPLETED, CANCELLED }
 
 /**
@@ -43,6 +49,12 @@ class DesignatedDriverTrip(
 
     @Column(name = "driver_id", length = 64)
     var driverId: String? = null,
+
+    // Null until a driver accepts. Starts the real cancellation-fee grace-period clock
+    // -- same real role `RideTrip.driverAssignedAt` already plays for its own
+    // structurally-identical cancellation-fee policy.
+    @Column(name = "driver_accepted_at")
+    var driverAcceptedAt: Instant? = null,
 
     @Column(name = "pickup_address", nullable = false, length = 500)
     val pickupAddress: String,

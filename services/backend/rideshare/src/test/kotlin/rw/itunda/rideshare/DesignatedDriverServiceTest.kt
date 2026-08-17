@@ -202,4 +202,119 @@ class DesignatedDriverServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real gap fix (2026-08-18): before this, an ACCEPTED trip had no cancel path at
+    // all. These three cases prove the ported RideTripService cancellation-fee policy:
+    // still a full refund inside the grace period (positive control -- the fix doesn't
+    // over-charge a customer who cancels quickly), a real fee carved out and paid to
+    // the driver past the grace period (the actual gap being closed), and DRIVING
+    // still correctly rejected (the fix doesn't over-widen the cancel window).
+    Given("a real ACCEPTED trip within the cancellation-fee grace period") {
+        val designatedDriverRepository = mockk<DesignatedDriverRepository>()
+        val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val customerWallet = Wallet(
+            id = "wallet_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
+            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        )
+        val trip = DesignatedDriverTrip(
+            id = "designated_trip_1", customerId = "customer_1", driverId = "designated_driver_1", pickupAddress = "A", pickupLatitude = -1.9,
+            pickupLongitude = 30.0, dropoffAddress = "B", dropoffLatitude = -1.95, dropoffLongitude = 30.05, vehicleMake = "Toyota",
+            vehicleModel = "RAV4", vehiclePlate = "RAB 123 A", distanceKm = BigDecimal("5.000"), fare = BigDecimal("4250.00"),
+            platformFee = BigDecimal("63.75"), holdTransactionId = "ledgertxn_1", status = DesignatedDriverTripStatus.ACCEPTED,
+            driverAcceptedAt = java.time.Instant.now(),
+        )
+        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+        val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
+        every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_refund", emptyList())
+        every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
+
+        When("the customer cancels immediately after the driver accepted") {
+            val result = service.cancelTrip("customer_1", "designated_trip_1")
+
+            Then("a real full refund posts with no cancellation fee -- the fix doesn't over-charge") {
+                result.status shouldBe DesignatedDriverTripStatus.CANCELLED
+                legsSlot.captured.size shouldBe 2
+                legsSlot.captured[1].amount.compareTo(BigDecimal("4250.00")) shouldBe 0
+            }
+        }
+    }
+
+    Given("a real ACCEPTED trip past the cancellation-fee grace period") {
+        val designatedDriverRepository = mockk<DesignatedDriverRepository>()
+        val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            designatedDriverRepository = designatedDriverRepository, designatedDriverTripRepository = designatedDriverTripRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val customerWallet = Wallet(
+            id = "wallet_customer", userId = "customer_1", accountNumber = "1000000002", accountName = "Customer",
+            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        )
+        val driver = DesignatedDriver(id = "designated_driver_1", userId = "driver_user_1", walletId = "wallet_driver", licenseNumber = "DL-1", available = false)
+        val driverWallet = Wallet(
+            id = "wallet_driver", userId = "driver_user_1", accountNumber = "1000000003", accountName = "Driver",
+            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        )
+        val trip = DesignatedDriverTrip(
+            id = "designated_trip_1", customerId = "customer_1", driverId = "designated_driver_1", pickupAddress = "A", pickupLatitude = -1.9,
+            pickupLongitude = 30.0, dropoffAddress = "B", dropoffLatitude = -1.95, dropoffLongitude = 30.05, vehicleMake = "Toyota",
+            vehicleModel = "RAV4", vehiclePlate = "RAB 123 A", distanceKm = BigDecimal("5.000"), fare = BigDecimal("4250.00"),
+            platformFee = BigDecimal("63.75"), holdTransactionId = "ledgertxn_1", status = DesignatedDriverTripStatus.ACCEPTED,
+            driverAcceptedAt = java.time.Instant.now().minus(java.time.Duration.ofMinutes(5)),
+        )
+        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+        every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+        every { designatedDriverRepository.findById("designated_driver_1") } returns Optional.of(driver)
+        every { walletRepository.findById("wallet_driver") } returns Optional.of(driverWallet)
+        val legsSlot = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
+        every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_refund", emptyList())
+        every { designatedDriverTripRepository.save(any()) } answers { firstArg() }
+
+        When("the customer cancels 5 minutes after the driver accepted -- this is the real gap this fix closes") {
+            val result = service.cancelTrip("customer_1", "designated_trip_1")
+
+            Then("a real cancellation fee is paid to the driver and the rest refunded to the customer") {
+                result.status shouldBe DesignatedDriverTripStatus.CANCELLED
+                legsSlot.captured.size shouldBe 3
+                legsSlot.captured[1].amount.compareTo(BigDecimal("1250.00")) shouldBe 0
+                legsSlot.captured[2].accountId shouldBe "wallet_driver"
+                legsSlot.captured[2].amount.compareTo(BigDecimal("3000")) shouldBe 0
+            }
+        }
+    }
+
+    Given("a real DRIVING trip") {
+        val designatedDriverTripRepository = mockk<DesignatedDriverTripRepository>()
+        val service = newService(designatedDriverTripRepository = designatedDriverTripRepository)
+
+        val trip = DesignatedDriverTrip(
+            id = "designated_trip_1", customerId = "customer_1", driverId = "designated_driver_1", pickupAddress = "A", pickupLatitude = -1.9,
+            pickupLongitude = 30.0, dropoffAddress = "B", dropoffLatitude = -1.95, dropoffLongitude = 30.05, vehicleMake = "Toyota",
+            vehicleModel = "RAV4", vehiclePlate = "RAB 123 A", distanceKm = BigDecimal("5.000"), fare = BigDecimal("4250.00"),
+            platformFee = BigDecimal("63.75"), holdTransactionId = "ledgertxn_1", status = DesignatedDriverTripStatus.DRIVING,
+        )
+        every { designatedDriverTripRepository.findById("designated_trip_1") } returns Optional.of(trip)
+
+        When("the customer tries to cancel once the driver is already driving") {
+            Then("the cancel is correctly rejected -- the fix doesn't over-widen the cancel window") {
+                try {
+                    service.cancelTrip("customer_1", "designated_trip_1")
+                    throw AssertionError("expected InvalidDesignatedDriverTripStatusTransitionException")
+                } catch (e: InvalidDesignatedDriverTripStatusTransitionException) {
+                    e.message shouldBe "Only a REQUESTED or ACCEPTED trip can be cancelled -- this one is already DRIVING"
+                }
+            }
+        }
+    }
 })
