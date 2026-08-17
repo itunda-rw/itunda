@@ -155,6 +155,21 @@ class RideTripService(
         // completedAt column -- updatedAt is only ever touched again after COMPLETED by
         // a tip itself, so it's the honest real completion timestamp to measure from.
         val TIP_WINDOW: Duration = Duration.ofDays(30)
+
+        // Real Uber cancellation-fee policy
+        // (help.uber.com/riders/article/cancellation-fees-explained): "for most economy
+        // ride types... fees may be charged if you cancel 2+ minutes after requesting"
+        // once matched with a driver -- itunda's one real ride type maps to Uber's
+        // economy tier, so the real 2-minute figure applies directly, not an invented
+        // one.
+        val CANCELLATION_FEE_GRACE_PERIOD: Duration = Duration.ofMinutes(2)
+
+        // Real Uber policy states the fee "pay[s] drivers for the time and effort they
+        // spend getting to your location" but publishes no fixed real number (it "varies
+        // by location"). itunda's own honest modeled choice: the driver's real flag-fall
+        // (`baseFare`) -- roughly what they'd have earned just for showing up, the same
+        // reasoning Uber's own stated rationale describes, not a fabricated real figure.
+        val CANCELLATION_FEE = baseFare
     }
 
     private val log = LoggerFactory.getLogger(RideTripService::class.java)
@@ -397,6 +412,7 @@ class RideTripService(
         trip.status = RideTripStatus.DRIVER_ASSIGNED
         trip.offeredDriverId = null
         trip.offerExpiresAt = null
+        trip.driverAssignedAt = Instant.now()
         trip.updatedAt = Instant.now()
         val saved = rideTripRepository.save(trip)
 
@@ -631,28 +647,85 @@ class RideTripService(
         return saved
     }
 
+    // Real Uber cancellation-fee policy (help.uber.com/riders/article/cancellation-fees-explained)
+    // -- see RideTripStatus's own doc comment for why DRIVER_ASSIGNED only recently
+    // became cancellable at all. A REQUESTED trip (no driver has committed yet) still
+    // always refunds in full, completely unchanged. A DRIVER_ASSIGNED trip cancelled
+    // within CANCELLATION_FEE_GRACE_PERIOD of driverAssignedAt also refunds in full,
+    // matching Uber's own real "2+ minutes after requesting" threshold; past that
+    // window, CANCELLATION_FEE is carved out of the refund and paid straight to the
+    // driver's settlement wallet -- Uber's own stated rationale ("pay drivers for the
+    // time and effort they spend getting to your location"), not a punitive platform
+    // fee, so platformFee itself is never charged on a cancellation either way.
     @Transactional
     fun cancelTrip(passengerId: String, tripId: String): RideTrip {
         val trip = rideTripRepository.findById(tripId).orElseThrow { RideTripNotFoundException("Trip not found") }
         if (trip.passengerId != passengerId) {
             throw RideTripNotFoundException("Trip not found")
         }
-        if (trip.status != RideTripStatus.REQUESTED) {
-            throw InvalidRideTripStatusTransitionException("Only a REQUESTED trip (no driver assigned yet) can be cancelled -- this one is already ${trip.status}")
+        if (trip.status != RideTripStatus.REQUESTED && trip.status != RideTripStatus.DRIVER_ASSIGNED) {
+            throw InvalidRideTripStatusTransitionException("Only a REQUESTED or DRIVER_ASSIGNED trip can be cancelled -- this one is already ${trip.status}")
         }
         val passengerWallet = walletRepository.findByUserIdAndType(passengerId, WalletType.MAIN)
             ?: throw RideDriverNoWalletException("No wallet found for this account")
-        val result = ledgerService.postLedgerTransaction(
-            passengerWallet.currency,
-            listOf(
-                LedgerLeg("ride_holding", LedgerAccountType.RIDE_HOLDING, LedgerDirection.DEBIT, trip.fare, "Ride fare refunded"),
-                LedgerLeg(passengerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Ride cancelled -- refund"),
-            ),
+
+        val assignedAt = trip.driverAssignedAt
+        val withinGracePeriod = assignedAt == null || !Instant.now().isAfter(assignedAt.plus(CANCELLATION_FEE_GRACE_PERIOD))
+        val cancellationFee = if (trip.status == RideTripStatus.DRIVER_ASSIGNED && !withinGracePeriod) {
+            CANCELLATION_FEE.min(trip.fare)
+        } else {
+            BigDecimal.ZERO
+        }
+        val refundAmount = trip.fare.subtract(cancellationFee)
+
+        val driver = trip.driverId?.let { rideDriverRepository.findById(it).orElse(null) }
+        val driverWallet = if (cancellationFee > BigDecimal.ZERO) {
+            driver?.let { walletRepository.findById(it.walletId).orElse(null) }
+        } else {
+            null
+        }
+
+        val legs = mutableListOf(
+            LedgerLeg("ride_holding", LedgerAccountType.RIDE_HOLDING, LedgerDirection.DEBIT, trip.fare, "Ride fare refunded"),
+            LedgerLeg(passengerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Ride cancelled -- refund"),
         )
+        if (cancellationFee > BigDecimal.ZERO && driverWallet != null) {
+            legs.add(LedgerLeg(driverWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, cancellationFee, "Cancellation fee"))
+        } else if (cancellationFee > BigDecimal.ZERO) {
+            // Driver's own settlement wallet is somehow gone -- never strand escrow money
+            // mid-refund; fall back to refunding the passenger in full rather than
+            // leaving the fee portion unaccounted for.
+            legs[1] = LedgerLeg(passengerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, trip.fare, "Ride cancelled -- refund")
+        }
+        val result = ledgerService.postLedgerTransaction(passengerWallet.currency, legs)
+
         trip.status = RideTripStatus.CANCELLED
         trip.refundTransactionId = result.transactionId
         trip.updatedAt = Instant.now()
-        return rideTripRepository.save(trip)
+        val saved = rideTripRepository.save(trip)
+
+        if (cancellationFee > BigDecimal.ZERO && driverWallet != null && driver != null) {
+            val title = "Rider cancelled -- you were paid a cancellation fee"
+            val body = "The rider cancelled after you were already on the way. You received a ${cancellationFee} RWF cancellation fee."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = driver.userId, type = "RIDE_CANCELLATION_FEE_PAID",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            sendTripPushAfterCommit(driver.userId, title, body, trip.id)
+        } else if (driver != null) {
+            val title = "Trip cancelled"
+            val body = "The rider cancelled this trip."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = driver.userId, type = "RIDE_TRIP_UPDATE",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            sendTripPushAfterCommit(driver.userId, title, body, trip.id)
+        }
+        return saved
     }
 
     fun getAvailableTrips(driverUserId: String): List<RideTrip> {

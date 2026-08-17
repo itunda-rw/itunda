@@ -563,6 +563,120 @@ class RideTripServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real DRIVER_ASSIGNED trip cancelled within the real Uber 2-minute grace period") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
+        )
+
+        val driver = RideDriver(id = "driver_cancel_1", userId = "driver_user_cancel_1", walletId = "wallet_driver_cancel_1")
+        val driverWallet = Wallet(
+            id = "wallet_driver_cancel_1", userId = "driver_user_cancel_1", accountNumber = "1000000010", accountName = "Driver",
+            type = WalletType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
+        )
+        val passengerWallet = Wallet(
+            id = "wallet_passenger_cancel_1", userId = "passenger_cancel_1", accountNumber = "1000000011", accountName = "Passenger",
+            type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        )
+        val trip = RideTrip(
+            id = "ride_trip_cancel_1", passengerId = "passenger_cancel_1", driverId = "driver_cancel_1",
+            pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
+            fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_z2",
+            status = RideTripStatus.DRIVER_ASSIGNED, driverAssignedAt = java.time.Instant.now().minusSeconds(30),
+        )
+        every { rideTripRepository.findById("ride_trip_cancel_1") } returns Optional.of(trip)
+        every { rideDriverRepository.findById("driver_cancel_1") } returns Optional.of(driver)
+        every { walletRepository.findByUserIdAndType("passenger_cancel_1", WalletType.MAIN) } returns passengerWallet
+        every { walletRepository.findById("wallet_driver_cancel_1") } returns Optional.of(driverWallet)
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund_grace", emptyList())
+        every { rideTripRepository.save(any()) } answers { firstArg() }
+
+        When("the passenger cancels 30 real seconds after the driver was assigned") {
+            val result = service.cancelTrip("passenger_cancel_1", "ride_trip_cancel_1")
+
+            Then("it real-refunds the full fare, no fee -- still inside the real 2-minute grace window") {
+                result.status shouldBe RideTripStatus.CANCELLED
+                val legs = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
+                verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), capture(legs)) }
+                legs.captured.size shouldBe 2
+                legs.captured[1].amount shouldBe BigDecimal("1500")
+            }
+
+            Then("it notifies the driver of a plain cancellation, not a fee payout") {
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "driver_user_cancel_1" && it.type == "RIDE_TRIP_UPDATE" })
+                }
+            }
+        }
+    }
+
+    Given("a real DRIVER_ASSIGNED trip cancelled after the real Uber 2-minute grace period") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
+        )
+
+        val driver = RideDriver(id = "driver_cancel_2", userId = "driver_user_cancel_2", walletId = "wallet_driver_cancel_2")
+        val driverWallet = Wallet(
+            id = "wallet_driver_cancel_2", userId = "driver_user_cancel_2", accountNumber = "1000000012", accountName = "Driver",
+            type = WalletType.MAIN, balance = BigDecimal("5000"), availableBalance = BigDecimal("5000"),
+        )
+        val passengerWallet = Wallet(
+            id = "wallet_passenger_cancel_2", userId = "passenger_cancel_2", accountNumber = "1000000013", accountName = "Passenger",
+            type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+        )
+        val trip = RideTrip(
+            id = "ride_trip_cancel_2", passengerId = "passenger_cancel_2", driverId = "driver_cancel_2",
+            pickupAddress = "A", pickupLatitude = -1.95, pickupLongitude = 30.06,
+            dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09, distanceKm = BigDecimal("2.0"),
+            fare = BigDecimal("1500"), platformFee = BigDecimal("22.5"), transactionId = "ledgertxn_z3",
+            status = RideTripStatus.DRIVER_ASSIGNED, driverAssignedAt = java.time.Instant.now().minusSeconds(180),
+        )
+        every { rideTripRepository.findById("ride_trip_cancel_2") } returns Optional.of(trip)
+        every { rideDriverRepository.findById("driver_cancel_2") } returns Optional.of(driver)
+        every { walletRepository.findByUserIdAndType("passenger_cancel_2", WalletType.MAIN) } returns passengerWallet
+        every { walletRepository.findById("wallet_driver_cancel_2") } returns Optional.of(driverWallet)
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refund_fee", emptyList())
+        every { rideTripRepository.save(any()) } answers { firstArg() }
+
+        When("the passenger cancels 3 real minutes after the driver was assigned") {
+            val result = service.cancelTrip("passenger_cancel_2", "ride_trip_cancel_2")
+
+            Then("it real-charges the modeled cancellation fee, refunding fare minus fee to the passenger and the fee to the driver") {
+                result.status shouldBe RideTripStatus.CANCELLED
+                val legs = slot<List<rw.itunda.core.ledger.LedgerLeg>>()
+                verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), capture(legs)) }
+                legs.captured.size shouldBe 3
+                legs.captured[1].amount shouldBe BigDecimal("500")
+                legs.captured[2].amount shouldBe BigDecimal("1000")
+                legs.captured[2].accountId shouldBe "wallet_driver_cancel_2"
+            }
+
+            Then("it notifies the driver of the real cancellation-fee payout") {
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "driver_user_cancel_2" && it.type == "RIDE_CANCELLATION_FEE_PAID" })
+                }
+            }
+        }
+    }
+
     Given("a driver with a real, statistically meaningful low acceptance rate") {
         val rideDriverRepository = mockk<RideDriverRepository>()
         val rideTripRepository = mockk<RideTripRepository>()

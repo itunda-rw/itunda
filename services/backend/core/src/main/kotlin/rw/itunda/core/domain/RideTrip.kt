@@ -14,9 +14,12 @@ import java.time.Instant
 // Forward-only, same discipline as EatsOrderStatus. REQUESTED -> (real dispatch offers
 // it to one real candidate driver at a time) -> DRIVER_ASSIGNED (a driver accepted) ->
 // IN_PROGRESS (driver started the trip) -> COMPLETED (real fare payout to the driver).
-// CANCELLED is reachable only from REQUESTED -- before any driver has committed to the
-// trip, the same safest, simplest real scope `EatsOrderStatus.CANCELLED`'s own doc
-// comment already chose (no sourced cancellation-fee policy exists to build against).
+// CANCELLED is reachable from REQUESTED (full refund, no driver has committed) and from
+// DRIVER_ASSIGNED (2026-08-17: a real, sourced Uber cancellation-fee policy now exists
+// to build against -- see RideTripService.cancelTrip's own doc comment). Never from
+// IN_PROGRESS or COMPLETED -- Uber's own policy states no fee applies once a trip has
+// begun, but that's silent on refunding a trip already underway, which itunda
+// deliberately leaves out of scope here as a materially different, higher-risk feature.
 enum class RideTripStatus { REQUESTED, DRIVER_ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED }
 
 /**
@@ -146,6 +149,17 @@ class RideTrip(
 
     @Column(name = "tip_transaction_id", length = 64)
     var tipTransactionId: String? = null,
+
+    // Real Uber cancellation-fee policy (help.uber.com/riders/article/cancellation-fees-explained):
+    // "fees may be charged if you cancel 2+ minutes after requesting" (once matched with
+    // a driver). Set exactly once, the moment a driver accepts (RideTripService
+    // .acceptTrip), so RideTripService.cancelTrip can measure the real elapsed time
+    // against RideTripService.CANCELLATION_FEE_GRACE_PERIOD regardless of anything else
+    // that might touch `updatedAt` in between. Null for a trip still REQUESTED or one
+    // that predates this column -- every existing caller's behavior completely
+    // unchanged.
+    @Column(name = "driver_assigned_at")
+    var driverAssignedAt: Instant? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
