@@ -8151,3 +8151,35 @@ new notification -- the favoriter's `PROPERTY_PRICE_DROP` count stayed at exactl
 real "가격 하락" (decrease-only) scoping, not any price edit. A non-owner attempting the price update
 real-`404`'d `PROPERTY_LISTING_NOT_FOUND` -- the same not-found discipline every other listing
 endpoint already uses. A non-positive price (`0`) real-`400`'d `INVALID_PROPERTY_LISTING`.
+
+## 125. Uber Eats-style post-delivery rider tipping
+
+**Added 2026-08-17.** Sourced from Uber's own official help article
+(help.uber.com/en/ubereats/restaurants/article/add-or-change-tip-amount-for-a-past-order): a buyer
+can add a tip for their delivery rider after a completed order, within a real bounded window,
+editable once. itunda already has the identical real mechanic for ride-hailing
+(`RideTripService.tipDriver`, Section 111) but nothing for Eats deliveries.
+
+**Built**: `EatsOrder.tipAmount`/`tipTransactionId` (migration `V269`). `EatsOrderService.tipRider`
+mirrors `tipDriver`'s exact shape: a direct real buyer-wallet-to-rider-wallet transfer that never
+routes through `eats_delivery_holding` (unlike the delivery fee itself) since a tip isn't itunda's
+revenue to hold or take a cut of. Scoped to real `DELIVERY` orders with an assigned rider only -- a
+`PICKUP` order has no rider to tip. Real once-only (`EatsOrderAlreadyTippedException`) and real
+30-day-window (`EatsOrderTipWindowExpiredException`, matching `RideTripService.TIP_WINDOW`'s own
+real rule -- same product/team, same rail) enforcement. `POST /eats/orders/{orderId}/tip`. Single
+`@Transactional` method, no loop -- not subject to the transaction-poisoning pitfall closed in
+Sections 115/118. 7 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: completed a real
+`DELIVERY` order lifecycle -- placed, dispatched to a freshly-positioned rider, `RIDER_ASSIGNED` →
+`PICKED_UP` → `DELIVERED`. As the buyer, `POST /tip {"amount": 500}` returned a real `200` with
+`tipAmount: 500`. The buyer's real MAIN wallet balance moved from `5,500` to exactly `5,000`
+(debited `500`); the rider's real MAIN wallet balance moved from `1,000` to exactly `1,500`
+(credited `500`). A direct DB check on `ledger_entries` confirmed the exact real 2-leg posting:
+buyer wallet `DEBIT 500.00`, rider wallet `CREDIT 500.00`, both correctly excluding
+`eats_delivery_holding`. A real `EATS_TIP_RECEIVED` notification appeared for the rider with the
+exact expected content: `"You received a 500 RWF tip for a recent delivery."` Tipping the same order
+again real-`409`'d `ORDER_ALREADY_TIPPED`. A non-positive tip amount (`0`) real-`400`'d
+`INVALID_TIP_AMOUNT`. A different, unrelated user attempting to tip this order real-`404`'d
+`ORDER_NOT_FOUND` -- the same real-vs-fake IDOR discipline every other order lookup in this codebase
+already uses.
