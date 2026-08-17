@@ -2,7 +2,6 @@ package rw.itunda.p2p
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AutoTransfer
 import rw.itunda.core.domain.AutoTransferFrequency
@@ -136,7 +135,19 @@ class AutoTransferService(
     // already established. A failed occurrence is skipped, not retried same-cycle: the
     // schedule still advances to the next real occurrence, same as a missed weekly
     // savings installment.
-    @Transactional
+    //
+    // Deliberately NOT @Transactional itself (2026-08-17 fix) -- p2pService.sendDirect
+    // below is a separately-proxied bean, already fully @Transactional on its own. If
+    // this method were also @Transactional, a real InsufficientFundsException/
+    // P2pRecipientNotFoundException thrown from sendDirect would mark THIS method's own
+    // ambient transaction rollback-only at the moment it throws -- catching it in the
+    // try/catch below would not undo that mark, and the final autoTransferRepository
+    // .save would fail with a real UnexpectedRollbackException even though the failure
+    // was already handled gracefully. Identical root cause to
+    // ProductSubscriptionService.executeOne's own 2026-08-17 fix -- see that method's
+    // doc comment for the full account. sendDirect remains fully atomic on its own via
+    // its own @Transactional annotation; autoTransferRepository.save below is
+    // independently atomic via Spring Data's implicit per-call transaction.
     fun executeOne(autoTransfer: AutoTransfer): Boolean {
         val succeeded = try {
             p2pService.sendDirect(autoTransfer.userId, autoTransfer.recipientIdentifier, autoTransfer.amount, autoTransfer.description)
