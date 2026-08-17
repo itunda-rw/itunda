@@ -172,10 +172,14 @@ class JobPostController(
         @PathVariable jobPostId: String,
         @RequestBody(required = false) request: MarkFilledRequest?,
         @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(
-            mapOf("success" to true, "post" to jobPostService.markFilled(currentUser.userId, jobPostId, request?.workerPhoneNumber)),
-        )
+    ): ResponseEntity<Map<String, Any?>> {
+        val post = jobPostService.markFilled(currentUser.userId, jobPostId, request?.workerPhoneNumber)
+        // Real 당근알바 job-closed notification -- see JobPostFavoriteService
+        // .notifyFavoritersOfClosure's own doc comment for why this lives here, at the
+        // controller layer, right after the real status change commits.
+        jobPostFavoriteService.notifyFavoritersOfClosure(post)
+        return ResponseEntity.ok(mapOf("success" to true, "post" to post))
+    }
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see HoodReviewService's own doc comment for the full account.
@@ -204,8 +208,13 @@ class JobPostController(
     fun removePost(
         @PathVariable jobPostId: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
-    ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "post" to jobPostService.removePost(currentUser.userId, jobPostId)))
+    ): ResponseEntity<Map<String, Any?>> {
+        val post = jobPostService.removePost(currentUser.userId, jobPostId)
+        // Real 당근알바 job-closed notification -- see JobPostFavoriteService
+        // .notifyFavoritersOfClosure's own doc comment.
+        jobPostFavoriteService.notifyFavoritersOfClosure(post)
+        return ResponseEntity.ok(mapOf("success" to true, "post" to post))
+    }
 
     // Real 당근알바 job-post wishlist (2026-07-22) -- see JobPostFavoriteService's own
     // doc comment. Mirrors MarketplaceController's own favorite-listing endpoints

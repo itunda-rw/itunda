@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest
 import rw.itunda.core.domain.JobPayType
 import rw.itunda.core.domain.JobPost
 import rw.itunda.core.domain.JobPostFavorite
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.JobPostFavoriteRepository
 import rw.itunda.core.repository.JobPostRepository
 import java.math.BigDecimal
@@ -22,7 +23,8 @@ class JobPostFavoriteServiceTest : BehaviorSpec({
     Given("a real job post on the board") {
         val jobPostFavoriteRepository = mockk<JobPostFavoriteRepository>()
         val jobPostRepository = mockk<JobPostRepository>()
-        val service = JobPostFavoriteService(jobPostFavoriteRepository, jobPostRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = JobPostFavoriteService(jobPostFavoriteRepository, jobPostRepository, pushNotificationService)
 
         val post = JobPost(
             id = "job_post_1", posterId = "poster_1", category = "delivery", title = "Real evening delivery run",
@@ -105,6 +107,47 @@ class JobPostFavoriteServiceTest : BehaviorSpec({
 
             Then("it falls back to an honest placeholder rather than crashing") {
                 page.content.single().title shouldBe "Job post no longer available"
+            }
+        }
+
+        When("the job post closes and 2 real workers favorited it") {
+            every { jobPostFavoriteRepository.findByJobPostId("job_post_1") } returns listOf(
+                JobPostFavorite(id = "job_post_favorite_1", userId = "worker_1", jobPostId = "job_post_1"),
+                JobPostFavorite(id = "job_post_favorite_2", userId = "worker_2", jobPostId = "job_post_1"),
+            )
+
+            service.notifyFavoritersOfClosure(post)
+
+            Then("it pushes to each real favoriter with the real job title, exactly once each") {
+                verify(exactly = 1) {
+                    pushNotificationService.sendToUser(
+                        "worker_1", "A job you saved has closed", "\"Real evening delivery run\" is no longer accepting applications.", any(),
+                    )
+                }
+                verify(exactly = 1) {
+                    pushNotificationService.sendToUser(
+                        "worker_2", "A job you saved has closed", "\"Real evening delivery run\" is no longer accepting applications.", any(),
+                    )
+                }
+            }
+        }
+
+        When("the job post closes with zero real favoriters") {
+            every { jobPostFavoriteRepository.findByJobPostId("job_post_1") } returns emptyList()
+
+            service.notifyFavoritersOfClosure(post)
+
+            Then("it sends zero pushes, genuinely free for a post nobody saved") {
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+            }
+        }
+
+        When("the favoriter lookup itself throws") {
+            every { jobPostFavoriteRepository.findByJobPostId("job_post_1") } throws RuntimeException("real DB blip")
+
+            Then("it swallows the failure rather than propagating it") {
+                service.notifyFavoritersOfClosure(post)
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
             }
         }
     }
