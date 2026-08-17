@@ -8593,3 +8593,31 @@ the 4th correctly triggered a real `VELOCITY` flag (3+ prior `COMPLETED` outgoin
 within the real 5-minute window), confirming the rule's off-by-one semantics (it counts history
 strictly before the current transaction, so the 3rd request alone does not yet trigger it, only
 the 4th does) rather than assuming the threshold count from the doc comment.
+
+## 139. Real OSRM road distance for ride fare calculation
+
+**Added 2026-08-17.** `GeoUtils.kt`'s own doc comment named this exact gap back when it was
+written: no self-hosted routing existed yet, so ride fares used straight-line `haversineKm`
+distance only, explicitly flagged as "a real, named follow-up once this lands." OSRM has since
+landed and is already proven live in `EatsOrderService` (delivery fees) and `MarketplaceService`
+(meetup distances), but `RideTripService.requestTrip` -- itunda's single largest real per-trip
+money charge -- was never updated to use it.
+
+**Built**: `requestTrip`'s multi-stop distance calculation now calls
+`OsrmRoutingClient.routeThrough` across the full pickup→stops→dropoff itinerary in one real
+request (real road distance, not stitched independent legs), falling back to the existing
+haversine-leg sum on OSRM's real never-fail `null` contract (unconfigured, unreachable, or no
+route found) -- the exact same discipline every other OSRM caller in this codebase already
+follows, so a real trip request is never blocked by OSRM being unavailable. Dispatch's own
+driver-ranking tiebreaker (an ETA proxy across every candidate driver, not the one real per-trip
+fare) deliberately keeps using haversine unchanged -- a cheap coarse filter, not the
+money-critical distance.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: manually computed the
+real haversine distance for a fixed pickup/dropoff pair already used repeatedly in earlier
+sections (Kigali Convention Centre → Kigali International Airport) as exactly `5.462` km --
+matching every pre-fix ride request's reported `distanceKm` for this exact route in Sections
+135-138. Requested the identical route post-deploy: `distanceKm` is now `6.912` km, a real,
+different, larger value (road distance correctly exceeding straight-line distance) -- live proof
+OSRM is genuinely active and reachable in production, not silently falling back. Fare recalculated
+correctly from the new distance: `1000 + 250 × 6.912 = 2728.00`, exact match to the real response.
