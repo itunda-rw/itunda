@@ -4439,6 +4439,13 @@ extension NetworkClient {
         try await get("api/v1/jobs/posts", query: [URLQueryItem(name: "category", value: category)])
     }
 
+    // Real relevance-ranked search (2026-08-14, backend JobPostController's own doc
+    // comment) -- shipped Android-only, never ported here; same real uncalled-endpoint
+    // gap class bank-mfe's own Jobs search fix already closed once for web.
+    public func searchJobPosts(_ q: String) async throws -> JobPostsResponse {
+        try await get("api/v1/jobs/posts/search", query: [URLQueryItem(name: "q", value: q)])
+    }
+
     public func getNearbyJobPosts(lat: Double, lng: Double, radiusKm: Double = 3) async throws -> JobPostsResponse {
         try await get("api/v1/jobs/posts/nearby", query: [URLQueryItem(name: "latitude", value: String(lat)), URLQueryItem(name: "longitude", value: String(lng)), URLQueryItem(name: "radiusKm", value: String(radiusKm))])
     }

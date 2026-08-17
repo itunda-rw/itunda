@@ -2389,6 +2389,14 @@ private struct JobsContent: View {
     @State private var favoritingId: String?
     @State private var favoriteNotice: String?
     @State private var nearbyRadiusKm = 3.0
+    // Real relevance-ranked search (2026-08-14) -- see NetworkClient.searchJobPosts's
+    // own doc comment: this endpoint shipped Android-only and was never ported here
+    // until now. Mirrors ShopScreen's own real cross-merchant product-search shape
+    // field-for-field (explicit Search/Clear buttons, not a debounced live search).
+    @State private var jobSearchInput = ""
+    @State private var jobSearchResults: [JobPostDto]?
+    @State private var jobSearchTrustScores: [String: Int] = [:]
+    @State private var jobSearching = false
 
     var body: some View {
         ScrollView {
@@ -2421,7 +2429,28 @@ private struct JobsContent: View {
                 .background(IDS.Colors.chipBackground)
                 .cornerRadius(12)
 
-                if (view == .browse || view == .neighborhood) && !categories.isEmpty {
+                if view == .browse {
+                    HStack(spacing: 8) {
+                        TextField("Search jobs", text: $jobSearchInput)
+                            .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                        Button(action: { Task { await searchJobs() } }) {
+                            Text(jobSearching ? "…" : "Search").bold().foregroundColor(.white)
+                                .padding(.horizontal, 16).padding(.vertical, 14)
+                                .background(jobSearching || jobSearchInput.trimmingCharacters(in: .whitespaces).isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                                .cornerRadius(10)
+                        }
+                        .disabled(jobSearching || jobSearchInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                        if jobSearchResults != nil {
+                            Button(action: { jobSearchResults = nil; jobSearchInput = "" }) {
+                                Text("Clear").bold().foregroundColor(IDS.Colors.textPrimary)
+                                    .padding(.horizontal, 16).padding(.vertical, 14)
+                                    .background(IDS.Colors.textTertiary).cornerRadius(10)
+                            }
+                        }
+                    }
+                }
+
+                if (view == .browse || view == .neighborhood) && jobSearchResults == nil && !categories.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
                             ForEach(categories) { c in
@@ -2458,7 +2487,26 @@ private struct JobsContent: View {
                 if view == .neighborhood, let neighborhoodName {
                     Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
-                if view == .applications {
+                if view == .browse, let jobSearchResults {
+                    if jobSearchResults.isEmpty {
+                        Text("No jobs matched \"\(jobSearchInput)\".").foregroundColor(IDS.Colors.textSecondary)
+                    } else {
+                        ForEach(jobSearchResults) { post in
+                            JobPostCard(
+                                post: post,
+                                categoryLabel: categories.first(where: { $0.id == post.category })?.label ?? post.category,
+                                isMine: post.posterId == currentUserId,
+                                onChanged: { Task { await searchJobs() } },
+                                onContact: { Task { await contact(post.id) } },
+                                favorited: favoriteIds.contains(post.id),
+                                favoriteBusy: favoritingId == post.id,
+                                onToggleFavorite: { Task { await toggleFavorite(post.id) } },
+                                posterTrustScore: jobSearchTrustScores[post.posterId],
+                                currentUserId: currentUserId
+                            )
+                        }
+                    }
+                } else if view == .applications {
                     MyJobApplicationsView()
                 } else if view == .wishlist {
                     JobPostWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
@@ -2564,6 +2612,20 @@ private struct JobsContent: View {
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+
+    private func searchJobs() async {
+        let q = jobSearchInput.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return }
+        jobSearching = true
+        do {
+            let res = try await NetworkClient.shared.searchJobPosts(q)
+            jobSearchResults = res.posts
+            jobSearchTrustScores = res.trustScores ?? [:]
+        } catch {
+            jobSearchResults = []
+        }
+        jobSearching = false
     }
 
     private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
