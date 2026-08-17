@@ -28,7 +28,9 @@ class MerchantProductServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository)
+        val eatsFavoriteRepository = mockk<rw.itunda.core.repository.EatsFavoriteRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository, eatsFavoriteRepository, pushNotificationService)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         every { merchantProductRepository.save(any()) } answers { firstArg() }
@@ -41,6 +43,24 @@ class MerchantProductServiceTest : BehaviorSpec({
                 product.name shouldBe "Latte"
                 product.price shouldBe BigDecimal("2500")
                 product.active shouldBe true
+            }
+
+            Then("no new-menu-item push fires when nobody has favorited this merchant") {
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+            }
+        }
+
+        When("the merchant has 2 real restaurant favoriters and adds a new product") {
+            every { eatsFavoriteRepository.findByRestaurantId("merchant_1") } returns listOf(
+                rw.itunda.core.domain.EatsFavorite(id = "eats_favorite_1", userId = "fan_1", restaurantId = "merchant_1"),
+                rw.itunda.core.domain.EatsFavorite(id = "eats_favorite_2", userId = "fan_2", restaurantId = "merchant_1"),
+            )
+            service.addProduct("owner_1", "Cappuccino", BigDecimal("3000"))
+
+            Then("both favoriters get a real push, the merchant's own account does not") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("fan_1", "New menu item at Kigali Coffee", "Cappuccino - 3000 RWF", any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("fan_2", "New menu item at Kigali Coffee", "Cappuccino - 3000 RWF", any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
             }
         }
 
@@ -62,7 +82,9 @@ class MerchantProductServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository)
+        val eatsFavoriteRepository = mockk<rw.itunda.core.repository.EatsFavoriteRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository, eatsFavoriteRepository, pushNotificationService)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val products = listOf(
@@ -86,7 +108,9 @@ class MerchantProductServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository)
+        val eatsFavoriteRepository = mockk<rw.itunda.core.repository.EatsFavoriteRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository, eatsFavoriteRepository, pushNotificationService)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val product = MerchantProduct(id = "p1", merchantId = "merchant_1", name = "Latte", price = BigDecimal("2500"))
@@ -127,7 +151,9 @@ class MerchantProductServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository)
+        val eatsFavoriteRepository = mockk<rw.itunda.core.repository.EatsFavoriteRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository, eatsFavoriteRepository, pushNotificationService)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val othersProduct = MerchantProduct(id = "p9", merchantId = "merchant_other", name = "Someone Else's Item", price = BigDecimal("1000"))
@@ -173,7 +199,9 @@ class MerchantProductServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository)
+        val eatsFavoriteRepository = mockk<rw.itunda.core.repository.EatsFavoriteRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository, eatsFavoriteRepository, pushNotificationService)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val product = MerchantProduct(id = "p1", merchantId = "merchant_1", name = "Latte", price = BigDecimal("2500"))
@@ -195,7 +223,9 @@ class MerchantProductServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>()
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository)
+        val eatsFavoriteRepository = mockk<rw.itunda.core.repository.EatsFavoriteRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository, eatsFavoriteRepository, pushNotificationService)
 
         val product = MerchantProduct(id = "p2", merchantId = "merchant_2", name = "Espresso", price = BigDecimal("1500"), viewCount = 4)
         every { merchantProductRepository.findById("p2") } returns Optional.of(product)
@@ -244,7 +274,9 @@ class MerchantProductServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository)
+        val eatsFavoriteRepository = mockk<rw.itunda.core.repository.EatsFavoriteRepository>(relaxed = true)
+        val pushNotificationService = mockk<rw.itunda.core.push.PushNotificationService>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter, orderItemRepository, eatsFavoriteRepository, pushNotificationService)
         every { rateLimiter.checkLimit("merchant:product:owner_9", limit = 30, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to add another real product") {

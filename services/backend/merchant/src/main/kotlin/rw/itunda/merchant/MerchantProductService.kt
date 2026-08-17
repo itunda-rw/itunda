@@ -1,10 +1,13 @@
 package rw.itunda.merchant
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.ProductPriceTier
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.EatsFavoriteRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.ProductPriceTierRepository
@@ -33,6 +36,27 @@ data class PriceTierRequest(val minQuantity: Int, val unitPrice: BigDecimal)
  * simple: a name and a price, exactly what a real cash-register catalog needs to build
  * a cart total; the actual checkout still goes through MerchantService's already-real
  * `generateQr`/`chargeCard`, unmodified -- this service never touches money movement.
+ *
+ * 2026-08-17: `addProduct` now also fans out a real Baemin "찜한 가게" (favorited
+ * store) new-menu-item notification -- sourced via a real search confirming Baemin's
+ * own documented behavior for restaurant owners: "배달의민족은 찜한 손님에게 자동으로 가게
+ * 소식을 노출해주기 때문에, 신메뉴 출시... 를 꾸준히 등록하면 자연스럽게 재방문을 유도할 수
+ * 있습니다" (Baemin automatically surfaces store news to customers who favorited the
+ * store, so regularly registering new menu launches naturally drives repeat visits --
+ * cashplan.link's own Baemin seller-strategy article). `EatsFavorite` already exists
+ * (favoriting a restaurant) but had zero notification hook of any kind. Uses
+ * `EatsFavoriteRepository` directly rather than depending on the `:eats` module
+ * (`MerchantProductService` lives in `:merchant`, which only depends on `:core`/
+ * `:auth` -- `EatsFavoriteRepository` itself lives in `:core`, so no new module
+ * dependency is needed). Deliberately scoped to restaurants only in effect, not by any
+ * explicit merchant-type field: a merchant with zero `EatsFavorite` rows (a
+ * Commerce-only shop) triggers zero notifications, exactly the same "additive, only
+ * fires where it's relevant" discipline `FraudRuleEngine`'s wiring (2026-08-17) and
+ * `KeywordAlertService.notifyMatchingAlerts` already establish. Push-only, no persisted
+ * `Notification` row -- same lighter shape `ProductFavoriteService.notifyPriceDrop`
+ * already uses for this same real "batch-notify favoriters" concern, wrapped in its own
+ * try/catch so a notification failure can never make a real product-creation call look
+ * like it failed.
  */
 @Service
 class MerchantProductService(
@@ -41,7 +65,11 @@ class MerchantProductService(
     private val priceTierRepository: ProductPriceTierRepository,
     private val rateLimiter: RateLimiter,
     private val orderItemRepository: rw.itunda.core.repository.OrderItemRepository,
+    private val eatsFavoriteRepository: EatsFavoriteRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(MerchantProductService::class.java)
+
     private fun getMyMerchant(ownerUserId: String) =
         merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw MerchantNotFoundException("This account is not registered as a merchant")
@@ -155,7 +183,31 @@ class MerchantProductService(
             requiresPrepay = requiresPrepay,
             stockQuantity = validateStockQuantity(stockQuantity),
         )
-        return merchantProductRepository.save(product)
+        val saved = merchantProductRepository.save(product)
+        notifyFavoritersOfNewProduct(merchant.id, merchant.businessName, saved)
+        return saved
+    }
+
+    // Real Baemin "찜한 가게" new-menu-item notification -- see this class's own doc
+    // comment for the real sourcing. A restaurant with zero favoriters (or a
+    // Commerce-only merchant no one has ever favorited as a restaurant) triggers zero
+    // real pushes -- the empty-list check makes this genuinely free for every non-Eats
+    // caller of addProduct, not just cheap.
+    private fun notifyFavoritersOfNewProduct(merchantId: String, businessName: String, product: MerchantProduct) {
+        try {
+            val favoriters = eatsFavoriteRepository.findByRestaurantId(merchantId)
+            if (favoriters.isEmpty()) return
+            for (favorite in favoriters) {
+                pushNotificationService.sendToUser(
+                    favorite.userId,
+                    "New menu item at $businessName",
+                    "${product.name} - ${product.price} RWF",
+                    mapOf("merchantId" to merchantId, "productId" to product.id),
+                )
+            }
+        } catch (e: Exception) {
+            log.warn("Could not send new-menu-item notifications for merchant {}", merchantId, e)
+        }
     }
 
     fun getCatalog(ownerUserId: String): List<MerchantProduct> {
