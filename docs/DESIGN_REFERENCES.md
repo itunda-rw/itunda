@@ -8340,3 +8340,33 @@ drained sender's row showed `status: 'FAILED'`, `failure_reason: 'Insufficient b
 sender's row showed `status: 'EXECUTED'` with a real `executed_at` timestamp and a real
 `transaction_id` -- both rows processed in the same poll, one failure not blocking the other. Pod
 logs across the full poll window showed zero occurrences of `UnexpectedRollbackException`.
+
+## 131. Toss Payments-style subscription delivery-failure alert
+
+**Added 2026-08-17.** Sourced from Toss Payments' own developer docs
+(docs-pay.toss.im/reference/billing/bill): a failed real billing-key charge sends the customer a
+real failure notification. itunda's five recurring-charge failure paths (bills auto-pay, product
+subscriptions, merchant billing, P2P auto-transfer, P2P scheduled-transfer) only ever recorded
+`lastFailureReason` silently on the row -- a customer would never find out their subscription
+skipped a round unless they happened to open that specific detail screen.
+
+**Built**: scoped this pass to `ProductSubscriptionService.executeOne` (the most built-out
+recurring system this session) -- on a real skipped delivery, sends a real `Notification` + push to
+the customer explaining why, via a new `notifyDeliveryFailed` helper. Purely a best-effort side
+effect wrapped in its own try/catch -- never affects the real schedule/save. `executeOne` is
+already NOT `@Transactional` (its own Section 118 fix), so this call is safe by construction: no
+ambient transaction exists to be poisoned by a failing notification save. 2 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: a real subscription
+funded with exactly enough for one charge (4,000 RWF against a 3,500 RWF product) had its real first
+delivery succeed, draining the wallet. Backdating `next_delivery_at` and letting a real
+`ProductSubscriptionScheduler` poll run against the now-insufficient balance produced a real DB
+row with `last_failure_reason: 'Insufficient balance'`. `GET /notifications` confirmed a real
+`PRODUCT_SUBSCRIPTION_FAILED` notification with the exact expected content: `"Subscription delivery
+skipped"` / `"We couldn't process your subscription delivery: Insufficient balance. It'll try
+again next cycle."`
+
+**Left as a real follow-up**: the identical gap exists in `BillsService`/`BillAutoPayProcessor`,
+`AutoTransferService`, `ScheduledTransferService`, and `MerchantBillingService` -- deliberately not
+touched here to keep this change to one clean, well-tested instance rather than spreading thin
+across five different modules in one pass.
