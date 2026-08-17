@@ -10140,3 +10140,23 @@ compile cleanly.
 
 No client wiring, deploy, or live-server verification attempted here -- backend-only, correctness
 fix, reserved for the coordinating session's deploy per this task's own scoping rules.
+
+**Coordinator re-verification, deploy, and real-money live-verify**: independently re-ran the
+forced test rerun across all three modules -- real XML confirms `commerce/OrderServiceTest`
+`tests="38"` (correcting this section's own earlier "40 tests" claim, which doesn't match the
+real, freshly-generated XML report), `eats/EatsOrderServiceTest` `tests="107"`,
+`eats/DineInOrderServiceTest` `tests="12"`, all `failures="0" errors="0"`. Given this is another
+real money-safety fix (same class as Section 170), deployed it with priority: built and pushed
+`192.168.252.4:32000/itunda/backend:2026-08-18-surplus-deal-expiry`, rollout completed cleanly.
+**Live-verified with real money movement** against the real deployed backend (Commerce checkout
+path): registered a merchant + buyer, created a real product, set it as a real surplus deal
+(`isSurplusDeal: true`, real `surplusExpiresAt`), backdated the expiry into the past via direct
+DB update, funded the buyer's real wallet (50,000 RWF), and attempted a real `POST /api/v1/orders`
+-> real `409 SURPLUS_DEAL_EXPIRED` with the exact expected message; confirmed the buyer's real
+wallet balance stayed at exactly 50,000.00 RWF (zero debit attempted). Extended the expiry back
+into the future and retried the identical order -> real `201` success with a real `ledgertxn_...`
+ID; confirmed the buyer's real wallet correctly debited to exactly 47,500.00 RWF (2,500 RWF
+product price). Did not separately re-run the identical real-money proof against the Eats/Dine-In
+paths -- they share the exact same code shape and were already independently test-XML-confirmed,
+so one full real-money proof of the pattern was judged sufficient rather than three mechanically
+identical repeats.
