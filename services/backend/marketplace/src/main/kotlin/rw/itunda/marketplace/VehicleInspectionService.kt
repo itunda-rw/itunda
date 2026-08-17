@@ -227,4 +227,51 @@ class VehicleInspectionService(
         booking.updatedAt = Instant.now()
         return vehicleInspectionBookingRepository.save(booking)
     }
+
+    /** Real no-show poll target -- see VehicleInspectionNoShowScheduler's own doc
+     * comment. Deliberately outside any transaction (a plain read), same
+     * "list candidates read-only, resolve each real row inside its own per-item
+     * @Transactional method" shape GiftVoucherExpiryScheduler/
+     * GiftVoucherService.expireVoucher already establish -- never a single
+     * batch-@Transactional loop over every due row. */
+    fun findDueNoShows(): List<VehicleInspectionBooking> =
+        vehicleInspectionBookingRepository.findByStatusAndScheduledForBefore(VehicleInspectionStatus.ACCEPTED, Instant.now())
+
+    /** Real no-show forfeit -- an ACCEPTED booking (the mechanic committed to the real
+     * slot) whose `scheduledFor` time has passed with neither `completeInspection` nor
+     * `cancelInspection` ever called. Same real forfeit-to-provider semantics
+     * `MerchantBookingService.processNoShows`/`payOutDeposit` already establish for its
+     * own sibling 100%-prepay-to-book feature -- pays the mechanic net of itunda's fee,
+     * exactly like a real COMPLETED inspection, since the mechanic held the slot.
+     *
+     * Re-checks real current state before acting (status still ACCEPTED, still
+     * genuinely past due) rather than trusting the scheduler's read-only candidate
+     * list -- the same real re-check discipline every other per-item scheduler target
+     * in this codebase already applies, so a booking the mechanic completed or the
+     * buyer cancelled in the gap between the poll's read and this call is safely a
+     * no-op, never double-settled. */
+    @Transactional
+    fun processNoShow(bookingId: String): VehicleInspectionBooking? {
+        val booking = vehicleInspectionBookingRepository.findById(bookingId).orElse(null) ?: return null
+        if (booking.status != VehicleInspectionStatus.ACCEPTED || !booking.scheduledFor.isBefore(Instant.now())) {
+            return null
+        }
+        val mechanic = vehicleInspectionMechanicRepository.findById(booking.mechanicId).orElse(null) ?: return null
+        val mechanicWallet = walletRepository.findById(mechanic.walletId).orElse(null) ?: return null
+        val netToMechanic = booking.fee.subtract(booking.platformFee)
+
+        val result = ledgerService.postLedgerTransaction(
+            mechanicWallet.currency,
+            listOf(
+                LedgerLeg("vehicle_inspection_holding", LedgerAccountType.VEHICLE_INSPECTION_HOLDING, LedgerDirection.DEBIT, booking.fee, "Inspection fee forfeited - no-show"),
+                LedgerLeg(mechanicWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMechanic, "Inspection no-show payout"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, booking.platformFee, "Inspection platform fee"),
+            ),
+        )
+
+        booking.status = VehicleInspectionStatus.NO_SHOW
+        booking.resolutionTransactionId = result.transactionId
+        booking.updatedAt = Instant.now()
+        return vehicleInspectionBookingRepository.save(booking)
+    }
 }

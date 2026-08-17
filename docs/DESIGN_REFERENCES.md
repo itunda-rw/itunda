@@ -10262,3 +10262,91 @@ with a real `ledgertxn_...` ID; confirmed the buyer's real wallet correctly debi
 for `isClosedToday()` or the Dine-In path -- same reasoning as Section 171's coordinator note:
 they share the exact same code shape and were already independently test-XML-confirmed, so one
 full real-money proof of the pattern was judged sufficient.
+
+## 173. Vehicle-inspection no-show forfeiture was never ported from its sibling `BookingDeposit` feature -- real money-safety gap fix
+
+**Added 2026-08-18.** A fourth pass of the Section 170/171/172 technique, this time
+looking past the fully-audited `Merchant`/`MerchantProduct` catalog per this task's own
+instruction, at a different money-adjacent, escrow-holding entity:
+`VehicleInspectionBooking` (real 당근마켓 중고차 정비소 동행/used-car mechanic-inspection
+accompaniment, a real 100%-prepay-to-book escrow, see that entity's own doc comment).
+Its own doc comment explicitly says it's "modeled directly on `MarketplaceEscrow`'s
+already-proven pay/hold/release/refund shape" and reuses `BookingDeposit`'s exact same
+real Kakao Hair Shop-sourced 100%-prepay-to-book no-show-prevention mechanic -- but only
+copied the pay/hold/release/refund plumbing, not the no-show *enforcement* half.
+`BookingDeposit`/`MerchantBooking` already have `BookingNoShowScheduler` +
+`MerchantBookingService.processNoShows()`: a still-CONFIRMED booking whose scheduled end
+time passes with neither side acting is auto-resolved to `NO_SHOW`, forfeiting the held
+deposit to the merchant so a customer can't just let time pass and later change their
+mind. `VehicleInspectionService` had no equivalent at all -- and worse,
+`cancelInspection` (allowed from either `REQUESTED` or `ACCEPTED`) had **zero
+time-based check**, unlike `MerchantBookingService.cancel` which at least races a
+60-second-poll scheduler for the analogous case. Concretely: a buyer could let a real
+mechanic travel to and perform a real inspection (status `ACCEPTED`, real committed
+time), and then call `cancelInspection` an unbounded amount of time later -- hours,
+days, indefinitely -- and claw back the full fee with zero platform fee taken, since
+the method only ever checked `booking.status`, never `booking.scheduledFor` against
+`now`. The mechanic would be left with real committed time and zero payment, with no
+automated protection ever kicking in, unlike every other real prepay-to-book flow in
+this codebase.
+
+**Fixed**: added `VehicleInspectionStatus.NO_SHOW` (mirrors `MerchantBookingStatus.
+NO_SHOW`); added `VehicleInspectionBookingRepository.findByStatusAndScheduledForBefore`;
+added `VehicleInspectionService.findDueNoShows()` (a plain read, no transaction) +
+`VehicleInspectionService.processNoShow(bookingId)` (`@Transactional`, re-checks the
+real row is still `ACCEPTED` and still genuinely past `scheduledFor` before acting --
+safely a no-op if the mechanic completed or the buyer cancelled in the gap between the
+poll's read and this call, never double-settles); added a new
+`VehicleInspectionNoShowScheduler` `@Component` with `@Scheduled(fixedDelay = 60000)`,
+looping the read-only candidate list and calling `processNoShow` per row inside a
+try/catch (one bad row never blocks the sweep for every other due row) -- the exact
+same "poll read-only, resolve each row inside its own per-item `@Transactional`
+method, never a batch-transactional loop" shape
+`MarketplaceEscrowAutoReleaseScheduler`/`GiftVoucherExpiryScheduler` already establish,
+this session's own proven-safe scheduler convention. On forfeiture the fee is paid to
+the mechanic net of itunda's platform fee, exactly matching `completeInspection`'s own
+payout math -- the mechanic is compensated for real committed time, same as a real
+`COMPLETED` inspection. `cancelInspection`'s existing status guard (`REQUESTED`/
+`ACCEPTED` only) automatically closes the exploit once a booking flips to `NO_SHOW`, no
+separate change needed there.
+
+Files changed:
+- `services/backend/core/src/main/kotlin/rw/itunda/core/domain/VehicleInspectionBooking.kt`
+  (new `NO_SHOW` enum value + doc comment)
+- `services/backend/core/src/main/kotlin/rw/itunda/core/repository/VehicleInspectionRepositories.kt`
+  (new `findByStatusAndScheduledForBefore` query method)
+- `services/backend/marketplace/src/main/kotlin/rw/itunda/marketplace/VehicleInspectionService.kt`
+  (new `findDueNoShows()` + `processNoShow(bookingId)`)
+- `services/backend/marketplace/src/main/kotlin/rw/itunda/marketplace/VehicleInspectionNoShowScheduler.kt`
+  (new file -- the scheduler `@Component`)
+- `services/backend/marketplace/src/test/kotlin/rw/itunda/marketplace/VehicleInspectionServiceTest.kt`
+  (new `Given` blocks: an overdue `ACCEPTED` booking is found by the poll, forfeited to
+  the mechanic net of the platform fee on `processNoShow`, and can no longer be
+  cancelled for a refund afterward -- the rejection case; plus three positive-control
+  cases proving the fix doesn't over-block a real still-pending or already-settled
+  booking -- a not-yet-due poll finds nothing, `processNoShow` on an
+  already-`COMPLETED` booking safely no-ops with zero ledger calls, and `processNoShow`
+  on a still-genuinely-`ACCEPTED`-but-not-yet-due booking is also left untouched)
+
+No changes needed to `MerchantBookingService`/`BookingNoShowScheduler` or any other
+sibling escrow (`MarketplaceEscrow`, `BookingDeposit`, `GiftVoucher`) -- each already has
+its own real no-show/expiry resolution; this closes the one that was missing it.
+
+**Verified locally, this pass**: `./gradlew :marketplace:compileKotlin
+:marketplace:compileTestKotlin` -> `BUILD SUCCESSFUL`, no compile errors. Also ran
+`./gradlew compileKotlin compileTestKotlin` across every module in the backend (root
+task) -> `BUILD SUCCESSFUL`, confirming the new `NO_SHOW` enum value doesn't break any
+other exhaustive `when` elsewhere in the codebase (none exists on this enum outside the
+files listed above). `./gradlew :marketplace:test --tests
+"rw.itunda.marketplace.VehicleInspectionServiceTest"` -> `BUILD SUCCESSFUL`; real XML
+report `marketplace/build/test-results/test/TEST-rw.itunda.marketplace.VehicleInspectionServiceTest.xml`
+confirms `tests="14" skipped="0" failures="0" errors="0"` (8 pre-existing + 6 new,
+including all four no-show/positive-control cases by name). Also ran the full
+`./gradlew :marketplace:test :core:test` (every test class in both modules, not just
+this one) -> `BUILD SUCCESSFUL`; summing every real XML report confirms `marketplace`
+`tests="95"` (14+6+13+48+14 across its five test classes) and `core` `tests="100"`,
+both `failures="0" errors="0"` -- nothing else in either module regressed.
+
+No client wiring needed (backend-only scheduler, no new endpoint), no deploy, and no
+live-server verification attempted here -- reserved for the coordinating session's
+deploy per this task's own scoping rules.

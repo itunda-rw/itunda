@@ -233,6 +233,116 @@ class VehicleInspectionServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real bug fix (2026-08-18) -- see VehicleInspectionStatus.NO_SHOW's own doc
+    // comment: cancelInspection had no time-based check at all, so a buyer could let a
+    // mechanic travel to/perform the real inspection and then cancel arbitrarily late
+    // for a full refund. VehicleInspectionNoShowScheduler + processNoShow close this.
+    Given("a real ACCEPTED booking whose scheduled time has already passed") {
+        val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
+        val vehicleInspectionBookingRepository = mockk<VehicleInspectionBookingRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository = vehicleInspectionBookingRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val mechanic = VehicleInspectionMechanic(id = "mechanic_1", userId = "mechanic_user_1", walletId = "wallet_mechanic", businessName = "Kigali Auto Care")
+        val overdueBooking = VehicleInspectionBooking(
+            id = "inspection_overdue", listingId = "listing_1", buyerId = "buyer_1", mechanicId = "mechanic_1",
+            fee = BigDecimal("15000"), platformFee = BigDecimal("225"), scheduledFor = Instant.now().minusSeconds(3600),
+            holdTransactionId = "ledgertxn_1", status = VehicleInspectionStatus.ACCEPTED,
+        )
+
+        When("the scheduler's poll runs") {
+            every { vehicleInspectionBookingRepository.findByStatusAndScheduledForBefore(VehicleInspectionStatus.ACCEPTED, any()) } returns listOf(overdueBooking)
+
+            Then("it real-finds the overdue booking as a no-show candidate") {
+                service.findDueNoShows() shouldBe listOf(overdueBooking)
+            }
+        }
+
+        When("processNoShow re-checks and settles it") {
+            every { vehicleInspectionBookingRepository.findById("inspection_overdue") } returns Optional.of(overdueBooking)
+            every { vehicleInspectionMechanicRepository.findById("mechanic_1") } returns Optional.of(mechanic)
+            every { walletRepository.findById("wallet_mechanic") } returns Optional.of(wallet("wallet_mechanic", "mechanic_user_1"))
+            every { vehicleInspectionBookingRepository.save(any()) } answers { firstArg() }
+            val legsSlot = mutableListOf<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_noshow_1", emptyList())
+
+            val resolved = service.processNoShow("inspection_overdue")
+
+            Then("it real-forfeits the fee to the mechanic net of the platform fee, marks NO_SHOW") {
+                resolved shouldBe overdueBooking
+                overdueBooking.status shouldBe VehicleInspectionStatus.NO_SHOW
+                val creditLeg = legsSlot.first().first { it.direction == LedgerDirection.CREDIT && it.accountId == "wallet_mechanic" }
+                creditLeg.amount shouldBe BigDecimal("14775")
+            }
+
+            Then("the buyer can no longer cancel it for a refund") {
+                every { vehicleInspectionBookingRepository.findById("inspection_overdue") } returns Optional.of(overdueBooking)
+                try {
+                    service.cancelInspection("buyer_1", "inspection_overdue")
+                    error("expected InvalidInspectionStatusTransitionException")
+                } catch (e: InvalidInspectionStatusTransitionException) {
+                    verify(exactly = 0) { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) }
+                }
+            }
+        }
+    }
+
+    // Positive control -- a booking that's still genuinely on time (or already resolved
+    // some other way) must NOT be swept up and forfeited. Proves the fix doesn't
+    // over-block a real still-pending or already-settled booking.
+    Given("real bookings the no-show sweep must leave completely alone") {
+        val vehicleInspectionMechanicRepository = mockk<VehicleInspectionMechanicRepository>()
+        val vehicleInspectionBookingRepository = mockk<VehicleInspectionBookingRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            vehicleInspectionMechanicRepository = vehicleInspectionMechanicRepository, vehicleInspectionBookingRepository = vehicleInspectionBookingRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        When("the scheduled time hasn't passed yet") {
+            every { vehicleInspectionBookingRepository.findByStatusAndScheduledForBefore(VehicleInspectionStatus.ACCEPTED, any()) } returns emptyList()
+
+            Then("the poll real-finds nothing due") {
+                service.findDueNoShows() shouldBe emptyList()
+            }
+        }
+
+        When("processNoShow is called for a booking the mechanic already completed in the gap between the poll and now") {
+            val alreadyCompleted = VehicleInspectionBooking(
+                id = "inspection_done", listingId = "listing_1", buyerId = "buyer_1", mechanicId = "mechanic_1",
+                fee = BigDecimal("15000"), platformFee = BigDecimal("225"), scheduledFor = Instant.now().minusSeconds(3600),
+                holdTransactionId = "ledgertxn_1", status = VehicleInspectionStatus.COMPLETED,
+            )
+            every { vehicleInspectionBookingRepository.findById("inspection_done") } returns Optional.of(alreadyCompleted)
+
+            Then("it real-re-checks state and safely no-ops, never double-settles") {
+                val result = service.processNoShow("inspection_done")
+                result shouldBe null
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("processNoShow is called for a still-genuinely-ACCEPTED booking that isn't overdue yet") {
+            val notYetDue = VehicleInspectionBooking(
+                id = "inspection_pending", listingId = "listing_1", buyerId = "buyer_1", mechanicId = "mechanic_1",
+                fee = BigDecimal("15000"), platformFee = BigDecimal("225"), scheduledFor = Instant.now().plusSeconds(3600),
+                holdTransactionId = "ledgertxn_1", status = VehicleInspectionStatus.ACCEPTED,
+            )
+            every { vehicleInspectionBookingRepository.findById("inspection_pending") } returns Optional.of(notYetDue)
+
+            Then("it real-leaves the still-on-time booking untouched") {
+                val result = service.processNoShow("inspection_pending")
+                result shouldBe null
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

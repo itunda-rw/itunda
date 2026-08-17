@@ -16,7 +16,22 @@ import java.time.Instant
 // the buyer before COMPLETED, or the mechanic declined -- full refund, no fee, same "an
 // explicit cancel always refunds" rule `MerchantBooking`/`BookingDeposit` already
 // establish.
-enum class VehicleInspectionStatus { REQUESTED, ACCEPTED, COMPLETED, CANCELLED }
+//
+// NO_SHOW added 2026-08-18 -- real bug fix, see VehicleInspectionNoShowScheduler's own
+// doc comment. An ACCEPTED booking (the mechanic committed to the slot) whose real
+// `scheduledFor` time has passed with neither `completeInspection` nor `cancelInspection`
+// ever called was, until this fix, stuck exactly HELD/ACCEPTED forever with one specific
+// exploit: `cancelInspection` itself has NO time-based check at all, so a buyer could
+// let the mechanic travel to/perform the real inspection, then cancel days or weeks
+// later and claw back the full fee -- the mechanic gets nothing for real committed time.
+// `MerchantBooking`/`BookingDeposit` already close this exact gap for its own sibling
+// 100%-prepay-to-book feature via `BookingNoShowScheduler`'s automatic forfeit-to-
+// provider on a past-due CONFIRMED booking; this were never ported to this structurally
+// identical escrow. Same real no-show semantics: fee forfeited to the mechanic net of
+// itunda's fee, same as a real COMPLETED inspection -- once the scheduled slot's time
+// has passed, `cancelInspection`'s explicit-status guard above no longer allows a
+// refund.
+enum class VehicleInspectionStatus { REQUESTED, ACCEPTED, COMPLETED, CANCELLED, NO_SHOW }
 
 /**
  * Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
