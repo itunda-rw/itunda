@@ -602,6 +602,13 @@ data class ConversationSummaryDto(
     // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
     // .archived's own doc comment. Same private-to-me model as quiet.
     val archived: Boolean = false,
+    // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see backend
+    // MessagingController's own doc comment distinguishing this from the existing
+    // per-message pin (pinnedMessageId above). Already returned by GET /conversations
+    // for every summary since MessagingController shipped it; bank-mfe wired a client
+    // for it (Section 165) but Android never read this field back. Same
+    // defined-but-uncalled shape as archived above.
+    val pinnedToTop: Boolean = false,
 )
 
 // Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
@@ -655,6 +662,13 @@ data class ConversationQuietResponse(val success: Boolean, val quiet: Boolean)
 // .archived's own doc comment.
 data class ConversationArchivedResponse(val success: Boolean, val archived: Boolean)
 data class SetConversationArchivedRequest(val archived: Boolean)
+// Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see
+// ConversationSummaryDto.pinnedToTop's own doc comment. Named ConversationPinnedToTop
+// (not ConversationPinned) to stay distinct from the existing per-message
+// pinConversationMessage/unpinConversationMessage pair below, same naming discipline
+// bank-mfe's lib/messaging.ts already established for this endpoint.
+data class ConversationPinnedToTopResponse(val success: Boolean, val pinned: Boolean)
+data class SetConversationPinnedToTopRequest(val pinned: Boolean)
 data class CreateChatReportRequest(val messageId: String, val reason: String)
 data class SetConversationQuietRequest(val quiet: Boolean)
 data class ToggleReactionRequest(val emoji: String)
@@ -2576,6 +2590,17 @@ interface ApiService {
 
     @POST("api/v1/messages/conversations/{id}/archive")
     suspend fun setConversationArchived(@Path("id") conversationId: String, @Body request: SetConversationArchivedRequest): ConversationArchivedResponse
+
+    // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see
+    // ConversationSummaryDto.pinnedToTop's own doc comment. Found fully built on the
+    // backend (MessagingController POST/GET .../pin-to-top) with zero Android caller,
+    // same defined-but-uncalled shape this session already found and closed for
+    // bank-mfe (Section 165) -- Android/iOS were explicitly left for follow-up then.
+    @GET("api/v1/messages/conversations/{id}/pin-to-top")
+    suspend fun getConversationPinnedToTop(@Path("id") conversationId: String): ConversationPinnedToTopResponse
+
+    @POST("api/v1/messages/conversations/{id}/pin-to-top")
+    suspend fun setConversationPinnedToTop(@Path("id") conversationId: String, @Body request: SetConversationPinnedToTopRequest): ConversationPinnedToTopResponse
 
     @POST("api/v1/chat/reports")
     suspend fun reportChatMessage(@Body request: CreateChatReportRequest): SuccessResponse

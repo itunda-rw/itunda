@@ -305,7 +305,16 @@ private struct DirectMessagesList: View {
                     .listRowSeparator(.hidden)
             }
 
-            let visibleList = showArchived ? archivedConversations : conversations
+            // Real KakaoTalk pinned-rooms-float-to-top behavior (2026-08-18) -- see
+            // ConversationSummaryDto.pinnedToTop's own doc comment. Array.sorted(by:)
+            // has been a guaranteed-stable sort since Swift 5, so unpinned rows keep
+            // their existing lastMessageAt order beneath the pinned ones, matching
+            // bank-mfe/Android's own identical sort. Archived rooms are never
+            // re-sorted -- pinning only ever applies to the active list, same gating
+            // the swipeActions below already use.
+            let visibleList = showArchived
+                ? archivedConversations
+                : conversations?.sorted { a, b in (a.pinnedToTop ?? false) && !(b.pinnedToTop ?? false) }
             if let error {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(error).foregroundColor(.red).font(.subheadline)
@@ -350,6 +359,28 @@ private struct DirectMessagesList: View {
                             }
                         }
                         .tint(showArchived ? IDS.Colors.brand : IDS.Colors.danger)
+                    }
+                    // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18)
+                    // -- see ConversationSummaryDto.pinnedToTop's own doc comment. Only
+                    // offered on the active list -- pinning an archived room to the top
+                    // of the active list would be a confusing, silently-unarchiving
+                    // side effect (same gating bank-mfe/Android already use). This
+                    // closes the honest "no per-conversation favorite to wire a second
+                    // swipe to" limitation the trailing-swipe comment above named on
+                    // 2026-08-05 -- a real one now exists.
+                    .swipeActions(edge: .leading) {
+                        if !showArchived {
+                            let pinned = conversation.pinnedToTop ?? false
+                            Button(pinned ? "Unpin" : "Pin") {
+                                Task {
+                                    _ = try? await NetworkClient.shared.setConversationPinnedToTop(
+                                        conversationId: conversation.conversationId, pinned: !pinned
+                                    )
+                                    onArchiveChanged()
+                                }
+                            }
+                            .tint(IDS.Colors.brand)
+                        }
                     }
                 }
             }
@@ -1207,7 +1238,19 @@ private struct ConversationRow: View {
                 }
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(conversation.otherUserName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                HStack(spacing: 4) {
+                    Text(conversation.otherUserName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    // Real KakaoTalk 채팅방 상단 고정 at-a-glance indicator (2026-08-18)
+                    // -- see ConversationSummaryDto.pinnedToTop's own doc comment. Same
+                    // small-glyph-next-to-name treatment this row would give quiet/
+                    // pinnedMessageId if it tracked them (it doesn't -- this row is a
+                    // deliberately simpler card than Android's ConversationRow).
+                    if conversation.pinnedToTop == true {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(IDS.Colors.brand)
+                    }
+                }
                 Text(conversation.lastMessagePreview ?? "No messages yet")
                     .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                     .foregroundColor(IDS.Colors.textSecondary)

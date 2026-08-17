@@ -2431,6 +2431,13 @@ public struct ConversationSummaryDto: Decodable, Identifiable {
     // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
     // .archived's own doc comment. Same private-to-me model as quiet.
     public let archived: Bool?
+    // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see backend
+    // MessagingController's own doc comment distinguishing this from the existing
+    // per-message pin (pinnedMessageId above). Already returned by GET /conversations
+    // for every summary since MessagingController shipped it; bank-mfe wired a client
+    // for it (Section 165) but iOS never read this field back until now. Same
+    // defined-but-uncalled shape as archived above.
+    public let pinnedToTop: Bool?
     public var id: String { conversationId }
 }
 
@@ -2594,6 +2601,13 @@ public struct ConversationQuietResponse: Decodable { public let success: Bool; p
 // .archived's own doc comment.
 public struct ConversationArchivedResponse: Decodable { public let success: Bool; public let archived: Bool }
 public struct SetConversationArchivedRequest: Encodable { public let archived: Bool }
+// Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see
+// ConversationSummaryDto.pinnedToTop's own doc comment. Named ConversationPinnedToTop
+// (not ConversationPinned) to stay distinct from the existing per-message
+// pin/unpin(ConversationMessage) pair, same naming discipline bank-mfe's own
+// lib/messaging.ts already established for this endpoint.
+public struct ConversationPinnedToTopResponse: Decodable { public let success: Bool; public let pinned: Bool }
+public struct SetConversationPinnedToTopRequest: Encodable { public let pinned: Bool }
 public struct CreateChatReportRequest: Encodable { public let messageId: String; public let reason: String }
 public struct SetConversationQuietRequest: Encodable { public let quiet: Bool }
 public struct EmptyRequest: Encodable {}
@@ -4084,6 +4098,19 @@ extension NetworkClient {
 
     public func setConversationArchived(conversationId: String, archived: Bool) async throws -> ConversationArchivedResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/archive", body: SetConversationArchivedRequest(archived: archived))
+    }
+
+    // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see
+    // ConversationSummaryDto.pinnedToTop's own doc comment. Found fully built on the
+    // backend (MessagingController POST/GET .../pin-to-top) with zero iOS caller, same
+    // defined-but-uncalled shape this session already found and closed for bank-mfe
+    // (Section 165) -- Android/iOS were explicitly left for follow-up then.
+    public func getConversationPinnedToTop(conversationId: String) async throws -> ConversationPinnedToTopResponse {
+        try await get("api/v1/messages/conversations/\(conversationId)/pin-to-top")
+    }
+
+    public func setConversationPinnedToTop(conversationId: String, pinned: Bool) async throws -> ConversationPinnedToTopResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/pin-to-top", body: SetConversationPinnedToTopRequest(pinned: pinned))
     }
 
     public func reportChatMessage(messageId: String, reason: String) async throws -> SuccessResponse {

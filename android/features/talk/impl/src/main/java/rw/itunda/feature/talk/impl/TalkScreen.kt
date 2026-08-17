@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.filled.PushPin as PushPinFilled
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Photo
@@ -143,6 +144,7 @@ import rw.itunda.core.network.SendGiftInConversationRequest
 import rw.itunda.core.network.SendGroupMessageRequest
 import rw.itunda.core.network.SendMessageRequest
 import rw.itunda.core.network.SetConversationArchivedRequest
+import rw.itunda.core.network.SetConversationPinnedToTopRequest
 import rw.itunda.core.network.SetConversationQuietRequest
 import rw.itunda.core.network.SplitBillWithParticipants
 import rw.itunda.core.network.StartConversationRequest
@@ -359,6 +361,20 @@ private fun DirectMessagesList(
         }
     }
 
+    // Real KakaoTalk 채팅방 상단 고정 (2026-08-18) -- see ConversationSummaryDto
+    // .pinnedToTop's own doc comment. Same fire-and-refresh shape as setArchived above.
+    fun togglePinnedToTop(conversationId: String, pinned: Boolean) {
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.setConversationPinnedToTop(conversationId, SetConversationPinnedToTopRequest(pinned))
+                onArchiveChanged()
+            } catch (_: Exception) {
+                // Real, non-critical -- a failed pin/unpin just leaves the row where it
+                // was; the user can retry the tap.
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         contacts = try {
             NetworkClient.apiService.getTalkContacts().takeIf { it.success }?.contacts ?: emptyList()
@@ -460,7 +476,14 @@ private fun DirectMessagesList(
                 Text(if (showArchived) "Show active chats" else "Archived ($archivedCount)", color = Ids.colors.textSecondary)
             }
         }
-        val visibleList = if (showArchived) archivedConversations else conversations
+        // Real KakaoTalk pinned-rooms-float-to-top behavior (2026-08-18) -- see
+        // ConversationSummaryDto.pinnedToTop's own doc comment. sortedByDescending uses
+        // a stable sort (Kotlin delegates to Collections.sort/TimSort on List), so
+        // unpinned rows keep their existing lastMessageAt order beneath the pinned ones,
+        // same real behavior bank-mfe's own DirectMessagesList already established.
+        // Archived rooms are never re-sorted -- pinning only ever applies to the active
+        // list, matching setArchived's own active-list-only gating below.
+        val visibleList = if (showArchived) archivedConversations else conversations?.sortedByDescending { it.pinnedToTop }
         if (error != null) {
             item { ErrorCard(error, onRetry = onRetry) }
         } else if (visibleList == null) {
@@ -480,6 +503,7 @@ private fun DirectMessagesList(
                     isArchived = showArchived,
                     onClick = { onOpen(c.conversationId) },
                     onArchiveToggle = { setArchived(c.conversationId, !showArchived) },
+                    onPinToggle = { togglePinnedToTop(c.conversationId, !c.pinnedToTop) },
                 )
             }
         }
@@ -1810,6 +1834,7 @@ private fun SwipeableConversationRow(
     isArchived: Boolean,
     onClick: () -> Unit,
     onArchiveToggle: () -> Unit,
+    onPinToggle: () -> Unit,
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -1847,7 +1872,16 @@ private fun SwipeableConversationRow(
         // to actually cover backgroundContent at rest; without this the red/blue swipe
         // reveal showed through underneath the row even when not swiping.
         Box(modifier = Modifier.background(Ids.colors.background)) {
-            ConversationRow(conversation, online = online, onClick = onClick)
+            ConversationRow(
+                conversation,
+                online = online,
+                onClick = onClick,
+                // Real KakaoTalk pin-to-top toggle (2026-08-18) -- only offered on the
+                // active list, matching the swipe-to-archive action above and bank-mfe's
+                // own active-list-only gating (pinning an archived room to the top of
+                // the active list would be a confusing, silently-unarchiving side effect).
+                onPinToggle = if (isArchived) null else onPinToggle,
+            )
         }
     }
 }
@@ -1864,7 +1898,12 @@ private fun SwipeableConversationRow(
 // badge stays itunda's own blue, not Kakao yellow) -- a real, connected ecosystem
 // like Kakao's own keeps one consistent brand color across every surface; only the
 // row's real, sourced *structure* is worth borrowing here, not its color.
-private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolean, onClick: () -> Unit) {
+private fun ConversationRow(
+    conversation: ConversationSummaryDto,
+    online: Boolean,
+    onClick: () -> Unit,
+    onPinToggle: (() -> Unit)? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1923,6 +1962,21 @@ private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolea
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(conversation.lastMessagePreview ?: "No messages yet", color = Ids.colors.textSecondary, fontSize = 14.sp, maxLines = 1)
+        }
+        // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) (2026-08-18) -- see
+        // ConversationSummaryDto.pinnedToTop's own doc comment. Always-visible icon
+        // button, same convention bank-mfe's own DirectMessagesList row already
+        // established for this action (distinct from the swipe-to-archive gesture,
+        // which stays on the background layer beneath this row).
+        if (onPinToggle != null) {
+            IconButton(onClick = onPinToggle, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    if (conversation.pinnedToTop) Icons.Filled.PushPinFilled else Icons.Outlined.PushPin,
+                    contentDescription = if (conversation.pinnedToTop) "Unpin from top" else "Pin to top",
+                    tint = if (conversation.pinnedToTop) Ids.colors.brand else Ids.colors.textTertiary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
         if (conversation.unreadCount > 0) {
             // A muted chat's badge stays neutral rather than brand-blue -- it still

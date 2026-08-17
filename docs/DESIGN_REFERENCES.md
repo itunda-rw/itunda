@@ -9693,3 +9693,59 @@ pinning B, the active list re-sorted with B (the older conversation) now above C
 verified reordering driven by the client-side `pinnedToTop` sort, confirmed via both DOM text
 extraction and a screenshot showing B's row with the filled blue "unpin" icon on top and C's row
 with the outline "pin" icon below.
+
+## 166. KakaoTalk 채팅방 상단 고정 (pin chat room to top) client wiring, Android + iOS
+
+**Added 2026-08-18.** Section 165's own closing note named the exact follow-up: `MessagingController`'s
+`POST/GET /api/v1/messages/conversations/{id}/pin-to-top` was wired into bank-mfe only, and
+`ConversationSummaryDto`/`ConversationSummary` already carried `pinnedToTop` server-side on
+Android/iOS too (via `MessagingService.listConversations`) with zero Kotlin/Swift client reading
+or writing it -- confirmed by grepping both `android/core/network/.../ApiService.kt` and
+`ios/Core/Network/Sources/NetworkClient.swift`: neither declared `pinnedToTop` on their
+`ConversationSummaryDto`, and neither had a Retrofit/URLSession method for `pin-to-top`, despite
+both already having the identical `archived`/`archive` pair fully wired since Section (2026-08-05).
+Same "one platform per section" cadence Sections 159-161/162-164/165 used.
+
+**Built, Android**: `ApiService.kt` gained `pinnedToTop: Boolean = false` on `ConversationSummaryDto`,
+`ConversationPinnedToTopResponse`/`SetConversationPinnedToTopRequest` DTOs, and
+`getConversationPinnedToTop`/`setConversationPinnedToTop` Retrofit methods, mirroring the existing
+archive pair 1:1. `TalkScreen.kt`'s `DirectMessagesList` gained a `togglePinnedToTop` handler and
+sorts the active list with `sortedByDescending { it.pinnedToTop }` (Kotlin's `List.sortedBy*` is a
+stable sort) so pinned rooms float to the top, unpinned ones keeping their existing order beneath --
+matching bank-mfe's own sort. `ConversationRow` gained an always-visible pin/unpin `IconButton`
+(outlined `PushPin` unpinned, filled `PushPin` pinned, tinted brand color when active), shown only
+on the active list via `SwipeableConversationRow`'s existing `isArchived` gate (passed through as
+`onPinToggle: (() -> Unit)?` = null when archived) -- same active-list-only rule bank-mfe already
+established, since pinning a room to the top of a list it isn't displayed in doesn't mean anything.
+
+**Built, iOS**: `NetworkClient.swift` gained `pinnedToTop: Bool?` on `ConversationSummaryDto`,
+`ConversationPinnedToTopResponse`/`SetConversationPinnedToTopRequest`, and
+`getConversationPinnedToTop`/`setConversationPinnedToTop` async methods, same shape as the archive
+pair immediately above them. `TalkScreen.swift`'s `DirectMessagesList` sorts the active list with
+`Array.sorted(by:)` (a guaranteed-stable sort since Swift 5) on `pinnedToTop`. Rather than a plain
+button (bank-mfe/Android's own convention), iOS uses a native `.swipeActions(edge: .leading)` Pin/
+Unpin action alongside the existing `.swipeActions(edge: .trailing)` Archive action -- this closes
+the exact honest limitation the trailing-swipe comment named on 2026-08-05 ("itunda's Talk has no
+per-conversation favorite to wire a second swipe to"): a real one now exists. `ConversationRow`
+also gained a small filled `pin.fill` SF Symbol glyph next to the conversation name when
+`pinnedToTop == true`, an at-a-glance indicator even without swiping.
+
+**Verification**: Android -- ran `./gradlew :app:compileDebugKotlin` after `touch`-ing both changed
+files to defeat the Gradle cache; real rebuild (not `UP-TO-DATE`) of `:features:talk:impl:compileDebugKotlin`
+and `:app:compileDebugKotlin`, `BUILD SUCCESSFUL`, no new warnings or errors from either changed
+file (only pre-existing unrelated deprecation warnings elsewhere in the module). iOS -- ran
+`xcodebuild -workspace ios/Itunda.xcworkspace -scheme CoreNetwork -destination "generic/platform=iOS
+Simulator" build` for the `NetworkClient.swift` change, real compile, `** BUILD SUCCEEDED **`; ran
+`xcrun swiftc -parse ios/App/Sources/TalkScreen.swift -suppress-warnings` for the App-target file
+(the full `ItundaApp` scheme is pre-existing known-broken, per this session's standing constraint),
+clean with zero output. No backend code touched -- the endpoint, `MessagingService` methods, and
+`pinnedToTop` computation all already existed and were already covered by
+`MessagingServiceTest.kt`'s real assertions before this change.
+
+Files: `android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt`,
+`android/features/talk/impl/src/main/java/rw/itunda/feature/talk/impl/TalkScreen.kt`,
+`ios/Core/Network/Sources/NetworkClient.swift`, `ios/App/Sources/TalkScreen.swift`.
+
+Per this task's own scope, no live-server click-through verification or deploy was attempted here
+-- that's reserved for the coordinating session. Closes the pin-chat-to-top thread across all 3
+platforms (bank-mfe done in Section 165, Android + iOS done here).
