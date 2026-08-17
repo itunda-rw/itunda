@@ -9974,3 +9974,20 @@ here -- backend-only this pass, reserved for a future client-wiring pass and the
 session's deploy respectively, matching the same "backend-only this pass" scoping Section 113
 (stock price alerts) and Section 121 (FX rate alerts) already used before their own later
 client-wiring passes (Sections 167/168).
+
+**Coordinator re-verification and deploy**: independently re-ran the forced test rerun (real XML
+confirms `tests="19" failures="0" errors="0"`, all 3 new restock cases present by name) and the
+wider `:commerce:compileKotlin`/`:app:compileKotlin` compile check -- both held up clean. Built
+and deployed `192.168.252.4:32000/itunda/backend:2026-08-18-restock-notification` to the real
+cluster; rollout completed cleanly (one earlier polling attempt correctly waited past a stale
+"old pod still 1/1" false-complete before confirming the real single-pod steady state). **Live-
+verified** against the real deployed backend using the established device-token-seeding
+technique for push-only notifications (no persisted `Notification` row here, matching
+`notifyFavoritersOfNewProduct`'s own push-only convention): registered a merchant + favoriter,
+created a real product, favorited it as the second user, seeded a fake `device_tokens` row for
+that user, then real `PATCH .../sold-out {"soldOut":true}` followed by real
+`PATCH .../sold-out {"soldOut":false}`. Grepped the backend pod logs across both calls and found
+exactly ONE real `RealFcmPushSender` attempt (`"FCM push failed for token fake-token-s...: The
+registration token is not a valid FCM registration token"`), timestamped right after the
+`soldOut:false` call -- proving the restock push genuinely fires only on the real `true->false`
+transition and not on the mark-sold-out call, matching the code's own gating exactly.
