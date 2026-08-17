@@ -8183,3 +8183,28 @@ again real-`409`'d `ORDER_ALREADY_TIPPED`. A non-positive tip amount (`0`) real-
 `INVALID_TIP_AMOUNT`. A different, unrelated user attempting to tip this order real-`404`'d
 `ORDER_NOT_FOUND` -- the same real-vs-fake IDOR discipline every other order lookup in this codebase
 already uses.
+
+## 126. Karrot-style comment-notification toggle (동네생활 새 댓글 알림 끄기)
+
+**Added 2026-08-17.** Sourced from Karrot's own official support FAQ
+(cs.kr.karrotmarket.com/wv/faqs/3106, "동네생활 새 댓글 알림을 끌 수 있나요?"): users can turn off
+new-comment notifications in the app's real notification settings. `CommunityService.addComment`
+previously notified a post's author on every single comment unconditionally, with no way to opt
+out.
+
+**Built**: `CommunityNotificationPreference` (migration `V270`), a real global per-user toggle --
+one row per user, missing row = enabled, matching `ConversationPreference`'s own "no row = default"
+convention for `quiet`/`archived`/`pinned`. `addComment` now checks
+`areCommentNotificationsEnabled(post.authorId)` before sending the notification/push -- the comment
+itself is still saved and counted either way. `POST`/`GET /community/notification-preference`.
+Single `@Transactional` call with no loop -- not subject to the transaction-poisoning pitfall
+closed in Sections 115/118. 4 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: created a real
+community post, a real first comment triggered a real `COMMUNITY_COMMENT` notification for the
+author. As the author, `POST /notification-preference {"enabled": false}`. A real second comment
+was saved (comment count `2`) but produced **no** new notification -- the `COMMUNITY_COMMENT` count
+stayed at exactly `1`. `GET /notification-preference` confirmed the real persisted state
+(`commentNotificationsEnabled: false`). Re-enabling (`{"enabled": true}`) and adding a third real
+comment resumed notifications correctly -- the count moved to exactly `2`, proving the toggle
+governs real delivery, not just the stored preference value.
