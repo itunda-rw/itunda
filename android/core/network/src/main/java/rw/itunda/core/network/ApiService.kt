@@ -3983,6 +3983,31 @@ interface ApiService {
     @GET("api/v1/rides/drivers/{driverId}/reviews")
     suspend fun getRideDriverReviews(@Path("driverId") driverId: String, @Query("size") size: Int = 10): RideDriverReviewsResponse
 
+    // Real Uber Safety "Trusted Contacts" (help.uber.com -- riders pre-select up to 5
+    // trusted contacts once in settings, then one tap sends their live trip status to
+    // all of them). See the backend's RideTrustedContact.kt doc comment for the full
+    // sourced account. Found via the uncalled-endpoint sweep (item 159, 2026-08-18):
+    // RideController already had a complete, tested list/add/remove/send-status
+    // implementation with zero client callers on any platform -- bank-mfe closed this
+    // first, this is the first Android client. Mirrors bank-mfe's lib/rideshare.ts
+    // fetchTrustedContacts/addTrustedContact/removeTrustedContact/
+    // sendStatusToTrustedContacts exactly.
+    @GET("api/v1/rides/trusted-contacts")
+    suspend fun getRideTrustedContacts(): RideTrustedContactsResponse
+
+    @POST("api/v1/rides/trusted-contacts")
+    suspend fun addRideTrustedContact(@Body request: AddRideTrustedContactRequest): RideTrustedContactResponse
+
+    @DELETE("api/v1/rides/trusted-contacts/{contactId}")
+    suspend fun removeRideTrustedContact(@Path("contactId") contactId: String): SuccessResponse
+
+    // Real Uber "Send Status" -- one tap fans a trip's live status out to every trusted
+    // contact at once (distinct from shareRideTripStatus's single-conversation pick).
+    // Returns how many contacts were actually messaged so the client can show a real
+    // "Sent to N contacts" confirmation, matching Uber's own toast.
+    @POST("api/v1/rides/trips/{tripId}/send-status")
+    suspend fun sendStatusToRideTrustedContacts(@Path("tripId") tripId: String): SendStatusToTrustedContactsResponse
+
     // Real Kakao T 대리운전 (designated driver, item 221) -- first Android client for
     // this feature. bank-mfe already has this; mirrors lib/designatedDriver.ts exactly.
     @POST("api/v1/designated-driver/drivers/register")
@@ -4465,6 +4490,16 @@ data class RideTripStopDto(
 )
 data class RideTripStopResponse(val success: Boolean, val stop: RideTripStopDto)
 data class RideTripStopsResponse(val success: Boolean, val stops: List<RideTripStopDto>)
+
+// Real Uber Safety "Trusted Contacts" -- mirrors the backend's RideTrustedContact.kt
+// exactly (see that file's own doc comment for the full sourced account).
+data class RideTrustedContactDto(
+    val id: String, val userId: String, val contactUserId: String, val contactName: String, val createdAt: String,
+)
+data class RideTrustedContactResponse(val success: Boolean, val contact: RideTrustedContactDto)
+data class RideTrustedContactsResponse(val success: Boolean, val contacts: List<RideTrustedContactDto>)
+data class AddRideTrustedContactRequest(val phoneNumber: String, val name: String)
+data class SendStatusToTrustedContactsResponse(val success: Boolean, val sentCount: Int)
 
 // Real Kakao T 대리운전 (designated driver, item 221) -- a professional driver comes
 // to the customer's location and drives the CUSTOMER'S OWN CAR home for them, distinct

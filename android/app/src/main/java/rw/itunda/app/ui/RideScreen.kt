@@ -48,6 +48,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.AddRideTrustedContactRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.RequestRideTripRequest
 import rw.itunda.core.network.RideDriverDto
@@ -56,6 +57,7 @@ import rw.itunda.core.network.RideStopRequestDto
 import rw.itunda.core.network.RideTripDto
 import rw.itunda.core.network.RideTripReviewDto
 import rw.itunda.core.network.RideTripStopDto
+import rw.itunda.core.network.RideTrustedContactDto
 import rw.itunda.core.network.SetRideDriverAvailabilityRequest
 import rw.itunda.core.network.StartRideTripRequest
 import rw.itunda.core.network.SubmitRideReviewRequest
@@ -132,7 +134,82 @@ private fun RidePassengerContent() {
     var busyTripId by remember { mutableStateOf<String?>(null) }
     var reviewedTripIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real Uber Safety "Trusted Contacts" (item 160) -- see ApiService.kt's own doc
+    // comment for the full sourced account. First Android client; mirrors bank-mfe's
+    // TrustedContactsSection.
+    var trustedContacts by remember { mutableStateOf<List<RideTrustedContactDto>?>(null) }
+    var addContactPhone by remember { mutableStateOf("") }
+    var addContactName by remember { mutableStateOf("") }
+    var addingContact by remember { mutableStateOf(false) }
+    var removingContactId by remember { mutableStateOf<String?>(null) }
+    var contactError by remember { mutableStateOf<String?>(null) }
+    var sendingStatus by remember { mutableStateOf(false) }
+    var sendStatusResult by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+
+    fun loadTrustedContacts() {
+        coroutineScope.launch {
+            try {
+                trustedContacts = NetworkClient.apiService.getRideTrustedContacts().contacts
+            } catch (_: Exception) {
+                // Non-critical -- the section just stays empty/unloaded this pass.
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadTrustedContacts() }
+
+    fun addTrustedContact() {
+        if (addContactPhone.isBlank()) return
+        addingContact = true
+        contactError = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.addRideTrustedContact(AddRideTrustedContactRequest(addContactPhone.trim(), addContactName.trim()))
+                addContactPhone = ""
+                addContactName = ""
+                loadTrustedContacts()
+            } catch (e: HttpException) {
+                contactError = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                contactError = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                addingContact = false
+            }
+        }
+    }
+
+    fun removeTrustedContact(contactId: String) {
+        removingContactId = contactId
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.removeRideTrustedContact(contactId)
+                loadTrustedContacts()
+            } catch (e: HttpException) {
+                contactError = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                contactError = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                removingContactId = null
+            }
+        }
+    }
+
+    fun sendStatusToTrustedContacts(tripId: String) {
+        sendingStatus = true
+        sendStatusResult = null
+        coroutineScope.launch {
+            try {
+                val sentCount = NetworkClient.apiService.sendStatusToRideTrustedContacts(tripId).sentCount
+                sendStatusResult = if (sentCount > 0) "Sent to $sentCount trusted contact${if (sentCount == 1) "" else "s"}" else "Add a trusted contact first"
+            } catch (e: HttpException) {
+                sendStatusResult = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                sendStatusResult = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                sendingStatus = false
+            }
+        }
+    }
 
     val requestLocation = rememberRealLocationRequester(
         onLocating = { locating = it },
@@ -276,6 +353,14 @@ private fun RidePassengerContent() {
                         }
                     }
                     activeTrip.driverId?.let { DriverRatingSection(it) }
+                    if (!trustedContacts.isNullOrEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft)
+                                .clickable(enabled = !sendingStatus) { sendStatusToTrustedContacts(activeTrip.id) }.padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (sendingStatus) "Sending…" else "Send status to trusted contacts", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        sendStatusResult?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 12.sp) }
+                    }
                     if (activeTrip.status != "IN_PROGRESS") {
                         Box(
                             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.danger)
@@ -336,6 +421,16 @@ private fun RidePassengerContent() {
                 }
             }
         }
+        item {
+            TrustedContactsSection(
+                contacts = trustedContacts,
+                phone = addContactPhone, onPhoneChange = { addContactPhone = it },
+                name = addContactName, onNameChange = { addContactName = it },
+                adding = addingContact, onAdd = { addTrustedContact() },
+                removingContactId = removingContactId, onRemove = { removeTrustedContact(it) },
+                error = contactError,
+            )
+        }
         if (pastTrips.isNotEmpty()) {
             item { Text("Past rides", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(pastTrips, key = { it.id }) { trip ->
@@ -372,6 +467,65 @@ private fun RideReviewRow(busy: Boolean, onSubmit: (Int, String) -> Unit) {
                     .clickable(enabled = !busy) { onSubmit(rating, comment) }.padding(vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (busy) "Submitting…" else "Submit rating", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        }
+    }
+}
+
+// Real Uber Safety "Trusted Contacts" (item 160, help.uber.com) -- a persistent,
+// up-to-5 contact list set up once, distinct from the per-share conversation pick a
+// completed shareTripStatus already offers. First Android client for RideController's
+// trusted-contacts endpoints; mirrors bank-mfe's TrustedContactsSection (2026-08-18)
+// exactly, adapted to this file's own Compose/Box-button conventions rather than React.
+@Composable
+private fun TrustedContactsSection(
+    contacts: List<RideTrustedContactDto>?,
+    phone: String, onPhoneChange: (String) -> Unit,
+    name: String, onNameChange: (String) -> Unit,
+    adding: Boolean, onAdd: () -> Unit,
+    removingContactId: String?, onRemove: (String) -> Unit,
+    error: String?,
+) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Trusted contacts", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(
+                "Add up to 5 people who can get your live trip status with one tap.",
+                color = Ids.colors.textSecondary, fontSize = 12.sp,
+            )
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+            val list = contacts
+            if (list == null) {
+                Text("Loading…", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            } else {
+                list.forEach { contact ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(contact.contactName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(
+                            if (removingContactId == contact.id) "…" else "Remove",
+                            color = Ids.colors.danger, fontSize = 12.sp,
+                            modifier = Modifier.clickable(enabled = removingContactId != contact.id) { onRemove(contact.id) },
+                        )
+                    }
+                }
+                if (list.size < 5) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IdsTextField(value = phone, onValueChange = onPhoneChange, label = "Phone number", modifier = Modifier.weight(1f))
+                        IdsTextField(value = name, onValueChange = onNameChange, label = "Name", modifier = Modifier.weight(1f))
+                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .background(if (phone.isNotBlank()) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .clickable(enabled = !adding && phone.isNotBlank()) { onAdd() }.padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(if (adding) "Adding…" else "Add trusted contact", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                } else {
+                    Text("You've reached the limit of 5 trusted contacts.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                }
+            }
         }
     }
 }

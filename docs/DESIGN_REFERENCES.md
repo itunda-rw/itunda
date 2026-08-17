@@ -9311,3 +9311,43 @@ gotcha along the way: pointing `VITE_API_BASE_URL` at the direct VM IP
 sandboxing (`dangerouslyDisableSandbox` didn't fix it; Chrome couldn't reach `example.com`
 either); the fix is the same `localhost:30081` socat relay every curl-based verification this
 session already uses -- see [[feedback_headless_chrome_verification]].
+
+## 160. Ride Trusted Contacts + Send Status wired into Android
+
+**Added 2026-08-18.** Direct continuation of Section 159: that pass wired real Uber Safety
+"Trusted Contacts" (help.uber.com) into `bank-mfe` only and explicitly left Android/iOS
+unwired as the next candidate. Picked Android for this pass -- `app/src/main/java/rw/itunda/
+app/ui/RideScreen.kt` already has a real `RidePassengerContent` with an active-trip section and
+polling `myTrips`, the same natural home bank-mfe's `RidesView` was. No backend changes -- the
+same four `RideController` endpoints from Section 159/136 (`GET/POST /api/v1/rides/
+trusted-contacts`, `DELETE /api/v1/rides/trusted-contacts/{contactId}`, `POST /api/v1/rides/
+trips/{tripId}/send-status`) were already complete and tested (`RideTrustedContactService`,
+`RideTrustedContactServiceTest`, 13 passing cases); this closes the Android half of the gap.
+
+**Built**: `core/network/src/main/java/rw/itunda/core/network/ApiService.kt` gained
+`getRideTrustedContacts`/`addRideTrustedContact`/`removeRideTrustedContact`/
+`sendStatusToRideTrustedContacts` (mirroring bank-mfe's `lib/rideshare.ts` functions exactly,
+reusing the existing `SuccessResponse` for the plain-success DELETE like every other
+list-delete endpoint in this file already does) plus `RideTrustedContactDto`/
+`RideTrustedContactResponse`/`RideTrustedContactsResponse`/`AddRideTrustedContactRequest`/
+`SendStatusToTrustedContactsResponse` DTOs matching the backend's `RideTrustedContact.kt` field
+names 1:1. `app/src/main/java/rw/itunda/app/ui/RideScreen.kt` gained a new
+`TrustedContactsSection` composable (add-by-phone/name form, list with per-contact "Remove",
+capped at 5 matching `RideTrustedContactService.MAX_TRUSTED_CONTACTS`) rendered persistently at
+the bottom of `RidePassengerContent`'s list regardless of active-trip state, plus a "Send status
+to trusted contacts" button shown on an active trip alongside the existing PIN/cancel UI when
+the rider has at least one trusted contact, wired to show the real "Sent to N trusted contacts"
+(or "Add a trusted contact first") result -- same shape as bank-mfe's `handleSendStatus`. Follows
+this file's own existing Box/clickable button conventions throughout (no Material `Button`,
+matching every other action in this screen), not a port of bank-mfe's React JSX. Error handling
+reuses `superAppErrorMessage`, which already passes the real backend message through
+(e.g. `RideTooManyTrustedContactsException`'s "You can have at most 5 trusted contacts",
+`RideTrustedContactSelfException`'s "You can't add yourself...") with no new mapping needed.
+
+**Verification**: `./gradlew :app:compileDebugKotlin` -- clean build, exit 0, no Kotlin errors.
+No backend code touched, so no new backend tests were needed; Section 159's `./gradlew
+:rideshare:test --tests RideTrustedContactServiceTest` already confirmed the surface being
+wired is correct. iOS remains unwired -- left as a future candidate for the same lens.
+
+Files: `android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt`,
+`android/app/src/main/java/rw/itunda/app/ui/RideScreen.kt`.
