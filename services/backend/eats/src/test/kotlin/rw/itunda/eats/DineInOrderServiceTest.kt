@@ -112,6 +112,55 @@ class DineInOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("ordering from a restaurant that has temporarily paused orders") {
+            // Real Baemin CEO app 영업일시중지 enforcement -- see Merchant.isAcceptingOrders's
+            // own doc comment and DineInOrderService.placeOrder's own new comment above
+            // the check this test covers. Same real gap/fix EatsOrderServiceTest's own
+            // "temporarily paused orders" test already proves for the delivery checkout,
+            // and OrderServiceTest's own identical test just proved for the Commerce
+            // checkout -- this proves the dine-in (in-store table/QR) checkout, which
+            // shares the same Merchant catalog, now enforces it too.
+            val pausedRestaurant = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, isAcceptingOrders = false,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(pausedRestaurant)
+
+            Then("it throws DineInRestaurantNotAcceptingOrdersException before ever resolving the restaurant's wallet") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", "Table 12", listOf(DineInOrderItemRequest("item_1", 1)))
+                    error("expected DineInRestaurantNotAcceptingOrdersException")
+                } catch (e: DineInRestaurantNotAcceptingOrdersException) {
+                    verify(exactly = 0) { walletRepository.findById("wallet_restaurant") }
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("ordering from a restaurant whose real recurring closed-weekday schedule includes today") {
+            // Real Baemin CEO app 휴무일 설정 enforcement -- see Merchant.isClosedToday's own
+            // doc comment. Same real weekday-computation discipline MerchantTest.kt's own
+            // isClosedToday tests already establish -- no Clock abstraction exists in this
+            // codebase, so this uses the real current Rwanda weekday rather than a
+            // fabricated fake date.
+            val todayWeekday = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali")).dayOfWeek.value
+            val closedTodayRestaurant = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, closedWeekdays = "$todayWeekday",
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(closedTodayRestaurant)
+
+            Then("it throws DineInRestaurantNotAcceptingOrdersException before ever resolving the restaurant's wallet") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", "Table 12", listOf(DineInOrderItemRequest("item_1", 1)))
+                    error("expected DineInRestaurantNotAcceptingOrdersException")
+                } catch (e: DineInRestaurantNotAcceptingOrdersException) {
+                    verify(exactly = 0) { walletRepository.findById("wallet_restaurant") }
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
         When("ordering a menu item whose closing/surplus deal has already expired") {
             // Real 마감할인 (closing/surplus discount) expiry enforcement -- see
             // MerchantProduct.isSurplusDeal/surplusExpiresAt's own doc comment and

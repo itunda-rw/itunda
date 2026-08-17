@@ -10160,3 +10160,86 @@ product price). Did not separately re-run the identical real-money proof against
 paths -- they share the exact same code shape and were already independently test-XML-confirmed,
 so one full real-money proof of the pattern was judged sufficient rather than three mechanically
 identical repeats.
+
+## 172. Merchant pause/closed-day toggles were never enforced on the Commerce and Dine-In checkout paths -- real transaction-safety bug fix
+
+**Added 2026-08-18.** Third pass of the same technique that found Sections 170 and 171
+(re-reading a money-adjacent domain class's own boolean/state fields against every real write path
+that should enforce them, not just its read/display paths) -- this time on `Merchant` itself
+rather than `MerchantProduct`. `Merchant.isAcceptingOrders` (real Baemin CEO app 영업일시중지
+"temporarily pause business" toggle, added 2026-08-16) and `Merchant.isClosedToday()`/
+`closedWeekdays` (real Baemin CEO app 휴무일 설정 recurring weekly closed-day schedule, same date)
+are both explicitly documented on the entity itself as needing real server-side enforcement, not
+just a UI badge -- `isAcceptingOrders`'s own doc comment points straight at
+`EatsOrderService.placeOrder's own doc comment for the enforcement side`, and `isClosedToday()`'s
+own doc comment says it's the "single real source of truth ... shared by
+`EatsOrderService.placeOrder`'s own server-side enforcement and `ShoppingController`'s own
+browse-card badge". Both claims are only half true: `EatsOrderService.placeOrder` (delivery
+orders) does check both flags correctly. But the exact same shared `Merchant` catalog also backs
+two other real money-moving checkout paths -- `commerce.OrderService.placeOrder` (Commerce/
+shopping orders) and `eats.DineInOrderService.placeOrder` (in-store table/QR orders) -- and
+neither of them ever read `isAcceptingOrders` or called `isClosedToday()` at all, despite both
+fetching the full `Merchant` row already. `ShoppingController.getMerchantProducts` does surface
+both flags as real `"isAcceptingOrders"`/`"closedToday"` catalog badges to the buyer (confirmed:
+lines 167/172), so a buyer's client can correctly show a store as paused or closed today -- but a
+stale client, a cached storefront page, or a direct API call could still successfully place and
+pay for a real Commerce order or a real dine-in table order against that same paused/closed
+merchant, with real money moving through the ledger, exactly the same "correctly displayed but not
+enforced at the one place that actually matters" shape `MerchantProduct.soldOut` (Section 170) and
+`isSurplusDeal`/`surplusExpiresAt` (Section 171) both had until this same session's own earlier
+fixes -- now a third confirmed instance of the identical bug class on the same shared `Merchant`/
+`MerchantProduct` checkout surface.
+
+**Fixed**: both `OrderService.placeOrder` and `DineInOrderService.placeOrder` now check
+`!merchant.isAcceptingOrders` and `merchant.isClosedToday()` immediately after the existing
+self-order guard and before any wallet/product resolution runs, throwing a new
+`MerchantNotAcceptingOrdersException` (commerce) / `DineInRestaurantNotAcceptingOrdersException`
+(dine-in) -- the exact same two-flag check `EatsOrderService.placeOrder` already performs, just
+finally applied to the other two checkout paths sharing the same `Merchant` catalog. Each new
+controller handler maps to a real `400 BAD_REQUEST` with code `MERCHANT_NOT_ACCEPTING_ORDERS` /
+`RESTAURANT_NOT_ACCEPTING_ORDERS`, mirroring `EatsController.handleRestaurantNotAcceptingOrders`'s
+existing status code and error-code shape exactly (that handler already reuses one exception/code
+for both the manual-pause and closed-today messages, so these two new handlers do the same).
+
+Files changed:
+- `services/backend/commerce/src/main/kotlin/rw/itunda/commerce/OrderService.kt` (new
+  `MerchantNotAcceptingOrdersException`; new `isAcceptingOrders`/`isClosedToday()` checks in
+  `placeOrder`)
+- `services/backend/commerce/src/main/kotlin/rw/itunda/commerce/web/OrderController.kt` (new
+  `handleMerchantNotAcceptingOrders` handler + import)
+- `services/backend/commerce/src/test/kotlin/rw/itunda/commerce/OrderServiceTest.kt` (two new
+  `When`/`Then` blocks: a paused merchant and a merchant closed today are both rejected before the
+  merchant's wallet is ever resolved and before any ledger call; the pre-existing "3 units"
+  happy-path test, which uses a default `Merchant` with `isAcceptingOrders = true` and
+  `closedWeekdays = null`, is the positive control proving the fix doesn't over-block a normal
+  order)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/DineInOrderService.kt` (new
+  `DineInRestaurantNotAcceptingOrdersException`; new `isAcceptingOrders`/`isClosedToday()` checks
+  in `placeOrder`)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/web/DineInOrderController.kt` (new
+  `handleRestaurantNotAcceptingOrders` handler + import)
+- `services/backend/eats/src/test/kotlin/rw/itunda/eats/DineInOrderServiceTest.kt` (two new
+  `When`/`Then` blocks, same shape as commerce's; the pre-existing "2 units" happy-path test, which
+  uses a default `Merchant`, is the positive control here too)
+
+`EatsOrderService.placeOrder` and `GroupEatsOrderService` needed no changes: the former already had
+this exact enforcement (the source this fix mirrors), and the latter already delegates every real
+order to `EatsOrderService.placeOrder` (same reasoning Section 170/171 already established for that
+delegation shape).
+
+**Verified locally, this pass**: `./gradlew :commerce:compileKotlin :commerce:compileTestKotlin
+:eats:compileKotlin :eats:compileTestKotlin` -> `BUILD SUCCESSFUL`, no compile errors. `./gradlew
+:commerce:test --tests "rw.itunda.commerce.OrderServiceTest" :eats:test --tests
+"rw.itunda.eats.DineInOrderServiceTest"` -> `BUILD SUCCESSFUL`; real XML results confirm
+`commerce/build/test-results/test/TEST-rw.itunda.commerce.OrderServiceTest.xml`
+`tests="40" skipped="0" failures="0" errors="0"` and
+`eats/build/test-results/test/TEST-rw.itunda.eats.DineInOrderServiceTest.xml`
+`tests="14" skipped="0" failures="0" errors="0"`, both including the four new rejection cases by
+name. Also ran the full `./gradlew :commerce:test :eats:test` (every test class in both modules,
+not just these two) -> `BUILD SUCCESSFUL`; summing every real XML report in each module's
+`build/test-results/test/` confirms `commerce` `tests="119" skipped="0" failures="0" errors="0"`
+and `eats` `tests="178" skipped="0" failures="0" errors="0"` -- nothing else in either module
+regressed.
+
+No client wiring, deploy, or live-server verification attempted here -- backend-only, correctness
+fix, reserved for the coordinating session's deploy per this task's own scoping rules.

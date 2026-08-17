@@ -110,6 +110,54 @@ class OrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("ordering from a merchant that has temporarily paused orders") {
+            // Real Baemin CEO app 영업일시중지 enforcement -- see Merchant.isAcceptingOrders's
+            // own doc comment and OrderService.placeOrder's own new comment above the
+            // check this test covers. Same real gap/fix EatsOrderServiceTest's own
+            // "temporarily paused orders" test already proves for the delivery checkout;
+            // this proves the Commerce checkout, which shares the same Merchant catalog,
+            // now enforces it too.
+            val pausedMerchant = Merchant(
+                id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store",
+                status = MerchantStatus.ACTIVE, isAcceptingOrders = false,
+            )
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(pausedMerchant)
+
+            Then("it throws MerchantNotAcceptingOrdersException before ever resolving the merchant's wallet") {
+                try {
+                    service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St")
+                    error("expected MerchantNotAcceptingOrdersException")
+                } catch (e: MerchantNotAcceptingOrdersException) {
+                    verify(exactly = 0) { walletRepository.findById("wallet_merchant") }
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("ordering from a merchant whose real recurring closed-weekday schedule includes today") {
+            // Real Baemin CEO app 휴무일 설정 enforcement -- see Merchant.isClosedToday's own
+            // doc comment. Same real weekday-computation discipline MerchantTest.kt's own
+            // isClosedToday tests already establish -- no Clock abstraction exists in this
+            // codebase, so this uses the real current Rwanda weekday rather than a fabricated
+            // fake date.
+            val todayWeekday = java.time.LocalDate.now(java.time.ZoneId.of("Africa/Kigali")).dayOfWeek.value
+            val closedTodayMerchant = Merchant(
+                id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store",
+                status = MerchantStatus.ACTIVE, closedWeekdays = "$todayWeekday",
+            )
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(closedTodayMerchant)
+
+            Then("it throws MerchantNotAcceptingOrdersException before ever resolving the merchant's wallet") {
+                try {
+                    service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "KG 123 St")
+                    error("expected MerchantNotAcceptingOrdersException")
+                } catch (e: MerchantNotAcceptingOrdersException) {
+                    verify(exactly = 0) { walletRepository.findById("wallet_merchant") }
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
         When("a buyer tries to order a product the merchant has marked sold out") {
             // Real Baemin CEO app/DoorDash-style "86" enforcement -- see
             // MerchantProduct.soldOut's own doc comment and OrderService.placeOrder's own

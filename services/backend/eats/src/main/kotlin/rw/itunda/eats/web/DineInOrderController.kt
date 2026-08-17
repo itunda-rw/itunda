@@ -31,6 +31,7 @@ import rw.itunda.eats.DineInOrderItemRequest
 import rw.itunda.eats.DineInOrderNotFoundException
 import rw.itunda.eats.DineInOrderService
 import rw.itunda.eats.DineInRestaurantNoWalletException
+import rw.itunda.eats.DineInRestaurantNotAcceptingOrdersException
 import rw.itunda.eats.DineInRestaurantNotFoundException
 import rw.itunda.eats.EmptyDineInOrderException
 import rw.itunda.eats.InvalidDineInMenuOptionSelectionException
@@ -135,6 +136,10 @@ class DineInOrderController(
     @ExceptionHandler(EmptyDineInOrderException::class)
     fun handleEmptyOrder(ex: EmptyDineInOrderException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPTY_ORDER", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(DineInRestaurantNotAcceptingOrdersException::class)
+    fun handleRestaurantNotAcceptingOrders(ex: DineInRestaurantNotAcceptingOrdersException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("RESTAURANT_NOT_ACCEPTING_ORDERS", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidDineInTableException::class)
     fun handleInvalidTable(ex: InvalidDineInTableException) =

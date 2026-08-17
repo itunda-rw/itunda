@@ -50,6 +50,7 @@ class DineInOrderNotFoundException(message: String) : RuntimeException(message)
 class InvalidDineInStatusTransitionException(message: String) : RuntimeException(message)
 class MissingRequiredDineInMenuOptionException(message: String) : RuntimeException(message)
 class InvalidDineInMenuOptionSelectionException(message: String) : RuntimeException(message)
+class DineInRestaurantNotAcceptingOrdersException(message: String) : RuntimeException(message)
 
 data class DineInOrderItemRequest(val menuItemId: String, val quantity: Int, val selectedChoiceIds: List<String> = emptyList())
 data class DineInOrderDetail(val order: DineInOrder, val items: List<DineInOrderItem>)
@@ -113,6 +114,26 @@ class DineInOrderService(
             .orElseThrow { DineInRestaurantNotFoundException("Restaurant not found") }
         if (restaurant.ownerUserId == buyerId) {
             throw SelfDineInOrderException("Cannot order from your own restaurant")
+        }
+        // Real Baemin CEO app 영업일시중지/휴무일 설정 enforcement -- see
+        // Merchant.isAcceptingOrders/isClosedToday's own doc comments and
+        // EatsOrderService.placeOrder's identical checks for the full sourcing. Both
+        // flags already gate the Eats (delivery) checkout path for this exact same
+        // shared `Merchant` catalog, but nothing in this dine-in (in-store table/QR)
+        // checkout -- the other place that actually moves real money against the same
+        // restaurant -- ever re-checked them: a restaurant that paused itself for
+        // order overload or declared today a recurring closed day could still have a
+        // buyer place and pay for a real dine-in order via a stale client, cached
+        // table QR link, or direct API call. Same "real flag correctly enforced on one
+        // write path sharing this Merchant catalog but not this one" gap as
+        // MerchantProduct.soldOut/isSurplusDeal had until this session's own earlier
+        // fixes, and the exact same gap just closed on commerce's own
+        // OrderService.placeOrder for this same Merchant catalog.
+        if (!restaurant.isAcceptingOrders) {
+            throw DineInRestaurantNotAcceptingOrdersException("This restaurant isn't accepting orders right now")
+        }
+        if (restaurant.isClosedToday()) {
+            throw DineInRestaurantNotAcceptingOrdersException("This restaurant is closed today")
         }
 
         val restaurantWallet = walletRepository.findById(restaurant.walletId)

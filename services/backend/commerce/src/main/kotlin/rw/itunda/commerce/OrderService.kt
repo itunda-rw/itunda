@@ -59,6 +59,7 @@ class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
 class InsufficientProductStockException(message: String) : RuntimeException(message)
 class ProductSoldOutException(message: String) : RuntimeException(message)
 class SurplusDealExpiredException(message: String) : RuntimeException(message)
+class MerchantNotAcceptingOrdersException(message: String) : RuntimeException(message)
 
 data class OrderItemRequest(val productId: String, val quantity: Int)
 data class OrderDetail(val order: Order, val items: List<OrderItem>)
@@ -138,6 +139,25 @@ class OrderService(
             .orElseThrow { MerchantNotFoundException("Merchant not found") }
         if (merchant.ownerUserId == buyerId) {
             throw SelfOrderException("Cannot order from your own store")
+        }
+        // Real Baemin CEO app 영업일시중지/휴무일 설정 enforcement -- see
+        // Merchant.isAcceptingOrders/isClosedToday's own doc comments and
+        // EatsOrderService.placeOrder's identical checks for the full sourcing. Both
+        // flags already gate the Eats (delivery) checkout path and are already
+        // surfaced to buyers as a browse-time badge here (ShoppingController's own
+        // "isAcceptingOrders"/"closedToday" catalog fields), but nothing in this
+        // Commerce checkout -- the one place that actually moves money for this
+        // Merchant catalog -- ever re-checked them: a buyer with a stale client, a
+        // cached product page, or a direct API call could keep placing real paid
+        // orders against a store that explicitly paused or closed for the day. Same
+        // "real flag correctly enforced on one write path sharing this Merchant
+        // catalog but not this one" gap as MerchantProduct.soldOut/isSurplusDeal had
+        // until this session's own earlier fixes.
+        if (!merchant.isAcceptingOrders) {
+            throw MerchantNotAcceptingOrdersException("This store isn't accepting orders right now")
+        }
+        if (merchant.isClosedToday()) {
+            throw MerchantNotAcceptingOrdersException("This store is closed today")
         }
 
         val merchantWallet = walletRepository.findById(merchant.walletId)
