@@ -17,6 +17,9 @@ import rw.itunda.core.domain.RideTripStatus
 import rw.itunda.core.domain.RideTripStop
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.geo.OsrmRoutingClient
+import rw.itunda.core.geo.RouteResult
+import rw.itunda.core.geo.TravelMode
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -55,9 +58,15 @@ class RideTripServiceTest : BehaviorSpec({
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
         messagingService: rw.itunda.messaging.MessagingService = mockk(relaxed = true),
         fraudRuleEngine: rw.itunda.core.fraud.FraudRuleEngine = mockk(relaxed = true),
+        // Explicit strict stub returning null, same EatsOrderServiceTest convention for
+        // this exact client -- matches OsrmRoutingClient's own real never-fail contract
+        // when unconfigured/unreachable, so every existing test keeps exercising the
+        // real haversine fallback unchanged unless a test explicitly stubs a real route.
+        osrmRoutingClient: OsrmRoutingClient = mockk<OsrmRoutingClient>().also { every { it.routeThrough(any(), any()) } returns null },
     ) = RideTripService(
         rideDriverRepository, rideTripRepository, rideTripStopRepository, walletRepository, ledgerService,
         transactionRepository, notificationRepository, rateLimiter, pushNotificationService, messagingService, fraudRuleEngine,
+        osrmRoutingClient,
     )
 
     Given("a real passenger with sufficient balance and one real nearby driver") {
@@ -135,6 +144,50 @@ class RideTripServiceTest : BehaviorSpec({
                 }
             } finally {
                 TransactionSynchronizationManager.clearSynchronization()
+            }
+        }
+    }
+
+    // Real gap closed 2026-08-17 -- see RideTripService's own doc comment: the real
+    // fare distance itself now prefers OsrmRoutingClient.routeThrough (real road
+    // distance) over the old straight-line-only haversine sum, same never-fail
+    // fallback discipline every other real OSRM caller in this codebase follows.
+    Given("a real passenger requesting a trip while itunda's self-hosted OSRM instance is reachable") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService, osrmRoutingClient = osrmRoutingClient,
+        )
+
+        val passengerWallet = Wallet(
+            id = "wallet_passenger", userId = "passenger_1", accountNumber = "1000000001", accountName = "Passenger",
+            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        )
+        every { walletRepository.findByUserIdAndType("passenger_1", WalletType.MAIN) } returns passengerWallet
+        every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns emptyList()
+        every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_osrm_1", emptyList())
+        every { rideTripRepository.save(any()) } answers { firstArg() }
+
+        // A real road route is always longer than the direct straight-line distance
+        // between the same two points (Kigali Heights -> Kigali Convention Centre is
+        // ~2.9km haversine) -- 6.5km chosen specifically so the two distances can never
+        // coincidentally match, proving the real road distance was actually used.
+        val realRoadRoute = RouteResult(distanceKm = 6.5, durationMinutes = 14.0, geometry = emptyList())
+        every { osrmRoutingClient.routeThrough(listOf(-1.9536 to 30.0605, -1.9506 to 30.0925), TravelMode.DRIVING) } returns realRoadRoute
+
+        When("the trip is requested") {
+            val result = service.requestTrip(
+                "passenger_1", "Kigali Heights", -1.9536, 30.0605, "Kigali Convention Centre", -1.9506, 30.0925,
+            )
+
+            Then("the real fare is computed from OSRM's real road distance, not the shorter straight-line distance") {
+                result.distanceKm shouldBe BigDecimal("6.500")
+                result.fare shouldBe BigDecimal("1000").add(BigDecimal("250").multiply(BigDecimal("6.500"))).setScale(2, java.math.RoundingMode.HALF_UP)
             }
         }
     }

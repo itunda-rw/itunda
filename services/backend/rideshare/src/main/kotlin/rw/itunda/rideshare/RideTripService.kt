@@ -22,6 +22,8 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.OsrmRoutingClient
+import rw.itunda.core.geo.TravelMode
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -102,6 +104,24 @@ data class DriverEarningsDay(
  * pattern exactly (a real, already-proven shape, not reinvented): held in `ride_holding`
  * from request time, paid to the driver net of `platformFee` at `COMPLETED`, refunded in
  * full if `CANCELLED` while still `REQUESTED` (before any driver has committed).
+ *
+ * 2026-08-17: the real fare distance itself now prefers `OsrmRoutingClient.routeThrough`
+ * -- itunda's own self-hosted OSRM instance, already proven in
+ * `EatsOrderService`/`MarketplaceService` -- over the straight-line
+ * `GeoUtils.haversineKm` sum this class's own doc comment above used to name as the
+ * fare's only source. `GeoUtils.kt`'s own doc comment named this exact gap as "a real,
+ * named follow-up once this lands" back when no self-hosted routing existed; it has
+ * since landed for delivery fees and marketplace meetup distances, but ride fares --
+ * itunda's single largest real per-trip charge -- were never updated to use it. A
+ * single `routeThrough` call replaces the old per-leg haversine stitching (itself
+ * already correct for multi-stop trips, just straight-line), same never-fail `null`
+ * fallback discipline every other real OSRM caller in this codebase already follows:
+ * unconfigured, unreachable, or no real route found all fall back to the exact same
+ * haversine sum this class always computed before, so a real trip is never blocked or
+ * degraded by OSRM being unavailable. Dispatch's own driver-ranking tiebreaker (an ETA
+ * proxy, not a fare) deliberately keeps using haversine unchanged -- that's a coarse,
+ * cheap in-memory filter across every candidate driver, not the one real per-trip
+ * distance a passenger is actually charged for.
  */
 @Service
 class RideTripService(
@@ -116,6 +136,7 @@ class RideTripService(
     private val pushNotificationService: PushNotificationService,
     private val messagingService: MessagingService,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val osrmRoutingClient: OsrmRoutingClient,
 ) {
     companion object {
         private val platformFeeRate = BigDecimal("0.015")
@@ -228,12 +249,16 @@ class RideTripService(
         val passengerWallet = walletRepository.findByUserIdAndType(passengerId, WalletType.MAIN)
             ?: throw RideDriverNoWalletException("No wallet found for this account")
 
-        // Real multi-stop distance -- pickup -> stop 1 -> ... -> dropoff, summed as
-        // consecutive real GeoUtils.haversineKm legs (the same straight-line honesty
-        // GeoUtils.kt's own doc comment already names), not just pickup-to-dropoff once
-        // real stops exist in between.
+        // Real multi-stop distance -- pickup -> stop 1 -> ... -> dropoff. Prefers one
+        // real OSRM routeThrough call across the whole itinerary (real road distance,
+        // the same never-fail-null-falls-back-to-haversine discipline
+        // EatsOrderService/MarketplaceService already establish for this exact client);
+        // falls back to summing consecutive real GeoUtils.haversineKm legs (straight-line
+        // honesty GeoUtils.kt's own doc comment already names) when OSRM is unconfigured,
+        // unreachable, or finds no route -- never blocks a real trip request either way.
         val routePoints = listOf(pickupLatitude to pickupLongitude) + stops.map { it.latitude to it.longitude } + listOf(dropoffLatitude to dropoffLongitude)
-        val totalDistanceKm = routePoints.zipWithNext().sumOf { (a, b) -> GeoUtils.haversineKm(a.first, a.second, b.first, b.second) }
+        val totalDistanceKm = osrmRoutingClient.routeThrough(routePoints, TravelMode.DRIVING)?.distanceKm
+            ?: routePoints.zipWithNext().sumOf { (a, b) -> GeoUtils.haversineKm(a.first, a.second, b.first, b.second) }
         val distanceKm = BigDecimal(totalDistanceKm).setScale(3, RoundingMode.HALF_UP)
         val fare = baseFare.add(perKmRate.multiply(distanceKm)).setScale(2, RoundingMode.HALF_UP).max(minFare)
         val platformFee = fare.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
