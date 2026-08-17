@@ -8233,3 +8233,29 @@ byte-identical to before the skip. Pausing the subscription and then calling `sk
 real-`400`'d `INVALID_PRODUCT_SUBSCRIPTION`. A different, non-owner user calling `skip-next` on this
 subscription real-`404`'d `PRODUCT_SUBSCRIPTION_NOT_FOUND` -- the same real-vs-fake IDOR discipline
 every other lookup in this codebase already uses.
+
+## 128. Coupang-style subscription quantity/interval update (정기배송 수량/주기 변경)
+
+**Added 2026-08-17.** Sourced from Coupang's own real 마이쿠팡 > 정기배송관리 > 상세변경 flow: a
+customer can change how much and how often a subscription delivers going forward -- separate from
+Section 127's `skipNext` (which only advances the schedule for one round).
+
+**Built**: `ProductSubscriptionService.updateSubscription` updates `quantity`/`intervalDays`
+independently, deliberately leaving `nextDeliveryAt` untouched -- the already-queued upcoming round
+still ships at the old quantity/interval, matching the real product's own "changes apply from the
+next cycle onward" behavior. Allowed regardless of subscription `status`, unlike `skipNext` --
+editing stored preferences on a paused subscription before resuming it is a real, reasonable thing
+to do. `POST /product-subscriptions/{id}/update`. Unannotated single-save method, same shape as the
+`pause`/`resume`/`cancel`/`skipNext` siblings -- no loop, not subject to the transaction-poisoning
+pitfall closed in Sections 115/118. 4 new Kotest cases.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: a real subscription
+started with `nextDeliveryAt: 2026-08-24T01:43:53.195877657Z`. `POST /update
+{"quantity": 2, "intervalDays": 14}` real-returned `quantity: 2`, `intervalDays: 14`, with
+`nextDeliveryAt` byte-identical to the original value -- confirming edits apply going forward, not
+to the already-queued round. An empty body real-`400`'d `INVALID_PRODUCT_SUBSCRIPTION`
+("Provide a new quantity, intervalDays, or both"); `quantity: 0` and `intervalDays: 0` each
+real-`400`'d with their own specific messages. A non-owner real-`404`'d
+`PRODUCT_SUBSCRIPTION_NOT_FOUND`. After pausing the subscription, calling `update` again still
+real-succeeded (`quantity: 5`, `status` staying `PAUSED`) -- confirming update is deliberately
+allowed regardless of status, distinct from `skipNext`'s stricter active-only requirement.
