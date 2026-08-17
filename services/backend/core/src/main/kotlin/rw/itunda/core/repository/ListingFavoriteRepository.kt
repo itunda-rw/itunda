@@ -11,4 +11,11 @@ interface ListingFavoriteRepository : JpaRepository<ListingFavorite, String> {
     fun findByUserIdOrderByCreatedAtDesc(userId: String, pageable: Pageable): Page<ListingFavorite>
 
     fun deleteByUserIdAndListingId(userId: String, listingId: String): Long
+
+    // Real Karrot 가격 하락 알림 (price-drop alert on a favorited/관심 listing) -- see
+    // MarketplaceService.updatePrice's own doc comment for the real sourcing. Every
+    // user who has favorited this listing, resolved in one query so the price-drop
+    // fan-out never N+1s, same discipline PropertyListingFavoriteRepository
+    // .findByPropertyListingId already establishes.
+    fun findByListingId(listingId: String): List<ListingFavorite>
 }

@@ -1,5 +1,6 @@
 package rw.itunda.marketplace
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
@@ -13,6 +14,7 @@ import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.domain.MarketplaceEscrow
 import rw.itunda.core.domain.MarketplaceEscrowStatus
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -26,10 +28,13 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.domain.ListingLike
 import rw.itunda.core.domain.MarketplaceListingReport
 import rw.itunda.core.domain.MarketplaceReportReason
+import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.ListingFavoriteRepository
 import rw.itunda.core.repository.ListingLikeRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.MarketplaceEscrowRepository
 import rw.itunda.core.repository.MarketplaceListingReportRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.search.FullTextSearchUtil
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
@@ -60,6 +65,7 @@ class InvalidDisputeReasonException(message: String) : RuntimeException(message)
 class ListingBumpCooldownException(message: String) : RuntimeException(message)
 class OwnListingReportException(message: String) : RuntimeException(message)
 class ListingAlreadyReportedException(message: String) : RuntimeException(message)
+class InvalidListingPriceException(message: String) : RuntimeException(message)
 
 /**
  * A real 당근마켓 (Danggeun/Karrot Market)-style secondhand marketplace -- the second
@@ -70,6 +76,14 @@ class ListingAlreadyReportedException(message: String) : RuntimeException(messag
  * Honestly scoped -- see Listing.kt's own doc comment for the real, named limitation
  * this carries (no real location/proximity data exists anywhere in this backend, so
  * this is a real general marketplace, not real hyperlocal discovery).
+ *
+ * 2026-08-17: `updatePrice` closes a real gap -- this class had no price-edit
+ * capability of any kind until now (a seller could create or delete a listing, never
+ * change its price), which also meant `ListingFavorite` (the real 관심목록/wishlist
+ * `ListingFavoriteService` already provides) was the one `*Favorite` entity in this
+ * domain with zero notification hook left after Sections 143/144 closed
+ * `EatsFavorite`/`JobPostFavorite`'s equivalent gaps. See `updatePrice`'s own doc
+ * comment for the real Karrot sourcing.
  */
 @Service
 class MarketplaceService(
@@ -87,7 +101,12 @@ class MarketplaceService(
     private val listingLikeRepository: ListingLikeRepository,
     private val fraudRuleEngine: FraudRuleEngine,
     private val marketplaceListingReportRepository: MarketplaceListingReportRepository,
+    private val listingFavoriteRepository: ListingFavoriteRepository,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
+    private val log = LoggerFactory.getLogger(MarketplaceService::class.java)
+
     companion object {
         // Bounds a single OSRM /table request's URL length and the private cloud's
         // per-request load -- beyond this, nearby() quietly stays on the already-honest
@@ -454,6 +473,69 @@ class MarketplaceService(
         }
         listing.bumpedAt = now
         return listingRepository.save(listing)
+    }
+
+    /**
+     * Real 가격 수정 (price edit) + Karrot 가격 하락 알림 (price-drop alert on a favorited/
+     * 관심 listing). itunda's `MarketplaceService` had no price-edit capability of any
+     * kind until now; this closes both that gap and the real notification gap it left
+     * behind on `ListingFavorite`, mirroring `PropertyListingService.updatePrice`'s own
+     * exact real sourcing (Karrot's own real-estate-arm transaction-notification
+     * categories explicitly name "가격 하락" on a favorited/관심 listing, corroborated by
+     * the same real Clien community thread that service's doc comment already cites:
+     * "당근마켓 가격만 내리면 관심유저에게 알람가나요?"). Only a real price DECREASE notifies,
+     * matching that sourced "가격 하락" scoping exactly -- not any price edit.
+     *
+     * Deliberately NOT `@Transactional` itself -- the single `listingRepository.save`
+     * below is already atomic on its own via Spring Data's implicit per-call
+     * transaction, same reasoning `PropertyListingService.updatePrice`/
+     * `ProductSubscriptionService.executeOne` already establish: the price-drop
+     * notification loop below makes its own separate `notificationRepository.save`
+     * calls after the price change, so a `@Transactional` boundary here would let one
+     * failing notification save mark this method's ambient transaction rollback-only
+     * and roll back the real price change along with it -- the exact self-invocation/
+     * transaction-poisoning pitfall closed in Sections 115/118.
+     */
+    fun updatePrice(sellerId: String, listingId: String, newPrice: BigDecimal): Listing {
+        if (newPrice <= BigDecimal.ZERO) {
+            throw InvalidListingPriceException("Price must be greater than zero")
+        }
+        val listing = requireOwner(sellerId, listingId)
+        if (listing.status != ListingStatus.ACTIVE) {
+            throw ListingNotActiveException("Only an ACTIVE listing's price can be changed")
+        }
+        val oldPrice = listing.price
+        listing.price = newPrice
+        val saved = listingRepository.save(listing)
+        if (newPrice < oldPrice) {
+            notifyFavoritersOfPriceDrop(listingId, listing.title, oldPrice, newPrice)
+        }
+        return saved
+    }
+
+    // Real per-favoriter resilience -- a notification failure for one favoriter must
+    // never affect another's, same per-row discipline PropertyListingService
+    // .notifyFavoritersOfPriceDrop already establishes. Each notificationRepository
+    // .save call here is independently atomic since updatePrice above is deliberately
+    // not @Transactional (see its own doc comment).
+    private fun notifyFavoritersOfPriceDrop(listingId: String, title: String, oldPrice: BigDecimal, newPrice: BigDecimal) {
+        val favorites = listingFavoriteRepository.findByListingId(listingId)
+        for (favorite in favorites) {
+            try {
+                val notifTitle = "Price drop on a listing you favorited"
+                val body = "\"$title\" dropped from ${oldPrice.toPlainString()} to ${newPrice.toPlainString()} RWF"
+                notificationRepository.save(
+                    Notification(
+                        id = "notif_${UUID.randomUUID()}", userId = favorite.userId, type = "LISTING_PRICE_DROP",
+                        title = notifTitle, body = body, isRead = false, createdAt = Instant.now(),
+                        dataJson = "{\"listingId\":\"$listingId\"}",
+                    ),
+                )
+                pushNotificationService.sendToUser(favorite.userId, notifTitle, body, mapOf("listingId" to listingId))
+            } catch (e: Exception) {
+                log.error("Price-drop notification failed for user {} on listing {}", favorite.userId, listingId, e)
+            }
+        }
     }
 
     /**

@@ -8,6 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.MissingRequestHeaderException
@@ -43,6 +44,7 @@ import rw.itunda.marketplace.InvalidCoordinatesException
 import rw.itunda.marketplace.InvalidDisputeReasonException
 import rw.itunda.marketplace.InvalidEscrowStatusException
 import rw.itunda.marketplace.InvalidListingException
+import rw.itunda.marketplace.InvalidListingPriceException
 import rw.itunda.marketplace.InvalidOfferAmountException
 import rw.itunda.marketplace.KeywordAlertService
 import rw.itunda.marketplace.ListingFavoriteService
@@ -84,6 +86,8 @@ data class RespondToOfferRequest(val action: OfferResponseAction, val counterAmo
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
 data class BoostListingRequest(val days: Int)
+// Real 가격 수정 (price edit) -- see MarketplaceService.updatePrice's own doc comment.
+data class UpdateListingPriceRequest(val price: BigDecimal)
 data class DisputeEscrowRequest(val reason: String)
 // Real gap closed 2026-08-15 -- see MarketplaceEscrow.deliveryAddress's own doc comment.
 // Optional: omit it (or send it empty) for the original in-person handoff.
@@ -248,6 +252,20 @@ class MarketplaceController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val listing = marketplaceService.bumpListing(currentUser.userId, listingId)
+        return ResponseEntity.ok(mapOf("success" to true, "listing" to listing))
+    }
+
+    // Real 가격 수정 (price edit) + Karrot 가격 하락 알림 -- see
+    // MarketplaceService.updatePrice's own doc comment. Not money-moving itself, so no
+    // Idempotency-Key required, same simpler discipline bumpListing above already
+    // follows.
+    @PatchMapping("/listings/{listingId}/price")
+    fun updatePrice(
+        @PathVariable listingId: String,
+        @RequestBody request: UpdateListingPriceRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val listing = marketplaceService.updatePrice(currentUser.userId, listingId, request.price)
         return ResponseEntity.ok(mapOf("success" to true, "listing" to listing))
     }
 
@@ -456,6 +474,10 @@ class MarketplaceController(
     @ExceptionHandler(InvalidListingException::class)
     fun handleInvalid(ex: InvalidListingException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LISTING", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidListingPriceException::class)
+    fun handleInvalidPrice(ex: InvalidListingPriceException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LISTING_PRICE", ex.message ?: "Bad request"))
 
     @ExceptionHandler(ListingNotActiveException::class)
     fun handleNotActive(ex: ListingNotActiveException) =
