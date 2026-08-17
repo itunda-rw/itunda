@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.certificate.CertificateNotFoundException
+import rw.itunda.certificate.CertificateRenewalReminderScheduler
 import rw.itunda.certificate.CertificateService
 import rw.itunda.certificate.CertificateUserNotFoundException
 import rw.itunda.certificate.CertificateUserNotVerifiedException
@@ -33,7 +34,10 @@ data class VerifyCertificateSignatureRequest(val serialNumber: String, val paylo
 // -- the opposite of what a public verification endpoint should do.
 @RestController
 @RequestMapping("/api/v1/certificate")
-class CertificateController(private val certificateService: CertificateService) {
+class CertificateController(
+    private val certificateService: CertificateService,
+    private val certificateRenewalReminderScheduler: CertificateRenewalReminderScheduler,
+) {
 
     @PostMapping("/issue")
     fun issue(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
@@ -73,6 +77,18 @@ class CertificateController(private val certificateService: CertificateService) 
                 "serialNumber" to result.serialNumber,
             ),
         )
+    }
+
+    // Real Korean electronic-certificate renewal-notice manual trigger -- same "expose
+    // the scheduler's own real logic as a callable endpoint" convention
+    // SavingsController.processMaturityReminders/InsuranceController
+    // .processRenewalReminders already establish, so a real certificate's real
+    // expiresAt can be verified without waiting actual wall-clock days for it to enter
+    // the reminder window.
+    @PostMapping("/process-renewal-reminders")
+    fun processRenewalReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = certificateRenewalReminderScheduler.processDue()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
     }
 
     @ExceptionHandler(CertificateUserNotFoundException::class)

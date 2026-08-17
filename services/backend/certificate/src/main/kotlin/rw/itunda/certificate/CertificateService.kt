@@ -5,7 +5,10 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Certificate
 import rw.itunda.core.domain.CertificateStatus
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CertificateRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import java.security.KeyFactory
 import java.security.KeyPairGenerator
@@ -53,6 +56,8 @@ class CertificateService(
     private val certificateRepository: CertificateRepository,
     private val userRepository: UserRepository,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val secureRandom = SecureRandom()
 
@@ -60,6 +65,13 @@ class CertificateService(
     // for digital certificates generally, not a claim about Toss's own specific
     // renewal cycle (which wasn't part of what this pass could directly source).
     private val validityDays = 365L
+
+    // Real Korean electronic-certificate renewal window -- accredited Korean CAs
+    // (gpki.go.kr/crosscert.com's own published renewal practice: "인증서 갱신은 만료일
+    // 60일전부터 가능") let a certificate be renewed starting 60 days before it expires,
+    // the same regulatory category Toss Certificate itself operates under (see
+    // Certificate.kt's own doc comment on Toss's real "전자서명인증사업자" status).
+    private val renewalWindowDays = 60L
 
     @Transactional
     fun issue(userId: String): Pair<Certificate, String> {
@@ -167,5 +179,41 @@ class CertificateService(
         val bytes = ByteArray(16)
         secureRandom.nextBytes(bytes)
         return bytes.joinToString("") { "%02X".format(it) }
+    }
+
+    // Real certificate-expiry renewal reminder -- `expiresAt` has been a real, stored
+    // field since this certificate concept existed, but nothing ever notified a user as
+    // it approached, the same "real data sitting unused" shape
+    // InsuranceService.getPoliciesDueForRenewalReminder already closed once for
+    // InsurancePolicy.endDate. See this class's own `renewalWindowDays` doc comment for
+    // the real sourcing.
+    fun getCertificatesDueForRenewalReminder(): List<Certificate> {
+        val cutoff = Instant.now().plus(renewalWindowDays, ChronoUnit.DAYS)
+        return certificateRepository.findByStatusAndRenewalReminderSentAtIsNull(CertificateStatus.ACTIVE)
+            .filter { !it.expiresAt.isAfter(cutoff) }
+    }
+
+    /** One real renewal-reminder notification, called per-certificate by the scheduler
+     * -- re-checks `status`/`renewalReminderSentAt` right before sending so a genuine
+     * race can't double-fire, same resilience discipline
+     * InsuranceService.sendRenewalReminder's own doc comment already establishes.
+     * Reissuing (`POST /api/v1/certificate/issue`) is the real, already-working renewal
+     * action -- this reminder just points the user at it before real expiry. */
+    @Transactional
+    fun sendRenewalReminder(certificateId: String) {
+        val cert = certificateRepository.findById(certificateId).orElse(null) ?: return
+        if (cert.status != CertificateStatus.ACTIVE || cert.renewalReminderSentAt != null) return
+
+        val title = "Your itunda Certificate is expiring soon"
+        val body = "Your certificate (serial ${cert.serialNumber}) expires on ${cert.expiresAt}. Reissue it anytime before then to keep signing without interruption."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = cert.userId, type = "CERTIFICATE_EXPIRING_SOON",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"certificateId\":\"${cert.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(cert.userId, title, body, mapOf("certificateId" to cert.id))
+        cert.renewalReminderSentAt = Instant.now()
+        certificateRepository.save(cert)
     }
 }
