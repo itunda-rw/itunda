@@ -9351,3 +9351,16 @@ wired is correct. iOS remains unwired -- left as a future candidate for the same
 
 Files: `android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt`,
 `android/app/src/main/java/rw/itunda/app/ui/RideScreen.kt`.
+
+**Coordinator re-verification**: independently re-ran the build with `touch` + `--rerun-tasks` to
+force a genuine recompile rather than trust a cached `UP-TO-DATE` result -- `BUILD SUCCESSFUL`,
+435/435 tasks actually executed, no Kotlin errors (only pre-existing unrelated deprecation
+warnings in other files). No physical Android device was connected this pass (`adb devices`
+returned empty) and this session's own established guidance is to avoid the emulator for visual
+checks (hangs under host contention, see [[feedback_emulator_for_visual_verification]]) -- so
+this section is compile-verified only, not live UI-clicked, same honest limitation as other
+Android-only passes without a device attached. The wired endpoints themselves were already
+live-verified twice: once against the raw API (Section 136) and once through a real client UI
+(Section 159, bank-mfe) -- this pass reuses that exact same backend contract through Retrofit
+DTOs that match it field-for-field, so the residual verification risk is limited to Compose UI
+wiring, not backend correctness.
