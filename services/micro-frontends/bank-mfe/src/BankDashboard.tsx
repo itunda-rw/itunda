@@ -83,8 +83,8 @@ import {
   type UpfrontInterestDeposit,
 } from './lib/upfrontDeposit';
 import {
-  convertCurrency, fetchExchangeRate, fetchMyCurrencyConversions, fetchMyForeignCurrencyWallets, openForeignCurrencyWallet,
-  FOREIGN_CURRENCY_SUPPORTED, type CurrencyConversion, type ForeignCurrencyCode, type ForeignCurrencyWallet,
+  clearRateAlert, convertCurrency, fetchExchangeRate, fetchMyCurrencyConversions, fetchMyForeignCurrencyWallets, fetchMyRateAlerts, openForeignCurrencyWallet, setRateAlert,
+  FOREIGN_CURRENCY_SUPPORTED, type CurrencyConversion, type ExchangeRateAlert, type ForeignCurrencyCode, type ForeignCurrencyWallet,
 } from './lib/foreignCurrency';
 import {
   advanceDineInOrderStatus, cancelDineInOrder, fetchMyDineInOrders, fetchRestaurantDineInOrders, placeDineInOrder,
@@ -4397,6 +4397,7 @@ function ForeignCurrencyView() {
 
       {availableToOpen.length > 0 && <OpenForeignWalletCard currencies={availableToOpen} onOpened={load} />}
       {wallets.length > 0 && <ConvertCurrencyCard wallets={wallets} onConverted={load} />}
+      {wallets.length > 0 && <RateAlertCard wallets={wallets} />}
 
       {conversions.length > 0 && (
         <div className="itunda-card">
@@ -4520,6 +4521,114 @@ function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrenc
         {submitting ? 'Converting…' : 'Convert'}
       </button>
     </form>
+  );
+}
+
+// Real Toss 외환 환율 알림 (exchange rate alert, section 121/168) -- see
+// lib/foreignCurrency.ts's own doc comment for why this is the first client wiring
+// for a backend feature that shipped fully with a live-verified-safe scheduler but
+// zero callers anywhere.
+function RateAlertCard({ wallets }: { wallets: ForeignCurrencyWallet[] }) {
+  const [alerts, setAlerts] = useState<ExchangeRateAlert[] | null>(null);
+  const [currency, setCurrency] = useState(wallets[0]?.currency ?? '');
+  const [target, setTarget] = useState('');
+  const [direction, setDirection] = useState<'ABOVE' | 'BELOW'>('ABOVE');
+  const [expanded, setExpanded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => { fetchMyRateAlerts().then(setAlerts).catch(() => setAlerts([])); };
+  useEffect(load, []);
+
+  const alertFor = (c: string) => alerts?.find((a) => a.fromCurrency === 'RWF' ? a.toCurrency === c : a.fromCurrency === c);
+
+  const handleSet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const rate = Number(target);
+    if (!rate || rate <= 0) { setError('Enter a real target rate.'); return; }
+    setBusy(true);
+    try {
+      await setRateAlert('RWF', currency, rate, direction);
+      setTarget('');
+      setExpanded(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set that alert.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleClear = async (c: string) => {
+    setBusy(true);
+    try {
+      await clearRateAlert('RWF', c);
+      load();
+    } catch {
+      // Non-critical -- same "no error surfaced" convention as other clear actions here.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (alerts === null) return null;
+
+  return (
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Rate alerts</h3>
+      {wallets.map((w) => {
+        const a = alertFor(w.currency);
+        return a ? (
+          <div key={w.currency} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 700 }}>
+                <Bell size={13} style={{ verticalAlign: '-2px', marginRight: '4px' }} />
+                RWF/{w.currency}: notify when {a.direction === 'ABOVE' ? '≥' : '≤'} {a.targetRate}
+              </p>
+              {a.alertTriggeredAt && <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '2px' }}>Already triggered -- set a new target to re-arm it.</p>}
+            </div>
+            <button onClick={() => handleClear(w.currency)} disabled={busy} style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-red)' }}>Remove</button>
+          </div>
+        ) : null;
+      })}
+      {expanded ? (
+        <form onSubmit={handleSet}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)' }}>
+              {wallets.map((w) => <option key={w.currency} value={w.currency}>RWF/{w.currency}</option>)}
+            </select>
+            <div style={{ display: 'flex', gap: '4px', padding: '4px', backgroundColor: 'var(--itunda-grey-100)', borderRadius: '10px' }}>
+              {(['ABOVE', 'BELOW'] as const).map((d) => (
+                <button
+                  key={d} type="button" onClick={() => setDirection(d)}
+                  style={{
+                    padding: '8px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+                    color: direction === d ? 'var(--itunda-white)' : 'var(--itunda-grey-700)',
+                    backgroundColor: direction === d ? 'var(--itunda-blue)' : 'transparent',
+                  }}
+                >
+                  {d === 'ABOVE' ? 'Above' : 'Below'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="number" min="0.000001" step="any" value={target} onChange={(e) => setTarget(e.target.value)}
+              placeholder={`Target rate (1 RWF = ? ${currency})`} required
+              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+            />
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={busy}>{busy ? 'Working…' : 'Set'}</button>
+          </div>
+          {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
+        </form>
+      ) : (
+        <button onClick={() => setExpanded(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: 'var(--itunda-blue)' }}>
+          <Bell size={14} /> Set a rate alert
+        </button>
+      )}
+    </div>
   );
 }
 

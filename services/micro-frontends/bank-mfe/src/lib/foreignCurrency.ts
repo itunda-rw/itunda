@@ -60,3 +60,33 @@ export const convertCurrency = (fromCurrency: string, toCurrency: string, amount
 
 export const fetchMyCurrencyConversions = () =>
   apiFetch<{ success: boolean; conversions: CurrencyConversion[] }>('/api/v1/wallet/foreign-currency/conversions').then((r) => r.conversions);
+
+// Real Toss 외환 환율 알림 (exchange rate alert, section 121) -- see the backend's
+// ExchangeRateAlert.kt doc comment: set a target rate on RWF vs. one supported foreign
+// currency and get notified once the real live mid-market rate crosses it. Shipped
+// backend-only with the scheduler already live-verified-safe; found with zero client
+// caller anywhere via a fresh uncalled-endpoint sweep (same pattern as item 113's
+// stock target-price alert, wired in section 167).
+export interface ExchangeRateAlert {
+  id: string;
+  fromCurrency: string;
+  toCurrency: string;
+  targetRate: number;
+  direction: 'ABOVE' | 'BELOW';
+  alertTriggeredAt: string | null;
+}
+
+export const setRateAlert = (fromCurrency: string, toCurrency: string, targetRate: number, direction: 'ABOVE' | 'BELOW') =>
+  apiFetch<{ success: boolean; alert: ExchangeRateAlert }>('/api/v1/wallet/foreign-currency/rate-alert', {
+    method: 'POST',
+    body: JSON.stringify({ fromCurrency, toCurrency, targetRate, direction }),
+  }).then((r) => r.alert);
+
+export const clearRateAlert = (fromCurrency: string, toCurrency: string) =>
+  apiFetch<{ success: boolean }>(
+    `/api/v1/wallet/foreign-currency/rate-alert?fromCurrency=${encodeURIComponent(fromCurrency)}&toCurrency=${encodeURIComponent(toCurrency)}`,
+    { method: 'DELETE' },
+  );
+
+export const fetchMyRateAlerts = () =>
+  apiFetch<{ success: boolean; alerts: ExchangeRateAlert[] }>('/api/v1/wallet/foreign-currency/rate-alerts').then((r) => r.alerts);

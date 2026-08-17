@@ -14,6 +14,7 @@ struct ForeignCurrencyScreenView: View {
 
     @State private var wallets: [Wallet]?
     @State private var conversions: [CurrencyConversionDto] = []
+    @State private var rateAlerts: [ExchangeRateAlertDto] = []
     @State private var error: String?
     @State private var openingCurrency: String?
 
@@ -22,6 +23,7 @@ struct ForeignCurrencyScreenView: View {
             let walletsRes = try await NetworkClient.shared.getForeignWallets()
             wallets = walletsRes.wallets
             conversions = (try? await NetworkClient.shared.getMyConversions().conversions) ?? []
+            rateAlerts = (try? await NetworkClient.shared.getMyRateAlerts().alerts) ?? []
             error = nil
         } catch {
             self.error = "Could not load your foreign-currency accounts."
@@ -93,6 +95,8 @@ struct ForeignCurrencyScreenView: View {
 
                         if !wallets.isEmpty {
                             ConvertPanel(wallets: wallets, onConverted: { Task { await load() } })
+                            Text("Rate alerts").bold()
+                            RateAlertsPanel(wallets: wallets, alerts: rateAlerts, onChanged: { Task { await load() } })
                         }
                     } else {
                         ProgressView()
@@ -201,6 +205,110 @@ private struct ConvertPanel: View {
             onConverted()
         } catch {
             self.error = "Could not convert this amount."
+        }
+    }
+}
+
+// Real Toss 외환 환율 알림 (exchange rate alert, section 121/168) -- see
+// NetworkClient.swift's SetRateAlertRequest doc comment. Backend shipped fully with a
+// live-verified-safe scheduler but zero client caller anywhere; found via a fresh
+// uncalled-endpoint sweep, same pattern as section 113/167's stock target-price alert
+// (InvestScreenView.swift).
+private struct RateAlertsPanel: View {
+    let wallets: [Wallet]
+    let alerts: [ExchangeRateAlertDto]
+    let onChanged: () -> Void
+
+    @State private var currency: String
+    @State private var above = true
+    @State private var targetText = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    init(wallets: [Wallet], alerts: [ExchangeRateAlertDto], onChanged: @escaping () -> Void) {
+        self.wallets = wallets
+        self.alerts = alerts
+        self.onChanged = onChanged
+        _currency = State(initialValue: wallets.first?.currency ?? "USD")
+    }
+
+    private func alert(for code: String) -> ExchangeRateAlertDto? {
+        alerts.first { $0.fromCurrency == "RWF" ? $0.toCurrency == code : $0.fromCurrency == code }
+    }
+
+    private func clear(_ code: String) async {
+        do {
+            _ = try await NetworkClient.shared.clearRateAlert(fromCurrency: "RWF", toCurrency: code)
+            onChanged()
+        } catch {
+            // Non-critical -- same "no error surfaced" convention as elsewhere in this screen.
+        }
+    }
+
+    private func setAlert() async {
+        guard let target = Double(targetText.trimmingCharacters(in: .whitespaces)), target > 0 else {
+            error = "Enter a real target rate."
+            return
+        }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            _ = try await NetworkClient.shared.setRateAlert(fromCurrency: "RWF", toCurrency: currency, targetRate: target, direction: above ? "ABOVE" : "BELOW")
+            targetText = ""
+            onChanged()
+        } catch {
+            self.error = "Could not set that alert."
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(wallets.map { $0.currency }, id: \.self) { code in
+                if let a = alert(for: code) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("RWF/\(code): notify when \(a.direction == "ABOVE" ? "≥" : "≤") \(a.targetRate)").font(.subheadline).bold()
+                            if a.alertTriggeredAt != nil {
+                                Text("Already triggered -- set a new target to re-arm it.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            }
+                        }
+                        Spacer()
+                        Button("Remove") { Task { await clear(code) } }.font(.footnote).bold().foregroundColor(.red)
+                    }
+                    .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    ForEach(wallets.map { $0.currency }, id: \.self) { code in
+                        Button(action: { currency = code }) {
+                            Text("RWF/\(code)").font(.footnote).bold()
+                                .foregroundColor(code == currency ? .white : IDS.Colors.textPrimary)
+                                .padding(.horizontal, 14).padding(.vertical, 8)
+                                .background(code == currency ? IDS.Colors.brand : IDS.Colors.backgroundPrimary)
+                                .cornerRadius(8)
+                        }
+                    }
+                }
+                Picker("", selection: $above) {
+                    Text("Above").tag(true)
+                    Text("Below").tag(false)
+                }
+                .pickerStyle(.segmented)
+                TextField("Target rate (1 RWF = ? \(currency))", text: $targetText)
+                    .keyboardType(.decimalPad)
+                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                if let error { Text(error).font(.caption).foregroundColor(.red) }
+                Button(action: { Task { await setAlert() } }) {
+                    Text(submitting ? "Setting…" : "Set alert").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+                .disabled(submitting)
+            }
+            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
         }
     }
 }

@@ -42,8 +42,10 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.ConvertCurrencyRequest
 import rw.itunda.core.network.CurrencyConversionDto
+import rw.itunda.core.network.ExchangeRateAlertDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.OpenForeignWalletRequest
+import rw.itunda.core.network.SetRateAlertRequest
 import rw.itunda.core.network.Wallet as WalletDto
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -63,6 +65,7 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var wallets by remember { mutableStateOf<List<WalletDto>?>(null) }
     var conversions by remember { mutableStateOf<List<CurrencyConversionDto>?>(null) }
+    var rateAlerts by remember { mutableStateOf<List<ExchangeRateAlertDto>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableStateOf(0) }
     var openingCurrency by remember { mutableStateOf<String?>(null) }
@@ -75,6 +78,8 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                 if (walletsRes.success) wallets = walletsRes.wallets
                 val conversionsRes = NetworkClient.apiService.getMyConversions()
                 if (conversionsRes.success) conversions = conversionsRes.conversions
+                val alertsRes = NetworkClient.apiService.getMyRateAlerts()
+                if (alertsRes.success) rateAlerts = alertsRes.alerts
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -162,6 +167,11 @@ fun ForeignCurrencyScreen(onBack: () -> Unit) {
                     Text("Convert", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
                 item { ConvertPanel(wallets = wallets.orEmpty(), onConverted = { refreshKey++ }) }
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Rate alerts", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+                item { RateAlertsPanel(wallets = wallets.orEmpty(), alerts = rateAlerts, onChanged = { refreshKey++ }) }
             }
 
             val history = conversions
@@ -271,6 +281,119 @@ private fun ConvertPanel(wallets: List<WalletDto>, onConverted: () -> Unit) {
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (submitting) "Converting…" else "Convert", color = Color.White, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+// Real Toss 외환 환율 알림 (exchange rate alert, section 121/168) -- see
+// rw.itunda.core.network.SetRateAlertRequest's own doc comment. Backend shipped
+// backend-only with a live-verified-safe scheduler and zero client caller anywhere;
+// found via a fresh uncalled-endpoint sweep, same pattern as section 113/167's stock
+// target-price alert (InvestScreen.kt).
+@Composable
+private fun RateAlertsPanel(wallets: List<WalletDto>, alerts: List<ExchangeRateAlertDto>, onChanged: () -> Unit) {
+    var currency by remember(wallets) { mutableStateOf(wallets.firstOrNull()?.currency ?: "") }
+    var direction by remember { mutableStateOf(true) } // true = ABOVE, false = BELOW
+    var targetText by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun clear(code: String) {
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.clearRateAlert("RWF", code)
+                onChanged()
+            } catch (e: Exception) {
+                // Non-critical -- same "no error surfaced" convention as elsewhere in this screen.
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        alerts.forEach { a ->
+            val code = if (a.fromCurrency == "RWF") a.toCurrency else a.fromCurrency
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text(
+                            "RWF/$code: notify when ${if (a.direction == "ABOVE") "≥" else "≤"} ${a.targetRate}",
+                            color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                        )
+                        if (a.alertTriggeredAt != null) {
+                            Text("Already triggered -- set a new target to re-arm it.", color = Ids.colors.textSecondary, fontSize = 11.sp)
+                        }
+                    }
+                    Text(
+                        "Remove", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        modifier = Modifier.clickable { clear(code) },
+                    )
+                }
+            }
+        }
+
+        if (wallets.isNotEmpty()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        wallets.map { it.currency }.forEach { code ->
+                            val selected = code == currency
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                    .clickable { currency = code }.padding(horizontal = 14.dp, vertical = 8.dp),
+                            ) { Text("RWF/$code", color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft),
+                    ) {
+                        listOf(true to "Above", false to "Below").forEach { (v, label) ->
+                            val selected = v == direction
+                            Box(
+                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (selected) Ids.colors.brand else Color.Transparent)
+                                    .clickable { direction = v }.padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                        }
+                    }
+                    IdsTextField(value = targetText, onValueChange = { targetText = it }, label = "Target rate (1 RWF = ? $currency)", modifier = Modifier.fillMaxWidth())
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                            .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
+                            .clickable(enabled = !submitting) {
+                                val target = targetText.trim().toDoubleOrNull()
+                                if (target == null || target <= 0.0) {
+                                    error = "Enter a real target rate."
+                                    return@clickable
+                                }
+                                submitting = true
+                                error = null
+                                coroutineScope.launch {
+                                    try {
+                                        NetworkClient.apiService.setRateAlert(
+                                            SetRateAlertRequest("RWF", currency, target, if (direction) "ABOVE" else "BELOW"),
+                                        )
+                                        targetText = ""
+                                        onChanged()
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } catch (e: IOException) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
+                                    } finally {
+                                        submitting = false
+                                    }
+                                }
+                            }
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(if (submitting) "Setting…" else "Set alert", color = Color.White, fontWeight = FontWeight.Bold) }
+                }
+            }
         }
     }
 }

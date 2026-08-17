@@ -561,6 +561,28 @@ public struct CurrencyConversionDto: Decodable, Identifiable {
 public struct ConvertCurrencyResponse: Decodable { public let success: Bool; public let conversion: CurrencyConversionDto }
 public struct CurrencyConversionsResponse: Decodable { public let success: Bool; public let conversions: [CurrencyConversionDto] }
 
+// Real Toss 외환 환율 알림 (exchange rate alert, section 121/168) -- see the backend's
+// ExchangeRateAlert.kt doc comment. Shipped backend-only with a live-verified-safe
+// scheduler (ExchangeRateAlertScheduler) but zero client caller anywhere, found via a
+// fresh uncalled-endpoint sweep -- same pattern as section 113/167's stock
+// target-price alert.
+public struct SetRateAlertRequest: Encodable {
+    public let fromCurrency: String; public let toCurrency: String; public let targetRate: Double; public let direction: String
+    public init(fromCurrency: String, toCurrency: String, targetRate: Double, direction: String) {
+        self.fromCurrency = fromCurrency; self.toCurrency = toCurrency; self.targetRate = targetRate; self.direction = direction
+    }
+}
+public struct ExchangeRateAlertDto: Decodable, Identifiable {
+    public let id: String
+    public let fromCurrency: String
+    public let toCurrency: String
+    public let targetRate: Double
+    public let direction: String
+    public let alertTriggeredAt: String?
+}
+public struct SetRateAlertResponse: Decodable { public let success: Bool; public let alert: ExchangeRateAlertDto }
+public struct RateAlertsResponse: Decodable { public let success: Bool; public let alerts: [ExchangeRateAlertDto] }
+
 // Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit) equivalent
 // (item 161) -- see UpfrontInterestDepositService.kt's own doc comment: the full year's
 // 2.80% interest is paid immediately on opening, principal locks in its own dedicated
@@ -1201,6 +1223,20 @@ extension NetworkClient {
     }
 
     public func getMyConversions() async throws -> CurrencyConversionsResponse { try await get("api/v1/wallet/foreign-currency/conversions") }
+
+    // SetRateAlertRequest's own doc comment.
+    public func setRateAlert(fromCurrency: String, toCurrency: String, targetRate: Double, direction: String) async throws -> SetRateAlertResponse {
+        try await authenticatedPost("api/v1/wallet/foreign-currency/rate-alert", body: SetRateAlertRequest(fromCurrency: fromCurrency, toCurrency: toCurrency, targetRate: targetRate, direction: direction))
+    }
+
+    public func clearRateAlert(fromCurrency: String, toCurrency: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/wallet/foreign-currency/rate-alert", query: [
+            URLQueryItem(name: "fromCurrency", value: fromCurrency),
+            URLQueryItem(name: "toCurrency", value: toCurrency),
+        ])
+    }
+
+    public func getMyRateAlerts() async throws -> RateAlertsResponse { try await get("api/v1/wallet/foreign-currency/rate-alerts") }
 
     public func getUpfrontDeposits() async throws -> UpfrontDepositsResponse { try await get("api/v1/upfront-deposits") }
 
@@ -5283,6 +5319,27 @@ extension NetworkClient {
     /// naturally idempotent at the database level, unlike a real money-moving POST).
     fileprivate func authenticatedDelete<Response: Decodable>(_ path: String) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "DELETE"
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+
+    /// Real query-param DELETE (section 168) -- `authenticatedDelete(_:)` above uses
+    /// `appendingPathComponent`, which percent-encodes `?`/`=`/`&` and breaks a query
+    /// string, same gotcha the query-param `get(_:query:)` overload above already
+    /// worked around. clearRateAlert needs this because the backend takes the pair as
+    /// query params, not a path segment.
+    fileprivate func authenticatedDelete<Response: Decodable>(_ path: String, query: [URLQueryItem]) async throws -> Response {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        components.queryItems = query.filter { $0.value != nil && !($0.value!.isEmpty) }
+        var request = URLRequest(url: components.url!)
         request.httpMethod = "DELETE"
         if let token = KeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

@@ -9840,3 +9840,54 @@ screenshot showing "Alert set: notify when ≥ 650 RWF" with a "Remove" button (
 also auto-added the stock to the watchlist, shown by the now-filled gold star, matching the
 client code's `if (!watching) setWatching(true)` behavior). Clicked "Remove" -- confirmed via a
 real `DELETE .../price-alert` -> 200 and the UI correctly reverting to "Set a price alert."
+
+## 168. Toss 외환 환율 알림 (exchange rate alert) client wiring, all 3 platforms
+
+**Added 2026-08-18.** Found via a fresh "defined but uncalled" endpoint sweep across all 6 web
+MFEs plus Android/iOS: Section 121 (2026-08-17) shipped `ForeignCurrencyWalletService.setRateAlert`/
+`clearRateAlert`/`getMyRateAlerts` plus `ExchangeRateAlertScheduler` -- a real target-rate alert on
+RWF vs. a supported foreign currency (USD/EUR/GBP), already following the proven-safe scheduler
+shape (separate `@Component`, `@Scheduled(fixedDelay = 60000)`, per-item `@Transactional`
+`triggerRateAlert` that re-checks state right before firing) -- but `POST`/`DELETE`/`GET
+/api/v1/wallet/foreign-currency/rate-alert(s)` had zero client caller anywhere on any platform,
+despite the sibling `wallets`/`rate`/`convert`/`conversions` endpoints on the very same controller
+already being wired into a real `ForeignCurrencyScreen` on all 3 platforms. Same shape as Sections
+162, 165, and 167 (this is the 5th distinct hit for this lens) -- explicitly the exact same "Toss
+목표가 알림" pattern Section 167 wired for stocks, applied here to FX rates. Backend needed no
+changes: the read path, write path, and safe scheduler all already existed and already had real
+Kotest coverage in `ForeignCurrencyWalletServiceTest.kt` (direction validation, target-rate
+validation, self-pair rejection, re-arm-on-reset), so this pass is client-wiring only.
+
+**Client wiring**: added a "Rate alerts" section to the existing foreign-currency screen on each
+platform, directly under the Convert form -- `ForeignCurrencyView`/`RateAlertCard` (bank-mfe),
+`ForeignCurrencyScreen`/`RateAlertsPanel` (Android), `ForeignCurrencyScreenView`/`RateAlertsPanel`
+(iOS). Loads existing alerts on open, lets the user pick a currency pair (RWF vs. one open
+wallet's currency), `ABOVE`/`BELOW`, and a target rate; shows "RWF/USD: notify when ≥/≤ X" per
+open wallet with an alert, a re-arm note if it already fired, and a "Remove" action to clear it.
+Non-critical clear failures are swallowed silently, same convention `StockDetailSheet`'s clear
+action already established in Section 167. iOS needed one new reusable helper --
+`NetworkClient.authenticatedDelete(_:query:)` -- since `clearRateAlert` takes the pair as query
+params rather than a path segment, and the existing `authenticatedDelete(_:)` only supported
+path-only DELETEs; built following the same `appendingPathComponent`-breaks-query-strings fix the
+existing `get(_:query:)` overload already documents.
+
+Files: `services/micro-frontends/bank-mfe/src/lib/foreignCurrency.ts`,
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt`,
+`android/app/src/main/java/rw/itunda/app/ui/ForeignCurrencyScreen.kt`,
+`ios/Core/Network/Sources/NetworkClient.swift`, `ios/App/Sources/ForeignCurrencyScreen.swift`.
+
+**Verified locally, this pass**: `yarn workspace bank-mfe run build` -> real Vite production build
+succeeded (`BankDashboard` chunk rebuilt, no errors). Android: `touch`-forced `./gradlew
+:app:compileDebugKotlin` -> `BUILD SUCCESSFUL`, `:app:compileDebugKotlin` and
+`:core:network:compileDebugKotlin` genuinely executed (not `UP-TO-DATE`). iOS: `xcodebuild
+-workspace Itunda.xcworkspace -scheme CoreNetwork -destination "generic/platform=iOS Simulator"
+build` -> `** BUILD SUCCEEDED **` with a real `CoreNetwork` recompile/link/codesign observed in
+the log (the App-target scheme remains the pre-existing, unrelated, known-broken Saronite/RN-codegen
+build, out of scope here); `xcrun swiftc -parse App/Sources/ForeignCurrencyScreen.swift
+-suppress-warnings` -> clean, exit 0, as the honest syntax-only ceiling for that App-target-only
+file. No backend files were touched this pass, so the existing `ForeignCurrencyWalletServiceTest`
+suite (already covering `setRateAlert`/`clearRateAlert`) was not re-run.
+
+Per this task's own scope, no live-server click-through verification or deploy was attempted here
+-- that's reserved for the coordinating session.

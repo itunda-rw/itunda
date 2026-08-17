@@ -291,6 +291,19 @@ data class CurrencyConversionDto(
 data class CurrencyConversionResponse(val success: Boolean, val conversion: CurrencyConversionDto)
 data class CurrencyConversionsResponse(val success: Boolean, val conversions: List<CurrencyConversionDto>)
 
+// Real Toss 외환 환율 알림 (exchange rate alert, section 121/168) -- see
+// rw.itunda.core.domain.ExchangeRateAlert's own doc comment. Backend shipped fully
+// live-verified-safe (ExchangeRateAlertScheduler) with zero client caller anywhere,
+// found via a fresh uncalled-endpoint sweep -- the same pattern as section 113/167's
+// stock target-price alert.
+data class SetRateAlertRequest(val fromCurrency: String, val toCurrency: String, val targetRate: Double, val direction: String)
+data class ExchangeRateAlertDto(
+    val id: String, val fromCurrency: String, val toCurrency: String,
+    val targetRate: Double, val direction: String, val alertTriggeredAt: String?,
+)
+data class SetRateAlertResponse(val success: Boolean, val alert: ExchangeRateAlertDto)
+data class RateAlertsResponse(val success: Boolean, val alerts: List<ExchangeRateAlertDto>)
+
 // Mirrors services/backend/core/.../domain/SavingsGoal.kt / InterestJar.kt.
 data class SavingsGoal(
     val id: String,
@@ -2376,6 +2389,16 @@ interface ApiService {
 
     @GET("api/v1/wallet/foreign-currency/conversions")
     suspend fun getMyConversions(): CurrencyConversionsResponse
+
+    // SetRateAlertRequest's own doc comment.
+    @POST("api/v1/wallet/foreign-currency/rate-alert")
+    suspend fun setRateAlert(@Body request: SetRateAlertRequest): SetRateAlertResponse
+
+    @DELETE("api/v1/wallet/foreign-currency/rate-alert")
+    suspend fun clearRateAlert(@Query("fromCurrency") fromCurrency: String, @Query("toCurrency") toCurrency: String): SimpleSuccessResponse
+
+    @GET("api/v1/wallet/foreign-currency/rate-alerts")
+    suspend fun getMyRateAlerts(): RateAlertsResponse
 
     @GET("api/v1/discover")
     suspend fun getDiscoverItems(): DiscoverResponse
