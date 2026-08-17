@@ -9156,3 +9156,49 @@ permanently silenced. Deploy hit one real infra snag unrelated to this feature's
 `sudo kubectl` on the primary node started connection-refusing (root's kubeconfig missing);
 `sudo -E kubectl` (preserving the real working `ubuntu`-user kubeconfig) fixed it -- see
 [[feedback_kubectl_sudo_dash_e_required]], now the standard for all future deploys this session.
+
+## 157. Student loan (BRD) grace-period-ending-soon reminder
+
+**Added 2026-08-18.** `StudentLoan.graceEndsAt` had a real scheduler
+(`StudentLoanGracePeriodScheduler`) that flips a loan to `REPAYING` the instant the grace period
+elapses, but that scheduler only ever logged server-side -- zero borrower-facing warning that a
+real payment obligation was about to start. 6th real gap in the "date field with no reminder"
+lens this session's Sections 152-156 sweep already found and fixed (InsurancePolicy.endDate,
+Certificate.expiresAt, GiftVoucher.expiresAt, MerchantCoupon.expiresAt,
+PostpaidCreditLine.cycleDueAt), first one on the loans module's student loan product. Sourced
+from real US federal student-loan-servicer practice (Navient/Nelnet/MOHELA): all three send a
+"your grace period is ending soon, repayment begins on `<date>`" notice roughly a week to a month
+before the first payment comes due, distinct from and earlier than any missed-payment messaging.
+Applied to BRD's own (itunda-honest) 6-month grace period.
+
+**Built**: `StudentLoanGraceEndReminderScheduler` mirrors the established proven-safe shape -- a
+separate `@Component` scheduler (`@Scheduled(fixedDelay = 60000)`) calling
+`StudentLoanService.sendGraceEndReminder(loanId)`, a per-loan `@Transactional` method that
+re-checks `graceEndReminderSentAt`/`status`/`graceEndsAt` right before sending (guards against the
+sibling `StudentLoanGracePeriodScheduler` flipping status mid-sweep), never a batch-transactional
+loop. `getLoansDueSoonForGraceEndReminder()` reuses a coarse `findByStatus(IN_GRACE_PERIOD)` repo
+filter with the exact "due within 7 days, not yet reminded" condition in-service -- deliberately
+excludes loans whose grace period has already elapsed (left to the existing status-flip
+scheduler) so the two schedulers never double-fire for the same transition. New
+`StudentLoan.graceEndReminderSentAt` column (migration V281). New manual-trigger endpoint
+`POST /api/v1/loans/student/process-grace-end-reminders`.
+
+**Test coverage**: `StudentLoanServiceTest` (loans module) -- new cases cover a loan due within
+the window being found, one outside the window excluded, one already reminded excluded from the
+sweep and re-checked-and-skipped on a stale manual call, and a real notification+push firing with
+the sent-at stamped. Ran locally via `./gradlew :loans:test` -- full suite green;
+`:app:compileKotlin` also green.
+
+**Live-verified** against the real deployed backend: registered a fresh user, applied for a real
+BRD student loan (100,000 RWF, undergraduate), disbursed it, declared graduation (real
+`graceEndsAt` set to 2027-02-17, six months out), backdated `grace_ends_at` to 3 days out (inside
+the 7-day window), called `POST .../process-grace-end-reminders` ->
+`{"success":true,"processed":1}`, confirmed the exact real notification:
+`STUDENT_LOAN_GRACE_PERIOD_ENDING_SOON` / "Your student loan grace period is ending soon" /
+"Your BRD student loan grace period ends on 2026-08-20 -- repayment begins automatically after
+that. Check the suggested monthly payment in the Loans tab so you're ready." and real DB
+`grace_end_reminder_sent_at` set; re-triggered -> `{"success":true,"processed":0}`, no duplicate
+notification. Deploy hit a real, transient private-cloud registry-refused connection during the
+push (cluster load spiked to 31 mid-push) -- resolved by waiting ~4 minutes for load to drop back
+to baseline and retrying the identical push, consistent with this session's established pattern
+(see [[feedback_private_cloud_severe_overload_registry_refused]]).
