@@ -8,10 +8,13 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsReview
 import rw.itunda.core.domain.EatsReviewHelpfulVote
+import rw.itunda.core.domain.EatsReviewReport
+import rw.itunda.core.domain.EatsReviewReportReason
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsReviewHelpfulVoteRepository
+import rw.itunda.core.repository.EatsReviewReportRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -24,6 +27,8 @@ class EatsOrderAlreadyReviewedException(message: String) : RuntimeException(mess
 class InvalidEatsRatingException(message: String) : RuntimeException(message)
 class EatsReviewNotFoundException(message: String) : RuntimeException(message)
 class InvalidEatsReviewReplyException(message: String) : RuntimeException(message)
+class OwnEatsReviewReportException(message: String) : RuntimeException(message)
+class EatsReviewAlreadyReportedException(message: String) : RuntimeException(message)
 
 data class RatingSummary(val average: Double?, val count: Long)
 
@@ -58,7 +63,18 @@ class EatsReviewService(
     private val pushNotificationService: PushNotificationService,
     private val eatsReviewHelpfulVoteRepository: EatsReviewHelpfulVoteRepository,
     private val rateLimiter: RateLimiter,
+    private val eatsReviewReportRepository: EatsReviewReportRepository,
 ) {
+    companion object {
+        // Same real threshold + reasoning MarketplaceService.REPORT_THRESHOLD (Section
+        // 140) already established: itunda has no real moderation team to review each
+        // report individually the way Baemin's own does, so this is the honest
+        // crowd-threshold approximation -- enough distinct reporters that one bad-faith
+        // report can never silently hide a legitimate review, but low enough that a real
+        // problem review doesn't stay visible for long.
+        private const val REPORT_THRESHOLD = 3
+    }
+
     @Transactional
     fun submitReview(
         buyerId: String,
@@ -121,7 +137,7 @@ class EatsReviewService(
     }
 
     fun getRestaurantReviews(restaurantId: String, pageable: Pageable): Page<EatsReview> =
-        eatsReviewRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId, pageable)
+        eatsReviewRepository.findByRestaurantIdAndHiddenFalseOrderByCreatedAtDesc(restaurantId, pageable)
 
     fun getRestaurantRating(restaurantId: String): RatingSummary {
         val summary = eatsReviewRepository.getRestaurantRatingSummary(restaurantId)
@@ -196,5 +212,39 @@ class EatsReviewService(
             eatsReviewRepository.save(review)
             true
         }
+    }
+
+    // Real 배달의민족 리뷰 신고하기 (report a review) -- see EatsReviewReport.kt's own
+    // doc comment for the real sourcing. One real report per (review, reporter), same
+    // DB-unique concurrency guard toggleHelpful's own EatsReviewHelpfulVote already
+    // establishes. Once REPORT_THRESHOLD distinct reporters accumulate, the review is
+    // silently hidden (EatsReview.hidden -> true, excluded from getRestaurantReviews and
+    // both rating summaries from that point on) -- no notification to anyone, matching
+    // the same real "no friendlier flow than the sourced product has" discipline
+    // MarketplaceService.reportListing (Section 140) already established.
+    @Transactional
+    fun reportReview(reporterId: String, reviewId: String, reason: EatsReviewReportReason, details: String?): EatsReviewReport {
+        val review = eatsReviewRepository.findById(reviewId).orElseThrow { EatsReviewNotFoundException("Review not found") }
+        if (review.buyerId == reporterId) {
+            throw OwnEatsReviewReportException("You can't report your own review")
+        }
+        if (eatsReviewReportRepository.findByReviewIdAndReporterId(reviewId, reporterId) != null) {
+            throw EatsReviewAlreadyReportedException("You've already reported this review")
+        }
+        rateLimiter.checkLimit("eats:review:report:$reporterId", limit = 20, window = Duration.ofMinutes(1))
+
+        val saved = eatsReviewReportRepository.save(
+            EatsReviewReport(
+                id = "eats_review_report_${UUID.randomUUID()}", reviewId = reviewId, reporterId = reporterId,
+                reason = reason, details = details?.trim()?.take(500)?.ifBlank { null },
+            ),
+        )
+
+        if (!review.hidden && eatsReviewReportRepository.countByReviewId(reviewId) >= REPORT_THRESHOLD) {
+            review.hidden = true
+            eatsReviewRepository.save(review)
+        }
+
+        return saved
     }
 }

@@ -51,8 +51,11 @@ import rw.itunda.eats.EatsOrderTipWindowExpiredException
 import rw.itunda.eats.InvalidEatsTipAmountException
 import rw.itunda.eats.EatsOrderNotYetDeliveredException
 import rw.itunda.eats.EatsOrderService
+import rw.itunda.eats.EatsReviewAlreadyReportedException
 import rw.itunda.eats.EatsReviewNotFoundException
 import rw.itunda.eats.EatsReviewService
+import rw.itunda.eats.OwnEatsReviewReportException
+import rw.itunda.core.domain.EatsReviewReportReason
 import rw.itunda.eats.EmptyEatsOrderException
 import rw.itunda.eats.InvalidEatsReviewReplyException
 import rw.itunda.eats.InvalidEatsCoordinatesException
@@ -122,6 +125,10 @@ data class SubmitEatsReviewRequest(
     val photoUrl: String? = null,
 )
 data class ReplyToEatsReviewRequest(val reply: String)
+
+// Real 배달의민족 리뷰 신고하기 (report a review) -- see EatsReviewReport.kt's own doc
+// comment.
+data class ReportEatsReviewRequest(val reason: EatsReviewReportReason, val details: String? = null)
 data class ShareFavoritesRequest(val conversationId: String)
 
 // Real edge case, same "don't leak a raw messaging exception as an unhandled 500"
@@ -557,6 +564,19 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "helpful" to helpful))
     }
 
+    // Real 배달의민족 리뷰 신고하기 (report a review) -- see EatsReviewService
+    // .reportReview's own doc comment. Not money-moving, so no Idempotency-Key required,
+    // same simpler discipline toggleReviewHelpful above already follows.
+    @PostMapping("/reviews/{reviewId}/report")
+    fun reportReview(
+        @PathVariable reviewId: String,
+        @RequestBody request: ReportEatsReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val report = eatsReviewService.reportReview(currentUser.userId, reviewId, request.reason, request.details)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "report" to report))
+    }
+
     @GetMapping("/restaurants/{restaurantId}/rating")
     fun getRestaurantRating(@PathVariable restaurantId: String): ResponseEntity<Map<String, Any?>> {
         val rating = eatsReviewService.getRestaurantRating(restaurantId)
@@ -736,6 +756,14 @@ class EatsController(
     @ExceptionHandler(InvalidEatsReviewReplyException::class)
     fun handleInvalidReply(ex: InvalidEatsReviewReplyException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REVIEW_REPLY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(OwnEatsReviewReportException::class)
+    fun handleOwnReviewReport(ex: OwnEatsReviewReportException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("OWN_REVIEW_REPORT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(EatsReviewAlreadyReportedException::class)
+    fun handleReviewAlreadyReported(ex: EatsReviewAlreadyReportedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_ALREADY_REPORTED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(ScheduledOrdersNotSupportedException::class)
     fun handleScheduledOrdersNotSupported(ex: ScheduledOrdersNotSupportedException) =

@@ -13,10 +13,13 @@ import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsReview
 import rw.itunda.core.domain.EatsReviewHelpfulVote
+import rw.itunda.core.domain.EatsReviewReport
+import rw.itunda.core.domain.EatsReviewReportReason
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsReviewHelpfulVoteRepository
+import rw.itunda.core.repository.EatsReviewReportRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.push.PushNotificationService
@@ -35,7 +38,8 @@ class EatsReviewServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter)
+        val eatsReviewReportRepository = mockk<EatsReviewReportRepository>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter, eatsReviewReportRepository)
 
         val deliveredOrder = EatsOrder(
             id = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1", riderId = "rider_1", deliveryAddress = "addr",
@@ -198,7 +202,8 @@ class EatsReviewServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter)
+        val eatsReviewReportRepository = mockk<EatsReviewReportRepository>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter, eatsReviewReportRepository)
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
         val review = EatsReview(
@@ -274,7 +279,8 @@ class EatsReviewServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter)
+        val eatsReviewReportRepository = mockk<EatsReviewReportRepository>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter, eatsReviewReportRepository)
 
         val deliveredPickupOrder = EatsOrder(
             id = "eats_order_pickup_1", buyerId = "buyer_1", restaurantId = "restaurant_1", riderId = null, deliveryAddress = "Pickup at Diner",
@@ -320,7 +326,8 @@ class EatsReviewServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter)
+        val eatsReviewReportRepository = mockk<EatsReviewReportRepository>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter, eatsReviewReportRepository)
 
         val review = EatsReview(
             id = "eats_review_1", orderId = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1",
@@ -368,6 +375,96 @@ class EatsReviewServiceTest : BehaviorSpec({
                     error("expected EatsReviewNotFoundException")
                 } catch (e: EatsReviewNotFoundException) {
                     verify(exactly = 0) { eatsReviewHelpfulVoteRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real review someone wants to report") {
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsReviewRepository = mockk<EatsReviewRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val eatsReviewHelpfulVoteRepository = mockk<EatsReviewHelpfulVoteRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val eatsReviewReportRepository = mockk<EatsReviewReportRepository>()
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService, eatsReviewHelpfulVoteRepository, rateLimiter, eatsReviewReportRepository)
+
+        val review = EatsReview(
+            id = "eats_review_1", orderId = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1",
+            riderId = "rider_1", restaurantRating = 1, restaurantComment = "abusive text", riderRating = null, riderComment = null,
+        )
+
+        When("the real review's own author tries to report it") {
+            every { eatsReviewRepository.findById("eats_review_1") } returns Optional.of(review)
+
+            Then("it throws OwnEatsReviewReportException before ever touching the report table") {
+                try {
+                    service.reportReview("buyer_1", "eats_review_1", EatsReviewReportReason.OTHER, null)
+                    error("expected OwnEatsReviewReportException")
+                } catch (e: OwnEatsReviewReportException) {
+                    verify(exactly = 0) { eatsReviewReportRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a real reporter who's already reported this review tries again") {
+            every { eatsReviewRepository.findById("eats_review_1") } returns Optional.of(review)
+            every { eatsReviewReportRepository.findByReviewIdAndReporterId("eats_review_1", "reporter_1") } returns
+                EatsReviewReport(id = "eats_review_report_0", reviewId = "eats_review_1", reporterId = "reporter_1", reason = EatsReviewReportReason.OTHER)
+
+            Then("it throws EatsReviewAlreadyReportedException") {
+                try {
+                    service.reportReview("reporter_1", "eats_review_1", EatsReviewReportReason.DEFAMATION, null)
+                    error("expected EatsReviewAlreadyReportedException")
+                } catch (e: EatsReviewAlreadyReportedException) {
+                    verify(exactly = 0) { eatsReviewReportRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a below-threshold real report comes in") {
+            every { eatsReviewRepository.findById("eats_review_1") } returns Optional.of(review)
+            every { eatsReviewReportRepository.findByReviewIdAndReporterId("eats_review_1", "reporter_1") } returns null
+            every { eatsReviewReportRepository.save(any()) } answers { firstArg() }
+            every { eatsReviewReportRepository.countByReviewId("eats_review_1") } returns 1
+
+            val report = service.reportReview("reporter_1", "eats_review_1", EatsReviewReportReason.DEFAMATION, "  contains a real name  ")
+
+            Then("it saves a real report but leaves the review visible") {
+                report.reason shouldBe EatsReviewReportReason.DEFAMATION
+                report.details shouldBe "contains a real name"
+                review.hidden shouldBe false
+                verify(exactly = 0) { eatsReviewRepository.save(any()) }
+            }
+        }
+
+        When("the 3rd distinct reporter's report crosses the real threshold") {
+            every { eatsReviewRepository.findById("eats_review_1") } returns Optional.of(review)
+            every { eatsReviewReportRepository.findByReviewIdAndReporterId("eats_review_1", "reporter_3") } returns null
+            every { eatsReviewReportRepository.save(any()) } answers { firstArg() }
+            every { eatsReviewReportRepository.countByReviewId("eats_review_1") } returns 3
+            every { eatsReviewRepository.save(any()) } answers { firstArg() }
+
+            service.reportReview("reporter_3", "eats_review_1", EatsReviewReportReason.OBSCENE_OR_VIOLENT, null)
+
+            Then("the review is silently hidden -- no notification, matching the sourced real Baemin behavior") {
+                review.hidden shouldBe true
+                verify(exactly = 0) { notificationRepository.save(any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any()) }
+            }
+        }
+
+        When("reporting an unknown review id") {
+            every { eatsReviewRepository.findById("does_not_exist") } returns Optional.empty()
+
+            Then("it throws EatsReviewNotFoundException before ever touching the report table") {
+                try {
+                    service.reportReview("reporter_1", "does_not_exist", EatsReviewReportReason.OTHER, null)
+                    error("expected EatsReviewNotFoundException")
+                } catch (e: EatsReviewNotFoundException) {
+                    verify(exactly = 0) { eatsReviewReportRepository.save(any()) }
                 }
             }
         }

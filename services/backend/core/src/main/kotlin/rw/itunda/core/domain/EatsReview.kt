@@ -96,6 +96,14 @@ class EatsReview(
     @Column(name = "helpful_count", nullable = false)
     var helpfulCount: Long = 0,
 
+    // Real Baemin 리뷰 신고하기 (report review) -- see EatsReviewReport.kt's own doc
+    // comment for the full sourcing. Flips true once EatsReviewService.REPORT_THRESHOLD
+    // distinct reporters accumulate; excluded from getRestaurantReviews and both rating
+    // summaries from that point on, same real "silently removed from view" effect
+    // MarketplaceListingReport's REMOVED status already establishes for listings.
+    @Column(name = "hidden", nullable = false)
+    var hidden: Boolean = false,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {
