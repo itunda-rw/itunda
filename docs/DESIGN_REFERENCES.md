@@ -8651,3 +8651,35 @@ listing at that moment. A 4th distinct reporter (B4) on the already-`REMOVED` li
 succeeded 201 (report saved, no further status change needed since it's no longer `ACTIVE`).
 Confirmed the sourced real silence: the seller's `GET /notifications` showed zero report- or
 removal-related notifications throughout the entire test.
+
+## 141. Baemin-style Eats review report + auto-hide moderation
+
+**Added 2026-08-17.** Extends Section 140's Karrot listing-report pattern to the second content
+type it left explicitly open: Eats reviews had no reporting mechanism at all. Sourced from
+Baemin's own real, documented review-moderation policy: defamation (명예훼손), personal info
+exposure (개인정보 노출), obscene/violent content (외설적·폭력적), and business-unrelated abuse
+(비방) are the real documented grounds for suspending or blinding a review; Korea's Information
+and Communications Network Act also provides a formal 게시중단요청 that can blind content for 30
+days.
+
+**Built**: `EatsReviewReport` entity (migration V274, DB-unique on review+reporter) + a new
+`EatsReview.hidden` boolean column. `EatsReviewService.reportReview` mirrors Section 140's
+`MarketplaceService.reportListing` exactly: self-report blocked, duplicate blocked, rate-limited,
+and once `REPORT_THRESHOLD` = 3 distinct reporters accumulate on a still-visible review,
+`hidden` flips to `true` -- excluded from `getRestaurantReviews` and both rating-summary queries
+from that point on, deliberately no notification to anyone. New endpoint
+`POST /api/v1/eats/reviews/{reviewId}/report`, same body shape as Section 140's marketplace
+endpoint with Eats-specific reasons.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: placed a real Eats
+order at an existing seeded restaurant, moved it to `DELIVERED`, submitted a real 5-star review
+(`hidden: false`). Registered 4 reporters. Self-report by the review's own author correctly 400
+`OWN_REVIEW_REPORT`. Report #1 succeeded 201, duplicate by the same reporter correctly 409
+`REVIEW_ALREADY_REPORTED`, review still appeared in `GET /restaurants/{id}/reviews`. Report #2 --
+review still visible. Report #3 -- review correctly disappeared from the reviews list; real DB
+confirmed `eats_reviews.hidden = 1` with exactly 3 rows in `eats_review_reports`. `GET
+/restaurants/{id}/rating` correctly excluded the hidden review from the average (`count: 1`,
+reflecting only the restaurant's other pre-existing review, not 2). A 4th distinct reporter on
+the already-hidden review still succeeded 201 (report saved, no further state change). Confirmed
+the sourced real silence: the review author's `GET /notifications` showed zero report- or
+hide-related notifications throughout.
