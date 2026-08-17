@@ -10,6 +10,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsFavoriteRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.ProductFavoriteRepository
 import rw.itunda.core.repository.ProductPriceTierRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -57,6 +58,18 @@ data class PriceTierRequest(val minQuantity: Int, val unitPrice: BigDecimal)
  * already uses for this same real "batch-notify favoriters" concern, wrapped in its own
  * try/catch so a notification failure can never make a real product-creation call look
  * like it failed.
+ *
+ * 2026-08-18: `setSoldOut` now also fans out a real Coupang/Naver Shopping 재입고 알림
+ * (restock notification) -- both real Korean marketplaces let a shopper opt into being
+ * pushed the moment an out-of-stock item they'd wishlisted becomes purchasable again,
+ * distinct from and complementary to the price-drop alert `ProductFavoriteService`
+ * already sends for the same wishlist row. Fires only on a genuine `true` -> `false`
+ * transition (never on every save, and never on a `false` -> `false` no-op), using
+ * `ProductFavoriteRepository` directly the same "no new module dependency needed, the
+ * repository already lives in `:core`" reasoning `notifyFavoritersOfNewProduct` already
+ * established for `EatsFavoriteRepository` above. Push-only, best-effort, wrapped in
+ * its own try/catch so a notification failure can never make a real restock toggle
+ * look like it failed.
  */
 @Service
 class MerchantProductService(
@@ -66,6 +79,7 @@ class MerchantProductService(
     private val rateLimiter: RateLimiter,
     private val orderItemRepository: rw.itunda.core.repository.OrderItemRepository,
     private val eatsFavoriteRepository: EatsFavoriteRepository,
+    private val productFavoriteRepository: ProductFavoriteRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(MerchantProductService::class.java)
@@ -276,8 +290,35 @@ class MerchantProductService(
         if (product.merchantId != merchant.id) {
             throw MerchantProductNotFoundException("Product not found")
         }
+        val wasSoldOut = product.soldOut
         product.soldOut = soldOut
-        return merchantProductRepository.save(product)
+        val saved = merchantProductRepository.save(product)
+        if (wasSoldOut && !soldOut) {
+            notifyFavoritersOfRestock(saved)
+        }
+        return saved
+    }
+
+    // Real Coupang/Naver Shopping 재입고 알림 (restock notification) -- see this
+    // class's own doc comment for the real sourcing. A product with zero
+    // `ProductFavorite` rows (nobody ever wishlisted it) triggers zero real pushes --
+    // same "additive, only fires where it's relevant" empty-list-check discipline
+    // `notifyFavoritersOfNewProduct` above already establishes.
+    private fun notifyFavoritersOfRestock(product: MerchantProduct) {
+        try {
+            val favoriters = productFavoriteRepository.findByProductId(product.id)
+            if (favoriters.isEmpty()) return
+            for (favorite in favoriters) {
+                pushNotificationService.sendToUser(
+                    favorite.userId,
+                    "Back in stock!",
+                    "${product.name} is available again - ${product.price} RWF",
+                    mapOf("productId" to product.id, "merchantId" to product.merchantId),
+                )
+            }
+        } catch (e: Exception) {
+            log.warn("Could not send restock notifications for product {}", product.id, e)
+        }
     }
 
     // Real Coupang WING 상품분석 (product analytics) view-count trigger -- see

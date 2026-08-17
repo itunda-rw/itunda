@@ -9911,3 +9911,66 @@ events (`POST`/`GET .../rate-alert(s)` -> 200) and the UI showing "RWF/USD: noti
 rate alert." Hit one real, unrelated infra event mid-verification: the cluster briefly went into
 severe overload (load 58.95) causing the backend pod to crashloop for a few minutes -- resolved
 by waiting, consistent with this session's established overload pattern, not a code issue.
+
+## 169. Coupang/Naver Shopping 재입고 알림 (restock notification) for Commerce wishlist products
+
+**Added 2026-08-18.** A quick fresh "uncalled-endpoint" sweep (script cross-referencing all 743
+`@GetMapping`/`@PostMapping`/etc. paths across every backend `*Controller.kt` against a corpus of
+every `.kt`/`.swift`/`.ts`/`.tsx` client file) came back with zero real hits this pass -- the 5th
+straight lens confirmed dry (Sections 162/165/167/168 already exhausted the recent backlog). A
+`Certificate`/`GiftVoucher`/etc. "date field with no reminder" sweep also came back empty (that
+lens was already declared exhausted in Section 159). Pivoted to fresh feature research on a real,
+named product instead.
+
+`MerchantProductService.addProduct` already fans out a real Baemin "찜한 가게" new-menu-item push
+to restaurant favoriters (2026-08-17), and `ProductFavoriteService`/`ProductPriceDropScheduler`
+already push a real Naver Shopping price-drop alert to a product's own wishlisters -- but
+`MerchantProductService.setSoldOut` (the real Baemin CEO app/DoorDash-style "86" toggle, added
+2026-08-16) had zero notification hook of any kind. A merchant un-marking a product sold-out
+silently made it purchasable again with no signal to anyone who'd wishlisted it while it was
+unavailable. Sourced from real, documented Coupang/Naver Shopping practice: both platforms let a
+shopper opt into a "재입고 알림" (restock notification) push the moment an out-of-stock wishlisted
+item becomes purchasable again -- a real, well-known feature distinct from (and complementary to)
+the price-drop alert already built for the exact same wishlist row.
+
+**Built**: `setSoldOut` now detects a genuine `true` -> `false` transition (never fires on
+`false` -> `false`, and never fires when *marking* something sold out) and fans out a real "Back
+in stock!" push to every user who favorited that specific product, reusing the exact
+`notifyFavoritersOfNewProduct` pattern `MerchantProductService` already established for restaurant
+favoriters -- best-effort, wrapped in its own try/catch so a notification failure can never make
+a real restock toggle look like it failed, and a zero-favoriter product triggers zero real
+pushes. New `ProductFavoriteRepository.findByProductId(productId): List<ProductFavorite>` (the
+repository already lives in `:core`, so no new module dependency was needed for `:merchant` to use
+it, same reasoning already documented for `EatsFavoriteRepository`'s use in the same file).
+Push-only, no persisted `Notification` row, matching `ProductFavoriteService.notifyPriceDrop`'s
+existing lighter shape for this exact "batch-notify wishlisters" concern.
+
+Files changed: `services/backend/core/src/main/kotlin/rw/itunda/core/repository/ProductFavoriteRepository.kt`
+(new `findByProductId` method), `services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantProductService.kt`
+(`setSoldOut` now detects the restock transition and calls new private `notifyFavoritersOfRestock`;
+new constructor dependency `ProductFavoriteRepository`), `services/backend/merchant/src/test/kotlin/rw/itunda/merchant/MerchantProductServiceTest.kt`
+(new `productFavoriteRepository` mock threaded through all 7 existing `MerchantProductService(...)`
+construction sites; 3 new Kotest `When`/`Then` blocks: marking an available product sold out
+fires no restock push, a `false` -> `false` no-op fires no restock push, and a genuine
+`true` -> `false` restock with 2 real wishlist favoriters fires exactly one real push to each
+favoriter and none to the merchant's own account).
+
+**Verified locally, this pass**: `./gradlew :merchant:compileKotlin :merchant:compileTestKotlin`
+-> `BUILD SUCCESSFUL`. `touch`-forced `./gradlew :merchant:test --tests
+"rw.itunda.merchant.MerchantProductServiceTest" --rerun-tasks` -> `BUILD SUCCESSFUL`; real XML
+results (`merchant/build/test-results/test/TEST-rw.itunda.merchant.MerchantProductServiceTest.xml`)
+confirm `tests="19" skipped="0" failures="0" errors="0"`, including all 3 new restock-notification
+cases by name (`no restock push fires, since nothing came back in stock`; `no restock push fires
+either, since nothing actually changed`; `both real favoriters get a real 'back in stock' push,
+the merchant's own account does not`). Also ran `./gradlew :merchant:test :commerce:compileKotlin
+:app:compileKotlin` (the widest real consumers of the changed `:core` repository interface and
+the full backend aggregate) -> `BUILD SUCCESSFUL`, confirming no other module's manual
+`MerchantProductService(...)` construction site needed updating (grep confirmed only the service
+file itself and its own test file ever construct it directly; every other real caller goes
+through Spring DI).
+
+Per this task's own scope, no client wiring, deploy, or live-server verification was attempted
+here -- backend-only this pass, reserved for a future client-wiring pass and the coordinating
+session's deploy respectively, matching the same "backend-only this pass" scoping Section 113
+(stock price alerts) and Section 121 (FX rate alerts) already used before their own later
+client-wiring passes (Sections 167/168).
