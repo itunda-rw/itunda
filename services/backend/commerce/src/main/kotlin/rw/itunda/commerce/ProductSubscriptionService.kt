@@ -115,6 +115,24 @@ class ProductSubscriptionService(
         return productSubscriptionRepository.save(subscription)
     }
 
+    // Real Coupang 정기배송 "건너뛰기" (skip) -- sourced from Coupang's own real 마이쿠팡 >
+    // 정기배송관리 flow: when a customer hasn't finished the current stock of a
+    // subscribed staple by the next delivery date, they can skip just that upcoming
+    // round without pausing the whole subscription -- the schedule advances by one
+    // real interval and the subscription stays ACTIVE, distinct from `pause` (stops
+    // indefinitely until resumed) and from a no-op (the next round would otherwise
+    // still charge/deliver on schedule). No delivery happened this round, so
+    // `deliveryCount`/`lastDeliveredAt` are deliberately untouched -- only the real
+    // schedule moves.
+    fun skipNext(customerId: String, id: String): ProductSubscription {
+        val subscription = productSubscriptionRepository.findByIdAndCustomerId(id, customerId) ?: throw ProductSubscriptionNotFoundException("Subscription not found")
+        if (subscription.status != ProductSubscriptionStatus.ACTIVE) {
+            throw InvalidProductSubscriptionException("Only an active subscription's next delivery can be skipped")
+        }
+        subscription.nextDeliveryAt = subscription.nextDeliveryAt.plus(subscription.intervalDays.toLong(), ChronoUnit.DAYS)
+        return productSubscriptionRepository.save(subscription)
+    }
+
     fun getDueForExecution(): List<ProductSubscription> =
         productSubscriptionRepository.findByStatusAndNextDeliveryAtLessThanEqual(ProductSubscriptionStatus.ACTIVE, Instant.now())
 

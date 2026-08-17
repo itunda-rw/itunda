@@ -194,6 +194,66 @@ class ProductSubscriptionServiceTest : BehaviorSpec({
     // UnexpectedRollbackException this bug produced live -- only a structural check
     // like this one can catch a future regression (re-adding @Transactional to
     // executeOne) before it reaches a real deployed backend again.
+    Given("a real active subscription with an upcoming delivery") {
+        val productSubscriptionRepository = mockk<ProductSubscriptionRepository>(relaxed = true)
+        every { productSubscriptionRepository.save(any()) } answers { firstArg() }
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val orderService = mockk<OrderService>()
+        val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ProductSubscriptionService(
+            productSubscriptionRepository, merchantRepository, merchantProductRepository, walletRepository, orderService, shoppingCashbackService, rateLimiter,
+        )
+
+        val originalNextDeliveryAt = Instant.parse("2026-09-01T00:00:00Z")
+        val subscription = rw.itunda.core.domain.ProductSubscription(
+            id = "productsub_2", customerId = "customer_1", merchantId = "merchant_1", productId = "product_1",
+            quantity = 1, intervalDays = 30, deliveryAddress = "KG 123 St", nextDeliveryAt = originalNextDeliveryAt, deliveryCount = 3,
+        )
+
+        When("the customer skips the next round") {
+            every { productSubscriptionRepository.findByIdAndCustomerId("productsub_2", "customer_1") } returns subscription
+
+            val result = service.skipNext("customer_1", "productsub_2")
+
+            Then("the real Coupang 건너뛰기 behavior: the schedule advances one interval, the subscription stays ACTIVE, and no delivery is recorded") {
+                result.nextDeliveryAt shouldBe originalNextDeliveryAt.plus(30, java.time.temporal.ChronoUnit.DAYS)
+                result.status shouldBe ProductSubscriptionStatus.ACTIVE
+                result.deliveryCount shouldBe 3
+                verify(exactly = 1) { productSubscriptionRepository.save(subscription) }
+            }
+        }
+
+        When("skipping a subscription that's already paused") {
+            subscription.status = ProductSubscriptionStatus.PAUSED
+            every { productSubscriptionRepository.findByIdAndCustomerId("productsub_2", "customer_1") } returns subscription
+
+            Then("it throws InvalidProductSubscriptionException rather than silently advancing a stopped schedule") {
+                try {
+                    service.skipNext("customer_1", "productsub_2")
+                    error("expected InvalidProductSubscriptionException")
+                } catch (e: InvalidProductSubscriptionException) {
+                    // expected
+                }
+            }
+        }
+
+        When("skipping a subscription that belongs to a different customer or doesn't exist") {
+            every { productSubscriptionRepository.findByIdAndCustomerId("productsub_2", "customer_1") } returns null
+
+            Then("it throws ProductSubscriptionNotFoundException -- the same real-vs-fake IDOR discipline every other lookup here uses") {
+                try {
+                    service.skipNext("customer_1", "productsub_2")
+                    error("expected ProductSubscriptionNotFoundException")
+                } catch (e: ProductSubscriptionNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
     Given("the transaction-boundary fix for the scheduler's per-row delivery loop") {
         Then("executeOne itself must not carry @Transactional -- orderService.placeOrder is already fully atomic on its own") {
             val method = ProductSubscriptionService::class.java.declaredMethods.first { it.name == "executeOne" }

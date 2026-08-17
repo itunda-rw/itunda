@@ -76,6 +76,12 @@ class ProductSubscriptionController(
     fun cancel(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "subscription" to productSubscriptionService.cancel(currentUser.userId, id)))
 
+    // Real Coupang 정기배송 "건너뛰기" (skip next delivery) -- see
+    // ProductSubscriptionService.skipNext's own doc comment.
+    @PostMapping("/{id}/skip-next")
+    fun skipNext(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "subscription" to productSubscriptionService.skipNext(currentUser.userId, id)))
+
     @ExceptionHandler(ProductSubscriptionNotFoundException::class)
     fun handleNotFound(ex: ProductSubscriptionNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PRODUCT_SUBSCRIPTION_NOT_FOUND", ex.message ?: "Not found"))
