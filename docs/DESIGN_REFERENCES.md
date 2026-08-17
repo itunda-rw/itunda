@@ -8560,3 +8560,36 @@ after you were already on the way. You received a 1000 RWF cancellation fee."` C
 existing rejection path still works: cancelling an already-`CANCELLED` trip correctly 409
 `INVALID_RIDE_STATUS_TRANSITION` with the updated message ("Only a REQUESTED or DRIVER_ASSIGNED
 trip can be cancelled").
+
+## 138. Fraud rule engine wiring gap closure (marketplace, bills, ride fare holds)
+
+**Added 2026-08-17.** `FraudRuleEngine`'s own doc comment had honestly self-documented three
+real, named gaps left over from an earlier fraud-engine validation pass (docs/DESIGN_REFERENCES.md
+§14): marketplace-seller payments, bill-provider payments, and ride/driver payouts were real
+money-to-a-named-recipient flows -- the exact shape the engine's rules exist to catch -- that had
+simply never been wired in. Confirmed by grep that none of `MarketplaceService`, `BillsService`,
+or `RideTripService` actually called `fraudRuleEngine.evaluate()` before this fix. Found via the
+same technique Section 137 established: grepping for "not yet covered"/"honestly noted" self-
+documentation in the codebase for real, named follow-ups that were deferred rather than assumed
+out of scope.
+
+**Built**: wired `FraudRuleEngine.evaluate(userId, recipientUserId, amount, transactionId)` into
+`MarketplaceService.payEscrow` (real chosen peer -- the seller's userId, so all 3 rules apply),
+`BillsService.payBill`/`buyAirtime` (external non-itunda recipient, `recipientUserId = null`, so
+only `HIGH_VALUE`/`VELOCITY` fire), and `RideTripService.requestTrip`'s fare hold (no driver
+matched yet at request time, also `recipientUserId = null`). Follows the exact
+evaluate-before-transactionRepository.save ordering already established by
+`P2pService`/`OrderService`/`MerchantService`/`PayrollService`. `evaluate()` never throws --
+purely a detection/flagging side effect, so this wiring carries zero risk to the underlying money
+movement in any of the three flows.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: paid a real bill at
+150,000 RWF (above the real 100,000 RWF `HIGH_VALUE` threshold) -- `fraud_flags` confirmed a real
+`HIGH_VALUE` row with the exact matching `transaction_id` and `amount`. Bought a real 150,000 RWF
+marketplace listing as a brand-new buyer -- `fraud_flags` confirmed both a real `HIGH_VALUE` row
+and a real `NEW_RECIPIENT` row (first-ever payment to this seller), both matching the real escrow
+hold's `transaction_id`. Requested 4 real ride trips in quick succession as the same passenger --
+the 4th correctly triggered a real `VELOCITY` flag (3+ prior `COMPLETED` outgoing transactions
+within the real 5-minute window), confirming the rule's off-by-one semantics (it counts history
+strictly before the current transaction, so the 3rd request alone does not yet trigger it, only
+the 4th does) rather than assuming the threshold count from the doc comment.
