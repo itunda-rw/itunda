@@ -8865,3 +8865,31 @@ Buyer (winner) notification exactly `"...was resolved in your favor. 5000.00 RWF
 refunded to your wallet."`; seller (loser) notification exactly `"...resolved in the buyer's
 favor. The payment has been refunded to them."` Real DB-confirmed buyer wallet balance matched
 the exact expected math across both escrows (`20000 - 10000 - 5000 + 5000 refund = 10000`).
+
+## 148. Property ownership-verification decision notification
+
+**Added 2026-08-17.** `PropertyOwnershipService.decide` already flipped the listing's
+`ownershipVerificationStatus` but never told the real submitter a decision was made -- the same
+class of "terminal decision, zero notification" gap Sections 146 (`InsuranceService.decideClaim`)
+and 147 (`MarketplaceService.resolveDispute`) already closed elsewhere, applied to the exact same
+shape here. Notably `IdentityService.decide` (the very precedent this class's own doc comment
+says it mirrors "field-for-field" for KYC/KYB) has the identical gap and remains open --
+deliberately not touched, to keep this change scoped to one real, tested fix.
+
+**Built**: `decide` now saves a real `PROPERTY_OWNERSHIP_DECIDED` notification immediately
+(within the same `@Transactional` boundary as the real status change) and defers the mobile push
+until commit, mirroring `InsuranceService`/`MarketplaceService`'s established shape field-for-
+field. No new endpoint, no migration -- existing
+`POST /api/v1/system/property-verification/{submissionId}/decide` (admin-gated) unchanged
+externally. `decide()` previously had zero test coverage at all.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: created a property
+listing (`ownershipVerificationStatus: NONE`), submitted a real ownership document, approved it
+as admin -- real DB-confirmed notification with the exact expected body: `"Your ownership
+document for \"Ownership Test Property 148\" was verified. The listing now shows as
+ownership-verified."`, and the listing's `ownershipVerificationStatus` correctly moved to
+`VERIFIED`. Created a second listing, submitted a document, rejected it with a real reason --
+notification body exactly `"Your ownership document for \"Ownership Test 148B\" was rejected.
+Reason: Document is blurry, please resubmit a clearer scan You can upload a new document and
+resubmit."`, and the listing's `ownershipVerificationStatus` correctly fell back to `NONE` (not
+stuck on `PENDING`).
