@@ -8208,3 +8208,28 @@ stayed at exactly `1`. `GET /notification-preference` confirmed the real persist
 (`commentNotificationsEnabled: false`). Re-enabling (`{"enabled": true}`) and adding a third real
 comment resumed notifications correctly -- the count moved to exactly `2`, proving the toggle
 governs real delivery, not just the stored preference value.
+
+## 127. Coupang-style skip-next-delivery for product subscriptions (정기배송 건너뛰기)
+
+**Added 2026-08-17.** Sourced from Coupang's own real 마이쿠팡 > 정기배송관리 flow: when a customer
+hasn't finished the current stock of a subscribed staple, they can skip just the upcoming round
+without pausing the whole subscription -- distinct from the existing `pause` (stops indefinitely
+until resumed) and from doing nothing (the next round would otherwise still charge/deliver on
+schedule).
+
+**Built**: `ProductSubscriptionService.skipNext` advances `nextDeliveryAt` by one real interval and
+keeps `status` `ACTIVE`; `deliveryCount`/`lastDeliveredAt` are deliberately left untouched since no
+delivery happened this round -- only the real schedule moves. `POST
+/product-subscriptions/{id}/skip-next`. Single unannotated method with one save, same shape as the
+existing `pause`/`resume`/`cancel` siblings -- no loop, not subject to the transaction-poisoning
+pitfall closed in Sections 115/118. 3 new Kotest cases -- also the first-ever tests for this file's
+`pause`/`resume`/`cancel`-shaped methods.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: a real subscription to
+`merchant_seed_1`'s Beef brochettes (`intervalDays: 7`) started with `nextDeliveryAt:
+2026-08-24T01:20:10Z`. `POST /skip-next` real-returned `nextDeliveryAt: 2026-08-31T01:20:10Z` --
+advanced by exactly 7 real days -- with `status` still `ACTIVE` and `deliveryCount`/`lastDeliveredAt`
+byte-identical to before the skip. Pausing the subscription and then calling `skip-next` again
+real-`400`'d `INVALID_PRODUCT_SUBSCRIPTION`. A different, non-owner user calling `skip-next` on this
+subscription real-`404`'d `PRODUCT_SUBSCRIPTION_NOT_FOUND` -- the same real-vs-fake IDOR discipline
+every other lookup in this codebase already uses.
