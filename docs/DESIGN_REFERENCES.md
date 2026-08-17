@@ -8924,3 +8924,34 @@ distinct KYB wording, not KYC), real DB confirmed `merchants.kyb_verified = 1`.
 (origin), `InsuranceService` (§146), `MarketplaceService` (§147), `PropertyOwnershipService`
 (§148), and `IdentityService` (§149) all now notify the real person(s) a terminal decision
 happened to, using the identical deferred-push-after-commit shape throughout.
+
+## 150. bank-mfe Jobs search wiring (uncalled-endpoint gap)
+
+**Added 2026-08-17.** `GET /api/v1/jobs/posts/search` (real relevance-ranked job search, backend
+since 2026-08-14) was called from Android (`rw.itunda.app`'s own `searchJobPosts` call site) but
+had zero callers anywhere in bank-mfe -- the whole Jobs (당근알바) browse view only had
+category-chip filtering, no search bar, on web. Found via a fresh uncalled-endpoint sweep, the
+same real gap shape this session's Toss-Shopping-banner fix already closed once before for
+`lib/shopping.ts`.
+
+**Built**: `searchJobPosts(q)` added to `lib/jobs.ts`, mirroring `searchProducts`'s existing real
+cross-merchant search shape. `JobsView` in `BankDashboard.tsx` gained a search form in the
+BROWSE tab (same visual pattern as `ShoppingView`'s product search -- input + Search/Clear
+buttons), results rendered with the existing `JobPostCard` component and real `trustScores` from
+the search response, category chips hidden while a search is active. Pure client change, no
+backend code, no migration -- wiring against an already-existing, already-tested endpoint.
+`yarn workspace bank-mfe run build` (real `tsc -b && vite build`) succeeded cleanly.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**, via headless Chrome +
+raw CDP over WebSocket (the Claude-in-Chrome extension was unavailable this session --
+[[feedback_headless_chrome_verification]]'s established fallback technique), driving bank-mfe's
+real local dev server (`yarn dev`, `VITE_API_BASE_URL` pointed at the real deployed backend
+through the socat relay) with a real injected auth session (no mocking): registered a user,
+created a real job post with a unique title ("Unique Search Target Job 150XYZ"), navigated
+Explore → Jobs → Find work in the real rendered UI, typed the unique substring into the new
+search box and submitted -- the real result list correctly narrowed to exactly that one job,
+category chips correctly hidden while search is active. Clicked Clear -- correctly reverted to
+the full browse view with category chips and both real job posts restored. Searched a
+non-matching query -- correct real empty state: `"No jobs matched \"zzznonexistentquery999\"."`
+iOS remains uncalled too -- a real candidate for a future section if full 3-platform parity is
+wanted.
