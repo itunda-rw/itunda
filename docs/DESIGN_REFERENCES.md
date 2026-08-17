@@ -9614,3 +9614,15 @@ session.
 
 Files: `ios/App/Sources/Saronite/SaroniteBrownfieldModule.swift`,
 `ios/App/Sources/Saronite/SaroniteBrownfieldModule.m`.
+
+**Coordinator re-verification**: `swiftc -parse` re-ran clean, exit 0, matching the claim.
+Confirmed the four new `@objc` method signatures in the `.swift` file line up parameter-name-for-
+parameter-name with the four new `RCT_EXTERN_METHOD` declarations in the `.m` file (React
+Native's legacy bridge resolves by selector name, so any mismatch here would silently break at
+runtime with no compile-time signal) -- checked by hand, all four match. This closes a real,
+verifiable regression: the shared `pay-bills` mini-app UI has called all four bill auto-pay
+methods unconditionally on every platform since Section 163 shipped, so iOS's "Turn on/off
+auto-pay" buttons were silently broken between Section 163 and this fix. Worth remembering for
+future Saronite/React-Native work: a shared cross-platform mini-app UI change ships broken on
+whichever platform's native bridge hasn't been updated in lockstep -- see
+[[feedback_saronite_bridge_lockstep]].
