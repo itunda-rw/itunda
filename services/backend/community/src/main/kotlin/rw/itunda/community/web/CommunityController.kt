@@ -22,6 +22,7 @@ import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.community.CommunityMeetupJoinException
 import rw.itunda.community.CommunityNeighborhoodNotSetException
+import rw.itunda.community.CommunityPostAlreadyReportedException
 import rw.itunda.community.CommunityPostNotFoundException
 import rw.itunda.community.CommunityService
 import rw.itunda.community.InvalidCommunityCommentException
@@ -34,6 +35,8 @@ import rw.itunda.community.MeetupAttendanceAlreadyCheckedInException
 import rw.itunda.community.MeetupAttendanceNotAMemberException
 import rw.itunda.community.MeetupFullException
 import rw.itunda.community.MeetupSessionNotFoundException
+import rw.itunda.community.OwnCommunityPostReportException
+import rw.itunda.core.domain.CommunityReportReason
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
@@ -62,6 +65,9 @@ data class ScheduleMeetupSessionsRequest(val dates: List<Instant>)
 // CommunityService.finalizeGroupBuy's own doc comment.
 data class FinalizeGroupBuyRequest(val totalAmount: java.math.BigDecimal, val description: String)
 data class SetCommentNotificationsEnabledRequest(val enabled: Boolean)
+// Real 동네생활 신고하기 (report a post) -- see CommunityPostReport.kt's own doc
+// comment.
+data class ReportCommunityPostRequest(val reason: CommunityReportReason, val details: String? = null)
 
 // Real 동네생활-style community board -- see CommunityService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -215,6 +221,19 @@ class CommunityController(private val communityService: CommunityService, privat
         return ResponseEntity.ok(mapOf("success" to true, "liked" to liked))
     }
 
+    // Real 동네생활 신고하기 (report a post) -- see CommunityService.reportPost's own
+    // doc comment. Not money-moving, so no Idempotency-Key required, same simpler
+    // discipline toggleLike above already follows.
+    @PostMapping("/posts/{postId}/report")
+    fun reportPost(
+        @PathVariable postId: String,
+        @RequestBody request: ReportCommunityPostRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val report = communityService.reportPost(currentUser.userId, postId, request.reason, request.details)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "report" to report))
+    }
+
     // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- see
     // CommunityService.joinMeetup's own doc comment.
     @PostMapping("/posts/{postId}/join")
@@ -291,6 +310,14 @@ class CommunityController(private val communityService: CommunityService, privat
     @ExceptionHandler(CommunityPostNotFoundException::class)
     fun handleNotFound(ex: CommunityPostNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("COMMUNITY_POST_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(OwnCommunityPostReportException::class)
+    fun handleOwnPostReport(ex: OwnCommunityPostReportException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("OWN_COMMUNITY_POST_REPORT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(CommunityPostAlreadyReportedException::class)
+    fun handlePostAlreadyReported(ex: CommunityPostAlreadyReportedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("COMMUNITY_POST_ALREADY_REPORTED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(InvalidCommunityPostException::class)
     fun handleInvalidPost(ex: InvalidCommunityPostException) =

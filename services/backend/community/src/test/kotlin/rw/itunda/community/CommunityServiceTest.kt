@@ -23,6 +23,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CommunityCommentRepository
 import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityNotificationPreferenceRepository
+import rw.itunda.core.repository.CommunityPostReportRepository
 import rw.itunda.core.repository.CommunityPostRepository
 import rw.itunda.core.repository.GroupConversationMemberRepository
 import rw.itunda.core.repository.GroupConversationRepository
@@ -55,11 +56,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         When("posting with valid fields") {
@@ -152,11 +154,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
         // relaxed=true on a nullable-returning method returns a synthetic non-null
         // relaxed-mocked instance (with commentNotificationsEnabled defaulting to
@@ -189,6 +192,69 @@ class CommunityServiceTest : BehaviorSpec({
                 } catch (e: CommunityPostNotFoundException) {
                     // expected
                 }
+            }
+        }
+
+        When("the real author tries to report their own post") {
+            val freshPost = CommunityPost(id = "post_1", authorId = "author_1", category = "question", title = "T", body = "B")
+            every { postRepository.findById("post_1") } returns Optional.of(freshPost)
+
+            Then("it throws OwnCommunityPostReportException") {
+                try {
+                    service.reportPost("author_1", "post_1", rw.itunda.core.domain.CommunityReportReason.SPAM, null)
+                    error("expected OwnCommunityPostReportException")
+                } catch (e: OwnCommunityPostReportException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the same reporter reports it twice") {
+            val freshPost = CommunityPost(id = "post_1", authorId = "author_1", category = "question", title = "T", body = "B")
+            every { postRepository.findById("post_1") } returns Optional.of(freshPost)
+            every { communityPostReportRepository.findByPostIdAndReporterId("post_1", "reporter_1") } returns
+                rw.itunda.core.domain.CommunityPostReport(
+                    id = "existing", postId = "post_1", reporterId = "reporter_1",
+                    reason = rw.itunda.core.domain.CommunityReportReason.SPAM,
+                )
+
+            Then("it throws CommunityPostAlreadyReportedException") {
+                try {
+                    service.reportPost("reporter_1", "post_1", rw.itunda.core.domain.CommunityReportReason.OTHER, null)
+                    error("expected CommunityPostAlreadyReportedException")
+                } catch (e: CommunityPostAlreadyReportedException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a 3rd distinct reporter reports a still-ACTIVE post") {
+            val freshPost = CommunityPost(id = "post_1", authorId = "author_1", category = "question", title = "T", body = "B")
+            every { postRepository.findById("post_1") } returns Optional.of(freshPost)
+            every { postRepository.save(any()) } answers { firstArg() }
+            every { communityPostReportRepository.findByPostIdAndReporterId("post_1", "reporter_3") } returns null
+            every { communityPostReportRepository.save(any()) } answers { firstArg() }
+            every { communityPostReportRepository.countByPostId("post_1") } returns 3
+
+            val savedPostSlot = slot<CommunityPost>()
+            service.reportPost("reporter_3", "post_1", rw.itunda.core.domain.CommunityReportReason.HARASSMENT, "abusive")
+
+            Then("the post's status flips to REMOVED") {
+                verify(exactly = 1) { postRepository.save(capture(savedPostSlot)) }
+                savedPostSlot.captured.status shouldBe CommunityPostStatus.REMOVED
+            }
+        }
+
+        When("a 4th distinct reporter reports an already-REMOVED post") {
+            val removedPost = CommunityPost(id = "post_1", authorId = "author_1", category = "question", title = "T", body = "B", status = CommunityPostStatus.REMOVED)
+            every { postRepository.findById("post_1") } returns Optional.of(removedPost)
+            every { communityPostReportRepository.findByPostIdAndReporterId("post_1", "reporter_4") } returns null
+            every { communityPostReportRepository.save(any()) } answers { firstArg() }
+            every { communityPostReportRepository.countByPostId("post_1") } returns 4
+
+            Then("the report still saves, and the post save is never called again") {
+                service.reportPost("reporter_4", "post_1", rw.itunda.core.domain.CommunityReportReason.OTHER, null)
+                verify(exactly = 0) { postRepository.save(any()) }
             }
         }
 
@@ -325,11 +391,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         When("no category filter is given") {
@@ -370,11 +437,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         // Real Kigali-area coordinates, same convention every geo test in this codebase uses.
@@ -418,11 +486,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         When("the caller has a real neighborhood set") {
@@ -468,11 +537,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>()
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>()
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         val meetupPost = CommunityPost(id = "post_1", authorId = "author_1", category = "meetup", title = "Weekly run", body = "Join us")
@@ -560,11 +630,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>()
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>()
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         val meetupPost = CommunityPost(
@@ -634,11 +705,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>()
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>()
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         val meetupPost = CommunityPost(
@@ -695,11 +767,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val splitBillService = mockk<SplitBillService>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
         val savedSlot = slot<CommunityPost>()
         every { postRepository.save(capture(savedSlot)) } answers { firstArg() }
@@ -755,11 +828,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val splitBillService = mockk<SplitBillService>()
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         val groupBuyPost = CommunityPost(
@@ -847,11 +921,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val splitBillService = mockk<SplitBillService>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         val post = CommunityPost(
@@ -898,11 +973,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val splitBillService = mockk<SplitBillService>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         val post = CommunityPost(
@@ -953,11 +1029,12 @@ class CommunityServiceTest : BehaviorSpec({
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
         val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val communityNotificationPreferenceRepository = mockk<CommunityNotificationPreferenceRepository>(relaxed = true)
+        val communityPostReportRepository = mockk<CommunityPostReportRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
             rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
-            communityNotificationPreferenceRepository,
+            communityNotificationPreferenceRepository, communityPostReportRepository,
         )
 
         When("a real user with no preference row checks their setting") {
