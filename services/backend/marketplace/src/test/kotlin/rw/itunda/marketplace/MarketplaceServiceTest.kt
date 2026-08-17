@@ -991,6 +991,10 @@ class MarketplaceServiceTest : BehaviorSpec({
         every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("ledgertxn_release_1", emptyList())
         every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
         every { listingRepository.findById("listing_c") } returns java.util.Optional.empty()
+        // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+        // returns a raw Object, ClassCastException-ing at the call site -- same fix
+        // used elsewhere in this codebase for this exact pitfall.
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         When("autoReleaseEscrow runs") {
             service.autoReleaseEscrow("escrow_c")
@@ -1038,6 +1042,132 @@ class MarketplaceServiceTest : BehaviorSpec({
 
             Then("it's a real honest no-op -- never double-releasing or touching the ledger a second time") {
                 io.mockk.verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real DISPUTED escrow an admin resolves in the seller's favor") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
+        val listingFavoriteRepository = mockk<ListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MarketplaceService(
+            listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository, listingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
+
+        val escrow = MarketplaceEscrow(
+            id = "escrow_e", listingId = "listing_e", buyerId = "buyer_e", sellerId = "seller_e",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_e",
+            status = rw.itunda.core.domain.MarketplaceEscrowStatus.DISPUTED,
+        )
+        val listing = Listing(id = "listing_e", sellerId = "seller_e", title = "Sofa", description = "desc", price = BigDecimal("10000"), category = "furniture")
+        val sellerWallet = Wallet(id = "wallet_seller_e", userId = "seller_e", accountNumber = "ACC-SE", accountName = "Seller", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
+        every { marketplaceEscrowRepository.findById("escrow_e") } returns java.util.Optional.of(escrow)
+        every { walletRepository.findByUserIdAndType("seller_e", rw.itunda.core.domain.WalletType.MAIN) } returns sellerWallet
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("ledgertxn_release_e", emptyList())
+        every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
+        every { listingRepository.findById("listing_e") } returns java.util.Optional.of(listing)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("resolveDispute is called with release=true") {
+            val result = service.resolveDispute("escrow_e", release = true)
+
+            Then("it releases the real payout to the seller and notifies both real parties") {
+                result.status shouldBe rw.itunda.core.domain.MarketplaceEscrowStatus.RELEASED
+                result.resolutionTransactionId shouldBe "ledgertxn_release_e"
+
+                val notifSlots = mutableListOf<rw.itunda.core.domain.Notification>()
+                verify(exactly = 2) { notificationRepository.save(capture(notifSlots)) }
+                val sellerNotif = notifSlots.single { it.userId == "seller_e" }
+                sellerNotif.type shouldBe "MARKETPLACE_DISPUTE_RESOLVED"
+                sellerNotif.body shouldBe "The dispute for \"Sofa\" was resolved in your favor. 9850 RWF has been credited to your wallet."
+                val buyerNotif = notifSlots.single { it.userId == "buyer_e" }
+                buyerNotif.type shouldBe "MARKETPLACE_DISPUTE_RESOLVED"
+                buyerNotif.body shouldBe "The dispute for \"Sofa\" was resolved in the seller's favor. The payment has been released to them."
+
+                verify(exactly = 1) { pushNotificationService.sendToUser("seller_e", any(), any(), any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("buyer_e", any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("a real DISPUTED escrow an admin resolves in the buyer's favor") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val listingLikeRepository = mockk<ListingLikeRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val marketplaceListingReportRepository = mockk<MarketplaceListingReportRepository>(relaxed = true)
+        val listingFavoriteRepository = mockk<ListingFavoriteRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MarketplaceService(
+            listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository, listingLikeRepository, fraudRuleEngine,
+            marketplaceListingReportRepository, listingFavoriteRepository, notificationRepository, pushNotificationService,
+        )
+
+        val escrow = MarketplaceEscrow(
+            id = "escrow_f", listingId = "listing_f", buyerId = "buyer_f", sellerId = "seller_f",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_f",
+            status = rw.itunda.core.domain.MarketplaceEscrowStatus.DISPUTED,
+        )
+        val listing = Listing(
+            id = "listing_f", sellerId = "seller_f", title = "Lamp", description = "desc", price = BigDecimal("10000"), category = "home",
+            status = ListingStatus.SOLD, buyerId = "buyer_f",
+        )
+        val buyerWallet = Wallet(id = "wallet_buyer_f", userId = "buyer_f", accountNumber = "ACC-BF", accountName = "Buyer", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
+        every { marketplaceEscrowRepository.findById("escrow_f") } returns java.util.Optional.of(escrow)
+        every { walletRepository.findByUserIdAndType("buyer_f", rw.itunda.core.domain.WalletType.MAIN) } returns buyerWallet
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("ledgertxn_refund_f", emptyList())
+        every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
+        every { listingRepository.findById("listing_f") } returns java.util.Optional.of(listing)
+        every { listingRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("resolveDispute is called with release=false") {
+            val result = service.resolveDispute("escrow_f", release = false)
+
+            Then("it refunds the real buyer, reopens the listing, and notifies both real parties") {
+                result.status shouldBe rw.itunda.core.domain.MarketplaceEscrowStatus.REFUNDED
+                result.resolutionTransactionId shouldBe "ledgertxn_refund_f"
+                listing.status shouldBe ListingStatus.ACTIVE
+                listing.buyerId shouldBe null
+
+                val notifSlots = mutableListOf<rw.itunda.core.domain.Notification>()
+                verify(exactly = 2) { notificationRepository.save(capture(notifSlots)) }
+                val buyerNotif = notifSlots.single { it.userId == "buyer_f" }
+                buyerNotif.type shouldBe "MARKETPLACE_DISPUTE_RESOLVED"
+                buyerNotif.body shouldBe "The dispute for \"Lamp\" was resolved in your favor. 10000 RWF has been refunded to your wallet."
+                val sellerNotif = notifSlots.single { it.userId == "seller_f" }
+                sellerNotif.type shouldBe "MARKETPLACE_DISPUTE_RESOLVED"
+                sellerNotif.body shouldBe "The dispute for \"Lamp\" was resolved in the buyer's favor. The payment has been refunded to them."
+
+                verify(exactly = 1) { pushNotificationService.sendToUser("buyer_f", any(), any(), any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("seller_f", any(), any(), any()) }
             }
         }
     }

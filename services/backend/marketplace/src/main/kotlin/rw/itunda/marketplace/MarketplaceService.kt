@@ -6,6 +6,8 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.LedgerAccountType
@@ -736,7 +738,16 @@ class MarketplaceService(
         escrow.status = MarketplaceEscrowStatus.RELEASED
         escrow.resolutionTransactionId = result.transactionId
         escrow.updatedAt = Instant.now()
-        return marketplaceEscrowRepository.save(escrow)
+        val saved = marketplaceEscrowRepository.save(escrow)
+        val title = listingRepository.findById(escrow.listingId).map { it.title }.orElse("your listing")
+        notifyDisputeResolved(
+            escrow,
+            winnerId = escrow.sellerId,
+            winnerBody = "The dispute for \"$title\" was resolved in your favor. ${netToSeller.toPlainString()} RWF has been credited to your wallet.",
+            loserId = escrow.buyerId,
+            loserBody = "The dispute for \"$title\" was resolved in the seller's favor. The payment has been released to them.",
+        )
+        return saved
     }
 
     private fun refundEscrowToBuyer(escrow: MarketplaceEscrow): MarketplaceEscrow {
@@ -761,7 +772,66 @@ class MarketplaceService(
             listing.buyerId = null
             listingRepository.save(listing)
         }
+        val title = listing?.title ?: "the listing"
+        notifyDisputeResolved(
+            escrow,
+            winnerId = escrow.buyerId,
+            winnerBody = "The dispute for \"$title\" was resolved in your favor. ${escrow.amount.toPlainString()} RWF has been refunded to your wallet.",
+            loserId = escrow.sellerId,
+            loserBody = "The dispute for \"$title\" was resolved in the buyer's favor. The payment has been refunded to them.",
+        )
         return saved
+    }
+
+    // Real admin dispute resolution notifies BOTH real parties -- itunda's own honest
+    // extension of the same "decide = terminal action, tell the real people it happened
+    // to" discipline OrderReturnService.decide/InsuranceService.decideClaim already
+    // establish for a single-subject decision; resolveDispute has two, since it's an
+    // admin picking a winner between a real buyer and a real seller, not one party
+    // deciding about the other. Notification rows saved immediately (same @Transactional
+    // boundary as the real ledger/status change above), push deferred until commit via
+    // sendPushAfterCommit, same shape those two services already establish.
+    private fun notifyDisputeResolved(escrow: MarketplaceEscrow, winnerId: String, winnerBody: String, loserId: String, loserBody: String) {
+        val winnerTitle = "Dispute resolved in your favor"
+        val loserTitle = "Dispute resolved"
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = winnerId, type = "MARKETPLACE_DISPUTE_RESOLVED",
+                title = winnerTitle, body = winnerBody, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"escrowId\":\"${escrow.id}\"}",
+            ),
+        )
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = loserId, type = "MARKETPLACE_DISPUTE_RESOLVED",
+                title = loserTitle, body = loserBody, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"escrowId\":\"${escrow.id}\"}",
+            ),
+        )
+        sendPushAfterCommit(winnerId, winnerTitle, winnerBody, escrow.id)
+        sendPushAfterCommit(loserId, loserTitle, loserBody, escrow.id)
+    }
+
+    // Same real "defer the mobile push until the real ledger/status change is durable,
+    // but the in-app Notification row is saved immediately" discipline
+    // OrderReturnService.sendPushAfterCommit/InsuranceService.sendPushAfterCommit already
+    // establish for a structurally identical terminal decision.
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, escrowId: String) {
+        val data = mapOf("escrowId" to escrowId)
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, data)
+            } catch (e: Exception) {
+                log.warn("Could not send dispute-resolution push for escrow {}", escrowId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     // Any status, not just ACTIVE -- a buyer who already contacted a seller about a
