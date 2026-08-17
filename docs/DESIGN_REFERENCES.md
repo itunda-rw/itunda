@@ -8836,3 +8836,32 @@ your wallet."`, and the claimant's real wallet balance confirmed the exact expec
 it with a real reason -- notification body exactly `"Your claim for \"Dental checkup\" was
 rejected. Reason: Not covered under Health Shield plan"`, and the wallet balance stayed
 unchanged at `110000.00`, confirming zero ledger touch on rejection.
+
+## 147. Marketplace dispute-resolution notification (both parties)
+
+**Added 2026-08-17.** `MarketplaceService.resolveDispute` already posted a real ledger payout
+(release to seller or refund to buyer) on an admin's decision but never told either real party a
+decision was made -- a structurally identical gap to `OrderReturnService.decide`/
+`InsuranceService.decideClaim` (§146), except this decision has two real subjects (a winner and a
+loser) rather than one, since it's an admin picking a winner between a real buyer and seller.
+
+**Built**: `notifyDisputeResolved` fires from both `releaseEscrowToSeller` and
+`refundEscrowToBuyer`, mirroring those two services' exact deferred-push-after-commit shape
+(persisted `Notification` saved immediately within the same `@Transactional` boundary as the
+real ledger/status change, mobile push deferred via `TransactionSynchronizationManager`), applied
+to both the winning and losing party. New notification type `MARKETPLACE_DISPUTE_RESOLVED`. No
+new endpoint, no migration -- existing `POST /api/v1/system/marketplace-escrow/{escrowId}/resolve`
+(admin-gated) unchanged externally. `resolveDispute` previously had zero test coverage at all;
+the fork added real coverage for both outcomes.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**, both real outcomes:
+**Release to seller** -- created a listing, bought it via escrow, disputed it, resolved
+`release: true` as admin. Seller (winner) notification exactly `"The dispute for \"Dispute Test
+147\" was resolved in your favor. 9850.00 RWF has been credited to your wallet."` (net of the
+150 RWF escrow fee); buyer (loser) notification exactly `"...was resolved in the seller's favor.
+The payment has been released to them."` Real DB-confirmed seller wallet credited exactly
+`9850.00`. **Refund to buyer** -- a second listing, escrow, dispute, resolved `release: false`.
+Buyer (winner) notification exactly `"...was resolved in your favor. 5000.00 RWF has been
+refunded to your wallet."`; seller (loser) notification exactly `"...resolved in the buyer's
+favor. The payment has been refunded to them."` Real DB-confirmed buyer wallet balance matched
+the exact expected math across both escrows (`20000 - 10000 - 5000 + 5000 refund = 10000`).
