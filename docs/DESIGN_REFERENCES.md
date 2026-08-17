@@ -9140,5 +9140,19 @@ never yet reminded (excluding one due too far out, one already overdue, one alre
 (no duplicate). All existing `PostpaidCreditServiceTest` cases updated for the two new
 constructor dependencies (`NotificationRepository`, `PushNotificationService`) and still pass.
 Ran locally via `./gradlew :loans:test` -- full suite green; `:app:compileKotlin` also green,
-confirming the new controller/scheduler wiring compiles. Not yet live-verified against the
-deployed backend (reserved for the coordinating session, per this build's own scope).
+confirming the new controller/scheduler wiring compiles.
+
+**Live-verified** against the real deployed backend: registered a fresh user, applied for a real
+postpaid credit line (20,000 RWF limit at the base tier), spent 5,000 RWF against it (real
+`cycleDueAt` set 30 days out), backdated `cycle_due_at` to 2 days out (inside the 3-day window),
+called `POST .../process-payment-reminders` -> `{"success":true,"processed":1}`, confirmed the
+exact real notification: `POSTPAID_CREDIT_PAYMENT_DUE_SOON` / "Your postpaid credit payment is
+due soon" / "Your postpaid credit balance of 5000.00 RWF is due 2026-08-19T15:13:39Z. Repay from
+the Loans tab before then to avoid a late fee." and real DB `payment_reminder_sent_at` set;
+re-triggered -> `{"success":true,"processed":0}`, no duplicate notification. Fully repaid the
+line and confirmed `cycle_due_at`/`payment_reminder_sent_at` both reset to `NULL` (status stayed
+`ACTIVE`), proving the next billing cycle gets its own fresh reminder rather than staying
+permanently silenced. Deploy hit one real infra snag unrelated to this feature's code: plain
+`sudo kubectl` on the primary node started connection-refusing (root's kubeconfig missing);
+`sudo -E kubectl` (preserving the real working `ubuntu`-user kubeconfig) fixed it -- see
+[[feedback_kubectl_sudo_dash_e_required]], now the standard for all future deploys this session.
