@@ -14,6 +14,7 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.WalletFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.insurance.InsurancePolicyRenewalReminderScheduler
 import rw.itunda.insurance.InsuranceService
 import rw.itunda.insurance.InvalidClaimException
 import rw.itunda.insurance.InvalidPremiumFundAmountException
@@ -35,7 +36,8 @@ data class ContributeToFundRequest(val amount: BigDecimal)
 @RequestMapping("/api/v1/insurance")
 class InsuranceController(
     private val insuranceService: InsuranceService,
-    private val idempotencyService: IdempotencyService
+    private val idempotencyService: IdempotencyService,
+    private val insurancePolicyRenewalReminderScheduler: InsurancePolicyRenewalReminderScheduler,
 ) {
 
     @GetMapping("/plans")
@@ -175,6 +177,17 @@ class InsuranceController(
     @GetMapping("/premium-funds")
     fun getMyPremiumFunds(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "funds" to insuranceService.getMyPremiumFunds(currentUser.userId).map(::fundMap)))
+
+    // Real Kakao Pay/Toss Insurance 갱신 안내 (renewal notice) manual trigger -- same
+    // "expose the scheduler's own real logic as a callable endpoint" convention
+    // SavingsController.processMaturityReminders already establishes, so a real
+    // policy's real endDate can be verified without waiting actual wall-clock days for
+    // it to enter the reminder window.
+    @PostMapping("/policies/process-renewal-reminders")
+    fun processRenewalReminders(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = insurancePolicyRenewalReminderScheduler.processDue()
+        return ResponseEntity.ok(mapOf("success" to true, "processed" to processed))
+    }
 
     @ExceptionHandler(PremiumFundNotFoundException::class)
     fun handlePremiumFundNotFound(ex: PremiumFundNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PREMIUM_FUND_NOT_FOUND", ex.message ?: "Not found"))

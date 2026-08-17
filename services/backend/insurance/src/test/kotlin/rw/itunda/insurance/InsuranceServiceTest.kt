@@ -3,6 +3,7 @@ package rw.itunda.insurance
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -589,6 +590,79 @@ class InsuranceServiceTest : BehaviorSpec({
                 } catch (e: PremiumFundNotFoundException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
+            }
+        }
+    }
+
+    fun policyWithEndDate(id: String, userId: String, endDate: LocalDate, status: String = "active", renewalReminderSentAt: java.time.Instant? = null) = InsurancePolicy(
+        id = id, userId = userId, planId = "ins_1", planName = "Health Shield", category = "health",
+        status = status, startDate = LocalDate.now().minusMonths(11), endDate = endDate,
+        monthlyPremium = BigDecimal("15000"), nextPaymentDate = LocalDate.now(), policyNumber = "POL-$id",
+        renewalReminderSentAt = renewalReminderSentAt,
+    )
+
+    Given("real active insurance policies at various points in their real renewal window") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val insurancePremiumFundRepository = mockk<InsurancePremiumFundRepository>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter, insurancePremiumFundRepository, notificationRepository, pushNotificationService)
+
+        When("a real active policy's real endDate is already inside the 30-day renewal window") {
+            val soon = policyWithEndDate("pol_soon", "user_a", LocalDate.now().plusDays(10))
+            every { insurancePolicyRepository.findByStatusAndRenewalReminderSentAtIsNull("active") } returns listOf(soon)
+
+            Then("it is a real due candidate") {
+                service.getPoliciesDueForRenewalReminder().map { it.id } shouldBe listOf("pol_soon")
+            }
+        }
+
+        When("a real active policy's real endDate is genuinely still outside the renewal window") {
+            val far = policyWithEndDate("pol_far", "user_b", LocalDate.now().plusDays(60))
+            every { insurancePolicyRepository.findByStatusAndRenewalReminderSentAtIsNull("active") } returns listOf(far)
+
+            Then("it is real-excluded -- not due yet") {
+                service.getPoliciesDueForRenewalReminder() shouldBe emptyList()
+            }
+        }
+
+        When("sending a real reminder for a genuinely due policy") {
+            val policy = policyWithEndDate("pol_due", "user_c", LocalDate.now().plusDays(5))
+            every { insurancePolicyRepository.findById("pol_due") } returns Optional.of(policy)
+            every { insurancePolicyRepository.save(any()) } answers { firstArg() }
+
+            service.sendRenewalReminder("pol_due")
+
+            Then("it real-notifies once and real-marks renewalReminderSentAt") {
+                verify(exactly = 1) { notificationRepository.save(match { it.type == "INSURANCE_POLICY_RENEWAL_DUE" && it.userId == "user_c" }) }
+                policy.renewalReminderSentAt shouldNotBe null
+            }
+        }
+
+        When("sending a reminder for a policy that already has one") {
+            val policy = policyWithEndDate("pol_already", "user_d", LocalDate.now().plusDays(5), renewalReminderSentAt = java.time.Instant.now())
+            every { insurancePolicyRepository.findById("pol_already") } returns Optional.of(policy)
+
+            service.sendRenewalReminder("pol_already")
+
+            Then("it real-skips -- no double notification for the same real renewal") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
+            }
+        }
+
+        When("sending a reminder for a policy that has genuinely lapsed") {
+            val policy = policyWithEndDate("pol_lapsed", "user_e", LocalDate.now().plusDays(5), status = "lapsed")
+            every { insurancePolicyRepository.findById("pol_lapsed") } returns Optional.of(policy)
+
+            service.sendRenewalReminder("pol_lapsed")
+
+            Then("it real-skips -- a lapsed policy is not genuinely renewing") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
     }

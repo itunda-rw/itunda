@@ -384,4 +384,43 @@ class InsuranceService(
         insurancePremiumFundRepository.save(fund)
         return true
     }
+
+    // Real Kakao Pay/Toss Insurance 갱신 안내 (renewal notice) -- see
+    // InsurancePolicy.renewalReminderSentAt's own doc comment for the real sourcing.
+    // `endDate` has been a real, stored field since this policy concept existed, but
+    // nothing ever notified a user as it approached -- same "real data sitting unused"
+    // shape SavingsService.getGoalsDueForMaturityReminder already closed once for
+    // SavingsGoal.targetDate. RENEWAL_WINDOW_DAYS = 30, itunda's own honest choice
+    // within the real sourced 30-45 day range, not a fabricated figure.
+    fun getPoliciesDueForRenewalReminder(): List<InsurancePolicy> {
+        val cutoff = LocalDate.now().plusDays(RENEWAL_WINDOW_DAYS)
+        return insurancePolicyRepository.findByStatusAndRenewalReminderSentAtIsNull("active")
+            .filter { !it.endDate.isAfter(cutoff) }
+    }
+
+    /** One real renewal-reminder notification, called per-policy by the scheduler --
+     * re-checks `status`/`renewalReminderSentAt` right before sending so a genuine race
+     * can't double-fire, same resilience discipline SavingsService.sendMaturityReminder's
+     * own doc comment already establishes. */
+    @Transactional
+    fun sendRenewalReminder(policyId: String) {
+        val policy = insurancePolicyRepository.findById(policyId).orElse(null) ?: return
+        if (policy.status != "active" || policy.renewalReminderSentAt != null) return
+
+        val title = "Your ${policy.planName} policy is renewing soon"
+        val body = "Your \"${policy.planName}\" policy expires on ${policy.endDate}. It will auto-renew unless you cancel."
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = policy.userId, type = "INSURANCE_POLICY_RENEWAL_DUE",
+                title = title, body = body, isRead = false, createdAt = Instant.now(), dataJson = "{\"policyId\":\"${policy.id}\"}",
+            ),
+        )
+        pushNotificationService.sendToUser(policy.userId, title, body, mapOf("policyId" to policy.id))
+        policy.renewalReminderSentAt = Instant.now()
+        insurancePolicyRepository.save(policy)
+    }
+
+    companion object {
+        private const val RENEWAL_WINDOW_DAYS = 30L
+    }
 }
