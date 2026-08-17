@@ -9749,3 +9749,14 @@ Files: `android/core/network/src/main/java/rw/itunda/core/network/ApiService.kt`
 Per this task's own scope, no live-server click-through verification or deploy was attempted here
 -- that's reserved for the coordinating session. Closes the pin-chat-to-top thread across all 3
 platforms (bank-mfe done in Section 165, Android + iOS done here).
+
+**Coordinator re-verification**: all four claims independently re-run and confirmed correct --
+a genuine forced Android rebuild (`touch` + `--rerun-tasks`) -> `BUILD SUCCESSFUL`, 435/435 tasks
+actually executed; `xcodebuild` on `CoreNetwork` genuinely re-ran (real compile/link/plist steps
+observed) -> `** BUILD SUCCEEDED **`; `swiftc -parse` on `TalkScreen.swift` re-ran clean, exit 0.
+Also manually checked the iOS sort comparator
+(`conversations?.sorted { a, b in (a.pinnedToTop ?? false) && !(b.pinnedToTop ?? false) }`) for
+correctness as a strict-weak-ordering predicate: returns `false` whenever both sides have equal
+pinned status (never claims `a < b` for two pinned or two unpinned rows, preserving their
+existing relative order under Swift 5's guaranteed-stable sort) and `true` only when `a` is
+pinned and `b` isn't -- correct, if less conventional-looking than a plain boolean comparison.
