@@ -8776,3 +8776,37 @@ at that exact moment. Created a second job post, favorited by the same 2 users, 
 confirmed a second, independent wave of exactly 2 more FCM push attempts (distinct `requestId`,
 21 seconds after the first wave) -- proving both real closure paths trigger the notification
 independently, not just one of them.
+
+## 145. Marketplace listing price-edit + Karrot 가격 하락 alert to favoriters
+
+**Added 2026-08-17.** `MarketplaceService` had no price-edit capability of any kind until now --
+a seller could create or delete a listing but never change its price. This also meant
+`ListingFavorite` (the real 관심목록/wishlist) was the one `*Favorite` entity left in the domain
+with zero notification hook after Sections 143/144 closed `EatsFavorite`/`JobPostFavorite`'s
+equivalent gaps. Sourced identically to `PropertyListingService.updatePrice`'s own real Karrot
+sourcing (Karrot's real transaction-notification categories explicitly name "가격 하락" on a
+favorited listing, corroborated by the same real Clien community thread that service already
+cites: "당근마켓 가격만 내리면 관심유저에게 알람가나요?").
+
+**Built**: `MarketplaceService.updatePrice` -- validates price > 0, requires the listing be
+`ACTIVE`, real IDOR-safe ownership check (404 not 403). Only a real price *decrease* fans out to
+every `ListingFavorite` via `notifyFavoritersOfPriceDrop`: real persisted `Notification` + push,
+per-favoriter try/catch. Deliberately NOT `@Transactional` itself, mirroring
+`PropertyListingService.updatePrice`'s exact reasoning to avoid the scheduler-transaction-
+poisoning pitfall from Sections 115/118. New endpoint
+`PATCH /api/v1/marketplace/listings/{listingId}/price`, body `{"price": <amount>}`.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a seller
+and 2 favoriters, created a listing at 10,000 RWF, both favorited it, seeded fake device tokens
+(same technique as Sections 143/144). Dropped the price to 7,500 -- both favoriters received a
+real `LISTING_PRICE_DROP` notification with the exact expected body: `"\"Price Drop Test 145\"
+dropped from 10000.00 to 7500 RWF"`; pod logs confirmed exactly 2 real FCM push attempts.
+Increased the price to 8,000 -- succeeded, but confirmed zero new notifications (still exactly 1
+per favoriter) and zero new push-attempt log lines. A non-positive price correctly 400
+`INVALID_LISTING_PRICE`. A non-owner attempting the price update correctly 404
+`LISTING_NOT_FOUND` (IDOR-safe). Bought the listing (moving it to `SOLD`), then attempted a
+further price change -- correctly rejected 409 `LISTING_NOT_ACTIVE`.
+
+**All `*Favorite` entities in the domain now have real notification coverage**: `ProductFavorite`
+(§124), `PropertyListingFavorite`, `EatsFavorite` (§143), `JobPostFavorite` (§144), and
+`ListingFavorite` (§145).
