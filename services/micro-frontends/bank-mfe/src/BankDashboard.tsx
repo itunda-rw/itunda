@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Camera, Car, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bike, Camera, Car, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -105,7 +105,7 @@ import {
 } from './lib/stocks';
 import {
   addGroupMember, connectMessagingSocket, createGroup, createOpenGroup, joinGroupByCode, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroupThread, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage, fetchThread,
-  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, fetchTodaysBirthdays, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationArchived, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, fetchTodaysBirthdays, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationArchived, setConversationPinnedToTop, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
@@ -9095,6 +9095,15 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     setConversationArchived(conversationId, archived).then(load).catch(() => {});
   };
 
+  // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) -- found on a fresh
+  // uncalled-endpoint sweep: MessagingController's pin-to-top endpoints and
+  // ConversationSummary.pinnedToTop were already fully built on the backend with zero
+  // client anywhere. Same always-visible-icon-button convention as the Archive action
+  // right next to it.
+  const togglePinnedToTop = (conversationId: string, pinned: boolean) => {
+    setConversationPinnedToTop(conversationId, pinned).then(load).catch(() => {});
+  };
+
   useEffect(load, []);
 
   // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
@@ -9147,7 +9156,12 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     return <div className="itunda-card skeleton" style={{ height: '220px' }} />;
   }
 
-  const visibleConversations = showArchived ? (archivedConversations ?? []) : conversations;
+  // Pinned rooms float to the top of the active list, same as real KakaoTalk --
+  // a stable sort so unpinned rooms keep their existing most-recent-first order.
+  const activeConversations = showArchived
+    ? (archivedConversations ?? [])
+    : [...conversations].sort((a, b) => Number(b.pinnedToTop) - Number(a.pinnedToTop));
+  const visibleConversations = activeConversations;
   const archivedCount = archivedConversations?.length ?? 0;
 
   return (
@@ -9200,6 +9214,19 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
                   </span>
                 )}
               </button>
+              {/* Real KakaoTalk 채팅방 상단 고정 (pin room to top) -- only offered on
+                  the active list, not the archived one (pinning an archived room to
+                  the top of a list it isn't shown in doesn't mean anything). */}
+              {!showArchived && (
+                <button
+                  type="button"
+                  onClick={() => togglePinnedToTop(c.conversationId, !c.pinnedToTop)}
+                  title={c.pinnedToTop ? 'Unpin from top' : 'Pin to top'}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', flexShrink: 0, color: c.pinnedToTop ? 'var(--itunda-blue)' : 'var(--itunda-grey-500)' }}
+                >
+                  {c.pinnedToTop ? <PinOff size={18} /> : <Pin size={18} />}
+                </button>
+              )}
               {/* Real archive action (2026-08-05) -- closes docs/DESIGN_REFERENCES.md
                   Talk recommendation #4's remaining half. An always-visible icon
                   button, not a swipe gesture: bank-mfe's own established convention

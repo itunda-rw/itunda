@@ -9626,3 +9626,56 @@ auto-pay" buttons were silently broken between Section 163 and this fix. Worth r
 future Saronite/React-Native work: a shared cross-platform mini-app UI change ships broken on
 whichever platform's native bridge hasn't been updated in lockstep -- see
 [[feedback_saronite_bridge_lockstep]].
+
+## 165. KakaoTalk 채팅방 상단 고정 (pin chat room to top) client wiring, bank-mfe
+
+**Added 2026-08-18.** A fresh full uncalled-endpoint sweep (same technique as Section 162:
+every `@GetMapping`/`@PostMapping`/`@PutMapping`/`@DeleteMapping`/`@PatchMapping` path across
+all 106 `*Controller.kt` files, cross-referenced against every literal `api/v1/...` path used
+anywhere in `services/micro-frontends/*/src` -- all 6 web MFEs -- plus `android/` and `ios/`)
+turned up `MessagingController`'s `POST/GET /api/v1/messages/conversations/{conversationId}/
+pin-to-top`: a fully real, already-tested KakaoTalk 채팅방 상단 고정 feature
+(`MessagingService.setConversationPinnedToTop`/`isConversationPinnedToTop`, backed by
+`ConversationPreference.pinned`, covered by real assertions in `MessagingServiceTest.kt`
+including `page.content[0].pinnedToTop shouldBe true`) with genuinely zero caller on any client.
+The endpoint's own doc comment in `MessagingController.kt` explicitly distinguishes it from the
+already-wired per-message pin (`pinConversationMessage`/`unpinConversationMessage`, used for
+pinning one message inside an open thread) -- this is the separate, real KakaoTalk feature of
+pinning an entire chat *room* to the top of the conversation list. Confirming the gap:
+`MessagingService.listConversations` already computes and returns `pinnedToTop` on every
+`ConversationSummary` in the real `GET /api/v1/messages/conversations` response (line 514 of
+`MessagingService.kt`), but bank-mfe's `ConversationSummary` TypeScript interface in
+`lib/messaging.ts` didn't even declare the field, and no UI read or set it -- the exact same
+shape of gap Section 162 found for bill auto-pay: a backend feature fully built and even
+partially surfaced in an existing response payload, just never given a client entry point.
+
+**Built**: `services/micro-frontends/bank-mfe/src/lib/messaging.ts` gained `pinnedToTop: boolean`
+on `ConversationSummary` and two new functions mirroring the existing archive pair
+(`fetchConversationArchived`/`setConversationArchived`) 1:1 in shape:
+`fetchConversationPinnedToTop` (`GET .../pin-to-top`) and `setConversationPinnedToTop`
+(`POST .../pin-to-top` with `{ pinned }`). `BankDashboard.tsx`'s `DirectMessagesList` (the
+active/archived chat-list screen) gained a `togglePinnedToTop` handler and a new always-visible
+`Pin`/`PinOff` icon button per row, right next to the existing Archive button, shown only on the
+active list (pinning a room to the top of a list it isn't displayed in -- the archived list --
+doesn't mean anything, so the button is hidden there via `!showArchived`). The active
+conversation list is now sorted with a stable `Array.prototype.sort` so `pinnedToTop` rooms
+float to the top while unpinned rooms keep their existing most-recent-first order underneath,
+matching real KakaoTalk's own pinned-rooms-first list behavior.
+
+**Verification**: ran `yarn workspace bank-mfe run build` (`tsc -b && vite build`) for real after
+the edits -- completed clean, `✓ built in 1.38s`, no TypeScript errors, `BankDashboard-*.js`
+chunk rebuilt with the new code. Confirmed no other file in bank-mfe constructs a
+`ConversationSummary` object literal (both other local usages of a `conversations` list variable
+in `BankDashboard.tsx` only ever consume `fetchConversations()`'s real return value), so the new
+required field couldn't have broken an existing call site. No backend code was touched -- the
+endpoints, `MessagingService` methods, and `ConversationPreference.pinned` field all already
+existed and were already covered by real, passing tests in `MessagingServiceTest.kt` before this
+change -- so no new backend tests were written for this pass. Android/iOS remain unwired for
+this feature and are a natural next-section follow-up, same "one platform per section" cadence
+Sections 159-161 and 162-164 used for their respective features.
+
+Files: `services/micro-frontends/bank-mfe/src/lib/messaging.ts`,
+`services/micro-frontends/bank-mfe/src/BankDashboard.tsx`.
+
+Per this task's own scope, no live-server click-through verification or deploy was attempted
+here -- that's reserved for the coordinating session.

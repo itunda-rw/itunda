@@ -19,6 +19,11 @@ export interface ConversationSummary {
   // Real recoverable archive (2026-08-05) -- see backend ConversationPreference
   // .archived's own doc comment. Same private-to-me model as quiet.
   archived: boolean;
+  // Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) -- see backend
+  // MessagingController's own doc comment distinguishing this from the existing
+  // per-message pin (pinnedMessageId above). Was already returned by
+  // GET /conversations for every summary; this was the missing client-side field.
+  pinnedToTop: boolean;
 }
 export interface TalkContact { userId: string; name: string }
 
@@ -155,6 +160,19 @@ export const setConversationArchived = (conversationId: string, archived: boolea
   apiFetch<{ success: boolean; archived: boolean }>(`/api/v1/messages/conversations/${conversationId}/archive`, {
     method: 'POST', body: JSON.stringify({ archived }),
   }).then((r) => r.archived);
+
+// Real KakaoTalk 채팅방 상단 고정 (pin chat room to top) -- backend
+// (MessagingController POST/GET .../pin-to-top, MessagingService.setConversationPinnedToTop)
+// was fully built with zero client anywhere; found via a fresh uncalled-endpoint sweep.
+// Named setConversationPinnedToTop (not setConversationPinned) to stay distinct from the
+// existing per-message pinConversationMessage/unpinConversationMessage above.
+export const fetchConversationPinnedToTop = (conversationId: string) =>
+  apiFetch<{ success: boolean; pinned: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin-to-top`).then((r) => r.pinned);
+
+export const setConversationPinnedToTop = (conversationId: string, pinned: boolean) =>
+  apiFetch<{ success: boolean; pinned: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin-to-top`, {
+    method: 'POST', body: JSON.stringify({ pinned }),
+  }).then((r) => r.pinned);
 
 export const reportChatMessage = (messageId: string, reason: string) =>
   apiFetch<{ success: boolean }>('/api/v1/chat/reports', {
