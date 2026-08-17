@@ -8621,3 +8621,33 @@ matching every pre-fix ride request's reported `distanceKm` for this exact route
 different, larger value (road distance correctly exceeding straight-line distance) -- live proof
 OSRM is genuinely active and reachable in production, not silently falling back. Fare recalculated
 correctly from the new distance: `1000 + 250 × 6.912 = 2728.00`, exact match to the real response.
+
+## 140. Karrot-style marketplace listing report + auto-hide moderation
+
+**Added 2026-08-17.** itunda had zero content-reporting/moderation mechanism anywhere in the
+backend -- not for Marketplace listings, Eats reviews, or community posts -- despite this being
+one of the most basic trust & safety features across every real product researched this session.
+Sourced from Karrot's (당근마켓) own real, documented moderation behavior: multiple real seller
+threads on daangn.com/kr/community describe a listing accumulating reports for suspected
+commercial/prohibited selling getting silently auto-hidden by Karrot's own system, with zero
+notification to the seller about the sanction.
+
+**Built**: `MarketplaceListingReport` entity (migration V273, DB-unique on listing+reporter) +
+`MarketplaceService.reportListing`: blocks self-report and duplicate reports (rate-limited too),
+and once `REPORT_THRESHOLD` = 3 distinct reporters (itunda's own reasoned choice -- Karrot's real
+number isn't published) accumulate on a still-`ACTIVE` listing, its status silently flips to the
+pre-existing `REMOVED` -- the same real effect as a seller's own manual removal, deliberately no
+notification to anyone, matching the sourced real silence rather than inventing a friendlier flow.
+New endpoint `POST /api/v1/marketplace/listings/{listingId}/report`, body
+`{"reason": "SCAM"|"PROHIBITED_ITEM"|"INAPPROPRIATE"|"SPAM_OR_DUPLICATE"|"OTHER", "details"?}`.
+
+**Live-verified end to end against the real deployed backend, 2026-08-17**: registered a seller
+and 4 buyers, created a listing (`ACTIVE`). Seller self-report correctly 400
+`OWN_LISTING_REPORT`. Report #1 (buyer B1) succeeded 201, duplicate report by the same B1
+correctly 409 `LISTING_ALREADY_REPORTED`, listing stayed `ACTIVE`. Report #2 (B2) -- still
+`ACTIVE`. Report #3 (B3) -- real DB confirmed `listings.status` flipped to `REMOVED` at exactly
+the 3rd distinct reporter, with `marketplace_listing_reports` showing exactly 3 rows for this
+listing at that moment. A 4th distinct reporter (B4) on the already-`REMOVED` listing still
+succeeded 201 (report saved, no further status change needed since it's no longer `ACTIVE`).
+Confirmed the sourced real silence: the seller's `GET /notifications` showed zero report- or
+removal-related notifications throughout the entire test.
