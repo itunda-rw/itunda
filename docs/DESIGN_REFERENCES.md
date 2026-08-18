@@ -11320,3 +11320,89 @@ correctness rests on the real, independently-re-run test suites above (`eats`
 review confirming both fixes follow the exact same proven-safe shape the live-verified
 `RideTripService` fix uses. Cleaned up the local Docker image after a successful push
 (`docker rmi` + `docker image prune -f`, reclaimed 616.4MB).
+
+
+## 181. Scheduler transaction-poisoning: completing the genuinely exhaustive both-sub-variant audit Section 180 left owed -- one real hardening fix (`WebhookRetryScheduler`), everything else confirmed clean
+
+Section 180 explicitly left a genuinely complete, both-sub-variant re-audit of every
+`@Scheduled` class as an owed follow-up (its own fork was cut off mid-sweep by an
+account-level rate limit). This section closes that gap directly (no fork -- the
+rate limit was account-level and would likely fail identically on a fresh fork).
+
+**Method**: enumerated all 49 `@Scheduled`-annotated files in `services/backend` (`grep
+-rl "@Scheduled" services/backend --include=*.kt`). Wrote a small Python heuristic
+scanner that, for every `@Transactional` method across every file in `*/src/main/kotlin`
+(not just scheduler files -- their real per-row work usually lives in the service they
+call), finds the ones whose body contains a `for (...)` loop or `.forEach` with no
+`try {` anywhere inside -- the exact structural signature of sub-variant B. Cross-checked
+every scheduler's own `run()`/entry-point method directly too, in case a loop was
+inlined in the scheduler class itself rather than delegated to a service method.
+
+**Findings**:
+- **Every scheduler already fixed this session** (Sections 173-180: `BikeRentalAbandonedSessionScheduler`,
+  `ParkingAbandonedSessionScheduler`, `VehicleInspectionNoShowScheduler`,
+  `EatsOrderAbandonedDeliveryScheduler`, `BookingNoShowScheduler`, `RideDispatchScheduler`,
+  `DispatchOfferScheduler`, `GroupAccountDuesReminderScheduler`) confirmed still correctly
+  shaped: read-only listing + per-item `@Transactional` method + try/catch per row in the
+  scheduler's own loop.
+- **One genuine finding**: `WebhookRetryScheduler.run()` itself is `@Transactional`,
+  looping over up to 100 due webhook deliveries with `webhookDeliveryService.retry(delivery)`
+  and no try/catch -- structurally identical to every confirmed sub-variant B instance.
+  BUT this one is different from every prior instance: `run()`'s `@Transactional`
+  annotation is not incidental -- it's the same real, deliberate transaction the class's
+  own 2026-08-09 doc comment already documents as necessary to hold a real
+  `PESSIMISTIC_WRITE` lock across the entire batch, preventing two overlapping polls (or
+  replicas) from double-retrying the same delivery. Splitting this into the standard
+  read-only-listing + per-item-`@Transactional` shape (the fix every prior instance used)
+  would release that lock the instant the listing query returned, silently reintroducing
+  the exact double-retry race the class was already fixed once to prevent. Traced the
+  full call chain instead: `webhookDeliveryService.retry` -> `attempt`/`persist` already
+  catch every real exception internally today (confirmed by reading each method) and
+  never actually throw out of the loop -- so there is no LIVE, currently-exploitable
+  poisoning bug here today, unlike every prior confirmed instance. Still hardened it with
+  a real per-row `try`/`catch` inside the SAME `@Transactional` method (preserving the
+  lock's required scope) as defense-in-depth against a future change to that call chain
+  silently reintroducing a real throw -- a deliberate, narrow deviation from the
+  standard fix shape, explained in the class's own updated doc comment.
+- **A related but out-of-scope pattern noted for a future audit, not fixed here**: two
+  real-time (non-scheduler) request-triggered batch operations -- `PayrollService.runPayroll`
+  and `MerchantFollowService.broadcastToFollowers` -- have the same superficial shape
+  (one `@Transactional` method looping over many real recipients/employees with no
+  per-row try/catch), but are triggered by a single HTTP request rather than an
+  unattended scheduler poll, so a failure surfaces immediately to the calling user
+  rather than silently reverting other users' already-processed work in a poll no one is
+  watching. Lower severity, genuinely out of THIS section's "scheduler transaction-poisoning"
+  scope -- worth its own dedicated audit pass in the future, not folded into this one.
+- Everything else checked (`VerificationTokenCleanupScheduler` -- two bulk `DELETE`
+  queries, no per-row loop at all; `CertificateRenewalReminderScheduler`,
+  `GiftVoucherExpiryReminderScheduler`, `PostpaidCreditPaymentReminderScheduler`,
+  `StudentLoanGraceEndReminderScheduler`, `MerchantCouponExpiryReminderScheduler`,
+  `MembershipExpiryReminderScheduler`, `InsurancePolicyRenewalReminderScheduler`,
+  `InsurancePremiumScheduler`, `OverdraftInterestAccrualScheduler`,
+  `VupLoanReminderScheduler`, `VupLoanOverdueScheduler`,
+  `VendorCashAdvanceCollectionScheduler`, `StudentLoanGracePeriodScheduler`,
+  `MarketplaceEscrowAutoReleaseScheduler`, `PostpaidCreditAccrualScheduler`,
+  `SavingsMaturityReminderScheduler`, `MotoOwnershipScheduler`,
+  `DepositProtectionScheduler`, `WeeklySavingsScheduler`, `InterestAccrualScheduler`,
+  `Grow31SavingsScheduler`, `UpfrontInterestDepositScheduler`, `AutoSaveScheduler`,
+  `SplitBillReminderScheduler`, `StockPriceAlertScheduler`, `AutoTopUpScheduler`,
+  `ProductPriceDropScheduler`, `OrderAcceptanceExpiryScheduler`, `GiftExpiryScheduler`,
+  `ExchangeRateAlertScheduler`, `MerchantBillingScheduler`, `ProductSubscriptionScheduler`,
+  `AutoTransferScheduler`, `ScheduledTransferScheduler`, `OutboxRelay`) -- none has a
+  method-level `@Transactional` wrapping a real per-row loop with no try/catch; every
+  per-row target method's own `@Transactional` (where present) scopes only that one row.
+
+**Verified**: `./gradlew :merchant:compileKotlin :app:compileKotlin` -> `BUILD
+SUCCESSFUL`. Added a new `WebhookRetrySchedulerTest` case (constructs the scheduler with
+two due deliveries, the first mocked to throw a real unexpected exception from `retry()`)
+confirming the second, healthy delivery is still attempted in the same poll. Ran the full
+`:merchant:test` module with `--rerun-tasks`, summed the real XML reports myself:
+**`tests="209" failures="0" errors="0"`** (208 pre-existing + 1 new).
+
+**This closes out the "genuinely exhaustive both-sub-variant audit" Section 180 left
+owed.** The scheduler transaction-poisoning bug class (docs' own running total: 9
+confirmed real instances across Sections 115/118/129/130/173-180, plus this section's
+one narrow hardening fix) can now be considered genuinely exhausted for every
+`@Scheduled` class that exists as of this audit's date (2026-08-18) -- any NEW
+`@Scheduled` code added after this point must still follow the established safe shapes
+from the start.
