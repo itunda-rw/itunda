@@ -265,11 +265,34 @@ class GroupAccountService(
         return remindUnpaidMembers(account, currentCycleMonth())
     }
 
-    /** Called by GroupAccountDuesReminderScheduler -- see that class's own doc comment. */
+    /**
+     * Real read-only listing of every group account with dues configured -- used by
+     * GroupAccountDuesReminderScheduler's own per-account loop, see that class's doc
+     * comment for why the loop lives there and not in a batch `@Transactional` method
+     * here.
+     */
+    fun getAccountsWithDuesConfigured(): List<GroupAccount> = groupAccountRepository.findByMonthlyDuesAmountIsNotNull()
+
+    /**
+     * Called by GroupAccountDuesReminderScheduler, once per due group account -- see
+     * that class's own doc comment for the real batch-transaction-poisoning bug this
+     * closes (docs/DESIGN_REFERENCES.md Section 180). This used to be
+     * `sendAutomaticDuesReminders()`, a single `@Transactional` method that looped over
+     * EVERY group account with dues configured network-wide (and, within each, every
+     * unpaid member) inside one shared transaction with no try/catch anywhere in the
+     * loop. A real DB issue on any one member's `Notification`/`GroupAccountDuesReminder`
+     * insert -- anywhere in that whole network-wide batch -- would have rolled back
+     * every OTHER already-reminded account's real dedupe row and Notification from that
+     * same poll too, not just the bad one, the same "one bad row blocks the sweep for
+     * every other real due row" bug class Section 179 already found and fixed for
+     * `MerchantBookingService.processNoShows`. `remindUnpaidMembers`'s own re-fetch of
+     * `account.monthlyDuesAmount` is itself the re-check-before-act guard (a race where
+     * the amount was cleared between the scheduler's read and this call safely no-ops).
+     */
     @Transactional
-    fun sendAutomaticDuesReminders(): Int {
-        val cycleMonth = currentCycleMonth()
-        return groupAccountRepository.findByMonthlyDuesAmountIsNotNull().sumOf { remindUnpaidMembers(it, cycleMonth) }
+    fun sendAutomaticDuesRemindersFor(groupAccountId: String): Int {
+        val account = groupAccountRepository.findById(groupAccountId).orElse(null) ?: return 0
+        return remindUnpaidMembers(account, currentCycleMonth())
     }
 
     private fun remindUnpaidMembers(account: GroupAccount, cycleMonth: String): Int {

@@ -461,16 +461,85 @@ class RideTripServiceTest : BehaviorSpec({
 
         every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nearbyDriver)
         every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
+        every { rideTripRepository.findById("ride_trip_due") } returns Optional.of(dueTrip)
         val savedSlot = slot<RideTrip>()
         every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
         every { rideDriverRepository.save(any()) } answers { firstArg() }
 
         When("the scheduler activates it") {
-            service.activateScheduledDispatch(listOf(dueTrip))
+            val pools = service.computeDispatchPools()
+            service.activateScheduledDispatchOne(dueTrip.id, pools)
 
             Then("it marks real dispatch as started, exactly once, and offers the trip to the one real nearby driver") {
                 dueTrip.scheduledDispatchStartedAt shouldNotBe null
                 savedSlot.captured.offeredDriverId shouldBe "driver_5"
+            }
+        }
+    }
+
+    // Section 180: RideDispatchScheduler used to call a single batch-@Transactional
+    // reassignExpiredOffers(trips: List<RideTrip>) that looped every expired offer
+    // network-wide in one shared transaction -- see RideTripService.reassignExpiredOffer's
+    // own doc comment for the full account of the real transaction-poisoning bug this
+    // closed. These two cases cover the per-item method that replaced it.
+    Given("a real expired ride offer with a real nearby driver available") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val nearbyDriver = RideDriver(id = "driver_6", userId = "driver_user_6", walletId = "wallet_driver_6", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+        val expiredTrip = RideTrip(
+            id = "ride_trip_expired", passengerId = "passenger_6", pickupAddress = "A", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
+            dropoffAddress = "B", dropoffLatitude = -1.9506, dropoffLongitude = 30.0925, distanceKm = BigDecimal("3.5"),
+            fare = BigDecimal("1875"), platformFee = BigDecimal("28.13"), transactionId = "txn_expired",
+            status = RideTripStatus.REQUESTED, offeredDriverId = "driver_5", offerExpiresAt = Instant.now().minusSeconds(5),
+        )
+
+        every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nearbyDriver)
+        every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
+        every { rideTripRepository.findById("ride_trip_expired") } returns Optional.of(expiredTrip)
+        every { rideDriverRepository.findById("driver_5") } returns Optional.empty()
+        val savedSlot = slot<RideTrip>()
+        every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
+        every { rideDriverRepository.save(any()) } answers { firstArg() }
+
+        When("the scheduler reassigns it") {
+            val pools = service.computeDispatchPools()
+            service.reassignExpiredOffer(expiredTrip.id, pools)
+
+            Then("it clears the stale offer and re-offers the trip to the next real nearby driver") {
+                // Not `shouldBe null` here -- dispatchToNextDriver immediately re-sets a
+                // fresh offerExpiresAt for driver_6's own new offer window on this same
+                // mutable trip object, so by the time this assertion runs the field is
+                // genuinely non-null again (this is the correct, intended behavior).
+                expiredTrip.offerExpiresAt shouldNotBe null
+                savedSlot.captured.offeredDriverId shouldBe "driver_6"
+            }
+        }
+    }
+
+    Given("a real expired ride offer that a driver already accepted in the gap before the scheduler ran") {
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideTripRepository = rideTripRepository)
+
+        // driverId already set -- a real concurrent acceptTrip() claimed this trip after
+        // the scheduler's own read-only getExpiredOffers() poll but before this per-item
+        // call ran.
+        val claimedTrip = RideTrip(
+            id = "ride_trip_claimed", passengerId = "passenger_7", pickupAddress = "A", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
+            dropoffAddress = "B", dropoffLatitude = -1.9506, dropoffLongitude = 30.0925, distanceKm = BigDecimal("3.5"),
+            fare = BigDecimal("1875"), platformFee = BigDecimal("28.13"), transactionId = "txn_claimed",
+            status = RideTripStatus.DRIVER_ASSIGNED, driverId = "driver_5", offeredDriverId = "driver_5", offerExpiresAt = Instant.now().minusSeconds(5),
+        )
+        every { rideTripRepository.findById("ride_trip_claimed") } returns Optional.of(claimedTrip)
+
+        When("the scheduler's per-item call runs anyway") {
+            val pools = DispatchPools(candidatePool = emptyList(), busyDriverIds = emptySet())
+            service.reassignExpiredOffer(claimedTrip.id, pools)
+
+            Then("the real re-check-before-act guard safely no-ops instead of clobbering the driver's real claim") {
+                verify(exactly = 0) { rideTripRepository.save(any()) }
+                claimedTrip.offeredDriverId shouldBe "driver_5"
             }
         }
     }

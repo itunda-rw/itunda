@@ -842,25 +842,52 @@ class RideTripService(
 
     fun getExpiredOffers(): List<RideTrip> = rideTripRepository.findByOfferExpiresAtBeforeAndDriverIdIsNull(Instant.now())
 
-    // Real batched reassignment -- same "compute the pool once per tick, reuse across
-    // every order" performance discipline EatsOrderService.reassignExpiredOffers already
-    // establishes.
-    @Transactional
-    fun reassignExpiredOffers(trips: List<RideTrip>) {
-        if (trips.isEmpty()) return
+    /**
+     * Real once-per-tick candidate pool, shared by `reassignExpiredOffer` and
+     * `activateScheduledDispatchOne` -- preserves the "compute the pool once per tick,
+     * reuse across every trip" performance discipline the old batched
+     * `reassignExpiredOffers(trips: List<RideTrip>)` established, without requiring the
+     * per-trip work itself to live inside a shared transaction (see that method's own
+     * removal note below for why).
+     */
+    fun computeDispatchPools(): DispatchPools {
         val candidatePool = rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
         val busyDriverIds = rideTripRepository.findDistinctDriverIdsByStatusIn(listOf(RideTripStatus.DRIVER_ASSIGNED, RideTripStatus.IN_PROGRESS)).toSet()
+        return DispatchPools(candidatePool, busyDriverIds)
+    }
 
-        for (trip in trips) {
-            val expiredDriverUserId = trip.offeredDriverId?.let { offeredId -> rideDriverRepository.findById(offeredId).orElse(null)?.userId }
-            trip.excludedDriverUserIds = (
-                (trip.excludedDriverUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + listOfNotNull(expiredDriverUserId)
-                ).distinct().joinToString(",")
-            trip.offeredDriverId = null
-            trip.offerExpiresAt = null
-            rideTripRepository.save(trip)
-            dispatchToNextDriver(trip, candidatePool, busyDriverIds)
-        }
+    /**
+     * Called by RideDispatchScheduler, once per expired offer -- see that class's own
+     * doc comment for the real batch-transaction-poisoning bug this closes
+     * (docs/DESIGN_REFERENCES.md Section 180). This used to be
+     * `reassignExpiredOffers(trips: List<RideTrip>)`, a single `@Transactional` method
+     * that looped over EVERY expired offer network-wide in one shared transaction; the
+     * `rideTripRepository.save(trip)` bookkeeping write ahead of `dispatchToNextDriver`
+     * was not itself guarded by a try/catch the way `dispatchToNextDriver`'s own body
+     * already is. `RideTrip` carries a real `@Version` column, so a genuine concurrent
+     * `acceptTrip`/`declineTrip` racing this exact trip between the scheduler's read and
+     * this save throws a real `ObjectOptimisticLockingFailureException` -- uncaught, that
+     * would have rolled back every OTHER already-reassigned trip's real offer/exclusion
+     * update (and any already-committed dispatch-to-next-driver work) from that same
+     * poll tick too, not just the racing trip's. `RideDispatchScheduler` polls every 3
+     * real seconds against a real 15-second offer window, so this race was genuinely
+     * reachable, not theoretical. The re-check below (still expired, still unclaimed) is
+     * the same re-check-before-act guard `MerchantBookingService.processNoShow`/
+     * `ParkingService.forceEndAbandonedSession` already establish -- a trip a driver
+     * claimed in that same gap safely no-ops here instead of throwing.
+     */
+    @Transactional
+    fun reassignExpiredOffer(tripId: String, pools: DispatchPools) {
+        val trip = rideTripRepository.findById(tripId).orElse(null) ?: return
+        if (trip.driverId != null || trip.offerExpiresAt == null || trip.offerExpiresAt!!.isAfter(Instant.now())) return
+        val expiredDriverUserId = trip.offeredDriverId?.let { offeredId -> rideDriverRepository.findById(offeredId).orElse(null)?.userId }
+        trip.excludedDriverUserIds = (
+            (trip.excludedDriverUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + listOfNotNull(expiredDriverUserId)
+            ).distinct().joinToString(",")
+        trip.offeredDriverId = null
+        trip.offerExpiresAt = null
+        rideTripRepository.save(trip)
+        dispatchToNextDriver(trip, pools.candidatePool, pools.busyDriverIds)
     }
 
     // Real Kakao T 예약 호출 (scheduled ride booking) -- every real scheduled trip
@@ -872,23 +899,26 @@ class RideTripService(
         )
 
     /**
-     * Starts real dispatch for a batch of due scheduled trips, exactly once each --
-     * `scheduledDispatchStartedAt` is set unconditionally here (whether or not a real
-     * candidate driver is actually found), so a trip with no online driver nearby
-     * falls through to the real open-list fallback (`getAvailableTrips`, now honestly
-     * showing it since dispatch has genuinely started) rather than being re-processed
-     * every scheduler tick forever.
+     * Called by RideDispatchScheduler, once per due scheduled trip -- see that class's
+     * own doc comment for the real batch-transaction-poisoning bug this closes
+     * (docs/DESIGN_REFERENCES.md Section 180), the identical shape/fix
+     * `reassignExpiredOffer`'s own doc comment above just established.
+     * `scheduledDispatchStartedAt` is still set unconditionally here (whether or not a
+     * real candidate driver is actually found), so a trip with no online driver nearby
+     * still falls through to the real open-list fallback rather than being re-processed
+     * every scheduler tick forever; the re-check below (still REQUESTED, still not yet
+     * started) guards against double-processing the same trip across overlapping polls.
      */
     @Transactional
-    fun activateScheduledDispatch(trips: List<RideTrip>) {
-        if (trips.isEmpty()) return
-        val candidatePool = rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
-        val busyDriverIds = rideTripRepository.findDistinctDriverIdsByStatusIn(listOf(RideTripStatus.DRIVER_ASSIGNED, RideTripStatus.IN_PROGRESS)).toSet()
-
-        for (trip in trips) {
-            trip.scheduledDispatchStartedAt = Instant.now()
-            rideTripRepository.save(trip)
-            dispatchToNextDriver(trip, candidatePool, busyDriverIds)
-        }
+    fun activateScheduledDispatchOne(tripId: String, pools: DispatchPools) {
+        val trip = rideTripRepository.findById(tripId).orElse(null) ?: return
+        if (trip.status != RideTripStatus.REQUESTED || trip.scheduledDispatchStartedAt != null) return
+        trip.scheduledDispatchStartedAt = Instant.now()
+        rideTripRepository.save(trip)
+        dispatchToNextDriver(trip, pools.candidatePool, pools.busyDriverIds)
     }
 }
+
+/** Real once-per-tick dispatch candidate pool -- see `RideTripService.computeDispatchPools`'s
+ * own doc comment. */
+data class DispatchPools(val candidatePool: List<RideDriver>, val busyDriverIds: Set<String>)

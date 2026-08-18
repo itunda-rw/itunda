@@ -1896,13 +1896,15 @@ class EatsOrderServiceTest : BehaviorSpec({
             val timedOutRider = Rider(id = "rider_timed_out", userId = "rider_user_timed_out", walletId = "wallet_timedout")
             val nextRider = Rider(id = "rider_next", userId = "rider_user_next", walletId = "wallet_next", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
             every { eatsOrderRepository.findByOfferExpiresAtBeforeAndRiderIdIsNull(any()) } returns listOf(expiredOrder)
-            every { merchantRepository.findAllById(listOf("restaurant_1")) } returns listOf(restaurant)
-            every { riderRepository.findAllById(listOf("rider_timed_out")) } returns listOf(timedOutRider)
+            every { eatsOrderRepository.findById("eats_order_11") } returns Optional.of(expiredOrder)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { riderRepository.findById("rider_timed_out") } returns Optional.of(timedOutRider)
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
             every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nextRider)
 
             val expired = service.getExpiredOffers()
-            service.reassignExpiredOffer(expired.first())
+            val pools = service.computeDispatchPools()
+            service.reassignExpiredOffer(expired.first().id, pools)
 
             Then("it real-excludes the timed-out rider and real-offers to the next real candidate") {
                 expired shouldBe listOf(expiredOrder)
@@ -1929,19 +1931,47 @@ class EatsOrderServiceTest : BehaviorSpec({
             val timedOutRider1 = Rider(id = "rider_timed_out_1", userId = "rider_user_timed_out_1", walletId = "wallet_to1")
             val timedOutRider2 = Rider(id = "rider_timed_out_2", userId = "rider_user_timed_out_2", walletId = "wallet_to2")
             val nextRider = Rider(id = "rider_next", userId = "rider_user_next", walletId = "wallet_next", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
-            every { merchantRepository.findAllById(listOf("restaurant_1", "restaurant_2")) } returns listOf(restaurant, restaurant2)
-            every { riderRepository.findAllById(listOf("rider_timed_out_1", "rider_timed_out_2")) } returns listOf(timedOutRider1, timedOutRider2)
+            every { eatsOrderRepository.findById("eats_order_12") } returns Optional.of(expiredOrder1)
+            every { eatsOrderRepository.findById("eats_order_13") } returns Optional.of(expiredOrder2)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { merchantRepository.findById("restaurant_2") } returns Optional.of(restaurant2)
+            every { riderRepository.findById("rider_timed_out_1") } returns Optional.of(timedOutRider1)
+            every { riderRepository.findById("rider_timed_out_2") } returns Optional.of(timedOutRider2)
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
             every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nextRider)
 
-            service.reassignExpiredOffers(listOf(expiredOrder1, expiredOrder2))
+            val pools = service.computeDispatchPools()
+            service.reassignExpiredOffer(expiredOrder1.id, pools)
+            service.reassignExpiredOffer(expiredOrder2.id, pools)
 
-            Then("the real candidate pool is fetched exactly once for the whole batch, not once per order") {
+            Then("the real candidate pool is fetched exactly once for the whole tick, shared across both orders") {
                 verify(exactly = 1) { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() }
-                verify(exactly = 1) { merchantRepository.findAllById(any<List<String>>()) }
-                verify(exactly = 1) { riderRepository.findAllById(any<List<String>>()) }
                 expiredOrder1.excludedRiderUserIds shouldBe "rider_user_timed_out_1"
                 expiredOrder2.excludedRiderUserIds shouldBe "rider_user_timed_out_2"
+            }
+        }
+
+        // Section 180: DispatchOfferScheduler used to call a single batch-@Transactional
+        // reassignExpiredOffers(orders: List<EatsOrder>) that looped every expired offer
+        // network-wide in one shared transaction -- see
+        // EatsOrderService.reassignExpiredOffer's own doc comment for the full account
+        // of the real transaction-poisoning bug this closed. This case covers the
+        // re-check-before-act guard the per-item method that replaced it now has.
+        When("a real rider already claimed the order in the gap before the scheduler's per-item call ran") {
+            val claimedOrder = EatsOrder(
+                id = "eats_order_14", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_14", status = EatsOrderStatus.RIDER_ASSIGNED,
+                riderId = "rider_who_claimed_it", offeredRiderId = "rider_who_claimed_it", offerExpiresAt = Instant.now().minusSeconds(5),
+            )
+            every { eatsOrderRepository.findById("eats_order_14") } returns Optional.of(claimedOrder)
+
+            val pools = EatsDispatchPools(candidatePool = emptyList(), busyRiderIds = emptySet())
+            service.reassignExpiredOffer(claimedOrder.id, pools)
+
+            Then("the real re-check-before-act guard safely no-ops instead of clobbering the rider's real claim") {
+                verify(exactly = 0) { eatsOrderRepository.save(any()) }
+                claimedOrder.offeredRiderId shouldBe "rider_who_claimed_it"
             }
         }
     }

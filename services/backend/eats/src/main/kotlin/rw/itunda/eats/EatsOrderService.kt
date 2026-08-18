@@ -970,8 +970,8 @@ class EatsOrderService(
     // notification trigger only needs a rough "who's actually close," the definitive
     // ranking a rider sees once they open the app is still the fully real one.
     // `candidatePool` (2026-07-20 performance sweep) -- lets a caller processing several
-    // orders in one pass (DispatchOfferScheduler.reassignExpiredOffers) fetch the real
-    // available-rider pool ONCE and reuse it across every order, instead of this method's
+    // orders in one pass (DispatchOfferScheduler, via EatsOrderService.computeDispatchPools)
+    // fetch the real available-rider pool ONCE and reuse it across every order, instead of this method's
     // own default re-querying it fresh per call. Same real N+1 shape this project's own
     // sweeps have already fixed elsewhere (PayrollService.runPayroll, GroupMessagingService
     // .createGroup): the query has no per-order parameters, so it returns the identical
@@ -1098,41 +1098,56 @@ class EatsOrderService(
     // real gig-dispatch system uses.
     fun getExpiredOffers(): List<EatsOrder> = eatsOrderRepository.findByOfferExpiresAtBeforeAndRiderIdIsNull(Instant.now())
 
-    @Transactional
-    fun reassignExpiredOffer(order: EatsOrder) = reassignExpiredOffers(listOf(order))
-
-    // Real batched reassignment (2026-07-20 performance sweep) -- backs
-    // DispatchOfferScheduler. Processing N expired orders one at a time used to mean N
-    // separate merchantRepository.findById calls, N riderRepository.findById calls for
-    // each order's timed-out rider, and N full riderRepository.findByAvailableTrueAnd...()
-    // calls that all returned the exact same real candidate pool within one short
-    // scheduler tick -- the same real repeated-work shape this project's own sweeps
-    // already fixed for PayrollService.runPayroll/GroupMessagingService.createGroup, just
-    // here in a scheduler rather than a request handler. Batched into three real queries
-    // total (restaurants, expired riders, the candidate pool), no matter how many orders
-    // expired in the same tick.
-    @Transactional
-    fun reassignExpiredOffers(orders: List<EatsOrder>) {
-        if (orders.isEmpty()) return
-        val restaurantsById = merchantRepository.findAllById(orders.map { it.restaurantId }.distinct()).associateBy { it.id }
-        val expiredRiderIds = orders.mapNotNull { it.offeredRiderId }.distinct()
-        val expiredRidersById = if (expiredRiderIds.isEmpty()) emptyMap() else riderRepository.findAllById(expiredRiderIds).associateBy { it.id }
+    /**
+     * Real once-per-tick dispatch candidate pool, shared across every order
+     * `DispatchOfferScheduler` reassigns in the same poll -- preserves the "compute the
+     * pool once per tick, reuse across every order" performance discipline the old
+     * batched `reassignExpiredOffers(orders: List<EatsOrder>)` established, without
+     * requiring the per-order work itself to live inside a shared transaction (see
+     * [reassignExpiredOffer]'s own doc comment for why that shared transaction was a
+     * real bug).
+     */
+    fun computeDispatchPools(): EatsDispatchPools {
         val candidatePool = riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
-        // Real busy-rider exclusion, computed once for the whole batch -- see
-        // EatsOrderRepository.findDistinctRiderIdsByStatusIn's own doc comment.
         val busyRiderIds = eatsOrderRepository.findDistinctRiderIdsByStatusIn(listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP)).toSet()
+        return EatsDispatchPools(candidatePool, busyRiderIds)
+    }
 
-        for (order in orders) {
-            val restaurant = restaurantsById[order.restaurantId] ?: continue
-            val expiredRiderUserId = order.offeredRiderId?.let { expiredRidersById[it]?.userId }
-            order.excludedRiderUserIds = (
-                (order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + listOfNotNull(expiredRiderUserId)
-                ).distinct().joinToString(",")
-            order.offeredRiderId = null
-            order.offerExpiresAt = null
-            eatsOrderRepository.save(order)
-            dispatchToNextCandidate(order, restaurant, candidatePool, busyRiderIds)
-        }
+    /**
+     * Called by DispatchOfferScheduler, once per expired offer (docs/DESIGN_REFERENCES.md
+     * Section 180). This used to be `reassignExpiredOffers(orders: List<EatsOrder>)`, a
+     * single `@Transactional` method that looped over EVERY expired offer network-wide
+     * in one shared transaction with no try/catch per row -- the same real
+     * batch-transaction-poisoning bug class Section 179 already found and fixed for
+     * `MerchantBookingService.processNoShows`, and Section 180 also found in
+     * `RideTripService.reassignExpiredOffers`/`activateScheduledDispatch`. A real DB
+     * issue on any one order in that whole network-wide batch (a genuine concurrent
+     * `claimDelivery`/`declineDelivery` racing this exact order between the scheduler's
+     * read and the loop's `eatsOrderRepository.save`, throwing a real
+     * `ObjectOptimisticLockingFailureException` off `EatsOrder`'s own `@Version` column)
+     * would have rolled back every OTHER already-reassigned order's real
+     * offer/exclusion update from that same poll too, not just the racing order's.
+     * `DispatchOfferScheduler` polls every real 10 seconds against a real 90-second
+     * offer window, so this race was genuinely reachable, not theoretical. The re-check
+     * below (still expired, still unassigned) is the same re-check-before-act guard
+     * `MerchantBookingService.processNoShow`/`RideTripService.reassignExpiredOffer`
+     * already establish -- a rider who genuinely claims this order in that same gap
+     * safely no-ops here instead of being clobbered.
+     */
+    @Transactional
+    fun reassignExpiredOffer(orderId: String, pools: EatsDispatchPools): EatsOrder? {
+        val order = eatsOrderRepository.findById(orderId).orElse(null) ?: return null
+        if (order.riderId != null || order.offerExpiresAt == null || order.offerExpiresAt!!.isAfter(Instant.now())) return null
+        val restaurant = merchantRepository.findById(order.restaurantId).orElse(null) ?: return null
+        val expiredRiderUserId = order.offeredRiderId?.let { riderRepository.findById(it).orElse(null)?.userId }
+        order.excludedRiderUserIds = (
+            (order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + listOfNotNull(expiredRiderUserId)
+            ).distinct().joinToString(",")
+        order.offeredRiderId = null
+        order.offerExpiresAt = null
+        eatsOrderRepository.save(order)
+        dispatchToNextCandidate(order, restaurant, pools.candidatePool, pools.busyRiderIds)
+        return order
     }
 
     /** Real explicit decline (2026-07-20) -- the offered rider proactively passes rather
@@ -1540,3 +1555,7 @@ class EatsOrderService(
         pushNotificationService.sendToUser(order.buyerId, title, body, mapOf("orderId" to order.id))
     }
 }
+
+/** Real once-per-tick dispatch candidate pool -- see
+ * `EatsOrderService.computeDispatchPools`'s own doc comment. */
+data class EatsDispatchPools(val candidatePool: List<Rider>, val busyRiderIds: Set<String>)

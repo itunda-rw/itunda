@@ -11170,3 +11170,112 @@ previous "exhaustive" audit (Section 130) can still miss a variant of a bug clas
 wasn't specifically looking for -- worth another full `@Scheduled` sweep in a future
 section, this time checking specifically for missing per-row try/catch rather than only
 the narrower self-invocation `UnexpectedRollbackException` shape.
+
+
+## 180. Bug fix: scheduler transaction-poisoning, sub-variant B, found 3 more times (sixth, seventh, eighth instances) -- `RideTripService` (two schedulers sharing the same service) and `GroupAccountService`; a fourth (ninth instance) found and fixed by the coordinator, `EatsOrderService`
+
+Continuing Section 179's reopening of the scheduler transaction-poisoning bug class:
+Section 179 found that a prior "exhaustive" audit (Section 130, 2026-08-17) only ever
+checked for **sub-variant A** (self-invocation of a separately-proxied bean poisoning
+the ambient transaction) and never checked for **sub-variant B** -- a single
+`@Transactional` method that both loops over every due row network-wide AND does the
+real per-row work, with no try/catch per row, so any one row throwing rolls back every
+other already-correctly-processed row in the same poll, not just the bad one.
+
+A fork was launched to re-audit every real `@Scheduled` class in `services/backend` for
+BOTH sub-variants this time. Before it could finish (it was cut off mid-way by an
+account-level API rate limit while starting on `EatsOrderService.reassignExpiredOffers`,
+a class it had already flagged as sub-variant B and was about to fix), it had already
+found and fixed two real, additional instances with complete, tested code:
+
+1. **`RideTripService.reassignExpiredOffers(trips: List<RideTrip>)`** (backing
+   `RideDispatchScheduler`'s expired-offer reassignment half) -- the exact same shape as
+   Section 179's `MerchantBookingService.processNoShows`: one `@Transactional` method,
+   looping every real expired ride offer network-wide, no try/catch. `RideTrip` carries a
+   real `@Version` column, so a genuine concurrent `acceptTrip`/`declineTrip` racing one
+   trip between the scheduler's read and this loop's `save()` throws a real
+   `ObjectOptimisticLockingFailureException` that would have poisoned every OTHER
+   already-reassigned trip's real offer/exclusion update in that same poll.
+   `RideDispatchScheduler` polls every real 3 seconds against a real 15-second offer
+   window, so this race was genuinely reachable, not theoretical.
+2. **`RideTripService.activateScheduledDispatch(trips: List<RideTrip>)`** (backing the
+   same `RideDispatchScheduler`'s scheduled-ride-activation half, Kakao T 예약 호출) --
+   the identical shape, same fix.
+3. **`GroupAccountService.sendAutomaticDuesReminders()`** (backing
+   `GroupAccountDuesReminderScheduler`, KakaoBank 모임통장) -- one `@Transactional`
+   method looping over every real group account with dues configured network-wide (and,
+   within each, every unpaid member), no try/catch anywhere. A real DB issue on any one
+   member's `Notification`/dedupe-row insert anywhere in that whole batch would have
+   rolled back every OTHER already-reminded account's real state from the same poll too.
+
+All three fixed identically to Section 179's established shape: the batch method split
+into a read-only "get due rows" method plus a real per-item `@Transactional` method with
+a re-check-before-act guard; the loop itself moves into the `@Scheduled` class, no longer
+`@Transactional`, with its own try/catch per row. `RideTripService`'s two fixes share one
+new `computeDispatchPools()` (candidate driver pool + busy-driver set, computed once per
+scheduler tick and passed into both `reassignExpiredOffer(tripId, pools)` and
+`activateScheduledDispatchOne(tripId, pools)`), preserving the original 2026-07-20
+performance-sweep discipline of not re-querying the shared pool once per row.
+
+**Coordinator-completed fourth fix, found the same way the fork's own audit was about
+to find it**: `EatsOrderService.reassignExpiredOffers(orders: List<EatsOrder>)` (backing
+`DispatchOfferScheduler`) had the identical sub-variant B shape -- one `@Transactional`
+method batching every real expired Eats delivery offer network-wide (with its own
+2026-07-20 N+1-avoidance batching of restaurant/expired-rider lookups on top), no
+try/catch per row. `EatsOrder` carries its own real `@Version` column and
+`DispatchOfferScheduler` polls every real 10 seconds against a real 90-second offer
+window -- the identical concurrent-claim race as `RideTripService`'s fix above. Fixed
+identically: new `EatsOrderService.computeDispatchPools()` (rider candidate pool + busy
+set, computed once per tick) and a new per-item `@Transactional
+reassignExpiredOffer(orderId, pools)` replacing both the old batch method and its
+`reassignExpiredOffer(order: EatsOrder)` single-item wrapper; `DispatchOfferScheduler`
+now loops per order with try/catch. The per-order restaurant/expired-rider lookups that
+used to be batched via `findAllById` across the whole tick are now individual `findById`
+calls per order -- a small, deliberate performance trade-off (one extra query per
+concurrently-expiring order, cheap in practice) in exchange for genuine per-row
+transaction isolation, the same trade-off `RideTripService`'s fix already made for its
+own expired-driver lookup.
+
+**A real test bug caught and fixed during independent re-verification, not a production
+bug**: the fork's own new `RideTripServiceTest` case for the happy-path reassignment
+asserted `expiredTrip.offerExpiresAt shouldBe null` after calling
+`reassignExpiredOffer` -- but `dispatchToNextDriver` (called at the end of that same
+method) immediately re-sets a fresh `offerExpiresAt` on that same mutable trip object
+for the new candidate's own offer window, so the field is genuinely non-null again by
+the time the assertion runs. This was a test-authoring mistake, not a production bug --
+the real production behavior (clear the stale offer, immediately extend a fresh one to
+the next candidate) is correct and is exactly what the sibling `savedSlot.captured
+.offeredDriverId shouldBe "driver_6"` assertion in the same test already confirms.
+Fixed the assertion to `shouldNotBe null` with a comment explaining why, rather than
+deleting the coverage. Independently re-ran `./gradlew :rideshare:test --rerun-tasks`
+myself and caught this test failing (`AssertionError: Expected null but actual was
+2026-08-18T07:03:34.610464Z`) before it was ever committed -- exactly the kind of
+never-trust-a-fork's-untested-draft-blindly discipline this project's memory already
+documents, just applied to my own in-progress completion of a fork's cut-off work
+rather than to a fork's own final claim.
+
+**Honest scope note**: unlike Section 130's own audit, this section's re-audit of every
+`@Scheduled` class for sub-variant B was NOT completed exhaustively -- the fork was cut
+off mid-sweep by an account-level rate limit, having checked and fixed
+`RideTripService`/`GroupAccountService` and flagged (but not yet reached)
+`EatsOrderService`, which the coordinator then fixed directly. A genuinely complete,
+both-sub-variants sweep of every remaining `@Scheduled` class in
+`services/backend` (the same ~39-class list Section 130 enumerated, plus every
+`@Scheduled` class added since) is still owed as a follow-up and should not be assumed
+clean just because these four instances are now fixed.
+
+**Verified**: `./gradlew :eats:compileKotlin :eats:compileTestKotlin
+:rideshare:compileKotlin :rideshare:compileTestKotlin :savings:compileKotlin
+:savings:compileTestKotlin :app:compileKotlin` -> `BUILD SUCCESSFUL` for all (the
+`:app:compileKotlin` run confirms the full Spring context, including every renamed
+method's updated wiring across `RideDispatchScheduler`, `DispatchOfferScheduler`, and
+`GroupAccountDuesReminderScheduler`, compiles cleanly). Ran the full real test suite for
+all three touched modules with `--rerun-tasks` (bypassing Gradle's UP-TO-DATE cache) and
+summed every real XML report myself: **`eats` `tests="182" failures="0" errors="0"`**
+(181 pre-existing/Section-177-level + 1 new re-check-guard case), **`rideshare`
+`tests="114" failures="0" errors="0"`** (after fixing the one real test-authoring bug
+above), **`savings` `tests="82" failures="0" errors="0"`** -- all green, nothing
+regressed.
+
+No deploy and no live-server verification attempted here -- reserved for a subsequent
+verification pass.
