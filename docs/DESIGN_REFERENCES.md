@@ -12403,3 +12403,115 @@ customer; 20,000 - 300 fee + 9,850 - 147.75 fee for the merchant).
 
 Cleaned up the local Docker image after a successful push (`docker rmi` +
 `docker image prune -f`, reclaimed 616.6MB).
+
+## 189. Rebuilt bank-mfe's send-money UI to match Toss's real send-money flow exactly
+
+Direct user request: the user supplied 8 real screenshots of Toss's own "Send money"
+flow (recipient picker with Domestic/KakaoTalk/Overseas/Contacts tabs and a recent-
+accounts list; amount entry with balance display and a numeric keypad; a "Send ₩X to
+[name] now" confirmation sheet; a "Sending" loading screen; a "Sent" success screen with
+memo/Share/Confirm and "Toss took care of the transfer fee!") together with the explicit
+instruction: "this is toss UI/UX of sending money i want you do it exactly like that."
+Per this session's own "don't imagine, use real reference" rule, the reference is the
+screenshots, not an invented layout.
+
+### What existed before
+
+`TransferFlow` in `BankDashboard.tsx` was a single-card form: one screen with a bare
+recipient text field, a bare amount `<input type="number">`, a saved-contacts list, and
+a gift-toggle checkbox all stacked together, followed by a single review card and a
+single result card. No multi-step flow, no numeric keypad, no resolved recipient name,
+no distinct sending/success screens.
+
+### The rebuild
+
+Restructured `TransferFlow` into a real 5-step state machine (`recipient` → `amount` →
+`confirm` → `sending` → `success`), matching the reference screenshots' own screen
+boundaries:
+
+1. **Recipient** -- search/manual-entry field + gift toggle + the real saved-contacts
+   "Recent" list (already existed server-side, just re-laid-out).
+2. **Amount** -- a "To [name]" header with a back arrow, a big centered amount readout,
+   a tap-to-fill balance line, an optional memo field, and a Toss/Kakao-shape numeric
+   keypad (`1 2 3 / 4 5 6 / 7 8 9 / 00 0 ⌫`).
+3. **Confirm** -- "Send X RWF to [name] now" bottom-sheet-style card (unchanged backend
+   call underneath).
+4. **Sending** -- a brief transient spinner screen (`framer-motion` rotate loop) while
+   `handleConfirm`'s `await` is in flight.
+5. **Success** -- checkmark, "X RWF → [name]", the memo if one was entered, "itunda
+   covered the transfer fee" (real -- P2P has no fee), and a real `navigator.share()`
+   button where the browser supports it.
+
+**New real capability wired up, not invented**: `lib/p2p.ts` gained `resolveRecipient`,
+calling the backend's `GET /api/v1/p2p/recipient` (`P2pService.resolveRecipient`, added
+Section 182) -- this endpoint already existed server-side with **zero client caller
+anywhere** until now. It's what lets the amount/confirm screens show the real resolved
+"To [name]" the same way the reference screenshots show a real resolved recipient name,
+not just the raw phone number the sender typed.
+
+**Post-send memo, made honest rather than faked**: the reference screenshots' success
+screen has a "Leave a memo" button implying a post-send edit. itunda's backend has no
+endpoint to patch a transaction's description after the fact (checked
+`P2pController.kt` directly -- no `PATCH`/`PUT` on `/p2p/*`). Rather than fake a button
+that does nothing, the memo entry moved to the amount screen (sent as the real
+`description` field on `POST /api/v1/p2p/send`, which the client previously always sent
+empty) and the success screen just displays it if one was given.
+
+**Gift flow preserved**: itunda's own real escrow-based "gift" feature (Section-earlier,
+KakaoTalk 선물하기-style) has no Toss equivalent in the reference screenshots, so it
+stays as a secondary checkbox on the recipient screen, branching the amount screen's
+memo field into the existing gift-note/theme controls and the confirm screen's button
+into the existing `sendGift` call -- unchanged behavior, just re-laid-out into the new
+step shape.
+
+**i18n**: added 8 new translation keys (`recipientStepTitle`, `recentLabel`,
+`balanceLabel`, `memoPlaceholder`, `next`, `confirmSendNow`, `feeCovered`, `toLabel`)
+across all 3 locales (en/rw/fr); removed 6 keys the rebuild made unreachable
+(`title`, `amountPlaceholder`, `contactsLabel`, `confirmTitle`, `amountLine`,
+`toRecipient`) after confirming via grep they had no other callers anywhere in the repo.
+
+### Real bug found and fixed during live testing
+
+`IdsButton`'s own Large-size default computes
+`width: fullWidth ?? size === 'large' ? '100%' : undefined` -- claims `width: 100%` even
+when `fullWidth` is never set. Harmless standalone, but fatal as a flex sibling of the
+recipient screen's search-input wrapper (`flex: 1 1 0%`): the button's hard `width:100%`
+left the wrapper no room to grow into, collapsing the actual text input down to
+icon-width with the placeholder text invisible. Caught via a real screenshot during live
+testing (`accessibility-lint.py` and `tsc -b` both passed clean -- this was a pure layout
+bug, not a type or a11y error). Fixed with an explicit `style={{ width: 'auto' }}` on
+that one button (`IdsButton` spreads its own `style` prop last, so this wins over the
+default).
+
+### Live verification against the real deployed backend
+
+Pointed the local `bank-mfe` dev server (`VITE_API_BASE_URL`) at the real cluster
+backend (`192.168.252.4:30081`, confirmed `200` on `/actuator/health`), logged in via
+Chrome as the real seeded demo user (`+250788123456`), and registered a fresh second
+real user (`+250789839304`, "Uwase TestRecipient") to send to.
+
+Walked the entire new flow for real: typed the recipient's phone number → the amount
+screen genuinely rendered "To **Uwase TestRecipient**" with a shield checkmark (proving
+`resolveRecipient` round-tripped against the real backend, not a stub) → entered
+1,000 RWF via the real keypad buttons and a real memo ("Toss-style redesign test") →
+confirm screen showed "Send 1,000 RWF to Uwase TestRecipient now" → tapping Send hit a
+**real** `DEVICE_NOT_VERIFIED` 403 (this Chrome profile's device wasn't step-up-verified
+for this account), rendering the real `DeviceStepUpPrompt` inline inside the new confirm
+step exactly as designed -- entered the real password, `handleConfirm` auto-retried the
+identical transfer, and landed on the real success screen: "1,000 RWF → Uwase
+TestRecipient", the typed memo, "New balance: 19,657 RWF · itunda covered the transfer
+fee".
+
+Independently re-verified with direct API calls (not just trusting the UI): sender's
+real `MAIN` wallet balance was `20,657.00` before and exactly `19,657.00` after; the
+recipient's real balance went from `0` to exactly `1,000.00`; the recipient's real
+transaction record showed `"description": "Transfer - Toss-style redesign test"` and
+`"type": "TRANSFER"` -- confirming the exact amount moved between the exact two real
+accounts, and the memo field genuinely persisted end to end, not just displayed
+client-side.
+
+`yarn workspace bank-mfe run build` (`tsc -b && vite build`) passed clean both before
+and after the `IdsButton` fix. `accessibility-lint.py` reported zero violations on the
+rebuilt file. No backend changes -- this section is UI/flow only, reusing entirely
+existing real endpoints (`resolveRecipient`, `sendDirect`, `checkScamStatus`, device
+step-up), so no deploy was needed against the cluster.
