@@ -12134,6 +12134,45 @@ Files: `services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pTransferLimitServi
 (new), `services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pServiceTest.kt`,
 `services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pDelayedTransferServiceTest.kt`.
 
+**Coordinator re-verification, deploy, and real-money live-verification (2026-08-18)**:
+independently re-ran `./gradlew :p2p:test --rerun-tasks` (bypassing Gradle's
+UP-TO-DATE cache), summed the real XML reports myself -- confirmed `tests="74"
+failures="0" errors="0"`, matching the fork's own claim exactly. Re-ran
+`scripts/verify-ledger-account-seeds.py` (clean) and `./gradlew :app:compileKotlin
+:ussd:compileKotlin` (both `BUILD SUCCESSFUL`) myself as well.
+
+Built and pushed `192.168.252.4:32000/itunda/backend:2026-08-18-p2p-transfer-limit`
+and deployed via `scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper. This
+rollout hit the most severe real cluster-overload episode of this session so far
+(load average 8-9 sustained for over 15 real minutes, one pod restarting 4 times on
+liveness-probe timeouts, the new pod taking over 8 real minutes just to reach
+`o.h.e.t.j.p.i.JtaPlatformInitiator`) -- confirmed via the new pod's own logs that
+this was genuine, if extremely slow, forward progress under real CPU starvation
+(likely worsened by my own concurrent local `gradle`/`docker` work for this same
+section, sharing the same physical host as the cluster VM), not a code regression;
+paused further local build/test work and let it recover before re-polling, and the
+rollout did genuinely complete cleanly once load eased.
+
+Live-verified all four real limit behaviors against the real deployed backend, with
+real money: funded a real sender to 5,000,000 RWF; a real 600,000 RWF transfer
+attempt correctly real-422s `P2P_TRANSFER_LIMIT_EXCEEDED` ("exceeds itunda's real
+500000 RWF per-transfer limit") with the sender's real balance confirmed completely
+unaffected by the rejected attempt. Sent five real, separate 500,000 RWF transfers in
+a row -- the first four completed normally; the fifth (bringing the real cumulative
+daily total to exactly 2,500,000 RWF, precisely AT the cap) also correctly completed,
+proving the boundary is inclusive as designed; a sixth attempt for even 1 RWF more
+correctly real-422s with the exact real message "0.00 RWF remaining today". Real
+sender wallet confirmed debited to exactly 2,500,000.00 RWF (5,000,000 - 2,500,000
+sent), real recipient wallet confirmed credited to exactly 2,500,000.00 RWF.
+Critically, also confirmed the real anti-bypass property the fork's own doc comment
+claims: with the real daily cap already exhausted via `sendDirect`, a real
+`POST /api/v1/p2p/send-delayed` attempt for the identical sender correctly real-422s
+against the exact same shared daily total -- proving the delayed-transfer rail
+genuinely cannot be used to route around the cap, not just asserted in a unit test.
+
+Cleaned up the local Docker image after a successful push (`docker rmi` +
+`docker image prune -f`, reclaimed 616.5MB).
+
 
 ## 187. 토스페이먼츠 개발자센터 (TossPayments Developer Center) research -- itunda already has the real equivalent (`PaymentsApiController`, the "Pay with itunda" external checkout API); proved its full real flow end to end for the first time, closing a real gap: every prior external-API payment in this session's history had been abandoned mid-checkout, never actually completed
 
