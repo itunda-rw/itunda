@@ -10689,3 +10689,26 @@ nothing else in the module regressed.
 
 No deploy and no live-server verification attempted here -- reserved for the
 coordinating session per this task's own scoping rules.
+
+**Coordinator re-verification, deploy, and real-money live-verify**: independently re-ran
+`./gradlew :rideshare:test --rerun-tasks`; summed every real XML report and confirmed
+`rideshare` `tests="112"`, `ParkingServiceTest` `tests="8"`, both `failures="0" errors="0"`,
+matching the claim exactly. Also confirmed `settleSession`'s ledger legs balance correctly
+(DEBIT `totalFare` = CREDIT `netToOwner` + CREDIT `platformFee`), byte-identical in structure to
+`BikeRentalService.settleRental`'s already-verified math from Section 175. Given this is a
+seventh real money-safety fix, deployed with priority: built and pushed
+`192.168.252.4:32000/itunda/backend:2026-08-18-parking-abandoned-session`, rollout completed
+cleanly after one polling command was killed mid-flight and cleanly re-launched (same benign
+interruption pattern as Section 174's deploy). **Live-verified with real money movement**, using
+the new admin-gated manual-trigger endpoint: registered a parking spot owner + renter, funded
+the renter's real wallet (100,000 RWF), registered a real spot (1,000 RWF/hour), started a real
+session (confirmed the spot flips to `available=0`, the exact stuck state this bug caused),
+backdated `started_at` 25 hours into the past via direct DB update, then called
+`POST /api/v1/parking/sessions/process-abandoned` as the real seeded admin account -> real `200`
+with `processedCount: 1`. Confirmed the real settlement: 1,501 minutes billed, rounded up to 26
+hours, 26,000 RWF total fare; the renter's real wallet debited to exactly 74,000.00 RWF
+(100,000 - 26,000), the owner's real wallet credited to exactly 22,100.00 RWF
+(26,000 - 3,900 platform fee), and the spot correctly flipped back to `available=1`, re-entering
+the pool. Re-triggered the same endpoint -> real `processedCount: 0`, confirming the fix is
+idempotent. This closes the "escrow/reservation feature missing its full lifecycle" technique's
+seventh real find this session (Sections 170-176).
