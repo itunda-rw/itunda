@@ -13256,3 +13256,58 @@ success message.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
 `services/micro-frontends/bank-mfe/src/lib/savings.ts`. Commit `72b34c1b`.*
+
+## 199. Real TDS ProgressStepper added to itunda's two multi-step flows
+
+Direct user follow-up: "and do more deep research on toss UX and toss interactions,"
+then "we did enough research let's start with itunda bank." A deep research pass first
+(3 real `toss.tech` articles fetched directly) surfaced an important corrective before
+any more building: Toss's own real bar for shipping an interaction is measurable
+business-metric improvement, not aesthetics -- "인터랙션을 단순히 예뻐지게 하는 도구라고
+생각하는 것" (thinking of interaction as just a prettifying tool) is named as their own
+early, corrected misconception (`toss.tech/article/interaction`); real, honestly
+disclosed examples exist of animations they built, tested, and discarded because they
+didn't earn their cost. Also fetched Toss's real error-message-system article
+(`toss.tech/article/introducing-toss-error-message-system`) -- extends itunda's
+existing `feedback_toss_error_handling` memory with a real, systemic finding: similar
+errors get standardized to identical phrasing via a shared library, not reworded per
+screen. Both findings are now standing discipline for the rest of this initiative, not
+just recorded and forgotten -- see `project_itunda_product_feel.md` for the full
+research writeup.
+
+Also fetched Toss's real component library directly
+(`tossmini-docs.toss.im/tds-mobile/`, ~50 named real components) and its real
+`ProgressStepper` component doc specifically -- a real, named component for showing
+"step N of M" progress with per-step labels, compact variant: `<ProgressStepper
+variant="compact" activeStepIndex={N}><ProgressStep title="..." />...</ProgressStepper>`.
+
+### What was built
+
+itunda's two existing multi-step flows -- `TransferFlow` (Section 189) and the
+newly-rebuilt `CreateGoalForm` (Section 198) -- had no step indicator at all, a real
+gap: a user had no visual sense of how many steps remained. Built a real `ProgressStepper`
+component mirroring TDS's own real compact-variant API shape, but as a flat `steps`
+prop instead of Toss's own compound-children JSX -- matching this codebase's own
+already-established "Flat API over Compound API" convention (`IdsButton`'s own header
+comment documents the identical real precedent). Wired into both flows, on their real
+navigable decision steps only -- `TransferFlow`'s transient "sending" and terminal
+"success" states correctly excluded, since they aren't progress to track toward, they
+ARE the destination.
+
+New i18n keys (`transfer.stepRecipient`/`stepAmount`/`stepConfirm`) across all 3
+locales for `TransferFlow` (already i18n'd); `CreateGoalForm`'s own step labels stay
+plain strings, matching that component's pre-existing (never-i18n'd) convention.
+
+### Live verification against the real deployed backend
+
+`yarn workspace bank-mfe run build` and `accessibility-lint.py` both clean. Real
+browser click-through (Chrome, dev server against the live cluster, logged in as the
+seeded demo user): the stepper correctly renders "Recipient" active on the send-money
+flow's first real screen; after selecting a real recipient (Uwase TestRecipient,
+correctly name-resolved), the stepper correctly advances -- "Recipient" shows completed
+(filled dot + a real filled connecting line), "Amount" becomes the active bold-blue
+step, "Confirm" stays greyed out ahead -- a real, working, state-driven progress
+indicator, not a static decoration.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`services/micro-frontends/bank-mfe/src/i18n/translations.ts`. Commit `d7fbde8e`.*
