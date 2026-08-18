@@ -12373,3 +12373,33 @@ Files: `services/backend/core/src/main/kotlin/rw/itunda/core/domain/MerchantLoya
 `services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantController.kt`,
 `services/backend/merchant/src/test/kotlin/rw/itunda/merchant/MerchantLoyaltyPointsServiceTest.kt`
 (new), `services/backend/merchant/src/test/kotlin/rw/itunda/merchant/MerchantServiceTest.kt`.
+
+**Coordinator deploy and real-money live-verification (2026-08-18)**: built and pushed
+`192.168.252.4:32000/itunda/backend:2026-08-18-merchant-loyalty-points` (cluster load
+had recovered to a healthy ~4.7 by this point) and deployed via
+`scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper; rollout polled with the
+corrected single-remaining-pod check and confirmed genuinely complete.
+
+Live-verified the full real accrual-then-redemption cycle end to end against the real
+deployed backend, with real money: a real customer's real loyalty balance at a fresh
+merchant correctly starts at exactly `0` (`GET /merchant/{id}/loyalty-balance`). A real
+first QR payment for 20,000 RWF completed normally (`pointsRedeemed: 0` in the real
+response), and the real balance afterward was exactly `200.00` (the real 1% accrual
+rate applied to the real charge amount). A real second payment for 10,000 RWF, this
+time redeeming 150 of those real points
+(`POST /merchant/collect/{id}` with `pointsToRedeem: 150`), correctly charged exactly
+`9,850.00` RWF (the real discounted amount), with a real fee of `147.75` and real
+cashback of `98.50` computed off that same real discounted amount, not the original.
+The real balance afterward was exactly `148.50` (200 redeemed down to 50, plus 98.50
+newly accrued on the real post-redemption charge) -- confirming accrual and redemption
+compose correctly across a real multi-purchase sequence, not just in isolation. A third
+real attempt to redeem 200 points against the real 148.50 balance correctly real-400s
+`INSUFFICIENT_LOYALTY_POINTS` with the exact real balance in the message, and the real
+balance was confirmed completely unchanged afterward -- the rejected attempt left no
+partial state behind. Real wallet math confirmed exactly on both sides across the whole
+sequence: customer debited to exactly `70,448.50` RWF, merchant credited to exactly
+`29,402.25` RWF (100,000 start - 20,000 + 200 cashback - 9,850 + 98.50 cashback for the
+customer; 20,000 - 300 fee + 9,850 - 147.75 fee for the merchant).
+
+Cleaned up the local Docker image after a successful push (`docker rmi` +
+`docker image prune -f`, reclaimed 616.6MB).
