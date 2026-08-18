@@ -12625,3 +12625,23 @@ backend-first pattern (Sections 184/185/188/189) -- the backend enforcement (rat
 self-subscribe rejection, idempotent copy) is real and complete regardless of which
 client reaches it; both platforms already have the real share-and-view half from an
 earlier session.
+
+### Follow-up bug found during this same pass, committed but deploy deferred
+
+While re-checking the flow for this write-up, found a second real bug: `isPublic` is a
+per-row flag `setFolderPublic` sets in bulk at the moment it's toggled, not a durable
+folder-level property. A place added to an already-public folder *after* sharing it
+silently defaulted back to private -- invisible to `getPublicFolder`, and a subscriber's
+re-subscribe would copy nothing even though the owner genuinely added something new. The
+live-verification trace above never actually hit this, because it re-called
+`setFolderPublic` after every add as a matter of course -- that masked it from this
+pass's own API trace, not a sign it wasn't real. Fixed: `addBookmark` now checks whether
+any existing row in the target folder is already public and inherits that status for the
+new one. 2 new tests (`maps` module now `tests="42"`, `failures="0" errors="0"`), ledger
+guard clean, committed (`c5dc2fff`) and pushed. **Deploy deliberately deferred**: the
+primary node's load average hit `66.95` (`uptime`, checked right before attempting the
+build) -- by far the worst this session has directly observed, well past the already-bad
+20-31 this same section's own deploy saw minutes earlier. Forcing another Gradle-in-
+Docker build against a cluster in that state risks compounding a real overload rather
+than shipping a fix for a narrow edge case. Left as a named, real follow-up rather than
+silently declared done.
