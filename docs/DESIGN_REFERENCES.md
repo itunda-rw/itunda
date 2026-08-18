@@ -13311,3 +13311,38 @@ indicator, not a static decoration.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
 `services/micro-frontends/bank-mfe/src/i18n/translations.ts`. Commit `d7fbde8e`.*
+
+## 200. Completed the "One Thing per One Page" audit of every remaining Bank form
+
+Direct user follow-up: "we did enough research let's start with itunda bank." Finished
+the audit `CreateGoalForm` (Section 198) started -- checked every remaining multi-field
+form in `BankDashboard.tsx` individually rather than assuming the pattern generalizes:
+
+- `CreateGroupAccountForm`: already compliant (one field, name only) -- left untouched.
+- `OpenUpfrontDepositForm`: already compliant (one real field, one context paragraph,
+  one button) -- left untouched, confirming the audit finds real clean cases too, not
+  just violations everywhere.
+- `CreateIkiminaForm`: a real violation -- 4 genuine required decisions on one card
+  (group name, contribution amount, cycle frequency, member cap). Rebuilt as a real
+  4-step flow using `ProgressStepper` (Section 199); all 4 fields are genuinely
+  required (unlike `CreateGoalForm`'s optional final step), so none were grouped.
+- `CreateWeeklySavingsPlanForm`: a real violation -- 3 at once (plan name, weekly
+  amount, escalation rate). Rebuilt as a real 3-step flow; the existing real
+  KakaoBank-26주적금 explanatory context was moved onto the first step, ahead of any
+  input field -- matches the real sourced Toss "Value First, Cost Later" principle
+  (Section 199's research), not just "One Thing per One Page" alone.
+- `CreateGrow31SavingsPlanForm`: a real violation -- 2 at once (plan name, daily
+  amount). Rebuilt as a real 2-step flow.
+
+### Live verification against the real deployed backend
+
+`yarn workspace bank-mfe run build` and `accessibility-lint.py` both clean. Real
+browser click-through (Chrome, dev server against the live cluster, logged in as the
+seeded demo user) on the most complex real case, Ikimina's 4-step flow: walked the
+full real flow end to end (name -> contribution -> frequency -> members), confirmed
+the `ProgressStepper` correctly advances at every real step (each prior step shows
+completed with a filled connecting line, the current step bold and blue, remaining
+steps grey), and confirmed the real ikimina ("Toss UX Test Group") genuinely persisted
+server-side and appeared in the real list afterward.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`. Commit `466f50bf`.*
