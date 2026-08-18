@@ -10990,3 +10990,42 @@ regressed.
 
 No deploy and no live-server verification attempted here -- reserved for the
 coordinating session per this task's own scoping rules.
+
+**Coordinator re-verification, deploy, and real-money live-verification (2026-08-18)**:
+independently re-ran `./gradlew :bills:test --rerun-tasks` (bypassing Gradle's
+UP-TO-DATE cache), summed the real XML reports myself -- confirmed `tests="18"
+failures="0" errors="0"`, matching the fork's own claim exactly. Reviewed the new
+`checkLowBalance` code path -- it never touches `LedgerService`/`WalletRepository`
+write paths, only reads `availableBalance` and (on the low-balance branch) saves the
+dedup guard column, so there is no new lost-update/race surface introduced here.
+
+Built and pushed `192.168.252.4:32000/itunda/backend:2026-08-18-bill-autopay-low-balance`
+using the corrected `services/backend/Dockerfile` build context and deployed via
+`scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper (see
+`feedback_deploy_mechanism_multipass_not_ssh` memory for why raw `ssh` no longer works
+on this cluster). One registry push attempt hit a transient "connection refused" under
+cluster load, consistent with this session's previously-documented "severe overload ->
+registry refused, self-resolves" pattern -- the immediate retry succeeded. Rollout
+polled with the corrected single-remaining-pod check and confirmed genuinely complete.
+
+Live-verified with REAL MONEY end to end: registered a fresh test user, funded their
+real MAIN wallet to 10,000.00 RWF (below the real seeded `bill_1` REG-Electricity bill's
+35,000 RWF amount), registered a real auto-pay setting via `POST /api/v1/bills/auto-pay`
+for that exact provider/account, then triggered the real admin-gated
+`POST /api/v1/bills/process-auto-payments` sweep. Confirmed the doomed payment attempt
+was correctly skipped (`processed: []`, wallet balance unchanged at exactly 10,000.00,
+zero ledger transaction created), a real `BILL_AUTOPAY_LOW_BALANCE` notification was
+created with the exact real bill amount and wallet balance in its body, and
+`last_low_balance_warned_bill_id` was correctly set to `bill_1`. Re-triggered the sweep
+a second time: still `processed: []`, notification count unchanged at exactly 1 --
+confirmed the dedup guard genuinely prevents re-warning on every 60-second poll. Then
+topped the same wallet up to 50,000.00 RWF and re-triggered: this time a real payment
+went through (`processed` returned a real completed `ledgertxn_...` for exactly 35,000
+RWF), wallet correctly debited to exactly 15,000.00, and `last_paid_bill_id` correctly
+set to `bill_1` -- confirming the proactive check does not block a real payment once the
+balance is genuinely sufficient.
+
+Cleaned up the local Docker image after a successful push (`docker rmi` +
+`docker image prune -f`, reclaimed 616.4MB). This closes out Section 178 -- both a
+clean concurrency/IDOR audit of Sections 150-169 (no new finding) and a real, sourced,
+fully live-verified Kakao Bank feature port.
