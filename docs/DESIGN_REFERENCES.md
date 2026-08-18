@@ -13193,3 +13193,66 @@ Tracked as an explicit standing roadmap in `project_itunda_product_feel.md`.
 
 *Shipped: `packages/design-tokens/tokens.css`, `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
 `services/micro-frontends/bank-mfe/src/hooks/useCountUp.ts`. Commit `637ebeeb`.*
+
+## 198. Confirming and applying Toss's real "One Thing per One Page" principle -- rebuilt savings-goal creation
+
+Direct user follow-up on Section 197: "in most cases toss style is one page one action?
+search online to confirm." Real sourcing, 3 independent sources (`brunch.co.kr/@figmaster/8`,
+`maily.so/eddy/posts/knrjvlp1rld`, disquiet.io's own summary of the same doc) -- Toss
+publishes an actual named "Product Principles" (PP) document. Confirmed: **"One Thing
+per One Page"** -- "하나의 화면은 하나의 메시지만 표현한다" (one screen expresses ONE
+message only), excess information actively removed/excluded/eliminated, not just
+deprioritized -- is one of 8 real, published UX principles (alongside Tap & Scroll,
+Easy to Answer [answerable within 3 seconds], Value First/Cost Later, No More Loading,
+Context-based), sitting under 3 higher-level product-strategy principles (Casual
+Concept, Minimum Features -- "기능이 늘어날수록 제품은 점점 어려워지고," more features
+make a product progressively harder, so each one is actively questioned -- and Less
+Policy).
+
+Noted: Section 189's own send-money rebuild (recipient -> amount -> confirm -> sending
+-> success, one decision per screen) already matches this exact real pattern, a
+retroactive validation it was built correctly even before this principle was formally
+sourced.
+
+### Applied the principle for real: `CreateGoalForm`
+
+Audited Bank-related forms in bank-mfe for real violations (not stylistic nitpicks --
+screens asking multiple genuine decisions at once). `CreateGoalForm` (savings-goal
+creation) was a clear, concrete one: a single card asking 3 real decisions at once
+(goal name, target amount, monthly auto-save) with no separation between required and
+optional. Rebuilt as a real step flow -- name -> amount -> optional auto-save details
+-- reusing the exact step-machine convention `TransferFlow` (Section 189) already
+established for the identical reason, rather than inventing a new pattern. The final
+optional step deliberately groups monthly-contribution and target-date together rather
+than giving each its own mandatory-feeling full screen -- a real, judgment-based
+compromise for genuinely optional/skippable fields, not a silent violation of the
+principle for required ones.
+
+Closed a real, separate capability gap found while doing this: `lib/savings.ts`'s own
+`createGoal` already accepts a real `targetDate` (Android's `NewSavingsGoalDialog`
+already collects it) -- bank-mfe never surfaced it. Added to the same final step.
+
+### Real bug caught by live click-through, not review
+
+The real backend 400'd "Idempotency-Key header is required" the first time the new
+flow was actually walked end to end -- `createGoal` was missing the header every
+sibling money-moving call in the same file (`depositToGoal`, etc.) already sends.
+**Pre-existing gap, not introduced by this rebuild** -- this form had apparently never
+been exercised end to end against the real deployed backend before this pass. Fixed by
+adding the same `Idempotency-Key: randomUUID()` header its siblings already use.
+Checked Android/iOS for the identical gap: Android already sends the header correctly.
+**iOS has no create-savings-goal client at all** (only reads existing goals) -- a real,
+separate, bigger gap, named as a follow-up, not built this pass.
+
+### Live verification against the real deployed backend
+
+`yarn workspace bank-mfe run build` and `accessibility-lint.py` both clean. Real
+browser click-through (Chrome, dev server against the live cluster, logged in as the
+seeded demo user): walked the real 3-step flow end to end (typed a real name, a real
+50,000 RWF target, skipped the optional final step's fields), and confirmed the new
+goal ("Toss-style UX test goal," 0/50,000 RWF) genuinely persisted server-side and
+appeared in the real goals list afterward -- not just an optimistic client-side
+success message.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`services/micro-frontends/bank-mfe/src/lib/savings.ts`. Commit `72b34c1b`.*
