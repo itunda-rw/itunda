@@ -20682,36 +20682,55 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
   );
 }
 
+// Real Toss "One Thing per One Page" fix (2026-08-19, direct user-confirmed sourcing:
+// Toss's own real, published Product Principles doc names this explicitly -- "하나의
+// 화면은 하나의 메시지만 표현한다," one screen expresses one message only, excess
+// information actively removed rather than just deprioritized). This card used to ask
+// 3 real decisions (goal name, target amount, monthly auto-save) on one page at once --
+// a real, concrete violation, not a stylistic nitpick. Rebuilt as a real step flow,
+// matching the exact step-machine convention TransferFlow (Section 189) already
+// established for the identical reason. Also closes a real, separate capability gap
+// found along the way: lib/savings.ts's own createGoal already accepts a real
+// targetDate (Android's NewSavingsGoalDialog already collects it), but this form never
+// did -- added as part of the same optional final step, not a second unrelated change.
+type CreateGoalStep = 'closed' | 'name' | 'amount' | 'plan';
+
 function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<CreateGoalStep>('closed');
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [monthlyContribution, setMonthlyContribution] = useState('');
+  const [targetDate, setTargetDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) {
+  const reset = () => {
+    setStep('closed');
+    setName('');
+    setTargetAmount('');
+    setMonthlyContribution('');
+    setTargetDate('');
+    setError(null);
+  };
+
+  if (step === 'closed') {
     return (
       <button
         className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setOpen(true)}
+        onClick={() => setStep('name')}
       >
         <Plus size={16} /> New savings goal
       </button>
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = async () => {
     setBusy(true);
     setError(null);
     try {
-      await createGoal(name, Number(targetAmount), monthlyContribution ? Number(monthlyContribution) : undefined);
-      setName('');
-      setTargetAmount('');
-      setMonthlyContribution('');
-      setOpen(false);
+      await createGoal(name.trim(), Number(targetAmount), monthlyContribution ? Number(monthlyContribution) : undefined, targetDate || undefined);
+      reset();
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not create goal.');
@@ -20720,26 +20739,67 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  if (step === 'name') {
+    return (
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}
+        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What are you saving for?</h3>
+          <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
+            <X size={20} color="var(--itunda-grey-500)" />
+          </button>
+        </div>
+        <input
+          type="text" required autoFocus placeholder="e.g. Emergency Fund" value={name} onChange={(e) => setName(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        <IdsButton type="submit" disabled={!name.trim()}>Next</IdsButton>
+      </form>
+    );
+  }
+
+  if (step === 'amount') {
+    return (
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (Number(targetAmount) > 0) setStep('plan'); }}
+        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+            <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+          </button>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much do you want to save for &ldquo;{name.trim()}&rdquo;?</h3>
+        </div>
+        <input
+          type="number" min="1" required autoFocus placeholder="Target amount (RWF)" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        <IdsButton type="submit" disabled={!(Number(targetAmount) > 0)}>Next</IdsButton>
+      </form>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <input
-        type="text" required placeholder="Goal name (e.g. Emergency Fund)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="number" min="1" required placeholder="Target amount (RWF)" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button type="button" aria-label="Back" onClick={() => setStep('amount')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+          <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+        </button>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Add auto-save details (optional)</h3>
+      </div>
       <input
         type="number" min="0" placeholder="Monthly auto-save (optional)" value={monthlyContribution} onChange={(e) => setMonthlyContribution(e.target.value)}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
       />
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
-      </div>
+      <input
+        type="date" placeholder="Target date (optional)" value={targetDate} onChange={(e) => setTargetDate(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+      />
+      <IdsButton onClick={handleCreate} disabled={busy}>{busy ? 'Creating…' : 'Create goal'}</IdsButton>
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </form>
+    </div>
   );
 }
 

@@ -37,9 +37,16 @@ export interface InterestJar {
 export const fetchGoals = () =>
   apiFetch<{ success: boolean; goals: SavingsGoal[] }>('/api/v1/savings/goals').then((r) => r.goals);
 
+// Real bug found live (2026-08-19, direct click-through of the newly-rebuilt
+// CreateGoalForm): the backend real-400s "Idempotency-Key header is required" on this
+// endpoint (same requirement depositToGoal/claimInterest below already honor) -- this
+// call had simply never sent one. Pre-existing gap, not introduced by this pass; never
+// surfaced before because bank-mfe's own goal-creation form had never been exercised
+// end to end against the real deployed backend until this live-verification.
 export const createGoal = (name: string, targetAmount: number, monthlyContribution?: number, targetDate?: string, category?: string) =>
   apiFetch<{ success: boolean; goal: SavingsGoal }>('/api/v1/savings/goals', {
     method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ name, targetAmount, monthlyContribution, targetDate, category }),
   }).then((r) => r.goal);
 
