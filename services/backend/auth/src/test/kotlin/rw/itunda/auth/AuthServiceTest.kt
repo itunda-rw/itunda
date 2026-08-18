@@ -15,6 +15,8 @@ import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PhoneVerificationToken
+import rw.itunda.core.domain.TermsAcceptance
+import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
@@ -25,6 +27,7 @@ import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PhoneVerificationTokenRepository
+import rw.itunda.core.repository.TermsAcceptanceRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.wallet.AccountNumberGenerator
@@ -76,11 +79,23 @@ class AuthServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val accountNumberGenerator = mockk<AccountNumberGenerator>(relaxed = true)
+        // Real Toss/Korean-fintech-style 약관 동의 (terms consent) -- relaxed since most
+        // of these pre-existing tests aren't about terms consent itself, just
+        // registration/login/profile behavior; the dedicated "terms consent" Given
+        // block below covers the real enforcement logic directly. A default `save`
+        // stub is still needed even though this mock is relaxed: `JpaRepository.save`
+        // is a self-bounded generic (`fun <S : T> save(entity: S): S`), and mockk's
+        // relaxed auto-answer can't safely synthesize a same-shape return value for
+        // that signature -- a real `ClassCastException` during spec construction,
+        // confirmed live catching this exact issue, not a guess.
+        val termsAcceptanceRepository = mockk<TermsAcceptanceRepository>(relaxed = true)
+        every { termsAcceptanceRepository.save(any()) } answers { firstArg() }
         val service = AuthService(
             userRepository, walletRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
             emailVerificationTokenRepository, phoneVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
-            pushNotificationService, realtimeMessagePublisher, accountNumberGenerator,
+            pushNotificationService, realtimeMessagePublisher, accountNumberGenerator, termsAcceptanceRepository,
         )
+        val requiredTermsIds = TermsCatalog.requiredIds().toList()
 
         When("registering a brand-new phone number") {
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
@@ -93,8 +108,10 @@ class AuthServiceTest : BehaviorSpec({
             every { phoneVerificationTokenRepository.save(capture(phoneTokenSlot)) } answers { firstArg() }
             val notificationSlot = mutableListOf<Notification>()
             every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
+            val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
+            every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
 
-            val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "password123"))
+            val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds))
 
             Then("it rate-limits, creates a user, provisions real zero-balance MAIN, SAVINGS, and INVESTMENT wallets, and issues real tokens") {
                 verify(exactly = 1) { rateLimiter.checkLimit("auth:register:+250788000001", 3, any()) }
@@ -122,6 +139,10 @@ class AuthServiceTest : BehaviorSpec({
                 val deliveredCode = Regex("\\d{6}").find(notification.body)!!.value
                 passwordEncoder.matches(deliveredCode, phoneTokenSlot.single().token) shouldBe true
             }
+            Then("it real-records one immutable TermsAcceptance per real accepted required term") {
+                termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
+                termsAcceptanceSlot.all { it.userId.isNotBlank() } shouldBe true
+            }
         }
 
         When("registering with a valid referral code") {
@@ -139,7 +160,7 @@ class AuthServiceTest : BehaviorSpec({
             every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
             every { notificationRepository.save(any()) } answers { firstArg() }
 
-            service.register(RegisterRequest("+250788000011", null, "New", "User", "password123", "ITDREF01"))
+            service.register(RegisterRequest("+250788000011", null, "New", "User", "password123", "ITDREF01", acceptedTermsIds = requiredTermsIds))
 
             Then("the new user is saved with a real referredByUserId pointing at the referrer") {
                 userSlot.single().referredByUserId shouldBe "user_referrer"
@@ -153,7 +174,7 @@ class AuthServiceTest : BehaviorSpec({
 
             Then("it throws ReferralCodeNotFoundException before ever saving a user -- an invalid code fails loudly, not silently") {
                 try {
-                    service.register(RegisterRequest("+250788000012", null, "New", "User", "password123", "BOGUSCODE"))
+                    service.register(RegisterRequest("+250788000012", null, "New", "User", "password123", "BOGUSCODE", acceptedTermsIds = requiredTermsIds))
                     error("expected ReferralCodeNotFoundException")
                 } catch (e: ReferralCodeNotFoundException) {
                     verify(exactly = 0) { userRepository.save(any()) }
@@ -172,6 +193,81 @@ class AuthServiceTest : BehaviorSpec({
                 } catch (e: PhoneAlreadyRegisteredException) {
                     verify(exactly = 0) { walletRepository.save(any()) }
                 }
+            }
+        }
+
+        // Real Toss/Korean-fintech-style 약관 동의 (terms consent) enforcement -- see
+        // TermsCatalog's own doc comment for the full sourced account (Korea's real
+        // 2025-02-14 dark-pattern regulation and 2026-09-11 penalty increase). itunda
+        // had zero terms-consent tracking anywhere before this.
+        When("registering without accepting every required term") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000020") } returns false
+
+            Then("it throws RequiredTermsNotAcceptedException before ever saving a user") {
+                // Only one of the two real required terms accepted -- a genuine
+                // partial-consent case, not just "accepted nothing at all".
+                val partialTermsIds = listOf(requiredTermsIds.first())
+                try {
+                    service.register(RegisterRequest("+250788000020", null, "Jean", "B", "password123", acceptedTermsIds = partialTermsIds))
+                    error("expected RequiredTermsNotAcceptedException")
+                } catch (e: RequiredTermsNotAcceptedException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                    verify(exactly = 0) { walletRepository.save(any()) }
+                }
+            }
+        }
+
+        When("registering with every required term accepted but the real optional marketing term skipped") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000021") } returns false
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { walletRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
+            every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
+
+            Then("registration succeeds -- an optional term is honestly optional, never a blocker") {
+                service.register(RegisterRequest("+250788000021", null, "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds))
+                termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
+                (TermsCatalog.requiredIds() - termsAcceptanceSlot.map { it.termsId }.toSet()).isEmpty() shouldBe true
+            }
+        }
+
+        When("registering with every required term plus the real optional marketing term also accepted") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000022") } returns false
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { walletRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
+            every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
+
+            Then("it records a real TermsAcceptance for the optional term too, not just the required ones") {
+                val allTermsIds = TermsCatalog.documents.map { it.id }
+                service.register(RegisterRequest("+250788000022", null, "Jean", "B", "password123", acceptedTermsIds = allTermsIds))
+                termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe allTermsIds.toSet()
+            }
+        }
+
+        When("registering with an unknown/stale terms id mixed in with the real required ones") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000023") } returns false
+            every { userRepository.save(any()) } answers { firstArg() }
+            every { walletRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            val termsAcceptanceSlot = mutableListOf<TermsAcceptance>()
+            every { termsAcceptanceRepository.save(capture(termsAcceptanceSlot)) } answers { firstArg() }
+
+            Then("it silently ignores the unknown id rather than 500ing registration over it") {
+                service.register(RegisterRequest("+250788000023", null, "Jean", "B", "password123", acceptedTermsIds = requiredTermsIds + "some_removed_terms_id"))
+                termsAcceptanceSlot.map { it.termsId }.toSet() shouldBe requiredTermsIds.toSet()
             }
         }
 

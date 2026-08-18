@@ -93,16 +93,47 @@ export async function login(phoneNumber: string, password: string): Promise<Auth
   return body.user as AuthedUser;
 }
 
+export interface TermsDocument {
+  id: string;
+  title: string;
+  version: string;
+  required: boolean;
+  summary: string;
+}
+
+// Real Toss/Korean-fintech-style 약관 동의 (terms consent) catalog (2026-08-18) -- see
+// backend TermsCatalog's own doc comment for the full sourced account. Public, no
+// token needed -- RegisterPage calls this before the user has any credential at all,
+// the same "fetch what to render before the user can act" shape login/register
+// themselves are the entry point for.
+export async function getTerms(): Promise<TermsDocument[]> {
+  const response = await fetch(`${BASE_URL}/api/v1/auth/terms`);
+  if (!response.ok) {
+    const { code, message } = await parseErrorBody(response);
+    throw new ApiError(response.status, code, message);
+  }
+  const body = await response.json();
+  return body.terms as TermsDocument[];
+}
+
 // Real sign-up (2026-08-04) -- closes docs/DESIGN_REFERENCES.md Section 8 recommendation
 // #7: bank-mfe had no registration page at all, unlike Android/iOS's real 3-step
 // phone -> name -> password flow (LoginScreen.kt/.swift). Mirrors login's own real device
 // binding (a device that registers proves password ownership in the same request, so
 // it's auto-trusted server-side, same reasoning LoginScreen.kt's own doc comment gives).
+//
+// `acceptedTermsIds` added 2026-08-18 -- see getTerms's own doc comment. RegisterPage
+// gates its own submit button on every real required id being present in this list
+// before calling register at all, so a missing required id here would mean that
+// client-side gate already failed -- this is real defense in depth against a modified
+// client, not the primary enforcement (that's AuthService.register's own real
+// RequiredTermsNotAcceptedException check, which fires regardless of what any client does).
 export async function register(
   phoneNumber: string,
   password: string,
   firstName: string,
   lastName: string,
+  acceptedTermsIds: string[],
   referralCode?: string,
 ): Promise<AuthedUser> {
   const { getOrCreateDeviceId, getDeviceName } = await import('./device');
@@ -118,6 +149,7 @@ export async function register(
       referralCode: referralCode?.trim() || null,
       deviceId: getOrCreateDeviceId(),
       deviceName: getDeviceName(),
+      acceptedTermsIds,
     }),
   });
 

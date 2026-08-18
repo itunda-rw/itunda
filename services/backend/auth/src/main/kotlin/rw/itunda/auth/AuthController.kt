@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 
@@ -26,6 +27,14 @@ class AuthController(private val authService: AuthService, private val deviceSer
     @PostMapping("/check-phone")
     fun checkPhone(@RequestBody request: PhoneCheckRequest): ResponseEntity<PhoneCheckResponse> =
         ResponseEntity.ok(authService.checkPhoneExists(request.phoneNumber))
+
+    // Real Toss/Korean-fintech-style 약관 동의 (terms consent) catalog -- see
+    // rw.itunda.core.domain.TermsCatalog's own doc comment. Public (see
+    // SecurityConfig): a client renders this real list, checked-vs-not, before the
+    // user has any credential at all, same as check-phone/register above.
+    @GetMapping("/terms")
+    fun getTerms(): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "terms" to TermsCatalog.documents))
 
     @PostMapping("/register")
     fun register(@RequestBody request: RegisterRequest): ResponseEntity<AuthResponse> =
@@ -217,6 +226,10 @@ class AuthController(private val authService: AuthService, private val deviceSer
     @ExceptionHandler(PhoneAlreadyRegisteredException::class)
     fun handleConflict(ex: PhoneAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PHONE_ALREADY_REGISTERED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RequiredTermsNotAcceptedException::class)
+    fun handleRequiredTermsNotAccepted(ex: RequiredTermsNotAcceptedException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("REQUIRED_TERMS_NOT_ACCEPTED", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidCredentialsException::class)
     fun handleInvalidCredentials(ex: InvalidCredentialsException) =

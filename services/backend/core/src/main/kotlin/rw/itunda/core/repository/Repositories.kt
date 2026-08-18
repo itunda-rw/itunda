@@ -21,6 +21,7 @@ import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.GroupAccount
 import rw.itunda.core.domain.GroupAccountContribution
 import rw.itunda.core.domain.GroupAccountDuesReminder
+import rw.itunda.core.domain.TermsAcceptance
 import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.InterestJar
@@ -104,6 +105,10 @@ interface GroupAccountContributionRepository : JpaRepository<GroupAccountContrib
 
 interface GroupAccountDuesReminderRepository : JpaRepository<GroupAccountDuesReminder, String> {
     fun existsByGroupAccountIdAndUserIdAndCycleMonth(groupAccountId: String, userId: String, cycleMonth: String): Boolean
+}
+
+interface TermsAcceptanceRepository : JpaRepository<TermsAcceptance, String> {
+    fun findByUserId(userId: String): List<TermsAcceptance>
 }
 
 interface WeeklySavingsPlanRepository : JpaRepository<WeeklySavingsPlan, String> {

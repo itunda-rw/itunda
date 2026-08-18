@@ -10,6 +10,8 @@ import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.PhoneVerificationToken
+import rw.itunda.core.domain.TermsAcceptance
+import rw.itunda.core.domain.TermsCatalog
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
@@ -21,6 +23,7 @@ import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PhoneVerificationTokenRepository
+import rw.itunda.core.repository.TermsAcceptanceRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.wallet.AccountNumberGenerator
@@ -55,6 +58,7 @@ class AuthService(
     private val pushNotificationService: PushNotificationService,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
     private val accountNumberGenerator: AccountNumberGenerator,
+    private val termsAcceptanceRepository: TermsAcceptanceRepository,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
     private val logger = LoggerFactory.getLogger(AuthService::class.java)
@@ -68,6 +72,16 @@ class AuthService(
         rateLimiter.checkLimit("auth:register:${request.phoneNumber}", limit = 3, window = Duration.ofMinutes(10))
         if (userRepository.existsByPhoneNumber(request.phoneNumber)) {
             throw PhoneAlreadyRegisteredException("An account with this phone number already exists")
+        }
+        // Real Toss/Korean-fintech-style 약관 동의 (terms consent) enforcement -- see
+        // TermsCatalog's own doc comment for the full sourced account. Checked before
+        // any real write below (fail fast, same discipline the phone-uniqueness check
+        // right above already follows) -- a client that skips a required checkbox
+        // never gets a real account or a real wallet provisioned for it.
+        val acceptedTermsIds = request.acceptedTermsIds.toSet()
+        val missingRequiredTermsIds = TermsCatalog.requiredIds() - acceptedTermsIds
+        if (missingRequiredTermsIds.isNotEmpty()) {
+            throw RequiredTermsNotAcceptedException("Please agree to all required terms to continue")
         }
         // Real, not honor-system: an invalid/typo'd code fails registration loudly
         // rather than silently registering with no attribution, matching this repo's
@@ -90,6 +104,23 @@ class AuthService(
             referredByUserId = referredByUserId,
         )
         userRepository.save(user)
+        // Real immutable consent audit trail -- one row per real accepted term
+        // (required AND any optional ones the client actually sent), only ever for
+        // ids TermsCatalog itself recognizes (an unknown id is silently ignored here
+        // rather than 500ing registration over a client sending a stale/removed id).
+        val validAcceptedTermsIds = acceptedTermsIds.intersect(TermsCatalog.validIds())
+        val termsById = TermsCatalog.documents.associateBy { it.id }
+        validAcceptedTermsIds.forEach { termsId ->
+            val document = termsById.getValue(termsId)
+            termsAcceptanceRepository.save(
+                TermsAcceptance(
+                    id = "terms_acceptance_${UUID.randomUUID()}",
+                    userId = user.id,
+                    termsId = document.id,
+                    termsVersion = document.version,
+                ),
+            )
+        }
         // Real phone verification, sent at registration itself (2026-07-26) -- see
         // requestPhoneVerification's own doc comment for the full delivery story.
         sendPhoneVerificationCode(user.id)

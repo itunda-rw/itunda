@@ -18,6 +18,15 @@ data class RegisterRequest(
     // exactly as before (see DeviceVerificationFilter's own doc comment on the rollout).
     val deviceId: String? = null,
     val deviceName: String? = null,
+    // Real Toss/Korean-fintech-style 약관 동의 (terms consent) -- see
+    // rw.itunda.core.domain.TermsCatalog's own doc comment for the full sourced
+    // account. The client-checked subset of TermsCatalog.documents' real ids; every
+    // TermsCatalog.requiredIds() must be present or AuthService.register real-400s
+    // with RequiredTermsNotAcceptedException. Defaults to empty (not required=true by
+    // default) so this stays additive rather than silently breaking a request built
+    // against the old RegisterRequest shape -- the real enforcement lives in
+    // AuthService.register's own explicit check, not a Kotlin default.
+    val acceptedTermsIds: List<String> = emptyList(),
 )
 
 data class LoginRequest(val phoneNumber: String, val password: String, val deviceId: String? = null, val deviceName: String? = null)

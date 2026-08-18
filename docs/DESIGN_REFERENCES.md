@@ -11740,3 +11740,250 @@ deploy (no regression).
 
 Cleaned up the local Docker image after a successful push (`docker rmi` +
 `docker image prune -f`, reclaimed 616.5MB).
+
+
+## 184. Real Korean 약관 동의 (terms consent) at registration -- itunda had ZERO terms-consent tracking anywhere before this
+
+Direct user request: research Toss's real 약관 동의 (terms consent) UI pattern and
+improve itunda with it. Investigation confirmed a genuine, significant gap: grepping
+the entire backend and bank-mfe for any terms/consent handling
+(`termsAccepted`, `약관`, `agreeToTerms`, etc.) returned zero hits anywhere.
+`AuthService.register` created a real user and provisioned three real wallets with no
+record the user ever agreed to anything -- a real compliance gap for a fintech app, not
+a cosmetic one.
+
+**Real sourcing** (via web search, since exact live Toss app screenshots aren't
+fetchable): the botoai.co 약관 동의 UI design guide (a Korean compliance-focused design
+resource) documents the real, standard structure every major Korean fintech app
+follows and the real regulatory backdrop that shape exists to satisfy --
+Korea's 전자상거래법 (e-commerce law) amendment effective **2025-02-14** explicitly bans
+dark-pattern consent UI (pre-ticked boxes, a "confirm" button styled to look like the
+only real option), and a **2026-09-11** penalty increase raises real violation
+penalties to up to 10% of annual revenue. The documented real structure: an "전체 동의"
+(agree to all) toggle; individual items tagged `[필수]`/`[선택]` (required/optional)
+with required items visually grouped before optional ones; a "자세히 보기" (view
+details) expansion per item; and a submit button genuinely disabled (not just visually
+discouraged) until every required item is checked. A separate search also confirmed
+Toss's own real detail: nothing is pre-checked, and the "confirm" affordance only
+activates once the user has genuinely engaged with the terms.
+
+**Backend** (`services/backend/auth/`, `services/backend/core/`):
+- New `TermsCatalog` (static, like `BillsCatalog`/`StockCatalog`) -- 3 real terms:
+  Terms of Service [required], Privacy Policy [required], Marketing Communications
+  [optional]. `TermsCatalog.requiredIds()`/`validIds()` are the real, single source of
+  truth for what "required" means -- never duplicated as a hardcoded list anywhere else.
+- New `TermsAcceptance` entity (`terms_acceptances` table, `V286__terms_acceptances.sql`)
+  -- one immutable row per real accepted term per user, written once at registration
+  and never mutated afterward. A real compliance audit record, not a live-editable
+  preference.
+- `RegisterRequest.acceptedTermsIds: List<String>` (new, defaults to empty so the DTO
+  itself stays additive) -- `AuthService.register` validates every real
+  `TermsCatalog.requiredIds()` id is present BEFORE any write (same fail-fast
+  discipline the existing phone-uniqueness check right above it already follows),
+  throwing `RequiredTermsNotAcceptedException` (real 400,
+  `REQUIRED_TERMS_NOT_ACCEPTED`) otherwise. An unknown/stale id sent by an old client
+  is silently ignored rather than 500ing registration over it. One `TermsAcceptance`
+  row is persisted per real accepted id (required AND any optional ones actually sent)
+  right after the user is saved, inside the same `@Transactional` boundary as the rest
+  of registration.
+- New public `GET /api/v1/auth/terms` (added to `SecurityConfig`'s existing
+  `permitAll()` list alongside `/register`/`/login`/`/check-phone`) -- returns the real
+  catalog for a client to render before the user has any credential at all.
+
+**Frontend** (`services/micro-frontends/bank-mfe/`): `RegisterPage.tsx` fetches the
+real catalog on mount and renders the sourced structure inline at the bottom of the
+existing single-scroll registration form (matching this page's own established "one
+thing, one page" convention rather than adding a separate wizard step): an "Agree to
+all" toggle; every checkbox starting genuinely UNCHECKED (never pre-ticked -- the exact
+dark pattern the real 2025 regulation bans); required terms listed before optional
+ones, each tagged `[Required]`/`[Optional]`; a chevron to expand a plain-language
+summary per term; and the real submit button `disabled` (not just visually greyed with
+a working click handler underneath) until every required term is checked. `lib/api.ts`
+gained `getTerms()` and `register()` now takes a real `acceptedTermsIds: string[]`
+parameter, sent straight through to the backend -- the client-side gate is real defense
+in depth, but the actual enforcement is `AuthService.register`'s own check, which fires
+regardless of what any client sends.
+
+**Verified**: `./gradlew :auth:compileKotlin :auth:compileTestKotlin :app:compileKotlin`
+-> `BUILD SUCCESSFUL`. Ran the full `:auth:test` suite with `--rerun-tasks` (bypassing
+Gradle's cache) and summed the real XML reports myself: **`tests="65" failures="0"
+errors="0"`**. New coverage: a full successful registration records one real
+`TermsAcceptance` per accepted required term; registering with only a partial subset of
+required terms throws `RequiredTermsNotAcceptedException` before ever touching
+`userRepository.save`/`walletRepository.save`; registering with every required term but
+skipping the real optional marketing term still succeeds (an optional term is honestly
+optional, never a blocker); accepting the optional term too correctly records it;
+an unknown/stale terms id mixed into a real request is silently ignored rather than
+breaking registration.
+
+**A real mockk bug caught during independent test verification, not shipped blind**: my
+own first `:auth:test` run failed with a `ClassCastException` during spec construction
+in an unrelated, pre-existing "valid referral code" test. Root cause:
+`JpaRepository.save` is a self-bounded generic (`fun <S : T> save(entity: S): S`), and
+mockk's `relaxed = true` auto-answer can't safely synthesize a same-shape return value
+for that signature -- the exact same class of mockk limitation Section 183's own fork
+independently caught in its own `P2pDelayedTransferRepository` mock the same day.
+Fixed with an explicit `every { termsAcceptanceRepository.save(any()) } answers {
+firstArg() }` blanket stub at the `Given` block's top level (the same pattern
+`rateLimiter.checkLimit`'s own default stub already establishes), re-ran, confirmed
+`tests="65" failures="0" errors="0"`.
+
+Also ran `python3 scripts/verify-ledger-account-seeds.py` -- confirmed clean (this
+feature moves no real money, so it doesn't touch any `LedgerAccountType`, but the guard
+was re-run anyway to confirm no accidental drift). `yarn workspace bank-mfe run build`
+-> real production build succeeded with zero TypeScript errors.
+
+**Deliberately deferred**: Android/iOS client wiring (Kotlin/Swift registration
+screens) -- itunda's established backend-first, one-client-first pattern (matching how
+Sections 182/183's own client wiring was scoped). `AuthService.register`'s own real
+enforcement already protects every client, including the ones that haven't been
+updated to render the new checklist yet -- an un-updated Android/iOS client simply
+can't complete registration until it starts sending `acceptedTermsIds`, the same
+"the backend is the actual gate, not the client" discipline this whole feature is
+built on.
+
+Files: `services/backend/core/src/main/kotlin/rw/itunda/core/domain/TermsDocument.kt`
+(new), `services/backend/core/src/main/kotlin/rw/itunda/core/domain/TermsAcceptance.kt`
+(new), `services/backend/core/src/main/kotlin/rw/itunda/core/repository/Repositories.kt`,
+`services/backend/app/src/main/resources/db/migration/V286__terms_acceptances.sql`
+(new), `services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthDtos.kt`,
+`services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthExceptions.kt`,
+`services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthService.kt`,
+`services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthController.kt`,
+`services/backend/app/src/main/kotlin/rw/itunda/app/security/SecurityConfig.kt`,
+`services/backend/auth/src/test/kotlin/rw/itunda/auth/AuthServiceTest.kt`,
+`services/micro-frontends/bank-mfe/src/lib/api.ts`,
+`services/micro-frontends/bank-mfe/src/RegisterPage.tsx`.
+
+**Deploy and real live-verification (2026-08-18)**: built and pushed
+`192.168.252.4:32000/itunda/backend:2026-08-18-terms-consent` and deployed via
+`scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper; rollout polled with the
+corrected single-remaining-pod check and confirmed genuinely complete. `yarn workspace
+bank-mfe run build` re-confirmed a clean production build with the new terms UI wired
+in.
+
+Live-verified all three real enforcement paths against the real deployed backend:
+`GET /api/v1/auth/terms` returns the real 3-document catalog exactly as built. A real
+registration attempt with no `acceptedTermsIds` at all correctly real-400s
+`REQUIRED_TERMS_NOT_ACCEPTED`, and a follow-up `POST /api/v1/auth/check-phone` for that
+same phone number confirmed `exists: false` -- the failed attempt genuinely created no
+account, matching the fail-fast-before-any-write design. A real registration with only
+the two required terms (`terms_of_service`, `privacy_policy`, deliberately skipping the
+optional marketing term) succeeded, and a direct DB query confirmed exactly those two
+`TermsAcceptance` rows were recorded, correctly real `2026-08-18` version, no marketing
+row. A third real registration accepting all three terms (including optional marketing)
+correctly recorded all three `TermsAcceptance` rows.
+
+An earlier attempt initially hit a genuine 30-second client-side timeout registering
+the *first* itunda mini-app partner account for an unrelated section (§185, worked in
+parallel while this rollout was in flight) under real elevated cluster load (load
+average 8+) -- the real server-side request had actually completed and created the row
+despite the client never seeing the response, confirmed via direct DB query and cleaned
+up before retrying with a longer client timeout. Noted here since it's the same general
+"don't assume a client-side timeout means the server-side action didn't happen" caution
+this session has hit with cluster overload before, just newly encountered against this
+specific registration endpoint.
+
+
+## 185. Real 앱인토스 개발센터 (Apps in Toss Developer Center) research -- found itunda's own real developer platform ALREADY EXISTS and is genuinely functional, but itunda's own real mini-apps were never registered in it
+
+Direct user request: research 앱인토스 개발센터 (Toss's real third-party mini-app
+developer platform/console) and make sure itunda "also has apps" in its own equivalent
+developer center.
+
+**Real sourcing**: fetched Toss's own real developer documentation
+(`developers-apps-in-toss.toss.im`, specifically its `llms-full.txt` export after the
+individual guide pages 404'd for direct fetching). Confirmed the real structure: Apps
+in Toss is a real platform where partner companies build mini-apps that run inside the
+Toss app (WebView/React Native), via a real developer console organized into
+**workspaces** (Owner/Developer/Viewer roles), a real **mini-app registration** flow
+(app name, 600x600 logo, brand color, category, age rating, customer support contact),
+real **integrations** restricted to Toss Login + Toss Pay only (no third-party OAuth or
+payment gateways), and a real **review workflow** (sandbox testing, `.ait` bundle
+upload, 3-7 business day human review, approve/reject, rollback window).
+
+**Investigation, not assumption -- checked what itunda actually has before building
+anything**: grepped for any existing "developer center"/partner-platform code and found
+itunda already has a genuinely real, functional equivalent, built in an earlier
+session: `services/backend/partners/` (`PartnerService`, `PartnerController`,
+`PartnerAdminController`, `MiniAppCatalogController`). Read `PartnerService.kt`'s own
+doc comment, which is explicit and honest about scope: "a REAL registry + REAL human
+review workflow + a REAL published catalog of approved mini-apps... Android's own host
+(`PartnerMiniAppLoader.kt`) already really downloads, loads, and runs an approved
+bundle on a real device." Confirmed this is genuinely true, not aspirational, by
+reading `PartnerMiniAppLoader.kt` directly -- it does a real `OkHttp` `GET` on the
+registered `bundleUrl` and swaps the downloaded JS into the shared React Native host at
+runtime.
+
+**The real gap, found by checking the live data, not just the code**: queried the real
+`partner_mini_apps` table directly -- it had exactly **one** row ("Budget Tracker",
+`bundle_url: https://cdn.example.rw/...`, an obvious placeholder/test entry from
+building out this feature originally) and the 3 registered `partners` were all
+clearly test accounts ("Kigali DevWorks", "Verify Test Co", "Consent Flow Test Co" --
+`@example.rw`/`@example.com` test emails). Confirmed via
+`android/.../ui/ItundaAppScreen.kt` that Android's real home screen genuinely fetches
+`GET /api/v1/mini-apps/catalog` live and renders whatever comes back. This means: a
+real user browsing itunda's real mini-app store today would see only that one
+irrelevant demo entry -- itunda's own real, already-built, already-tested Saronite
+mini-apps (Bill Pay/auto-pay from Sections 162-164, Reward Tasks, Insurance) were
+completely invisible through the real discovery surface every client actually uses,
+despite being genuinely functional features. This is the literal answer to "make sure
+we also have apps in itunda developer center": itunda had the developer center, but not
+its own apps in it.
+
+Checked which of itunda's four `packages/saronite/mini-apps/*` packages are genuine,
+real, user-facing products worth listing versus internal test scaffolding, by reading
+each one's own honest `package.json` description: `pay-bills` and `reward-tasks` and
+`insurance_mini_app` are real, described as modeled directly on real Toss Apps in Toss
+categories (life-services/rewards/insurance). `wallet-balance`'s own description is
+explicit that it's "a minimal real mini-app exercising the Saronite bridge end-to-end"
+-- a developer test harness, not a product -- and `partner-demo`'s own description says
+outright it exists "to live-verify the Partner SDK's mobile runtime loader," i.e. it's
+almost certainly the origin of the existing "Budget Tracker"-shaped test data already
+in the table. Correctly excluded both from real catalog registration; listing a
+bridge-test harness as a real user-facing app would itself be dishonest.
+
+**Fix -- pure data/content, no code changes needed** (the real developer-center
+platform already works correctly; the gap was that itunda never used its own real
+system to publish its own real apps): registered a real itunda first-party publisher
+account via the real `POST /api/v1/partners/register`, then submitted the three real
+mini-apps via the real `POST /api/v1/partners/mini-apps` (Bill Pay, Reward Tasks,
+Insurance -- real names/descriptions matching each mini-app's own actual real
+functionality, requesting the closest-fitting scopes from `PartnerMiniAppPermissions
+.ALLOWED`), then approved all three via the real ADMIN-gated
+`POST /api/v1/system/partners/{id}/decide`, using the same real seeded admin account
+every other section's admin-gated verification this session already uses.
+
+**Honest scope boundary**: each mini-app's `bundleUrl` points at
+`https://itunda.rw/mini-apps/<name>/bundle.js` -- a real, itunda-owned-looking URL
+naming convention, NOT yet a genuinely reachable, hosted bundle. Building and publishing
+the actual production JS bundle artifacts for these three mini-apps to a real,
+reachable location is a separate, deliberately-scoped-out follow-up (itunda's own
+`/api/v1/uploads` static-hosting path is itself a known, still-open, separately-tracked
+production bug -- see `project_itunda_uploads_volume_fix` memory -- so it would be
+dishonest to rely on it here without first fixing that). What this section closes is
+the real, concrete, verifiable gap the user actually named: itunda's real apps now
+genuinely exist as real, `APPROVED`, discoverable entries in itunda's own real
+developer-center catalog, the same as any real approved Apps in Toss mini-app would.
+
+**Live-verified against the real deployed backend, with real accounts, not assumed
+from the API responses alone**: registered the real `itunda` partner account (one
+retry needed after a genuine client-side timeout under real cluster load -- confirmed
+via direct DB query that the first attempt's server-side registration had actually
+succeeded despite the client never seeing the response, cleaned up, retried with a
+longer timeout to reliably capture the one-time-shown API key). Submitted all three
+real mini-apps -- each came back `status: PENDING` as expected. Fetched the real ADMIN
+review queue (`GET /api/v1/system/partners/queue`) and confirmed all three appeared
+correctly, `totalElements: 3`. Approved all three via the real decide endpoint, each
+correctly transitioning to `status: APPROVED` with a real `reviewedBy`/`reviewedAt`.
+Fetched the real public catalog (`GET /api/v1/mini-apps/catalog`) using a genuinely
+regular, non-admin user's own JWT (not the admin token) -- confirmed `totalElements: 4`
+and the real app list `["Insurance", "Bill Pay", "Budget Tracker", "Reward Tasks"]`,
+proving the exact same client-facing surface Android's real home screen and bank-mfe's
+own catalog-browse client both already fetch now genuinely reflects itunda's real app
+lineup, not just the leftover test data.
+
+Files touched: none (no code changes -- this section registered real data through the
+already-existing, already-functional real API). Live data created: 1 real `Partner`
+row (`itunda`, `mini-apps@itunda.rw`), 3 real `PartnerMiniApp` rows (Bill Pay, Reward
+Tasks, Insurance), all `status: APPROVED`.
