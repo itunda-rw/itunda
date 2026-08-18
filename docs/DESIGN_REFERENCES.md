@@ -11127,3 +11127,46 @@ summed every real XML report under `merchant/build/test-results/test/` myself:
 
 No deploy and no live-server verification attempted here -- reserved for the
 coordinating session per this task's own scoping rules.
+
+**Coordinator re-verification, deploy, and real-money live-verification (2026-08-18)**:
+independently re-ran `./gradlew :merchant:test --rerun-tasks` (bypassing Gradle's
+UP-TO-DATE cache), summed the real XML reports myself -- confirmed `tests="208"
+failures="0" errors="0"`, matching the fork's own claim exactly. Confirmed the HTTP
+endpoint name (`process-no-shows`) and its public behavior are unchanged -- only the
+internal split into `getDueNoShows()`/`processNoShow()` -- and that no other caller in
+the codebase referenced the old batch `processNoShows()` method name.
+
+Built and pushed `192.168.252.4:32000/itunda/backend:2026-08-18-booking-noshow-scheduler-fix`
+and deployed via `scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper; rollout
+polled with the corrected single-remaining-pod check and confirmed genuinely complete.
+
+Live-verified the actual bug this section closes -- isolation between rows in the same
+poll -- with REAL MONEY and a REAL FAILURE, not a synthetic unit test: registered two
+real merchants via the real `/merchant/register` API ("S179 Good Salon" with its real,
+intact settlement wallet; "S179 Bad Salon" whose `wallet_id` was then deliberately
+pointed at a nonexistent wallet via direct DB `UPDATE`, reproducing the exact real
+`MerchantNoWalletException` scenario `payOutDeposit` throws on). Inserted one real
+overdue `CONFIRMED` booking + `HELD` deposit against each merchant, then let the REAL
+PRODUCTION CRON (`BookingNoShowScheduler`, `fixedDelay=60000`) run unassisted -- no
+manual trigger needed. After one real poll cycle: the good booking transitioned to
+`NO_SHOW` with its deposit `FORFEITED` via a real new ledger transaction, the good
+merchant's real wallet credited to exactly 4,900.00 (5,000 - 100 fee, exact match);
+the bad booking's row was **untouched** -- still `CONFIRMED`, deposit still `HELD` --
+proving the bad row's exception did not roll back or block the good row's real money
+movement in the same poll. Confirmed via real pod logs across two separate poll cycles
+one minute apart (`ERROR ... BookingNoShowScheduler - Booking no-show processing
+failed for merchant_booking_s179_bad_...`) that the bad row keeps failing safely and
+loudly every cycle rather than silently or catastrophically. This is the exact,
+concrete reproduction of the historical bug: before this fix, the bad row's exception
+inside the old single-transaction batch method would have marked the *entire* shared
+transaction rollback-only, silently reverting the good booking's real `NO_SHOW`
+transition and deposit forfeiture too.
+
+Cleaned up all test data (deleted the two test bookings/deposits) and the local Docker
+image after a successful push (`docker rmi` + `docker image prune -f`, reclaimed
+616.4MB). This closes the 5th real instance of the scheduler transaction-poisoning bug
+class this session (Sections 115/118/129/130/179) and is a strong reminder that a
+previous "exhaustive" audit (Section 130) can still miss a variant of a bug class it
+wasn't specifically looking for -- worth another full `@Scheduled` sweep in a future
+section, this time checking specifically for missing per-row try/catch rather than only
+the narrower self-invocation `UnexpectedRollbackException` shape.
