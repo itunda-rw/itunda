@@ -537,6 +537,59 @@ class MapsServiceTest : BehaviorSpec({
                 results shouldBe emptyList()
             }
         }
+
+        When("a real second user subscribes to a real public folder") {
+            val publicBookmarks = listOf(
+                MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try", color = "#F5A623", isPublic = true),
+                MapBookmark(id = "map_bookmark_2", userId = "user_1", displayName = "Cafe B", latitude = -1.91, longitude = 30.01, folderName = "Cafes to try", color = "#F5A623", isPublic = true),
+            )
+            every { mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc("user_1", "Cafes to try") } returns publicBookmarks
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_2", -1.9, 30.0) } returns null
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_2", -1.91, 30.01) } returns null
+            val savedSlot = mutableListOf<MapBookmark>()
+            every { mapBookmarkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val copiedCount = service.subscribeToSharedFolder("user_2", "user_1", "Cafes to try")
+
+            Then("it real-copies every public place into the subscriber's own bookmarks, same folder name") {
+                copiedCount shouldBe 2
+                savedSlot.map { it.userId }.toSet() shouldBe setOf("user_2")
+                savedSlot.map { it.displayName } shouldBe listOf("Cafe A", "Cafe B")
+                savedSlot.all { it.folderName == "Cafes to try" } shouldBe true
+            }
+        }
+
+        When("a real second user re-subscribes after already having one of the two places saved") {
+            val publicBookmarks = listOf(
+                MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try", isPublic = true),
+                MapBookmark(id = "map_bookmark_2", userId = "user_1", displayName = "Cafe B", latitude = -1.91, longitude = 30.01, folderName = "Cafes to try", isPublic = true),
+            )
+            every { mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc("user_1", "Cafes to try") } returns publicBookmarks
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_2", -1.9, 30.0) } returns
+                MapBookmark(id = "existing", userId = "user_2", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try")
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_2", -1.91, 30.01) } returns null
+            val savedSlot = mutableListOf<MapBookmark>()
+            every { mapBookmarkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val copiedCount = service.subscribeToSharedFolder("user_2", "user_1", "Cafes to try")
+
+            Then("it only real-copies the one genuinely new place, skipping the one already saved") {
+                copiedCount shouldBe 1
+                savedSlot.map { it.displayName } shouldBe listOf("Cafe B")
+            }
+        }
+
+        When("a real user tries to subscribe to their own folder") {
+            Then("it real-rejects it before touching the repository") {
+                try {
+                    service.subscribeToSharedFolder("user_1", "user_1", "Cafes to try")
+                    error("expected InvalidBookmarkFolderException")
+                } catch (e: InvalidBookmarkFolderException) {
+                    // expected
+                }
+                io.mockk.verify(exactly = 0) { mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc(any(), any()) }
+            }
+        }
     }
 
     Given("a user selecting a point on the Rwanda map") {

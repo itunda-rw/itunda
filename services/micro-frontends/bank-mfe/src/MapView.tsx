@@ -16,6 +16,9 @@ import {
   addMapBookmark,
   removeMapBookmark,
   moveMapBookmark,
+  setMapFolderPublic,
+  fetchSharedMapFolder,
+  subscribeToSharedMapFolder,
   type PlaceSearchResult,
   type NearbyPlace,
   type MapBookmark,
@@ -25,7 +28,7 @@ import {
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { searchBusTrips, type BusTrip } from './lib/bus';
-import { ApiError } from './lib/api';
+import { ApiError, getStoredUser } from './lib/api';
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
 // OpenMapTiles-schema layers (water/landcover/roads/buildings) plus, 2026-07-19, real
@@ -311,6 +314,24 @@ export default function MapView() {
   const [movingBookmark, setMovingBookmark] = useState<MapBookmark | null>(null);
   const [moveFolderNameInput, setMoveFolderNameInput] = useState('');
   const [moveFolderColorInput, setMoveFolderColorInput] = useState(BOOKMARK_COLOR_PALETTE[0]);
+  // Real Naver Map-style folder share (2026-08-18) -- bank-mfe never had a client for
+  // this until now (setMapFolderPublic/MapsService.setFolderPublic existed on the
+  // backend since 2026-08-04 with only an Android caller). `sharingFolder` holds
+  // whichever folder name a share/unshare request is currently in flight for.
+  const [sharingFolder, setSharingFolder] = useState<string | null>(null);
+  const [shareLinkCopiedFor, setShareLinkCopiedFor] = useState<string | null>(null);
+  // Real Kakao Map-style "구독" (subscribe) -- opening a real itunda maps share link
+  // (?sharedOwner=&sharedFolder=) shows the owner's shared places read-only, with a real
+  // "Save to my places" action that copies them into the viewer's own bookmarks (see
+  // MapsService.subscribeToSharedFolder's own doc comment on the backend). A link
+  // opened while signed out can still view the list (the GET is unauthenticated) but the
+  // Save action needs a real session, same as every other write in this app.
+  const [sharedFolderView, setSharedFolderView] = useState<{ ownerId: string; folderName: string } | null>(null);
+  const [sharedFolderBookmarks, setSharedFolderBookmarks] = useState<MapBookmark[] | null>(null);
+  const [sharedFolderLoading, setSharedFolderLoading] = useState(false);
+  const [sharedFolderError, setSharedFolderError] = useState<string | null>(null);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribedCount, setSubscribedCount] = useState<number | null>(null);
   // Real "share this place" clipboard-fallback confirmation (2026-07-22) -- only used on
   // browsers without the native Web Share API (navigator.share), see shareLocation's own
   // doc comment.
@@ -373,6 +394,26 @@ export default function MapView() {
       // Corrupt/unavailable localStorage just means an empty recent-searches list --
       // a pure convenience feature, never worth failing the whole map view over.
     }
+  }, []);
+
+  // Real shared-folder-link landing (2026-08-18) -- the receiving half of the Share
+  // button below. Android already resolves its own itunda://maps/shared/... deep link
+  // (2026-08-14); bank-mfe never did, so a recipient opening a shared link on the web
+  // client landed on a plain blank map. Mirrors that same real, deliberately-
+  // unauthenticated GET (see MapsController.sharedFolder's own doc comment) -- this
+  // works even for a recipient who isn't signed in.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ownerId = params.get('sharedOwner');
+    const folderName = params.get('sharedFolder');
+    if (!ownerId || !folderName) return;
+    setSharedFolderView({ ownerId, folderName });
+    setSharedFolderLoading(true);
+    setSharedFolderError(null);
+    fetchSharedMapFolder(ownerId, folderName)
+      .then((real) => setSharedFolderBookmarks(real))
+      .catch((err) => setSharedFolderError(err instanceof ApiError ? err.message : 'Could not load this shared list.'))
+      .finally(() => setSharedFolderLoading(false));
   }, []);
 
   // Real distance-measurement (ruler) tool -- map click handler (2026-07-22). Only
@@ -696,6 +737,52 @@ export default function MapView() {
     return groups;
   }, []);
 
+  // Real Naver Map-style folder share toggle (2026-08-18) -- see MapsService
+  // .setFolderPublic's own doc comment on the backend. The share link points back at
+  // this same MapView (?sharedOwner=&sharedFolder=), read by the useEffect above --
+  // itunda has no other public web surface for Maps to host a share URL on (see
+  // MapBookmark.isPublic's own doc comment for why that's a deliberate scope decision,
+  // not an oversight), so bank-mfe's own origin doubles as the "web page" a link opens.
+  const toggleFolderShare = async (folderName: string, makePublic: boolean) => {
+    const currentUser = getStoredUser();
+    if (!currentUser) return;
+    setSharingFolder(folderName);
+    try {
+      await setMapFolderPublic(folderName, makePublic);
+      setBookmarks((prev) => prev.map((b) => (b.folderName === folderName ? { ...b, isPublic: makePublic } : b)));
+      if (makePublic) {
+        const link = `${window.location.origin}${window.location.pathname}?sharedOwner=${encodeURIComponent(currentUser.id)}&sharedFolder=${encodeURIComponent(folderName)}`;
+        try {
+          await navigator.clipboard.writeText(link);
+          setShareLinkCopiedFor(folderName);
+          setTimeout(() => setShareLinkCopiedFor(null), 3000);
+        } catch {
+          // Clipboard access can be denied by the browser -- the folder is still real,
+          // genuinely public either way, this only affects the copy-to-clipboard nicety.
+        }
+      }
+    } catch {
+      // Best-effort, matches this file's own established "leave state as it was, let the
+      // user retry" convention for a failed write (see handleAddBookmark et al).
+    } finally {
+      setSharingFolder(null);
+    }
+  };
+
+  const handleSubscribeToSharedFolder = async () => {
+    if (!sharedFolderView) return;
+    setSubscribing(true);
+    setSharedFolderError(null);
+    try {
+      const copied = await subscribeToSharedMapFolder(sharedFolderView.ownerId, sharedFolderView.folderName);
+      setSubscribedCount(copied);
+    } catch (err) {
+      setSharedFolderError(err instanceof ApiError ? err.message : 'Could not save this list -- sign in and try again.');
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
   const toggleBookmark = async (place: PlaceSearchResult) => {
     if (isBookmarked(place)) {
       setBookmarking(true);
@@ -955,6 +1042,75 @@ export default function MapView() {
           other panel below floats on top of it via absolute positioning, instead of
           the map being one fixed-height div in a document-flow column. */}
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+
+      {/* Real Kakao Map-style shared-folder landing (2026-08-18) -- shown when this page
+          was opened via a real ?sharedOwner=&sharedFolder= share link (see the loading
+          useEffect above). A banner over the map rather than replacing it, so the places
+          in the shared list are still visible in context on the real map underneath. */}
+      {sharedFolderView && (
+        <div
+          style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3, margin: '12px',
+            background: '#fff', borderRadius: '14px', padding: '14px 16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT }}>📍 {sharedFolderView.folderName}</p>
+              <p style={{ fontSize: '11px', color: MAP_CARD_TEXT_TERTIARY }}>A shared list of saved places</p>
+            </div>
+            <button
+              type="button"
+              aria-label="Close shared list"
+              onClick={() => setSharedFolderView(null)}
+              style={{ fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY, background: 'none', border: 'none' }}
+            >
+              ✕
+            </button>
+          </div>
+          {sharedFolderLoading ? (
+            <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>Loading…</p>
+          ) : sharedFolderError ? (
+            <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }}>{sharedFolderError}</p>
+          ) : !sharedFolderBookmarks || sharedFolderBookmarks.length === 0 ? (
+            <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>This list is empty or is no longer public.</p>
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px', maxHeight: '160px', overflowY: 'auto' }}>
+                {sharedFolderBookmarks.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
+                    style={{ textAlign: 'left', fontSize: '13px', color: MAP_CARD_TEXT, display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: b.color, flexShrink: 0 }} />
+                    {b.displayName}
+                  </button>
+                ))}
+              </div>
+              {subscribedCount !== null ? (
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#3182F6', marginTop: '10px' }}>
+                  ✓ Saved {subscribedCount} new place{subscribedCount === 1 ? '' : 's'} to your own bookmarks
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={subscribing}
+                  onClick={handleSubscribeToSharedFolder}
+                  style={{
+                    marginTop: '10px', width: '100%', padding: '10px', borderRadius: '10px',
+                    background: '#3182F6', color: '#fff', fontSize: '13px', fontWeight: 700, border: 'none',
+                  }}
+                >
+                  {subscribing ? 'Saving…' : `Save to my places (${sharedFolderBookmarks.length})`}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Real floating chrome (2026-07-21 redesign, mirrors Android's MapScreen.kt) --
           previously one flat, edge-to-edge gradient band that read as a fixed toolbar.
@@ -1527,12 +1683,35 @@ export default function MapView() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {bookmarksByFolder.map(([folderName, folderBookmarks]) => (
                     <div key={folderName}>
-                      {/* Only shown once there's more than one real folder -- a single
-                          default "Saved places" folder stays exactly as flat as it looked
-                          before this feature existed. */}
-                      {bookmarksByFolder.length > 1 && (
-                        <p style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, padding: '4px 0' }}>{folderName}</p>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0' }}>
+                        {/* Folder name label only shown once there's more than one real
+                            folder -- a single default "Saved places" folder stays exactly
+                            as flat as it looked before this feature existed. The Share
+                            button itself is always shown -- even a single default folder
+                            is a real, shareable list. */}
+                        {bookmarksByFolder.length > 1 && (
+                          <p style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, flex: 1 }}>{folderName}</p>
+                        )}
+                        <button
+                          type="button"
+                          disabled={sharingFolder === folderName}
+                          onClick={() => toggleFolderShare(folderName, !folderBookmarks.some((b) => b.isPublic))}
+                          style={{
+                            marginLeft: bookmarksByFolder.length > 1 ? 0 : 'auto',
+                            fontSize: '11px', fontWeight: 700,
+                            color: folderBookmarks.some((b) => b.isPublic) ? '#3182F6' : MAP_CARD_TEXT_SECONDARY,
+                            background: 'none', border: 'none',
+                          }}
+                        >
+                          {sharingFolder === folderName
+                            ? '…'
+                            : shareLinkCopiedFor === folderName
+                              ? 'Link copied!'
+                              : folderBookmarks.some((b) => b.isPublic)
+                                ? '🌐 Public · Share'
+                                : '🔒 Private · Share'}
+                        </button>
+                      </div>
                       {folderBookmarks.map((b) => (
                         <div key={b.id}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 0' }}>

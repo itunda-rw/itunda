@@ -338,6 +338,47 @@ class MapsService(
     fun getPublicFolder(userId: String, folderName: String): List<MapBookmark> =
         mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc(userId, folderName.trim())
 
+    // Real Kakao Map-style "구독" (subscribe) -- the other half of setFolderPublic/
+    // getPublicFolder's own real share feature. Sharing only ever let a recipient VIEW
+    // someone else's public folder (Android's itunda://maps/shared/... deep-link handler,
+    // 2026-08-14); nothing ever let them actually keep it, the way Kakao Map's real
+    // "그룹 공유&구독" lets a recipient follow a shared list into their own. A real copy
+    // taken at the moment of subscribing, not a live-synced reference -- MapBookmark has
+    // no cross-user pointer shape to support a cheap live subscription -- but re-calling
+    // this after the owner adds more public places to the same folder correctly picks up
+    // only the new ones, since it's idempotent on the same (userId, lat, lng) key
+    // addBookmark already keys on; already-imported places are silently skipped, not
+    // duplicated. Reuses the same rate-limit bucket addBookmark does -- this is still
+    // real bookmark-row creation, just bulk.
+    @Transactional
+    fun subscribeToSharedFolder(subscriberUserId: String, ownerUserId: String, folderName: String): Int {
+        if (subscriberUserId == ownerUserId) {
+            throw InvalidBookmarkFolderException("You can't subscribe to your own folder")
+        }
+        rateLimiter.checkLimit("maps:bookmark:$subscriberUserId", limit = 60, window = Duration.ofMinutes(1))
+        val trimmedFolder = folderName.trim().ifEmpty { DEFAULT_BOOKMARK_FOLDER }
+        val publicBookmarks = mapBookmarkRepository.findByUserIdAndFolderNameAndIsPublicTrueOrderByCreatedAtDesc(ownerUserId, trimmedFolder)
+        var copied = 0
+        for (place in publicBookmarks) {
+            if (mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude(subscriberUserId, place.latitude, place.longitude) != null) {
+                continue
+            }
+            mapBookmarkRepository.save(
+                MapBookmark(
+                    id = "map_bookmark_${UUID.randomUUID()}",
+                    userId = subscriberUserId,
+                    displayName = place.displayName,
+                    latitude = place.latitude,
+                    longitude = place.longitude,
+                    folderName = trimmedFolder,
+                    color = place.color,
+                ),
+            )
+            copied++
+        }
+        return copied
+    }
+
     fun getMyBookmarks(userId: String): List<MapBookmark> = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)
 
     companion object {

@@ -170,11 +170,34 @@ export interface MapBookmark {
   longitude: number;
   folderName: string;
   color: string;
+  isPublic?: boolean;
   createdAt: string;
 }
 
 export const fetchMyMapBookmarks = () =>
   apiFetch<{ success: boolean; bookmarks: MapBookmark[] }>('/api/v1/maps/bookmarks').then((r) => r.bookmarks);
+
+// Real Naver Map-style public/private folder + share (2026-08-04 on the backend) --
+// bank-mfe never got a client for this until now; only Android did. See
+// MapBookmark.isPublic's own doc comment on the backend for the full sourced account.
+export const setMapFolderPublic = (folderName: string, isPublic: boolean) =>
+  apiFetch<{ success: boolean; updatedCount: number }>('/api/v1/maps/bookmarks/folder-visibility', {
+    method: 'PATCH',
+    body: JSON.stringify({ folderName, isPublic }),
+  }).then((r) => r.updatedCount);
+
+// Deliberately unauthenticated on the backend -- see MapsController.sharedFolder's own
+// doc comment. Whoever opens a share link doesn't need to already be signed in.
+export const fetchSharedMapFolder = (ownerId: string, folderName: string) =>
+  apiFetch<{ success: boolean; bookmarks: MapBookmark[] }>(`/api/v1/maps/shared/${encodeURIComponent(ownerId)}/${encodeURIComponent(folderName)}`).then((r) => r.bookmarks);
+
+// Real Kakao Map-style "구독" (subscribe) -- the other half of sharing a folder: not just
+// viewing someone else's public list, but real-copying it into the caller's own
+// bookmarks. See MapsService.subscribeToSharedFolder's own doc comment on the backend.
+export const subscribeToSharedMapFolder = (ownerId: string, folderName: string) =>
+  apiFetch<{ success: boolean; copiedCount: number }>(`/api/v1/maps/shared/${encodeURIComponent(ownerId)}/${encodeURIComponent(folderName)}/subscribe`, {
+    method: 'POST',
+  }).then((r) => r.copiedCount);
 
 export const addMapBookmark = (displayName: string, latitude: number, longitude: number, folderName?: string, color?: string) =>
   apiFetch<{ success: boolean; bookmark: MapBookmark }>('/api/v1/maps/bookmarks', {

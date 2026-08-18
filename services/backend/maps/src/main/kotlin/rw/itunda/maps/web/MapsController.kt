@@ -196,6 +196,19 @@ class MapsController(private val mapsService: MapsService) {
     fun sharedFolder(@PathVariable userId: String, @PathVariable folderName: String): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "bookmarks" to mapsService.getPublicFolder(userId, folderName)))
 
+    // Real Kakao Map-style "구독" (subscribe) -- see MapsService.subscribeToSharedFolder's
+    // own doc comment. Authenticated (normal default gate): unlike the read-only GET
+    // above, this writes real bookmark rows into the CALLER's own account, so it can't be
+    // anonymous the way viewing a share link is.
+    @PostMapping("/shared/{userId}/{folderName}/subscribe")
+    fun subscribeToSharedFolder(
+        @PathVariable userId: String,
+        @PathVariable folderName: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "copiedCount" to mapsService.subscribeToSharedFolder(currentUser.userId, userId, folderName)),
+    )
+
     @GetMapping("/bookmarks")
     fun bookmarks(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "bookmarks" to mapsService.getMyBookmarks(currentUser.userId)))
