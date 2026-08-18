@@ -10830,3 +10830,63 @@ No deploy and no live-server verification attempted here -- reserved for the
 coordinating session per this task's own scoping rules. This closes the "escrow/
 reservation feature missing its full lifecycle" technique's eighth real find this
 session (Sections 170-177).
+
+**Coordinator re-verification, deploy, and real-money live-verification (2026-08-18)**:
+independently re-ran `./gradlew :eats:test --rerun-tasks` (bypassing Gradle's UP-TO-DATE
+cache), summed the real XML reports myself -- confirmed `tests="181" failures="0"
+errors="0"`, matching the fork's own claim exactly. Manually diffed the new
+`forceCancelAbandonedDelivery` ledger legs against `placeOrder`'s original hold legs
+(`buyerWallet DEBIT` + `eats_delivery_holding CREDIT` at order time) and the existing
+payout legs (`eats_delivery_holding DEBIT` + `riderWallet CREDIT` at delivery
+completion) -- the new refund legs (`buyerWallet CREDIT` + `eats_delivery_holding
+DEBIT`) are an exact, byte-identical reversal of the original hold, consistent with
+every other reversal in this codebase.
+
+Built and pushed `192.168.252.4:32000/itunda/backend:2026-08-18-eats-abandoned-delivery`.
+Note for future sessions: the correct build context/Dockerfile for this backend is
+`services/backend/Dockerfile` (built from `services/backend/`) -- an initial attempt
+using a nonexistent `services/backend/app/Dockerfile` path failed immediately with a
+clear "no such file" error and was corrected before any bad image was pushed. Deployed
+via `scripts/private-cloud-lib.sh`'s `cluster_kubectl`/`run_vm` helpers (the real
+`multipass exec itunda-dc-a -- ...` mechanism this cluster actually uses -- a raw `ssh
+ubuntu@192.168.252.4` attempt fails with host-key/publickey errors since Multipass
+manages its own SSH transport, not a locally-held key); rollout polled with the
+corrected single-remaining-pod check and confirmed genuinely complete (old pod
+Terminating, exactly one new pod `1/1 Running`).
+
+Live-verified with REAL MONEY MOVEMENT end to end: registered a fresh buyer + rider via
+the real `/auth/register` API, funded the buyer's real MAIN wallet to 100,000.00 RWF,
+registered the rider via the real `POST /api/v1/eats/riders/register` +
+`/riders/availability`, placed a real order against the real seeded `merchant_seed_1`
+("Heaven Kigali") / `product_seed_1` ("Beef brochettes") via `POST /api/v1/eats/orders`
+-- real distance-based `deliveryFee=3388.25` (11.55km), buyer wallet correctly debited
+to exactly 93,111.75 (100,000 - 6,888.25 total). Fast-forwarded the order to
+`READY_FOR_PICKUP` via direct DB update (the merchant-accept flow itself is
+pre-existing, already-tested code, not what this section changes) then had the rider
+claim it through the real `POST /api/v1/eats/orders/{id}/claim` endpoint -- real
+`RIDER_ASSIGNED` transition with the real `riderId` set. Backdated `updated_at` 65
+minutes via direct DB `UPDATE` to simulate abandonment.
+
+The REAL PRODUCTION CRON (`EatsOrderAbandonedDeliveryScheduler`, `fixedDelay=60000`)
+fired on its own and force-cancelled the order before the manual admin trigger was even
+called -- the manual `POST /api/v1/eats/orders/process-abandoned-deliveries` call
+returned `processedCount:0` because the real scheduler had already resolved it seconds
+earlier, the strongest possible live-verification proof (unprompted real cron
+execution, not a curl-triggered code path). Confirmed via direct DB query: order
+`status=CANCELLED`, `refund_transaction_id` set to a real new ledger transaction,
+`rider_id` still correctly attributed. Buyer wallet confirmed refunded to exactly
+96,500.00 (93,111.75 + 3,388.25 delivery-fee refund, exact match, no over/under-refund).
+Confirmed both real notifications were created: the buyer's "Order cancelled... refunded"
+notification, and the rider's "Delivery cancelled... You can accept new deliveries
+again" notification correctly addressed to the rider's real `userId` (not `Rider.id`) --
+confirming the near-miss the fork itself caught and fixed pre-ship was genuinely
+correct in production. Re-triggered the manual endpoint a second time: `processedCount:0`,
+buyer wallet unchanged at exactly 96,500.00 -- confirmed idempotent, no double-refund.
+
+Cleaned up the local Docker image after a successful push (`docker rmi` +
+`docker image prune -f`, reclaimed 616.3MB). This closes the ninth section overall in
+the money-safety verification chain for this technique and the 8th consecutive
+real bug found by it (Sections 170-177) -- the technique has now been reused enough
+times in a row that the next research pass should treat it as likely near-exhausted
+and prioritize the ecosystem-parity/concurrency/IDOR fallbacks named in Section 177's
+own fork report.
