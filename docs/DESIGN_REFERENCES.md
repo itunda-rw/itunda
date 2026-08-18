@@ -12995,3 +12995,68 @@ already-verified endpoints, so no cluster deploy was needed or attempted.
 *Shipped: `android/core/network/.../ApiService.kt`, `android/features/maps/impl/.../MapsScreen.kt`,
 `ios/Core/Network/Sources/NetworkClient.swift`, `ios/App/Sources/ContentView.swift`,
 `ios/App/Sources/MapScreenView.swift`.*
+
+## 195. BankHubScreen's real Toss Bank 카드/관리-style header tabs -- closing Section 193's own deliberately deferred structural gap
+
+Direct user request: "don't stop, keep going there are always things to improve right,"
+continuing the standing autonomous rhythm. Two parallel forks (this section's own
+predecessor and a Maps live-location-sharing attempt) both hit the account's real
+session limit before making any edits (`git status` confirmed clean, nothing to
+salvage) -- picked up the work directly rather than relaunching into the same limit,
+per the established [[feedback_fork_rate_limit_recovery]] discipline extended to a
+session-level (not just weekly) limit.
+
+### The gap, and how it was resolved
+
+Section 193 shipped two of Section 65's three named BankHubScreen-vs-Toss-Bank gaps
+(icon richness, inline rates) and explicitly deferred the third: "header tabs (Toss's
+real 카드/관리 structure) deliberately left open -- a materially bigger structural
+change... than a single pass... should attempt." Read `BankHubScreen`'s actual current
+structure (`android/app/.../ItundaAppScreen.kt`, ~line 2152) directly before designing
+anything: an always-scrolling `LazyColumn` with a wallet-balance card, a total-saved
+card, an auto-transfer row, then three `ShellSection`s (Save & grow, Borrow, Insights)
+and a deposit-protection card.
+
+A literal "Cards/Manage" split doesn't fit -- BankHubScreen has no card-holding content
+to split on ("Cards" belongs to `CardScreen`, a different real screen entirely). Rather
+than force an ill-fitting label, mapped the same real underlying split Toss's own 카드/
+관리 pattern represents -- "what you already hold" vs. "what you can apply for" -- onto
+itunda's own actual existing sections: an **Accounts** tab (Save & grow, Insights,
+deposit protection -- the user's own existing money) and a **Borrow** tab (the credit
+products). The balance/total-saved/auto-transfer summary stays visible above the tabs
+regardless of selection, matching Toss's own real pattern of an always-shown account
+header sitting above tabbed content, not itself being tab-specific.
+
+Reused the exact real pill-segmented-picker convention `ShopScreen`'s own
+`PayMerchantMode` picker already established (active: brand-color fill + white text;
+inactive: `surfaceSoft` + `textPrimary`, `weight(1f)` items in a `Row`) rather than
+inventing a new tab visual -- the same "match an existing real convention already in
+this codebase" discipline the original header-tab-port fork prompt itself called for.
+
+### Live verification, on a real physical device against the real deployed backend
+
+Built `:app:assembleDebug` with `-PapiBaseUrl=http://localhost:30081/` (the debug
+default is the emulator-only `10.0.2.2` alias, unreachable from a physical device --
+confirmed via a real "You are offline" banner on first install before diagnosing this),
+re-established the device's `adb reverse tcp:30081 tcp:30081` against the Mac's
+existing `socat` relay to `192.168.252.4:30081`, reinstalled, and logged in as the
+seeded demo user (`+250788123456`) -- real wallet balance `RWF 19,157` matched exactly
+what Section 189's own live send-money verification had left it at.
+
+Navigated into `itunda Bank` for real: the **Accounts** tab renders active (blue fill)
+by default, showing real live data -- Interest jar "7.5% annual · RWF 51,491 · RWF
+1,049 earned so far", Emergency Fund "74%", the three fixed-term products with
+Section 193's own real icons/rates ("26-week savings -- 5.0% base rate", "31-day
+savings -- up to 10.0% bonus rate", "12-month deposit -- 2.8%/yr"), confirming Section
+193's own fixes are genuinely live on this build too, not just claimed. Tapping
+**Borrow** correctly swapped the active-tab highlight and the content below it to show
+only "Get a loan" / "Harvest advance" (with Section 193's real `Agriculture` icon) /
+"VUP Financial Services" (real `Shield` icon) -- Save & grow/Insights content correctly
+disappeared, not just visually deprioritized. A real, on-device, real-data confirmation
+that the tab-gated `LazyColumn` items actually gate, not just compile.
+
+No backend changes -- pure Compose presentation-layer reorganization over data that
+already existed and already worked; no deploy needed.
+
+*Shipped: `android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt`,
+`android/app/src/main/res/values{,-rw,-fr}/strings.xml`. Commit `773b0f6b`.*
