@@ -12694,3 +12694,82 @@ already named (peak `66.95`). Rather than compound a cluster already under real 
 with another Gradle-in-Docker build, this is left built, tested, committed, and pushed,
 but not yet deployed -- a second named real follow-up alongside Section 190's own
 `c5dc2fff`, both awaiting a healthier cluster window.
+
+## 192. Focused IDOR + concurrency audit of Sections 182-191's new backend code -- one real bug found and fixed
+
+Not a fresh full sweep (that's already been done 4 times, per the concurrency/IDOR audit
+memories, "still clean on newest code" as of their last pass) -- scoped tightly to the
+real new surface area this session actually added across Sections 182-191, code no
+prior sweep has ever seen: `P2pService.resolveRecipient` (182), `P2pDelayedTransferService`
+(183), `TermsAcceptance`/`AuthService.register`'s terms path (184), `P2pTransferLimitService`
+(186), `MerchantLoyaltyAccount`/`MerchantLoyaltyPointsService` (188), bank-mfe's rebuilt
+`TransferFlow` (189), `MapsService.subscribeToSharedFolder` (190), and
+`MerchantLoyaltyPointsExpiryScheduler` (191).
+
+**Methodology**: read each piece of actual current code directly (not memory's summary
+of it), checked two lenses this session already has a real track record with -- IDOR
+(does any endpoint accept a caller-supplied ID without verifying ownership?) and
+concurrency (unguarded scheduler loops, missing `@Version`/locking on a shared balance,
+TOCTOU gaps between a check and the write that depends on it).
+
+**IDOR, checked with extra care given the shape**: `POST /api/v1/maps/shared/{userId}/
+{folderName}/subscribe` puts another user's real ID directly in the URL path -- the
+classic IDOR shape. Confirmed clean by reading `MapsService.subscribeToSharedFolder`
+directly: the path's `userId` is only ever used as a READ source, and only against rows
+already filtered `isPublic = true`; every WRITE targets `subscriberUserId`, which the
+controller always sources from `currentUser.userId` (`@AuthenticationPrincipal`), never
+from the path. `P2pDelayedTransferService.cancel` already uses the established
+`findByIdAndSenderUserId` ownership-check pattern. `GET /merchant/{merchantId}/
+loyalty-balance` uses `currentUser.userId` for the sensitive `customerId` param;
+`merchantId` in the path is a public store identifier, not a protected resource.
+`P2pService.resolveRecipient` is real-rate-limited (40/hour) against enumeration, with a
+real self-payment guard. Registration's terms path has no cross-user surface at all
+(pre-auth, a user only ever accepts their own terms during their own registration).
+Everything in scope: clean.
+
+**Concurrency, one real bug found and fixed**: `P2pTransferLimitService.enforce`'s
+daily-cumulative check is a live `SUM()` over transaction rows with no lock -- read
+directly, then cross-referenced against `project_itunda_concurrency_audit.md`'s own
+memory, which named the *identical* bug class already found and fixed once before, in
+`CardService.chargeWithCard` (2026-08-02: a live SUM() daily/monthly spend check, fixed
+by locking the card row via `findByIdForUpdate` before the sum-check-then-insert). Two
+real concurrent transfers by the same sender could both read the same pre-transfer daily
+total and both pass, together exceeding the real 2,500,000 RWF daily cap this class
+exists to enforce -- a genuine, reachable gap in a brand-new real money-safety limit,
+not a theoretical one. Fixed the identical proven way: `walletRepository
+.findByIdForUpdate(senderWalletId)` locks the sender's own wallet row before the sum is
+read, serializing a second concurrent call for the same sender behind the first
+transfer's already-committed row. The same row `LedgerService.postLedgerTransaction`
+already locks moments later regardless (same transaction, same connection -- re-
+acquiring an already-held InnoDB row lock is a no-op), so this adds no new lock scope or
+deadlock risk. Both call sites (`P2pService.sendDirect`, `P2pDelayedTransferService
+.sendDelayed`) updated to pass the already-in-scope wallet ID.
+
+**Deliberately not fixed in the same pass**: the identical race in
+`FamilyLinkService.enforceSpendLimit` -- pre-existing code from before this session, out
+of this audit's explicit scope, and it's called *before* `P2pTransferLimitService
+.enforce` in both `sendDirect`/`sendDelayed`, so this fix doesn't retroactively cover it.
+Named as a real, separate follow-up rather than silently left unmentioned -- added to
+`project_itunda_concurrency_audit.md` directly.
+
+Real test evidence, independently re-run: `./gradlew :p2p:test --rerun-tasks` real XML
+confirmed `tests="75"` (was 74) `failures="0" errors="0"`, including a new regression
+test (`P2pTransferLimitServiceTest`) proving `walletRepository.findByIdForUpdate` is
+actually called, not just that the method signature compiles with an extra unused
+parameter. Ledger-seed guard clean (no `LedgerAccountType` touched).
+
+**Deploy deliberately deferred, same as Sections 190/191**: the primary node's load
+average was still `15.97` (`uptime`) when this was ready to ship -- down from the
+`40-66` range Sections 190/191 saw, a real sign the cluster is recovering, but still far
+past healthy for a 2-vCPU node. Left built, tested, committed, and pushed as a third
+real fix now waiting alongside `c5dc2fff` (Section 190) and `3a8165e8` (Section 191) for
+a genuinely healthy deploy window, rather than the coordinator unilaterally deciding
+"recovering" is "recovered enough."
+
+**Honest scope boundary**: this fix is proven by a real unit-level regression test
+confirming the lock call happens, resting on the already-production-proven
+`CardService.chargeWithCard` precedent for the locking mechanism itself -- not a fresh
+live concurrent-load reproduction against the real deployed cluster this pass, since no
+safe deploy was possible under the load conditions above. A live two-concurrent-request
+reproduction (matching the rigor `CardService`'s own original fix used) is a reasonable
+follow-up once this ships to a healthy cluster.
