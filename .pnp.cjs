@@ -1191,6 +1191,7 @@ const RAW_RUNTIME_STATE =
           ["@suspensive/react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:3.21.3"],\
           ["@toss/use-funnel", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:1.4.2"],\
           ["@types/node", "npm:24.13.2"],\
+          ["@types/qrcode", "npm:1.5.6"],\
           ["@types/react", "npm:19.2.17"],\
           ["@types/react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.3"],\
           ["@vitejs/plugin-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:6.0.3"],\
@@ -1201,6 +1202,7 @@ const RAW_RUNTIME_STATE =
           ["maplibre-gl", "npm:4.7.1"],\
           ["overlay-kit", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:1.9.0"],\
           ["oxlint", "virtual:b8ff5402e982b8ed9596db3ac35c94f3ce99202243034da986f5ead687ac240a0f7cc0d2349ef0d4a8db361a93ff6303b573638f1423c9aee0e1f39970e14466#npm:1.73.0"],\
+          ["qrcode", "npm:1.5.4"],\
           ["react", "npm:19.2.7"],\
           ["react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.7"],\
           ["typescript", "patch:typescript@npm%3A6.0.3#optional!builtin<compat/typescript>::version=6.0.3&hash=5786d5"],\

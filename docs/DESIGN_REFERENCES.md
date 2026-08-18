@@ -13393,3 +13393,129 @@ completed with the exact expected balance change (`8,557` -> `8,457`), and tappi
 "Done" returned cleanly to the underlying Pay tab.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`. Commit `6ab33e48`.*
+
+## 202. FullScreenFlow rollout to the remaining Bank forms, then a real user correction: QR scan for in-person payments, share-links for remote invites
+
+### FullScreenFlow rollout (direct continuation of Section 201)
+
+Applied the same `FullScreenFlow` + pinned `bottomCTA` treatment proven on `TransferFlow`
+to the three other step-flow forms built in Section 200: `CreateGoalForm`,
+`CreateIkiminaForm`, `CreateWeeklySavingsPlanForm`, `CreateGrow31SavingsPlanForm`. Each
+step's whole return is now wrapped in `<form onSubmit>` at the call site (outside
+`FullScreenFlow`'s own JSX) with the submit button passed as `bottomCTA` with
+`type="submit"`, preserving real Enter-key submission while the button stays visually
+pinned to the viewport bottom -- identical pattern to Section 201, no new design
+decisions needed.
+
+### A real user correction, mid-session: "no simplicity no product"
+
+The user then gave direct design feedback that reframed a much bigger, real gap: "other
+example of by UX is asking user code, instead use qr code, barcode, using itunda talk
+like kakao, or search for other simplicity way to solve problem but never design
+product without thinking about how hard is gonna be for users to use that product, no
+simplicity no product."
+
+A grep across bank-mfe found four real manual-code entry points, all of which asked the
+user to type or read out a raw code as the ONLY path -- copy in `PayByCodeCard` even
+said "No scanner handy? Enter the code" as if a scanner existed, but none ever did:
+
+1. `PayByCodeCard` -- pay a merchant's per-sale payment code (`collectPayment`).
+2. `PayByStaticQrCard` -- pay a merchant's permanent code (`payByStaticQr`), literally
+   named "static QR" with zero actual QR handling anywhere.
+3. `OpenChatCard` -- join a KakaoTalk-style open chat by 6-character code
+   (`joinGroupByCode`).
+4. `GroupOrderView` -- join a Baemin 함께주문-style together-order by code
+   (`joinGroupEatsOrder`).
+
+Built a shared `QrScanCamera` component: the standard `BarcodeDetector` API (real in
+Chrome/Chromium, which is what itunda's own physical test devices run) polling video
+frames via `getUserMedia({ facingMode: 'environment' })`, falling back to a manual-entry
+button when unsupported or camera access is denied. Reused the existing real
+`itunda://pay?intentId=...` / `itunda://pay-static?merchantId=...` QR payload convention
+already established in `merchant-mfe`/`pay-checkout` (`paymentIntentQrPayload`/
+`staticQrPayload`) via a small `parseQrParam` helper that accepts either the full URI or
+a bare id. Wired scan-first UI into `PayByCodeCard` (skipped when Face Pay is enrolled,
+since that path is deliberately a direct code+face flow with no scan step) and
+`PayByStaticQrCard`.
+
+### A second, sharper correction: QR only works face to face
+
+Before wiring the same camera-scan pattern into `OpenChatCard`/`GroupOrderView`, the
+user caught a real flaw in that plan: "if you send me qr code to scan and it's in my
+phone that I'm using how I'm suppose to scan in it that's when you need to find other
+simplicity way to solve problem." A QR code only works between two people physically in
+front of each other -- you cannot point your own camera at your own screen. Payment QR
+is genuinely a co-located scenario (paying a merchant you're standing in front of); an
+Open Chat or together-order invite is normally sent to a friend who ISN'T in the room,
+over itunda talk or any messenger -- exactly Kakao's own real invite pattern: a
+tap-to-join link sent in chat, not a QR held up to a camera.
+
+Built three shared helpers reusing the existing `?tab=` deep-link convention
+(`readTabFromUrl`, Section 41):
+- `buildJoinUrl(tab, param, code)` -- constructs a real shareable URL that both
+  switches to the right tab and carries the join code.
+- `shareOrCopyLink(url, title, text)` -- `navigator.share()` (opens the real native OS
+  share sheet -- itunda talk, SMS, WhatsApp, anywhere), falling back to
+  `navigator.clipboard.writeText` if unsupported or cancelled.
+- `readAndClearUrlParam(key)` -- reads and strips a join param from the URL once, so a
+  tapped link joins exactly once and leaves a clean URL behind.
+
+`OpenChatCard`'s "created" screen and `GroupOrderView`'s host screen now lead with a
+"Share invite link" button; the QR image (still real, still generated via the `qrcode`
+package now added to bank-mfe's own dependencies) is demoted to "Or, if they're standing
+right next to you," and the raw code is the last-resort "Or read them this code."
+Joining got a matching `useEffect` in each component that calls `readAndClearUrlParam`
+on mount and auto-completes the join with zero typing or scanning.
+
+### Two real bugs caught by live click-through, not code review
+
+1. **Deep link landed on the wrong sub-tab.** `MessagesView`'s Direct/Groups/Friends
+   split and `EatsView`'s Order/Together/Deliver/Dine-in split are each their own local
+   `useState`, not URL-synced -- unlike the top-level `?tab=` param. A tapped
+   `?tab=MESSAGES&joinChatCode=...` link landed on Messages, but silently on the Direct
+   sub-tab, where `OpenChatCard` (and its own auto-join effect) never even mounts. Fixed
+   with a lazy `useState` initializer in both `MessagesView` and `EatsView` that peeks at
+   the URL (without consuming the param -- the child component's own effect does that)
+   and pre-selects Groups / Together order when the relevant join param is present.
+2. **`GroupOrderView`'s `detail` was never populated on create or join** -- only
+   `handleFinalize` ever called `refresh()`. Pre-existing gap, invisible before this pass
+   because nothing on the host screen depended on `detail` being non-null; the new QR/
+   share-button code made it visible immediately (blank header, no QR, no share button
+   at all). Fixed with a `useEffect` keyed on `groupOrderId` that calls `refresh` as soon
+   as a group order exists.
+
+### Live verification against the real deployed backend
+
+`yarn workspace bank-mfe run build` and `accessibility-lint.py` both clean throughout.
+Real browser click-through against the live cluster, logged in as the seeded demo user:
+- `PayByStaticQrCard`'s scan-first UI renders correctly (`QrScanCamera` reaches
+  "Starting camera..." -- `BarcodeDetector` is genuinely supported -- with the "No
+  camera? Enter merchant ID instead" fallback fully functional); actual QR *detection*
+  isn't verifiable in this headless-automation environment (no real camera feed), a real,
+  disclosed limitation of this pass, not a gap in the code.
+- Created a real open chat ("QR test chat 202") -- real QR image and share button
+  rendered with the correct visual hierarchy (share primary, QR secondary, code
+  fallback).
+- `navigator.share()` and `navigator.clipboard.writeText()` both genuinely open native
+  OS-level dialogs that block CDP automation entirely (confirmed via a 45-second
+  `Runtime.evaluate` timeout, recovered with Escape) -- direct evidence the Web Share API
+  call is real and functioning, just not something desktop browser automation can click
+  through; this is expected, correct behavior for a real phone.
+- Navigated directly to the real shared join link
+  (`?tab=MESSAGES&joinChatCode=ZZ5MVD`): landed on Groups, auto-joined "QR test chat
+  202" with zero typing or scanning, and opened straight into the real conversation
+  thread.
+- Created a real together-order (Heaven Kigali, real join code `D8P6XG`) -- QR image,
+  share button, and real "Host -- 0 RWF" participant row all rendered after the
+  `detail`-population fix. Navigated directly to
+  `?tab=EATS&joinEatsCode=D8P6XG`: landed on Together order and the real order was
+  auto-rejoined with zero typing or scanning.
+
+### Standing memory
+
+Saved as `feedback_no_manual_codes_ux.md`: never ship a flow whose primary path is
+typing/reading a code; triage by physical situation -- in-person -> camera scan,
+remote -> share link, both -> code as last resort.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`services/micro-frontends/bank-mfe/package.json` (added `qrcode`/`@types/qrcode`).*

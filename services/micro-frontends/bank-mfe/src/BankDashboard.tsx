@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import QRCode from 'qrcode';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { useCountUp } from './hooks/useCountUp';
@@ -6509,6 +6510,133 @@ function couponDiscountLabel(c: MerchantCouponView['coupon']) {
   return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`;
 }
 
+// Real fix for a genuine "ask the user to type a code" anti-pattern (2026-08-19):
+// PayByCodeCard's own copy already said "No scanner handy? Enter the code" as if a
+// scanner existed, but no client anywhere in bank-mfe ever actually opened the camera --
+// Android already has real camera QR scanning (CameraQrScanner.kt) but the web app only
+// ever had the typed-code fallback. Uses the standard BarcodeDetector API (real in
+// Chrome/Chromium-based browsers, which is what itunda's own physical test devices run)
+// with getUserMedia; falls back to manual entry when unsupported or camera access is
+// denied, matching Kakao/Toss's own real "scan first, code is the fallback" hierarchy.
+function QrScanCamera({ onDetect, onUnavailable }: { onDetect: (value: string) => void; onUnavailable: () => void }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [status, setStatus] = useState<'starting' | 'scanning'>('starting');
+
+  useEffect(() => {
+    if (!('BarcodeDetector' in window)) {
+      onUnavailable();
+      return;
+    }
+    let stream: MediaStream | null = null;
+    let raf = 0;
+    let cancelled = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BarcodeDetector isn't in TS's lib.dom yet
+    const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+
+    const tick = async () => {
+      if (cancelled || !videoRef.current) return;
+      try {
+        const codes = await detector.detect(videoRef.current);
+        if (codes.length > 0) {
+          onDetect(codes[0].rawValue);
+          return;
+        }
+      } catch {
+        // Frame not ready yet -- keep polling.
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then((s) => {
+        if (cancelled) { s.getTracks().forEach((t) => t.stop()); return; }
+        stream = s;
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+          videoRef.current.play().catch(() => {});
+        }
+        setStatus('scanning');
+        raf = requestAnimationFrame(tick);
+      })
+      .catch(() => onUnavailable());
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onDetect/onUnavailable are stable per mount, re-subscribing on every render would restart the camera
+  }, []);
+
+  return (
+    <div style={{ position: 'relative', width: '100%', aspectRatio: '1', borderRadius: '16px', overflow: 'hidden', background: '#111', marginBottom: '10px' }}>
+      <video ref={videoRef} muted playsInline aria-label="Camera preview for QR scanning" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      <div style={{ position: 'absolute', inset: '14%', border: '3px solid var(--itunda-blue-500)', borderRadius: '16px', pointerEvents: 'none' }} />
+      {status === 'starting' && (
+        <p style={{ position: 'absolute', bottom: '10px', left: 0, right: 0, textAlign: 'center', fontSize: '12px', color: '#fff' }}>
+          Starting camera…
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Real itunda://pay?intentId=... / itunda://pay-static?merchantId=... QR payload format
+// -- see merchant-mfe/src/lib/merchant.ts's own paymentIntentQrPayload/staticQrPayload.
+// A scanned code is either that full URI or (for a merchant who printed just the raw
+// code) the bare id -- accept both rather than forcing the URI shape on the user.
+function parseQrParam(raw: string, key: string): string {
+  const match = raw.match(new RegExp(`[?&]${key}=([^&]+)`));
+  return match ? decodeURIComponent(match[1]) : raw.trim();
+}
+
+// Real correction (2026-08-19, same session as QrScanCamera above): a QR code only
+// works between two people physically in front of each other -- someone can't point
+// their camera at a code that's on their OWN phone screen. QR-scanning is genuinely
+// right for the payment cards above (paying a merchant you're standing in front of),
+// but Open Chat/Group Eats "join" invites are normally sent to a friend who ISN'T in
+// the room, over itunda talk or any other messenger -- exactly Kakao's own real invite
+// pattern (a tap-to-join link sent in chat, not a QR held up to a camera). Reuses the
+// existing `?tab=` deep-link convention (see readTabFromUrl's own doc comment) so the
+// link both switches to the right tab AND carries the join code; the joining screen's
+// own mount effect below strips the param and completes the join automatically.
+function buildJoinUrl(tab: Tab, param: string, code: string): string {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set(TAB_QUERY_PARAM, tab);
+  url.searchParams.set(param, code);
+  return url.toString();
+}
+
+async function shareOrCopyLink(url: string, title: string, text: string): Promise<'shared' | 'copied' | 'failed'> {
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url });
+      return 'shared';
+    } catch {
+      // User cancelled the native share sheet, or it's unsupported for this payload --
+      // fall through to clipboard rather than treating cancel as an error.
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    return 'copied';
+  } catch {
+    return 'failed';
+  }
+}
+
+function readAndClearUrlParam(key: string): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get(key);
+  if (value) {
+    params.delete(key);
+    const next = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${next ? `?${next}` : ''}`);
+  }
+  return value;
+}
+
 function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPaymentResult) => void; facePayEnrolled: boolean }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -6528,11 +6656,19 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   const [eligibleCoupons, setEligibleCoupons] = useState<MerchantCouponView[]>([]);
   const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
 
-  const payDirect = async (couponId?: string) => {
+  // Real camera-scan support (2026-08-19): scanning sets `code` state AND passes the
+  // scanned value straight through as an explicit param, since a scan's payDirect/
+  // preview call happens in the same tick as setCode and can't rely on the (still stale)
+  // `code` closure -- the typed-code path still reads from state via handleConfirm below,
+  // which only ever runs after a real render (the preview step) so state is fresh there.
+  const [scanUnavailable, setScanUnavailable] = useState(false);
+  const [manualEntry, setManualEntry] = useState(false);
+
+  const payDirect = async (rawCode: string, couponId?: string) => {
     setNeedsDeviceVerification(false);
     setSubmitting(true);
     try {
-      const result = facePayEnrolled ? await collectWithFacePay(code.trim()) : await collectPayment(code.trim(), couponId);
+      const result = facePayEnrolled ? await collectWithFacePay(rawCode) : await collectPayment(rawCode, couponId);
       onPaid(result);
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
@@ -6545,19 +6681,21 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitCode = async (rawCode: string) => {
+    const trimmed = rawCode.trim();
+    if (!trimmed) return;
+    setCode(trimmed);
     setError(null);
     if (facePayEnrolled) {
-      await payDirect();
+      await payDirect(trimmed);
       return;
     }
     setSubmitting(true);
     try {
-      const r = await previewPaymentIntent(code.trim());
+      const r = await previewPaymentIntent(trimmed);
       const eligible = r.coupons.filter((c) => c.eligible && !c.alreadyRedeemed);
       if (eligible.length === 0) {
-        await payDirect();
+        await payDirect(trimmed);
       } else {
         setPreview(r);
         setEligibleCoupons(eligible);
@@ -6568,7 +6706,14 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
     }
   };
 
-  const handleConfirm = () => payDirect(selectedCouponId ?? undefined);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submitCode(code);
+  };
+
+  const handleScan = (raw: string) => void submitCode(parseQrParam(raw, 'intentId'));
+
+  const handleConfirm = () => payDirect(code.trim(), selectedCouponId ?? undefined);
 
   const handleCancel = () => {
     setPreview(null);
@@ -6579,16 +6724,35 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
 
   return (
     <div className="itunda-card" style={{ marginBottom: '16px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay by code</h3>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>{facePayEnrolled ? 'Pay by code' : 'Scan to pay'}</h3>
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
         {facePayEnrolled
           ? 'Face Pay is on — enter the code the merchant shows you to authorize with your face.'
-          : 'No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.'}
+          : manualEntry
+            ? 'Enter the payment code the merchant shows you.'
+            : 'Point your camera at the merchant\'s QR code to pay instantly and earn cashback.'}
       </p>
       {needsDeviceVerification ? (
         // Real fix (2026-08-10) -- see TransferFlow's own identical fix for the full
         // account. handleConfirm -> payDirect resets needsDeviceVerification itself.
         <DeviceStepUpPrompt onVerified={handleConfirm} onCancel={() => setNeedsDeviceVerification(false)} />
+      ) : !facePayEnrolled && !manualEntry && !preview ? (
+        <>
+          {!scanUnavailable && !submitting && (
+            <QrScanCamera onDetect={handleScan} onUnavailable={() => setScanUnavailable(true)} />
+          )}
+          {submitting && (
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '10px' }}>Looking up code…</p>
+          )}
+          <button
+            type="button"
+            className="itunda-btn itunda-btn-secondary"
+            style={{ width: '100%' }}
+            onClick={() => setManualEntry(true)}
+          >
+            {scanUnavailable ? 'Enter code manually' : 'No camera? Enter code instead'}
+          </button>
+        </>
       ) : preview ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <p style={{ fontSize: '14px', fontWeight: 700 }}>{preview.businessName}</p>
@@ -6615,19 +6779,32 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
-          <input
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="Payment code"
-            required
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-          />
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-            {submitting ? (facePayEnrolled ? 'Authorizing…' : 'Paying…') : facePayEnrolled ? '😊 Pay' : 'Pay'}
-          </button>
-        </form>
+        <>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Payment code"
+              required
+              autoFocus
+              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+            />
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
+              {submitting ? (facePayEnrolled ? 'Authorizing…' : 'Paying…') : facePayEnrolled ? '😊 Pay' : 'Pay'}
+            </button>
+          </form>
+          {!facePayEnrolled && !scanUnavailable && (
+            <button
+              type="button"
+              className="itunda-btn itunda-btn-secondary"
+              style={{ width: '100%', marginTop: '10px' }}
+              onClick={() => setManualEntry(false)}
+            >
+              Scan a QR code instead
+            </button>
+          )}
+        </>
       )}
       {error && !preview && (
         <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>
@@ -6646,11 +6823,14 @@ function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) 
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [scanUnavailable, setScanUnavailable] = useState(false);
+  const [manualEntry, setManualEntry] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const numericAmount = Number(amount);
+    if (!merchantId.trim()) { setError('Scan or enter the merchant\'s code first.'); return; }
     if (!numericAmount || numericAmount <= 0) { setError('Enter a valid amount.'); return; }
     setSubmitting(true);
     try {
@@ -6663,25 +6843,53 @@ function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) 
     }
   };
 
+  const handleScan = (raw: string) => {
+    setMerchantId(parseQrParam(raw, 'merchantId'));
+    setManualEntry(true);
+  };
+
   return (
     <div className="itunda-card" style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay a merchant's static QR</h3>
       <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '14px' }}>
-        For a merchant with one permanent code (like a market stall) -- enter their merchant ID and how much you're paying.
+        For a merchant with one permanent code (like a market stall) -- scan their code, then say how much you're paying.
       </p>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <input
-          type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)} placeholder="Merchant ID" required
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
-        <div style={{ display: 'flex', gap: '10px' }}>
+      {!manualEntry && !merchantId ? (
+        <>
+          {!scanUnavailable && <QrScanCamera onDetect={handleScan} onUnavailable={() => setScanUnavailable(true)} />}
+          <button
+            type="button"
+            className="itunda-btn itunda-btn-secondary"
+            style={{ width: '100%' }}
+            onClick={() => setManualEntry(true)}
+          >
+            {scanUnavailable ? 'Enter merchant ID manually' : 'No camera? Enter merchant ID instead'}
+          </button>
+        </>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <input
-            type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)" required
-            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+            type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)} placeholder="Merchant ID" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
           />
-          <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>{submitting ? 'Paying…' : 'Pay'}</button>
-        </div>
-      </form>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)" required autoFocus
+              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+            />
+            <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>{submitting ? 'Paying…' : 'Pay'}</button>
+          </div>
+          {!scanUnavailable && (
+            <button
+              type="button"
+              className="itunda-btn itunda-btn-secondary"
+              onClick={() => { setManualEntry(false); setMerchantId(''); }}
+            >
+              Scan a QR code instead
+            </button>
+          )}
+        </form>
+      )}
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>}
     </div>
   );
@@ -7419,8 +7627,59 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
   const [name, setName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [created, setCreated] = useState<{ id: string; joinCode: string } | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real fix (2026-08-19): joining used to require typing the raw 6-character code by
+  // hand -- the exact "asking user code, instead use qr code" anti-pattern. Reuses the
+  // same itunda://... QR payload convention as payments (see QrScanCamera's own doc
+  // comment); the code stays as a real fallback for whoever's sharing over voice/text.
+  const [scanUnavailable, setScanUnavailable] = useState(false);
+  const [manualJoinEntry, setManualJoinEntry] = useState(false);
+
+  useEffect(() => {
+    if (created) {
+      QRCode.toDataURL(`itunda://join-chat?code=${created.joinCode}`, { width: 220, margin: 1 }).then(setQrDataUrl).catch(() => setQrDataUrl(null));
+    } else {
+      setQrDataUrl(null);
+    }
+  }, [created]);
+
+  const submitJoinCode = async (rawCode: string) => {
+    const trimmed = rawCode.trim();
+    if (!trimmed) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const group = await joinGroupByCode(trimmed);
+      setJoinCode('');
+      setMode('closed');
+      onJoined(group.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No open chat found for this code.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleScanJoin = (raw: string) => void submitJoinCode(parseQrParam(raw, 'code'));
+
+  // Real remote-invite fix (2026-08-19) -- see buildJoinUrl's own doc comment: a friend
+  // who taps a shared itunda link (sent via itunda talk, SMS, anywhere) lands here with
+  // ?joinChatCode=... already in the URL and should join immediately, no typing or
+  // scanning at all.
+  useEffect(() => {
+    const incoming = readAndClearUrlParam('joinChatCode');
+    if (incoming) void submitJoinCode(incoming);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount only
+  }, []);
+
+  const [shareStatus, setShareStatus] = useState<'idle' | 'shared' | 'copied' | 'failed'>('idle');
+  const handleShare = async (code: string) => {
+    const url = buildJoinUrl('MESSAGES', 'joinChatCode', code);
+    const result = await shareOrCopyLink(url, 'Join my open chat on itunda', `Join my open chat on itunda — tap to join instantly.`);
+    setShareStatus(result);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -7437,20 +7696,9 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
     }
   };
 
-  const handleJoin = async (e: React.FormEvent) => {
+  const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      const group = await joinGroupByCode(joinCode.trim());
-      setJoinCode('');
-      setMode('closed');
-      onJoined(group.id);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No open chat found for this code.');
-    } finally {
-      setSubmitting(false);
-    }
+    void submitJoinCode(joinCode);
   };
 
   if (mode === 'closed') {
@@ -7460,7 +7708,7 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
           🌐 Start an open chat
         </button>
         <button className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('join')}>
-          🔑 Join by code
+          📷 Join an open chat
         </button>
       </div>
     );
@@ -7468,10 +7716,18 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
 
   if (created) {
     return (
-      <div className="itunda-card" style={{ marginBottom: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Share this code so anyone can join — no invite needed</p>
-        <p style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '4px' }}>{created.joinCode}</p>
-        <button className="itunda-btn itunda-btn-primary" onClick={() => { const id = created.id; setCreated(null); setMode('closed'); onCreated(id); }}>
+      <div className="itunda-card" style={{ marginBottom: '16px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Send friends a link — tapping it joins instantly, wherever they are</p>
+        <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={() => handleShare(created.joinCode)}>
+          🔗 Share invite link
+        </button>
+        {shareStatus === 'copied' && <p style={{ fontSize: '12px', color: 'var(--itunda-green)' }}>Link copied</p>}
+        {shareStatus === 'failed' && <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }}>Could not copy the link — try the code below.</p>}
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '8px' }}>Or, if they're standing right next to you:</p>
+        {qrDataUrl && <img src={qrDataUrl} alt={`QR code to join ${created.joinCode}`} width={140} height={140} style={{ borderRadius: '12px' }} />}
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>Or read them this code:</p>
+        <p style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '4px' }}>{created.joinCode}</p>
+        <button className="itunda-btn itunda-btn-secondary" style={{ width: '100%' }} onClick={() => { const id = created.id; setCreated(null); setMode('closed'); onCreated(id); }}>
           Done
         </button>
       </div>
@@ -7495,11 +7751,23 @@ function OpenChatCard({ onCreated, onJoined }: { onCreated: (groupId: string) =>
             </button>
           </div>
         </form>
+      ) : !manualJoinEntry ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Scan to join</h3>
+          {!scanUnavailable && !submitting && <QrScanCamera onDetect={handleScanJoin} onUnavailable={() => setScanUnavailable(true)} />}
+          {submitting && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Joining…</p>}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setMode('closed')}>Cancel</button>
+            <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setManualJoinEntry(true)}>
+              {scanUnavailable ? 'Enter code manually' : 'No camera? Enter code'}
+            </button>
+          </div>
+        </div>
       ) : (
         <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Join by code</h3>
           <input
-            type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="6-character code" required
+            type="text" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="6-character code" required autoFocus
             style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', textAlign: 'center', letterSpacing: '2px' }}
           />
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -10395,7 +10663,15 @@ function GroupsList({ initialConversationId, onConsumedInitial }: { initialConve
 // defining KakaoTalk capability the original 1:1-only Messages tab didn't cover, added
 // at the user's direct request. See GroupMessagingService.kt's own doc comment.
 function MessagesView({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
-  const [mode, setMode] = useState<'DIRECT' | 'GROUPS' | 'FRIENDS'>('DIRECT');
+  // Real fix (2026-08-19): a tapped ?joinChatCode= invite link (see OpenChatCard's own
+  // buildJoinUrl doc comment) only carries the top-level ?tab=MESSAGES -- this
+  // Direct/Groups/Friends split is its own local state, so without this the link would
+  // silently land on Direct and OpenChatCard (which lives under Groups, and owns the
+  // actual auto-join effect) would never even mount. A lazy initializer peeks at the
+  // param without consuming it -- OpenChatCard's own effect is what deletes it.
+  const [mode, setMode] = useState<'DIRECT' | 'GROUPS' | 'FRIENDS'>(() =>
+    new URLSearchParams(window.location.search).has('joinChatCode') ? 'GROUPS' : 'DIRECT'
+  );
   // Real Kakao-style Friends directory (item 237) -- see FriendsList's own doc
   // comment. Tapping a friend hands its real conversation id off to DirectMessagesList
   // through the exact same initialConversationId mechanism CommunityView's own
@@ -17558,7 +17834,12 @@ function DineInCustomerView() {
 }
 
 function EatsView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
-  const [mode, setMode] = useState<'ORDER' | 'TOGETHER' | 'DELIVER' | 'DINE_IN'>('ORDER');
+  // Real fix (2026-08-19) -- same gap and same fix as MessagesView's identical
+  // joinChatCode handling: a tapped ?joinEatsCode= link needs the Together-order sub-tab
+  // pre-selected or GroupOrderView (which owns the actual auto-join effect) never mounts.
+  const [mode, setMode] = useState<'ORDER' | 'TOGETHER' | 'DELIVER' | 'DINE_IN'>(() =>
+    new URLSearchParams(window.location.search).has('joinEatsCode') ? 'TOGETHER' : 'ORDER'
+  );
 
   return (
     <div>
@@ -17620,14 +17901,38 @@ function GroupOrderView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [placedOrder, setPlacedOrder] = useState<EatsOrder | null>(null);
+  // Real fix (2026-08-19): same "asking user code, instead use qr code" anti-pattern as
+  // OpenChatCard -- see QrScanCamera's own doc comment for the shared itunda://... QR
+  // payload convention. Typed code stays as a real fallback for voice/text sharing.
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [scanUnavailable, setScanUnavailable] = useState(false);
+  const [manualJoinEntry, setManualJoinEntry] = useState(false);
 
   useEffect(() => {
     fetchRestaurants().then(setRestaurants).catch(() => setRestaurants([]));
   }, []);
 
+  useEffect(() => {
+    const joinCode = detail?.groupOrder.joinCode;
+    if (joinCode) {
+      QRCode.toDataURL(`itunda://join-eats?code=${joinCode}`, { width: 180, margin: 1 }).then(setQrDataUrl).catch(() => setQrDataUrl(null));
+    } else {
+      setQrDataUrl(null);
+    }
+  }, [detail?.groupOrder.joinCode]);
+
   const refresh = (id: string) => {
     fetchGroupEatsOrder(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load group order.'));
   };
+
+  // Real bug found live (2026-08-19, while verifying the share-link fix above): `detail`
+  // was never populated on create or join, only after finalize -- both host and joiner
+  // silently rendered a blank join code (and now, a missing QR/share button) the entire
+  // time they were building their cart. Pre-existing gap, not introduced by this pass.
+  useEffect(() => {
+    if (groupOrderId) refresh(groupOrderId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh is a stable per-render closure over setDetail/setError, re-running on identity change would refetch every render
+  }, [groupOrderId]);
 
   const handleCreate = async () => {
     if (!restaurantId || !address.trim()) return;
@@ -17645,12 +17950,13 @@ function GroupOrderView() {
     }
   };
 
-  const handleJoin = async () => {
-    if (!joinCodeInput.trim()) return;
+  const submitJoinCode = async (rawCode: string) => {
+    const trimmed = rawCode.trim();
+    if (!trimmed) return;
     setBusy(true);
     setError(null);
     try {
-      const groupOrder = await joinGroupEatsOrder(joinCodeInput.trim());
+      const groupOrder = await joinGroupEatsOrder(trimmed);
       setGroupOrderId(groupOrder.id);
       const menuResult = await fetchMenu(groupOrder.restaurantId);
       setMenu(menuResult.products);
@@ -17659,6 +17965,26 @@ function GroupOrderView() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleJoin = () => void submitJoinCode(joinCodeInput);
+  const handleScanJoin = (raw: string) => void submitJoinCode(parseQrParam(raw, 'code'));
+
+  // Real remote-invite fix (2026-08-19) -- see buildJoinUrl's own doc comment. A
+  // together-order invite is normally sent to friends who aren't in the room, so a
+  // tapped link (via itunda talk/SMS/anywhere) should join immediately, same as
+  // OpenChatCard's identical fix.
+  useEffect(() => {
+    const incoming = readAndClearUrlParam('joinEatsCode');
+    if (incoming) void submitJoinCode(incoming);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount only
+  }, []);
+
+  const [shareStatus, setShareStatus] = useState<'idle' | 'shared' | 'copied' | 'failed'>('idle');
+  const handleShare = async (code: string) => {
+    const url = buildJoinUrl('EATS', 'joinEatsCode', code);
+    const result = await shareOrCopyLink(url, 'Order together on itunda', 'Join my together order on itunda — tap to join instantly.');
+    setShareStatus(result);
   };
 
   const handleAddItem = async () => {
@@ -17747,17 +18073,30 @@ function GroupOrderView() {
           </button>
         </div>
         <div className="itunda-card" style={{ padding: '16px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Have a join code?</h3>
-          <input
-            className="itunda-input"
-            placeholder="e.g. K3F9XQ"
-            value={joinCodeInput}
-            onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
-            style={{ marginBottom: '8px', width: '100%' }}
-          />
-          <button className="itunda-btn itunda-btn-secondary" disabled={busy || !joinCodeInput.trim()} onClick={handleJoin} style={{ width: '100%' }}>
-            {busy ? '…' : 'Join'}
-          </button>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Join a together order</h3>
+          {!manualJoinEntry ? (
+            <>
+              {!scanUnavailable && !busy && <QrScanCamera onDetect={handleScanJoin} onUnavailable={() => setScanUnavailable(true)} />}
+              {busy && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '8px' }}>Joining…</p>}
+              <button className="itunda-btn itunda-btn-secondary" onClick={() => setManualJoinEntry(true)} style={{ width: '100%' }}>
+                {scanUnavailable ? 'Enter join code manually' : 'No camera? Enter join code'}
+              </button>
+            </>
+          ) : (
+            <>
+              <input
+                className="itunda-input"
+                placeholder="e.g. K3F9XQ"
+                value={joinCodeInput}
+                onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                autoFocus
+                style={{ marginBottom: '8px', width: '100%' }}
+              />
+              <button className="itunda-btn itunda-btn-secondary" disabled={busy || !joinCodeInput.trim()} onClick={handleJoin} style={{ width: '100%' }}>
+                {busy ? '…' : 'Join'}
+              </button>
+            </>
+          )}
         </div>
         {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '10px' }} role="alert">{error}</p>}
       </div>
@@ -17770,8 +18109,20 @@ function GroupOrderView() {
   return (
     <div>
       <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Join code: {detail?.groupOrder.joinCode}</h3>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Share this code -- anyone with it can join and add their own items.</p>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '10px' }}>
+          {qrDataUrl && <img src={qrDataUrl} alt={`QR code to join order ${detail?.groupOrder.joinCode}`} width={72} height={72} style={{ borderRadius: '8px', flexShrink: 0 }} />}
+          <div>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Order together — {detail?.groupOrder.joinCode}</h3>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>Send friends a link to join instantly, or let someone nearby scan the code.</p>
+          </div>
+        </div>
+        {detail?.groupOrder.joinCode && (
+          <button className="itunda-btn itunda-btn-primary" style={{ width: '100%' }} onClick={() => handleShare(detail.groupOrder.joinCode)}>
+            🔗 Share invite link
+          </button>
+        )}
+        {shareStatus === 'copied' && <p style={{ fontSize: '12px', color: 'var(--itunda-green)', marginTop: '6px' }}>Link copied</p>}
+        {shareStatus === 'failed' && <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '6px' }}>Could not copy the link — share the code above instead.</p>}
       </div>
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '10px' }} role="alert">{error}</p>}
       <div className="itunda-card" style={{ padding: '16px', marginBottom: '16px' }}>
@@ -20850,50 +21201,46 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
 
   if (step === 'name') {
     return (
-      <form
-        onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}
-        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
-      >
-        <ProgressStepper activeStepIndex={0} steps={GOAL_STEP_LABELS} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What are you saving for?</h3>
-          <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-            <X size={20} color="var(--itunda-grey-500)" />
-          </button>
-        </div>
-        <input
-          type="text" required autoFocus placeholder="e.g. Emergency Fund" value={name} onChange={(e) => setName(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
-        <IdsButton type="submit" disabled={!name.trim()}>Next</IdsButton>
+      <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}>
+        <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!name.trim()}>Next</IdsButton>}>
+          <ProgressStepper activeStepIndex={0} steps={GOAL_STEP_LABELS} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What are you saving for?</h3>
+            <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
+              <X size={20} color="var(--itunda-grey-500)" />
+            </button>
+          </div>
+          <input
+            type="text" required autoFocus placeholder="e.g. Emergency Fund" value={name} onChange={(e) => setName(e.target.value)}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
+          />
+        </FullScreenFlow>
       </form>
     );
   }
 
   if (step === 'amount') {
     return (
-      <form
-        onSubmit={(e) => { e.preventDefault(); if (Number(targetAmount) > 0) setStep('plan'); }}
-        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
-      >
-        <ProgressStepper activeStepIndex={1} steps={GOAL_STEP_LABELS} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-            <ChevronLeft size={20} color="var(--itunda-grey-700)" />
-          </button>
-          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much do you want to save for &ldquo;{name.trim()}&rdquo;?</h3>
-        </div>
-        <input
-          type="number" min="1" required autoFocus placeholder="Target amount (RWF)" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
-        <IdsButton type="submit" disabled={!(Number(targetAmount) > 0)}>Next</IdsButton>
+      <form onSubmit={(e) => { e.preventDefault(); if (Number(targetAmount) > 0) setStep('plan'); }}>
+        <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!(Number(targetAmount) > 0)}>Next</IdsButton>}>
+          <ProgressStepper activeStepIndex={1} steps={GOAL_STEP_LABELS} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+              <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+            </button>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much do you want to save for &ldquo;{name.trim()}&rdquo;?</h3>
+          </div>
+          <input
+            type="number" min="1" required autoFocus placeholder="Target amount (RWF)" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
+          />
+        </FullScreenFlow>
       </form>
     );
   }
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={handleCreate} disabled={busy}>{busy ? 'Creating…' : 'Create goal'}</IdsButton>}>
       <ProgressStepper activeStepIndex={2} steps={GOAL_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('amount')} style={{ background: 'none', border: 'none', display: 'flex' }}>
@@ -20901,17 +21248,18 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
         </button>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Add auto-save details (optional)</h3>
       </div>
-      <input
-        type="number" min="0" placeholder="Monthly auto-save (optional)" value={monthlyContribution} onChange={(e) => setMonthlyContribution(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="date" placeholder="Target date (optional)" value={targetDate} onChange={(e) => setTargetDate(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <IdsButton onClick={handleCreate} disabled={busy}>{busy ? 'Creating…' : 'Create goal'}</IdsButton>
-      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+        <input
+          type="number" min="0" placeholder="Monthly auto-save (optional)" value={monthlyContribution} onChange={(e) => setMonthlyContribution(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        <input
+          type="date" placeholder="Target date (optional)" value={targetDate} onChange={(e) => setTargetDate(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+      </div>
+    </FullScreenFlow>
   );
 }
 
@@ -21375,51 +21723,47 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
 
   if (step === 'name') {
     return (
-      <form
-        onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('contribution'); }}
-        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
-      >
-        <ProgressStepper activeStepIndex={0} steps={IKIMINA_STEP_LABELS} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What's your group called?</h3>
-          <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-            <X size={20} color="var(--itunda-grey-500)" />
-          </button>
-        </div>
-        <input
-          type="text" required autoFocus placeholder="e.g. Umuryango" value={name} onChange={(e) => setName(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
-        <IdsButton type="submit" disabled={!name.trim()}>Next</IdsButton>
+      <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('contribution'); }}>
+        <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!name.trim()}>Next</IdsButton>}>
+          <ProgressStepper activeStepIndex={0} steps={IKIMINA_STEP_LABELS} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What's your group called?</h3>
+            <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
+              <X size={20} color="var(--itunda-grey-500)" />
+            </button>
+          </div>
+          <input
+            type="text" required autoFocus placeholder="e.g. Umuryango" value={name} onChange={(e) => setName(e.target.value)}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
+          />
+        </FullScreenFlow>
       </form>
     );
   }
 
   if (step === 'contribution') {
     return (
-      <form
-        onSubmit={(e) => { e.preventDefault(); if (Number(contributionAmount) > 0) setStep('frequency'); }}
-        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
-      >
-        <ProgressStepper activeStepIndex={1} steps={IKIMINA_STEP_LABELS} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-            <ChevronLeft size={20} color="var(--itunda-grey-700)" />
-          </button>
-          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much does each member contribute per round?</h3>
-        </div>
-        <input
-          type="number" min="1" required autoFocus placeholder="Contribution (RWF)" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
-        <IdsButton type="submit" disabled={!(Number(contributionAmount) > 0)}>Next</IdsButton>
+      <form onSubmit={(e) => { e.preventDefault(); if (Number(contributionAmount) > 0) setStep('frequency'); }}>
+        <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!(Number(contributionAmount) > 0)}>Next</IdsButton>}>
+          <ProgressStepper activeStepIndex={1} steps={IKIMINA_STEP_LABELS} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+              <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+            </button>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much does each member contribute per round?</h3>
+          </div>
+          <input
+            type="number" min="1" required autoFocus placeholder="Contribution (RWF)" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
+          />
+        </FullScreenFlow>
       </form>
     );
   }
 
   if (step === 'frequency') {
     return (
-      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={() => setStep('members')}>Next</IdsButton>}>
         <ProgressStepper activeStepIndex={2} steps={IKIMINA_STEP_LABELS} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button type="button" aria-label="Back" onClick={() => setStep('contribution')} style={{ background: 'none', border: 'none', display: 'flex' }}>
@@ -21429,18 +21773,23 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
         </div>
         <select
           value={cycleFrequencyDays} onChange={(e) => setCycleFrequencyDays(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
         >
           <option value="7">Weekly</option>
           <option value="30">Monthly</option>
         </select>
-        <IdsButton onClick={() => setStep('members')}>Next</IdsButton>
-      </div>
+      </FullScreenFlow>
     );
   }
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <FullScreenFlow
+      bottomCTA={
+        <IdsButton fullWidth onClick={handleCreate} disabled={busy || !(Number(memberCap) >= 2 && Number(memberCap) <= 15)}>
+          {busy ? 'Creating…' : 'Create ikimina'}
+        </IdsButton>
+      }
+    >
       <ProgressStepper activeStepIndex={3} steps={IKIMINA_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('frequency')} style={{ background: 'none', border: 'none', display: 'flex' }}>
@@ -21450,13 +21799,10 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
       </div>
       <input
         type="number" min="2" max="15" required autoFocus placeholder="Max members (2-15)" value={memberCap} onChange={(e) => setMemberCap(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
       />
-      <IdsButton onClick={handleCreate} disabled={busy || !(Number(memberCap) >= 2 && Number(memberCap) <= 15)}>
-        {busy ? 'Creating…' : 'Create ikimina'}
-      </IdsButton>
-      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </div>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
+    </FullScreenFlow>
   );
 }
 
@@ -21954,54 +22300,50 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
 
   if (step === 'name') {
     return (
-      <form
-        onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}
-        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
-      >
-        <ProgressStepper activeStepIndex={0} steps={WEEKLY_SAVINGS_STEP_LABELS} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What are you saving toward?</h3>
-          <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-            <X size={20} color="var(--itunda-grey-500)" />
-          </button>
-        </div>
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-          A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main wallet
-          and can step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks. Stay unbroken all 26 weeks to earn a bonus interest rate on top of the base rate.
-        </p>
-        <input
-          type="text" required autoFocus placeholder="e.g. New Laptop Fund" value={name} onChange={(e) => setName(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
-        <IdsButton type="submit" disabled={!name.trim()}>Next</IdsButton>
+      <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}>
+        <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!name.trim()}>Next</IdsButton>}>
+          <ProgressStepper activeStepIndex={0} steps={WEEKLY_SAVINGS_STEP_LABELS} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What are you saving toward?</h3>
+            <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
+              <X size={20} color="var(--itunda-grey-500)" />
+            </button>
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
+            A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main wallet
+            and can step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks. Stay unbroken all 26 weeks to earn a bonus interest rate on top of the base rate.
+          </p>
+          <input
+            type="text" required autoFocus placeholder="e.g. New Laptop Fund" value={name} onChange={(e) => setName(e.target.value)}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
+          />
+        </FullScreenFlow>
       </form>
     );
   }
 
   if (step === 'amount') {
     return (
-      <form
-        onSubmit={(e) => { e.preventDefault(); if (Number(baseWeeklyAmount) > 0) setStep('escalation'); }}
-        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
-      >
-        <ProgressStepper activeStepIndex={1} steps={WEEKLY_SAVINGS_STEP_LABELS} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
-            <ChevronLeft size={20} color="var(--itunda-grey-700)" />
-          </button>
-          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much per week, to start?</h3>
-        </div>
-        <input
-          type="number" min="1" required autoFocus placeholder="Base weekly amount (RWF)" value={baseWeeklyAmount} onChange={(e) => setBaseWeeklyAmount(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
-        <IdsButton type="submit" disabled={!(Number(baseWeeklyAmount) > 0)}>Next</IdsButton>
+      <form onSubmit={(e) => { e.preventDefault(); if (Number(baseWeeklyAmount) > 0) setStep('escalation'); }}>
+        <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!(Number(baseWeeklyAmount) > 0)}>Next</IdsButton>}>
+          <ProgressStepper activeStepIndex={1} steps={WEEKLY_SAVINGS_STEP_LABELS} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+              <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+            </button>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much per week, to start?</h3>
+          </div>
+          <input
+            type="number" min="1" required autoFocus placeholder="Base weekly amount (RWF)" value={baseWeeklyAmount} onChange={(e) => setBaseWeeklyAmount(e.target.value)}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
+          />
+        </FullScreenFlow>
       </form>
     );
   }
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={handleCreate} disabled={busy}>{busy ? 'Creating…' : 'Create plan'}</IdsButton>}>
       <ProgressStepper activeStepIndex={2} steps={WEEKLY_SAVINGS_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('amount')} style={{ background: 'none', border: 'none', display: 'flex' }}>
@@ -22009,7 +22351,7 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
         </button>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks?</h3>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
         {WEEKLY_SAVINGS_ESCALATION_RATES.map((rate) => (
           <button
             key={rate}
@@ -22022,9 +22364,8 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
           </button>
         ))}
       </div>
-      <IdsButton onClick={handleCreate} disabled={busy}>{busy ? 'Creating…' : 'Create plan'}</IdsButton>
-      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </div>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
+    </FullScreenFlow>
   );
 }
 
@@ -22313,32 +22654,30 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
 
   if (step === 'name') {
     return (
-      <form
-        onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}
-        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
-      >
-        <ProgressStepper activeStepIndex={0} steps={GROW31_STEP_LABELS} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Name your 31-day streak</h3>
-          <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
-            <X size={20} color="var(--itunda-grey-500)" />
-          </button>
-        </div>
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-          Pick a small amount you can realistically save every single day for {GROW31_TERM_DAYS} days. Miss a day and your streak resets — but your
-          longest streak still locks in a bonus rate at maturity, up to +10% for a full unbroken run.
-        </p>
-        <input
-          type="text" required autoFocus placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
-          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
-        <IdsButton type="submit" disabled={!name.trim()}>Next</IdsButton>
+      <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}>
+        <FullScreenFlow bottomCTA={<IdsButton type="submit" fullWidth disabled={!name.trim()}>Next</IdsButton>}>
+          <ProgressStepper activeStepIndex={0} steps={GROW31_STEP_LABELS} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Name your 31-day streak</h3>
+            <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
+              <X size={20} color="var(--itunda-grey-500)" />
+            </button>
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginTop: '4px' }}>
+            Pick a small amount you can realistically save every single day for {GROW31_TERM_DAYS} days. Miss a day and your streak resets — but your
+            longest streak still locks in a bonus rate at maturity, up to +10% for a full unbroken run.
+          </p>
+          <input
+            type="text" required autoFocus placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
+          />
+        </FullScreenFlow>
       </form>
     );
   }
 
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={handleCreate} disabled={busy || !(Number(dailyAmount) > 0)}>{busy ? 'Creating…' : 'Create plan'}</IdsButton>}>
       <ProgressStepper activeStepIndex={1} steps={GROW31_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
@@ -22348,11 +22687,10 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
       </div>
       <input
         type="number" min="1" required autoFocus placeholder="Daily amount (RWF)" value={dailyAmount} onChange={(e) => setDailyAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', width: '100%', boxSizing: 'border-box', marginTop: '12px' }}
       />
-      <IdsButton onClick={handleCreate} disabled={busy || !(Number(dailyAmount) > 0)}>{busy ? 'Creating…' : 'Create plan'}</IdsButton>
-      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </div>
+      {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginTop: '8px' }} role="alert">{error}</p>}
+    </FullScreenFlow>
   );
 }
 
