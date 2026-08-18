@@ -12824,3 +12824,76 @@ data:
 
 All three fixes are now genuinely live, not just committed. Local Docker image cleaned
 up (`docker rmi` + `docker image prune -f`) after a successful push and rollout.
+
+## 193. BankHubScreen's remaining icon/rate gaps vs real Toss Bank -- closing two of Section 65's own named-not-yet-fixed items
+
+Direct user request: "as usual keep working with other features as well," run in parallel
+with a separate Maps-focused fork. Rather than opening a fresh research thread, picked up
+`project_itunda_toss_conference_research.md`'s own already-diagnosed, already-sourced,
+still-open item: Section 65's real 12-image direct itunda-vs-Toss-Bank comparison (2026-08-13)
+gave an honest upfront diagnosis of four structural gaps, shipped fixes for the two
+concretely buildable ones that pass (credit score card, Auto-transfer row, top bar, banner),
+and explicitly named the rest as real, still-open, not silently folded into "done": "richer/
+varied per-product iconography on `BankHubScreen`'s rows, real inline interest-rate display
+on every row..., the real Toss 카드/관리 header-tab structure."
+
+### Verified the gap was still real before touching anything
+
+Read `BankHubScreen` (`android/app/.../ItundaAppScreen.kt`) directly rather than trusting a
+5-day-old diagnosis at face value. Confirmed both non-tab gaps still genuinely existed:
+- **Save & grow section**: interest jar, every savings goal, "26-week savings," "31-day
+  savings," and "12-month deposit" all rendered `Icons.Outlined.Savings` -- five structurally
+  different products sharing one icon. The three fixed-term products' subtitles were purely
+  descriptive strings ("Escalating weekly deposit plan," "Daily streak, tiered bonus rate,"
+  "Interest paid upfront, principal locked") with zero real rate number anywhere, unlike the
+  interest jar row directly above them, which already surfaces its real `jar.rate`.
+- **Borrow section**: "Get a loan," "Harvest advance," and "VUP Financial Services" all
+  rendered the identical `Icons.Outlined.AccountBalanceWallet`.
+
+### What was built
+
+Sourced each rate from the product's own real backend constant rather than inventing a
+number, mirroring it locally the same way `Grow31SavingsScreen.grow31BonusRateForStreak()`
+and `UpfrontDepositScreen`'s own `ANNUAL_RATE` already do (both pre-existing, both already
+following this exact "display-only mirrored copy, documented in a comment" convention):
+`WeeklySavingsService.BASE_RATE` (5.0%), Grow31's real streak-bonus tier table's own max
+(10.0% at a 31-day streak), `UpfrontDepositScreen`'s own `ANNUAL_RATE` (2.80%). Added as
+three new file-scoped constants (`BANK_HUB_WEEKLY_SAVINGS_BASE_RATE`/
+`BANK_HUB_GROW31_MAX_BONUS_RATE`/`BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE`) since these are
+hub-level teaser rows shown before any specific plan exists to read a real per-plan rate
+off of. New subtitles: "5% base rate, escalates weekly" / "Daily streak, up to 10% bonus
+rate" / "2.80%/yr interest paid upfront, principal locked."
+
+New icons, all already available in the `material-icons-extended` library this app already
+depends on (`android/app/build.gradle.kts`, confirmed before assuming any icon existed):
+`CalendarMonth` (26-week), `Bolt` (31-day streak), `Lock` (12-month, principal locked --
+matching Toss's own real locked-deposit convention), `Agriculture` (Harvest advance, one
+genuinely new import) and `Shield` (VUP, already imported elsewhere in the file for an
+unrelated row). "Get a loan" kept `AccountBalanceWallet` as the genuinely generic
+personal/SME product.
+
+**Header tabs (Toss's real 카드/관리 structure) deliberately left open** -- a materially
+bigger structural change (splitting a flat `LazyColumn` into tab-filtered content) than a
+single pass alongside two more concretely scoped fixes should attempt; named explicitly,
+matching Section 65's own precedent of honest partial-completion over a risky one-pass
+rebuild.
+
+**A parallel, unfixed instance of the identical icon-clash pattern found and named, not
+fixed this pass**: `MenuScreen`'s own `saveGrowRows`/`borrowRows` lists (same file, ~line
+3899) have the exact same shared-icon problem, and worse -- "Mini account" and "Ikimina"
+also share `Savings` there, rows `BankHubScreen` doesn't even have. Out of this pass's
+scope (BankHubScreen specifically); a real, ready-made follow-up using the identical fix
+shape just applied here.
+
+### Verification
+
+`:app:compileDebugKotlin` clean (only pre-existing deprecation warnings, none from the new
+code). Pure Compose-layout + mirrored-literal-constant change with no new business logic,
+so no new unit test needed, matching this codebase's own established convention for this
+shape of change. **Not device-verified this pass** -- `adb devices` returned empty, no
+physical device or emulator reachable in this environment; honestly named rather than
+claiming a visual check that didn't happen, matching `feedback_verification_pace.md`'s
+"don't fake it" discipline. iOS/bank-mfe untouched -- this section is Android-only, mirroring
+Section 65's own scope note ("iOS/Web untouched this pass -- all 4 fixes are Android-only").
+
+*Shipped: `android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt`. Commit `cd507ecb`.*
