@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.idempotency.IdempotencyConflictException
@@ -65,6 +66,19 @@ class P2pController(private val p2pService: P2pService, private val idempotencyS
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") -- see
+    // P2pService.resolveRecipient's own doc comment for the full sourced account. A
+    // client calls this right after the sender types a phone/account number, to show
+    // the real resolved recipient's name before rendering the final "Send X RWF to
+    // [name]?" confirmation -- catches a mistyped digit before money moves, not after.
+    // Read-only, no Idempotency-Key needed (moves no money, has no side effect to replay).
+    @GetMapping("/recipient")
+    fun resolveRecipient(
+        @RequestParam identifier: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "recipient" to p2pService.resolveRecipient(currentUser.userId, identifier)))
 
     // Real direct push-transfer (2026-07-20) -- see P2pService.sendDirect's own doc
     // comment. A real recipient in one step, no pre-existing request needed.

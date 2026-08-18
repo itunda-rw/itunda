@@ -41,6 +41,15 @@ class P2pRecipientNotFoundException(message: String) : RuntimeException(message)
 class P2pInvalidAmountException(message: String) : RuntimeException(message)
 
 /**
+ * Real Toss/Kakao Bank-style recipient-name confirmation payload -- see
+ * [P2pService.resolveRecipient]'s own doc comment for the full sourced account of why
+ * this exists. Deliberately just the two fields a client needs to render "Send X RWF
+ * to [displayName]?"; never leaks the recipient's phone number or account number back
+ * out (the caller already knows the identifier they typed in).
+ */
+data class P2pRecipientPreview(val recipientUserId: String, val displayName: String)
+
+/**
  * Real person-to-person QR -- see docs/TOSS_PARITY_MATRIX.md's QR Pay row. Deliberately
  * distinct from WalletService.confirmTransfer: that flow always routes through the simulated
  * external rail (recipientId hardcoded "external", CREDIT posts to rail_suspense) regardless
@@ -165,6 +174,80 @@ class P2pService(
     }
 
     /**
+     * Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") before a
+     * P2P transfer completes -- sourced from Toss's own support FAQ
+     * (support.toss.im/faq/127: a transfer is cancelled and refunded outright if the
+     * sender-entered name doesn't match the real account holder) and Toss's own
+     * contact-based transfer flow, which shows the resolved recipient's real name in
+     * parentheses (e.g. "김토스(한*스)") for the sender to actively verify before
+     * confirming -- "recipient name mismatch" is documented as a standard, expected
+     * step across Korean banking apps generally (see e.g. "Korean Banking App Terms
+     * Explained: Transfer Limits, OTP, and 'Recipient Name Mismatch'",
+     * kl.imporinfo.com/2026/05/korean-banking-app-terms-explained.html). The whole
+     * point: catch a single mistyped digit in a phone/account number BEFORE money
+     * moves, not after -- P2P transfers here are immediate and final, with no reversal
+     * path once [sendDirect] completes.
+     *
+     * [sendDirect] itself resolves a phone number or account number and moves money in
+     * one synchronous call -- confirmed by reading it directly, there was zero point
+     * anywhere in that flow for a sender to see WHO they actually resolved to before
+     * it becomes irreversible. A real, confirmed gap, not a guess: a sender fat-
+     * fingering one digit of a contact's phone number that happens to collide with a
+     * different real itunda account would silently send real money to a stranger with
+     * no recovery path, and never know until the stranger's balance changed instead of
+     * their intended contact's.
+     *
+     * This is a read-only preview a client calls right after the recipient identifier
+     * is entered, before rendering the final "Send X RWF to [name]?" confirmation --
+     * reuses [resolveRecipientWallet], the exact same resolution [sendDirect] itself
+     * uses, so what's previewed here is guaranteed to be who actually receives the
+     * money if the sender goes on to confirm. Deliberately does NOT create any
+     * durable/expiring quote object the way [rw.itunda.wallet.WalletService
+     * .quoteTransfer] does for the external-rail flow: unlike that flow (where the fee
+     * and rail routing genuinely need to be locked in between quote and confirm),
+     * nothing about a wallet-to-wallet resolution can drift between this call and
+     * [sendDirect] -- a phone number isn't reassigned to a different real account
+     * mid-session, so re-resolving at send time is exactly as safe and avoids a whole
+     * extra class of stale/hijacked-quote bugs for zero real benefit.
+     */
+    fun resolveRecipient(callerUserId: String, identifier: String): P2pRecipientPreview {
+        val trimmedIdentifier = identifier.trim()
+        if (trimmedIdentifier.isEmpty()) throw P2pRecipientNotFoundException("Recipient is required")
+        // Real anti-enumeration limit: without one, an authenticated caller could
+        // script this read-only lookup across a range of phone numbers to harvest
+        // which ones are real itunda accounts and their real names -- the same "every
+        // money/PII-adjacent endpoint gets a real rate limit from day one" discipline
+        // generateRequest/payRequest/sendDirect above already established, just tuned
+        // higher than sendDirect's own 30/hour since a real user legitimately checking
+        // a few candidate contacts before picking the right one shouldn't get blocked.
+        rateLimiter.checkLimit("p2p:resolve:$callerUserId", limit = 40, window = Duration.ofHours(1))
+
+        val recipientWallet = resolveRecipientWallet(trimmedIdentifier)
+        // Same real self-payment guard sendDirect enforces -- previewing "send to
+        // yourself" would be a confusing, pointless result to show, not an honest one.
+        if (recipientWallet.userId == callerUserId) {
+            throw P2pSelfPaymentException("You can't send money to yourself -- check the recipient and try again")
+        }
+        val recipientUser = userRepository.findById(recipientWallet.userId).orElse(null)
+        val displayName = recipientUser?.let { "${it.firstName} ${it.lastName}" } ?: "itunda user"
+        return P2pRecipientPreview(recipientUserId = recipientWallet.userId, displayName = displayName)
+    }
+
+    /**
+     * Real recipient resolution shared by [resolveRecipient] and [sendDirect] -- a
+     * phone number (`UserRepository.findByPhoneNumber`, matching how a user actually
+     * thinks of a contact) or, if that misses, an account number (`WalletRepository.
+     * findByAccountNumber`, globally unique). Extracted so the preview a sender sees
+     * and the recipient money actually moves to can never diverge -- one real
+     * resolution path, not two independently-maintained copies of the same lookup.
+     */
+    private fun resolveRecipientWallet(trimmedIdentifier: String) =
+        (
+            userRepository.findByPhoneNumber(trimmedIdentifier)?.let { walletRepository.findByUserIdAndType(it.id, WalletType.MAIN) }
+                ?: walletRepository.findByAccountNumber(trimmedIdentifier)
+            ) ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
+
+    /**
      * Real direct itunda-to-itunda push-transfer (2026-07-20) -- a genuine gap surfaced
      * while wiring bank-mfe's own home-screen "Transfer" button: that button, matching
      * Android/iOS's own `sendTransfer`, calls `WalletService.confirmTransfer`, which by
@@ -195,11 +278,7 @@ class P2pService(
         var senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
             ?: throw P2pNoWalletException("No wallet found for this account")
 
-        val recipientUser = userRepository.findByPhoneNumber(trimmedIdentifier)
-        val recipientWallet = (
-            if (recipientUser != null) walletRepository.findByUserIdAndType(recipientUser.id, WalletType.MAIN) else null
-            ) ?: walletRepository.findByAccountNumber(trimmedIdentifier)
-            ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
+        val recipientWallet = resolveRecipientWallet(trimmedIdentifier)
 
         if (recipientWallet.userId == senderUserId) {
             throw P2pSelfPaymentException("You can't send money to yourself -- check the recipient and try again")

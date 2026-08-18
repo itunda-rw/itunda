@@ -568,6 +568,146 @@ class P2pServiceTest : BehaviorSpec({
         }
     }
 
+    // Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") -- see
+    // P2pService.resolveRecipient's own doc comment for the full sourced account.
+    Given("a real caller previewing a recipient by phone number before sending") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService, autoTopUpService,
+            pushNotificationService,
+        )
+
+        val recipientUser = User(id = "recipient_20", phoneNumber = "+250788000199", firstName = "Alice", lastName = "Mukamana", passwordHash = "x")
+        every { userRepository.findByPhoneNumber("+250788000199") } returns recipientUser
+        every { walletRepository.findByUserIdAndType("recipient_20", WalletType.MAIN) } returns wallet("wallet_recip20", "recipient_20", "0")
+        every { userRepository.findById("recipient_20") } returns Optional.of(recipientUser)
+
+        When("they preview the resolved recipient") {
+            val preview = service.resolveRecipient("caller_20", "+250788000199")
+
+            Then("it returns the real account holder's real name, not just an echo of the typed identifier") {
+                preview.recipientUserId shouldBe "recipient_20"
+                preview.displayName shouldBe "Alice Mukamana"
+            }
+
+            Then("no money moves and no ledger call happens for a plain preview") {
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real caller previewing an identifier that resolves to no real itunda account") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService, autoTopUpService,
+            pushNotificationService,
+        )
+
+        every { userRepository.findByPhoneNumber("+250700000001") } returns null
+        every { walletRepository.findByAccountNumber("+250700000001") } returns null
+
+        When("they preview it, catching a real typo before any money would move") {
+            Then("it throws P2pRecipientNotFoundException -- the same real, honest 404 sendDirect itself would give") {
+                try {
+                    service.resolveRecipient("caller_21", "+250700000001")
+                    error("expected P2pRecipientNotFoundException")
+                } catch (e: P2pRecipientNotFoundException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real caller previewing their own phone number") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService, autoTopUpService,
+            pushNotificationService,
+        )
+
+        val selfUser = User(id = "user_self_22", phoneNumber = "+250788000222", firstName = "S", lastName = "T", passwordHash = "x")
+        every { userRepository.findByPhoneNumber("+250788000222") } returns selfUser
+        every { walletRepository.findByUserIdAndType("user_self_22", WalletType.MAIN) } returns wallet("wallet_self22", "user_self_22", "10000")
+
+        When("they preview sending to themselves") {
+            Then("it throws P2pSelfPaymentException, same real guard sendDirect enforces") {
+                try {
+                    service.resolveRecipient("user_self_22", "+250788000222")
+                    error("expected P2pSelfPaymentException")
+                } catch (e: P2pSelfPaymentException) {
+                }
+            }
+        }
+    }
+
+    Given("a real caller exceeding the real recipient-preview rate limit") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
+        val autoTopUpService = mockk<AutoTopUpService>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = P2pService(
+            p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService, autoTopUpService,
+            pushNotificationService,
+        )
+        every { rateLimiter.checkLimit("p2p:resolve:caller_23", limit = 40, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to preview yet another recipient") {
+            Then("it real-propagates RateLimitExceededException before ever touching a real wallet -- closes a real phone-number-enumeration risk") {
+                try {
+                    service.resolveRecipient("caller_23", "+250788000333")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { userRepository.findByPhoneNumber(any()) }
+                }
+            }
+        }
+    }
+
     Given("a real sender with insufficient balance sending directly") {
         val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
         val walletRepository = mockk<WalletRepository>()

@@ -11421,3 +11421,103 @@ catches every real exception today), a full real-money reproduction was not perf
 for this section specifically -- the change's correctness rests on the real,
 independently-re-run test suite (`merchant` `tests="209" failures="0" errors="0"`) plus
 the direct code trace documented above confirming no live regression risk.
+
+## 182. Real Toss/Kakao Bank-style recipient-name confirmation for P2P direct transfers -- `GET /api/v1/p2p/recipient`
+
+**Added 2026-08-18.** New feature, not a bug fix -- picked after both standing lenses
+(escrow/reservation abandonment timeouts, Sections 170-179, and scheduler
+transaction-poisoning, Sections 179-181) were confirmed genuinely closed and explicitly
+off-limits for this pass.
+
+**Real, sourced product gap**: Korean banking apps (Toss, Kakao Bank, and Korean
+banking generally) show the resolved recipient's real account-holder name for the
+sender to actively verify *before* a transfer completes, specifically to catch a
+mistyped phone number or account number before money moves. Toss's own support FAQ
+(support.toss.im/faq/127) documents that a transfer is cancelled and refunded outright
+if the entered sender name doesn't match the real account holder; Toss's real
+contact-based transfer flow shows the resolved recipient's real name in parentheses
+(e.g. "김토스(한*스)") for the sender to check against who they actually meant to pay.
+"Recipient name mismatch" is documented as a standard, expected verification step
+across Korean banking apps generally (see "Korean Banking App Terms Explained:
+Transfer Limits, OTP, and 'Recipient Name Mismatch'",
+kl.imporinfo.com/2026/05/korean-banking-app-terms-explained.html). This is a genuine
+money-safety practice, not cosmetic UI polish: P2P transfers are immediate and final,
+with no reversal path once completed, so the only real defense against a fat-fingered
+digit sending money to the wrong stranger is catching it *before* the sender confirms.
+
+### Checked against itunda's own code
+
+`P2pService.sendDirect` (`services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pService.kt`)
+-- itunda's real "type a phone number or account number and send them money
+immediately" flow (Section from 2026-07-20) -- resolves the recipient identifier
+(phone number via `UserRepository.findByPhoneNumber`, falling back to account number
+via `WalletRepository.findByAccountNumber`) and moves real money in the exact same
+synchronous call, confirmed by reading it directly: there is zero point anywhere in
+that flow for the sender to see WHO they actually resolved to before it becomes
+irreversible. A real, confirmed gap, not a guess -- a sender mistyping one digit of a
+contact's phone number that happens to collide with a different real itunda account
+would silently send real money to a stranger, with no recovery path, and no way to
+notice until the wrong person's balance changed instead of their intended contact's.
+`WalletService.quoteTransfer`/`confirmTransfer` (the separate simulated-external-rail
+flow) has its own quote/confirm two-step shape already, but that flow never resolves a
+real itunda recipient identity to preview at all (`recipientId` is hardcoded
+`"external"` by that flow's own design, per its class-level doc comment) -- a
+structurally different problem this section doesn't touch.
+
+**Built**: a new read-only `P2pService.resolveRecipient(callerUserId, identifier)`
+method plus `GET /api/v1/p2p/recipient?identifier=...` on `P2pController`. Extracted
+the exact recipient-resolution logic `sendDirect` already used into a shared private
+`resolveRecipientWallet` helper, so what a client previews via this new endpoint and
+what `sendDirect` actually pays are guaranteed to be the same real resolution path --
+never two independently-maintained copies that could drift. Returns a minimal
+`P2pRecipientPreview(recipientUserId, displayName)` -- the real account holder's
+`firstName lastName` (matching the exact naming convention `notifyMoneyReceived`
+already uses for the same "money received" push/notification), not just an echo of
+what the sender typed. Reuses the same real guards `sendDirect` enforces: an identifier
+that resolves to nothing is the same honest `P2pRecipientNotFoundException` 404
+(never a silent no-op), and previewing your own account throws the same
+`P2pSelfPaymentException` `sendDirect` would.
+
+**Deliberately not a durable/expiring quote object** the way `WalletService
+.quoteTransfer` is for the external-rail flow: unlike that flow (where the fee and
+rail routing genuinely need to be locked in between quote and confirm), nothing about
+a wallet-to-wallet identity resolution can drift between preview and send -- a phone
+number isn't reassigned to a different real itunda account mid-session, so
+`sendDirect` re-resolving at send time is exactly as safe and avoids reintroducing the
+whole stale/hijacked-quote class of bug `TransferQuote`'s own doc comment documents
+fixing live for the external-rail flow (Section 2026-08-02). `sendDirect`'s own
+existing request/response contract is completely unchanged -- this is a pure additive
+preview endpoint, not a breaking two-step rework of an endpoint three real clients
+(bank-mfe, Android, iOS) already call directly.
+
+**New real anti-enumeration rate limit**: `p2p:resolve:$callerUserId`, 40/hour --
+without one, an authenticated caller could script this read-only lookup across a range
+of phone numbers to harvest which ones are real itunda accounts and their real names, a
+genuine PII-scraping risk this endpoint's very existence introduces. Tuned higher than
+`sendDirect`'s own 30/hour send limit since a real user legitimately checking a couple
+of candidate contacts before picking the right one to actually send to shouldn't get
+blocked doing so.
+
+**Deliberately not built this pass**: wiring any of the three real clients (bank-mfe,
+Android, iOS) to actually call this new endpoint and render the "Send X RWF to
+[name]?" confirmation screen -- backend-only this pass, matching this project's own
+established pattern of shipping a backend capability first and closing client gaps as
+separate, individually-tracked sections (e.g. Jobs search: Section 150 backend+bank-mfe,
+Section 151 iOS). A real, valuable, already-scoped follow-up for a future section.
+
+**Verified**: added 5 new `P2pServiceTest` cases covering the real happy path (returns
+the real account holder's real name, not an echo), the honest 404 for an identifier
+matching no real account, the self-payment guard, and the new rate limit blocking
+before any wallet lookup happens. Ran the real test suite myself and read the actual
+XML reports in `p2p/build/test-results/test/` (not estimated):
+`P2pServiceTest` `tests="26" failures="0" errors="0"` (21 pre-existing + 5 new), and the
+full `:p2p:test` module run together: `AutoTransferServiceTest tests="3"`,
+`P2pServiceTest tests="26"`, `ScamReportServiceTest tests="8"`,
+`ScheduledTransferServiceTest tests="12"` -- 49 total, 0 failures, 0 errors across the
+whole module. Also independently ran `./gradlew :app:compileKotlin :ussd:compileKotlin`
+(the two modules that depend on `:p2p`) -- both `BUILD SUCCESSFUL`, confirming this
+additive change doesn't break any real downstream compile.
+
+Files: `services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pService.kt`,
+`services/backend/p2p/src/main/kotlin/rw/itunda/p2p/web/P2pController.kt`,
+`services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pServiceTest.kt`.
