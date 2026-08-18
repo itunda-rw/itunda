@@ -8,6 +8,19 @@ import type { Transaction } from './wallet';
 // WalletService.confirmTransfer, there's no external rail decision to quote -- the
 // recipient is either a real itunda account or a real, honest 404).
 
+// Real Toss/Kakao Bank-style recipient-name confirmation ("받는분 성함 확인") -- see
+// backend P2pController's own doc comment. Resolves a phone/account identifier to the
+// real account holder's name before the amount screen renders it, matching the
+// reference Toss screenshots' "To [name]" display -- this endpoint already existed on
+// the backend (P2pService.resolveRecipient) but had no client anywhere until now.
+export interface P2pRecipientPreview {
+  recipientUserId: string;
+  displayName: string;
+}
+
+export const resolveRecipient = (identifier: string) =>
+  apiFetch<{ success: boolean; recipient: P2pRecipientPreview }>(`/api/v1/p2p/recipient?identifier=${encodeURIComponent(identifier)}`).then((r) => r.recipient);
+
 export const sendDirect = (recipient: string, amount: number, description: string) =>
   apiFetch<{ success: boolean; message: string; transaction: Transaction; newBalance: number }>('/api/v1/p2p/send', {
     method: 'POST',

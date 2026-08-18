@@ -78,10 +78,7 @@ export type TranslationKey =
   // Real third slice (2026-08-08): P2P transfer, itunda's own single highest-stakes
   // money-moving screen -- following the same phased rollout, one screen at a time,
   // across all 3 platforms before moving to the next.
-  | 'transfer.title'
   | 'transfer.recipientPlaceholder'
-  | 'transfer.amountPlaceholder'
-  | 'transfer.contactsLabel'
   | 'transfer.addContact'
   | 'transfer.cancel'
   | 'transfer.namePlaceholder'
@@ -89,9 +86,6 @@ export type TranslationKey =
   | 'transfer.saveContact'
   | 'transfer.noContacts'
   | 'transfer.continue'
-  | 'transfer.confirmTitle'
-  | 'transfer.toRecipient'
-  | 'transfer.amountLine'
   | 'transfer.scamWarningTitle'
   | 'transfer.scamWarningBody'
   | 'transfer.sending'
@@ -101,6 +95,14 @@ export type TranslationKey =
   | 'transfer.saveContactError'
   | 'transfer.sendError'
   | 'transfer.insufficientBalance'
+  | 'transfer.recipientStepTitle'
+  | 'transfer.recentLabel'
+  | 'transfer.balanceLabel'
+  | 'transfer.memoPlaceholder'
+  | 'transfer.next'
+  | 'transfer.confirmSendNow'
+  | 'transfer.feeCovered'
+  | 'transfer.toLabel'
   // The real entry point INTO the transfer flow above -- a separate component
   // (AccountBalance, the wallet card), found while verifying the transfer screen live:
   // translating the flow itself but leaving its own trigger button in English would
@@ -281,10 +283,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'overview.linkError': 'Could not link that account.',
     'overview.unlinkError': 'Could not unlink this account.',
     'overview.verificationFailed': "Could not verify that {{provider}} account. It wasn't linked.",
-    'transfer.title': 'Transfer',
     'transfer.recipientPlaceholder': 'Recipient phone or account number',
-    'transfer.amountPlaceholder': 'Amount (RWF)',
-    'transfer.contactsLabel': 'Contacts',
     'transfer.addContact': '+ Add',
     'transfer.cancel': 'Cancel',
     'transfer.namePlaceholder': 'Name',
@@ -292,9 +291,6 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.saveContact': 'Save contact',
     'transfer.noContacts': 'No saved contacts yet — add one to send money faster next time.',
     'transfer.continue': 'Continue',
-    'transfer.confirmTitle': 'Confirm transfer',
-    'transfer.toRecipient': 'To {{recipient}}',
-    'transfer.amountLine': 'Amount: {{amount}} RWF',
     'transfer.scamWarningTitle': 'Caution needed before this transfer',
     'transfer.scamWarningBody': 'This recipient has been reported by {{count}} other itunda users. Double-check before sending.',
     'transfer.sending': 'Sending…',
@@ -304,6 +300,14 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.saveContactError': 'Could not save that contact.',
     'transfer.sendError': 'Could not complete this transfer.',
     'transfer.insufficientBalance': 'Not enough balance — you have {{amount}} RWF.',
+    'transfer.recipientStepTitle': 'Who would you like to send money to?',
+    'transfer.recentLabel': 'Recent',
+    'transfer.balanceLabel': 'Balance {{amount}} RWF',
+    'transfer.memoPlaceholder': 'Add a memo (optional)',
+    'transfer.next': 'Next',
+    'transfer.confirmSendNow': 'Send {{amount}} RWF to {{recipient}} now',
+    'transfer.feeCovered': 'itunda covered the transfer fee',
+    'transfer.toLabel': 'To',
     'dashboard.mainAccount': 'Main Account',
     'dashboard.transfer': 'Transfer',
     'dashboard.topUp': 'Top up',
@@ -467,10 +471,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'overview.linkError': 'Ntibishoboka guhuza iyo konti.',
     'overview.unlinkError': 'Ntibishoboka kuraho iyo konti.',
     'overview.verificationFailed': 'Ntibishoboka kwemeza iyo konti ya {{provider}}. Ntiyahujwe.',
-    'transfer.title': 'Kohereza amafaranga',
     'transfer.recipientPlaceholder': "Numero ya telefoni cyangwa konti y'uwakira",
-    'transfer.amountPlaceholder': 'Amafaranga (RWF)',
-    'transfer.contactsLabel': 'Abo wabitse',
     'transfer.addContact': '+ Ongeraho',
     'transfer.cancel': 'Hagarika',
     'transfer.namePlaceholder': 'Izina',
@@ -478,9 +479,6 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.saveContact': 'Bika uyu muntu',
     'transfer.noContacts': 'Nta bantu wabitse. Ongeraho umwe kugira ngo wihute mu kohereza amafaranga ubutaha.',
     'transfer.continue': 'Komeza',
-    'transfer.confirmTitle': 'Emeza kohereza amafaranga',
-    'transfer.toRecipient': 'Kuri {{recipient}}',
-    'transfer.amountLine': 'Amafaranga: {{amount}} RWF',
     'transfer.scamWarningTitle': 'Witondere mbere yo kohereza',
     'transfer.scamWarningBody': "Uyu muntu yatanzweho raporo n'abakoresha itunda {{count}}. Genzura neza mbere yo kohereza.",
     'transfer.sending': 'Kohereza…',
@@ -490,6 +488,14 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.saveContactError': 'Ntibishoboka kubika uwo muntu.',
     'transfer.sendError': 'Ntibishoboka kurangiza kohereza amafaranga.',
     'transfer.insufficientBalance': 'Amafaranga ntahagije — ufite {{amount}} RWF.',
+    'transfer.recipientStepTitle': 'Ushaka kohereza amafaranga kuri nde?',
+    'transfer.recentLabel': 'Vuba aha',
+    'transfer.balanceLabel': 'Amafaranga ufite {{amount}} RWF',
+    'transfer.memoPlaceholder': 'Ongeraho ubutumwa (si ngombwa)',
+    'transfer.next': 'Komeza',
+    'transfer.confirmSendNow': 'Ohereza {{amount}} RWF kuri {{recipient}} nonaha',
+    'transfer.feeCovered': 'itunda yishyuye amafaranga y’ubwoherezi',
+    'transfer.toLabel': 'Kuri',
     'dashboard.mainAccount': 'Konti nyamukuru',
     'dashboard.transfer': 'Kohereza',
     'dashboard.topUp': 'Ongera amafaranga',
@@ -653,10 +659,7 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'overview.linkError': 'Impossible de lier ce compte.',
     'overview.unlinkError': 'Impossible de dissocier ce compte.',
     'overview.verificationFailed': 'Impossible de vérifier ce compte {{provider}}. Il n’a pas été lié.',
-    'transfer.title': 'Transfert',
     'transfer.recipientPlaceholder': 'Téléphone ou numéro de compte du destinataire',
-    'transfer.amountPlaceholder': 'Montant (RWF)',
-    'transfer.contactsLabel': 'Contacts',
     'transfer.addContact': '+ Ajouter',
     'transfer.cancel': 'Annuler',
     'transfer.namePlaceholder': 'Nom',
@@ -664,9 +667,6 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.saveContact': 'Enregistrer le contact',
     'transfer.noContacts': 'Aucun contact enregistré — ajoutez-en un pour envoyer de l’argent plus rapidement la prochaine fois.',
     'transfer.continue': 'Continuer',
-    'transfer.confirmTitle': 'Confirmer le transfert',
-    'transfer.toRecipient': 'À {{recipient}}',
-    'transfer.amountLine': 'Montant : {{amount}} RWF',
     'transfer.scamWarningTitle': 'Prudence avant ce transfert',
     'transfer.scamWarningBody': 'Ce destinataire a été signalé par {{count}} autre(s) utilisateur(s) itunda. Vérifiez bien avant d’envoyer.',
     'transfer.sending': 'Envoi en cours…',
@@ -676,6 +676,14 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.saveContactError': 'Impossible d’enregistrer ce contact.',
     'transfer.sendError': 'Impossible de finaliser ce transfert.',
     'transfer.insufficientBalance': 'Solde insuffisant — vous avez {{amount}} RWF.',
+    'transfer.recipientStepTitle': 'À qui voulez-vous envoyer de l’argent ?',
+    'transfer.recentLabel': 'Récents',
+    'transfer.balanceLabel': 'Solde {{amount}} RWF',
+    'transfer.memoPlaceholder': 'Ajouter un mémo (facultatif)',
+    'transfer.next': 'Suivant',
+    'transfer.confirmSendNow': 'Envoyer {{amount}} RWF à {{recipient}} maintenant',
+    'transfer.feeCovered': 'itunda a pris en charge les frais de transfert',
+    'transfer.toLabel': 'À',
     'dashboard.mainAccount': 'Compte principal',
     'dashboard.transfer': 'Transférer',
     'dashboard.topUp': 'Recharger',

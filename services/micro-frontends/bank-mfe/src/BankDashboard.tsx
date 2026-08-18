@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
@@ -55,7 +55,7 @@ import {
   type Grow31SavingsPlan, type Grow31SavingsPlanDetail,
 } from './lib/grow31Savings';
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
-import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, sendToFamilyMember, type P2pPaymentRequestDto, type P2pPaymentRequestStatus } from './lib/p2p';
+import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, resolveRecipient, sendDirect, sendToFamilyMember, type P2pPaymentRequestDto, type P2pPaymentRequestStatus, type P2pRecipientPreview } from './lib/p2p';
 import { getCertificateStatus, getMyCertificate, issueCertificate, revokeCertificate, verifyCertificateSignature, type Certificate, type VerifyCertificateSignatureResult } from './lib/certificate';
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
 import {
@@ -452,11 +452,25 @@ function ReportScamLink({ identifier }: { identifier: string }) {
   );
 }
 
+// Real Toss "송금" flow -- recipient picker, then amount entry with a numeric keypad,
+// then a confirm sheet ("Send X RWF to [name] now"), then a sending spinner, then a
+// success screen -- rebuilt 2026-08-18 to match Toss's own real send-money screens
+// exactly (reference: screenshots the user supplied directly, per this session's own
+// "don't imagine, use real reference" rule) instead of the prior single-card form.
+// The backend calls underneath are unchanged: this is a UI/flow rebuild, not a new
+// capability, except for resolveRecipient (lib/p2p.ts), which already existed on the
+// backend (P2pService.resolveRecipient) with zero client caller until now -- it's what
+// lets the amount/confirm screens show the real resolved "To [name]" the same way the
+// reference screenshots do.
+type TransferStep = 'recipient' | 'amount' | 'confirm' | 'sending' | 'success';
+
 function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: { onClose: () => void; onSuccess: () => void; onBalanceRefresh?: () => void; walletBalance: number }) {
   const { t } = useI18n();
+  const [step, setStep] = useState<TransferStep>('recipient');
   const [recipient, setRecipient] = useState('');
+  const [recipientPreview, setRecipientPreview] = useState<P2pRecipientPreview | null>(null);
   const [amount, setAmount] = useState('');
-  const [reviewing, setReviewing] = useState(false);
+  const [memo, setMemo] = useState('');
   const [result, setResult] = useState<{ message: string; newBalance: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -507,35 +521,56 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
   // 만드는 6가지 원칙"): walletBalance is already known here (AccountBalance renders
   // it right above this form), yet an amount larger than it previously round-tripped
   // to the backend's 422 before saying anything. Same fix as Android/iOS.
-  const insufficientBalance = Number(amount) > 0 && Number(amount) > walletBalance;
+  const insufficientBalance = Number(amount || 0) > 0 && Number(amount || 0) > walletBalance;
+  const recipientName = recipientPreview?.displayName ?? recipient;
 
-  const handleReview = (e: React.FormEvent) => {
-    e.preventDefault();
+  const selectRecipient = (identifier: string) => {
+    const trimmed = identifier.trim();
+    if (!trimmed) return;
     setError(null);
-    if (insufficientBalance) {
-      setError(t('transfer.insufficientBalance', { amount: walletBalance.toLocaleString() }));
-      return;
-    }
+    setRecipient(trimmed);
+    setRecipientPreview(null);
     setScamCheck(null);
-    setReviewing(true);
-    checkScamStatus(recipient.trim()).then(setScamCheck).catch(() => {
+    checkScamStatus(trimmed).then(setScamCheck).catch(() => {
       // Real, non-critical -- a failed safety check must never block a real transfer
       // the sender is otherwise entitled to make.
     });
+    if (!isGift) {
+      // Real Toss/Kakao Bank-style recipient-name confirmation -- resolves before the
+      // amount screen renders "To [name]", matching the reference screenshots. A
+      // failed lookup is non-fatal here (falls back to showing the raw identifier):
+      // sendDirect itself still does the real, authoritative resolution at send time.
+      resolveRecipient(trimmed).then(setRecipientPreview).catch(() => {});
+    }
+    setStep('amount');
   };
+
+  // Real Toss/Kakao keypad shape (…7 8 9 / 00 0 backspace) -- RWF has no minor unit in
+  // this codebase (every amount elsewhere is a whole-number toLocaleString()), so
+  // there's no decimal-point key. Capped at 9 digits (under 1 billion RWF) purely as a
+  // fat-finger guard, not a real product limit.
+  const appendDigit = (d: string) => {
+    setAmount((prev) => {
+      if (d === '00') return prev === '' || prev === '0' ? prev : (prev + '00').slice(0, 9);
+      return (prev === '0' ? d : prev + d).slice(0, 9);
+    });
+  };
+  const backspace = () => setAmount((prev) => prev.slice(0, -1));
 
   const handleConfirm = async () => {
     setError(null);
     setNeedsDeviceVerification(false);
     setBusy(true);
+    setStep('sending');
     try {
       if (isGift) {
         const gift = await sendGift(recipient.trim(), Number(amount), giftNote, giftTheme || null);
         setGiftResult(gift);
         onBalanceRefresh?.();
+        setStep('success');
         return;
       }
-      const res = await sendDirect(recipient.trim(), Number(amount), '');
+      const res = await sendDirect(recipient.trim(), Number(amount), memo.trim());
       setResult({ message: res.message, newBalance: res.newBalance });
       // Real fix (2026-08-13, direct live-testing catch): the top-level balance
       // (AccountBalance, rendered above this whole form) previously only refreshed
@@ -546,7 +581,12 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
       // the pre-transfer one). Refresh in the background now, without closing this
       // panel -- onSuccess (Done) still fires its own close-and-reload afterward.
       onBalanceRefresh?.();
+      setStep('success');
     } catch (err) {
+      // Real device step-up retries this exact same handleConfirm call once verified
+      // (DeviceStepUpPrompt's own doc comment), so it needs to land back on the
+      // 'confirm' step rather than staying on the transient 'sending' one.
+      setStep('confirm');
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
         setNeedsDeviceVerification(true);
       } else {
@@ -559,39 +599,80 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
     }
   };
 
-  if (giftResult) {
+  // Step 5: success -- checkmark, "Sent X RWF to [name]," fee-covered subtitle, Share
+  // (real Web Share API where supported) + Done. Matches the reference screenshots'
+  // "Sent" screen; gift's own distinct escrow-pending message is a separate branch
+  // since it's a real, different outcome (held, not delivered, until claimed).
+  if (step === 'success') {
+    if (giftResult) {
+      return (
+        <div className="itunda-card" style={{ textAlign: 'center', padding: '32px 24px', marginBottom: '16px' }}>
+          <span style={{ fontSize: '40px', display: 'block', marginBottom: '12px' }}>🎁</span>
+          <h3 style={{ fontSize: '19px', fontWeight: 800, marginBottom: '6px' }}>Gift sent!</h3>
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '20px' }}>
+            {giftResult.amount.toLocaleString()} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
+          </p>
+          <IdsButton fullWidth onClick={onSuccess}>{t('transfer.done')}</IdsButton>
+        </div>
+      );
+    }
+    if (!result) return null;
     return (
-      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px', marginBottom: '16px' }}>
-        <span style={{ fontSize: '36px', display: 'block', marginBottom: '10px' }}>🎁</span>
-        <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Gift sent!</h3>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-          {giftResult.amount.toLocaleString()} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
+      <div className="itunda-card" style={{ textAlign: 'center', padding: '32px 24px', marginBottom: '16px' }}>
+        <div style={{ width: '64px', height: '64px', borderRadius: '32px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+          <ShieldCheck size={34} color="var(--itunda-blue)" />
+        </div>
+        <h3 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '4px' }}>{t('transfer.done')}</h3>
+        <p style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>
+          {Number(amount).toLocaleString()} RWF → {recipientName}
         </p>
-        <button className="itunda-btn itunda-btn-secondary" onClick={onSuccess}>{t('transfer.done')}</button>
+        {memo.trim() && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
+        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '24px' }}>
+          {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })} · {t('transfer.feeCovered')}
+        </p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {typeof navigator !== 'undefined' && !!navigator.share && (
+            <IdsButton
+              variant="tinted" fullWidth style={{ flex: 1 }}
+              onClick={() => navigator.share({ text: `Sent ${Number(amount).toLocaleString()} RWF to ${recipientName} via itunda` }).catch(() => {})}
+            >
+              Share
+            </IdsButton>
+          )}
+          <IdsButton fullWidth style={{ flex: 1 }} onClick={onSuccess}>{t('transfer.done')}</IdsButton>
+        </div>
       </div>
     );
   }
 
-  if (result) {
+  // Step 4: sending -- a brief transient screen while handleConfirm's await is
+  // in flight, matching the reference screenshots' own loading screen between confirm
+  // and success.
+  if (step === 'sending') {
     return (
-      <div className="itunda-card" style={{ textAlign: 'center', padding: '28px', marginBottom: '16px' }}>
-        <ShieldCheck size={36} color="var(--itunda-green)" style={{ marginBottom: '10px' }} />
-        <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>{result.message}</h3>
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '16px' }}>
-          {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })}
-        </p>
-        <button className="itunda-btn itunda-btn-secondary" onClick={onSuccess}>{t('transfer.done')}</button>
+      <div className="itunda-card" style={{ textAlign: 'center', padding: '48px 24px', marginBottom: '16px' }}>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+          style={{ width: '40px', height: '40px', margin: '0 auto 16px', border: '3px solid var(--itunda-blue-light)', borderTopColor: 'var(--itunda-blue)', borderRadius: '50%' }}
+        />
+        <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{t('transfer.sending')}</p>
       </div>
     );
   }
 
-  if (reviewing) {
+  // Step 3: confirm -- "Send X RWF to [name] now" bottom-sheet-style card, matching
+  // the reference screenshots. Cancel returns to the amount screen (not a full close)
+  // so a sender can fix a typo'd amount without re-picking the recipient.
+  if (step === 'confirm') {
     return (
       <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('transfer.confirmTitle')}</h3>
+        <h3 style={{ fontSize: '17px', fontWeight: 800 }}>
+          {t('transfer.confirmSendNow', { amount: Number(amount).toLocaleString(), recipient: recipientName })}
+        </h3>
         <div style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <span>{t('transfer.toRecipient', { recipient })}</span>
-          <span style={{ fontWeight: 700 }}>{t('transfer.amountLine', { amount: Number(amount).toLocaleString() })}</span>
+          <span>{recipient.trim()}</span>
+          {memo.trim() && <span>&ldquo;{memo.trim()}&rdquo;</span>}
         </div>
         {scamCheck?.warn && (
           <div style={{ backgroundColor: 'var(--itunda-red-light)', border: '1px solid var(--itunda-red)', borderRadius: '8px', padding: '10px 12px' }}>
@@ -611,17 +692,13 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
         ) : (
           <>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <IdsButton variant="tinted" fullWidth style={{ flex: 1 }} onClick={onClose} disabled={busy}>{t('transfer.cancel')}</IdsButton>
+              <IdsButton variant="tinted" fullWidth style={{ flex: 1 }} onClick={() => setStep('amount')} disabled={busy}>{t('transfer.cancel')}</IdsButton>
               {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): a
                   bare "Confirm" doesn't state the outcome -- Toss's own dark-pattern-
                   prevention rules require CTA labels to name the specific action, not a
                   generic verb, matching the "Clear Action" principle. */}
               <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
-                {busy
-                  ? t('transfer.sending')
-                  : isGift
-                    ? `🎁 Send gift · ${Number(amount).toLocaleString()} RWF`
-                    : t('transfer.send', { amount: Number(amount).toLocaleString() })}
+                {isGift ? `🎁 Send gift · ${Number(amount).toLocaleString()} RWF` : t('transfer.send', { amount: Number(amount).toLocaleString() })}
               </IdsButton>
             </div>
             {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
@@ -632,49 +709,130 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
     );
   }
 
+  // Step 2: amount -- "To [name]" header with a back arrow, a big centered amount
+  // readout, a tap-to-fill balance line, an optional memo, and a numeric keypad,
+  // matching the reference screenshots' amount-entry screen.
+  if (step === 'amount') {
+    return (
+      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px', padding: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+          <button type="button" aria-label={t('transfer.cancel')} onClick={() => setStep('recipient')} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
+            <ChevronLeft size={22} color="var(--itunda-grey-700)" />
+          </button>
+          <span style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>{t('transfer.toLabel')}</span>
+          <span style={{ fontSize: '14px', fontWeight: 700 }}>{recipientName}</span>
+          {recipientPreview && <ShieldCheck size={15} color="var(--itunda-blue)" />}
+          <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
+            <X size={20} color="var(--itunda-grey-500)" />
+          </button>
+        </div>
+
+        <div style={{ textAlign: 'center', padding: '20px 0 8px' }}>
+          <span style={{ fontSize: '38px', fontWeight: 800 }}>
+            {amount === '' ? '0' : Number(amount).toLocaleString()} <span style={{ fontSize: '18px', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>RWF</span>
+          </span>
+          <div>
+            <button type="button" onClick={() => setAmount(String(walletBalance))} style={{ marginTop: '6px', background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>
+              {t('transfer.balanceLabel', { amount: walletBalance.toLocaleString() })}
+            </button>
+          </div>
+          {insufficientBalance && (
+            <p style={{ fontSize: '12px', color: 'var(--itunda-red)', margin: '4px 0 0' }}>
+              {t('transfer.insufficientBalance', { amount: walletBalance.toLocaleString() })}
+            </p>
+          )}
+        </div>
+
+        {isGift ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <input
+              type="text" value={giftNote} onChange={(e) => setGiftNote(e.target.value)} placeholder="Add a note (optional)" maxLength={200}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', textAlign: 'center' }}
+            />
+            <select
+              value={giftTheme} onChange={(e) => setGiftTheme(e.target.value as GiftTheme | '')}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+            >
+              <option value="">No theme (plain gift)</option>
+              {(Object.keys(GIFT_THEME_LABELS) as GiftTheme[]).map((theme) => (
+                <option key={theme} value={theme}>{GIFT_THEME_LABELS[theme]}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <input
+            type="text" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder={t('transfer.memoPlaceholder')} maxLength={200}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', textAlign: 'center' }}
+          />
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2px', marginTop: '8px' }}>
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', '⌫'].map((k) => (
+            <button
+              key={k} type="button"
+              onClick={() => (k === '⌫' ? backspace() : appendDigit(k))}
+              aria-label={k === '⌫' ? 'Backspace' : `Enter ${k}`}
+              style={{ padding: '16px 0', background: 'none', border: 'none', fontSize: '20px', fontWeight: 600, color: 'var(--itunda-grey-900)', borderRadius: '10px' }}
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+
+        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+        <IdsButton
+          fullWidth style={{ marginTop: '4px' }}
+          disabled={!amount || Number(amount) <= 0 || insufficientBalance}
+          onClick={() => { setError(null); setStep('confirm'); }}
+        >
+          {t('transfer.next')}
+        </IdsButton>
+      </div>
+    );
+  }
+
+  // Step 1: recipient -- search/manual-entry field, gift toggle, and the real saved-
+  // contacts "Recent" list, matching the reference screenshots' recipient screen.
   return (
-    <form onSubmit={handleReview} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>{t('transfer.title')}</h3>
-      <input
-        type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder={t('transfer.recipientPlaceholder')} required
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t('transfer.amountPlaceholder')} required min="1" max={walletBalance}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      {insufficientBalance && (
-        <p style={{ fontSize: '12px', color: 'var(--itunda-red)' }}>
-          {t('transfer.insufficientBalance', { amount: walletBalance.toLocaleString() })}
-        </p>
-      )}
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', padding: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: '17px', fontWeight: 800 }}>{t('transfer.recipientStepTitle')}</h3>
+        <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
+          <X size={20} color="var(--itunda-grey-500)" />
+        </button>
+      </div>
+      <form onSubmit={(e) => { e.preventDefault(); selectRecipient(recipient); }} style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <Search size={16} color="var(--itunda-grey-400)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)}
+            placeholder={t('transfer.recipientPlaceholder')} required
+            style={{ width: '100%', padding: '12px 14px 12px 36px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px', boxSizing: 'border-box' }}
+          />
+        </div>
+        {/* Real fix (2026-08-18, direct live-testing catch): IdsButton's own Large-size
+            default (width: fullWidth ?? size === 'large' ? '100%' : undefined) claims
+            100% width even without fullWidth set -- fine standalone, but fatal as a
+            flex sibling of the search input's own flex:1 wrapper, which collapsed to
+            icon-width because this button's width:100% left it no room to grow into.
+            IdsButton spreads its own `style` prop last, so an explicit width here wins
+            over that default. */}
+        <IdsButton type="submit" style={{ width: 'auto' }} disabled={!recipient.trim()}>{t('transfer.continue')}</IdsButton>
+      </form>
+
       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}>
         <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
         🎁 Send as a gift instead
       </label>
       {isGift && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-            Held until they claim it -- auto-refunded to you after 7 days if unclaimed. Enter their
-            phone number above -- gifts can't be sent to an account number.
-          </p>
-          <input
-            type="text" value={giftNote} onChange={(e) => setGiftNote(e.target.value)} placeholder="Add a note (optional)" maxLength={200}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-          />
-          <select
-            value={giftTheme} onChange={(e) => setGiftTheme(e.target.value as GiftTheme | '')}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-          >
-            <option value="">No theme (plain gift)</option>
-            {(Object.keys(GIFT_THEME_LABELS) as GiftTheme[]).map((theme) => (
-              <option key={theme} value={theme}>{GIFT_THEME_LABELS[theme]}</option>
-            ))}
-          </select>
-        </div>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+          Held until they claim it -- auto-refunded to you after 7 days if unclaimed. Enter their
+          phone number above -- gifts can't be sent to an account number.
+        </p>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>{t('transfer.contactsLabel')}</p>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>{t('transfer.recentLabel')}</p>
         <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700, background: 'none', border: 'none' }}>
           {showAddContact ? t('transfer.cancel') : t('transfer.addContact')}
         </button>
@@ -700,19 +858,20 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
       {contacts.map((c) => (
         <button
           type="button" key={c.id}
-          onClick={() => setRecipient(c.phoneNumber)}
-          style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', background: 'none', border: 'none', textAlign: 'left' }}
+          onClick={() => selectRecipient(c.phoneNumber)}
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', background: 'none', border: 'none', textAlign: 'left' }}
         >
-          <span style={{ fontSize: '13px', fontWeight: 700 }}>{c.name}</span>
-          <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{c.bank} · {c.phoneNumber}</span>
+          <div style={{ width: '38px', height: '38px', borderRadius: '19px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: 'var(--itunda-blue)', flexShrink: 0 }}>
+            {c.name.slice(0, 1).toUpperCase()}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700 }}>{c.name}</span>
+            <span style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>{c.bank} · {c.phoneNumber}</span>
+          </div>
         </button>
       ))}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={onClose}>{t('transfer.cancel')}</button>
-        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={insufficientBalance}>{t('transfer.continue')}</button>
-      </div>
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </form>
+    </div>
   );
 }
 
