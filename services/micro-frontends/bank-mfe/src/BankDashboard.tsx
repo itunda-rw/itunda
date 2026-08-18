@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement } from 'react';
+import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
@@ -484,6 +484,33 @@ function ReportScamLink({ identifier }: { identifier: string }) {
 // backend (P2pService.resolveRecipient) with zero client caller until now -- it's what
 // lets the amount/confirm screens show the real resolved "To [name]" the same way the
 // reference screenshots do.
+// Real Toss FixedBottomCTA pattern -- see tossmini-docs.toss.im/tds-mobile/components/
+// BottomCTA/fixed-bottom-cta's own real doc: a CTA button pinned to the screen bottom
+// while the rest of the screen scrolls underneath, supporting a single button or a
+// real two-button (Cancel/Confirm) layout. This genuinely only makes sense for a
+// dedicated full-screen flow (TDS's own real pattern assumes one) -- itunda's prior
+// convention for TransferFlow/CreateGoalForm/etc. was an inline card that stayed
+// embedded in a longer scrolling page (per this file's own earlier doc comment on
+// TransferFlow, "inline-card-replaces-trigger convention... not a modal overlay"),
+// which is exactly what a fixed-bottom button would fight against -- it would float
+// over unrelated real content below the active card. So this wrapper also takes the
+// flow full-screen when active, replacing that prior convention specifically for
+// genuinely multi-step processes (2026-08-19, direct user request to build this after
+// the "One Thing per One Page" pass) -- itunda's simpler single-panel toggles
+// elsewhere are a different, legitimate pattern and are NOT being changed by this.
+function FullScreenFlow({ children, bottomCTA }: { children: ReactNode; bottomCTA?: ReactNode }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, backgroundColor: 'var(--itunda-white)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>{children}</div>
+      {bottomCTA && (
+        <div style={{ padding: '12px 20px', paddingBottom: 'max(12px, env(safe-area-inset-bottom))', borderTop: '1px solid var(--itunda-grey-200)', backgroundColor: 'var(--itunda-white)' }}>
+          {bottomCTA}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Real Toss ProgressStepper component, compact variant -- see
 // tossmini-docs.toss.im/tds-mobile/components/progress-stepper's own real API shape
 // (`<ProgressStepper variant="compact" activeStepIndex={N}><ProgressStep title="..."
@@ -676,107 +703,128 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
   if (step === 'success') {
     if (giftResult) {
       return (
-        <div className="itunda-card" style={{ textAlign: 'center', padding: '32px 24px', marginBottom: '16px' }}>
-          <span style={{ fontSize: '40px', display: 'block', marginBottom: '12px' }}>🎁</span>
-          <h3 style={{ fontSize: '19px', fontWeight: 800, marginBottom: '6px' }}>Gift sent!</h3>
-          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '20px' }}>
-            {giftResult.amount.toLocaleString()} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
-          </p>
-          <IdsButton fullWidth onClick={onSuccess}>{t('transfer.done')}</IdsButton>
-        </div>
+        <FullScreenFlow bottomCTA={<IdsButton fullWidth onClick={onSuccess}>{t('transfer.done')}</IdsButton>}>
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <span style={{ fontSize: '40px', display: 'block', marginBottom: '12px' }}>🎁</span>
+            <h3 style={{ fontSize: '19px', fontWeight: 800, marginBottom: '6px' }}>Gift sent!</h3>
+            <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+              {giftResult.amount.toLocaleString()} RWF is held until {recipient.trim()} claims it -- auto-refunded to you after 7 days if unclaimed.
+            </p>
+          </div>
+        </FullScreenFlow>
       );
     }
     if (!result) return null;
     return (
-      <div className="itunda-card" style={{ textAlign: 'center', padding: '32px 24px', marginBottom: '16px' }}>
-        <div style={{ width: '64px', height: '64px', borderRadius: '32px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-          <ShieldCheck size={34} color="var(--itunda-blue)" />
+      <FullScreenFlow
+        bottomCTA={
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {typeof navigator !== 'undefined' && !!navigator.share && (
+              <IdsButton
+                variant="tinted" fullWidth style={{ flex: 1 }}
+                onClick={() => navigator.share({ text: `Sent ${Number(amount).toLocaleString()} RWF to ${recipientName} via itunda` }).catch(() => {})}
+              >
+                Share
+              </IdsButton>
+            )}
+            <IdsButton fullWidth style={{ flex: 1 }} onClick={onSuccess}>{t('transfer.done')}</IdsButton>
+          </div>
+        }
+      >
+        <div style={{ textAlign: 'center', padding: '32px 0' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '32px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <ShieldCheck size={34} color="var(--itunda-blue)" />
+          </div>
+          <h3 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '4px' }}>{t('transfer.done')}</h3>
+          <p style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>
+            {Number(amount).toLocaleString()} RWF → {recipientName}
+          </p>
+          {memo.trim() && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
+          <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)' }}>
+            {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })} · {t('transfer.feeCovered')}
+          </p>
         </div>
-        <h3 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '4px' }}>{t('transfer.done')}</h3>
-        <p style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>
-          {Number(amount).toLocaleString()} RWF → {recipientName}
-        </p>
-        {memo.trim() && <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '4px' }}>&ldquo;{memo.trim()}&rdquo;</p>}
-        <p style={{ fontSize: '13px', color: 'var(--itunda-grey-500)', marginBottom: '24px' }}>
-          {t('transfer.newBalance', { amount: result.newBalance.toLocaleString() })} · {t('transfer.feeCovered')}
-        </p>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {typeof navigator !== 'undefined' && !!navigator.share && (
-            <IdsButton
-              variant="tinted" fullWidth style={{ flex: 1 }}
-              onClick={() => navigator.share({ text: `Sent ${Number(amount).toLocaleString()} RWF to ${recipientName} via itunda` }).catch(() => {})}
-            >
-              Share
-            </IdsButton>
-          )}
-          <IdsButton fullWidth style={{ flex: 1 }} onClick={onSuccess}>{t('transfer.done')}</IdsButton>
-        </div>
-      </div>
+      </FullScreenFlow>
     );
   }
 
   // Step 4: sending -- a brief transient screen while handleConfirm's await is
   // in flight, matching the reference screenshots' own loading screen between confirm
-  // and success.
+  // and success. Full-screen too (no bottomCTA -- nothing to press while it's in
+  // flight), matching Toss's own real loan-review loading screen precedent
+  // (toss.tech/article/interaction) of a dedicated, real loading PAGE, not an inline
+  // spinner competing with unrelated content.
   if (step === 'sending') {
     return (
-      <div className="itunda-card" style={{ textAlign: 'center', padding: '48px 24px', marginBottom: '16px' }}>
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-          style={{ width: '40px', height: '40px', margin: '0 auto 16px', border: '3px solid var(--itunda-blue-light)', borderTopColor: 'var(--itunda-blue)', borderRadius: '50%' }}
-        />
-        <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{t('transfer.sending')}</p>
-      </div>
+      <FullScreenFlow>
+        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+            style={{ width: '40px', height: '40px', margin: '0 auto 16px', border: '3px solid var(--itunda-blue-light)', borderTopColor: 'var(--itunda-blue)', borderRadius: '50%' }}
+          />
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--itunda-grey-700)' }}>{t('transfer.sending')}</p>
+        </div>
+      </FullScreenFlow>
     );
   }
 
-  // Step 3: confirm -- "Send X RWF to [name] now" bottom-sheet-style card, matching
-  // the reference screenshots. Cancel returns to the amount screen (not a full close)
-  // so a sender can fix a typo'd amount without re-picking the recipient.
+  // Step 3: confirm -- "Send X RWF to [name] now" full-screen flow, matching the
+  // reference screenshots. Cancel returns to the amount screen (not a full close) so a
+  // sender can fix a typo'd amount without re-picking the recipient. The real
+  // Cancel/Send pair moves to the pinned FixedBottomCTA; DeviceStepUpPrompt (when it
+  // takes over) stays in the scrollable content area instead -- it's a real,
+  // self-contained component with its own submit button already, not a page-level
+  // action this flow's own CTA bar should duplicate.
   if (step === 'confirm') {
     return (
-      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <FullScreenFlow
+        bottomCTA={
+          !needsDeviceVerification && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <IdsButton variant="tinted" fullWidth style={{ flex: 1 }} onClick={() => setStep('amount')} disabled={busy}>{t('transfer.cancel')}</IdsButton>
+                {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): a
+                    bare "Confirm" doesn't state the outcome -- Toss's own dark-pattern-
+                    prevention rules require CTA labels to name the specific action, not a
+                    generic verb, matching the "Clear Action" principle. */}
+                <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
+                  {isGift ? `🎁 Send gift · ${Number(amount).toLocaleString()} RWF` : t('transfer.send', { amount: Number(amount).toLocaleString() })}
+                </IdsButton>
+              </div>
+              {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
+              <ReportScamLink identifier={recipient.trim()} />
+            </div>
+          )
+        }
+      >
         <ProgressStepper activeStepIndex={2} steps={TRANSFER_STEP_LABELS} />
         <h3 style={{ fontSize: '17px', fontWeight: 800 }}>
           {t('transfer.confirmSendNow', { amount: Number(amount).toLocaleString(), recipient: recipientName })}
         </h3>
-        <div style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ fontSize: '13px', color: 'var(--itunda-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
           <span>{recipient.trim()}</span>
           {memo.trim() && <span>&ldquo;{memo.trim()}&rdquo;</span>}
         </div>
         {scamCheck?.warn && (
-          <div style={{ backgroundColor: 'var(--itunda-red-light)', border: '1px solid var(--itunda-red)', borderRadius: '8px', padding: '10px 12px' }}>
+          <div style={{ backgroundColor: 'var(--itunda-red-light)', border: '1px solid var(--itunda-red)', borderRadius: '8px', padding: '10px 12px', marginTop: '12px' }}>
             <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--itunda-red)' }}>{t('transfer.scamWarningTitle')}</p>
             <p style={{ fontSize: '12px', color: 'var(--itunda-red)', marginTop: '2px' }}>
               {t('transfer.scamWarningBody', { count: scamCheck.reportCount })}
             </p>
           </div>
         )}
-        {needsDeviceVerification ? (
+        {needsDeviceVerification && (
           // Real fix (2026-08-10): re-entering a password to verify the device already
           // proves who's asking -- making the user then tap "Send" a second time for
           // the exact transfer they just reviewed and confirmed adds friction, not
           // security. handleConfirm resets needsDeviceVerification itself, so calling
           // it directly both clears the prompt and retries the same transfer.
-          <DeviceStepUpPrompt onVerified={handleConfirm} onCancel={onClose} />
-        ) : (
-          <>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <IdsButton variant="tinted" fullWidth style={{ flex: 1 }} onClick={() => setStep('amount')} disabled={busy}>{t('transfer.cancel')}</IdsButton>
-              {/* Real CTA-label-clarity fix (item 244, docs/DESIGN_REFERENCES.md §11): a
-                  bare "Confirm" doesn't state the outcome -- Toss's own dark-pattern-
-                  prevention rules require CTA labels to name the specific action, not a
-                  generic verb, matching the "Clear Action" principle. */}
-              <IdsButton fullWidth style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
-                {isGift ? `🎁 Send gift · ${Number(amount).toLocaleString()} RWF` : t('transfer.send', { amount: Number(amount).toLocaleString() })}
-              </IdsButton>
-            </div>
-            {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-            <ReportScamLink identifier={recipient.trim()} />
-          </>
+          <div style={{ marginTop: '12px' }}>
+            <DeviceStepUpPrompt onVerified={handleConfirm} onCancel={onClose} />
+          </div>
         )}
-      </div>
+      </FullScreenFlow>
     );
   }
 
@@ -785,9 +833,22 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
   // matching the reference screenshots' amount-entry screen.
   if (step === 'amount') {
     return (
-      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px', padding: '20px' }}>
+      <FullScreenFlow
+        bottomCTA={
+          <>
+            {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)', marginBottom: '8px' }} role="alert">{error}</p>}
+            <IdsButton
+              fullWidth
+              disabled={!amount || Number(amount) <= 0 || insufficientBalance}
+              onClick={() => { setError(null); setStep('confirm'); }}
+            >
+              {t('transfer.next')}
+            </IdsButton>
+          </>
+        }
+      >
         <ProgressStepper activeStepIndex={1} steps={TRANSFER_STEP_LABELS} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button type="button" aria-label={t('transfer.cancel')} onClick={() => setStep('recipient')} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
             <ChevronLeft size={22} color="var(--itunda-grey-700)" />
           </button>
@@ -834,7 +895,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
         ) : (
           <input
             type="text" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder={t('transfer.memoPlaceholder')} maxLength={200}
-            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', textAlign: 'center' }}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--itunda-grey-200)', fontSize: '13px', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
           />
         )}
 
@@ -850,23 +911,18 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
             </button>
           ))}
         </div>
-
-        {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-        <IdsButton
-          fullWidth style={{ marginTop: '4px' }}
-          disabled={!amount || Number(amount) <= 0 || insufficientBalance}
-          onClick={() => { setError(null); setStep('confirm'); }}
-        >
-          {t('transfer.next')}
-        </IdsButton>
-      </div>
+      </FullScreenFlow>
     );
   }
 
   // Step 1: recipient -- search/manual-entry field, gift toggle, and the real saved-
-  // contacts "Recent" list, matching the reference screenshots' recipient screen.
+  // contacts "Recent" list, matching the reference screenshots' recipient screen. No
+  // bottomCTA here -- "Continue" is a search-submit action tightly coupled to the
+  // search field beside it, not a standalone page-level confirmation the FixedBottomCTA
+  // pattern is meant for (Toss's own real SearchField-adjacent buttons work the same
+  // inline way).
   return (
-    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', padding: '20px' }}>
+    <FullScreenFlow>
       <ProgressStepper activeStepIndex={0} steps={TRANSFER_STEP_LABELS} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: '17px', fontWeight: 800 }}>{t('transfer.recipientStepTitle')}</h3>
@@ -874,7 +930,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
           <X size={20} color="var(--itunda-grey-500)" />
         </button>
       </div>
-      <form onSubmit={(e) => { e.preventDefault(); selectRecipient(recipient); }} style={{ display: 'flex', gap: '8px' }}>
+      <form onSubmit={(e) => { e.preventDefault(); selectRecipient(recipient); }} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
         <div style={{ position: 'relative', flex: 1 }}>
           <Search size={16} color="var(--itunda-grey-400)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
@@ -893,7 +949,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
         <IdsButton type="submit" style={{ width: 'auto' }} disabled={!recipient.trim()}>{t('transfer.continue')}</IdsButton>
       </form>
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 700, marginTop: '12px' }}>
         <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
         🎁 Send as a gift instead
       </label>
@@ -904,7 +960,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
         </p>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
         <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--itunda-grey-500)' }}>{t('transfer.recentLabel')}</p>
         <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: '12px', color: 'var(--itunda-blue)', fontWeight: 700, background: 'none', border: 'none' }}>
           {showAddContact ? t('transfer.cancel') : t('transfer.addContact')}
@@ -932,7 +988,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
         <button
           type="button" key={c.id}
           onClick={() => selectRecipient(c.phoneNumber)}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', background: 'none', border: 'none', textAlign: 'left' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', background: 'none', border: 'none', textAlign: 'left', width: '100%' }}
         >
           <div style={{ width: '38px', height: '38px', borderRadius: '19px', backgroundColor: 'var(--itunda-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: 'var(--itunda-blue)', flexShrink: 0 }}>
             {c.name.slice(0, 1).toUpperCase()}
@@ -944,7 +1000,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
         </button>
       ))}
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </div>
+    </FullScreenFlow>
   );
 }
 
