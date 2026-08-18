@@ -130,7 +130,7 @@ class BillsServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository, billAutoPaySettingRepository, fraudRuleEngine)
-        val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service, notificationRepository, pushNotificationService)
+        val processor = BillAutoPayProcessor(billAutoPaySettingRepository, service, notificationRepository, pushNotificationService, walletRepository)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
         every { transactionRepository.save(any()) } answers { firstArg() }
@@ -142,9 +142,10 @@ class BillsServiceTest : BehaviorSpec({
         // RewardsServiceTest's rewardClaimRepository.save stub.
         every { notificationRepository.save(any()) } answers { firstArg() }
 
-        fun setting(maxAmount: BigDecimal, lastPaidBillId: String? = null) = BillAutoPaySetting(
+        fun setting(maxAmount: BigDecimal, lastPaidBillId: String? = null, lastLowBalanceWarnedBillId: String? = null) = BillAutoPaySetting(
             id = "setting_1", userId = "user_1", providerId = "b1",
             accountNumber = "REG-12345", maxAmount = maxAmount, active = true, lastPaidBillId = lastPaidBillId,
+            lastLowBalanceWarnedBillId = lastLowBalanceWarnedBillId,
         )
 
         When("setAutoPay is called for an unknown provider") {
@@ -181,6 +182,54 @@ class BillsServiceTest : BehaviorSpec({
             Then("it skips the bill and never touches the ledger") {
                 results.size shouldBe 0
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        // Real Section 178 low-balance-warning coverage -- ports Kakao Bank's real
+        // "카드 청구금액 알림" (see BillAutoPayProcessor's own doc comment for the sourcing):
+        // a due, uncapped bill whose amount exceeds the real current wallet balance must
+        // never reach the ledger, and must get a distinct, one-time proactive warning.
+        When("the wallet balance is below the due bill amount") {
+            val lowBalanceWallet = Wallet(
+                id = "wallet_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test wallet",
+                type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+            )
+            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns lowBalanceWallet
+            every { billAutoPaySettingRepository.findByActiveTrue() } returns listOf(setting(BigDecimal("50000")))
+
+            val results = processor.process()
+
+            Then("it skips the doomed attempt, never touches the ledger, and sends one proactive low-balance warning") {
+                results.size shouldBe 0
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 0) { providerConnector.attempt(any(), any()) }
+                val notif = slot<Notification>()
+                verify(exactly = 1) { notificationRepository.save(capture(notif)) }
+                notif.captured.type shouldBe "BILL_AUTOPAY_LOW_BALANCE"
+                notif.captured.userId shouldBe "user_1"
+                val saved = slot<BillAutoPaySetting>()
+                verify(exactly = 1) { billAutoPaySettingRepository.save(capture(saved)) }
+                saved.captured.lastLowBalanceWarnedBillId shouldBe "bill_1"
+            }
+        }
+
+        When("the same bill was already warned about in a prior poll") {
+            val lowBalanceWallet = Wallet(
+                id = "wallet_1", userId = "user_1", accountNumber = "ACC-1", accountName = "Test wallet",
+                type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
+            )
+            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns lowBalanceWallet
+            every {
+                billAutoPaySettingRepository.findByActiveTrue()
+            } returns listOf(setting(BigDecimal("50000"), lastLowBalanceWarnedBillId = "bill_1"))
+
+            val results = processor.process()
+
+            Then("it skips the attempt again but never re-sends the identical warning") {
+                results.size shouldBe 0
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 0) { notificationRepository.save(any()) }
+                verify(exactly = 0) { billAutoPaySettingRepository.save(any()) }
             }
         }
 

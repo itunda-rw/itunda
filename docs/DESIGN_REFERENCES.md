@@ -10890,3 +10890,103 @@ real bug found by it (Sections 170-177) -- the technique has now been reused eno
 times in a row that the next research pass should treat it as likely near-exhausted
 and prioritize the ecosystem-parity/concurrency/IDOR fallbacks named in Section 177's
 own fork report.
+
+## 178. `BillAutoPayProcessor` was purely reactive -- a real Kakao Bank-style proactive low-balance warning, ported before the doomed auto-pay attempt, not after
+
+**Added 2026-08-18.** Per this session's own scoping (treat Sections 170-177's
+escrow-abandonment-timeout technique as exhausted; go deep on either a fresh
+concurrency/IDOR audit of Sections 150-177's own recently-added code, or a fresh
+ecosystem-parity feature), spent the first ~15 minutes on Path A first. Read every file
+changed by Sections 150-169's commits (schedulers, controllers, services) and did not
+find a real new instance of either documented bug class:
+
+- **Concurrency**: `StockPriceAlertScheduler`/`ExchangeRateAlertScheduler` (Sections
+  167/168, the two newest schedulers) already use the proven-safe "loop lives in a
+  separate, non-`@Transactional` bean, calls the real `@Transactional` method on a
+  DIFFERENT bean" shape Sections 115/118/129/130 established -- each `triggerPriceAlert`/
+  `triggerRateAlert` call gets its own independent physical transaction. No batch-
+  transactional loop over independent rows anywhere in the newly-added schedulers.
+- **IDOR**: read `CommunityController`/`CommunityService`, `MarketplaceController`/
+  `MarketplaceService` (including the new Section 178-adjacent `updatePrice`/
+  `reportListing`/`reportPost` methods) end to end -- every mutating method resolves the
+  acting user's ownership via `requireOwner`/`requireAuthor` before acting (e.g.
+  `finalizeGroupBuy`, `scheduleMeetupSessions`, `updatePrice`, `bumpListing` all call
+  `requireOwner`/`requireAuthor` first), and the one real IDOR class this codebase has
+  hit before on session/attendance data (`getSessionAttendance`, fixed 2026-08-02, see
+  its own doc comment) is unchanged and still correctly gated. The `reportListing`/
+  `reportPost`/`reportReview` auto-hide paths do have a theoretical benign race (two
+  concurrent reports right at `REPORT_THRESHOLD` could both read the count before either
+  commits) but the only possible outcome is a slightly-delayed hide, never an incorrect
+  unhide or double-charge -- not a real money-safety bug, and not worth a fix on its own.
+
+Given a clean sweep on Path A, pivoted to Path B: a fresh, sourced ecosystem-parity
+feature. Read `BillAutoPayProcessor` (Kakao Pay 자동납부 auto bill-pay, Sections 162-164)
+end to end and found a real, genuine gap -- every path through this class was purely
+**reactive**: a user only ever learned their auto-pay was in trouble via
+`notifyAutoPayFailed`, *after* a real attempt had already been made against the ledger
+and had already failed. There was no proactive check of any kind before that attempt.
+
+**Sourced from a real, currently-shipped Kakao Bank product**: Kakao Bank's own real
+"카드 청구금액 알림" (card billing-amount notification) service
+(event.kakaobank.com/p/openbankingcard, kakaobank.com/products/openbankingCard,
+corroborated by biz.heraldcorp.com/article/3086484 covering the launch) compares the
+linked account's real balance against the real upcoming card-billing amount **one day
+before the payment date**, and if the balance is insufficient sends "결제계좌 잔액이
+부족해요" ("Your payment account balance is insufficient") -- explicitly framed by
+Kakao Bank itself as preventing late payments "caused by carelessness regarding
+insufficient balance." itunda's own honest port applies the identical idea to its
+already-real `BillAutoPayProcessor`, but checks at the actual moment a due, uncapped
+bill is found (rather than a fixed day-before offset) -- `BillsCatalog.pendingBills`'
+`dueDate` field is a static demo-catalog string with no real relationship to wall-clock
+"today," so a literal day-before check would never fire against it; checking right
+before every real attempt is the closest honest equivalent given that constraint, and
+strictly *more* protective than a once-a-day check would be.
+
+**Fixed**: `BillAutoPaySetting` gets a new `lastLowBalanceWarnedBillId` column (same
+once-per-bill dedup guard `lastPaidBillId` already establishes, so a 60-second poll
+never re-sends the identical warning for as long as the real balance stays
+insufficient). `BillAutoPayProcessor.process()` now calls a new private
+`checkLowBalance(setting, pendingBill, providerName)` immediately before the real
+`billsService.payBill` call: it looks up the user's real MAIN wallet
+(`WalletRepository.findByUserIdAndType`, injected as a new constructor dependency) and
+compares `availableBalance` against the real due amount. If insufficient, the doomed
+`payBill` attempt is skipped entirely this cycle (no point hitting the real ledger just
+to reproduce the exact same "failed" outcome `notifyAutoPayFailed` already covers) and a
+distinct `BILL_AUTOPAY_LOW_BALANCE` notification + push is sent instead, once per real
+bill id. A missing wallet is deliberately **not** treated as a low-balance case --
+that's a different, rarer real failure already fully covered by the existing
+`NoWalletException -> notifyAutoPayFailed` path, left untouched. The existing reactive
+path itself is otherwise unchanged and remains the real backstop for whatever this
+proactive check can't cover (e.g. a balance that changes for an unrelated reason in the
+narrow window between this check and the real ledger attempt).
+
+Files changed:
+- `services/backend/core/src/main/kotlin/rw/itunda/core/domain/BillAutoPaySetting.kt`
+  (new `lastLowBalanceWarnedBillId` field + doc comment)
+- `services/backend/app/src/main/resources/db/migration/V284__bill_auto_pay_low_balance_warning.sql`
+  (new file -- adds the column)
+- `services/backend/bills/src/main/kotlin/rw/itunda/bills/BillAutoPayProcessor.kt`
+  (new `WalletRepository` constructor dependency; new `checkLowBalance`/`notifyLowBalance`
+  private methods; `process()` now calls `checkLowBalance` before every real
+  `billsService.payBill` attempt; class doc comment extended with the sourced Kakao Bank
+  citation)
+- `services/backend/bills/src/test/kotlin/rw/itunda/bills/BillsServiceTest.kt` (two new
+  `When` blocks: a due bill whose amount exceeds the real wallet's `availableBalance`
+  correctly skips the ledger entirely and sends exactly one real
+  `BILL_AUTOPAY_LOW_BALANCE` notification, recording `lastLowBalanceWarnedBillId`; the
+  identical still-insufficient bill on a second poll correctly skips the ledger again but
+  sends **zero** further notifications and never calls `save` again, proving the dedup
+  guard actually works)
+
+**Verified locally, this pass**: `./gradlew :bills:test :bills:compileKotlin
+:app:compileKotlin` -> `BUILD SUCCESSFUL` (the `:app:compileKotlin` run confirms the
+full Spring context, including the new `WalletRepository` wiring into the existing
+`BillAutoPayProcessor` bean, compiles cleanly). Real XML report
+`bills/build/test-results/test/TEST-rw.itunda.bills.BillsServiceTest.xml` confirms
+`tests="14" skipped="0" failures="0" errors="0"` (12 pre-existing + 2 new). Summed every
+real XML report across the full `:bills:test` run (both test classes in the module) ->
+`18` total tests, `failures="0" errors="0"` everywhere -- nothing else in the module
+regressed.
+
+No deploy and no live-server verification attempted here -- reserved for the
+coordinating session per this task's own scoping rules.

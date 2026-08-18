@@ -25,6 +25,13 @@ import java.time.Instant
  * money movement" convention `StockCatalog`'s own doc comment already establishes for
  * an unrelated feature) with no real per-user "already paid" state of its own -- this
  * field is what stops the scheduler from re-paying the identical bill id on every poll.
+ *
+ * `lastLowBalanceWarnedBillId` (Section 178) is the identical once-per-bill dedup guard
+ * for `BillAutoPayProcessor`'s real proactive low-balance warning -- see that class's
+ * own doc comment for the sourced Kakao Bank feature this ports. Same reasoning as
+ * `lastPaidBillId`: without a stored "already warned about this exact bill" marker, a
+ * 60-second poll would re-send the identical push every cycle for as long as the real
+ * balance stayed insufficient.
  */
 @Entity
 @Table(name = "bill_auto_pay_settings")
@@ -50,6 +57,9 @@ class BillAutoPaySetting(
 
     @Column(name = "last_paid_bill_id", length = 64)
     var lastPaidBillId: String? = null,
+
+    @Column(name = "last_low_balance_warned_bill_id", length = 64)
+    var lastLowBalanceWarnedBillId: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
