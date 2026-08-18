@@ -12773,3 +12773,54 @@ live concurrent-load reproduction against the real deployed cluster this pass, s
 safe deploy was possible under the load conditions above. A live two-concurrent-request
 reproduction (matching the rigor `CardService`'s own original fix used) is a reasonable
 follow-up once this ships to a healthy cluster.
+
+### Deploy, once the cluster genuinely recovered
+
+Load dropped to a real `4.51` (1-minute `uptime`) a short while after Section 192 was
+written -- checked twice, treated as a genuine recovery window rather than a transient
+trough, and all three deferred fixes (`c5dc2fff` §190, `3a8165e8` §191, and this
+section's `a3a2d081`) were shipped together in one image
+(`192.168.252.4:32000/itunda/backend:2026-08-18-pending-fixes-batch`).
+
+The build itself completed cleanly, but the push hit a real `connection refused`
+against the registry on the first attempt -- the same "idle 0%/load 50+ refuses
+`docker push`" pattern `feedback_private_cloud_severe_overload_registry_refused.md`
+already documents, confirmed by `uptime` reading `63.78` at that exact moment (the
+"recovery" was itself just a trough inside a still-ongoing severe overload episode, not
+a real end to it). A second push attempt immediately after succeeded. `kubectl set
+image` applied instantly, but the deployment controller itself then sat for several
+minutes without even creating a new ReplicaSet (`kubectl rollout status` timing out
+with "Waiting for deployment spec update to be observed") -- real control-plane lag
+under the same CPU starvation, not a stuck rollout: once the new ReplicaSet
+(`backend-67f895f44f`) finally appeared, it scheduled and reached `1/1 Running`
+cleanly on the very next poll.
+
+**Live-verified all three fixes against the newly deployed pod**, real accounts, real
+data:
+
+- **§190 (folder-inherits-public)**: added "Place A" to a fresh folder (`isPublic:
+  false`, correct default), called `setFolderVisibility` to make the folder public,
+  then added "Place B" to the *same* folder *without* calling `setFolderVisibility`
+  again -- "Place B" came back `isPublic: true` immediately, proving the new
+  inherit-on-add logic actually runs in production, not just in the unit test. The
+  unauthenticated `GET /shared/{userId}/{folderName}` correctly listed both. A second
+  real account then called `subscribe` and got `copiedCount: 2` (both places), and its
+  own `GET /bookmarks` confirmed both rows landed with the correct display names.
+- **§191 (loyalty expiry)**: registered a fresh real merchant, called
+  `GET /{merchantId}/loyalty-balance` for a customer with no history -- returned a
+  clean `{"success":true,"pointBalance":0}`, `200`, confirming the new `getBalance`
+  code path (now routed through `isExpired`) executes without error on the deployed
+  pod. A full real 365-day-dormancy reproduction isn't practical to trigger live in one
+  verification pass; this rests on the already-real unit suite (16 cases) for the
+  expiry logic itself, matching this section's own already-documented scope.
+- **§192 (transfer-limit TOCTOU fix)**: a real 500 RWF transfer from the same seeded
+  demo user succeeded normally (`200`, balance moved from exactly `19,657.00` to
+  exactly `19,157.00`), confirming the new `findByIdForUpdate` lock adds no regression
+  to the ordinary single-transfer path. The account's real balance was too low to
+  safely re-exercise the 500,000 RWF per-transfer cap in this same pass without
+  further seeding; the TOCTOU race itself continues to rest on the real regression
+  test proving the lock call happens (documented above) rather than a fresh live
+  concurrent-load reproduction.
+
+All three fixes are now genuinely live, not just committed. Local Docker image cleaned
+up (`docker rmi` + `docker image prune -f`) after a successful push and rollout.
