@@ -21263,8 +21263,18 @@ function IkiminaSection() {
   );
 }
 
+// Real Toss "One Thing per One Page" fix (Section 199 follow-up, same real sourcing:
+// Toss's own published Product Principles doc, "하나의 화면은 하나의 메시지만 표현한다").
+// This card asked 4 real decisions at once (group name, contribution amount, cycle
+// frequency, member cap) -- rebuilt as a real step flow with the real ProgressStepper
+// indicator, matching the exact convention CreateGoalForm (Section 198) already
+// established. All 4 fields are genuinely required (unlike CreateGoalForm's optional
+// final step), so each gets its own real step rather than being grouped.
+type CreateIkiminaStep = 'closed' | 'name' | 'contribution' | 'frequency' | 'members';
+const IKIMINA_STEP_LABELS = ['Name', 'Contribution', 'Frequency', 'Members'];
+
 function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<CreateIkiminaStep>('closed');
   const [name, setName] = useState('');
   const [contributionAmount, setContributionAmount] = useState('');
   const [cycleFrequencyDays, setCycleFrequencyDays] = useState('30');
@@ -21272,26 +21282,33 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) {
+  const reset = () => {
+    setStep('closed');
+    setName('');
+    setContributionAmount('');
+    setCycleFrequencyDays('30');
+    setMemberCap('10');
+    setError(null);
+  };
+
+  if (step === 'closed') {
     return (
       <button
         className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setOpen(true)}
+        onClick={() => setStep('name')}
       >
         <Plus size={16} /> New ikimina
       </button>
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = async () => {
     setBusy(true);
     setError(null);
     try {
-      await createIkimina(name, Number(contributionAmount), Number(cycleFrequencyDays), Number(memberCap));
-      setName(''); setContributionAmount('');
-      setOpen(false);
+      await createIkimina(name.trim(), Number(contributionAmount), Number(cycleFrequencyDays), Number(memberCap));
+      reset();
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not create this ikimina.');
@@ -21300,35 +21317,90 @@ function CreateIkiminaForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <input
-        type="text" required placeholder="Group name (e.g. Umuryango)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="number" min="1" required placeholder="Contribution per round (RWF)" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <div style={{ display: 'flex', gap: '8px' }}>
+  if (step === 'name') {
+    return (
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('contribution'); }}
+        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
+      >
+        <ProgressStepper activeStepIndex={0} steps={IKIMINA_STEP_LABELS} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What's your group called?</h3>
+          <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
+            <X size={20} color="var(--itunda-grey-500)" />
+          </button>
+        </div>
+        <input
+          type="text" required autoFocus placeholder="e.g. Umuryango" value={name} onChange={(e) => setName(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        <IdsButton type="submit" disabled={!name.trim()}>Next</IdsButton>
+      </form>
+    );
+  }
+
+  if (step === 'contribution') {
+    return (
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (Number(contributionAmount) > 0) setStep('frequency'); }}
+        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
+      >
+        <ProgressStepper activeStepIndex={1} steps={IKIMINA_STEP_LABELS} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+            <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+          </button>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much does each member contribute per round?</h3>
+        </div>
+        <input
+          type="number" min="1" required autoFocus placeholder="Contribution (RWF)" value={contributionAmount} onChange={(e) => setContributionAmount(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        <IdsButton type="submit" disabled={!(Number(contributionAmount) > 0)}>Next</IdsButton>
+      </form>
+    );
+  }
+
+  if (step === 'frequency') {
+    return (
+      <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <ProgressStepper activeStepIndex={2} steps={IKIMINA_STEP_LABELS} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button type="button" aria-label="Back" onClick={() => setStep('contribution')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+            <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+          </button>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How often does each round happen?</h3>
+        </div>
         <select
           value={cycleFrequencyDays} onChange={(e) => setCycleFrequencyDays(e.target.value)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
         >
           <option value="7">Weekly</option>
           <option value="30">Monthly</option>
         </select>
-        <input
-          type="number" min="2" max="15" required placeholder="Max members" value={memberCap} onChange={(e) => setMemberCap(e.target.value)}
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-        />
+        <IdsButton onClick={() => setStep('members')}>Next</IdsButton>
       </div>
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+    );
+  }
+
+  return (
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <ProgressStepper activeStepIndex={3} steps={IKIMINA_STEP_LABELS} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button type="button" aria-label="Back" onClick={() => setStep('frequency')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+          <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+        </button>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How many members, at most?</h3>
       </div>
+      <input
+        type="number" min="2" max="15" required autoFocus placeholder="Max members (2-15)" value={memberCap} onChange={(e) => setMemberCap(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+      />
+      <IdsButton onClick={handleCreate} disabled={busy || !(Number(memberCap) >= 2 && Number(memberCap) <= 15)}>
+        {busy ? 'Creating…' : 'Create ikimina'}
+      </IdsButton>
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </form>
+    </div>
   );
 }
 
@@ -21775,36 +21847,47 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Real Toss "One Thing per One Page" fix (Section 199 follow-up) -- see
+// CreateIkiminaForm's own identical doc comment above for the full real sourcing.
+// This card asked 3 real decisions at once (plan name, weekly amount, escalation
+// rate) -- rebuilt as a real step flow with the real ProgressStepper indicator.
+type CreateWeeklySavingsPlanStep = 'closed' | 'name' | 'amount' | 'escalation';
+const WEEKLY_SAVINGS_STEP_LABELS = ['Name', 'Amount', 'Escalation'];
+
 function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<CreateWeeklySavingsPlanStep>('closed');
   const [name, setName] = useState('');
   const [baseWeeklyAmount, setBaseWeeklyAmount] = useState('');
   const [escalationRate, setEscalationRate] = useState(0.10);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) {
+  const reset = () => {
+    setStep('closed');
+    setName('');
+    setBaseWeeklyAmount('');
+    setEscalationRate(0.10);
+    setError(null);
+  };
+
+  if (step === 'closed') {
     return (
       <button
         className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setOpen(true)}
+        onClick={() => setStep('name')}
       >
         <Plus size={16} /> New 26-week savings plan
       </button>
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = async () => {
     setBusy(true);
     setError(null);
     try {
-      await createWeeklySavingsPlan(name, Number(baseWeeklyAmount), escalationRate);
-      setName('');
-      setBaseWeeklyAmount('');
-      setEscalationRate(0.10);
-      setOpen(false);
+      await createWeeklySavingsPlan(name.trim(), Number(baseWeeklyAmount), escalationRate);
+      reset();
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not create this plan.');
@@ -21813,42 +21896,79 @@ function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-        A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main wallet
-        and can step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks. Stay unbroken all 26 weeks to earn a bonus interest rate on top of the base rate.
-      </p>
-      <input
-        type="text" required placeholder="Plan name (e.g. New Laptop Fund)" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="number" min="1" required placeholder="Base weekly amount (RWF)" value={baseWeeklyAmount} onChange={(e) => setBaseWeeklyAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <div>
-        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)', marginBottom: '6px' }}>Escalation rate (steps up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks)</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-          {WEEKLY_SAVINGS_ESCALATION_RATES.map((rate) => (
-            <button
-              key={rate}
-              type="button"
-              onClick={() => setEscalationRate(rate)}
-              className={escalationRate === rate ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
-              style={{ padding: '6px 12px', fontSize: '12px' }}
-            >
-              {rate === 0 ? 'Flat' : `+${Math.round(rate * 100)}%`}
-            </button>
-          ))}
+  if (step === 'name') {
+    return (
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}
+        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
+      >
+        <ProgressStepper activeStepIndex={0} steps={WEEKLY_SAVINGS_STEP_LABELS} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What are you saving toward?</h3>
+          <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
+            <X size={20} color="var(--itunda-grey-500)" />
+          </button>
         </div>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+          A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main wallet
+          and can step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks. Stay unbroken all 26 weeks to earn a bonus interest rate on top of the base rate.
+        </p>
+        <input
+          type="text" required autoFocus placeholder="e.g. New Laptop Fund" value={name} onChange={(e) => setName(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        <IdsButton type="submit" disabled={!name.trim()}>Next</IdsButton>
+      </form>
+    );
+  }
+
+  if (step === 'amount') {
+    return (
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (Number(baseWeeklyAmount) > 0) setStep('escalation'); }}
+        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
+      >
+        <ProgressStepper activeStepIndex={1} steps={WEEKLY_SAVINGS_STEP_LABELS} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+            <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+          </button>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much per week, to start?</h3>
+        </div>
+        <input
+          type="number" min="1" required autoFocus placeholder="Base weekly amount (RWF)" value={baseWeeklyAmount} onChange={(e) => setBaseWeeklyAmount(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        <IdsButton type="submit" disabled={!(Number(baseWeeklyAmount) > 0)}>Next</IdsButton>
+      </form>
+    );
+  }
+
+  return (
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <ProgressStepper activeStepIndex={2} steps={WEEKLY_SAVINGS_STEP_LABELS} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button type="button" aria-label="Back" onClick={() => setStep('amount')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+          <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+        </button>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks?</h3>
       </div>
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+        {WEEKLY_SAVINGS_ESCALATION_RATES.map((rate) => (
+          <button
+            key={rate}
+            type="button"
+            onClick={() => setEscalationRate(rate)}
+            className={escalationRate === rate ? 'itunda-btn itunda-btn-primary' : 'itunda-btn itunda-btn-secondary'}
+            style={{ padding: '6px 12px', fontSize: '12px' }}
+          >
+            {rate === 0 ? 'Flat' : `+${Math.round(rate * 100)}%`}
+          </button>
+        ))}
       </div>
+      <IdsButton onClick={handleCreate} disabled={busy}>{busy ? 'Creating…' : 'Create plan'}</IdsButton>
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </form>
+    </div>
   );
 }
 
@@ -22089,34 +22209,44 @@ function Grow31SavingsPlanDetailView({ id, onBack }: { id: string; onBack: () =>
   );
 }
 
+// Real Toss "One Thing per One Page" fix (Section 199 follow-up) -- see
+// CreateIkiminaForm's own identical doc comment above for the full real sourcing.
+// This card asked 2 real decisions at once (plan name, daily amount).
+type CreateGrow31Step = 'closed' | 'name' | 'amount';
+const GROW31_STEP_LABELS = ['Name', 'Daily amount'];
+
 function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<CreateGrow31Step>('closed');
   const [name, setName] = useState('');
   const [dailyAmount, setDailyAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) {
+  const reset = () => {
+    setStep('closed');
+    setName('');
+    setDailyAmount('');
+    setError(null);
+  };
+
+  if (step === 'closed') {
     return (
       <button
         className="itunda-btn itunda-btn-secondary"
         style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-        onClick={() => setOpen(true)}
+        onClick={() => setStep('name')}
       >
         <Plus size={16} /> New 31-day plan
       </button>
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = async () => {
     setBusy(true);
     setError(null);
     try {
-      await createGrow31SavingsPlan(name, Number(dailyAmount));
-      setName('');
-      setDailyAmount('');
-      setOpen(false);
+      await createGrow31SavingsPlan(name.trim(), Number(dailyAmount));
+      reset();
       onCreated();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not create this plan.');
@@ -22125,26 +22255,48 @@ function CreateGrow31SavingsPlanForm({ onCreated }: { onCreated: () => void }) {
     }
   };
 
+  if (step === 'name') {
+    return (
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}
+        className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
+      >
+        <ProgressStepper activeStepIndex={0} steps={GROW31_STEP_LABELS} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Name your 31-day streak</h3>
+          <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
+            <X size={20} color="var(--itunda-grey-500)" />
+          </button>
+        </div>
+        <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
+          Pick a small amount you can realistically save every single day for {GROW31_TERM_DAYS} days. Miss a day and your streak resets — but your
+          longest streak still locks in a bonus rate at maturity, up to +10% for a full unbroken run.
+        </p>
+        <input
+          type="text" required autoFocus placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+        />
+        <IdsButton type="submit" disabled={!name.trim()}>Next</IdsButton>
+      </form>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-      <p style={{ fontSize: '12px', color: 'var(--itunda-grey-500)' }}>
-        Pick a small amount you can realistically save every single day for {GROW31_TERM_DAYS} days. Miss a day and your streak resets — but your
-        longest streak still locks in a bonus rate at maturity, up to +10% for a full unbroken run.
-      </p>
-      <input
-        type="text" required placeholder="Plan name" value={name} onChange={(e) => setName(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <input
-        type="number" min="1" required placeholder="Daily amount (RWF)" value={dailyAmount} onChange={(e) => setDailyAmount(e.target.value)}
-        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
-      />
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <button type="button" className="itunda-btn itunda-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="itunda-btn itunda-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+    <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <ProgressStepper activeStepIndex={1} steps={GROW31_STEP_LABELS} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
+          <ChevronLeft size={20} color="var(--itunda-grey-700)" />
+        </button>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>How much can you save every day?</h3>
       </div>
+      <input
+        type="number" min="1" required autoFocus placeholder="Daily amount (RWF)" value={dailyAmount} onChange={(e) => setDailyAmount(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
+      />
+      <IdsButton onClick={handleCreate} disabled={busy || !(Number(dailyAmount) > 0)}>{busy ? 'Creating…' : 'Create plan'}</IdsButton>
       {error && <p style={{ fontSize: '13px', color: 'var(--itunda-red)' }} role="alert">{error}</p>}
-    </form>
+    </div>
   );
 }
 
