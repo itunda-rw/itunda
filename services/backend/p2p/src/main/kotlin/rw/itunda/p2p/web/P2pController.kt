@@ -32,6 +32,7 @@ import rw.itunda.p2p.P2pRequestNotFoundException
 import rw.itunda.p2p.P2pRequestNotPayableException
 import rw.itunda.p2p.P2pSelfPaymentException
 import rw.itunda.p2p.P2pService
+import rw.itunda.p2p.P2pTransferLimitExceededException
 import java.math.BigDecimal
 
 data class GenerateP2pRequest(val amount: BigDecimal, val description: String)
@@ -216,4 +217,8 @@ class P2pController(
     @ExceptionHandler(P2pInvalidAmountException::class)
     fun handleInvalidAmount(ex: P2pInvalidAmountException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(P2pTransferLimitExceededException::class)
+    fun handleTransferLimitExceeded(ex: P2pTransferLimitExceededException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("P2P_TRANSFER_LIMIT_EXCEEDED", ex.message ?: "Transfer limit exceeded"))
 }

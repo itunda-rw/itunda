@@ -50,6 +50,13 @@ class P2pDelayedTransferNotCancellableException(message: String) : RuntimeExcept
  * codebase's own standing discipline requires would risk silently reintroducing the
  * exact class of bug `sendDirect` already paid to fix. A real, named, deliberately
  * scoped-down follow-up if this v1 proves out.
+ *
+ * The one deliberate exception (Section 186): [P2pTransferLimitService]'s real
+ * per-transfer/daily-cumulative "이체한도" cap IS shared with `sendDirect`, on purpose
+ * -- see that class's own doc comment for why a real safety CAP (unlike the auxiliary
+ * conveniences above) must be enforced against the identical real daily total
+ * regardless of which push-transfer path the sender used, or the delayed path would
+ * be a trivial way around it.
  */
 @Service
 class P2pDelayedTransferService(
@@ -61,6 +68,7 @@ class P2pDelayedTransferService(
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
+    private val p2pTransferLimitService: P2pTransferLimitService,
 ) {
     private val log = LoggerFactory.getLogger(P2pDelayedTransferService::class.java)
 
@@ -96,6 +104,12 @@ class P2pDelayedTransferService(
         if (senderWallet.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this transfer")
         }
+        // Real Korean "이체한도" (transfer limit) enforcement (Section 186) -- see
+        // P2pTransferLimitService's own doc comment. Shared, real cap against the same
+        // real daily total sendDirect enforces -- this delayed path removes real money
+        // from the sender's control immediately too, so it must count against the
+        // identical real number.
+        p2pTransferLimitService.enforce(senderUserId, amount)
 
         val trimmedDescription = description.trim().ifEmpty { "Transfer" }
         val result = ledgerService.postLedgerTransaction(

@@ -39,6 +39,7 @@ class P2pSelfPaymentException(message: String) : RuntimeException(message)
 class P2pNoWalletException(message: String) : RuntimeException(message)
 class P2pRecipientNotFoundException(message: String) : RuntimeException(message)
 class P2pInvalidAmountException(message: String) : RuntimeException(message)
+class P2pTransferLimitExceededException(message: String) : RuntimeException(message)
 
 /**
  * Real Toss/Kakao Bank-style recipient-name confirmation payload -- see
@@ -74,6 +75,7 @@ class P2pService(
     private val familyLinkService: FamilyLinkService,
     private val autoTopUpService: AutoTopUpService,
     private val pushNotificationService: PushNotificationService,
+    private val p2pTransferLimitService: P2pTransferLimitService,
 ) {
     private val log = LoggerFactory.getLogger(P2pService::class.java)
 
@@ -308,6 +310,12 @@ class P2pService(
         // established; a no-op for the overwhelming common case of a sender who isn't a
         // linked child with a real limit set.
         familyLinkService.enforceSpendLimit(senderUserId, amount)
+        // Real Korean "이체한도" (transfer limit) enforcement (Section 186) -- see
+        // P2pTransferLimitService's own doc comment for the full sourced account. A
+        // real, flat per-transfer and daily-cumulative cap on itunda's real
+        // wallet-to-wallet transfer rail, independent of (and stacked on top of) any
+        // account-specific FamilyLink limit above.
+        p2pTransferLimitService.enforce(senderUserId, amount)
 
         val trimmedDescription = description.trim().ifEmpty { "Transfer" }
         val result = ledgerService.postLedgerTransaction(

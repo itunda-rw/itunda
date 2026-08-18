@@ -47,9 +47,10 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
         rateLimiter: RateLimiter = mockk(relaxed = true),
         notificationRepository: NotificationRepository = mockk(relaxed = true),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
+        p2pTransferLimitService: P2pTransferLimitService = mockk(relaxed = true),
     ) = P2pDelayedTransferService(
         p2pDelayedTransferRepository, walletRepository, userRepository, transactionRepository,
-        ledgerService, rateLimiter, notificationRepository, pushNotificationService,
+        ledgerService, rateLimiter, notificationRepository, pushNotificationService, p2pTransferLimitService,
     )
 
     Given("a real sender holding a delayed transfer to a real recipient by phone number") {
@@ -99,6 +100,39 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
                 transfer.holdTransactionId shouldBe "ledgertxn_hold_1"
                 (transfer.releaseAt.isAfter(before.plus(P2pDelayedTransfer.DELAY_WINDOW).minusSeconds(5))) shouldBe true
                 (transfer.releaseAt.isBefore(before.plus(P2pDelayedTransfer.DELAY_WINDOW).plusSeconds(5))) shouldBe true
+            }
+        }
+    }
+
+    // Real Korean "이체한도" (transfer limit) enforcement (Section 186) -- see
+    // P2pTransferLimitService's own doc comment for why the delayed path must be
+    // gated by the identical real cap sendDirect enforces. Uses the REAL
+    // P2pTransferLimitService (not mocked), so this exercises the actual real
+    // integration, not just that sendDelayed calls some mock.
+    Given("a real sender whose real transfer amount exceeds the real per-transfer cap, choosing the delayed path") {
+        val walletRepository = mockk<WalletRepository>()
+        val userRepository = mockk<UserRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>()
+        every { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(eq("sender_lim"), any(), any(), any()) } returns emptyList()
+        val service = buildService(
+            walletRepository = walletRepository, userRepository = userRepository, ledgerService = ledgerService,
+            transactionRepository = transactionRepository, p2pTransferLimitService = P2pTransferLimitService(transactionRepository),
+        )
+
+        val recipientUser = User(id = "recipient_lim", phoneNumber = "+250788000199", firstName = "R", lastName = "T", passwordHash = "x")
+        every { walletRepository.findByUserIdAndType("sender_lim", WalletType.MAIN) } returns wallet("wallet_lim", "sender_lim", "10000000")
+        every { userRepository.findByPhoneNumber("+250788000199") } returns recipientUser
+        every { walletRepository.findByUserIdAndType("recipient_lim", WalletType.MAIN) } returns wallet("wallet_recipient_lim", "recipient_lim", "0")
+
+        When("they try to hold 600,000 RWF, over the real 500,000 per-transfer cap") {
+            Then("it real-blocks with P2pTransferLimitExceededException before any real money is held") {
+                try {
+                    service.sendDelayed("sender_lim", "+250788000199", BigDecimal("600000"), "")
+                    error("expected P2pTransferLimitExceededException")
+                } catch (e: P2pTransferLimitExceededException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
             }
         }
     }

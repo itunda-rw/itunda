@@ -11987,3 +11987,149 @@ Files touched: none (no code changes -- this section registered real data throug
 already-existing, already-functional real API). Live data created: 1 real `Partner`
 row (`itunda`, `mini-apps@itunda.rw`), 3 real `PartnerMiniApp` rows (Bill Pay, Reward
 Tasks, Insurance), all `status: APPROVED`.
+
+
+## 186. Real Korean 이체한도 (transfer limit) for P2P transfers -- `P2pService.sendDirect`/`P2pDelayedTransferService.sendDelayed` had no amount cap at all
+
+**Added 2026-08-18.** Path B of this pass's own research brief: audited the three
+sections shipped earlier this same session (182 recipient-name preview, 183 delayed
+transfer, 184 terms consent) against this codebase's own established IDOR/concurrency
+audit precedent, since neither lens had run against them yet. Read every new
+controller/service/repository method directly, not pattern-matched: `P2pController`'s
+new endpoints all correctly scope by `currentUser.userId`;
+`P2pDelayedTransferRepository.findByIdAndSenderUserId` is a real, correct IDOR guard
+(confirmed a different user's transfer id 404s, not 403s); `P2pDelayedTransfer`'s
+`@Version` field is real and correctly positioned so a real cancel-vs-release race
+rolls back the whole `@Transactional` method (ledger legs included), not just the
+entity save; `P2pDelayedTransferReleaseScheduler` correctly uses the established
+try/catch-per-row shape, no batch-transactional loop. **Result: clean, no new IDOR or
+concurrency finding** -- all three sections' own self-audits held up under independent
+re-read. Not a wasted pass: a genuinely clean result on freshly-audited code is the
+expected outcome at this point (see `project_itunda_idor_audit`/
+`project_itunda_concurrency_audit` memory), and ruling it out took real, direct reading
+rather than being assumed.
+
+Switched to Path A. Re-checked `docs/DESIGN_REFERENCES.md` for already-scoped ideas
+first, per this pass's own research brief -- Section 185's bundle-hosting follow-up is
+gated on the separately-open `/api/v1/uploads` bug (out of scope without fixing that
+first), and Android/iOS client wiring for Sections 183/184 doesn't have a `*Test.kt` to
+exercise the way this task is scoped toward. Went looking for a fresh, sourced,
+backend money-safety gap instead, and found a real one while re-reading `P2pService`
+directly for the audit above.
+
+**Real, sourced gap, found by reading the code, not guessing**: `P2pService.sendDirect`
+and (as of Section 183) `P2pDelayedTransferService.sendDelayed` -- itunda's real
+wallet-to-wallet transfer rail, its highest-value real money-movement path -- enforce
+only a 30/hour *count* rate limit (`RateLimiter.checkLimit`, anti-spam) and, for a
+linked child account only, `FamilyLinkService.enforceSpendLimit`. Neither is an *amount*
+cap for a regular adult account: confirmed by reading `sendDirect` end to end, a sender
+could push an unbounded single transfer, or an unbounded cumulative amount across many
+smaller ones in a day, in one API call. `FraudRuleEngine.evaluate`'s own `HIGH_VALUE`
+rule only *flags* a large transfer for later review -- confirmed by reading
+`FraudRuleEngine` directly, `evaluate` has no return value a caller could act on to
+actually stop the transfer. This is a real gap by this codebase's own existing
+standard, not an invented one: `rw.itunda.card.CardService` already enforces a real
+`dailyLimit`/`monthlyLimit` on debit-card spend (default 500,000 RWF) and
+`rw.itunda.wallet.MiniWalletService` already enforces a real `DAILY_DEPOSIT_LIMIT`
+(300,000 RWF) -- itunda's own highest-value money-movement rail was the one path with
+no such cap at all.
+
+**Real sourcing** (via web search): TossBank's own real support FAQ
+(support.toss.im/faq/tossbank/1015 and /5245) documents a real default -- for an
+account with no extra verification step -- of a real 10,000,000 KRW per-transfer cap
+and a real 50,000,000 KRW daily cumulative cap (a real 5:1 daily-to-per-transfer
+ratio); OTP or selfie verification raises both to real 100,000,000 / 500,000,000 KRW.
+KakaoBank's own real security-grade tiers (public "이체한도 확인 방법과 한도 설정"
+support material) independently confirm the same real shape: a real daily cap gated by
+verification level, not a single flat number. This is documented as a standard,
+mandated Korean banking safeguard -- the same kl.imporinfo.com "Korean Banking App
+Terms Explained: Transfer Limits, OTP, and 'Recipient Name Mismatch'" article Section
+182's own `resolveRecipient` doc comment already cites names "Transfer Limits" as one
+of exactly three standard terms every Korean banking app exposes, alongside OTP and
+recipient-name-mismatch (182) -- this section closes the one of those three itunda
+hadn't built yet.
+
+**Built**: a new shared `P2pTransferLimitService` (`services/backend/p2p/`), deliberately
+its own small component rather than folded into either caller -- both `sendDirect` and
+`sendDelayed` need the identical real cap enforced against the identical real daily
+total (a delayed send removes real money from the sender's control immediately too, so
+it must count against the same real number, or it would be a trivial way around the
+cap). `enforce(senderUserId, amount)`: throws real `P2pTransferLimitExceededException`
+if `amount` alone exceeds a real flat 500,000 RWF per-transfer cap, or if today's real
+prior `TRANSFER`/`COMPLETED` sends (via the exact same
+`TransactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual`
+query `FamilyLinkService.enforceSpendLimit` already uses -- no new repository method
+needed) plus `amount` would exceed a real 2,500,000 RWF daily cumulative cap (the same
+real sourced 5:1 ratio TossBank's own default tier uses, values proportioned to
+itunda's own already-established `CardService`/`MiniWalletService` limit magnitudes
+rather than a literal KRW->RWF currency conversion). Deliberately flat, not tiered by
+verification level like the real TossBank/KakaoBank source material -- itunda has no
+OTP/selfie step-up concept for a per-transfer amount decision today, and a single
+honest flat limit is safer than pretending to support tiers that don't exist; a real,
+named, deliberately scoped-down v1, matching how Section 183 itself scoped its delay
+window down from KakaoBank's real whitelist/threshold system.
+
+Wired into `P2pService.sendDirect` (stacked alongside the existing
+`FamilyLinkService.enforceSpendLimit` gate, same "real gate before money moves"
+position) and `P2pDelayedTransferService.sendDelayed` (before the real ledger hold).
+New `P2pController` exception handler maps `P2pTransferLimitExceededException` to a
+real 422 (`P2P_TRANSFER_LIMIT_EXCEEDED`), matching `MiniWalletDailyLimitExceededException`'s
+own status-code convention for the closest analogous real cap.
+
+**Deliberately not built this pass**: does not gate `P2pService.payRequest` (QR-pay
+fulfilling an existing request) -- `payRequest` is this module's other heavily-tuned
+method (the same fraud-engine-ordering care `sendDirect`'s own doc comment already
+documents), and extending this cap onto it is a real, named, deliberately deferred
+follow-up rather than risking a regression on an already-proven path for this pass.
+`sendToFamilyMember` is covered transitively (it calls `sendDirect` internally,
+confirmed by reading it directly). No verification-tier system (OTP/selfie raising the
+cap) -- a real, named follow-up if itunda ever wants one, matching this section's own
+honest v1 scope. No admin-configurable limit -- a flat constant, same as
+`CardService.DEFAULT_DAILY_LIMIT`/`MiniWalletService.DAILY_DEPOSIT_LIMIT`'s own current
+shape. Client UI for the new 422 (a real "over your daily limit" message) -- backend-
+first, matching Sections 182-184's own established pattern.
+
+**Verified**: added 6 new `P2pTransferLimitServiceTest` cases directly unit-testing the
+real comparison logic (within both caps, per-transfer cap exceeded without even
+querying today's total, exact per-transfer boundary allowed, daily cumulative exceeded
+naming the real exact remaining amount, exact daily-remaining boundary allowed, and the
+real narrow `TRANSFER`/`COMPLETED` filter shape actually used). Added 4 new
+`P2pServiceTest` cases wiring the REAL `P2pTransferLimitService` (not mocked) into
+`sendDirect`: a real gate-call verification on the existing happy path, per-transfer
+cap exceeded before the ledger is ever touched, daily cumulative cap exceeded by a
+small transfer stacked on real prior-today transfers, and sending exactly the real
+remaining daily headroom succeeding. Added 1 new `P2pDelayedTransferServiceTest` case
+confirming `sendDelayed` is gated by the same real per-transfer cap before any real
+money is held. A real bug in my own first test run, not shipped blind: one new
+`P2pTransferLimitServiceTest` case originally tried to prove the daily-cumulative path
+used the correct narrow query filter by sending 2,500,000 RWF in one call -- that
+amount alone already exceeds the 500,000 RWF per-transfer cap, so it was actually
+exercising the wrong branch and threw for the wrong reason; caught by actually reading
+the failure's stack trace rather than assuming a red test meant a bug in the production
+code, fixed by lowering the test amount to exactly 500,000 RWF.
+
+Ran the real test suite myself and read the actual XML reports in
+`p2p/build/test-results/test/` (not estimated), full `:p2p:test` module run with
+`--rerun-tasks` (bypassing Gradle's UP-TO-DATE cache): `AutoTransferServiceTest
+tests="3"`, `P2pDelayedTransferServiceTest tests="15"`, `P2pServiceTest tests="30"`,
+`P2pTransferLimitServiceTest tests="6"`, `ScamReportServiceTest tests="8"`,
+`ScheduledTransferServiceTest tests="12"` -- **74 total, 0 failures, 0 errors**.
+
+Also independently ran `./gradlew :app:compileKotlin :ussd:compileKotlin` (the two
+modules that depend on `:p2p`) -- both `BUILD SUCCESSFUL`, confirming this additive
+change doesn't break any real downstream compile. Ran
+`scripts/verify-ledger-account-seeds.py` -- confirmed clean (this feature introduces no
+new `LedgerAccountType`, it only gates an existing `WALLET`-to-`WALLET` ledger pair
+earlier, so the guard was re-run to confirm no accidental drift, not because a new
+account type was expected).
+
+No deploy and no live-server verification attempted here -- reserved for the
+coordinator, matching this task's own scope boundary.
+
+Files: `services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pTransferLimitService.kt`
+(new), `services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pService.kt`,
+`services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pDelayedTransferService.kt`,
+`services/backend/p2p/src/main/kotlin/rw/itunda/p2p/web/P2pController.kt`,
+`services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pTransferLimitServiceTest.kt`
+(new), `services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pServiceTest.kt`,
+`services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pDelayedTransferServiceTest.kt`.
