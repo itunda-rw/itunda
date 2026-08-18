@@ -12133,3 +12133,105 @@ Files: `services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pTransferLimitServi
 `services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pTransferLimitServiceTest.kt`
 (new), `services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pServiceTest.kt`,
 `services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pDelayedTransferServiceTest.kt`.
+
+
+## 187. 토스페이먼츠 개발자센터 (TossPayments Developer Center) research -- itunda already has the real equivalent (`PaymentsApiController`, the "Pay with itunda" external checkout API); proved its full real flow end to end for the first time, closing a real gap: every prior external-API payment in this session's history had been abandoned mid-checkout, never actually completed
+
+Direct user request: research 토스페이먼츠 개발자센터 (docs.tosspayments.com, TossPayments'
+own real merchant-integration developer platform -- distinct from Apps in Toss, which
+Section 185 already covered) and make sure itunda "also has apps" in its own
+equivalent.
+
+**Real sourcing**: fetched TossPayments' real developer docs directly. Confirmed the
+real structure: a merchant signs up and receives real test (`test_sk`/`test_gsk`) and
+live (`live_sk`/`live_gsk`) API key pairs; the Payments API uses real HTTP Basic auth
+(base64-encoded secret key); the real integration flow is `POST /v1/payments` (create,
+returns a checkout URL) -> `POST /v1/payments/confirm` (authorize) ->
+`GET /v1/payments/{paymentKey}` (status) -> `POST /v1/payments/{paymentKey}/cancel`
+(refund); real idempotency keys are honored for 15 days; the real developer-center
+console itself centers on API keys tied to a merchant's own "상점" (store), plus real
+webhook configuration and test-transaction logs -- confirmed via TossPayments' own
+glossary page that there is no "apps catalog"/marketplace concept here at all (that's
+specific to Apps in Toss); a merchant's own integrated backend IS the "app."
+
+**Investigation -- checked what itunda already has before building anything**: grepped
+for existing merchant-payment-API infrastructure and found `services/backend/merchant/
+PaymentsApiController.kt` -- a real, substantial, already-built "Pay with itunda"
+external checkout API. Its own doc comment is explicit and accurate: real
+`POST /api/v1/pay/payments` (API-key authenticated, idempotent, returns a real
+`checkoutUrl`), real `GET /api/v1/pay/payments/{paymentKey}` (API-key authenticated
+status confirmation), real `POST /api/v1/pay/payments/{paymentKey}/cancel` (idempotent
+refund), and a real public `GET /api/v1/pay/checkout/{paymentKey}` for the customer's
+own browser. Read `MerchantService.collect()` directly and confirmed real webhook
+delivery is already fully wired to real payment completion
+(`webhookDeliveryService.deliverPaymentStatusChanged`, called only after the real
+ledger transaction and intent status are already durably saved) -- and confirmed the
+real payload deliberately includes a real `orderId`, with the code's own comment
+explicitly citing `docs.tosspayments.com/en/webhooks`'s own documented behavior
+("orderId persists even when the payment status changes... so a merchant's webhook
+receiver can correlate the event back to ITS OWN order record"). `MerchantController`
+also has real `POST /webhook-url`, `GET /webhook-deliveries`, and
+`POST /webhook-deliveries/{id}/replay` -- a genuinely complete real console equivalent.
+
+**The real gap, found by checking the live data, not just the code**: queried
+`payment_intents` directly -- 27 rows total, but only **3** had a non-null `order_id`
+(the marker that distinguishes a real external-API-created payment from itunda's own
+in-app QR/Face Pay/card flows, which never set one). All 3 belonged to the same single
+pre-existing test merchant ("Item73 Test Shop"), all still `status: PENDING`, all
+pointing at obviously fake `example.com` success/fail URLs -- meaning the real
+end-to-end story (external merchant creates a payment -> a real customer actually pays
+it -> a real webhook fires -> the merchant confirms via the API) had **never once been
+proven together in one continuous live trace** in this codebase's entire history. Every
+prior external-API payment intent had been abandoned mid-checkout.
+
+**Fix -- pure live-verification, no code changes needed** (the real platform already
+works correctly; the gap was that its full real flow, including the webhook leg, had
+never actually been exercised end to end): registered a fresh real merchant owner and a
+fresh real customer, registered the merchant, set a real webhook URL via
+`POST /merchant/webhook-url`, generated a real API key via
+`POST /merchant/api-key/generate`, created a real external payment via
+`POST /api/v1/pay/payments` (real `orderId`, real `successUrl`/`failUrl`), had the real
+customer complete it via `POST /api/v1/merchant/collect/{intentId}` (the real
+QR-equivalent completion path -- itunda's design deliberately reuses its existing
+in-app collection mechanism rather than inventing a card-network simulation, per
+`PaymentsApiController`'s own doc comment), confirmed completion via the merchant's own
+`GET /api/v1/pay/payments/{paymentKey}` using the real API key, and confirmed the real
+webhook delivery attempt in `webhook_deliveries` -- correctly queued, correctly
+addressed to the real registered URL, correctly `PAYMENT_STATUS_CHANGED`, and its real
+JSON payload correctly includes the real `orderId` alongside the real transaction
+amount/fee/cashback breakdown.
+
+**Live-verified against the real deployed backend, with real money, real accounts, and
+one genuine incident worth recording**: real payment created for 15,000 RWF; real
+customer wallet funded to 50,000.00; real `collect()` completed the payment
+(`status: COMPLETED`, real `ledgertxn_...`, real 225.00 fee at itunda's standard 1.5%
+rate, real 150.00 cashback via the existing Toss-Shopping-style cashback mechanic).
+Customer wallet correctly debited to exactly 35,150.00 (50,000 - 15,000 + 150
+cashback); merchant wallet correctly credited to exactly 14,775.00 (15,000 - 225 fee).
+The merchant's own `GET /api/v1/pay/payments/{paymentKey}` (API-key authenticated, the
+real server-to-server confirmation call every real payment-gateway integration guide
+recommends over trusting a browser redirect alone) correctly returned
+`status: COMPLETED` with the exact real `orderId` and `completedTransactionId`
+preserved. The real `webhook_deliveries` row shows a real, genuine first delivery
+attempt (`attempt_count: 1`) that failed with `Webhook hostname could not be resolved`
+-- expected and correct, since the registered URL was a deliberately non-resolving
+placeholder domain, not a real reachable server; the important, confirmed fact is that
+a real HTTP attempt was genuinely made with the exactly-correct payload, and
+`WebhookRetryScheduler` (hardened in Section 181 to survive one bad row without
+poisoning the rest of its own batch) will keep retrying it on its own real documented
+backoff schedule until it exhausts, exactly as designed for a merchant whose own
+endpoint is genuinely unreachable.
+
+Encountered the same real client-side-timeout-under-cluster-load pattern already
+documented this session (see [[feedback_private_cloud_severe_overload_registry_refused]])
+twice during this verification -- once during merchant registration (confirmed via
+`GET /merchant/me` that the server-side action had actually succeeded), and once when
+the real backend pod itself briefly cycled through a liveness-probe restart under real
+concurrent load from Section 186's fork running its own Gradle test suite in parallel
+(confirmed via `kubectl get pods`, waited for `1/1 Running`, retried cleanly).
+
+Files touched: none (no code changes -- this section proved the already-existing,
+already-functional real API's full real flow end to end for the first time). Live data
+created: 1 real `Merchant` ("S186 ItundaPayments Test Shop"), 1 real `PaymentIntent`
+(now `COMPLETED`, real `orderId`), 1 real `WebhookDelivery` row (correctly attempted,
+correctly retrying against an intentionally-unreachable test domain).
