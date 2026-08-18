@@ -41,7 +41,7 @@ data class SetPhoneNumberRequest(val phoneNumber: String?)
 data class SetOpeningHoursRequest(val openingHours: String?)
 data class SetAvgPrepTimeMinutesRequest(val avgPrepTimeMinutes: Int?)
 data class SetPickupDiscountRequest(val pickupDiscountPercent: Int?)
-data class CollectPaymentRequest(val couponId: String? = null)
+data class CollectPaymentRequest(val couponId: String? = null, val pointsToRedeem: BigDecimal? = null)
 // Real customer-presented payment code (2026-08-11) -- see
 // MerchantService.chargeByCustomerCode's own doc comment.
 data class ChargeByCustomerCodeRequest(val code: String, val amount: BigDecimal)
@@ -66,6 +66,7 @@ class MerchantController(
     private val webhookDeliveryService: WebhookDeliveryService,
     private val merchantStaticQrService: MerchantStaticQrService,
     private val merchantFeeWaiverService: MerchantFeeWaiverService,
+    private val merchantLoyaltyPointsService: MerchantLoyaltyPointsService,
 ) {
     @PostMapping("/register")
     fun register(
@@ -309,11 +310,27 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val couponId = request?.couponId
-        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/collect/$intentId", idempotencyKey, mapOf("intentId" to intentId, "couponId" to couponId)) {
-            200 to merchantService.collect(currentUser.userId, intentId, couponId = couponId)
+        val pointsToRedeem = request?.pointsToRedeem
+        val (status, body) = idempotencyService.replayOrExecute(
+            "POST /api/v1/merchant/collect/$intentId", idempotencyKey,
+            mapOf("intentId" to intentId, "couponId" to couponId, "pointsToRedeem" to pointsToRedeem),
+        ) {
+            200 to merchantService.collect(currentUser.userId, intentId, couponId = couponId, pointsToRedeem = pointsToRedeem)
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real Toss Place-style 자동 적립 balance check (2026-08-18) -- see
+    // MerchantLoyaltyPointsService's own doc comment. Lets a real customer see their
+    // real point balance at this specific store before choosing to redeem it at
+    // checkout, same "know before you act" convention P2pService.resolveRecipient's
+    // own preview endpoint already establishes for an unrelated flow.
+    @GetMapping("/{merchantId}/loyalty-balance")
+    fun getLoyaltyBalance(
+        @PathVariable merchantId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "pointBalance" to merchantLoyaltyPointsService.getBalance(merchantId, currentUser.userId)))
 
     // Real customer-presented payment code (2026-08-11) -- see
     // MerchantService.generateCustomerPaymentCode's own doc comment. Called by the
@@ -485,6 +502,10 @@ class MerchantController(
     @ExceptionHandler(InvalidCouponException::class)
     fun handleInvalidCoupon(ex: InvalidCouponException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COUPON", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InsufficientLoyaltyPointsException::class)
+    fun handleInsufficientLoyaltyPoints(ex: InsufficientLoyaltyPointsException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INSUFFICIENT_LOYALTY_POINTS", ex.message ?: "Bad request"))
 
     @ExceptionHandler(CouponNotFoundException::class)
     fun handleCouponNotFound(ex: CouponNotFoundException) =

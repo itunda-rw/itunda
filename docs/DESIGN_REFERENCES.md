@@ -12274,3 +12274,102 @@ already-functional real API's full real flow end to end for the first time). Liv
 created: 1 real `Merchant` ("S186 ItundaPayments Test Shop"), 1 real `PaymentIntent`
 (now `COMPLETED`, real `orderId`), 1 real `WebhookDelivery` row (correctly attempted,
 correctly retrying against an intentionally-unreachable test domain).
+
+
+## 188. 토스플레이스 (Toss Place) research -- real Toss Place-style 자동 적립 (automatic per-merchant point accrual), a genuinely distinct real feature from itunda's own existing platform-wide cashback
+
+Direct user request: "we have a lot to learn from 토스플레이스" -- Toss Place, Toss's
+real offline/physical-store POS and merchant-management platform, distinct from Toss
+Payments (Section 187, online payment gateway) and Apps in Toss (Section 185,
+mini-apps).
+
+**Real sourcing**: web search plus a direct fetch of `tossplace.com/product/pos`
+confirmed Toss Place's real, documented all-in-one POS feature set: unified order +
+payment terminal with a real one-button kiosk-mode switch; real multi-platform delivery
+integration (Baemin/Coupang Eats/Yogiyo -- mark out-of-stock simultaneously across all
+of them, consolidate real-time sales); real customer management (automatic point
+accrual, targeted coupon distribution, Naver review-collection integration); real
+per-product inventory tracking with sales-velocity data and barcode scanning; real
+automatic time-based/packaging discounts; real sales dashboards with daily-calendar
+comparison.
+
+**Investigation -- checked what itunda already has before building anything**: most of
+this surface already genuinely exists in itunda, checked directly rather than assumed:
+real per-product `stockQuantity` tracking with real decrement-on-order and
+restock-on-cancel (`commerce/OrderService.kt`, confirmed real optimistic-locking
+protection against oversell races already documented on `TimeDeal.kt`); real merchant
+coupons with real regular-customer (단골) gating (`MerchantCouponService`); real sales
+reports (`GET /merchant/reports`, `/reports/top-products`). The one genuinely missing
+piece, found by reading `ShoppingCashbackService`'s own doc comment directly: itunda's
+existing "cashback" is real itunda-funded money credited straight into a customer's own
+itunda wallet, platform-wide, the same mechanic regardless of which registered merchant
+was paid -- functionally and financially a completely different thing from Toss Place's
+own real "고객 자동 적립" (customer automatic point accrual), which is a real, ongoing,
+STORE-SPECIFIC points balance, earned only at one merchant, funded by that merchant (not
+itunda), and redeemable only there -- closer to a real stamp card than a platform-wide
+cashback credit or a one-time coupon code.
+
+**Built**: new `MerchantLoyaltyAccount` (one real balance per real (merchant, customer)
+pair, `@Version`-guarded against a genuinely reachable concurrent-payment race).
+Deliberately data-only, not ledger-backed -- unlike `ShoppingCashbackService` (real
+itunda money credited the instant it's earned) or `P2pDelayedTransferService` (real
+money held in a real clearing account), a point here never becomes real, transferable
+itunda-wallet money on its own; it only ever reduces a FUTURE real payment's own
+`chargeAmount` at that same merchant, the exact instant real money moves, the identical
+mechanic `MerchantCoupon`'s own discount already uses. New `MerchantLoyaltyPointsService`
+(`getBalance`, `accrue` -- itunda's own honest flat 1% rate, real per-merchant rates
+aren't publicly documented, same "no specific external number to source" reasoning
+`ShoppingCashbackService`'s own doc comment already establishes for the identical
+situation -- `validateAndComputeRedemption`, `recordRedemption`). Wired into
+`MerchantService.collect()` right alongside the existing coupon-discount and cashback
+logic: a real optional `pointsToRedeem` stacks on top of any real coupon discount
+(capped at the remaining real amount after the coupon, same "never make a payment go
+negative" rule the coupon discount already enforces), the real redemption is recorded
+only after the real ledger transaction has already succeeded (never spent for nothing),
+and new real points are accrued on the real FINAL post-discount `chargeAmount`, not the
+original pre-discount amount. New public `GET /merchant/{merchantId}/loyalty-balance`
+so a real customer can check their real balance at a specific store before choosing to
+redeem it at checkout, the same "know before you act" convention
+`P2pService.resolveRecipient` already establishes for an unrelated flow.
+
+**A real bug caught during my own independent test re-verification, not shipped
+blind**: my own first `:merchant:test` run failed two real assertions in
+`MerchantLoyaltyPointsServiceTest` -- not a bug in `MerchantLoyaltyPointsService`
+itself, but in my own test fixture: several sibling `When` blocks shared ONE mutable
+`MerchantLoyaltyAccount` Kotlin object as their mock's return value, and since the real
+service under test genuinely mutates that object's own `pointBalance` field in place,
+an earlier test's real accrual (500 -> 700) silently leaked into a later sibling test
+that expected to start from a fresh 500 -- so a "redeem more than the balance" case
+that should have thrown didn't (600 <= the already-bumped 700), and a "redeem 200"
+case landed on 500 instead of the expected 300. Fixed by giving every real
+mutation-dependent scenario its own freshly-constructed account rather than sharing
+one mutable fixture across sibling tests, re-ran, confirmed green.
+
+**Verified**: `./gradlew :merchant:compileKotlin :merchant:compileTestKotlin
+:app:compileKotlin` -> `BUILD SUCCESSFUL`. Ran the full `:merchant:test` suite with
+`--rerun-tasks` (bypassing Gradle's cache) and summed the real XML reports myself:
+**`tests="222" failures="0" errors="0"`** (209 pre-existing + 13 new -- 9 in the new
+dedicated `MerchantLoyaltyPointsServiceTest`, plus 2 new assertions on the existing
+happy-path `collect()` test and 2 new `Then` blocks in a new dedicated
+points-redemption `collect()` test). Also re-ran
+`python3 scripts/verify-ledger-account-seeds.py` -- confirmed clean, as expected: this
+feature deliberately touches no `LedgerAccountType` at all.
+
+**Deliberately deferred, matching this session's established "honest, scoped-down v1"
+discipline** (see e.g. Section 183's own real KakaoBank whitelist/threshold scope-down):
+no account-wide/tiered accrual rates (itunda's own single flat 1%, not configurable per
+merchant yet); no point EXPIRY (Toss Place's own real console doesn't publish a
+documented expiry policy either); no client UI wiring on bank-mfe/Android/iOS yet
+(backend-first, matching Sections 182-184's own established pattern) -- the real
+backend enforcement (redemption capped at the real available balance, real ledger-safe
+ordering) already protects every client regardless of whether any of them render a
+"redeem points" button yet.
+
+Files: `services/backend/core/src/main/kotlin/rw/itunda/core/domain/MerchantLoyaltyAccount.kt`
+(new), `services/backend/app/src/main/resources/db/migration/V287__merchant_loyalty_accounts.sql`
+(new), `services/backend/core/src/main/kotlin/rw/itunda/core/repository/Repositories.kt`,
+`services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantLoyaltyPointsService.kt`
+(new), `services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantService.kt`,
+`services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantController.kt`,
+`services/backend/merchant/src/test/kotlin/rw/itunda/merchant/MerchantLoyaltyPointsServiceTest.kt`
+(new), `services/backend/merchant/src/test/kotlin/rw/itunda/merchant/MerchantServiceTest.kt`.

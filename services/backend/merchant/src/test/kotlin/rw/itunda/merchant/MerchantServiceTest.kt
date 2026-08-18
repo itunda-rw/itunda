@@ -83,7 +83,8 @@ class MerchantServiceTest : BehaviorSpec({
         val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>(relaxed = true)
         val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository)
+        val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -331,6 +332,44 @@ class MerchantServiceTest : BehaviorSpec({
             }
             Then("the merchant owner also gets a real push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "Payment received", match { it.contains("5000") }, any()) }
+            }
+            // Real Toss Place-style 자동 적립 (2026-08-18) -- see
+            // MerchantLoyaltyPointsService's own doc comment.
+            Then("real Toss Place-style loyalty points are accrued on the real final charge amount") {
+                verify(exactly = 1) { merchantLoyaltyPointsService.accrue(merchant, "payer_1", BigDecimal("5000")) }
+            }
+        }
+
+        When("collecting a payment while redeeming real existing loyalty points") {
+            val payerWallet = wallet("wallet_payer_points", "payer_points")
+            val intent = PaymentIntent(
+                id = "pi_points", merchantId = "merchant_1", amount = BigDecimal("5000"),
+                description = "2 espresso", expiresAt = Instant.now().plusSeconds(600),
+            )
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { paymentIntentRepository.findById("pi_points") } returns Optional.of(intent)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findByUserIdAndType("payer_points", WalletType.MAIN) } returns payerWallet
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
+                LedgerPostResult("ledgertxn_points", emptyList())
+            every { paymentIntentRepository.save(any()) } answers { firstArg() }
+            every { merchantLoyaltyPointsService.validateAndComputeRedemption("merchant_1", "payer_points", BigDecimal("1000"), BigDecimal("5000")) } returns BigDecimal("1000")
+
+            val result = service.collect("payer_points", "pi_points", pointsToRedeem = BigDecimal("1000"))
+
+            Then("the real charge amount is reduced by the real redeemed points before any ledger leg is posted") {
+                val legs = legsSlot.captured
+                val payerLeg = legs.first { it.accountId == "wallet_payer_points" }
+                payerLeg.amount shouldBe BigDecimal("4000")
+                result["pointsRedeemed"] shouldBe BigDecimal("1000")
+            }
+            Then("the real redemption is recorded only after the real payment succeeded") {
+                verify(exactly = 1) { merchantLoyaltyPointsService.recordRedemption("merchant_1", "payer_points", BigDecimal("1000")) }
+            }
+            Then("new real points are still accrued, on the real POST-redemption charge amount, not the original") {
+                verify(exactly = 1) { merchantLoyaltyPointsService.accrue(merchant, "payer_points", BigDecimal("4000")) }
             }
         }
 
@@ -921,7 +960,8 @@ class MerchantServiceTest : BehaviorSpec({
         val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>(relaxed = true)
         val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>(relaxed = true)
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository)
+        val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -966,7 +1006,8 @@ class MerchantServiceTest : BehaviorSpec({
         val customerPaymentCodeRepository = mockk<CustomerPaymentCodeRepository>(relaxed = true)
         val orderRepository = mockk<rw.itunda.core.repository.OrderRepository>()
         val orderItemRepository = mockk<rw.itunda.core.repository.OrderItemRepository>()
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository)
+        val merchantLoyaltyPointsService = mockk<MerchantLoyaltyPointsService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService, customerPaymentCodeRepository, orderRepository, orderItemRepository, merchantLoyaltyPointsService)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant

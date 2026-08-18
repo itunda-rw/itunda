@@ -22,6 +22,7 @@ import rw.itunda.core.domain.GroupAccount
 import rw.itunda.core.domain.GroupAccountContribution
 import rw.itunda.core.domain.GroupAccountDuesReminder
 import rw.itunda.core.domain.TermsAcceptance
+import rw.itunda.core.domain.MerchantLoyaltyAccount
 import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.InterestJar
@@ -109,6 +110,10 @@ interface GroupAccountDuesReminderRepository : JpaRepository<GroupAccountDuesRem
 
 interface TermsAcceptanceRepository : JpaRepository<TermsAcceptance, String> {
     fun findByUserId(userId: String): List<TermsAcceptance>
+}
+
+interface MerchantLoyaltyAccountRepository : JpaRepository<MerchantLoyaltyAccount, String> {
+    fun findByMerchantIdAndCustomerId(merchantId: String, customerId: String): MerchantLoyaltyAccount?
 }
 
 interface WeeklySavingsPlanRepository : JpaRepository<WeeklySavingsPlan, String> {

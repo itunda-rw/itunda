@@ -129,6 +129,7 @@ class MerchantService(
     private val customerPaymentCodeRepository: CustomerPaymentCodeRepository,
     private val orderRepository: rw.itunda.core.repository.OrderRepository,
     private val orderItemRepository: rw.itunda.core.repository.OrderItemRepository,
+    private val merchantLoyaltyPointsService: MerchantLoyaltyPointsService,
 ) {
     // Real customer-presented code lifetime (2026-08-11) -- short enough that a
     // screenshotted/shoulder-surfed code is only exploitable for a couple minutes,
@@ -683,7 +684,7 @@ class MerchantService(
     }
 
     @Transactional
-    fun collect(payerUserId: String, intentId: String, channel: String = "QR", couponId: String? = null): Map<String, Any?> {
+    fun collect(payerUserId: String, intentId: String, channel: String = "QR", couponId: String? = null, pointsToRedeem: BigDecimal? = null): Map<String, Any?> {
         val intent = paymentIntentRepository.findById(intentId)
             .orElseThrow { PaymentIntentNotFoundException("Payment code not found") }
         if (intent.status != PaymentIntentStatus.PENDING) {
@@ -715,9 +716,22 @@ class MerchantService(
         // side effect. Computed and validated before any ledger leg is posted, off the
         // real intent.amount the merchant originally set.
         val discountAmount = couponId?.let { merchantCouponService.validateAndComputeDiscount(merchant, payerUserId, it, intent.amount) } ?: BigDecimal.ZERO
-        val chargeAmount = intent.amount.subtract(discountAmount)
-        if (chargeAmount <= BigDecimal.ZERO) {
+        val afterCoupon = intent.amount.subtract(discountAmount)
+        if (afterCoupon <= BigDecimal.ZERO) {
             throw InvalidCouponException("This coupon would reduce the payment to zero -- itunda doesn't support 100%-off payments")
+        }
+        // Real Toss Place-style 자동 적립 redemption (2026-08-18) -- see
+        // MerchantLoyaltyPointsService's own doc comment. Applied on top of any real
+        // coupon discount above, same "cap at the remaining real amount" discipline
+        // that discount already establishes -- a customer can stack a coupon and their
+        // own points in one real payment, itunda's own honest choice since Toss
+        // Place's real console doesn't publish whether it allows stacking either.
+        val pointsRedeemed = pointsToRedeem?.let {
+            merchantLoyaltyPointsService.validateAndComputeRedemption(merchant.id, payerUserId, it, afterCoupon)
+        } ?: BigDecimal.ZERO
+        val chargeAmount = afterCoupon.subtract(pointsRedeemed)
+        if (chargeAmount <= BigDecimal.ZERO) {
+            throw InvalidCouponException("This would reduce the payment to zero -- itunda doesn't support 100%-off payments")
         }
 
         // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee waiver) -- see
@@ -808,6 +822,18 @@ class MerchantService(
             merchantCouponService.recordRedemption(merchant, payerUserId, couponId, result.transactionId, discountAmount)
         }
 
+        // Real Toss Place-style 자동 적립 (2026-08-18) -- debit any real points this
+        // payment redeemed, then credit new real points earned on the real final
+        // chargeAmount. Both kept in this same @Transactional method so they commit
+        // atomically with the payment, same discipline as the coupon redemption
+        // record immediately above. See MerchantLoyaltyPointsService's own doc
+        // comment for why redemption is recorded (not just validated) here, after the
+        // real ledger transaction already succeeded.
+        if (pointsRedeemed > BigDecimal.ZERO) {
+            merchantLoyaltyPointsService.recordRedemption(merchant.id, payerUserId, pointsRedeemed)
+        }
+        merchantLoyaltyPointsService.accrue(merchant, payerUserId, chargeAmount)
+
         // Real-time "money received" notification for the merchant owner (2026-07-22) --
         // same real gap and same fix as rw.itunda.p2p.P2pService.notifyMoneyReceived
         // (see that method's own doc comment for the full account of the real Toss Bank
@@ -848,6 +874,7 @@ class MerchantService(
             "amount" to chargeAmount,
             "originalAmount" to intent.amount,
             "discountAmount" to discountAmount,
+            "pointsRedeemed" to pointsRedeemed,
             "fee" to fee,
             "status" to "COMPLETED",
             "channel" to channel,
