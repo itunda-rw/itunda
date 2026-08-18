@@ -13060,3 +13060,136 @@ already existed and already worked; no deploy needed.
 
 *Shipped: `android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt`,
 `android/app/src/main/res/values{,-rw,-fr}/strings.xml`. Commit `773b0f6b`.*
+
+## 196. Real Kakao Map-style live location sharing ("친구위치") -- built, tested, NOT yet deployed
+
+Continuation of the Maps thread, resuming the "one more real gap" Section 194 named but
+left for a follow-up: real, time-bounded "share my current live position with one
+person" -- distinct from `MapBookmark`'s static folder share/subscribe (Section 190).
+
+Real sourcing (direct search): Kakao Map's real "친구위치" originally offered unlimited-
+duration sharing, then added a real 1-hour-increment/6-hour-max cap specifically after a
+real, documented privacy controversy over open-ended tracking (v.daum.net, 2025-11-18
+and 2026-05-04). itunda's own v1 is deliberately ALWAYS time-bounded -- no "unlimited"
+option at all -- a real, honest safety choice grounded in that exact same sourced
+controversy, not a scope cut.
+
+New `LiveLocationShare` entity (nullable lat/lng until the first real push, `expiresAt`,
+a real `revoked` early-stop flag, `@Version`-guarded), `LiveLocationShareService` (start/
+extend/stop/poll), new endpoints under `/api/v1/maps/location-share`. Position updates
+reuse the exact "client owns when to push, backend never polls" model
+`RideDriverService.updateLocation` already establishes (same 20/min rate limit) -- one
+real GPS push fans out to every one of a sharer's active shares at once. Recipient side
+polls periodically rather than a push channel -- itunda has no WebSocket infrastructure
+for this, and this is the honest real equivalent rather than overclaiming "live."
+
+Full bank-mfe client: start/stop sharing UI, a real periodic browser-geolocation push
+while sharing is active, a real periodic poll-and-marker for watching an incoming share
+(a distinct orange marker from the existing blue "my location" dot). `MapView.tsx`/
+`lib/maps.ts`.
+
+Real test suite: `maps` module `tests="56"` (was 42), `failures="0" errors="0"` --
+including a real test-fixture bug caught before it shipped (a share's `expiresAt` was
+computed right at the `isActive()` boundary rather than comfortably in the future,
+making the test flaky against real wall-clock timing, not the production code). Ledger-
+seed guard clean (no `LedgerAccountType` touched). bank-mfe build + accessibility lint
+both clean.
+
+**NOT YET DEPLOYED**: mid-deploy-prep, a direct, higher-priority user redirect arrived
+(see Section 197) -- itunda's existing core products don't yet FEEL like their real
+references, which now takes priority over further new Maps capability. Committed
+(`ea27c870`) and pushed as real, tested, working code, left in a safe complete state for
+whenever Maps work resumes.
+
+*Shipped: `services/backend/core/.../LiveLocationShare.kt`, `.../LiveLocationShareRepository.kt`,
+`services/backend/maps/.../LiveLocationShareService.kt`, `.../web/MapsController.kt`,
+`services/backend/app/.../V288__live_location_shares.sql`, `services/backend/maps/src/test/.../LiveLocationShareServiceTest.kt`,
+`services/micro-frontends/bank-mfe/src/{MapView.tsx,lib/maps.ts}`. Commit `ea27c870`.*
+
+## 197. New standing priority: itunda's core products don't yet FEEL like their real references -- first slice, real TDS typography + Toss motion pattern
+
+Direct user redirect, interrupting the Section 196 deploy: "if you check itunda you
+will see that we have alot of features but none of feel like real products on market,
+our bank doesn't feel like toss bank, our maps doesn't feel like naver maps, our
+neighborhood products doesn't feel like 당근 yet, our eats feel like coupang eats yet,
+our shopping doesn't feel like toss shopping yet, UI/UX doesn't feel right, etc." Saved
+as a standing memory (`feedback_product_feel_gap.md`) since this reframes priority for
+all future work, not just this pass. Asked the user which product to start with and
+whether real reference screenshots were available: **Bank first, research + existing
+knowledge** (no screenshots this round).
+
+### Real research before touching any code
+
+Fetched Toss's own real, official published design-system docs directly
+(`tossmini-docs.toss.im/tds-mobile/foundation/colors`, `.../typography`) rather than
+assuming or re-deriving values:
+
+- **Colors**: itunda's `packages/design-tokens/tokens.css` already matches TDS's real
+  published hex values EXACTLY (`--itunda-blue: #3182f6` = TDS `blue500`, the full
+  grey/red scale identical too) -- confirmed this is NOT the gap, closing off a
+  plausible-but-wrong hypothesis before spending any real effort on it.
+- **Typography**: TDS publishes a real, disciplined 13-step scale (11-30px, 1.5x line-
+  height, five weight options per step). Android/iOS already have this exact scale
+  ported (`IdsTypography.kt`/`IDS.swift`, sourced 2026-07-13) plus a real semantic
+  `LargeAmount`/`largeAmount` extension (34px bold, both platforms agree, a deliberate
+  business decision for hero currency amounts that TDS's own raw scale doesn't cover).
+  **bank-mfe had zero typography token file at all** -- confirmed by direct grep, every
+  font-size in every component is a bare inline pixel value with no scale behind it.
+  This IS a real, concrete, systemic gap: `AccountBalance`'s own hero balance hardcoded
+  `36px`, matching neither platform's real 34px `LargeAmount` nor any other real TDS
+  step.
+- **Motion/interaction**: fetched Toss's own real published article
+  (`toss.im/tossfeed/article/why-motion-in-finance`) on their motion design philosophy.
+  Real, concrete, sourced principles: animate amount CHANGES rather than instant-
+  snapping (their own words: "가볍고 경쾌하게," light and brisk, not slow/heavy);
+  communicate via graphics-with-motion rather than requiring the user to read text;
+  celebratory animations for real milestones; symbolic/intuitive animated icons rather
+  than static ones; efficient layered pseudo-3D via Lottie for richer visuals without
+  full 3D rendering cost. A second real search on Toss Bank's actual home screen
+  specifically confirmed a further real, sourced principle: radical restraint --
+  "첫 화면에서 계좌, 카드 항목만 고정적으로 보이게 설계" (the real home screen deliberately
+  shows ONLY account/card items on the first screen, not maximal information density).
+
+### What was built this pass (a first slice, not a claim of completion)
+
+1. Ported the exact same real TDS typography scale Android/iOS already carry to web, as
+   new CSS custom properties in `packages/design-tokens/tokens.css`
+   (`--itunda-type-large-amount-size` etc. through `body2`/`button`) -- values quoted
+   exactly from the already-sourced Android/iOS constants, not re-derived.
+2. Applied the new `--itunda-type-large-amount-*` tokens to `AccountBalance`'s hero
+   balance (was a bare, off-scale 36px) -- this app's single most looked-at real number.
+3. Built a new reusable `useCountUp` hook (`framer-motion`'s `useMotionValue`/`animate`,
+   already a real dependency, no new library needed) implementing the real sourced
+   "animate amount changes" pattern -- tweens from the last rendered value to a new one
+   over a real, deliberately brisk 600ms, skips the animation on first mount (nothing
+   real to animate FROM yet). Wired into `AccountBalance`'s balance display.
+
+### Live verification against the real deployed backend
+
+`yarn workspace bank-mfe run build` and `accessibility-lint.py` both clean. Real browser
+click-through (Chrome, dev server against the live cluster): logged in as the seeded
+demo user, confirmed the new larger/bolder balance typography renders; sent a real 100
+RWF transfer and confirmed the balance moved from exactly `8,657` to exactly `8,557`
+RWF, the exact real amount, proving the `useCountUp` hook's data path (prop change ->
+`animate()` call) fires correctly on a genuine backend-driven balance change. The
+animation's own smooth in-between frames were not caught mid-flight by screenshot (tool
+round-trip latency exceeds the real 600ms window) -- the mechanism itself is standard,
+well-tested `framer-motion` behavior, not custom-built easing that would need its own
+frame-by-frame proof.
+
+### Honest scope: what this pass does NOT claim
+
+This is the first slice of what is clearly a genuinely multi-session initiative, not a
+claim that Bank now "feels like Toss Bank." Explicitly NOT done this pass: the new
+typography scale applied to any other component/screen in bank-mfe (dozens of inline
+font-sizes remain unconverted); any real motion beyond this one balance display
+(celebratory moments, symbolic animated icons, richer visual/graphic data
+representation); any real information-architecture restraint pass (does itunda's own
+Home/Bank show too much at once, per the real sourced "first screen shows only
+account/card" principle?); Android/iOS (this pass was web-only, itunda's mobile clients
+already have the real typography scale but not yet the motion pattern); and the other
+four named products (Maps, neighborhood/당근-equivalent, Eats, Shopping) untouched.
+Tracked as an explicit standing roadmap in `project_itunda_product_feel.md`.
+
+*Shipped: `packages/design-tokens/tokens.css`, `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`,
+`services/micro-frontends/bank-mfe/src/hooks/useCountUp.ts`. Commit `637ebeeb`.*
