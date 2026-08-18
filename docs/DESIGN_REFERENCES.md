@@ -11551,3 +11551,150 @@ Cleaned up the local Docker image after a successful push (`docker rmi` +
 calling this new preview endpoint before rendering the send confirmation) remains a
 named, deliberately deferred follow-up, matching this project's established
 backend-first pattern.
+
+## 183. Real Korean 지연이체서비스 (Delayed Transfer Service) for P2P transfers -- `POST /api/v1/p2p/send-delayed`
+
+**Added 2026-08-18.** New feature, backend-only, following Path A of this pass's own
+research brief: neither of the two standing lenses (escrow/reservation abandonment
+timeouts, Sections 170-179, and scheduler transaction-poisoning, Sections 179-181) were
+to be re-run -- both already confirmed genuinely exhausted.
+
+**Real, sourced product gap**: Korean banking apps implement a real, government-
+documented anti-voice-phishing safeguard called 지연이체서비스 (Delayed Transfer
+Service). KakaoBank's own real implementation (blog.kakaobank.com/posts/mistaken-
+remittance-return) holds an outgoing transfer for a real minimum of 3 hours before it
+lands, and a sender can cancel it any time before the final release instant if they
+realize it was a mistake or a scam -- the delay itself is what makes cancellation
+possible at all, since itunda's (and every real Korean bank's) ordinary transfer is
+otherwise instant and irreversible the moment it completes. This is documented as a
+standard, real Korean banking safeguard, not an invented feature: 금융위원회's own
+"보이스피싱 사기 예방 제도 및 서비스" brief (fsc.go.kr) and easylaw.go.kr's "지연인출·
+이체제도" government legal-information page both describe delayed transfer/withdrawal
+as a real, standing anti-fraud mechanism, and IBK/KB's own public safety pages
+independently corroborate the same real practice. A genuine money-safety feature, not
+cosmetic UI: `P2pService.sendDirect` (Section from 2026-07-20, hardened with a
+recipient-name preview in Section 182) is itunda's real instant transfer -- once it
+completes, there is no reversal path at all, confirmed by reading it directly. A sender
+tricked by a real-time phishing call, or simply moving faster than they meant to, has
+no way to undo it today.
+
+### Checked against itunda's own code
+
+Confirmed `P2pService.sendDirect` has no delay/hold concept anywhere -- money debits
+the sender and credits the recipient synchronously in one `@Transactional` call, by
+design (see its own doc comment). This section adds a genuinely separate, explicit,
+opt-in alternative path rather than modifying that flow: `sendDirect` is this module's
+most heavily-tuned method, with three separate documented transaction-composition bugs
+already found and fixed live in its own round-up integration alone (see its own doc
+comment history) -- grafting a hold/release lifecycle onto it without the same
+live-verification this codebase's own standing discipline requires would risk silently
+reintroducing that exact class of bug. `sendDirect` itself is completely unchanged by
+this section.
+
+**Built**: a new `P2pDelayedTransferService` (kept separate from `P2pService`, the same
+"coherent, separable real feature gets its own service" discipline
+`RideTrustedContactService`'s own doc comment already establishes) with three real
+operations:
+- `sendDelayed(senderUserId, recipientIdentifier, amount, description)` -- resolves the
+  recipient the same way `sendDirect` does (phone number, falling back to account
+  number), debits the sender's wallet, and credits a new `p2p_delay_holding` clearing
+  account (new `LedgerAccountType.P2P_DELAY_HOLDING`, seeded in
+  `LedgerAccount.SEED_IDS` *before* the first real send, learning from this exact
+  file's own documented history of nine prior live 500s from a missed seed row) --
+  same real escrow-clearing-account shape `MarketplaceEscrow`/`BookingDeposit` already
+  establish. A new `P2pDelayedTransfer` row tracks PENDING/COMPLETED/CANCELLED status,
+  `releaseAt` (now + `P2pDelayedTransfer.DELAY_WINDOW`, the real sourced 3-hour
+  KakaoBank minimum), and is `@Version`-guarded the same way `MarketplaceEscrow`
+  documents, so a real concurrent cancel-vs-release race can only ever let one state
+  transition win -- the loser real-409s via the existing global
+  `ObjectOptimisticLockingFailureException` handler
+  (`rw.itunda.app.web.IdempotencyExceptionHandler`), never double-refunding or
+  double-crediting the same held money.
+- `cancel(senderUserId, transferId)` -- real IDOR guard:
+  `P2pDelayedTransferRepository.findByIdAndSenderUserId` compares the resource's real
+  owning field against the caller, same discipline this codebase's own IDOR-audit
+  precedent establishes, never just existence. Refunds the held amount straight back
+  to the sender's own wallet and marks the row CANCELLED; a transfer that's already
+  COMPLETED or CANCELLED real-409s via a new `P2pDelayedTransferNotCancellableException`
+  rather than silently double-refunding. Deliberately simpler than real KakaoBank/IBK
+  practice (which cuts off cancellation 30 minutes before the final release instant):
+  itunda's own v1 allows cancelling any time up to release, strictly MORE permissive,
+  never less safe, than that real-world detail, and avoids a second time-window concept
+  layered on top of the release window itself.
+- `release(transferId)` -- real per-item release, called only from a new
+  `P2pDelayedTransferReleaseScheduler`'s own try/catch-per-row loop, never a batch-
+  transactional loop over every due row -- the exact, previously-recurring "scheduler
+  transaction-poisoning" bug class this codebase's own Sections 115-181 already found
+  and fixed nine times, and this pass's own research brief explicitly named as
+  something not to reintroduce. Re-checks `status == PENDING` on a fresh read before
+  acting, the same re-check-before-act guard `MarketplaceService.autoReleaseEscrow`
+  already establishes, so a transfer the sender cancelled milliseconds earlier is
+  silently skipped, not double-processed. Sends the real recipient the same "money
+  received" notification/push `P2pService.notifyMoneyReceived` already establishes for
+  an instant transfer.
+
+New endpoints on `P2pController`: `POST /api/v1/p2p/send-delayed` (Idempotency-Key
+required, same convention `/send` already uses), `POST /api/v1/p2p/delayed-transfers/
+{transferId}/cancel`, `GET /api/v1/p2p/delayed-transfers`. New migration
+`V285__p2p_delayed_transfers.sql`.
+
+**Deliberately not built this pass**: fraud-engine evaluation, round-up, auto-top-up,
+and FamilyLink spend-limit integration -- each was tuned specifically for
+`sendDirect`'s own instant-transfer transaction boundary (see its own three-attempt
+round-up bug-fix history), and this is a genuinely different shape (money moves into a
+real clearing account now, to the recipient later, on the scheduler's own separate
+transaction). A real, named, deliberately scoped-down follow-up if this v1 proves out.
+Also not built: an account-wide delay preference with a KakaoBank-style whitelist/
+threshold -- this v1 keeps it a simple, explicit, opt-in per-transfer choice. Client
+wiring (bank-mfe/Android/iOS calling `/send-delayed` and rendering a "Sending in 3
+hours -- cancel" UI) is a named, deliberately deferred follow-up, matching Section
+182's own established backend-first pattern.
+
+**Verified**: added 14 new `P2pDelayedTransferServiceTest` cases covering the real
+happy path (correct ledger legs: sender wallet debited, `p2p_delay_holding` credited,
+never the recipient directly), the self-payment guard, recipient-not-found, insufficient
+funds, the rate limit, cancel's happy path (refund + CANCELLED), the real IDOR guard
+(a different real user's transfer id returns the same honest 404, not a 403 that would
+confirm the resource exists), cancelling an already-COMPLETED transfer (real 409, not a
+double-refund), the scheduler's release happy path (recipient credited, real
+notification/push sent, COMPLETED), and release's own re-check-before-act guard
+correctly no-op'ing a transfer the sender already cancelled. Two real mockk bugs caught
+and fixed during my own first run, not shipped blind: `TransactionRepository.save`/
+`NotificationRepository.save` are self-bounded generic `JpaRepository` methods that
+plain `relaxed = true` doesn't reliably mock (a `ClassCastException` and a silently-
+swallowed exception inside `notifyMoneyReceived`'s own try/catch respectively) -- both
+needed an explicit `every { ... } answers { firstArg() }` stub, the same convention
+`P2pServiceTest` already uses throughout. Ran the real test suite myself and read the
+actual XML reports in `p2p/build/test-results/test/` (not estimated):
+`P2pDelayedTransferServiceTest tests="14" failures="0" errors="0"`, and the full
+`:p2p:test` module run together with `--rerun-tasks` (bypassing Gradle's UP-TO-DATE
+cache): `AutoTransferServiceTest tests="3"`, `P2pDelayedTransferServiceTest tests="14"`,
+`P2pServiceTest tests="26"`, `ScamReportServiceTest tests="8"`,
+`ScheduledTransferServiceTest tests="12"` -- **63 total, 0 failures, 0 errors**.
+
+Also independently ran `./gradlew :wallet:test --rerun-tasks` (the new
+`P2P_DELAY_HOLDING` ledger account type required a new `categorizeDebits` branch in
+`WalletService.getSpendingInsight`'s own exhaustive `when`, found only by the compiler
+refusing to build `:wallet:compileKotlin` until it was added -- categorized under
+"Transfers", the same bucket an instant P2P transfer's `RAIL_SUSPENSE` counterpart
+falls into): all 6 wallet test classes, 82 tests total, 0 failures, 0 errors. Ran
+`scripts/verify-ledger-account-seeds.py` (this codebase's own CI-wired guard for the
+nine-times-recurring "missing `SEED_IDS` row" bug class) -- confirmed clean: "OK: 27
+distinct literal ledger accountId(s) referenced across the backend, all present in
+LedgerAccount.SEED_IDS." Also independently ran `./gradlew :app:compileKotlin
+:ussd:compileKotlin` (the two modules that depend on `:p2p`) -- both `BUILD
+SUCCESSFUL`, confirming this additive change doesn't break any real downstream compile.
+
+No deploy and no live-server verification attempted here -- reserved for the
+coordinator, matching this task's own scope boundary.
+
+Files: `services/backend/core/src/main/kotlin/rw/itunda/core/domain/LedgerEntry.kt`,
+`services/backend/core/src/main/kotlin/rw/itunda/core/domain/LedgerAccount.kt`,
+`services/backend/core/src/main/kotlin/rw/itunda/core/domain/P2pDelayedTransfer.kt`,
+`services/backend/core/src/main/kotlin/rw/itunda/core/repository/P2pDelayedTransferRepository.kt`,
+`services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pDelayedTransferService.kt`,
+`services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pDelayedTransferReleaseScheduler.kt`,
+`services/backend/p2p/src/main/kotlin/rw/itunda/p2p/web/P2pController.kt`,
+`services/backend/wallet/src/main/kotlin/rw/itunda/wallet/WalletService.kt`,
+`services/backend/app/src/main/resources/db/migration/V285__p2p_delayed_transfers.sql`,
+`services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pDelayedTransferServiceTest.kt`.

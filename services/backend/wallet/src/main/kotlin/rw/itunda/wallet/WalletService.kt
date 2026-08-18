@@ -233,6 +233,15 @@ class WalletService(
                 // very same transaction it debits POSTPAID_CREDIT_PAYABLE, so it
                 // real-appears here and deserves its own category, not "Other".
                 LedgerAccountType.POSTPAID_CREDIT_PAYABLE -> "Postpaid credit"
+                // Real Korean 지연이체서비스 (Delayed Transfer Service, 2026-08-18) -- see
+                // P2pDelayedTransfer.kt's own doc comment. Same reachable-in-practice
+                // shape CARD_SPEND_EXPENSE/POSTPAID_CREDIT_PAYABLE establish just above:
+                // P2pDelayedTransferService.sendDelayed debits the sender's WALLET and
+                // credits this holding account in the very same transaction, so it
+                // real-appears here and deserves its own category, same as an instant
+                // P2P transfer would (grouped under RAIL_SUSPENSE's "Transfers" case
+                // above, but a delayed transfer never touches rail_suspense).
+                LedgerAccountType.P2P_DELAY_HOLDING -> "Transfers"
                 // REWARDS_EXPENSE/INTEREST_EXPENSE/INSURANCE_CLAIMS_EXPENSE are all credit-side
                 // accounts (they pay money *into* a wallet) -- they'd never realistically be the
                 // counterpart to a WALLET debit here, but the compiler correctly demands every

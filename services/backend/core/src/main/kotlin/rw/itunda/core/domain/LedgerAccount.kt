@@ -150,6 +150,12 @@ class LedgerAccount(
             // missing seed row is invisible to compile and to this codebase's own
             // mocked-LedgerService unit tests, only ever caught live.)
             "promotion_expense" to "Eats Order Promotion Expense",
+            // Real Korean 지연이체서비스 (Delayed Transfer Service, 2026-08-18) -- see
+            // P2pDelayedTransfer.kt's own doc comment. Learned from this exact file's
+            // own documented history (NINE prior instances of the identical
+            // seed-row-missing bug class above): seeded here BEFORE the first real
+            // delayed transfer runs, not after a live 500 discovers it's missing.
+            "p2p_delay_holding" to "P2P Delayed Transfer Holding",
         )
     }
 }

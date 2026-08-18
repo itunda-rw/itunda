@@ -123,6 +123,13 @@ enum class LedgerAccountType {
     // payouts: the buyer pays less, itunda absorbs the difference as a real expense,
     // the restaurant's own payout is never reduced.
     PROMOTION_EXPENSE,
+    // Real Korean 지연이체서비스 (Delayed Transfer Service, 2026-08-18) -- see
+    // P2pDelayedTransfer.kt's own doc comment. Same real escrow-clearing-account shape
+    // MARKETPLACE_ESCROW_HOLDING/BOOKING_DEPOSIT_HOLDING already establish: the
+    // sender's real money already left their wallet the moment they chose "Send
+    // safely," it just hasn't reached the recipient yet -- held here until the real
+    // delay window elapses (or the sender cancels within it).
+    P2P_DELAY_HOLDING,
 }
 
 /**
