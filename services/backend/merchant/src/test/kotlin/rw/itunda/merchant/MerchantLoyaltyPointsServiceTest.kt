@@ -11,6 +11,7 @@ import rw.itunda.core.domain.MerchantLoyaltyAccount
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.MerchantLoyaltyAccountRepository
 import java.math.BigDecimal
+import java.time.Instant
 
 class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
 
@@ -141,6 +142,130 @@ class MerchantLoyaltyPointsServiceTest : BehaviorSpec({
                 } catch (e: InsufficientLoyaltyPointsException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    // Section 189: real point EXPIRY, itunda's own self-declared inactivity window --
+    // see MerchantLoyaltyPointsService's own doc comment for the full honest account of
+    // why this window is itunda's own choice, not a sourced Toss Place number. Every
+    // scenario below builds its own fresh, independently-timestamped account (the same
+    // "no shared mutable fixture across sibling When blocks" discipline this file's own
+    // freshAccount() comment already established) rather than reusing one across cases.
+    fun dormantAccount() = MerchantLoyaltyAccount(
+        id = "acct_dormant",
+        merchantId = "merchant_1",
+        customerId = "customer_1",
+        pointBalance = BigDecimal("500.00"),
+        updatedAt = Instant.now().minus(MerchantLoyaltyPointsService.EXPIRY_WINDOW).minusSeconds(3600),
+    )
+
+    fun freshlyActiveAccount() = MerchantLoyaltyAccount(
+        id = "acct_active",
+        merchantId = "merchant_1",
+        customerId = "customer_1",
+        pointBalance = BigDecimal("500.00"),
+        updatedAt = Instant.now().minus(MerchantLoyaltyPointsService.EXPIRY_WINDOW).plusSeconds(3600),
+    )
+
+    Given("a customer whose real 500-point balance has sat untouched past the real expiry window") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns dormantAccount()
+
+        When("checking their real balance") {
+            Then("it is honestly zero, even though the real stale row itself still says 500") {
+                service.getBalance("merchant_1", "customer_1") shouldBe BigDecimal.ZERO
+            }
+        }
+
+        When("they try to redeem points against the real stale balance") {
+            Then("it throws InsufficientLoyaltyPointsException with the real expired (zero) balance, not the stale 500") {
+                try {
+                    service.validateAndComputeRedemption("merchant_1", "customer_1", BigDecimal("10.00"), BigDecimal("5000"))
+                    error("expected InsufficientLoyaltyPointsException")
+                } catch (e: InsufficientLoyaltyPointsException) {
+                    e.message shouldBe "You only have 0 points at this store"
+                }
+            }
+        }
+    }
+
+    Given("a customer whose real dormant 500-point balance is re-recorded on redemption without going through validateAndComputeRedemption first") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns dormantAccount()
+
+        When("recordRedemption is called directly against the real stale row") {
+            Then("it independently re-derives the real expired balance and throws rather than trusting the raw stale field") {
+                try {
+                    service.recordRedemption("merchant_1", "customer_1", BigDecimal("10.00"))
+                    error("expected InsufficientLoyaltyPointsException")
+                } catch (e: InsufficientLoyaltyPointsException) {
+                    e.message shouldBe "You only have 0 points at this store"
+                }
+            }
+        }
+    }
+
+    Given("a customer whose real dormant 500-point balance earns a new real purchase after the real expiry window") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val account = dormantAccount()
+        every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns account
+        val savedSlot = slot<MerchantLoyaltyAccount>()
+        every { merchantLoyaltyAccountRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+        When("they complete a real 10,000 RWF payment") {
+            service.accrue(merchant, "customer_1", BigDecimal("10000"))
+
+            Then("the real stale 500 is reset to zero first, so the new balance is only the real newly-earned 100, not 600") {
+                savedSlot.captured.pointBalance shouldBe BigDecimal("100.00")
+            }
+        }
+    }
+
+    Given("a customer whose real 500-point balance is still within the real expiry window") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        every { merchantLoyaltyAccountRepository.findByMerchantIdAndCustomerId("merchant_1", "customer_1") } returns freshlyActiveAccount()
+
+        When("checking their real balance") {
+            Then("it is still the real full 500, not expired yet") {
+                service.getBalance("merchant_1", "customer_1") shouldBe BigDecimal("500.00")
+            }
+        }
+    }
+
+    Given("MerchantLoyaltyPointsExpiryScheduler's own per-item expiry method, a real dormant account due for expiry") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val account = dormantAccount()
+        every { merchantLoyaltyAccountRepository.findById("acct_dormant") } returns java.util.Optional.of(account)
+        val savedSlot = slot<MerchantLoyaltyAccount>()
+        every { merchantLoyaltyAccountRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+        When("expireIfDue runs against it") {
+            service.expireIfDue("acct_dormant")
+
+            Then("it real-zeroes the real stale balance and persists it") {
+                savedSlot.captured.pointBalance shouldBe BigDecimal.ZERO
+                verify(exactly = 1) { merchantLoyaltyAccountRepository.save(account) }
+            }
+        }
+    }
+
+    Given("MerchantLoyaltyPointsExpiryScheduler's own per-item expiry method, a real account whose activity moments earlier already reset its clock") {
+        val merchantLoyaltyAccountRepository = mockk<MerchantLoyaltyAccountRepository>()
+        val service = MerchantLoyaltyPointsService(merchantLoyaltyAccountRepository)
+        val account = freshlyActiveAccount()
+        every { merchantLoyaltyAccountRepository.findById("acct_active") } returns java.util.Optional.of(account)
+
+        When("expireIfDue re-checks it right before acting") {
+            service.expireIfDue("acct_active")
+
+            Then("it is a real no-op -- the fresh activity is honored, never saved over") {
+                verify(exactly = 0) { merchantLoyaltyAccountRepository.save(any()) }
             }
         }
     }

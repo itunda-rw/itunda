@@ -114,6 +114,13 @@ interface TermsAcceptanceRepository : JpaRepository<TermsAcceptance, String> {
 
 interface MerchantLoyaltyAccountRepository : JpaRepository<MerchantLoyaltyAccount, String> {
     fun findByMerchantIdAndCustomerId(merchantId: String, customerId: String): MerchantLoyaltyAccount?
+
+    // Real scheduler feed for MerchantLoyaltyPointsExpiryScheduler -- coarse repo
+    // filter (a nonzero balance untouched since before the real cutoff), exact
+    // re-check-before-act done in MerchantLoyaltyPointsService.expireIfDue itself,
+    // same "coarse repo filter, exact logic in the service" shape
+    // P2pDelayedTransferService.getDueForRelease already establishes.
+    fun findByPointBalanceGreaterThanAndUpdatedAtBefore(pointBalance: java.math.BigDecimal, cutoff: java.time.Instant): List<MerchantLoyaltyAccount>
 }
 
 interface WeeklySavingsPlanRepository : JpaRepository<WeeklySavingsPlan, String> {
