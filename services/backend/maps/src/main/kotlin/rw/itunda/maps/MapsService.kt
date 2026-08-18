@@ -255,6 +255,18 @@ class MapsService(
         // module's own other write-shaped calls (directions/nearby) already use.
         rateLimiter.checkLimit("maps:bookmark:$userId", limit = 60, window = Duration.ofMinutes(1))
         mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude(userId, latitude, longitude)?.let { return it }
+        // Real bug found live testing subscribeToSharedFolder (2026-08-18): folder
+        // publicity is a per-row flag set in bulk by setFolderPublic at the moment it's
+        // toggled, not a durable folder-level property -- so a place added to an
+        // already-public folder AFTER sharing it silently defaulted back to private,
+        // never appeared in getPublicFolder, and a subscriber's re-subscribe copied
+        // nothing even though the owner had genuinely added something new. A folder the
+        // owner marked public stays public for whatever they add to it next, matching
+        // what "share this folder" actually means to Kakao/Naver Map users -- inherit
+        // publicity from any existing row in the same folder, private by default like
+        // today when the folder has no public rows (including never-shared, or shared
+        // and later made private again via setFolderPublic(isPublic = false)).
+        val folderIsPublic = mapBookmarkRepository.findByUserIdAndFolderName(userId, trimmedFolder).any { it.isPublic }
         return mapBookmarkRepository.save(
             MapBookmark(
                 id = "map_bookmark_${UUID.randomUUID()}",
@@ -264,6 +276,7 @@ class MapsService(
                 longitude = longitude,
                 folderName = trimmedFolder,
                 color = color,
+                isPublic = folderIsPublic,
             ),
         )
     }

@@ -323,6 +323,10 @@ class MapsServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val mapBookmarkRepository = mockk<MapBookmarkRepository>()
         val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
+        // Default: no existing bookmarks in whatever folder these tests use, so a new
+        // bookmark doesn't inherit isPublic=true from a folder-publicity check that has
+        // nothing to do with what any of these specific tests are asserting.
+        every { mapBookmarkRepository.findByUserIdAndFolderName(any(), any()) } returns emptyList()
 
         val lat = -1.9686
         val lng = 30.1395
@@ -514,6 +518,37 @@ class MapsServiceTest : BehaviorSpec({
             Then("it returns a real 0 without ever calling saveAll") {
                 updatedCount shouldBe 0
                 io.mockk.verify(exactly = 0) { mapBookmarkRepository.saveAll<MapBookmark>(any()) }
+            }
+        }
+
+        When("bookmarking a real new place into a folder that's already public") {
+            val existingPublic = listOf(
+                MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Cafe A", latitude = -1.9, longitude = 30.0, folderName = "Cafes to try", isPublic = true),
+            )
+            every { mapBookmarkRepository.findByUserIdAndFolderName("user_1", "Cafes to try") } returns existingPublic
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", -1.92, 30.02) } returns null
+            val savedSlot = slot<MapBookmark>()
+            every { mapBookmarkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val bookmark = service.addBookmark("user_1", "Cafe C", -1.92, 30.02, folderName = "Cafes to try")
+
+            Then("it real-inherits the folder's public status -- a subscriber's next re-subscribe will actually see it") {
+                bookmark.isPublic shouldBe true
+                savedSlot.captured.isPublic shouldBe true
+            }
+        }
+
+        When("bookmarking a real new place into a folder that was never made public") {
+            every { mapBookmarkRepository.findByUserIdAndFolderName("user_1", "Private stuff") } returns emptyList()
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", -1.93, 30.03) } returns null
+            val savedSlot = slot<MapBookmark>()
+            every { mapBookmarkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val bookmark = service.addBookmark("user_1", "Home", -1.93, 30.03, folderName = "Private stuff")
+
+            Then("it real-defaults to private, same as always") {
+                bookmark.isPublic shouldBe false
+                savedSlot.captured.isPublic shouldBe false
             }
         }
 
