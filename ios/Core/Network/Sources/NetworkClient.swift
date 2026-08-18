@@ -3372,13 +3372,30 @@ public struct NearbyAgentsResponse: Decodable { public let success: Bool; public
 // backend (migration V73). Every bookmark belongs to exactly one named folder with its
 // own pin color; a bookmark saved before this existed defaults into "Saved places" /
 // "#F5A623" (the same star-yellow the ★ icon already used).
-public struct MapBookmarkDto: Decodable, Identifiable { public let id: String; public let displayName: String; public let latitude: Double; public let longitude: Double; public let folderName: String; public let color: String; public let createdAt: String }
+// isPublic added 2026-08-18 (ported from Android/bank-mfe's own real Naver Map-style
+// public/private folder + share) -- see MapBookmark.isPublic's own doc comment on the
+// backend. Always present in the real JSON (Kotlin's `= false` default still serializes
+// the field), so this is a plain non-optional Bool, not a decode-time fallback.
+// isPublic is `var`, not `let` -- this struct's memberwise init is only `internal`
+// (Swift never auto-synthesizes a `public` one across a module boundary, only
+// `init(from:)` via the Decodable conformance), so a caller in the App module can't
+// reconstruct a whole new value the way `let` would require; mutating a copy's `var`
+// field is the real, minimal way to update this one field from outside CoreNetwork.
+public struct MapBookmarkDto: Decodable, Identifiable { public let id: String; public let displayName: String; public let latitude: Double; public let longitude: Double; public let folderName: String; public let color: String; public var isPublic: Bool; public let createdAt: String }
 public struct MapBookmarksResponse: Decodable { public let success: Bool; public let bookmarks: [MapBookmarkDto] }
 public struct AddMapBookmarkRequest: Encodable { public let displayName: String; public let latitude: Double; public let longitude: Double; public let folderName: String?; public let color: String? }
 public struct AddMapBookmarkResponse: Decodable { public let success: Bool; public let bookmark: MapBookmarkDto }
 // Real "move to folder" (2026-07-22) -- see MapsService.moveBookmark's own doc comment.
 public struct MoveMapBookmarkRequest: Encodable { public let folderName: String; public let color: String }
 public struct MoveMapBookmarkResponse: Decodable { public let success: Bool; public let bookmark: MapBookmarkDto }
+// Real Naver Map-style public/private folder + share, and Kakao Map-style "구독"
+// (subscribe) -- ported from Android/bank-mfe (2026-08-18). iOS previously had no
+// client for any of this: no isPublic field, no share toggle, no shared-link view, no
+// subscribe -- Android/bank-mfe's own share links have always silently 404'd on iOS.
+public struct SetMapFolderVisibilityRequest: Encodable { public let folderName: String; public let isPublic: Bool }
+public struct SetMapFolderVisibilityResponse: Decodable { public let success: Bool; public let updatedCount: Int }
+public struct SharedMapFolderResponse: Decodable { public let success: Bool; public let bookmarks: [MapBookmarkDto] }
+public struct SubscribeToSharedMapFolderResponse: Decodable { public let success: Bool; public let copiedCount: Int }
 
 public struct MapPlaceCategory: Identifiable { public let id: String; public let label: String; public init(id: String, label: String) { self.id = id; self.label = label } }
 public let mapNearbyCategories: [MapPlaceCategory] = [
@@ -4870,6 +4887,46 @@ extension NetworkClient {
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
         return try decoder.decode(MoveMapBookmarkResponse.self, from: data)
+    }
+
+    // Real Naver Map-style public/private folder + share, and Kakao Map-style "구독"
+    // (subscribe) -- ported from Android/bank-mfe (2026-08-18), see
+    // SetMapFolderVisibilityRequest's own doc comment above. `folderName` is a real
+    // user-chosen string (can contain spaces) -- percent-encoded explicitly before
+    // interpolating into the path rather than trusting `appendingPathComponent` on the
+    // whole multi-segment string, the same caution `moveMapBookmark`'s own doc comment
+    // establishes for this exact class of gotcha.
+    public func setMapFolderVisibility(folderName: String, isPublic: Bool) async throws -> SetMapFolderVisibilityResponse {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/maps/bookmarks/folder-visibility"))
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(SetMapFolderVisibilityRequest(folderName: folderName, isPublic: isPublic))
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await dataWithRefresh(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
+        return try decoder.decode(SetMapFolderVisibilityResponse.self, from: data)
+    }
+
+    private func sharedMapFolderPath(userId: String, folderName: String, suffix: String = "") -> String {
+        let encodedUser = userId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? userId
+        let encodedFolder = folderName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? folderName
+        return "api/v1/maps/shared/\(encodedUser)/\(encodedFolder)\(suffix)"
+    }
+
+    // Deliberately unauthenticated on the backend (SecurityConfig permitAll) -- whoever
+    // opens a real share link doesn't need an itunda session, matching Android's own
+    // getSharedMapFolder. `get(_:)` still attaches a token if one exists, harmlessly.
+    public func getSharedMapFolder(userId: String, folderName: String) async throws -> SharedMapFolderResponse {
+        try await get(sharedMapFolderPath(userId: userId, folderName: folderName))
+    }
+
+    // The write half of a shared folder -- real-copies the owner's public places into
+    // the caller's own bookmarks. Unlike the GET above, this is authenticated.
+    public func subscribeToSharedMapFolder(userId: String, folderName: String) async throws -> SubscribeToSharedMapFolderResponse {
+        try await authenticatedPost(sharedMapFolderPath(userId: userId, folderName: folderName, suffix: "/subscribe"), body: EmptyBody())
     }
 
     // A real query-param DELETE -- `authenticatedDelete(_:)` below takes no query, so

@@ -78,6 +78,11 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showMapFromDeepLink = false
     @State private var mapSearchFromDeepLink: String?
+    // Real Kakao Map-style shared-folder landing (2026-08-18) -- resolves a real
+    // `itunda://maps/shared/{userId}/{folderName}` link (Android already resolved
+    // this since 2026-08-14; iOS never did until now). Mutually exclusive with a plain
+    // search link -- see the onOpenURL handler below.
+    @State private var mapSharedFolderFromDeepLink: (ownerId: String, folderName: String)?
     // My's own real content (orders/favorites/listings) is its own primary tab now
     // (ItundaTab.You, 2026-08-10) -- no overlay state needed to reach it anymore.
     // Real Toss Bank 송금 (Transfer) full page (2026-07-24) -- reachable from the
@@ -369,11 +374,22 @@ struct ContentView: View {
         }
         .accentColor(.primary)
         .fullScreenCover(isPresented: $showMapFromDeepLink) {
-            MapScreenView(initialSearchQuery: mapSearchFromDeepLink)
+            MapScreenView(initialSearchQuery: mapSearchFromDeepLink, initialSharedFolder: mapSharedFolderFromDeepLink)
         }
         .onOpenURL { url in
             guard url.scheme?.caseInsensitiveCompare("itunda") == .orderedSame,
                   url.host?.caseInsensitiveCompare("maps") == .orderedSame else { return }
+            // Real shared-folder link (2026-08-18) -- itunda://maps/shared/{userId}/{folderName},
+            // matching Android's own identical path-shape check and bank-mfe's own
+            // ?sharedOwner=&sharedFolder= query-param equivalent.
+            let pathParts = url.path.split(separator: "/").map(String.init)
+            if pathParts.count == 3, pathParts[0].caseInsensitiveCompare("shared") == .orderedSame {
+                mapSharedFolderFromDeepLink = (ownerId: pathParts[1], folderName: pathParts[2].removingPercentEncoding ?? pathParts[2])
+                mapSearchFromDeepLink = nil
+                showMapFromDeepLink = true
+                return
+            }
+            mapSharedFolderFromDeepLink = nil
             mapSearchFromDeepLink = url.path.caseInsensitiveCompare("/search") == .orderedSame
                 ? url.queryValue(named: "query")?.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160).description
                 : nil

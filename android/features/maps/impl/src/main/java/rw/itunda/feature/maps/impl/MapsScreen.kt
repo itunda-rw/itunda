@@ -611,6 +611,10 @@ fun MapScreen(
     var sharedFolderBookmarks by remember { mutableStateOf<List<MapBookmarkDto>?>(null) }
     var sharedFolderError by remember { mutableStateOf<String?>(null) }
     var loadingSharedFolder by remember { mutableStateOf(false) }
+    // Real Kakao Map-style "구독" (subscribe) state -- the write half of a shared folder,
+    // ported from bank-mfe (2026-08-18). null = not yet subscribed this session.
+    var subscribingSharedFolder by remember { mutableStateOf(false) }
+    var subscribedSharedFolderCount by remember { mutableStateOf<Int?>(null) }
     // Real "알림받기" (Notify/Follow) pill (2026-08-09) -- from the full-screen Naver Maps
     // reference screenshots. The backend + Retrofit endpoints already existed
     // (followMerchant/unfollowMerchant/getMyFollowedMerchants, ported for bank-mfe) but had
@@ -977,6 +981,30 @@ fun MapScreen(
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
                 sharingFolder = null
+            }
+        }
+    }
+
+    // Real Kakao Map-style "구독" (subscribe) -- the write half of a shared folder, ported
+    // from bank-mfe's own handleSubscribeToSharedFolder (2026-08-18): real-copies the
+    // owner's public places into the caller's own bookmarks, then refreshes `bookmarks`
+    // so the new folder shows up immediately in "Your saved places" (matching the
+    // staleness fix bank-mfe's own version needed for the identical reason).
+    fun handleSubscribeToSharedFolder() {
+        val (ownerId, folderName) = initialSharedFolder ?: return
+        subscribingSharedFolder = true
+        sharedFolderError = null
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.subscribeToSharedMapFolder(ownerId, folderName)
+                subscribedSharedFolderCount = res.copiedCount
+                bookmarks = NetworkClient.apiService.getMyMapBookmarks().bookmarks
+            } catch (e: HttpException) {
+                sharedFolderError = superAppErrorMessage(e)
+            } catch (e: Exception) {
+                sharedFolderError = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                subscribingSharedFolder = false
             }
         }
     }
@@ -2834,6 +2862,9 @@ fun MapScreen(
                                     loading = loadingSharedFolder,
                                     error = sharedFolderError,
                                     sharedBookmarks = sharedFolderBookmarks,
+                                    subscribing = subscribingSharedFolder,
+                                    subscribedCount = subscribedSharedFolderCount,
+                                    onSubscribe = ::handleSubscribeToSharedFolder,
                                     onOpenPlace = { shared ->
                                         selectedPlace = PlaceSearchResultDto(shared.displayName, shared.latitude, shared.longitude)
                                         route = null
@@ -2993,6 +3024,9 @@ private fun SharedFolderSection(
     loading: Boolean,
     error: String?,
     sharedBookmarks: List<MapBookmarkDto>?,
+    subscribing: Boolean,
+    subscribedCount: Int?,
+    onSubscribe: () -> Unit,
     onOpenPlace: (MapBookmarkDto) -> Unit,
 ) {
     Text(
@@ -3007,7 +3041,8 @@ private fun SharedFolderSection(
         error != null -> Text(error, fontSize = 12.sp, color = Ids.colors.danger)
         sharedBookmarks?.isEmpty() == true ->
             Text("This shared list is empty, or is no longer public.", fontSize = 12.sp, color = Ids.colors.textSecondary)
-        else -> sharedBookmarks.orEmpty().forEach { shared ->
+        else -> {
+        sharedBookmarks.orEmpty().forEach { shared ->
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -3026,6 +3061,30 @@ private fun SharedFolderSection(
                 )
                 Text(shared.displayName, fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
             }
+        }
+        // Real Kakao Map-style "구독" (subscribe) button -- the write half of a shared
+        // folder, ported from bank-mfe's own identical "Save to my places (N)" button.
+        if (subscribedCount != null) {
+            Text(
+                "✓ Saved $subscribedCount new place${if (subscribedCount == 1) "" else "s"} to your own bookmarks",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Ids.colors.brand,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+        } else {
+            Text(
+                if (subscribing) "Saving…" else "Save to my places (${sharedBookmarks.orEmpty().size})",
+                fontSize = 13.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp)
+                    .background(Ids.colors.brand, RoundedCornerShape(10.dp))
+                    .clickable(enabled = !subscribing) { onSubscribe() }
+                    .padding(vertical = 10.dp),
+            )
+        }
         }
     }
 }

@@ -197,9 +197,17 @@ struct MapScreenView: View {
     /// Optional authenticated handoff from another Itunda surface. It only seeds the
     /// existing self-hosted search field; all result fetching remains in `search()`.
     let initialSearchQuery: String?
+    // Real Kakao Map-style shared-folder landing (2026-08-18) -- the receiving half of
+    // a real `itunda://maps/shared/{userId}/{folderName}` link, resolved by
+    // ContentView's own `.onOpenURL`. Ported from Android's own identical
+    // `initialSharedFolder`; bank-mfe resolves the web equivalent via URL query params
+    // instead since it has no custom URL scheme. iOS previously had no client for any
+    // of this at all -- Android already resolved the deep link, this app didn't.
+    let initialSharedFolder: (ownerId: String, folderName: String)?
 
-    init(initialSearchQuery: String? = nil) {
+    init(initialSearchQuery: String? = nil, initialSharedFolder: (ownerId: String, folderName: String)? = nil) {
         self.initialSearchQuery = initialSearchQuery?.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160).description
+        self.initialSharedFolder = initialSharedFolder
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -248,6 +256,15 @@ struct MapScreenView: View {
     // (nil = closed).
     @State private var savingToFolder: PlaceSearchResultDto?
     @State private var folderNameInput = defaultBookmarkFolder
+    // Real Naver Map-style public/private folder + share, and Kakao Map-style "구독"
+    // (subscribe) -- ported from Android/bank-mfe (2026-08-18). `sharingFolder` is
+    // whichever folder's toggle is currently in flight (nil = none).
+    @State private var sharingFolder: String?
+    @State private var sharedFolderBookmarks: [MapBookmarkDto]?
+    @State private var sharedFolderLoading = false
+    @State private var sharedFolderError: String?
+    @State private var subscribingSharedFolder = false
+    @State private var subscribedSharedFolderCount: Int?
     @State private var folderColorInput = bookmarkColorPalette[0]
     // Real "move to folder" (found 2026-07-22: NetworkClient.moveMapBookmark already
     // existed with zero UI calling it anywhere) -- movingBookmark holds whichever real
@@ -672,9 +689,25 @@ struct MapScreenView: View {
                                     } else {
                                         let folders = bookmarksByFolder
                                         ForEach(folders, id: \.0) { folderName, folderBookmarks in
-                                            if folders.count > 1 {
-                                                Text(folderName).font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary).padding(.top, 4)
+                                            // Real Naver Map-style public/private folder + share
+                                            // toggle (2026-08-18) -- always shown (not gated on
+                                            // folders.count > 1 like the name label), matching
+                                            // Android/bank-mfe's own identical choice: even the
+                                            // single default folder is real and shareable.
+                                            HStack(spacing: 6) {
+                                                if folders.count > 1 {
+                                                    Text(folderName).font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
+                                                }
+                                                Spacer()
+                                                let folderIsPublic = folderBookmarks.first?.isPublic ?? false
+                                                Text(folderIsPublic ? "🌐 Public · Share" : "🔒 Private · Share")
+                                                    .font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
+                                                    .onTapGesture {
+                                                        guard sharingFolder == nil else { return }
+                                                        toggleFolderShare(folderName, makePublic: !folderIsPublic)
+                                                    }
                                             }
+                                            .padding(.top, 4)
                                             ForEach(folderBookmarks) { bookmark in
                                                 HStack(spacing: 6) {
                                                     Circle().fill(colorFromHex(bookmark.color)).frame(width: 8, height: 8)
@@ -789,10 +822,89 @@ struct MapScreenView: View {
                 if let newValue { error = newValue }
             }
         }
+        .task {
+            // Real shared-folder-link landing (2026-08-18) -- mirrors bank-mfe's own
+            // identical `useEffect` and Android's own identical `LaunchedEffect`.
+            // Deliberately unauthenticated on the backend (see
+            // NetworkClient.getSharedMapFolder's own doc comment) -- works even for a
+            // recipient who never signed in.
+            guard let initialSharedFolder else { return }
+            sharedFolderLoading = true
+            sharedFolderError = nil
+            do {
+                sharedFolderBookmarks = try await NetworkClient.shared.getSharedMapFolder(
+                    userId: initialSharedFolder.ownerId, folderName: initialSharedFolder.folderName
+                ).bookmarks
+            } catch {
+                sharedFolderError = "Could not load this shared list."
+            }
+            sharedFolderLoading = false
+        }
         .task(id: initialSearchQuery) {
             guard let initialSearchQuery, !initialSearchQuery.isEmpty else { return }
             query = initialSearchQuery
         }
+        .overlay(alignment: .top) {
+            if initialSharedFolder != nil {
+                sharedFolderLandingBanner
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+            }
+        }
+    }
+
+    // Real Kakao Map-style shared-folder landing (2026-08-18) -- a banner over the map
+    // rather than replacing it, so the places in the shared list stay visible in
+    // context, matching bank-mfe's own identical banner shape exactly.
+    @ViewBuilder
+    private var sharedFolderLandingBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("📍 \(initialSharedFolder?.folderName ?? "")").font(.subheadline).bold().foregroundColor(IdsPalette.gray900)
+                    Text("A shared list of saved places").font(.caption2).foregroundColor(IdsPalette.gray500)
+                }
+                Spacer()
+            }
+            if sharedFolderLoading {
+                Text("Loading…").font(.caption).foregroundColor(IdsPalette.gray500)
+            } else if let sharedFolderError {
+                Text(sharedFolderError).font(.caption).foregroundColor(.red)
+            } else if (sharedFolderBookmarks ?? []).isEmpty {
+                Text("This list is empty or is no longer public.").font(.caption).foregroundColor(IdsPalette.gray500)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(sharedFolderBookmarks ?? []) { place in
+                            HStack(spacing: 6) {
+                                Circle().fill(colorFromHex(place.color)).frame(width: 8, height: 8)
+                                Text(place.displayName).font(.caption).foregroundColor(IdsPalette.gray900)
+                            }
+                            .onTapGesture {
+                                selectPlace(PlaceSearchResultDto(displayName: place.displayName, latitude: place.latitude, longitude: place.longitude))
+                            }
+                        }
+                    }
+                }
+                .frame(maxHeight: 160)
+                if let subscribedSharedFolderCount {
+                    Text("✓ Saved \(subscribedSharedFolderCount) new place\(subscribedSharedFolderCount == 1 ? "" : "s") to your own bookmarks")
+                        .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                } else {
+                    Button(action: { Task { await handleSubscribeToSharedFolder() } }) {
+                        Text(subscribingSharedFolder ? "Saving…" : "Save to my places (\((sharedFolderBookmarks ?? []).count))")
+                            .font(.caption).bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(10)
+                    }
+                    .disabled(subscribingSharedFolder)
+                }
+            }
+        }
+        .padding(14)
+        .background(IdsPalette.white)
+        .cornerRadius(14)
+        .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
     }
 
     private func search() async {
@@ -1128,6 +1240,65 @@ struct MapScreenView: View {
             movingBookmark = nil
         } catch {
             self.error = "Could not move this bookmark."
+        }
+    }
+
+    // Real Naver Map-style public/private folder + share (2026-08-18) -- ported from
+    // Android's own identical `toggleFolderShare`/bank-mfe's own identical
+    // `toggleFolderShare`. Toggles the whole folder (every bookmark in it), matching
+    // what "Share" on a named list actually means, not a single pin. On making it
+    // public, presents the native share sheet with a real `itunda://` deep link --
+    // `UIActivityViewController` presented imperatively (not `ShareLink`, which needs
+    // its item known synchronously at render time) rather than a two-tap flow, the
+    // same real precedent `ShopScreen.shareProduct`'s own doc comment already
+    // established for an identical "share something only known after an async call"
+    // shape.
+    private func toggleFolderShare(_ folderName: String, makePublic: Bool) {
+        sharingFolder = folderName
+        Task {
+            defer { sharingFolder = nil }
+            do {
+                _ = try await NetworkClient.shared.setMapFolderVisibility(folderName: folderName, isPublic: makePublic)
+                bookmarks = bookmarks.map { bookmark in
+                    guard bookmark.folderName == folderName else { return bookmark }
+                    var updated = bookmark
+                    updated.isPublic = makePublic
+                    return updated
+                }
+                guard makePublic, let ownerId = try await NetworkClient.shared.getWallets().wallets.first?.userId else { return }
+                let encodedOwner = ownerId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ownerId
+                let encodedFolder = folderName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? folderName
+                let link = "itunda://maps/shared/\(encodedOwner)/\(encodedFolder)"
+                let activityVC = UIActivityViewController(activityItems: ["Check out my \"\(folderName)\" places on itunda Maps: \(link)"], applicationActivities: nil)
+                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let root = scene.windows.first?.rootViewController {
+                    var top = root
+                    while let presented = top.presentedViewController { top = presented }
+                    top.present(activityVC, animated: true)
+                }
+            } catch {
+                self.error = "Could not update sharing for this folder."
+            }
+        }
+    }
+
+    private func handleSubscribeToSharedFolder() async {
+        guard let initialSharedFolder else { return }
+        subscribingSharedFolder = true
+        sharedFolderError = nil
+        defer { subscribingSharedFolder = false }
+        do {
+            let copied = try await NetworkClient.shared.subscribeToSharedMapFolder(
+                userId: initialSharedFolder.ownerId, folderName: initialSharedFolder.folderName
+            ).copiedCount
+            subscribedSharedFolderCount = copied
+            // Real staleness fix (matching bank-mfe's own identical fix, found live the
+            // same day): a successful subscribe writes real rows server-side but
+            // `bookmarks` was never refetched, so "Your saved places" stayed stale
+            // until a manual relaunch.
+            bookmarks = try await NetworkClient.shared.getMyMapBookmarks().bookmarks
+        } catch {
+            sharedFolderError = "Could not save this list -- sign in and try again."
         }
     }
 

@@ -1267,6 +1267,10 @@ data class RemoveMapBookmarkResponse(val success: Boolean)
 data class SetMapFolderVisibilityRequest(val folderName: String, val isPublic: Boolean)
 data class SetMapFolderVisibilityResponse(val success: Boolean, val updatedCount: Int)
 data class SharedMapFolderResponse(val success: Boolean, val bookmarks: List<MapBookmarkDto>)
+// Real Kakao Map-style "구독" (subscribe) -- see MapsService.subscribeToSharedFolder's
+// own doc comment on the backend. Ported from bank-mfe (2026-08-18); Android already had
+// the view half (SharedFolderSection) but no way to keep what it showed.
+data class SubscribeToSharedMapFolderResponse(val success: Boolean, val copiedCount: Int)
 
 data class MapPlaceCategory(val id: String, val label: String)
 val MAP_NEARBY_CATEGORIES = listOf(
@@ -3239,6 +3243,12 @@ interface ApiService {
     // the backend never required for this specific path.
     @GET("api/v1/maps/shared/{userId}/{folderName}")
     suspend fun getSharedMapFolder(@Path("userId") userId: String, @Path("folderName") folderName: String): SharedMapFolderResponse
+
+    // Real Kakao Map-style "구독" (subscribe) -- the write half of sharing a folder, not
+    // just viewing it. Unlike the GET above, this is authenticated (writes real rows into
+    // the caller's own bookmarks).
+    @POST("api/v1/maps/shared/{userId}/{folderName}/subscribe")
+    suspend fun subscribeToSharedMapFolder(@Path("userId") userId: String, @Path("folderName") folderName: String): SubscribeToSharedMapFolderResponse
 
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment on the backend.
