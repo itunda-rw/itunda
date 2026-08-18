@@ -10587,3 +10587,25 @@ flag flipped at start, never flipped back if abandoned" shape) has the exact sam
 gap and was deliberately **not** touched in this pass, to keep this fix's own scope to
 the single Section 170-174-sized bike-rental fix named above -- a natural next
 occurrence of this exact technique for a future pass.
+
+**Coordinator re-verification, deploy, and real-money live-verify**: independently re-ran
+`./gradlew :rideshare:test --rerun-tasks`; summed every real XML report and confirmed
+`rideshare` `tests="110"`, `BikeRentalServiceTest` `tests="9"`, both `failures="0" errors="0"`,
+matching the claim exactly. Also confirmed this fix's billing is genuinely post-paid (no
+separate escrow hold at `startRental`, unlike Sections 170-174's pre-paid holds) -- `endRental`
+and the new `forceEndAbandonedRental` literally share the same `settleRental` private method, so
+there's no way for the two real triggers to diverge into different billing outcomes. Given this
+is a sixth real money-safety fix, deployed with priority: built and pushed
+`192.168.252.4:32000/itunda/backend:2026-08-18-bike-abandoned-session`, rollout completed
+cleanly. **Live-verified with real money movement**, using the new admin-gated manual-trigger
+endpoint (faster than waiting on the real cron, unlike Section 173): registered a bike owner +
+rider, funded the rider's real wallet (500,000 RWF), registered a real bike, started a real
+rental (confirmed the bike flips to `available=0`, the exact stuck state this bug caused),
+backdated `started_at` 25 hours into the past via direct DB update, then called
+`POST /api/v1/bikeshare/rentals/process-abandoned` as the real seeded admin account -> real
+`200` with `processedCount: 1`. Confirmed the real settlement: 1,501 minutes billed, 120,080 RWF
+total fare, the rider's real wallet debited to exactly 379,920.00 RWF (500,000 - 120,080), the
+owner's real wallet credited to exactly 102,068.00 RWF (120,080 - 18,012 platform fee), and the
+bike correctly flipped back to `available=1`, re-entering the pool. Re-triggered the same
+endpoint -> real `processedCount: 0`, confirming the fix is idempotent and can never double-bill
+a rider for the same abandoned session.
