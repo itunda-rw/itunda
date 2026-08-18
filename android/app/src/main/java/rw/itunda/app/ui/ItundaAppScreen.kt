@@ -2148,6 +2148,10 @@ private const val BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE = 2.80
 // Home coop rail grouping them with SACCO/Ikimina) because both convert to a loan --
 // kept consistent with that existing, already-vetted categorization rather than the
 // coop rail's simpler "Rwanda savings products" framing this replaces.
+// Real Toss Bank 카드/관리-style header-tab split for BankHubScreen -- see that
+// composable's own bankHubTab doc comment for the full reasoning.
+private enum class BankHubTab { ACCOUNTS, BORROW }
+
 @Composable
 private fun BankHubScreen(
     viewModel: MainViewModel,
@@ -2188,6 +2192,17 @@ private fun BankHubScreen(
     val roundUpSettings by viewModel.roundUpSettings.collectAsState()
     var showRoundUpDialog by remember { mutableStateOf(false) }
     var showNewGoalDialog by remember { mutableStateOf(false) }
+    // Real Toss Bank reference (Section 65's own 12-image direct comparison,
+    // 2026-08-13): the real 카드/관리-style header-tab structure, named explicitly as
+    // still open through Sections 65 and 193. BankHubScreen has no card-holding
+    // content to literally split on "Cards," so this maps the same real "what you
+    // already hold" vs. "what you can apply for" split onto itunda's own actual
+    // sections instead of forcing an ill-fitting label: Accounts (Save & grow,
+    // Insights, deposit protection -- your own existing money) vs. Borrow (credit
+    // products). The persistent balance/total-saved/auto-transfer summary above stays
+    // visible regardless of tab, matching Toss's own real pattern of an always-shown
+    // account header above its tabbed content.
+    var bankHubTab by remember { mutableStateOf(BankHubTab.ACCOUNTS) }
     val coroutineScope = rememberCoroutineScope()
     val totalSaved = (interestJar?.balance ?: 0.0) + savingsGoals.sumOf { it.currentAmount }
     // Real Deposit Protection Fund status (2026-08-11) -- own-screen fetch, same
@@ -2287,7 +2302,29 @@ private fun BankHubScreen(
                     }
                 }
             }
+            // Real Toss Bank 카드/관리-style header tabs -- reuses the exact real
+            // pill-segmented-picker convention ShopScreen's own PayMerchantMode picker
+            // already established (active tab: brand-color fill + white text; inactive:
+            // surfaceSoft + textPrimary), rather than inventing a new tab visual.
             item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    listOf(BankHubTab.ACCOUNTS to stringResource(R.string.bank_hub_tab_accounts), BankHubTab.BORROW to stringResource(R.string.bank_hub_tab_borrow)).forEach { (tab, label) ->
+                        val active = bankHubTab == tab
+                        Text(
+                            label, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            color = if (active) Color.White else Ids.colors.textPrimary,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                .clickable { bankHubTab = tab }
+                                .padding(vertical = 10.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                }
+            }
+            if (bankHubTab == BankHubTab.ACCOUNTS) item {
                 val roundUpOff = stringResource(R.string.home_round_up_off)
                 val roundUpOn = stringResource(R.string.home_round_up_on)
                 val roundUpSetUp = stringResource(R.string.home_round_up_set_up)
@@ -2410,7 +2447,7 @@ private fun BankHubScreen(
                     }
                 )
             }
-            item {
+            if (bankHubTab == BankHubTab.BORROW) item {
                 ShellSection(
                     title = stringResource(R.string.bank_borrow),
                     rows = listOf(
@@ -2435,7 +2472,7 @@ private fun BankHubScreen(
             // content stranded on a tab that's meant to be a generic access point.
             // Moved here (state fetched near the top of this composable, alongside
             // depositProtection's own identical pattern -- see above).
-            item {
+            if (bankHubTab == BankHubTab.ACCOUNTS) item {
                 ShellSection(
                     title = stringResource(R.string.bank_insights),
                     rows = buildList {
@@ -2480,7 +2517,7 @@ private fun BankHubScreen(
             // maintains as its own internal simulation of what real deposit protection
             // could look like -- same "real mechanics, honestly labeled as itunda's
             // own scheme" discipline this codebase already applies to VUP/RSE/SACCO.
-            depositProtection?.let { dp ->
+            if (bankHubTab == BankHubTab.ACCOUNTS) depositProtection?.let { dp ->
                 item {
                     IdsCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {

@@ -161,6 +161,8 @@
     <string name="bank_deposit_protection_covered">Amafaranga yawe arinzwe</string>
     <string name="bank_deposit_protection_reserve">Ububiko bwa itunda: RWF %1$s</string>
     <string name="bank_deposit_protection_title">Ikigega cyo Kurinda Ubwizigame (ikigeragezo)</string>
+    <string name="bank_hub_tab_accounts">Konti</string>
+    <string name="bank_hub_tab_borrow">Kuguza</string>
     <string name="bank_insights">Isesengura</string>
     <string name="bank_save_grow">Bika hanyuma witezimbere</string>
     <string name="bank_status_disclosure">itunda si banki yemewe, kandi ibi si ubwishingizi bw\'ubwizigame nyabwo bwa Leta. \"itunda Bank\" ni izina ry\'ibicuruzwa bya itunda ku bijyanye no kubika amafaranga, SACCO/Ikimina, inguzanyo, n\'ishoramari -- ntabwo ari urwego rw\'ubucuruzi bw\'ibanki rwihariye rwemewe.</string>
