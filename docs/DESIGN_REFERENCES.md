@@ -11406,3 +11406,18 @@ one narrow hardening fix) can now be considered genuinely exhausted for every
 `@Scheduled` class that exists as of this audit's date (2026-08-18) -- any NEW
 `@Scheduled` code added after this point must still follow the established safe shapes
 from the start.
+
+**Coordinator deploy and verification (2026-08-18)**: built and pushed
+`192.168.252.4:32000/itunda/backend:2026-08-18-webhook-retry-hardening` (one registry
+push attempt hit a transient "connection refused" under cluster load, self-resolved on
+immediate retry, consistent with this session's documented pattern) and deployed via
+`scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper; rollout polled with the
+corrected single-remaining-pod check and confirmed genuinely complete. Confirmed the
+fresh pod's own logs are clean (grepped a 2-minute window for `ERROR`/`Exception`, zero
+hits) and the real API gateway health check returns `200`. Given this section closes a
+narrow, deliberately-defensive hardening fix rather than a currently-live, exploitable
+bug (the audit itself confirmed `WebhookRetryScheduler`'s existing call chain already
+catches every real exception today), a full real-money reproduction was not performed
+for this section specifically -- the change's correctness rests on the real,
+independently-re-run test suite (`merchant` `tests="209" failures="0" errors="0"`) plus
+the direct code trace documented above confirming no live regression risk.
