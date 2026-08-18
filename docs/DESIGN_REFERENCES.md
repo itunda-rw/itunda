@@ -11521,3 +11521,33 @@ additive change doesn't break any real downstream compile.
 Files: `services/backend/p2p/src/main/kotlin/rw/itunda/p2p/P2pService.kt`,
 `services/backend/p2p/src/main/kotlin/rw/itunda/p2p/web/P2pController.kt`,
 `services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pServiceTest.kt`.
+
+**Coordinator re-verification, deploy, and real-money live-verification (2026-08-18)**:
+independently re-ran `./gradlew :p2p:test --rerun-tasks` (bypassing Gradle's UP-TO-DATE
+cache), summed the real XML reports myself -- confirmed `tests="49" failures="0"
+errors="0"`, matching the fork's own claim exactly. Confirmed `:app:compileKotlin
+:ussd:compileKotlin` both `BUILD SUCCESSFUL`.
+
+Built and pushed `192.168.252.4:32000/itunda/backend:2026-08-18-p2p-recipient-preview`
+and deployed via `scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper; rollout
+polled with the corrected single-remaining-pod check and confirmed genuinely complete.
+
+Live-verified with REAL accounts end to end: registered a real sender and a real
+recipient ("Alice Recipient182"), called the real `GET /api/v1/p2p/recipient` preview
+with the recipient's real phone number -- correctly returned
+`{"recipientUserId":"user_34359e3b-...","displayName":"Alice Recipient182"}`. Confirmed
+the two guard paths: previewing the sender's own phone number correctly 400s with
+`SELF_PAYMENT_NOT_ALLOWED`; previewing a nonexistent phone number correctly 404s with
+`P2P_RECIPIENT_NOT_FOUND`. Then funded the sender's real wallet to 50,000.00 RWF and
+called the real `POST /api/v1/p2p/send` to the SAME identifier just previewed -- the
+real transaction's `recipientId` matched the preview's `recipientUserId` exactly,
+confirming the preview and the actual send genuinely share one resolution path, not
+just by code review but by live behavior. Recipient wallet correctly credited to
+exactly 5,000.00 RWF, sender correctly debited to exactly 45,000.00 RWF (50,000 -
+5,000, no fee on this transfer type).
+
+Cleaned up the local Docker image after a successful push (`docker rmi` +
+`docker image prune -f`, reclaimed 616.4MB). Client wiring (bank-mfe/Android/iOS
+calling this new preview endpoint before rendering the send confirmation) remains a
+named, deliberately deferred follow-up, matching this project's established
+backend-first pattern.
