@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState, type ReactElement }
 import { motion, AnimatePresence } from 'framer-motion';
 import { Archive, ArchiveRestore, ArrowLeft, ArrowUpRight, Bell, Bike, Camera, Car, ChevronLeft, ChevronRight, Clock, Eye, EyeOff, Home as HomeIcon, Image as ImageIcon, Landmark, LayoutGrid, LogOut, MessageCircle, Pin, PinOff, Plus, Receipt, ScanFace, Search, Send, ShieldCheck, ShoppingBag, SmilePlus, Sprout, Star, TrendingDown, TrendingUp, User, Users, Utensils, Wallet as WalletIcon, X, Zap } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
+import { useCountUp } from './hooks/useCountUp';
 import { recordEvent } from './lib/analytics';
 import { useI18n } from './i18n/I18nContext';
 import { LOCALES, type TranslationKey } from './i18n/translations';
@@ -272,6 +273,10 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
   // section" convention.
   const [jar, setJar] = useState<InterestJar | null>(null);
   useEffect(() => { fetchInterestJar().then(setJar).catch(() => {}); }, []);
+  // Real Toss motion pattern -- see useCountUp's own doc comment for the full sourced
+  // account. Balance changes now count up/down to their new value instead of
+  // instantly snapping, on this app's single most looked-at real number.
+  const animatedBalance = useCountUp(wallet?.balance ?? 0);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -298,8 +303,25 @@ function AccountBalance({ wallet, onTransferClick, onClaimInterest }: { wallet: 
         </p>
       )}
 
-      <h1 style={{ color: 'var(--itunda-grey-900)', fontSize: '36px', fontWeight: '700', margin: '0 0 28px 0', letterSpacing: '-0.5px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-        {(wallet?.balance ?? 0).toLocaleString()} <span style={{ fontSize: '20px', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
+      {/* Real TDS largeAmount step (2026-08-19) -- was a bare 36px, matching neither
+          Android's/iOS's real 34px LargeAmount token nor any other real TDS step (see
+          packages/design-tokens/tokens.css's own --itunda-type-large-amount-* doc
+          comment for the full sourced account). First real application of the new web
+          typography scale, on this app's single most looked-at number. */}
+      <h1
+        style={{
+          color: 'var(--itunda-grey-900)',
+          fontSize: 'var(--itunda-type-large-amount-size)',
+          lineHeight: 'var(--itunda-type-large-amount-line-height)',
+          fontWeight: 'var(--itunda-type-large-amount-weight)',
+          margin: '0 0 28px 0',
+          letterSpacing: '-0.5px',
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: '4px',
+        }}
+      >
+        {animatedBalance.toLocaleString()} <span style={{ fontSize: '20px', color: 'var(--itunda-grey-500)', fontWeight: '600' }}>{wallet?.currency ?? 'RWF'}</span>
       </h1>
 
       {/* Real fix (2026-08-13, direct live-testing catch): this used to show

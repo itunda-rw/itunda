@@ -133,6 +133,50 @@
      sites -- a genuinely distinct shape category from sm/md/lg (a full round-end, not
      a bigger corner radius), just never named as a token before now. */
   --itunda-radius-pill: 999px;
+
+  /* Real TDS typography scale, ported from Android's IdsTypography.kt / iOS's IDS.swift
+     (both already sourced 2026-07-13 by directly fetching Toss's own official docs,
+     tossmini-docs.toss.im/tds-mobile/foundation/typography, then extended with the
+     same iOS-originated `largeAmount` semantic step neither platform's raw TDS scale
+     covers -- TDS tops out at 30px, hero currency amounts get 34px on both mobile
+     platforms as a deliberate business decision, not an invented number). bank-mfe had
+     NO typography token file at all before this (2026-08-19 audit, prompted by direct
+     user feedback that itunda's products don't yet FEEL like their real references) --
+     every font-size in this file's own consuming components was a bare inline pixel
+     value chosen ad hoc, with no cross-platform-consistent scale backing it (e.g.
+     AccountBalance's own hero amount hardcoded 36px, matching neither this real 34px
+     largeAmount step nor any other real TDS step). Values quoted exactly as Android/
+     iOS already use them -- this file does not re-derive or approximate them.
+     line-height is unitless (matches this file's own existing convention elsewhere:
+     CSS line-height without a unit scales with font-size, avoiding a second value to
+     keep in sync if font-size ever changes). */
+  --itunda-type-large-amount-size: 34px;
+  --itunda-type-large-amount-line-height: 41px;
+  --itunda-type-large-amount-weight: 700;
+
+  --itunda-type-title1-size: 22px;
+  --itunda-type-title1-line-height: 31px;
+  --itunda-type-title1-weight: 700;
+
+  --itunda-type-title2-size: 20px;
+  --itunda-type-title2-line-height: 29px;
+  --itunda-type-title2-weight: 700;
+
+  --itunda-type-subtitle1-size: 17px;
+  --itunda-type-subtitle1-line-height: 25.5px;
+  --itunda-type-subtitle1-weight: 600;
+
+  --itunda-type-body1-size: 15px;
+  --itunda-type-body1-line-height: 22.5px;
+  --itunda-type-body1-weight: 400;
+
+  --itunda-type-body2-size: 13px;
+  --itunda-type-body2-line-height: 19.5px;
+  --itunda-type-body2-weight: 400;
+
+  --itunda-type-button-size: 16px;
+  --itunda-type-button-line-height: 20px;
+  --itunda-type-button-weight: 600;
 }
 
 /*
