@@ -214,3 +214,57 @@ export const moveMapBookmark = (latitude: number, longitude: number, folderName:
 
 export const removeMapBookmark = (latitude: number, longitude: number) =>
   apiFetch<{ success: boolean }>(`/api/v1/maps/bookmarks?lat=${latitude}&lng=${longitude}`, { method: 'DELETE' });
+
+// Real Kakao Map-style "친구위치" (Friend Location) live location sharing -- a real,
+// moving position shared with one specific person for a bounded window, distinct from
+// the static bookmark-folder share/subscribe above. See LiveLocationShareService's own
+// doc comment on the backend for the full real sourcing, including why itunda's own
+// v1 is ALWAYS time-bounded (no "unlimited" option). "Live" here means
+// periodically-refreshed via polling, not a push channel -- itunda has no
+// WebSocket infra for this feature specifically.
+export interface LiveLocationShare {
+  id: string;
+  sharerUserId: string;
+  recipientUserId: string;
+  latitude: number | null;
+  longitude: number | null;
+  locationUpdatedAt: string | null;
+  expiresAt: string;
+  revoked: boolean;
+  createdAt: string;
+}
+
+export const startLocationShare = (recipientPhoneNumber: string, durationHours: number = 1) =>
+  apiFetch<{ success: boolean; share: LiveLocationShare }>('/api/v1/maps/location-share', {
+    method: 'POST',
+    body: JSON.stringify({ recipientPhoneNumber, durationHours }),
+  }).then((r) => r.share);
+
+// Real "client owns when to push a fresh reading" position update -- fans out to every
+// one of the caller's currently-active shares at once, matching how a real phone only
+// has one real GPS reading to push regardless of how many people are watching it.
+export const updateMyLocationShare = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean; updatedShareCount: number }>('/api/v1/maps/location-share/_/update-location', {
+    method: 'POST',
+    body: JSON.stringify({ latitude, longitude }),
+  }).then((r) => r.updatedShareCount);
+
+export const extendLocationShare = (shareId: string, additionalHours: number = 1) =>
+  apiFetch<{ success: boolean; share: LiveLocationShare }>(`/api/v1/maps/location-share/${encodeURIComponent(shareId)}/extend`, {
+    method: 'POST',
+    body: JSON.stringify({ additionalHours }),
+  }).then((r) => r.share);
+
+export const stopLocationShare = (shareId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/maps/location-share/${encodeURIComponent(shareId)}/stop`, { method: 'POST' });
+
+export const fetchMyLocationShares = () =>
+  apiFetch<{ success: boolean; shares: LiveLocationShare[] }>('/api/v1/maps/location-share/mine').then((r) => r.shares);
+
+export const fetchLocationSharesWithMe = () =>
+  apiFetch<{ success: boolean; shares: LiveLocationShare[] }>('/api/v1/maps/location-share/shared-with-me').then((r) => r.shares);
+
+// Real recipient-side poll -- call this on a real interval (e.g. every 15s) while
+// watching a share to see the sharer's latest pushed position.
+export const fetchLocationShare = (shareId: string) =>
+  apiFetch<{ success: boolean; share: LiveLocationShare }>(`/api/v1/maps/location-share/${encodeURIComponent(shareId)}`).then((r) => r.share);

@@ -19,12 +19,19 @@ import {
   setMapFolderPublic,
   fetchSharedMapFolder,
   subscribeToSharedMapFolder,
+  startLocationShare,
+  updateMyLocationShare,
+  stopLocationShare,
+  fetchMyLocationShares,
+  fetchLocationSharesWithMe,
+  fetchLocationShare,
   type PlaceSearchResult,
   type NearbyPlace,
   type MapBookmark,
   type RouteStep,
   type RouteResult,
   type TravelMode,
+  type LiveLocationShare,
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { searchBusTrips, type BusTrip } from './lib/bus';
@@ -332,6 +339,24 @@ export default function MapView() {
   const [sharedFolderError, setSharedFolderError] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribedCount, setSubscribedCount] = useState<number | null>(null);
+  // Real Kakao Map-style "친구위치" (Friend Location) live location sharing -- a real,
+  // moving position shared for a bounded window, distinct from the static folder
+  // share/subscribe above. See lib/maps.ts's LiveLocationShare doc comment for the
+  // full real sourcing. `myShares` are shares this user is the SHARER on (their own
+  // position is being pushed out); `sharesWithMe` are shares someone else made TO this
+  // user. `watchingShareId` is whichever incoming share currently has an active
+  // periodic-poll marker on the map (null = not watching any).
+  const [showStartShare, setShowStartShare] = useState(false);
+  const [shareRecipientPhone, setShareRecipientPhone] = useState('');
+  const [shareDurationHours, setShareDurationHours] = useState(1);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [myShares, setMyShares] = useState<LiveLocationShare[]>([]);
+  const [sharesWithMe, setSharesWithMe] = useState<LiveLocationShare[]>([]);
+  const [watchingShareId, setWatchingShareId] = useState<string | null>(null);
+  const sharingPushIntervalRef = useRef<number | null>(null);
+  const watchingPollIntervalRef = useRef<number | null>(null);
+  const watchedShareMarkerRef = useRef<maplibregl.Marker | null>(null);
   // Real "share this place" clipboard-fallback confirmation (2026-07-22) -- only used on
   // browsers without the native Web Share API (navigator.share), see shareLocation's own
   // doc comment.
@@ -384,6 +409,17 @@ export default function MapView() {
     const ro = new ResizeObserver((entries) => setWrapperHeight(entries[0].contentRect.height));
     ro.observe(el);
     return () => ro.disconnect();
+  }, []);
+
+  // Real cleanup for the two live-location-share polling intervals -- without this,
+  // navigating away from the map mid-share/mid-watch would leave a real setInterval
+  // running forever in the background, silently pushing/polling location after the
+  // user can no longer see or stop it.
+  useEffect(() => {
+    return () => {
+      if (sharingPushIntervalRef.current !== null) window.clearInterval(sharingPushIntervalRef.current);
+      if (watchingPollIntervalRef.current !== null) window.clearInterval(watchingPollIntervalRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -554,6 +590,20 @@ export default function MapView() {
         // Honest partial failure -- bookmarks are a real-nice-to-have, never block the
         // base map or the rest of the Maps feature set from loading.
       });
+
+    // Real Kakao Map-style "친구위치" live location shares -- same honest
+    // partial-failure posture as bookmarks above (a signed-out visitor real-401s here,
+    // which is expected and fine -- this whole feature needs a real session).
+    fetchMyLocationShares()
+      .then((real) => {
+        if (!cancelled) setMyShares(real);
+      })
+      .catch(() => {});
+    fetchLocationSharesWithMe()
+      .then((real) => {
+        if (!cancelled) setSharesWithMe(real);
+      })
+      .catch(() => {});
 
     fetchShoppingCatalog()
       .then((fetched: ShoppingMerchant[]) => {
@@ -788,6 +838,111 @@ export default function MapView() {
     } finally {
       setSubscribing(false);
     }
+  };
+
+  // Real Kakao Map-style "친구위치" (Friend Location) live location sharing -- see
+  // lib/maps.ts's LiveLocationShare doc comment for the full real sourcing. Starts a
+  // real, time-bounded share, then begins a real periodic browser-geolocation push
+  // (matches the honest "periodically refreshed, not a push channel" scope this
+  // feature was built to -- itunda has no WebSocket infra for this).
+  const handleStartLocationShare = async () => {
+    if (!shareRecipientPhone.trim()) return;
+    setShareBusy(true);
+    setShareError(null);
+    try {
+      const share = await startLocationShare(shareRecipientPhone.trim(), shareDurationHours);
+      setMyShares((prev) => [share, ...prev]);
+      setShowStartShare(false);
+      setShareRecipientPhone('');
+      startPushingMyLocation();
+    } catch (err) {
+      setShareError(err instanceof ApiError ? err.message : 'Could not start sharing your location.');
+    } finally {
+      setShareBusy(false);
+    }
+  };
+
+  // Real "client owns when to push a fresh reading" loop -- pushes the browser's own
+  // real geolocation every 30s while at least one real share is active, matching
+  // RideDriverService.updateLocation's own real backend rate limit (20/min = one push
+  // every 3s minimum; 30s is comfortably under that with real headroom for retries).
+  // Idempotent to call again -- clears any prior interval first, so a second share
+  // started while one is already running doesn't double-push.
+  const startPushingMyLocation = () => {
+    if (sharingPushIntervalRef.current !== null) window.clearInterval(sharingPushIntervalRef.current);
+    const push = () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          updateMyLocationShare(position.coords.latitude, position.coords.longitude).catch(() => {
+            // Best-effort -- a single missed push just means recipients see a
+            // slightly stale position until the next real successful one.
+          });
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    };
+    push();
+    sharingPushIntervalRef.current = window.setInterval(push, 30000);
+  };
+
+  const handleStopLocationShare = async (shareId: string) => {
+    try {
+      await stopLocationShare(shareId);
+    } catch {
+      // Best-effort -- proceed to update local state regardless, matching this file's
+      // own established convention for a failed write on a real, already-user-visible action.
+    }
+    const remaining = myShares.filter((s) => s.id !== shareId);
+    setMyShares(remaining);
+    if (remaining.length === 0 && sharingPushIntervalRef.current !== null) {
+      window.clearInterval(sharingPushIntervalRef.current);
+      sharingPushIntervalRef.current = null;
+    }
+  };
+
+  // Real recipient-side watch -- polls the sharer's latest pushed position every 15s
+  // and drops/updates a real marker, distinct in color from "my location"'s own blue
+  // dot so the two are never visually confused.
+  const handleWatchIncomingShare = (shareId: string) => {
+    if (watchingPollIntervalRef.current !== null) window.clearInterval(watchingPollIntervalRef.current);
+    setWatchingShareId(shareId);
+    const poll = () => {
+      fetchLocationShare(shareId)
+        .then((share) => {
+          if (share.latitude == null || share.longitude == null) return;
+          const map = mapRef.current;
+          if (!map) return;
+          watchedShareMarkerRef.current?.remove();
+          const el = document.createElement('div');
+          el.style.width = '16px';
+          el.style.height = '16px';
+          el.style.borderRadius = '50%';
+          el.style.backgroundColor = '#F59E0B';
+          el.style.border = '3px solid white';
+          el.style.boxShadow = '0 0 0 2px rgba(245,158,11,0.4)';
+          watchedShareMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([share.longitude, share.latitude]).addTo(map);
+          map.flyTo({ center: [share.longitude, share.latitude], zoom: 14 });
+        })
+        .catch(() => {
+          // A real expired/revoked share (or a real transient network hiccup) just
+          // means this poll cycle doesn't move the marker -- stopWatchingIncomingShare
+          // is the explicit, real way to end a watch, not an inferred failure here.
+        });
+    };
+    poll();
+    watchingPollIntervalRef.current = window.setInterval(poll, 15000);
+  };
+
+  const stopWatchingIncomingShare = () => {
+    if (watchingPollIntervalRef.current !== null) {
+      window.clearInterval(watchingPollIntervalRef.current);
+      watchingPollIntervalRef.current = null;
+    }
+    watchedShareMarkerRef.current?.remove();
+    watchedShareMarkerRef.current = null;
+    setWatchingShareId(null);
   };
 
   const toggleBookmark = async (place: PlaceSearchResult) => {
@@ -1796,6 +1951,89 @@ export default function MapView() {
                   ))}
                 </div>
               )}
+
+              {/* Real Kakao Map-style "친구위치" live location sharing -- see
+                  handleStartLocationShare's own doc comment. Placed right after saved
+                  places, the same real "your own account-level Maps state" grouping
+                  the folder-share section above already establishes. */}
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #E5E8EB' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>📍 Live location sharing</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowStartShare((v) => !v)}
+                    style={{ fontSize: '11px', fontWeight: 700, color: '#3182F6', background: 'none', border: 'none' }}
+                  >
+                    {showStartShare ? 'Cancel' : '+ Share my location'}
+                  </button>
+                </div>
+
+                {showStartShare && (
+                  <div style={{ background: '#F9FAFB', borderRadius: '8px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                    <input
+                      type="text"
+                      value={shareRecipientPhone}
+                      onChange={(e) => setShareRecipientPhone(e.target.value)}
+                      placeholder="Recipient's phone number"
+                      style={{ fontSize: '13px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e5e8eb' }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>For</span>
+                      <select
+                        value={shareDurationHours}
+                        onChange={(e) => setShareDurationHours(Number(e.target.value))}
+                        style={{ fontSize: '13px', padding: '4px 6px', borderRadius: '6px', border: '1px solid #e5e8eb' }}
+                      >
+                        {[1, 2, 3, 4, 5, 6].map((h) => (
+                          <option key={h} value={h}>{h} hour{h === 1 ? '' : 's'}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {shareError && <p style={{ fontSize: '12px', color: '#E53935' }}>{shareError}</p>}
+                    <button
+                      type="button"
+                      disabled={shareBusy || !shareRecipientPhone.trim()}
+                      onClick={handleStartLocationShare}
+                      style={{ fontSize: '13px', fontWeight: 700, color: 'white', background: '#3182F6', border: 'none', borderRadius: '6px', padding: '8px', opacity: shareBusy ? 0.6 : 1 }}
+                    >
+                      {shareBusy ? 'Starting…' : 'Start sharing'}
+                    </button>
+                  </div>
+                )}
+
+                {myShares.length > 0 && (
+                  <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {myShares.map((s) => (
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span style={{ color: MAP_CARD_TEXT }}>Sharing until {new Date(s.expiresAt).toLocaleTimeString()}</span>
+                        <button type="button" onClick={() => handleStopLocationShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#E53935', background: 'none', border: 'none' }}>
+                          Stop
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {sharesWithMe.length > 0 && (
+                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <p style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>Shared with you</p>
+                    {sharesWithMe.map((s) => (
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span style={{ color: MAP_CARD_TEXT }}>Live location · until {new Date(s.expiresAt).toLocaleTimeString()}</span>
+                        {watchingShareId === s.id ? (
+                          <button type="button" onClick={stopWatchingIncomingShare} style={{ fontSize: '11px', fontWeight: 700, color: '#E53935', background: 'none', border: 'none' }}>
+                            Stop watching
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => handleWatchIncomingShare(s.id)} style={{ fontSize: '11px', fontWeight: 700, color: '#3182F6', background: 'none', border: 'none' }}>
+                            View on map
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>

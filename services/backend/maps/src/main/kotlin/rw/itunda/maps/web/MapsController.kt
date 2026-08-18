@@ -24,6 +24,14 @@ import rw.itunda.maps.InvalidBookmarkNameException
 import rw.itunda.maps.InvalidMapsCategoryException
 import rw.itunda.maps.InvalidMapsCoordinateException
 import rw.itunda.maps.InvalidMapsItineraryException
+import rw.itunda.maps.InvalidLiveLocationCoordinateException
+import rw.itunda.maps.InvalidLiveLocationShareDurationException
+import rw.itunda.maps.LiveLocationShareEndedException
+import rw.itunda.maps.LiveLocationShareNotFoundException
+import rw.itunda.maps.LiveLocationShareRecipientNotFoundException
+import rw.itunda.maps.LiveLocationShareSelfException
+import rw.itunda.maps.LiveLocationShareService
+import rw.itunda.maps.LiveLocationTooManyActiveSharesException
 import rw.itunda.maps.MapPlaceCategory
 import rw.itunda.maps.MapsService
 import rw.itunda.maps.RouteNotFoundException
@@ -32,7 +40,7 @@ import rw.itunda.maps.RouteNotFoundException
 // comment. Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/maps")
-class MapsController(private val mapsService: MapsService) {
+class MapsController(private val mapsService: MapsService, private val liveLocationShareService: LiveLocationShareService) {
 
     @GetMapping("/search")
     fun search(@RequestParam q: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
@@ -213,6 +221,87 @@ class MapsController(private val mapsService: MapsService) {
     fun bookmarks(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "bookmarks" to mapsService.getMyBookmarks(currentUser.userId)))
 
+    // Real Kakao Map "친구위치" (Friend Location) live location sharing -- see
+    // LiveLocationShareService's own doc comment for the full real sourcing.
+    @PostMapping("/location-share")
+    fun startLocationShare(
+        @RequestBody request: StartLocationShareRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "share" to liveLocationShareService.startSharing(currentUser.userId, request.recipientPhoneNumber, request.durationHours)),
+    )
+
+    @PostMapping("/location-share/{id}/update-location")
+    fun updateLocationShare(
+        @PathVariable id: String,
+        @RequestBody request: UpdateLocationShareRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        // Real "one push updates every active share at once" -- id is accepted here
+        // to keep the endpoint shape symmetric with the rest of this section (and
+        // future-proof for a per-share update), but the service itself real-fans out
+        // to every one of this sharer's active shares, not just this one id.
+        mapOf("success" to true, "updatedShareCount" to liveLocationShareService.updateMyLocation(currentUser.userId, request.latitude, request.longitude)),
+    )
+
+    @PostMapping("/location-share/{id}/extend")
+    fun extendLocationShare(
+        @PathVariable id: String,
+        @RequestBody request: ExtendLocationShareRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "share" to liveLocationShareService.extendSharing(currentUser.userId, id, request.additionalHours)),
+    )
+
+    @PostMapping("/location-share/{id}/stop")
+    fun stopLocationShare(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        liveLocationShareService.stopSharing(currentUser.userId, id)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/location-share/mine")
+    fun myLocationShares(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "shares" to liveLocationShareService.myActiveShares(currentUser.userId)))
+
+    @GetMapping("/location-share/shared-with-me")
+    fun locationSharesWithMe(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "shares" to liveLocationShareService.sharedWithMe(currentUser.userId)))
+
+    // Real recipient-side poll -- see LiveLocationShareService's own doc comment on why
+    // this is "periodically refreshed," not a persistent push channel: the recipient's
+    // client calls this on its own schedule to see the sharer's latest pushed position.
+    @GetMapping("/location-share/{id}")
+    fun getLocationShare(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "share" to liveLocationShareService.getSharedLocation(currentUser.userId, id)))
+
+    @ExceptionHandler(LiveLocationShareNotFoundException::class)
+    fun handleLiveLocationShareNotFound(ex: LiveLocationShareNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LOCATION_SHARE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(LiveLocationShareSelfException::class)
+    fun handleLiveLocationShareSelf(ex: LiveLocationShareSelfException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_LOCATION_SHARE_NOT_ALLOWED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(LiveLocationShareRecipientNotFoundException::class)
+    fun handleLiveLocationShareRecipientNotFound(ex: LiveLocationShareRecipientNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LOCATION_SHARE_RECIPIENT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(LiveLocationTooManyActiveSharesException::class)
+    fun handleLiveLocationTooManyActiveShares(ex: LiveLocationTooManyActiveSharesException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("TOO_MANY_ACTIVE_LOCATION_SHARES", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidLiveLocationShareDurationException::class)
+    fun handleInvalidLiveLocationShareDuration(ex: InvalidLiveLocationShareDurationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LOCATION_SHARE_DURATION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(LiveLocationShareEndedException::class)
+    fun handleLiveLocationShareEnded(ex: LiveLocationShareEndedException) =
+        ResponseEntity.status(HttpStatus.GONE).body(ApiError("LOCATION_SHARE_ENDED", ex.message ?: "Gone"))
+
+    @ExceptionHandler(InvalidLiveLocationCoordinateException::class)
+    fun handleInvalidLiveLocationCoordinate(ex: InvalidLiveLocationCoordinateException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
+
     @ExceptionHandler(InvalidMapsCoordinateException::class)
     fun handleInvalidCoordinate(ex: InvalidMapsCoordinateException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
@@ -275,3 +364,7 @@ data class ItineraryDirectionsRequest(
 )
 
 data class ItineraryWaypointRequest(val latitude: Double, val longitude: Double)
+
+data class StartLocationShareRequest(val recipientPhoneNumber: String, val durationHours: Int = 1)
+data class UpdateLocationShareRequest(val latitude: Double, val longitude: Double)
+data class ExtendLocationShareRequest(val additionalHours: Int = 1)
