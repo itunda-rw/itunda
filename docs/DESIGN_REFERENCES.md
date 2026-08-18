@@ -11698,3 +11698,45 @@ Files: `services/backend/core/src/main/kotlin/rw/itunda/core/domain/LedgerEntry.
 `services/backend/wallet/src/main/kotlin/rw/itunda/wallet/WalletService.kt`,
 `services/backend/app/src/main/resources/db/migration/V285__p2p_delayed_transfers.sql`,
 `services/backend/p2p/src/test/kotlin/rw/itunda/p2p/P2pDelayedTransferServiceTest.kt`.
+
+**Coordinator re-verification, deploy, and real-money live-verification (2026-08-18)**:
+independently re-ran `./gradlew :p2p:test :wallet:test --rerun-tasks` (bypassing
+Gradle's UP-TO-DATE cache), summed the real XML reports myself -- confirmed `p2p`
+`tests="63" failures="0" errors="0"` and `wallet` `tests="82" failures="0" errors="0"`,
+matching the fork's own claims exactly. Re-ran `scripts/verify-ledger-account-seeds.py`
+(clean) and `./gradlew :app:compileKotlin :ussd:compileKotlin` (both `BUILD
+SUCCESSFUL`) myself as well.
+
+Built and pushed `192.168.252.4:32000/itunda/backend:2026-08-18-p2p-delayed-transfer`
+and deployed via `scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper. The rollout
+took genuinely longer than usual (~8 real minutes) under real, heavy cluster load (load
+average 7-8 throughout) -- confirmed via the new pod's own logs that this was normal,
+if unusually slow, forward progress (JPA `EntityManagerFactory` initialization alone
+took ~3 real minutes) rather than a crash, and via `kubectl describe`'s real event log
+that the OLD pod's own liveness/readiness/startup probe failures during this same
+window were context-deadline-exceeded timeouts under load, not an application bug.
+Rollout polled with the corrected single-remaining-pod check and confirmed genuinely
+complete once the new pod's JVM finished starting.
+
+Live-verified with REAL MONEY end to end: registered a real sender and recipient,
+funded the sender's real wallet to 50,000.00 RWF, called the real `POST
+/api/v1/p2p/send-delayed` -- real 8,000 RWF held (`status: PENDING`, real
+`releaseAt` exactly 3 real hours out), sender correctly debited to exactly 42,000.00.
+Listed the real transfer via `GET /api/v1/p2p/delayed-transfers`, then cancelled it via
+the real `POST .../cancel` -- correctly refunded, sender wallet back to exactly
+50,000.00 (full, exact refund), and a re-cancel attempt correctly real-409s
+`P2P_DELAYED_TRANSFER_NOT_CANCELLABLE`. Sent a second real delayed transfer (6,000
+RWF), backdated its `release_at` 5 minutes into the past via direct DB `UPDATE`, and
+let the REAL PRODUCTION CRON (`P2pDelayedTransferReleaseScheduler`, `fixedDelay=30000`)
+run entirely unassisted -- confirmed via real pod logs
+(`INFO ... P2pDelayedTransferReleaseScheduler - Released delayed P2P transfer ...
+after its real delay window elapsed`) and direct DB check that it fired on its own
+within the next real poll cycle: transfer `status=COMPLETED` with a real new ledger
+transaction, recipient wallet correctly credited to exactly 6,000.00, sender's real
+balance at exactly 44,000.00 (50,000 cancelled-and-refunded, minus the second 6,000
+transfer). Zero `ERROR`/`Exception` log lines in the same window. Also re-confirmed
+Section 182's `GET /api/v1/p2p/recipient` still works correctly against this same
+deploy (no regression).
+
+Cleaned up the local Docker image after a successful push (`docker rmi` +
+`docker image prune -f`, reclaimed 616.5MB).
