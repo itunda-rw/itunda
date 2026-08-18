@@ -217,4 +217,91 @@ class ParkingServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real bug fixed live (2026-08-18): an ACTIVE session had no timeout at all -- see
+    // ParkingSession.MAX_SESSION_DURATION's own doc comment for the sourced Citi Bike
+    // 24-hour account this reuses. Rejection case: a session still well within the real
+    // window must NOT be force-ended -- the scheduler polling `getAbandonedSessions`
+    // would never even hand this row to `forceEndAbandonedSession` in production, but
+    // the re-check inside the method itself is what actually prevents a stray/late call
+    // from prematurely billing a renter who is still genuinely parked.
+    Given("a real ACTIVE session only 2 hours old, well within the max session window") {
+        val parkingSpotRepository = mockk<ParkingSpotRepository>()
+        val parkingSessionRepository = mockk<ParkingSessionRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+        val session = ParkingSession(
+            id = "parking_session_recent", spotId = "parking_spot_1", renterUserId = "renter_1",
+            startedAt = Instant.now().minus(Duration.ofHours(2)),
+        )
+        every { parkingSessionRepository.findById("parking_session_recent") } returns Optional.of(session)
+
+        When("the scheduler's force-end is (incorrectly) invoked on it anyway") {
+            val result = service.forceEndAbandonedSession("parking_session_recent")
+
+            Then("it is a real no-op -- still ACTIVE, no ledger transaction posted, no spot/wallet ever looked up") {
+                result?.status shouldBe ParkingSessionStatus.ACTIVE
+                verify(exactly = 0) { parkingSpotRepository.findById(any()) }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    // Rejection case's positive counterpart: a session genuinely abandoned past the real
+    // Citi Bike-sourced 24-hour window IS force-settled, using the exact same billing
+    // math `endSession` uses (proving `settleSession` was actually reused, not
+    // reimplemented).
+    Given("a real ACTIVE session abandoned 25 hours ago, past the max session window") {
+        val parkingSpotRepository = mockk<ParkingSpotRepository>()
+        val parkingSessionRepository = mockk<ParkingSessionRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            parkingSpotRepository = parkingSpotRepository, parkingSessionRepository = parkingSessionRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val spot = ParkingSpot(
+            id = "parking_spot_1", ownerUserId = "owner_1", walletId = "wallet_owner", address = "Kigali Heights driveway",
+            latitude = -1.9, longitude = 30.0, hourlyRate = BigDecimal("500"),
+        )
+        val renterWallet = Wallet(
+            id = "wallet_renter", userId = "renter_1", accountNumber = "1000000002", accountName = "Renter",
+            type = WalletType.MAIN, balance = BigDecimal("1000000"), availableBalance = BigDecimal("1000000"),
+        )
+        val ownerWallet = Wallet(
+            id = "wallet_owner", userId = "owner_1", accountNumber = "1000000001", accountName = "Owner",
+            type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO,
+        )
+        val session = ParkingSession(
+            id = "parking_session_abandoned", spotId = "parking_spot_1", renterUserId = "renter_1",
+            startedAt = Instant.now().minus(Duration.ofHours(25)),
+        )
+        every { parkingSessionRepository.findById("parking_session_abandoned") } returns Optional.of(session)
+        every { parkingSpotRepository.findById("parking_spot_1") } returns Optional.of(spot)
+        every { walletRepository.findByUserIdAndType("renter_1", WalletType.MAIN) } returns renterWallet
+        every { walletRepository.findById("wallet_owner") } returns Optional.of(ownerWallet)
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_forceend", emptyList())
+        every { parkingSessionRepository.save(any()) } answers { firstArg() }
+        val spotSavedSlot = slot<ParkingSpot>()
+        every { parkingSpotRepository.save(capture(spotSavedSlot)) } answers { firstArg() }
+
+        When("the scheduler force-ends the abandoned session") {
+            val result = service.forceEndAbandonedSession("parking_session_abandoned")
+
+            Then("the renter is real-billed for the full 25 hours rounded up, the owner is paid, and the spot re-enters the pool") {
+                result?.status shouldBe ParkingSessionStatus.COMPLETED
+                result?.durationMinutes shouldBe 25 * 60
+                // 500/hour, 25 hours -- 25 * 500 = 12,500.
+                result?.totalFare shouldBe BigDecimal("12500.00")
+                result?.platformFee shouldBe BigDecimal("1875.00")
+                result?.payoutTransactionId shouldBe "ledgertxn_forceend"
+                spotSavedSlot.captured.available shouldBe true
+            }
+        }
+    }
 })

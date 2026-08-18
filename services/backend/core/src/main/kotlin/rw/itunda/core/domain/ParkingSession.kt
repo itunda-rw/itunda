@@ -65,4 +65,30 @@ class ParkingSession(
     var version: Long = 0,
 ) {
     protected constructor() : this(id = "", spotId = "", renterUserId = "")
+
+    companion object {
+        // Real gap found live (2026-08-18): unlike every other real reservation/session
+        // this codebase enforces a hard end for (RideTrip's own dispatch timeout,
+        // BookingDeposit/VehicleInspectionBooking's own no-show forfeit schedulers, and
+        // -- structurally identical to this exact feature -- BikeRentalSession's own
+        // MAX_RENTAL_DURATION), an ACTIVE ParkingSession had no timeout at all: a renter
+        // whose app crashed or who simply never came back left the real spot permanently
+        // `available = false`, unrentable by anyone else and unpaid for the real owner,
+        // forever. Sourced from the identical real-world account
+        // BikeRentalSession.MAX_RENTAL_DURATION's own doc comment already cites (Citi
+        // Bike NYC's real, currently-documented "kept out too long" policy at
+        // help.citibikenyc.com/hc/en-us/articles/360032367371, cross-checked against
+        // assets.citibikenyc.com/rental-agreement.html): a rental not returned within a
+        // real 24-hour window is treated by the system as abandoned and force-closed.
+        // This fits parking at least as well as it fits bikes -- ParkMobile/SpotHero-style
+        // real hourly parking sessions are also time-metered with no fixed end, the exact
+        // same "duration, not distance, so nothing is known/held at start" shape this
+        // class's own doc comment already establishes -- so reusing the identical 24-hour
+        // window (rather than inventing a new, unsourced number) is the honest choice.
+        // ParkingService.forceEndAbandonedSession force-settles at itunda's own already-real
+        // hourly fare (the exact same billing math `endSession` already uses) so the real
+        // owner is actually paid for the time their spot was occupied and the spot itself
+        // re-enters the pool, not left permanently unrentable over one abandoned session.
+        val MAX_SESSION_DURATION: java.time.Duration = java.time.Duration.ofHours(24)
+    }
 }

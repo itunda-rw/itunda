@@ -164,8 +164,49 @@ class ParkingService(
             throw ParkingSessionAlreadyEndedException("This parking session has already ended")
         }
         val spot = parkingSpotRepository.findById(session.spotId).orElseThrow { ParkingSpotNotFoundException("Parking spot not found") }
+        return settleSession(session, spot)
+    }
 
-        val renterWallet = walletRepository.findByUserIdAndType(renterUserId, WalletType.MAIN)
+    // Real bug found live (2026-08-18) -- see `ParkingSession.MAX_SESSION_DURATION`'s
+    // own doc comment for the sourced Citi Bike account this reuses. Read-only poll,
+    // resolved per-item by `ParkingAbandonedSessionScheduler`, same "poll for due rows,
+    // act per-row inside its own @Transactional method" shape
+    // `BikeRentalService.getAbandonedRentals` already establishes for the identical gap.
+    fun getAbandonedSessions(): List<ParkingSession> =
+        parkingSessionRepository.findByStatusAndStartedAtBefore(
+            ParkingSessionStatus.ACTIVE,
+            Instant.now().minus(ParkingSession.MAX_SESSION_DURATION),
+        )
+
+    /**
+     * Real scheduler-driven counterpart to [endSession] for a session abandoned past
+     * [ParkingSession.MAX_SESSION_DURATION] -- see that constant's own doc comment for
+     * the sourced Citi Bike account this reuses. Reuses the exact same [settleSession]
+     * billing math `endSession` uses -- not a new money-movement path, just a different
+     * real trigger for the identical settlement. Re-checks status and elapsed duration
+     * right before acting, same one-shot re-check discipline
+     * `BikeRentalService.forceEndAbandonedRental` already establishes -- a renter who
+     * taps "end session" a moment before the scheduler runs can never be double-charged,
+     * and a still-genuinely-due row missing its spot/wallet is skipped rather than
+     * thrown, so one bad row never corrupts a real, valid settlement.
+     */
+    @Transactional
+    fun forceEndAbandonedSession(sessionId: String): ParkingSession? {
+        val session = parkingSessionRepository.findById(sessionId).orElse(null) ?: return null
+        if (session.status != ParkingSessionStatus.ACTIVE) return session
+        if (Duration.between(session.startedAt, Instant.now()) < ParkingSession.MAX_SESSION_DURATION) return session
+        val spot = parkingSpotRepository.findById(session.spotId).orElse(null) ?: return null
+        return settleSession(session, spot)
+    }
+
+    // Shared real settlement math -- one source of truth for the renter DEBIT / owner
+    // CREDIT-net-of-fee / fee_revenue CREDIT 3-leg ledger transaction, called from both
+    // the renter-triggered `endSession` and the scheduler-triggered
+    // `forceEndAbandonedSession` so the two real triggers can never drift into two
+    // different billing outcomes for the same kind of session -- same shape
+    // `BikeRentalService.settleRental` already establishes.
+    private fun settleSession(session: ParkingSession, spot: ParkingSpot): ParkingSession {
+        val renterWallet = walletRepository.findByUserIdAndType(session.renterUserId, WalletType.MAIN)
             ?: throw ParkingNoWalletException("No wallet found for this account")
         val ownerWallet = walletRepository.findById(spot.walletId)
             .orElseThrow { ParkingNoWalletException("Parking spot owner's settlement wallet not found") }

@@ -10609,3 +10609,83 @@ owner's real wallet credited to exactly 102,068.00 RWF (120,080 - 18,012 platfor
 bike correctly flipped back to `available=1`, re-entering the pool. Re-triggered the same
 endpoint -> real `processedCount: 0`, confirming the fix is idempotent and can never double-bill
 a rider for the same abandoned session.
+
+## 176. `ParkingSession` had the identical unbounded-abandonment gap Section 175 just fixed for bike rentals -- real money-safety gap fix
+
+**Added 2026-08-18.** Section 175's own doc comment explicitly flagged this exact
+follow-up: `ParkingSession` (real Kakao T 주차, itunda's own honest peer-to-peer
+adaptation, `rw.itunda.rideshare.ParkingService`) is `BikeRentalSession`'s structural
+twin -- "no fare known/held until checkout, `available` flag flipped at start, never
+flipped back if abandoned." Read `ParkingService.startSession`/`endSession` and
+confirmed the gap is real: `startSession` flips `spot.available` to `false` and the
+hourly fare is only computed/billed at `endSession`, called by the renter. If a renter
+checked into a spot and simply never called `endSession` -- app crashed, lost the phone,
+or just abandoned it -- the spot stayed `available = false` **forever**: unrentable by
+any other real user, and the real spot owner never got paid for the time it was
+occupied. No scheduler polled for this (the module's schedulers cover bike rentals,
+vehicle-inspection no-shows, and marketplace escrow, but nothing for parking sessions).
+Same class of bug as Sections 173-175: a real forfeit/timeout counterpart missing for
+one half of an otherwise-complete session-based feature.
+
+**Sourced from the same real, currently-documented product policy** Section 175's own
+doc comment already cites and verifies: Citi Bike NYC's "kept out too long" rule
+(help.citibikenyc.com/hc/en-us/articles/360032367371-What-if-I-keep-a-bike-out-too-long,
+cross-checked against assets.citibikenyc.com/rental-agreement.html) -- a rental not
+returned within a real 24-hour window is treated by the system as abandoned and closed
+out, rather than left open indefinitely. Reusing this exact sourced window for parking
+(rather than inventing a new, unsourced number) is the honest choice: `ParkingSession`'s
+own doc comment already establishes the identical "duration, not distance, so nothing is
+known/held at start" billing shape as `BikeRentalSession`, and real hourly parking
+services (ParkMobile, SpotHero) are likewise time-metered sessions with no fixed end, so
+the Citi Bike account fits at least as well here as it does for bikes.
+
+**Fixed**: added `ParkingSession.MAX_SESSION_DURATION` (24 hours, the same sourced Citi
+Bike window `BikeRentalSession.MAX_RENTAL_DURATION` already uses). Refactored
+`ParkingService.endSession`'s billing math into a shared private
+`settleSession(session, spot)` helper -- one source of truth for the renter-DEBIT /
+owner-CREDIT-net-of-fee / `fee_revenue`-CREDIT 3-leg ledger transaction, so the two real
+triggers (renter-initiated end, scheduler-initiated force-end) can never drift into two
+different billing outcomes for the same kind of session. Added
+`ParkingService.getAbandonedSessions()` (read-only poll: `ACTIVE` sessions started more
+than `MAX_SESSION_DURATION` ago) and `forceEndAbandonedSession(sessionId)` (re-checks
+status and elapsed duration right before acting -- a renter who taps "end session" a
+moment before the scheduler runs can never be double-charged -- then calls
+`settleSession`). New `ParkingAbandonedSessionScheduler` (`@Component`,
+`@Scheduled(fixedDelay = 60000)`, per-item `@Transactional` resolution, one bad row never
+blocks the sweep for every other real due row -- same proven-safe shape
+`BikeRentalAbandonedSessionScheduler` already establishes). New admin-gated manual
+trigger `POST /api/v1/parking/sessions/process-abandoned`
+(`@PreAuthorize("hasRole('ADMIN')")`) so a coordinator can verify without waiting on the
+real 24-hour window, matching Section 175's own precedent.
+
+Files changed:
+- `services/backend/core/src/main/kotlin/rw/itunda/core/domain/ParkingSession.kt`
+  (new `MAX_SESSION_DURATION` companion constant with the sourced Citi Bike account)
+- `services/backend/core/src/main/kotlin/rw/itunda/core/repository/ParkingRepositories.kt`
+  (new `ParkingSessionRepository.findByStatusAndStartedAtBefore` query method)
+- `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/ParkingService.kt`
+  (`endSession`'s billing math extracted into a new private `settleSession` helper; new
+  `getAbandonedSessions()` and `forceEndAbandonedSession()`)
+- `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/ParkingAbandonedSessionScheduler.kt`
+  (new file -- the scheduler itself)
+- `services/backend/rideshare/src/main/kotlin/rw/itunda/rideshare/web/ParkingController.kt`
+  (new admin-gated `POST /sessions/process-abandoned` manual trigger)
+- `services/backend/rideshare/src/test/kotlin/rw/itunda/rideshare/ParkingServiceTest.kt`
+  (two new `Given` blocks: a session only 2 hours old is a real no-op when
+  `forceEndAbandonedSession` is called on it directly -- rejection case proving the
+  fix's own internal re-check doesn't prematurely bill a renter still genuinely parked,
+  and verifying zero ledger calls/zero spot lookups happen; a session abandoned 25 hours
+  ago is correctly force-settled -- positive-control case billing 25 hours at the real
+  500 RWF/hour rate = 12,500 RWF fare, 1,875 RWF platform fee, spot flipped back to
+  `available = true`)
+
+**Verified locally, this pass**: `./gradlew :rideshare:test --tests
+"rw.itunda.rideshare.ParkingServiceTest"` -> `BUILD SUCCESSFUL`; real XML report
+`rideshare/build/test-results/test/TEST-rw.itunda.rideshare.ParkingServiceTest.xml`
+confirms `tests="8" skipped="0" failures="0" errors="0"` (6 pre-existing + 2 new).
+`./gradlew :rideshare:test` (full module) -> `BUILD SUCCESSFUL`; summed every real XML
+report across the module -> `112` total tests, `failures="0" errors="0"` everywhere --
+nothing else in the module regressed.
+
+No deploy and no live-server verification attempted here -- reserved for the
+coordinating session per this task's own scoping rules.
