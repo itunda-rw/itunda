@@ -12897,3 +12897,101 @@ claiming a visual check that didn't happen, matching `feedback_verification_pace
 Section 65's own scope note ("iOS/Web untouched this pass -- all 4 fixes are Android-only").
 
 *Shipped: `android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt`. Commit `cd507ecb`.*
+
+## 194. Ported Section 190's Kakao Map-style folder subscribe to Android and iOS -- closing the "deliberately deferred" client gap, plus a real iOS-only prerequisite build
+
+Direct user request: "continue improving maps." Section 190 built real folder-subscribe
+end to end but deliberately deferred Android/iOS UI, noting both already had the
+share-and-VIEW half. Picked that up directly.
+
+### Android: added the missing subscribe button
+
+Read bank-mfe's real shape first (`lib/maps.ts`'s 3 client functions,
+`MapView.tsx`'s share toggle + landing-banner + subscribe button + staleness fix). Added
+`SubscribeToSharedMapFolderResponse` + `POST .../subscribe` to `ApiService.kt`
+(`android/core/network`), then wired `MapsScreen.kt`'s existing `SharedFolderSection`
+composable (already rendering a real shared folder's places, just with no way to keep
+them) with a real `handleSubscribeToSharedFolder()` -- same `coroutineScope.launch { ...
+} catch (e: HttpException) { ... }` shape `toggleFolderShare` already established --
+plus the identical `bookmarks` staleness refetch Section 190 itself needed on bank-mfe.
+The subscribe button is a `Text` with `.background(Ids.colors.brand,
+RoundedCornerShape).clickable{}.padding()`, not a `Button` composable -- this file has
+zero `Button` usage anywhere else, matching its own established custom-styled-Text
+convention exactly. `./gradlew :app:compileDebugKotlin` **BUILD SUCCESSFUL**.
+
+### iOS: this was actually a bigger gap than "just add subscribe"
+
+Checked directly rather than trusting Section 190's own note (which only explicitly
+confirmed Android resolves the deep link): iOS's `MapScreenView.swift` had **zero**
+client for any of this -- no `isPublic` field on `MapBookmarkDto`, no
+`setMapFolderVisibility`/`getSharedMapFolder`/subscribe calls, no deep-link resolution
+for `itunda://maps/shared/...` at all (`ContentView.swift`'s `onOpenURL` only ever
+handled `/search`). Every share link Android/bank-mfe have handed out since 2026-08-04
+has silently done nothing on iOS. Built the full real client, not just subscribe:
+
+- `NetworkClient.swift` (`ios/Core/Network`): added `isPublic` to `MapBookmarkDto`,
+  `SetMapFolderVisibilityRequest/Response`, `SharedMapFolderResponse`,
+  `SubscribeToSharedMapFolderResponse`, and the 3 real methods. `folderName`/`userId`
+  are explicitly percent-encoded before interpolating into the path (`.urlPathAllowed`)
+  rather than trusting `appendingPathComponent` on a pre-built multi-segment string --
+  the same caution `moveMapBookmark`'s own doc comment already established for this
+  exact class of gotcha, since a real folder name can contain spaces. `subscribe` reuses
+  the established `EmptyBody()` convention for a body-less authenticated POST.
+- `ContentView.swift`: extended `onOpenURL` to recognize the real 3-segment
+  `/shared/{userId}/{folderName}` path shape (checked before falling through to the
+  existing `/search` handling) and pass it to `MapScreenView` via a new
+  `initialSharedFolder` init param, mirroring Android's own identical parameter.
+- `MapScreenView.swift`: a `.task` that loads the shared folder on appear (mirroring
+  bank-mfe's `useEffect`/Android's `LaunchedEffect`, deliberately unauthenticated,
+  matching the backend's own permitAll), `toggleFolderShare`/
+  `handleSubscribeToSharedFolder`, a share toggle per bookmark folder (always shown,
+  matching Android/bank-mfe's own choice), and a floating landing-banner `.overlay`
+  mirroring bank-mfe's banner shape exactly (place list, loading/error/empty states,
+  subscribe button, "✓ Saved N" confirmation). Sharing uses `UIActivityViewController`
+  presented imperatively, not `ShareLink` (which needs its item known synchronously at
+  render time) -- the same real precedent `ShopScreen.shareProduct`'s own doc comment
+  already established for sharing something only known after an async call completes.
+
+**Real bug caught by the build, not by review**: `MapBookmarkDto` is `Decodable`-only in
+a separate module (`CoreNetwork`) -- Swift only auto-synthesizes a `public init(from
+decoder:)` from that conformance, never a `public` memberwise init across a module
+boundary. The first `toggleFolderShare` draft tried reconstructing a whole new
+`MapBookmarkDto(id:..., isPublic: makePublic, ...)` from the App target and got a real
+compiler error ("extra arguments... missing argument for parameter 'from'"). Fixed by
+changing `isPublic` from `let` to `var` on the DTO and mutating a copy
+(`var updated = bookmark; updated.isPublic = makePublic`) instead of reconstructing --
+the real, minimal fix for updating one field on a cross-module Decodable struct.
+
+**A real, unrelated environment blocker survived, not caused by this section**: `tuist
+generate` fails outright (`Project.swift` itself won't parse -- "cannot infer contextual
+base in reference to member 'iOS'/'app'/'default'", the exact `project_itunda_ios_build_
+env.md`-documented regression, confirmed via `git diff`/`git log` that `Project.swift`
+was untouched by this section and last changed 3 commits prior). Worked around it: an
+already-generated `Itunda.xcworkspace`/`.xcodeproj` from a recent prior successful
+`tuist generate` was still present on disk (dated 2026-08-16); `xcodebuild -workspace
+Itunda.xcworkspace -scheme ItundaApp -sdk iphonesimulator -destination 'platform=iOS
+Simulator,name=RidePinTest' build` (the pinned `iPhone 17` simulator wasn't available in
+this environment; `RidePinTest` was the real available destination, confirmed via the
+build's own destination-mismatch error listing) ran the real full compiler against the
+edited source files directly, without needing to regenerate the project. First run
+caught the `MapBookmarkDto` bug above; second run **BUILD SUCCEEDED** clean.
+
+### What else was checked, honestly reported
+
+Per the standing "look for one more genuine Maps gap" instruction: verified directly
+(not assumed) that recent-searches is already real and wired on both native platforms --
+`grep -c "recentSearches|RecentMapSearchesStore"` hit 10 times in `MapsScreen.kt`, 6
+times in `MapScreenView.swift` -- no gap there, Section 190's own claim holds. A real
+Kakao Map-style live "위치 공유" (share my current live location, distinct from sharing a
+static bookmark folder) has no existing itunda infrastructure to reuse (checked for a
+ride-tracking-style live-location pipeline under `services/backend/rides`, found
+nothing directly reusable at this path) and would need new backend infra (a live
+location channel, consent/expiry design) -- genuinely out of scope for "one more small
+gap," named as a real follow-up rather than rushed into a shallow build this pass.
+
+No backend changes this section -- pure client work reusing Section 190's already-live,
+already-verified endpoints, so no cluster deploy was needed or attempted.
+
+*Shipped: `android/core/network/.../ApiService.kt`, `android/features/maps/impl/.../MapsScreen.kt`,
+`ios/Core/Network/Sources/NetworkClient.swift`, `ios/App/Sources/ContentView.swift`,
+`ios/App/Sources/MapScreenView.swift`.*
