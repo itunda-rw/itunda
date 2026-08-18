@@ -13346,3 +13346,50 @@ steps grey), and confirmed the real ikimina ("Toss UX Test Group") genuinely per
 server-side and appeared in the real list afterward.
 
 *Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`. Commit `466f50bf`.*
+
+## 201. Real TDS FixedBottomCTA + full-screen treatment for TransferFlow
+
+Direct user follow-up: after Section 200's summary flagged FixedBottomCTA as a real
+judgment call (TDS's own real pattern assumes a dedicated full-screen page, which
+itunda's prior inline-card convention wasn't), the user said "go ahead."
+
+Fetched Toss's own real `FixedBottomCTA` component doc directly
+(`tossmini-docs.toss.im/tds-mobile/components/BottomCTA/fixed-bottom-cta`): a CTA
+pinned to the screen bottom while content scrolls underneath, real single or
+double-button (`TypeB`) layouts, an optional `hideOnScroll` behavior. Built a new
+reusable `FullScreenFlow` wrapper (`position: fixed; inset: 0`, a scrollable content
+area, an optional pinned `bottomCTA` bar with a real border-top divider) and applied it
+to `TransferFlow` (Section 189) -- itunda's highest-stakes, most multi-step flow, and
+the clearest real fit for this pattern. Explicitly scoped to this ONE flow as a proof
+of concept, not a blanket change: itunda's simpler single-panel toggles elsewhere use a
+different, legitimate inline pattern and are untouched.
+
+Per-step treatment, each a real judgment call documented in the code itself:
+- **Recipient**: no `bottomCTA` -- "Continue" is a search-submit action tightly coupled
+  to the field beside it (matches Toss's own real SearchField-adjacent-button
+  convention), not a standalone page-level confirmation `FixedBottomCTA` is meant for.
+- **Amount**: single-button `bottomCTA` ("Next").
+- **Confirm**: double-button `bottomCTA` (Cancel/Send) -- but when `DeviceStepUpPrompt`
+  takes over, it stays in the scrollable CONTENT area instead, since it's a real,
+  already-self-contained component with its own submit button, not something this
+  flow's own CTA bar should duplicate.
+- **Sending**: no `bottomCTA` (nothing to press mid-flight) -- kept full-screen too,
+  matching Toss's own real full-screen loan-review-loading-screen precedent
+  (`toss.tech/article/interaction`, Section 199's research) rather than a small inline
+  spinner competing with unrelated page content.
+- **Success**: double-button (Share/Done) or single (gift's Done only).
+
+### Live verification against the real deployed backend
+
+`yarn workspace bank-mfe run build` and `accessibility-lint.py` both clean. Real
+browser click-through (Chrome, dev server against the live cluster, logged in as the
+seeded demo user): walked the complete real send-money flow end to end. Each step
+genuinely takes over the full viewport now -- no other Pay-tab content (the account
+card, Bills & airtime, Request money, etc.) bleeds through above or below the active
+step, confirming the full-screen treatment actually works, not just compiles. The
+Next/Send/Done buttons are genuinely pinned to the screen bottom with a real visible
+divider while the step's own content scrolls above them. A real 100 RWF transfer
+completed with the exact expected balance change (`8,557` -> `8,457`), and tapping
+"Done" returned cleanly to the underlying Pay tab.
+
+*Shipped: `services/micro-frontends/bank-mfe/src/BankDashboard.tsx`. Commit `6ab33e48`.*
