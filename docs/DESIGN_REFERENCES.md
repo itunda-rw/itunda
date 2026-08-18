@@ -12645,3 +12645,52 @@ build) -- by far the worst this session has directly observed, well past the alr
 Docker build against a cluster in that state risks compounding a real overload rather
 than shipping a fix for a narrow edge case. Left as a named, real follow-up rather than
 silently declared done.
+
+## 191. Resumed a stashed fork's incomplete work: real inactivity-based expiry for merchant loyalty points (Section 188's own named follow-up)
+
+A prior fork had built this mid-Section-189 before hitting a session limit; its
+coherent, complete, tested diff was safely `git stash`ed rather than discarded or
+force-relaunched (matching `feedback_fork_rate_limit_recovery.md`'s established
+technique) while the send-money UI and Maps requests were handled first. Picked back up
+once both of those were done and pushed.
+
+**What it adds**: a dormant `MerchantLoyaltyAccount` balance now honestly expires after
+365 days of no purchase/redemption at that store -- itunda's own self-declared policy
+(checked directly: Toss Place's own real merchant console doesn't publish an expiry
+policy for 자동 적립 either, the same real sourcing gap `MerchantLoyaltyPointsService`'s
+own `ACCRUAL_RATE` doc comment already named for the accrual rate). Checked lazily on
+every real read/write path (`getBalance`/`accrue`/`recordRedemption`) so a customer never
+sees or spends a balance that's already expired just because the new
+`MerchantLoyaltyPointsExpiryScheduler`'s `fixedDelay` window hasn't ticked yet, plus the
+scheduler itself for eventual persisted cleanup. `updatedAt` is reused as the real
+"last activity" clock -- both accrual and redemption already touch it, so any real
+purchase or redemption resets the countdown. Whole-balance-on-inactivity, not real
+per-accrual-batch FIFO expiry -- `MerchantLoyaltyAccount` is deliberately data-only (a
+single `pointBalance` field, no ledger of individual accrual events), so there's no real
+"oldest points" to expire first; the same granularity a real physical stamp card already
+has.
+
+`MerchantLoyaltyPointsExpiryScheduler` uses the established safe per-item shape (poll
+`getExpirableAccounts()` read-only, resolve each row inside its own
+`@Transactional expireIfDue(accountId)` with a try/catch per row in the scheduler's own
+loop) -- deliberately never a single batch-`@Transactional` loop over every due row,
+matching the scheduler transaction-poisoning fix shape Sections 115-181 already
+established and closed as exhausted; a new scheduler is exactly the kind of "any new
+`@Scheduled` code must still follow the established safe shapes from the start" case
+that closing note called out.
+
+Reviewed the stashed diff for coherence before popping it (all reasoning sound, matches
+this codebase's existing conventions), then independently re-ran the real test suite
+rather than trusting the stashed diff's own claims: `./gradlew :merchant:test
+--rerun-tasks` real XML confirmed `MerchantLoyaltyPointsServiceTest` grew from 13 to 16
+cases, full `:merchant` module `tests="229"` (was 222) `failures="0" errors="0"`. Ledger
+seed guard clean (feature touches zero `LedgerAccountType`, by the same data-only design
+Section 188 established). Committed as `3a8165e8` and pushed.
+
+**Deploy deliberately deferred**: the primary node's load average was `40.36`/`42.20`
+(`uptime`, checked twice a few minutes apart) when this was ready to ship -- still
+severely overloaded, a continuation of the same episode Section 190's own deferred fix
+already named (peak `66.95`). Rather than compound a cluster already under real strain
+with another Gradle-in-Docker build, this is left built, tested, committed, and pushed,
+but not yet deployed -- a second named real follow-up alongside Section 190's own
+`c5dc2fff`, both awaiting a healthier cluster window.
