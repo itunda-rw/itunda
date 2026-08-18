@@ -776,6 +776,13 @@ export default function MapView() {
     try {
       const copied = await subscribeToSharedMapFolder(sharedFolderView.ownerId, sharedFolderView.folderName);
       setSubscribedCount(copied);
+      // Real bug found live (2026-08-18): the "Your saved places" panel below only ever
+      // loaded `bookmarks` once, on mount -- the subscribe action's own real new rows
+      // were correctly persisted server-side (confirmed via a direct API check) but
+      // stayed invisible in this same session until a manual page reload. Refresh it
+      // here so a successful subscribe is visible immediately, matching how every other
+      // real bookmark write in this file (add/move/remove) already updates `bookmarks`.
+      setBookmarks(await fetchMyMapBookmarks());
     } catch (err) {
       setSharedFolderError(err instanceof ApiError ? err.message : 'Could not save this list -- sign in and try again.');
     } finally {
