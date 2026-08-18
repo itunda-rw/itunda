@@ -12515,3 +12515,113 @@ and after the `IdsButton` fix. `accessibility-lint.py` reported zero violations 
 rebuilt file. No backend changes -- this section is UI/flow only, reusing entirely
 existing real endpoints (`resolveRecipient`, `sendDirect`, `checkScamStatus`, device
 step-up), so no deploy was needed against the cluster.
+
+## 190. 네이버지도/카카오맵 (Naver Map/Kakao Map) research -- real Kakao Map-style folder "구독" (subscribe), plus bank-mfe's own missing share UI
+
+Direct user request: "we have alot to learn from 네이버지도 and 카카오맵." Real sourcing:
+Kakao Map's own real feature set (지도앱 UI/검색/즐겨찾기/길찾기 -- namu.wiki's 카카오맵
+entry, map.kakao.com, Kakao's own kakaocorp.io walkthrough) and Naver Map's own real
+feature set (apps.apple.com's NAVER Maps listing, hereplace.me's "4 core features"
+guide) -- category-filtered search, saved/favorite places with folder grouping and real
+group share+subscribe ("그룹 형태로 즐겨찾기를 관리하고... 그룹 공유&구독까지"), and
+multi-modal routing with mode tabs and ETAs.
+
+### What itunda already had (checked before assuming a gap)
+
+Read itunda's actual current map clients rather than trusting `docs/TOSS_PARITY_MATRIX.md`'s
+own Maps row text at face value. All 3 clients are real and substantial:
+`services/micro-frontends/bank-mfe/src/MapView.tsx` (1619 lines), Android's
+`android/features/maps/impl/.../MapsScreen.kt` (3031 lines), iOS's
+`ios/App/Sources/MapScreenView.swift` (1405 lines, real MapLibre CocoaPod). Confirmed
+already real and working: search-as-you-type + recent searches, category-chip nearby
+search (matches Kakao's 맛집/카페 filter chips exactly), a real "my location" blue dot via
+the browser's own Geolocation API, real driving/walking mode toggle against two
+separately-deployed OSRM profiles, real route alternatives, bookmark folders with color,
+move-between-folders, and (2026-08-04) a real public/private folder toggle with a
+shareable `itunda://maps/shared/{userId}/{folderName}` deep link -- Android even already
+resolves that link into a real read-only view (2026-08-14, its own code comment: "the
+share sheet has handed out links since 2026-08-04, but nothing ever resolved them").
+
+### The one genuine, sourced gap
+
+Sharing only ever let a recipient *view* someone else's public folder. Nothing let them
+actually *keep* it -- Kakao Map's own real "그룹 공유&구독" explicitly does both (share
+AND subscribe). Confirmed via `grep -rl subscribe` across every relevant client/backend
+path: zero hits anywhere near the Maps feature. A second, separate gap found along the
+way: bank-mfe itself never got a client for the folder-share toggle *or* the shared-link
+view at all -- only Android did (`setFolderPublic`/`getPublicFolder` had zero bank-mfe
+caller despite existing on the backend since 2026-08-04).
+
+### What was built
+
+**Backend** (`services/backend/maps`): `MapsService.subscribeToSharedFolder(subscriberUserId,
+ownerUserId, folderName)` -- real copy, not a live-synced reference (`MapBookmark` has no
+cross-user pointer shape to support a cheap live subscription): reads the owner's real
+public bookmarks for that folder and inserts one new row per place into the subscriber's
+own bookmarks under the same folder name, using the exact same `(userId, lat, lng)`
+idempotency key `addBookmark` already keys on -- re-subscribing later, after the owner
+adds more public places, only imports what's genuinely new, never duplicates what's
+already there. Rejects subscribing to your own folder. New
+`POST /api/v1/maps/shared/{userId}/{folderName}/subscribe` (authenticated -- the GET
+sibling stays deliberately unauthenticated for viewing, but a real write into the
+caller's own account can't be anonymous). 4 new test cases in `MapsServiceTest.kt`.
+
+**bank-mfe** (`lib/maps.ts`, `MapView.tsx`): added the 3 missing client functions
+(`setMapFolderPublic`, `fetchSharedMapFolder`, `subscribeToSharedMapFolder`); a "🌐
+Public · Share"/"🔒 Private · Share" toggle on every bookmark folder (copies a real
+`?sharedOwner=&sharedFolder=` link to the clipboard on making a folder public -- bank-mfe's
+own origin doubles as the "web page" a link opens, since itunda has no other public web
+surface for Maps, the same honest scope decision `MapBookmark.isPublic`'s own doc comment
+already made for Android's deep link); and a shared-folder-landing banner (read on mount
+from those same URL params) showing the owner's real public places over the live map with
+a real "Save to my places (N)" subscribe button.
+
+### Real bug found and fixed live
+
+The first live click-through (see below) showed a genuine "Saved 3 new places" success
+message immediately followed by a stale "No saved places yet" panel underneath --
+confirmed via a direct API check that the 3 rows really existed server-side; the client's
+own `bookmarks` state just wasn't refetched after a successful subscribe (every other real
+bookmark write in this file already does this; subscribe was the one missing it). Fixed
+with one `setBookmarks(await fetchMyMapBookmarks())` call.
+
+### Live verification against the real deployed backend
+
+Real test suite: `maps` module `tests="40"` (36 pre-existing + 4 new) `failures="0"
+errors="0"`. Ledger-seed guard clean (feature is data-only, touches zero
+`LedgerAccountType`). Deployed as `2026-08-18-map-bookmark-subscribe` through another
+severe-load episode (host load average **20-31**, the worst this session has directly
+observed, well past the previously-worst-seen 8-9) -- confirmed via `uptime` on the
+primary node and real pod events this was genuine CPU starvation from the concurrent
+Gradle-in-Docker build, not a regression; the new pod took ~7 real minutes to reach
+`1/1 Running`, matching this session's own documented slow-JVM-startup-under-load pattern,
+and completed cleanly with the old pod correctly terminated.
+
+Real end-to-end trace with three real accounts against the live cluster: user A (the
+seeded demo user) bookmarked 2 real Kigali places ("Question Coffee", "Inzora Rooftop
+Cafe") into a folder and made it public (`updatedCount: 2`); an unauthenticated `curl`
+confirmed the real share GET returns both, `isPublic: true`; a real second user
+subscribed and got `copiedCount: 2`, confirmed via their own `GET /bookmarks`. A then
+added a real 3rd public place; the same second user re-subscribed and got exactly
+`copiedCount: 1` (the 2 already-owned ones correctly skipped, not duplicated) -- their
+final bookmark count was exactly `3`. User A attempting to subscribe to their own folder
+correctly real-400'd `INVALID_BOOKMARK_FOLDER`, `"You can't subscribe to your own
+folder"`.
+
+Full real browser click-through (Chrome, dev server pointed at the live cluster): logged
+in as user A, the "🌐 Public · Share" toggle rendered correctly reflecting the real public
+state; opened the real share link and saw the landing banner render the real 3 places
+with a "Save to my places (3)" button; logged out, registered a genuine fresh third user
+("Claudine") with zero prior bookmarks, logged in as her, opened the same link, and
+clicked the real button -- got a real "✓ Saved 3 new places to your own bookmarks"
+confirmation with real pins dropping on the live map, independently confirmed via a
+direct API call showing exactly those 3 place names in her own bookmarks. Re-tested the
+staleness fix with a fresh second folder ("Must-see spots", 1 place): the same subscribe
+click now correctly showed the new folder appearing in "Your saved places" immediately,
+with no page reload needed.
+
+Android/iOS subscribe UI deliberately deferred, matching this project's established
+backend-first pattern (Sections 184/185/188/189) -- the backend enforcement (rate limit,
+self-subscribe rejection, idempotent copy) is real and complete regardless of which
+client reaches it; both platforms already have the real share-and-view half from an
+earlier session.
