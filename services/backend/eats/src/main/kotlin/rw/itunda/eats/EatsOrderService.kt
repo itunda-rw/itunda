@@ -177,6 +177,16 @@ class EatsOrderService(
         // number (Uber doesn't publish theirs) -- see
         // Merchant.consecutiveMissedOrders's own doc comment.
         const val CONSECUTIVE_MISSES_TO_AUTO_PAUSE: Int = 3
+
+        // Real abandoned-delivery timeout (2026-08-18) -- see getAbandonedDeliveries's
+        // own doc comment for the full account of the gap this closes. Same "itunda's
+        // own honestly-chosen threshold, not a claimed real published figure" reasoning
+        // ORDER_ACCEPTANCE_TIMEOUT's own comment already gives -- long enough that a
+        // genuinely still-in-progress delivery (a real rider stuck in real traffic, or
+        // simply a large distance) is never force-cancelled out from under it, short
+        // enough that a buyer whose rider has actually gone dark (app killed, phone
+        // died, quit mid-shift) doesn't wait indefinitely for food that is never coming.
+        val DELIVERY_ABANDONMENT_TIMEOUT: Duration = Duration.ofMinutes(60)
     }
 
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
@@ -1315,6 +1325,90 @@ class EatsOrderService(
             pushNotificationService.sendToUser(restaurant.ownerUserId, title, body, mapOf("merchantId" to restaurant.id))
         }
         merchantRepository.save(restaurant)
+    }
+
+    // Real abandoned-delivery query -- every real order still RIDER_ASSIGNED or
+    // PICKED_UP whose `updatedAt` (bumped on every real status transition, including
+    // the transition INTO these two statuses) is older than DELIVERY_ABANDONMENT_TIMEOUT,
+    // backing EatsOrderAbandonedDeliveryScheduler. Same "poll for due rows read-only"
+    // half of the shape ORDER_ACCEPTANCE_TIMEOUT's own getExpiredUnacceptedOrders
+    // already establishes for its own sibling gap.
+    fun getAbandonedDeliveries(): List<EatsOrder> =
+        eatsOrderRepository.findByStatusInAndUpdatedAtBefore(
+            listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP),
+            Instant.now().minus(DELIVERY_ABANDONMENT_TIMEOUT),
+        )
+
+    /**
+     * Real scheduler-driven force-cancel for a delivery abandoned mid-flight (2026-08-18)
+     * -- a genuine, live gap: once `claimDelivery` moved an order to RIDER_ASSIGNED,
+     * NOTHING in this class could ever move it forward again except that exact same
+     * rider calling `updateRiderStatus` themselves. A rider whose app crashed, phone
+     * died, or who simply quit mid-shift left the order permanently stuck (`cancelOrder`
+     * is deliberately scoped to PLACED only, see its own doc comment) -- the buyer never
+     * got their food NOR a refund NOR any path to reorder, and
+     * `existsByRiderIdAndStatusIn`'s own real single-order-delivery guarantee
+     * (`claimDelivery`'s own doc comment) meant the abandoning rider was permanently
+     * locked out of ever claiming another delivery again either. The exact same
+     * "sibling feature has a real no-show/abandonment timeout, this one didn't" gap
+     * `BikeRentalAbandonedSessionScheduler`/`ParkingAbandonedSessionScheduler`/
+     * `VehicleInspectionNoShowScheduler` already closed for their own sibling entities.
+     *
+     * Deliberately refunds only the real `eats_delivery_holding` delivery-fee escrow
+     * back to the buyer -- the ONE leg of the original order transaction that is still
+     * genuinely unearned (no rider ever completed the delivery it was held against) --
+     * rather than reusing `refundAndCancel`'s "reverse every original leg" mechanic.
+     * The restaurant's own settlement/itunda's own platform fee/any promotion discount
+     * already reflect real, already-rendered restaurant-side work (the meal was cooked)
+     * and stay untouched, same standalone-partial-refund precedent
+     * `markItemUnavailable`'s own doc comment already establishes for the identical
+     * "don't unwind money for work that was genuinely already done" reasoning. Re-checks
+     * both status AND elapsed time right before acting, same one-shot re-check
+     * discipline `ParkingService.forceEndAbandonedSession` already establishes -- a
+     * rider who genuinely completes the delivery a moment before the scheduler runs can
+     * never have their own real, already-paid-out delivery clawed back into a
+     * cancellation.
+     */
+    @Transactional
+    fun forceCancelAbandonedDelivery(orderId: String): EatsOrder? {
+        val order = eatsOrderRepository.findById(orderId).orElse(null) ?: return null
+        if (order.status != EatsOrderStatus.RIDER_ASSIGNED && order.status != EatsOrderStatus.PICKED_UP) return order
+        if (Duration.between(order.updatedAt, Instant.now()) < DELIVERY_ABANDONMENT_TIMEOUT) return order
+
+        val abandonedRiderId = order.riderId
+        if (order.deliveryFee > BigDecimal.ZERO) {
+            val buyerWallet = walletRepository.findByUserIdAndType(order.buyerId, WalletType.MAIN)
+            if (buyerWallet != null) {
+                val refund = ledgerService.postLedgerTransaction(
+                    buyerWallet.currency,
+                    listOf(
+                        LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, order.deliveryFee, "Abandoned delivery -- fee refunded"),
+                        LedgerLeg("eats_delivery_holding", LedgerAccountType.EATS_DELIVERY_HOLDING, LedgerDirection.DEBIT, order.deliveryFee, "Abandoned delivery -- fee refunded"),
+                    ),
+                )
+                order.refundTransactionId = refund.transactionId
+            }
+        }
+
+        order.status = EatsOrderStatus.CANCELLED
+        order.updatedAt = Instant.now()
+        val saved = eatsOrderRepository.save(order)
+        notifyBuyer(saved, "Order cancelled", "Your rider went unreachable, so this delivery was cancelled and your delivery fee was refunded. Please contact support or reorder.")
+        // order.riderId is Rider.id, not the real User id -- must be resolved to the
+        // rider's own userId before notifying, same lookup every other rider-facing
+        // notification in this class already does (see e.g. dispatchToNextCandidate).
+        val abandonedRiderUserId = abandonedRiderId?.let { riderRepository.findById(it).orElse(null)?.userId }
+        if (abandonedRiderUserId != null) {
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = abandonedRiderUserId, type = "EATS_DELIVERY_ABANDONED",
+                    title = "Delivery cancelled",
+                    body = "A delivery assigned to you was cancelled after going inactive for too long. You can accept new deliveries again.",
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${saved.id}\"}",
+                ),
+            )
+        }
+        return saved
     }
 
     /** A real, available rider claims a READY_FOR_PICKUP order no one else has claimed

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -520,6 +521,20 @@ class EatsController(
     ): ResponseEntity<Map<String, Any?>> {
         val order = eatsOrderService.updateRiderStatus(currentUser.userId, orderId, request.status, request.deliveryPhotoUrl)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
+    // Real manual trigger for EatsOrderAbandonedDeliveryScheduler's own real 60-second
+    // cron -- same "let a coordinator/admin fire the real due sweep on demand rather
+    // than waiting on wall-clock time" precedent BikeRentalController.processAbandonedRentals/
+    // ParkingController.processAbandonedSessions already establish. Admin-gated since
+    // this force-cancels a real other rider's delivery and refunds a real other buyer's
+    // money, not a self-service action.
+    @PostMapping("/orders/process-abandoned-deliveries")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun processAbandonedDeliveries(): ResponseEntity<Map<String, Any?>> {
+        val due = eatsOrderService.getAbandonedDeliveries()
+        val processed = due.mapNotNull { eatsOrderService.forceCancelAbandonedDelivery(it.id) }
+        return ResponseEntity.ok(mapOf("success" to true, "processedCount" to processed.size, "orders" to processed))
     }
 
     // Real Uber Eats post-delivery tip -- see EatsOrderService.tipRider's own doc comment.

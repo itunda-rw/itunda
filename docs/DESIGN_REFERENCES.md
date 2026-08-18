@@ -10712,3 +10712,121 @@ hours, 26,000 RWF total fare; the renter's real wallet debited to exactly 74,000
 the pool. Re-triggered the same endpoint -> real `processedCount: 0`, confirming the fix is
 idempotent. This closes the "escrow/reservation feature missing its full lifecycle" technique's
 seventh real find this session (Sections 170-176).
+
+## 177. `EatsOrder` had the same missing abandonment timeout, this time for an in-flight delivery, not a reservation -- eighth real money-safety gap fix
+
+**Added 2026-08-18.** Ran the same technique one more time against fresh candidates
+(`PropertyOwnershipService`, `GroupEatsOrderService`, `GiftVoucherService`,
+`PlatformMembershipService`, and every real `*_HOLDING` ledger account in the codebase).
+The first four came back genuinely clean on close reading: `PropertyOwnershipService` is
+document-review only, no escrowed money or resource at all; `GroupEatsOrderService`'s
+shared cart is a pre-checkout staging entity that moves zero real money until
+`finalizeOrder` (a cart left open forever costs nothing but a stale row);
+`GiftVoucherService` already has both `GiftVoucherExpiryScheduler` (real 90%
+partial-refund enforcement) and `GiftVoucherExpiryReminderScheduler`; and
+`PlatformMembership`'s own doc comment explicitly, honestly scopes out recurring
+auto-billing entirely ("pay once, extend `activeUntil`... itunda's own honestly-simpler
+v1"), so there is no auto-charge for a cancellation to ever race against.
+
+Cross-referencing every real `LedgerAccountType.*_HOLDING` account against its own
+scheduler coverage (`BOOKING_DEPOSIT_HOLDING` -> `BookingNoShowScheduler`,
+`MARKETPLACE_ESCROW_HOLDING` -> `MarketplaceEscrowAutoReleaseScheduler`,
+`VEHICLE_INSPECTION_HOLDING` -> `VehicleInspectionNoShowScheduler`, `GIFT_HOLDING` ->
+`GiftExpiryScheduler`, `GIFT_VOUCHER_HOLDING` -> `GiftVoucherExpiryScheduler`,
+`DESIGNATED_DRIVER_HOLDING` -> covered by Section 174's cancel-after-accept path) turned
+up exactly two accounts with no standalone abandonment coverage: `RIDE_HOLDING` and
+`EATS_DELIVERY_HOLDING`. `RideTripService` checked out clean -- `cancelTrip`'s real Uber
+cancellation-fee policy plus `DispatchOfferScheduler`'s real reassignment already give a
+ride a genuine exit at every stage. `EatsOrderService` did not: reading
+`updateRiderStatus`/`claimDelivery`/`cancelOrder` together confirmed a real, live gap.
+`claimDelivery` moves an order to `RIDER_ASSIGNED`; from there, forward progress to
+`PICKED_UP`/`DELIVERED` (and the real delivery-fee payout out of
+`eats_delivery_holding`) depends entirely on that one specific rider calling
+`updateRiderStatus` themselves. `cancelOrder` is deliberately scoped to `PLACED` only
+(its own doc comment: "before any rider is involved at all"), so once a rider is
+assigned there is no cancel path for anyone. A rider whose app crashed, phone died, or
+who simply quit mid-shift left the order permanently stuck: the buyer got no food, no
+refund, and no way to reorder or cancel; the delivery fee sat in
+`eats_delivery_holding` forever; and -- the compounding part -- `claimDelivery`'s own
+real 단건배달 single-order-delivery guarantee (`existsByRiderIdAndStatusIn` checking
+`RIDER_ASSIGNED`/`PICKED_UP`) meant the abandoning rider was permanently locked out of
+ever claiming a new delivery again too, since their own stuck order never left that
+status. Same class of bug as Sections 173-176: one otherwise-complete state-based
+lifecycle (`OrderAcceptanceExpiryScheduler` covers the PLACED-acceptance stage,
+`DispatchOfferScheduler` covers the per-offer stage) with no forfeit/timeout
+counterpart for its one remaining unbounded stage.
+
+**itunda's own honestly-chosen threshold**, same reasoning `ORDER_ACCEPTANCE_TIMEOUT`'s
+own doc comment already gives (this backend has no historical rider-delivery-time data
+to derive a real published figure from): 60 minutes since the order's last real status
+change (`updatedAt`, bumped on every real rider transition, so a delivery still
+genuinely progressing is never penalized) — long enough a rider stuck in real traffic or
+covering real distance is never force-cancelled out from under them, short enough a
+buyer whose rider has actually gone dark isn't left waiting indefinitely.
+
+**Fixed**: added `EatsOrderService.DELIVERY_ABANDONMENT_TIMEOUT` (60 minutes). Added
+`EatsOrderRepository.findByStatusInAndUpdatedAtBefore` (every real order still
+`RIDER_ASSIGNED`/`PICKED_UP` past the timeout). Added
+`EatsOrderService.getAbandonedDeliveries()` (read-only poll) and
+`forceCancelAbandonedDelivery(orderId)` (re-checks both status AND elapsed time right
+before acting -- a rider who genuinely completes the delivery a moment before the
+scheduler runs can never have their own real, already-paid-out delivery clawed back).
+Deliberately refunds only the real `eats_delivery_holding` delivery-fee escrow back to
+the buyer -- the one leg of the original order transaction that is still genuinely
+unearned, since no rider ever completed the delivery it was held against -- rather than
+reusing `refundAndCancel`'s "reverse every original leg" mechanic; the restaurant's own
+settlement/itunda's own platform fee/any promotion discount already reflect real,
+already-rendered restaurant-side work (the meal was cooked) and stay untouched, same
+standalone-partial-refund precedent `markItemUnavailable` already establishes. There is
+no shared "normal completion" settlement path to extract a common helper from here (the
+normal path pays the rider via `updateRiderStatus`, a structurally different terminal
+outcome from refunding the buyer) -- unlike Sections 175/176's bike/parking fix, this is
+a standalone new terminal transition, the same shape `markItemUnavailable` already is.
+New `EatsOrderAbandonedDeliveryScheduler` (`@Component`, `@Scheduled(fixedDelay =
+60000)`, per-item `@Transactional` resolution, one bad row never blocks the sweep for
+every other real due row -- same proven-safe shape
+`BikeRentalAbandonedSessionScheduler`/`ParkingAbandonedSessionScheduler` already
+establish, deliberately never a single batch-`@Transactional` loop given this
+codebase's own documented transaction-poisoning bug class). New admin-gated manual
+trigger `POST /api/v1/eats/orders/process-abandoned-deliveries`
+(`@PreAuthorize("hasRole('ADMIN')")`), matching Sections 175/176's own precedent. Also
+fixed a near-miss caught before it shipped, during this same pass: the abandoning
+rider's own notification initially used `order.riderId` directly as
+`Notification.userId` -- but `order.riderId` is `Rider.id`, not the real `User.id`
+(confirmed by reading `Rider.kt` and every other rider-facing notification call site in
+the class, which all resolve through `riderRepository.findById(...).userId` first) --
+fixed to resolve the real user id before notifying. The same "near-miss caught while
+building, not after" discipline this session's own ride-PIN-verification work names
+(`[[project_itunda_ride_pin]]`), just for a different id-mismatch shape.
+
+Files changed:
+- `services/backend/core/src/main/kotlin/rw/itunda/core/repository/EatsRepositories.kt`
+  (new `EatsOrderRepository.findByStatusInAndUpdatedAtBefore` query method)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/EatsOrderService.kt`
+  (new `DELIVERY_ABANDONMENT_TIMEOUT` companion constant; new
+  `getAbandonedDeliveries()`/`forceCancelAbandonedDelivery()`)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/EatsOrderAbandonedDeliveryScheduler.kt`
+  (new file -- the scheduler itself)
+- `services/backend/eats/src/main/kotlin/rw/itunda/eats/web/EatsController.kt`
+  (new admin-gated `POST /orders/process-abandoned-deliveries` manual trigger)
+- `services/backend/eats/src/test/kotlin/rw/itunda/eats/EatsOrderServiceTest.kt` (three
+  new `When` blocks: an order `RIDER_ASSIGNED` 61 minutes ago is correctly force-cancelled
+  -- refunds exactly the 1,500 RWF delivery fee, notifies both the buyer and the real
+  abandoning rider's own resolved `userId`; an order `RIDER_ASSIGNED` only 5 minutes ago
+  is a real no-op -- rejection case proving the re-check doesn't prematurely cancel a
+  still-genuinely-in-flight delivery, zero ledger calls; an already-`DELIVERED` order is
+  also a real no-op -- proving the fix can never claw back a rider's already-paid-out
+  delivery)
+
+**Verified locally, this pass**: `./gradlew :eats:test --tests
+"rw.itunda.eats.EatsOrderServiceTest"` -> real XML report
+`eats/build/test-results/test/TEST-rw.itunda.eats.EatsOrderServiceTest.xml` confirms
+`tests="110" skipped="0" failures="0" errors="0"` (107 pre-existing + 3 new).
+`./gradlew :eats:test` (full module) -> summed every real XML report across the module
+-> `tests="181"` total, `failures="0" errors="0"` everywhere -- nothing else in the
+module regressed.
+
+No deploy and no live-server verification attempted here -- reserved for the
+coordinating session per this task's own scoping rules. This closes the "escrow/
+reservation feature missing its full lifecycle" technique's eighth real find this
+session (Sections 170-177).

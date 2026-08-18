@@ -1311,6 +1311,79 @@ class EatsOrderServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        // Real abandoned-delivery force-cancel (2026-08-18) -- see
+        // EatsOrderService.forceCancelAbandonedDelivery's own doc comment for the full
+        // account of the gap this closes: a rider who goes dark after being assigned
+        // previously left the order (and the buyer's real money) stuck forever.
+        When("a real delivery has been RIDER_ASSIGNED well past the real abandonment timeout") {
+            val staleOrder = EatsOrder(
+                id = "eats_order_stale", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_stale", status = EatsOrderStatus.RIDER_ASSIGNED,
+                riderId = "rider_1",
+            )
+            staleOrder.updatedAt = Instant.now().minus(EatsOrderService.DELIVERY_ABANDONMENT_TIMEOUT).minus(Duration.ofMinutes(1))
+            val abandoningRider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider_1")
+            every { eatsOrderRepository.findById("eats_order_stale") } returns Optional.of(staleOrder)
+            every { riderRepository.findById("rider_1") } returns Optional.of(abandoningRider)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns wallet("wallet_buyer", "buyer_1")
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("refund_txn_stale", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.forceCancelAbandonedDelivery("eats_order_stale")
+
+            Then("it real-cancels the order, refunds only the delivery fee, and frees the abandoning rider") {
+                result?.status shouldBe EatsOrderStatus.CANCELLED
+                result?.refundTransactionId shouldBe "refund_txn_stale"
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(
+                        "RWF",
+                        match { legs ->
+                            legs.size == 2 && legs.sumOf { if (it.direction == LedgerDirection.CREDIT) it.amount else -it.amount } == BigDecimal.ZERO &&
+                                legs.all { it.amount.compareTo(BigDecimal("1500")) == 0 }
+                        },
+                    )
+                }
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.title == "Order cancelled" }) }
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "rider_user_1" && it.type == "EATS_DELIVERY_ABANDONED" }) }
+            }
+        }
+
+        When("a real delivery is RIDER_ASSIGNED but still well within the real abandonment window") {
+            val freshOrder = EatsOrder(
+                id = "eats_order_fresh", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_fresh", status = EatsOrderStatus.RIDER_ASSIGNED,
+                riderId = "rider_1",
+            )
+            freshOrder.updatedAt = Instant.now().minus(Duration.ofMinutes(5))
+            every { eatsOrderRepository.findById("eats_order_fresh") } returns Optional.of(freshOrder)
+
+            val result = service.forceCancelAbandonedDelivery("eats_order_fresh")
+
+            Then("it real-re-checks elapsed time and leaves the still-genuinely-in-flight delivery untouched") {
+                result?.status shouldBe EatsOrderStatus.RIDER_ASSIGNED
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("a real delivery already reached DELIVERED before the scheduler got to it") {
+            val deliveredOrder = EatsOrder(
+                id = "eats_order_done", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_done", status = EatsOrderStatus.DELIVERED,
+                riderId = "rider_1",
+            )
+            every { eatsOrderRepository.findById("eats_order_done") } returns Optional.of(deliveredOrder)
+
+            val result = service.forceCancelAbandonedDelivery("eats_order_done")
+
+            Then("it real-no-ops rather than clawing back a real rider's already-earned, already-paid-out delivery") {
+                result?.status shouldBe EatsOrderStatus.DELIVERED
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
     }
 
     Given("a real restaurant marking a real item unavailable on a real accepted order") {

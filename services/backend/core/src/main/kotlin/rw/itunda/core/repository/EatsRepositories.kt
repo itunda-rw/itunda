@@ -61,6 +61,12 @@ interface EatsOrderRepository : JpaRepository<EatsOrder, String> {
     @Query("SELECT DISTINCT o.restaurantId FROM EatsOrder o WHERE o.buyerId = :buyerId")
     fun findDistinctRestaurantIdsByBuyerId(@Param("buyerId") buyerId: String): List<String>
 
+    // Real abandoned-delivery sweep (2026-08-18) -- every real order still RIDER_ASSIGNED
+    // or PICKED_UP whose rider has gone dark past EatsOrderService.DELIVERY_ABANDONMENT_TIMEOUT
+    // since the last real status change, backing EatsOrderAbandonedDeliveryScheduler. See
+    // EatsOrderService.getAbandonedDeliveries's own doc comment for the full account.
+    fun findByStatusInAndUpdatedAtBefore(statuses: List<EatsOrderStatus>, cutoff: Instant): List<EatsOrder>
+
     // Real Uber Eats-style "busy kitchen" signal (2026-08-16, see Uber's own official
     // "Managing busy delivery times" merchant help article: a busy restaurant's real
     // in-kitchen order backlog is a genuine, sourced cause of delivery delay) -- one
