@@ -11279,3 +11279,44 @@ regressed.
 
 No deploy and no live-server verification attempted here -- reserved for a subsequent
 verification pass.
+
+**Coordinator deploy and real-money live-verification (2026-08-18)**: built and pushed
+`192.168.252.4:32000/itunda/backend:2026-08-18-scheduler-transaction-poisoning-round2`,
+deployed via `scripts/private-cloud-lib.sh`'s `cluster_kubectl` helper; rollout polled
+with the corrected single-remaining-pod check and confirmed genuinely complete.
+
+Live-verified the `RideTripService`/`RideDispatchScheduler` fix with REAL MONEY and the
+REAL, UNASSISTED production cron -- no manual trigger endpoint exists for this
+scheduler, so this is the strongest possible proof: registered a real passenger + two
+real drivers, funded the passenger's real wallet to 100,000.00 RWF, had driver 1 go
+available near the pickup point, requested a real ride trip (real distance-based fare
+2,614.25 RWF held in escrow, passenger correctly debited to 97,385.75), which the real
+`requestTrip` flow correctly offered to driver 1. Brought driver 2 online, then
+backdated the trip's `offer_expires_at` via direct DB `UPDATE` to force expiry. Let the
+real production cron run entirely unassisted for the next ~15 seconds. Confirmed via
+real pod logs two independent, clean reassignment cycles fired 15 real seconds apart
+(`INFO ... RideDispatchScheduler - Reassigned 1 expired ride dispatch offer(s)` at
+07:24:53 and again at 07:25:08 -- exactly one real `OFFER_WINDOW` apart, since driver 2's
+own fresh offer was never accepted either and expired in turn): the first cycle correctly
+excluded driver 1 and re-offered to driver 2; the second cycle correctly excluded driver
+2 too and, with no further real candidate available, fell through to the existing
+no-candidate fallback (clears the offer, notifies nearby riders) exactly as
+`dispatchToNextDriver`'s pre-existing logic already does. Confirmed via direct DB query
+that both real drivers ended up in `excluded_driver_user_ids` and the trip's real
+`@Version` column incremented correctly across the real independent per-item
+transactions. Grepped the same log window for `UnexpectedRollbackException`,
+`ObjectOptimisticLockingFailureException`, and the new per-row error log line
+(`Ride dispatch reassignment failed`) -- zero hits, confirming clean, error-free
+operation across two real back-to-back scheduler cycles with no poisoning. Passenger's
+escrowed fare remained correctly untouched at 97,385.75 throughout (the trip is still
+genuinely open for a nearby rider to see and claim, not lost or double-charged).
+
+The `EatsOrderService`/`DispatchOfferScheduler` and `GroupAccountService`/
+`GroupAccountDuesReminderScheduler` fixes were not separately live-verified with a real
+production-cron reproduction this pass (time-boxed against the still-open, honestly
+larger remaining task of a genuinely exhaustive both-sub-variant re-audit) -- their
+correctness rests on the real, independently-re-run test suites above (`eats`
+`tests="182"`, `savings` `tests="82"`, both `failures="0" errors="0"`) plus direct code
+review confirming both fixes follow the exact same proven-safe shape the live-verified
+`RideTripService` fix uses. Cleaned up the local Docker image after a successful push
+(`docker rmi` + `docker image prune -f`, reclaimed 616.4MB).
