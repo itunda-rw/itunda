@@ -109,7 +109,7 @@ class P2pDelayedTransferService(
         // real daily total sendDirect enforces -- this delayed path removes real money
         // from the sender's control immediately too, so it must count against the
         // identical real number.
-        p2pTransferLimitService.enforce(senderUserId, amount)
+        p2pTransferLimitService.enforce(senderUserId, senderWallet.id, amount)
 
         val trimmedDescription = description.trim().ifEmpty { "Transfer" }
         val result = ledgerService.postLedgerTransaction(

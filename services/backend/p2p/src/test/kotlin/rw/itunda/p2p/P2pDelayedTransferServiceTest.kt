@@ -117,7 +117,7 @@ class P2pDelayedTransferServiceTest : BehaviorSpec({
         every { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(eq("sender_lim"), any(), any(), any()) } returns emptyList()
         val service = buildService(
             walletRepository = walletRepository, userRepository = userRepository, ledgerService = ledgerService,
-            transactionRepository = transactionRepository, p2pTransferLimitService = P2pTransferLimitService(transactionRepository),
+            transactionRepository = transactionRepository, p2pTransferLimitService = P2pTransferLimitService(transactionRepository, walletRepository),
         )
 
         val recipientUser = User(id = "recipient_lim", phoneNumber = "+250788000199", firstName = "R", lastName = "T", passwordHash = "x")

@@ -315,7 +315,7 @@ class P2pService(
         // real, flat per-transfer and daily-cumulative cap on itunda's real
         // wallet-to-wallet transfer rail, independent of (and stacked on top of) any
         // account-specific FamilyLink limit above.
-        p2pTransferLimitService.enforce(senderUserId, amount)
+        p2pTransferLimitService.enforce(senderUserId, senderWallet.id, amount)
 
         val trimmedDescription = description.trim().ifEmpty { "Transfer" }
         val result = ledgerService.postLedgerTransaction(

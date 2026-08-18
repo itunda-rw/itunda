@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -66,7 +67,10 @@ import java.time.ZoneOffset
  * than risking a regression on an already-proven path for this pass.
  */
 @Component
-class P2pTransferLimitService(private val transactionRepository: TransactionRepository) {
+class P2pTransferLimitService(
+    private val transactionRepository: TransactionRepository,
+    private val walletRepository: WalletRepository,
+) {
 
     /**
      * Real per-transfer and real daily-cumulative caps. Coarse repo filter (this
@@ -77,13 +81,36 @@ class P2pTransferLimitService(private val transactionRepository: TransactionRepo
      * same `TransactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual`
      * query `FamilyLinkService.enforceSpendLimit` already uses rather than adding a
      * near-duplicate repository method.
+     *
+     * Real fix (concurrency audit, Section 192): the daily-cumulative check is a live
+     * `SUM()` over transaction rows, not a mutation `@Version` would catch -- the exact
+     * same bug class `CardService.chargeWithCard` already found live and fixed by
+     * locking the row about to be mutated *before* the sum-check-then-insert (see that
+     * class's own doc comment, confirmed identical shape via the concurrency-audit
+     * memory before writing this fix). Without it, two real concurrent transfers by the
+     * same sender could both read the same pre-transfer daily sum and both pass,
+     * together exceeding [DAILY_TRANSFER_LIMIT] -- the exact safety cap this class
+     * exists to enforce. `walletRepository.findByIdForUpdate(senderWalletId)` locks the
+     * sender's own wallet row for the rest of this ambient transaction (the same row
+     * `LedgerService.postLedgerTransaction` locks moments later when it actually posts
+     * this transfer's ledger legs -- re-acquiring an already-held row lock in the same
+     * transaction is a no-op, not a second lock or a deadlock risk), serializing any
+     * second concurrent call for the same sender until the first one's transfer row is
+     * actually committed and visible to the sum query.
+     *
+     * Deliberately does NOT also fix the identical pre-existing race in
+     * `FamilyLinkService.enforceSpendLimit` (out of this section's scope -- that method
+     * predates this session and is called before this one in `sendDirect`/
+     * `sendDelayed`, so this lock doesn't retroactively cover it) -- named as a real,
+     * separate follow-up rather than silently left unmentioned.
      */
-    fun enforce(senderUserId: String, amount: BigDecimal) {
+    fun enforce(senderUserId: String, senderWalletId: String, amount: BigDecimal) {
         if (amount > PER_TRANSFER_LIMIT) {
             throw P2pTransferLimitExceededException(
                 "This transfer exceeds itunda's real $PER_TRANSFER_LIMIT RWF per-transfer limit",
             )
         }
+        walletRepository.findByIdForUpdate(senderWalletId)
         val startOfDayUtc = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant()
         val sentToday = transactionRepository
             .findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(senderUserId, TransactionType.TRANSFER, TransactionStatus.COMPLETED, startOfDayUtc)
