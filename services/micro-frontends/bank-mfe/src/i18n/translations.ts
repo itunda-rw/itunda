@@ -103,6 +103,9 @@ export type TranslationKey =
   | 'transfer.confirmSendNow'
   | 'transfer.feeCovered'
   | 'transfer.toLabel'
+  | 'transfer.stepRecipient'
+  | 'transfer.stepAmount'
+  | 'transfer.stepConfirm'
   // The real entry point INTO the transfer flow above -- a separate component
   // (AccountBalance, the wallet card), found while verifying the transfer screen live:
   // translating the flow itself but leaving its own trigger button in English would
@@ -308,6 +311,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.confirmSendNow': 'Send {{amount}} RWF to {{recipient}} now',
     'transfer.feeCovered': 'itunda covered the transfer fee',
     'transfer.toLabel': 'To',
+    'transfer.stepRecipient': 'Recipient',
+    'transfer.stepAmount': 'Amount',
+    'transfer.stepConfirm': 'Confirm',
     'dashboard.mainAccount': 'Main Account',
     'dashboard.transfer': 'Transfer',
     'dashboard.topUp': 'Top up',
@@ -496,6 +502,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.confirmSendNow': 'Ohereza {{amount}} RWF kuri {{recipient}} nonaha',
     'transfer.feeCovered': 'itunda yishyuye amafaranga y’ubwoherezi',
     'transfer.toLabel': 'Kuri',
+    'transfer.stepRecipient': 'Uwakira',
+    'transfer.stepAmount': 'Amafaranga',
+    'transfer.stepConfirm': 'Emeza',
     'dashboard.mainAccount': 'Konti nyamukuru',
     'dashboard.transfer': 'Kohereza',
     'dashboard.topUp': 'Ongera amafaranga',
@@ -684,6 +693,9 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     'transfer.confirmSendNow': 'Envoyer {{amount}} RWF à {{recipient}} maintenant',
     'transfer.feeCovered': 'itunda a pris en charge les frais de transfert',
     'transfer.toLabel': 'À',
+    'transfer.stepRecipient': 'Destinataire',
+    'transfer.stepAmount': 'Montant',
+    'transfer.stepConfirm': 'Confirmer',
     'dashboard.mainAccount': 'Compte principal',
     'dashboard.transfer': 'Transférer',
     'dashboard.topUp': 'Recharger',

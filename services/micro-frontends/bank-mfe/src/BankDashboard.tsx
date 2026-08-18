@@ -484,10 +484,58 @@ function ReportScamLink({ identifier }: { identifier: string }) {
 // backend (P2pService.resolveRecipient) with zero client caller until now -- it's what
 // lets the amount/confirm screens show the real resolved "To [name]" the same way the
 // reference screenshots do.
+// Real Toss ProgressStepper component, compact variant -- see
+// tossmini-docs.toss.im/tds-mobile/components/progress-stepper's own real API shape
+// (`<ProgressStepper variant="compact" activeStepIndex={N}><ProgressStep title="..."
+// />...</ProgressStepper>`) -- mirrored here as a flat `steps` prop instead of
+// compound children, matching this codebase's own established "Flat API over Compound
+// API" convention (see `IdsButton`'s own header comment for the identical real
+// precedent already applied once in this file). Was missing entirely from itunda's own
+// new multi-step flows (`TransferFlow` below, `CreateGoalForm`, Section 198) -- a real,
+// sourced gap found 2026-08-19: a user had no visual sense of how many steps remained
+// or where they were in the flow. Only rendered on real navigable decision steps, not
+// on a flow's transient/terminal states (a "sending" spinner or a "success" screen
+// isn't a step to track progress toward, it's the destination).
+function ProgressStepper({ activeStepIndex, steps }: { activeStepIndex: number; steps: string[] }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: '4px', paddingBottom: '12px' }}>
+      {steps.map((label, i) => (
+        <div key={label} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : '0 0 auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            <div
+              style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                backgroundColor: i <= activeStepIndex ? 'var(--itunda-blue)' : 'var(--itunda-grey-300)',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '11px', fontWeight: i === activeStepIndex ? 700 : 500, whiteSpace: 'nowrap',
+                color: i === activeStepIndex ? 'var(--itunda-blue)' : i < activeStepIndex ? 'var(--itunda-grey-700)' : 'var(--itunda-grey-400)',
+              }}
+            >
+              {label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div
+              style={{
+                flex: 1, height: '1px', marginBottom: '17px', marginLeft: '4px', marginRight: '4px',
+                backgroundColor: i < activeStepIndex ? 'var(--itunda-blue)' : 'var(--itunda-grey-200)',
+              }}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type TransferStep = 'recipient' | 'amount' | 'confirm' | 'sending' | 'success';
 
 function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: { onClose: () => void; onSuccess: () => void; onBalanceRefresh?: () => void; walletBalance: number }) {
   const { t } = useI18n();
+  const TRANSFER_STEP_LABELS = [t('transfer.stepRecipient'), t('transfer.stepAmount'), t('transfer.stepConfirm')];
   const [step, setStep] = useState<TransferStep>('recipient');
   const [recipient, setRecipient] = useState('');
   const [recipientPreview, setRecipientPreview] = useState<P2pRecipientPreview | null>(null);
@@ -689,6 +737,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
   if (step === 'confirm') {
     return (
       <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <ProgressStepper activeStepIndex={2} steps={TRANSFER_STEP_LABELS} />
         <h3 style={{ fontSize: '17px', fontWeight: 800 }}>
           {t('transfer.confirmSendNow', { amount: Number(amount).toLocaleString(), recipient: recipientName })}
         </h3>
@@ -737,6 +786,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
   if (step === 'amount') {
     return (
       <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px', padding: '20px' }}>
+        <ProgressStepper activeStepIndex={1} steps={TRANSFER_STEP_LABELS} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
           <button type="button" aria-label={t('transfer.cancel')} onClick={() => setStep('recipient')} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
             <ChevronLeft size={22} color="var(--itunda-grey-700)" />
@@ -817,6 +867,7 @@ function TransferFlow({ onClose, onSuccess, onBalanceRefresh, walletBalance }: {
   // contacts "Recent" list, matching the reference screenshots' recipient screen.
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', padding: '20px' }}>
+      <ProgressStepper activeStepIndex={0} steps={TRANSFER_STEP_LABELS} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: '17px', fontWeight: 800 }}>{t('transfer.recipientStepTitle')}</h3>
         <button type="button" aria-label={t('transfer.cancel')} onClick={onClose} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }}>
@@ -20695,6 +20746,8 @@ function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => voi
 // did -- added as part of the same optional final step, not a second unrelated change.
 type CreateGoalStep = 'closed' | 'name' | 'amount' | 'plan';
 
+const GOAL_STEP_LABELS = ['Name', 'Amount', 'Auto-save'];
+
 function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
   const [step, setStep] = useState<CreateGoalStep>('closed');
   const [name, setName] = useState('');
@@ -20745,6 +20798,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
         onSubmit={(e) => { e.preventDefault(); if (name.trim()) setStep('amount'); }}
         className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
       >
+        <ProgressStepper activeStepIndex={0} steps={GOAL_STEP_LABELS} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700 }}>What are you saving for?</h3>
           <button type="button" aria-label="Cancel" onClick={reset} style={{ background: 'none', border: 'none' }}>
@@ -20766,6 +20820,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
         onSubmit={(e) => { e.preventDefault(); if (Number(targetAmount) > 0) setStep('plan'); }}
         className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}
       >
+        <ProgressStepper activeStepIndex={1} steps={GOAL_STEP_LABELS} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button type="button" aria-label="Back" onClick={() => setStep('name')} style={{ background: 'none', border: 'none', display: 'flex' }}>
             <ChevronLeft size={20} color="var(--itunda-grey-700)" />
@@ -20783,6 +20838,7 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <div className="itunda-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <ProgressStepper activeStepIndex={2} steps={GOAL_STEP_LABELS} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button type="button" aria-label="Back" onClick={() => setStep('amount')} style={{ background: 'none', border: 'none', display: 'flex' }}>
           <ChevronLeft size={20} color="var(--itunda-grey-700)" />
