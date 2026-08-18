@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Agriculture
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddCircleOutline
@@ -2123,6 +2124,18 @@ private fun RoundUpSettingsDialog(
     )
 }
 
+// Real, display-only mirrors of each product's own real backend rate constant --
+// same convention Grow31SavingsScreen's own grow31BonusRateForStreak() and
+// UpfrontDepositScreen's own ANNUAL_RATE already establish, just file-scoped here
+// since BankHubScreen's hub-level teaser rows (below) need them before any specific
+// plan exists to read a real per-plan rate off of. Keep in sync with the real
+// source: WeeklySavingsService.BASE_RATE/BONUS_RATE, Grow31SavingsService's real
+// streak-bonus tier table (10.0 at the max 31-day streak), UpfrontDepositScreen's
+// own ANNUAL_RATE.
+private const val BANK_HUB_WEEKLY_SAVINGS_BASE_RATE = 5.0
+private const val BANK_HUB_GROW31_MAX_BONUS_RATE = 10.0
+private const val BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE = 2.80
+
 // Real itunda Bank product hub (2026-08-11) -- see the doc comment on the showBank
 // state var in ItundaAppScreen for the full "itunda Bank vs itunda Pay/wallet"
 // naming research this came out of. Every row here is a real, already-built screen
@@ -2371,9 +2384,26 @@ private fun BankHubScreen(
                                 )
                             )
                         }
-                        add(ShellRow("26-week savings", "Escalating weekly deposit plan", ">", Icons.Outlined.Savings, AccentBlue, onClick = onOpenWeeklySavings))
-                        add(ShellRow("31-day savings", "Daily streak, tiered bonus rate", ">", Icons.Outlined.Savings, AccentOrange, onClick = onOpenGrow31Savings))
-                        add(ShellRow("12-month deposit", "Interest paid upfront, principal locked", ">", Icons.Outlined.Savings, AccentPurple, onClick = onOpenUpfrontDeposit))
+                        // Real inline rates (2026-08-18, direct 12-image Toss Bank
+                        // comparison follow-up, Section 65's own named-not-yet-fixed
+                        // gap: "real inline interest-rate display on every row").
+                        // These three used to show zero real number at all -- a bare
+                        // descriptive string plus a generic ">" chevron -- unlike the
+                        // interest jar row above, which already surfaces its real rate.
+                        // Rates mirrored from each product's own real backend constant
+                        // (display-only copies, same convention grow31BonusRateForStreak
+                        // and UpfrontDepositScreen's own ANNUAL_RATE already establish):
+                        // WeeklySavingsService.BASE_RATE/BONUS_RATE (5.0/3.0),
+                        // Grow31SavingsService's real streak-bonus tier table (max 10.0
+                        // at a 31-day streak, mirrored locally as
+                        // grow31BonusRateForStreak(31) above), UpfrontDepositScreen's own
+                        // ANNUAL_RATE (2.80). Distinct icons too, closing this same
+                        // section's other named gap ("richer/varied per-product
+                        // iconography") -- all three used to share the identical Savings
+                        // icon as the interest jar and every savings goal row above.
+                        add(ShellRow("26-week savings", "$BANK_HUB_WEEKLY_SAVINGS_BASE_RATE% base rate, escalates weekly", ">", Icons.Outlined.CalendarMonth, AccentBlue, onClick = onOpenWeeklySavings))
+                        add(ShellRow("31-day savings", "Daily streak, up to $BANK_HUB_GROW31_MAX_BONUS_RATE% bonus rate", ">", Icons.Outlined.Bolt, AccentOrange, onClick = onOpenGrow31Savings))
+                        add(ShellRow("12-month deposit", "$BANK_HUB_UPFRONT_DEPOSIT_ANNUAL_RATE%/yr interest paid upfront, principal locked", ">", Icons.Outlined.Lock, AccentPurple, onClick = onOpenUpfrontDeposit))
                         add(ShellRow(stringResource(R.string.home_coop_rail_ikimina_title), stringResource(R.string.home_coop_rail_ikimina_subtitle), ">", Icons.Outlined.Groups, AccentTeal, onClick = onOpenIkimina))
                         add(ShellRow(stringResource(R.string.home_coop_rail_sacco_title), stringResource(R.string.home_coop_rail_sacco_subtitle), ">", Icons.Outlined.AccountBalance, AccentPurple, onClick = onOpenSacco))
                         add(ShellRow("Investments", "RSE stocks, bonds & fixed income, IPOs", ">", Icons.Outlined.TrendingUp, AccentTeal, onClick = onOpenInvest))
@@ -2384,9 +2414,16 @@ private fun BankHubScreen(
                 ShellSection(
                     title = stringResource(R.string.bank_borrow),
                     rows = listOf(
+                        // Real icon differentiation (2026-08-18, same Section 65
+                        // follow-up as above): all three of these used to share the
+                        // identical AccountBalanceWallet icon -- Harvest advance and
+                        // VUP now get their own distinct, semantically-apt icon from
+                        // the same already-depended-upon material-icons-extended
+                        // library ("Get a loan" keeps AccountBalanceWallet as the
+                        // genuinely generic personal/SME loan product).
                         ShellRow("Get a loan", "Personal, salary-backed, SME working capital", ">", Icons.Outlined.AccountBalanceWallet, AccentBlue, onClick = onOpenLoans),
-                        ShellRow(stringResource(R.string.home_coop_rail_harvest_title), stringResource(R.string.home_coop_rail_harvest_subtitle), ">", Icons.Outlined.AccountBalanceWallet, AccentTeal, onClick = onOpenHarvestAdvance),
-                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", Icons.Outlined.AccountBalanceWallet, AccentBlue, onClick = onOpenVupLoan),
+                        ShellRow(stringResource(R.string.home_coop_rail_harvest_title), stringResource(R.string.home_coop_rail_harvest_subtitle), ">", Icons.Outlined.Agriculture, AccentTeal, onClick = onOpenHarvestAdvance),
+                        ShellRow("VUP Financial Services", "Means-tested government microloan for farming, livestock, business", ">", Icons.Outlined.Shield, AccentBlue, onClick = onOpenVupLoan),
                         ShellRow("Student loan", "BRD higher-education loan -- 11% undergraduate, 12% postgraduate", ">", Icons.Outlined.School, AccentPurple, onClick = onOpenStudentLoan),
                         ShellRow(stringResource(R.string.home_coop_rail_moto_title), "Save a 30% down payment, then convert to a loan for your own bike", ">", Icons.Outlined.DirectionsBike, AccentTeal, onClick = onOpenMotoOwnership),
                     )
