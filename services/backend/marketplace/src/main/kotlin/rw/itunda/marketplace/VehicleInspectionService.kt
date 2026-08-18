@@ -240,7 +240,7 @@ class VehicleInspectionService(
     /** Real no-show forfeit -- an ACCEPTED booking (the mechanic committed to the real
      * slot) whose `scheduledFor` time has passed with neither `completeInspection` nor
      * `cancelInspection` ever called. Same real forfeit-to-provider semantics
-     * `MerchantBookingService.processNoShows`/`payOutDeposit` already establish for its
+     * `MerchantBookingService.processNoShow`/`payOutDeposit` already establish for its
      * own sibling 100%-prepay-to-book feature -- pays the mechanic net of itunda's fee,
      * exactly like a real COMPLETED inspection, since the mechanic held the slot.
      *

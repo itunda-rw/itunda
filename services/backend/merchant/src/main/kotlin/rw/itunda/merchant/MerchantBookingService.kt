@@ -389,26 +389,58 @@ class MerchantBookingService(
 
     // Real no-show detection -- see BookingDeposit.kt's own doc comment and
     // BookingNoShowScheduler. A still-CONFIRMED booking whose real scheduled end time has
-    // passed with no explicit action from either side is a genuine no-show: transitions
-    // it to NO_SHOW and forfeits any held deposit to the merchant. A booking with no
-    // deposit (service didn't require prepay) still gets the real NO_SHOW status -- an
-    // honest record of what happened -- even though payOutDeposit is then a no-op for it.
-    @Transactional
-    fun processNoShows(): List<MerchantBooking> {
+    // passed with no explicit action from either side is a genuine no-show. Read-only --
+    // the real per-item settlement lives in [processNoShow] below.
+    fun getDueNoShows(): List<MerchantBooking> {
         val nowDateTime = LocalDateTime.now(ZoneOffset.UTC)
-        val due = merchantBookingRepository.findByStatusAndBookingDateLessThanEqual(MerchantBookingStatus.CONFIRMED, today())
+        return merchantBookingRepository.findByStatusAndBookingDateLessThanEqual(MerchantBookingStatus.CONFIRMED, today())
             .filter { LocalDateTime.of(it.bookingDate, it.endTime).isBefore(nowDateTime) }
-        return due.map { booking ->
-            booking.status = MerchantBookingStatus.NO_SHOW
-            booking.updatedAt = Instant.now()
-            val saved = merchantBookingRepository.save(booking)
-            val merchant = merchantRepository.findById(booking.merchantId).orElse(null)
-            if (merchant != null) {
-                payOutDeposit(saved, merchant, BookingDepositStatus.FORFEITED)
-                notify(merchant.ownerUserId, saved, "Marked as no-show", "${booking.serviceName} on ${booking.bookingDate} at ${booking.startTime} was marked a no-show.")
-            }
-            notify(booking.customerId, saved, "Missed appointment", "You missed your ${booking.serviceName} booking on ${booking.bookingDate} at ${booking.startTime}.")
-            saved
+    }
+
+    /**
+     * Real per-item no-show settlement -- transitions ONE booking to NO_SHOW and
+     * forfeits any held deposit to the merchant. A booking with no deposit (service
+     * didn't require prepay) still gets the real NO_SHOW status -- an honest record of
+     * what happened -- even though [payOutDeposit] is then a no-op for it.
+     *
+     * Bug fix 2026-08-18: this used to be one batch method (`processNoShows`),
+     * `@Transactional` at the method level, looping over every real due booking
+     * network-wide inside a SINGLE physical transaction with no try/catch per row --
+     * a real, previously-unflagged instance of the exact transaction-poisoning bug
+     * class Sections 115/118/129/130 already closed four times this session. Section
+     * 130's own "exhaustive audit" checked `BookingNoShowScheduler` and marked it
+     * clean, but that audit specifically looked for the narrower self-invocation
+     * `UnexpectedRollbackException` shape -- this was the OTHER variant of the same
+     * bug class: a single bad row (e.g. a booking whose merchant's settlement wallet
+     * went missing, throwing from `payOutDeposit`) rolled back every OTHER real due
+     * booking's no-show status change and forfeit payout in the same poll, not just
+     * the bad one -- the identical "one bad row blocks the sweep for every other real
+     * due row" footgun `BikeRentalAbandonedSessionScheduler`/`ParkingAbandonedSessionScheduler`/
+     * `VehicleInspectionNoShowScheduler`/`EatsOrderAbandonedDeliveryScheduler` (which all
+     * cite this class's OWN `BookingNoShowScheduler` as their template) deliberately
+     * avoid. Now matches that same proven-safe shape: the loop lives in
+     * `BookingNoShowScheduler`, a separate non-`@Transactional` bean, calling this
+     * per-item `@Transactional` method with its own independent physical transaction
+     * and its own try/catch per row. Re-checks real current state before acting -- a
+     * booking the customer/merchant resolved in the gap between the poll's read and
+     * this call is a safe no-op, same discipline every other per-item scheduler target
+     * in this codebase already applies.
+     */
+    @Transactional
+    fun processNoShow(bookingId: String): MerchantBooking? {
+        val booking = merchantBookingRepository.findById(bookingId).orElse(null) ?: return null
+        if (booking.status != MerchantBookingStatus.CONFIRMED) return null
+        if (!LocalDateTime.of(booking.bookingDate, booking.endTime).isBefore(LocalDateTime.now(ZoneOffset.UTC))) return null
+
+        booking.status = MerchantBookingStatus.NO_SHOW
+        booking.updatedAt = Instant.now()
+        val saved = merchantBookingRepository.save(booking)
+        val merchant = merchantRepository.findById(booking.merchantId).orElse(null)
+        if (merchant != null) {
+            payOutDeposit(saved, merchant, BookingDepositStatus.FORFEITED)
+            notify(merchant.ownerUserId, saved, "Marked as no-show", "${booking.serviceName} on ${booking.bookingDate} at ${booking.startTime} was marked a no-show.")
         }
+        notify(booking.customerId, saved, "Missed appointment", "You missed your ${booking.serviceName} booking on ${booking.bookingDate} at ${booking.startTime}.")
+        return saved
     }
 }

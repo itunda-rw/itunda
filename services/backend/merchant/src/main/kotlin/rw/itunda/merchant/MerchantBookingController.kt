@@ -150,7 +150,8 @@ class MerchantBookingController(
     @PostMapping("/bookings/process-no-shows")
     @PreAuthorize("hasRole('ADMIN')")
     fun processNoShows(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
-        val processed = merchantBookingService.processNoShows()
+        val due = merchantBookingService.getDueNoShows()
+        val processed = due.mapNotNull { merchantBookingService.processNoShow(it.id) }
         return ResponseEntity.ok(mapOf("success" to true, "processedCount" to processed.size, "bookings" to processed))
     }
 

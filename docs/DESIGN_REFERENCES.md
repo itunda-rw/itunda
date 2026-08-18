@@ -11029,3 +11029,101 @@ Cleaned up the local Docker image after a successful push (`docker rmi` +
 `docker image prune -f`, reclaimed 616.4MB). This closes out Section 178 -- both a
 clean concurrency/IDOR audit of Sections 150-169 (no new finding) and a real, sourced,
 fully live-verified Kakao Bank feature port.
+
+## 179. Bug fix: scheduler transaction-poisoning in `BookingNoShowScheduler` (fifth instance, found via a fresh audit of Sections 170-178's own new code)
+
+**Added 2026-08-18.** Per this session's own scoping, ran Path A first: a fresh
+concurrency/IDOR audit of Sections 170-178's specific new code, not yet audited this
+way -- `VehicleInspectionNoShowScheduler`, `DesignatedDriverService`'s new
+`cancelTrip` (Section 174's cancel-after-accept path), `BikeRentalAbandonedSessionScheduler`,
+`ParkingAbandonedSessionScheduler`, `EatsOrderAbandonedDeliveryScheduler`, and
+`BillAutoPayProcessor`'s new `checkLowBalance`. Read every one of those files end to
+end and found them all genuinely clean: every scheduler follows the proven "poll
+read-only, resolve each row inside its own per-item `@Transactional` method with a
+re-check of current state, try/catch per row" shape; `DesignatedDriverTrip` (used by
+the new `cancelTrip`) and every other entity a scheduler mutates (`ParkingSession`,
+`BikeRentalSession`, `EatsOrder`, `VehicleInspectionBooking`) carries a real `@Version`
+column, so `acceptTrip`'s own check-then-act claim race is optimistic-locking-safe;
+every new admin-only manual-trigger endpoint (`POST /orders/process-abandoned-deliveries`,
+`POST /rentals/process-abandoned`, `POST /sessions/process-abandoned`,
+`POST /bills/process-auto-payments`) carries a real `@PreAuthorize("hasRole('ADMIN')")`;
+and `cancelTrip`/`getOwnedTrip` correctly check `trip.customerId`/`trip.driverId`
+against the caller before acting on a path/body id, no IDOR found.
+
+Rather than stop at a clean sweep of only the newest code, widened the same read to
+every `@Scheduled` class's real target method one level deeper than Section 130's own
+"exhaustive audit" went, since that audit's own stated check was narrow: "per-row
+target method both `@Transactional` and internally catching an exception from a
+separately-proxied bean" (the self-invocation `UnexpectedRollbackException` shape).
+That check correctly cleared `BookingNoShowScheduler` for *that* shape -- but never
+checked whether the target method itself batch-processed multiple independent rows
+inside one transaction, the *other* variant of the same bug class Sections 115/118/129
+already found. It does: `MerchantBookingService.processNoShows()` was `@Transactional`
+at the method level, and internally looped over every real due booking network-wide
+with `due.map { ... }`, doing a real ledger money movement (`payOutDeposit`, forfeiting
+a held `BookingDeposit` to the merchant) for each row, inside that single physical
+transaction, with **no try/catch at all** around any individual row. A single bad row
+anywhere in a poll's batch (e.g. a booking whose merchant's settlement wallet had gone
+missing, throwing `MerchantNoWalletException` from `payOutDeposit`) would roll back
+every OTHER real due booking's already-applied no-show status change and forfeit
+payout in that same poll cycle too -- not just the bad one. This is the exact "one bad
+row blocks the sweep for every other real due row" footgun every one of Sections
+170-178's five NEW schedulers explicitly cites in its own doc comment as the reason it
+is deliberately never a batch-`@Transactional` loop -- and four of those five
+(`VehicleInspectionNoShowScheduler`, `BikeRentalAbandonedSessionScheduler`,
+`ParkingAbandonedSessionScheduler`, `EatsOrderAbandonedDeliveryScheduler`) cite
+`BookingNoShowScheduler` itself by name as the template they copied the *safe* shape
+from -- ironic, since the template they named had never actually had that shape itself.
+
+**Fixed**: split `MerchantBookingService.processNoShows()` into a read-only
+`getDueNoShows(): List<MerchantBooking>` and a real per-item `@Transactional
+processNoShow(bookingId: String): MerchantBooking?` that re-checks the booking is
+still genuinely `CONFIRMED` and still genuinely past its scheduled end time before
+acting (a booking the customer/merchant resolved in the gap between the poll's read
+and this call is a safe no-op), matching the identical shape every sibling scheduler
+in this codebase already uses. `BookingNoShowScheduler.run()` now does the real loop
+itself (a separate, non-`@Transactional` `@Component` bean) with its own try/catch per
+row, calling `merchantBookingService.processNoShow(booking.id)` independently for
+each due booking. `MerchantBookingController`'s admin-gated
+`POST /bookings/process-no-shows` manual-trigger endpoint updated to the same
+`getDueNoShows()` + `mapNotNull { processNoShow(it.id) }` shape
+`EatsController`/`BikeRentalController`/`ParkingController`'s own equivalent endpoints
+already use.
+
+Files changed:
+- `services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantBookingService.kt`
+  (`processNoShows()` replaced by `getDueNoShows()` + per-item `@Transactional
+  processNoShow(bookingId)`, doc comment records the full bug account)
+- `services/backend/merchant/src/main/kotlin/rw/itunda/merchant/BookingNoShowScheduler.kt`
+  (loop moved here, per-row try/catch, matches
+  `BikeRentalAbandonedSessionScheduler`'s own exact shape)
+- `services/backend/merchant/src/main/kotlin/rw/itunda/merchant/MerchantBookingController.kt`
+  (`process-no-shows` admin endpoint updated to the new two-call shape; endpoint path
+  and admin gate unchanged)
+- `services/backend/marketplace/src/main/kotlin/rw/itunda/marketplace/VehicleInspectionService.kt`
+  (one doc-comment reference updated from `processNoShows` to `processNoShow`, no code
+  change)
+- `services/backend/merchant/src/test/kotlin/rw/itunda/merchant/MerchantBookingServiceNoShowTest.kt`
+  (new file, 4 Kotest cases: a real overdue `CONFIRMED` booking with a held deposit is
+  correctly marked `NO_SHOW` and the deposit correctly forfeited to the merchant net of
+  fee; an already-`COMPLETED` booking and a not-yet-due `CONFIRMED` booking both
+  correctly no-op and never touch the ledger, proving the per-item re-check actually
+  works and not just the old batch filter; and the actual regression the old batch
+  method could never guarantee -- a row whose merchant lookup returns nothing still
+  settles honestly on its own (`NO_SHOW`, no payout attempted, no exception) and a
+  second, independent row processed right after it settles normally too, proving one
+  row's outcome can no longer be coupled to another's since each is its own real
+  independent `@Transactional` call)
+
+**Verified locally, this pass**: `./gradlew :merchant:compileKotlin
+:merchant:compileTestKotlin :marketplace:compileKotlin :app:compileKotlin` ->
+`BUILD SUCCESSFUL` (the `:app:compileKotlin` run confirms the full Spring context,
+including `BookingNoShowScheduler`'s and `MerchantBookingController`'s updated wiring
+to `MerchantBookingService`'s new two-method shape, compiles cleanly). Ran the full
+`:merchant:test` suite with `--rerun-tasks` (bypassing Gradle's UP-TO-DATE cache) and
+summed every real XML report under `merchant/build/test-results/test/` myself:
+**`tests="208" skipped="0" failures="0" errors="0"`** across the entire module (4 new
++ 204 pre-existing, all still green) -- nothing else in the module regressed.
+
+No deploy and no live-server verification attempted here -- reserved for the
+coordinating session per this task's own scoping rules.
