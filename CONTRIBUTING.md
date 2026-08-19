@@ -2,6 +2,12 @@
 
 Thank you for your interest in contributing to Itunda! This document provides guidelines and instructions for contributing to the project.
 
+**Before writing any UI/UX or architecture code, read
+[docs/UI_UX_GUIDELINES.md](docs/UI_UX_GUIDELINES.md) and
+[docs/ARCHITECTURE_GUIDELINES.md](docs/ARCHITECTURE_GUIDELINES.md)** — prescriptive,
+sourced rules synthesized from Toss/Kakao/Spotify/Netflix/Uber/Apple's real published
+engineering practices, kept synchronized with what's actually shipped in this repo.
+
 ## Code of Conduct
 
 - Be respectful and inclusive
@@ -21,9 +27,9 @@ Thank you for your interest in contributing to Itunda! This document provides gu
    ```bash
    git checkout -b feature/your-feature-name
    ```
-4. **Install dependencies**:
+4. **Install dependencies** (this repo uses Yarn workspaces + PnP, not npm):
    ```bash
-   npm install
+   yarn install
    ```
 
 ## Development Workflow
@@ -37,19 +43,24 @@ Thank you for your interest in contributing to Itunda! This document provides gu
 
 ### 2. Test Your Changes
 
+For a JS/TS micro-frontend (e.g. `services/micro-frontends/bank-mfe`):
+
 ```bash
-# Run linter
-npm run lint
-
-# Run unit tests
-npm run test
-
-# Run E2E tests (if applicable)
-npm run test:e2e
-
-# Build to check for compilation errors
-npm run build
+yarn workspace <package-name> run build   # tsc -b && vite build
+yarn workspace <package-name> run lint    # oxlint
+python3 scripts/accessibility-lint.py <changed-file>
 ```
+
+For the real backend (`services/backend`, Kotlin + Spring Boot + MySQL):
+
+```bash
+./gradlew :app:compileKotlin
+./gradlew test
+```
+
+For Android (`android/`) or iOS (`ios/`), see their own module-specific build commands —
+there is no single repo-wide `npm run build`/`test`/`lint`; this is a multi-stack
+monorepo, not a single Node.js project.
 
 ### 3. Commit Your Changes
 
@@ -112,7 +123,12 @@ Examples:
 
 ## Code Standards
 
-### Frontend (React/TypeScript)
+See [docs/UI_UX_GUIDELINES.md](docs/UI_UX_GUIDELINES.md) and
+[docs/ARCHITECTURE_GUIDELINES.md](docs/ARCHITECTURE_GUIDELINES.md) for the real,
+sourced rules. Quick orientation on itunda's actual stacks (this is a multi-stack
+monorepo, not a single framework):
+
+### Frontend (React/TypeScript, `services/micro-frontends/*`)
 
 ```typescript
 // Use functional components
@@ -125,37 +141,30 @@ interface Props {
   title: string;
   count: number;
 }
-
-// Name exports for easier refactoring
-export { MyComponent };
 ```
 
-### Backend (NestJS/TypeScript)
+### Backend (`services/backend`, real Kotlin + Spring Boot + MySQL)
 
-```typescript
-// Use dependency injection
-@Injectable()
-export class MyService {
-  constructor(private readonly db: DatabaseService) {}
-}
+```kotlin
+// Use constructor injection
+@Service
+class MyService(private val repository: MyRepository)
 
-// Clear error handling
-throw new BadRequestException('Validation failed');
-
-// Type safe
-async findUser(id: string): Promise<User> {
-  return this.userRepository.findById(id);
-}
+// Clear error handling via a real domain exception, mapped to an HTTP status
+// in the controller layer, not a generic 500
+class MyResourceNotFoundException(message: String) : RuntimeException(message)
 ```
 
 ### General Rules
 
-- Use meaningful variable names
-- Keep functions small and focused
-- Add comments for complex logic
-- Remove console.log statements
-- Use async/await instead of .then()
-- Handle errors appropriately
+- Use meaningful variable names; name complex conditions and magic numbers rather than
+  leaving them inline (see ARCHITECTURE_GUIDELINES.md §1)
+- Keep functions small and focused; no nested ternaries (enforced by `oxlint` in JS/TS)
+- Comment only the non-obvious WHY (a hidden constraint, a workaround), not the WHAT —
+  well-named code doesn't need a comment restating it
+- Remove `console.log`/debug prints before committing
+- Use async/await instead of raw `.then()` chains
+- Handle errors at the real boundary they occur at, not with a blanket catch-and-ignore
 
 ## Branch Naming
 
@@ -192,11 +201,12 @@ When requesting features:
 
 ## Database Migrations
 
-For database changes:
-1. Create migration file
-2. Update schema documentation
-3. Provide rollback migration
-4. Update TypeORM entities
+`services/backend` uses real Flyway migrations (`app/src/main/resources/db/migration/`,
+`ddl-auto: validate` — Hibernate never infers the schema) plus JPA `@Entity` classes in
+`core/.../domain/`. For database changes:
+1. Add a new `V<N>__description.sql` Flyway migration (never edit an already-applied one)
+2. Update the matching `@Entity` class(es) to stay column-for-column in sync
+3. Update schema documentation if the change is user-facing
 
 ## Performance
 
@@ -215,27 +225,27 @@ For database changes:
 
 ## Testing
 
-### Unit Tests
-```typescript
-describe('MyService', () => {
-  it('should do something', () => {
-    const result = myFunction();
-    expect(result).toBe(expected);
-  });
-});
+### Backend (`services/backend`, real Kotest + MockK)
+```kotlin
+class MyServiceTest : BehaviorSpec({
+    val repository = mockk<MyRepository>()
+    val service = MyService(repository)
+
+    given("a valid request") {
+        `when`("calling doSomething") {
+            then("it returns the expected result") {
+                // ...
+            }
+        }
+    }
+})
 ```
 
-### Integration Tests
-```typescript
-describe('UserController (e2e)', () => {
-  it('should create a user', () => {
-    return request(app.getHttpServer())
-      .post('/users')
-      .send({ email: 'test@example.com' })
-      .expect(201);
-  });
-});
-```
+### Frontend (JS/TS)
+No test runner is currently wired into the JS/TS workspaces — verification today is
+`tsc -b` (real typecheck) + `oxlint` + `accessibility-lint.py` + a real browser
+click-through against the live deployed backend, not a mocked unit-test suite. If you add
+one, document it here in the same pass (see ARCHITECTURE_GUIDELINES.md §5).
 
 ## Questions?
 
