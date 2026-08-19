@@ -6614,6 +6614,16 @@ function parseQrParam(raw: string, key: string): string {
   return match ? decodeURIComponent(match[1]) : raw.trim();
 }
 
+// Real "simplify ternary operators" fix (2026-08-19) -- see PayByCodeCard's own
+// `payButtonLabel` doc comment for the full account (Toss's real Frontend Fundamentals
+// guide). Same shape: a nested ternary crossing two booleans, moved to a named if-chain.
+function blockButtonLabel(blocking: boolean, blocked: boolean): string {
+  if (blocking && blocked) return 'Unblocking…';
+  if (blocking) return 'Blocking…';
+  if (blocked) return 'Unblock';
+  return 'Block';
+}
+
 // Real correction (2026-08-19, same session as QrScanCamera above): a QR code only
 // works between two people physically in front of each other -- someone can't point
 // their camera at a code that's on their OWN phone screen. QR-scanning is genuinely
@@ -6737,6 +6747,19 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
 
   const handleScan = (raw: string) => void submitCode(parseQrParam(raw, 'intentId'));
 
+  // Real "naming complex conditions" / "simplify ternary operators" fix (2026-08-19) --
+  // Toss's own real Frontend Fundamentals guide (frontend-fundamentals.com/code-quality/
+  // code), directly requested via "deep search... make sure we don't have that weird vibe
+  // coded code and architecture mistakes." This used to be a nested ternary crossing
+  // `submitting`/`facePayEnrolled` inline in the render -- readable as 4 unnamed branches
+  // is exactly what that guide calls out; an if-chain (its own suggested refactor target)
+  // reads top-to-bottom instead of requiring the reader to track two crossed booleans.
+  let payButtonLabel: string;
+  if (submitting && facePayEnrolled) payButtonLabel = 'Authorizing…';
+  else if (submitting) payButtonLabel = 'Paying…';
+  else if (facePayEnrolled) payButtonLabel = '😊 Pay';
+  else payButtonLabel = 'Pay';
+
   const handleConfirm = () => payDirect(code.trim(), selectedCouponId ?? undefined);
 
   const handleCancel = () => {
@@ -6815,7 +6838,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
               style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--itunda-grey-200)', fontSize: '14px' }}
             />
             <button type="submit" className="itunda-btn itunda-btn-primary" disabled={submitting}>
-              {submitting ? (facePayEnrolled ? 'Authorizing…' : 'Paying…') : facePayEnrolled ? '😊 Pay' : 'Pay'}
+              {payButtonLabel}
             </button>
           </form>
           {!facePayEnrolled && !scanUnavailable && (
@@ -8864,7 +8887,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           disabled={blocking}
           style={{ padding: '8px 10px', fontSize: '12px' }}
         >
-          {blocking ? (blocked ? 'Unblocking…' : 'Blocking…') : blocked ? 'Unblock' : 'Block'}
+          {blockButtonLabel(blocking, blocked)}
         </button>
         <button type="button" className="itunda-btn itunda-btn-secondary" onClick={handleQuiet} disabled={updatingQuiet} style={{ padding: '8px 10px', fontSize: '12px' }}>
           {updatingQuiet ? '…' : quiet ? 'Resume alerts' : 'Quiet room'}
