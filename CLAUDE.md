@@ -4,17 +4,22 @@ itunda is a Rwanda-market super-app modeled on real, sourced Toss/Kakao/Naver/Co
 Baemin/Uber/Karrot product and engineering practices. This is a multi-stack monorepo, not
 a single framework — don't assume Node.js/npm/NestJS conventions apply repo-wide.
 
-**Before writing any UI/UX or architecture code, read these two files in full:**
+**Before writing any UI/UX or architecture code, read these three files in full:**
 
+- [`docs/AI_AGENT_SELF_CHECK.md`](docs/AI_AGENT_SELF_CHECK.md) — **read this one first.**
+  Real, measured "vibe coding" failure modes (security flaws in ~45% of AI-generated code
+  samples, hallucinated packages, secrets leaked into client code, "looks correct" code
+  that breaks under real load) with real instances itunda has already hit, and a direct
+  self-check checklist to run on your OWN work before calling it done.
 - [`docs/UI_UX_GUIDELINES.md`](docs/UI_UX_GUIDELINES.md) — sourced UI/UX rules (Toss,
   Kakao, Apple HIG, itunda's own copy voice), with a standing pre-ship checklist.
 - [`docs/ARCHITECTURE_GUIDELINES.md`](docs/ARCHITECTURE_GUIDELINES.md) — sourced
   architecture/code-quality rules (Toss Frontend Fundamentals, Uber DOMA, Netflix, Spotify),
   with a standing pre-commit checklist.
 
-Both are kept synchronized with what's actually shipped — if you make a decision that
+All three are kept synchronized with what's actually shipped — if you make a decision that
 should generalize, add it there in the same pass rather than leaving it for the next
-agent to rediscover. If you find either doc contradicting real shipped code, fix
+agent to rediscover. If you find any of them contradicting real shipped code, fix
 whichever one is wrong; never let them silently drift apart.
 
 ## Real stack, per workspace

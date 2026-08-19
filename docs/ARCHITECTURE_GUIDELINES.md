@@ -5,6 +5,7 @@ Prescriptive rules synthesized from real, published engineering practices at Tos
 Spotify, Netflix, and Uber, chosen because each names a real, sourced failure mode this
 repo has *actually hit* (cited inline) — not generic "clean code" platitudes. Every rule
 traces to a real source. This is a companion to
+[`docs/AI_AGENT_SELF_CHECK.md`](AI_AGENT_SELF_CHECK.md) (read that one first) and
 [`docs/UI_UX_GUIDELINES.md`](UI_UX_GUIDELINES.md); for narrative history of what was built
 and why, see `docs/DESIGN_REFERENCES.md`/`docs/ARCHITECTURE.md` — those are changelogs,
 not guides.

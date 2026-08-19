@@ -7,8 +7,10 @@ because it sounds impressive. Every rule below traces to a real source; do not a
 here that doesn't. If you find a real conflict between a rule here and what's actually
 shipped, fix the code or fix this doc — never let them silently drift apart.
 
-This is a companion to [`docs/ARCHITECTURE_GUIDELINES.md`](ARCHITECTURE_GUIDELINES.md)
-(code/architecture rules) and [`docs/COPY_VOICE.md`](COPY_VOICE.md) (itunda's own copy
+This is a companion to [`docs/AI_AGENT_SELF_CHECK.md`](AI_AGENT_SELF_CHECK.md) (read that
+one first — the self-check for whether you're actually applying these rules or just
+producing code that looks like it does), [`docs/ARCHITECTURE_GUIDELINES.md`](ARCHITECTURE_GUIDELINES.md)
+(code/architecture rules), and [`docs/COPY_VOICE.md`](COPY_VOICE.md) (itunda's own copy
 register, already itself an example of rule 6 below). For narrative "what was built and
 why" history, see `docs/DESIGN_REFERENCES.md` — that's a changelog, not a guide; this file
 is the guide.
